@@ -72,7 +72,7 @@ export function ContentStep({ content, onApprove, onBack, loading }: ContentStep
         <div>
           <h1 className="text-3xl font-bold">Your Lead Magnet</h1>
           <p className="mt-2 text-muted-foreground">
-            Here's the structured content we created from your expertise.
+            Here&apos;s the structured content we created from your expertise.
             Review and approve to generate your LinkedIn post.
           </p>
         </div>

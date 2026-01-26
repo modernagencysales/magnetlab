@@ -116,7 +116,7 @@ export function PublishStep({
         <div>
           <h1 className="text-2xl font-semibold">Your Lead Magnet is Ready!</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Copy your content and LinkedIn post. Paste them wherever you'd like to share.
+            Copy your content and LinkedIn post. Paste them wherever you&apos;d like to share.
           </p>
         </div>
         <button
@@ -231,7 +231,7 @@ export function PublishStep({
           </div>
           <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
             <span>Hook: <span className="font-medium text-foreground">{post.hookType}</span></span>
-            <span>CTA word: <span className="font-medium text-foreground">"{ctaWord}"</span></span>
+            <span>CTA word: <span className="font-medium text-foreground">&quot;{ctaWord}&quot;</span></span>
           </div>
         </div>
       </div>
@@ -243,7 +243,7 @@ export function PublishStep({
             <MessageSquare className="h-5 w-5 text-green-500" />
             <h3 className="font-semibold">DM Template</h3>
             <span className="text-xs text-muted-foreground">
-              (Send to people who comment "{ctaWord}")
+              (Send to people who comment &quot;{ctaWord}&quot;)
             </span>
           </div>
           <button
@@ -286,7 +286,7 @@ export function PublishStep({
           </li>
           <li className="flex items-start gap-2">
             <span className="font-semibold text-primary">3.</span>
-            Post the LinkedIn content and respond to "{ctaWord}" comments with the DM template
+            Post the LinkedIn content and respond to &quot;{ctaWord}&quot; comments with the DM template
           </li>
         </ol>
       </div>

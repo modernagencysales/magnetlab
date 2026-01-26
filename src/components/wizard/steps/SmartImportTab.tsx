@@ -241,7 +241,7 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
       <div>
         <p className="text-sm text-muted-foreground mb-4">
           Paste any content that describes your business - offer docs, LinkedIn profiles, sales pages, or anything else.
-          We'll extract the key details automatically.
+          We&apos;ll extract the key details automatically.
         </p>
       </div>
 

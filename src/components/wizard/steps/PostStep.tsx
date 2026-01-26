@@ -224,7 +224,7 @@ export function PostStep({ result, onSelect, onBack }: PostStepProps) {
       <div className="rounded-xl border bg-card p-5">
         <h3 className="mb-2 font-semibold">DM Template</h3>
         <p className="text-sm text-muted-foreground">
-          Send this to people who comment "{result.ctaWord}":
+          Send this to people who comment &quot;{result.ctaWord}&quot;:
         </p>
         <div className="mt-2 rounded-lg bg-muted p-3 text-sm">{result.dmTemplate}</div>
       </div>

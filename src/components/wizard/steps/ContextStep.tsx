@@ -99,7 +99,7 @@ export function ContextStep({ initialData, onSubmit, loading }: ContextStepProps
       <div>
         <h1 className="text-2xl font-semibold">Tell us about your business</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          We'll use this to generate lead magnet ideas tailored to your expertise and audience.
+          We&apos;ll use this to generate lead magnet ideas tailored to your expertise and audience.
         </p>
       </div>
 
@@ -167,10 +167,10 @@ export function ContextStep({ initialData, onSubmit, loading }: ContextStepProps
         {/* Credibility Markers */}
         <div>
           <label className="text-xs font-medium text-muted-foreground">
-            Credibility markers (specific results you've achieved)
+            Credibility markers (specific results you&apos;ve achieved)
           </label>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Numbers work best: "$2.3M in client revenue", "1,200+ students", "15 years experience"
+            Numbers work best: &quot;$2.3M in client revenue&quot;, &quot;1,200+ students&quot;, &quot;15 years experience&quot;
           </p>
           <div className="mt-2 flex gap-2">
             <input

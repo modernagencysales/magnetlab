@@ -141,7 +141,7 @@ export default function HomePage() {
               <h3 className="mb-4 text-xl font-semibold text-destructive">The Problem</h3>
               <p className="text-muted-foreground">
                 Generic AI tools generate the same bland lead magnets everyone else has.
-                Your audience can smell AI content from a mile away, and they're tired of it.
+                Your audience can smell AI content from a mile away, and they&apos;re tired of it.
               </p>
             </div>
             <div className="rounded-xl border bg-primary/5 p-6">
@@ -255,7 +255,7 @@ export default function HomePage() {
         <div className="container mx-auto max-w-5xl px-4">
           <h2 className="mb-4 text-center text-3xl font-bold">Simple Pricing</h2>
           <p className="mb-12 text-center text-muted-foreground">
-            Start free, upgrade when you're ready
+            Start free, upgrade when you&apos;re ready
           </p>
           <div className="grid gap-6 md:grid-cols-3">
             {pricing.map((plan, index) => (
