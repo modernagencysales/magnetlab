@@ -3,6 +3,14 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { hashPassword, verifyPassword } from './password';
+import {
+  jwtCallback,
+  sessionCallback,
+  validateCredentials,
+  formatUserForSession,
+  AUTH_CONFIG,
+} from './callbacks';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -13,13 +21,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        const validated = validateCredentials(credentials as { email?: unknown; password?: unknown });
+        if (!validated) {
           return null;
         }
 
-        const email = credentials.email as string;
-        const password = credentials.password as string;
-
+        const { email, password } = validated;
         const supabase = createSupabaseAdminClient();
 
         // Check if user exists
@@ -30,19 +37,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           .single();
 
         if (existingUser) {
-          // Simple password check (in production, use bcrypt)
-          // For v1, we're using a simple hash comparison
           const isValid = await verifyPassword(password, existingUser.password_hash);
           if (!isValid) {
             return null;
           }
-
-          return {
-            id: existingUser.id,
-            email: existingUser.email,
-            name: existingUser.name,
-            image: existingUser.avatar_url,
-          };
+          return formatUserForSession(existingUser);
         }
 
         // Auto-create new user on first login
@@ -68,52 +67,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           status: 'active',
         });
 
-        return {
-          id: newUser.id,
-          email: newUser.email,
-          name: newUser.name,
-        };
+        return formatUserForSession(newUser);
       },
     }),
   ],
-  pages: {
-    signIn: '/login',
-    error: '/login',
-  },
+  pages: AUTH_CONFIG.pages,
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.userId = user.id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token.userId) {
-        session.user.id = token.userId as string;
-      }
-      return session;
-    },
+    jwt: jwtCallback,
+    session: sessionCallback,
   },
-  session: {
-    strategy: 'jwt',
-  },
-  trustHost: true,
+  session: AUTH_CONFIG.session,
+  trustHost: AUTH_CONFIG.trustHost,
 });
-
-// Simple password hashing (for v1 - consider bcrypt for production)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + process.env.AUTH_SECRET);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function verifyPassword(password: string, hash: string | null): Promise<boolean> {
-  if (!hash) return false;
-  const passwordHash = await hashPassword(password);
-  return passwordHash === hash;
-}
 
 // Extend session type
 declare module 'next-auth' {
