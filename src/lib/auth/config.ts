@@ -2,7 +2,10 @@
 
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import bcrypt from 'bcrypt';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+
+const BCRYPT_SALT_ROUNDS = 12;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -30,8 +33,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           .single();
 
         if (existingUser) {
-          // Simple password check (in production, use bcrypt)
-          // For v1, we're using a simple hash comparison
+          // Verify password using bcrypt
           const isValid = await verifyPassword(password, existingUser.password_hash);
           if (!isValid) {
             return null;
@@ -100,19 +102,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
 });
 
-// Simple password hashing (for v1 - consider bcrypt for production)
 async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + process.env.AUTH_SECRET);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 }
 
 async function verifyPassword(password: string, hash: string | null): Promise<boolean> {
   if (!hash) return false;
-  const passwordHash = await hashPassword(password);
-  return passwordHash === hash;
+  return bcrypt.compare(password, hash);
 }
 
 // Extend session type
