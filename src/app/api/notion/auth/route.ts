@@ -1,11 +1,13 @@
 // API Route: Notion OAuth
 // GET /api/notion/auth - Start OAuth flow
 // GET /api/notion/auth?code=xxx - OAuth callback
+//
+// Note: Access tokens are encrypted at rest using Supabase Vault.
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getNotionOAuthUrl, exchangeNotionCode } from '@/lib/integrations/notion';
-import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
+import { upsertNotionConnection } from '@/lib/utils/encrypted-storage';
 
 export async function GET(request: Request) {
   try {
@@ -32,15 +34,14 @@ export async function GET(request: Request) {
         // Exchange code for tokens
         const tokens = await exchangeNotionCode(code);
 
-        // Save to database
-        const supabase = await createSupabaseServerClient();
-        await supabase.from('notion_connections').upsert({
-          user_id: session.user.id,
-          access_token: tokens.access_token,
-          workspace_id: tokens.workspace_id,
-          workspace_name: tokens.workspace_name,
-          workspace_icon: tokens.workspace_icon,
-          bot_id: tokens.bot_id,
+        // Save to database with encrypted access token
+        await upsertNotionConnection({
+          userId: session.user.id,
+          accessToken: tokens.access_token,
+          workspaceId: tokens.workspace_id,
+          workspaceName: tokens.workspace_name,
+          workspaceIcon: tokens.workspace_icon,
+          botId: tokens.bot_id,
         });
 
         return NextResponse.redirect(

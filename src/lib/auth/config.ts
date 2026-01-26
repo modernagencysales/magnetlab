@@ -3,6 +3,10 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import bcrypt from 'bcrypt';
+
+// Bcrypt configuration - 12 rounds provides good security/performance balance
+const BCRYPT_SALT_ROUNDS = 12;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -30,11 +34,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           .single();
 
         if (existingUser) {
-          // Simple password check (in production, use bcrypt)
-          // For v1, we're using a simple hash comparison
+          // Verify password with backward compatibility for legacy SHA-256 hashes
           const isValid = await verifyPassword(password, existingUser.password_hash);
           if (!isValid) {
             return null;
+          }
+
+          // Migrate legacy SHA-256 hash to bcrypt on successful login
+          if (isLegacySha256Hash(existingUser.password_hash)) {
+            const newHash = await hashPassword(password);
+            await supabase
+              .from('users')
+              .update({ password_hash: newHash })
+              .eq('id', existingUser.id);
           }
 
           return {
@@ -100,19 +112,50 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
 });
 
-// Simple password hashing (for v1 - consider bcrypt for production)
+/**
+ * Detect if a hash is a legacy SHA-256 hash (64 hex characters)
+ * vs a bcrypt hash (starts with $2a$, $2b$, or $2y$)
+ */
+function isLegacySha256Hash(hash: string | null): boolean {
+  if (!hash) return false;
+  // SHA-256 hashes are 64 hex characters and don't start with $2
+  return hash.length === 64 && /^[a-f0-9]+$/i.test(hash);
+}
+
+/**
+ * Hash a password using bcrypt with configured salt rounds
+ */
 async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+}
+
+/**
+ * Verify a password against a stored hash
+ * Supports both bcrypt and legacy SHA-256 hashes for backward compatibility
+ */
+async function verifyPassword(password: string, hash: string | null): Promise<boolean> {
+  if (!hash) return false;
+
+  // Check if this is a legacy SHA-256 hash
+  if (isLegacySha256Hash(hash)) {
+    const legacyHash = await hashPasswordLegacy(password);
+    return legacyHash === hash;
+  }
+
+  // Use bcrypt for modern hashes
+  return bcrypt.compare(password, hash);
+}
+
+/**
+ * Legacy SHA-256 password hashing (for backward compatibility only)
+ * DO NOT use for new passwords - use hashPassword() instead
+ */
+async function hashPasswordLegacy(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password + process.env.AUTH_SECRET);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function verifyPassword(password: string, hash: string | null): Promise<boolean> {
-  if (!hash) return false;
-  const passwordHash = await hashPassword(password);
-  return passwordHash === hash;
 }
 
 // Extend session type

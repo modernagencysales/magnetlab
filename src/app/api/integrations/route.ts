@@ -1,10 +1,16 @@
 // User Integrations API
 // GET /api/integrations - List user's integrations
 // POST /api/integrations - Save/update an integration
+//
+// Note: API keys are encrypted at rest using Supabase Vault.
+// This route uses encrypted storage utilities that handle encryption/decryption transparently.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import {
+  listUserIntegrations,
+  upsertUserIntegration,
+} from '@/lib/utils/encrypted-storage';
 
 // GET - List all integrations for the user
 export async function GET() {
@@ -14,21 +20,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createSupabaseAdminClient();
+    // List integrations without exposing API keys (decryption not performed)
+    const integrations = await listUserIntegrations(session.user.id);
 
-    const { data, error } = await supabase
-      .from('user_integrations')
-      .select('service, is_active, last_verified_at, metadata, created_at, updated_at')
-      .eq('user_id', session.user.id);
-
-    if (error) {
-      console.error('Error fetching integrations:', error);
-      return NextResponse.json({ error: 'Failed to fetch integrations' }, { status: 500 });
-    }
-
-    // Return integrations without exposing API keys
     return NextResponse.json({
-      integrations: data || [],
+      integrations,
     });
   } catch (error) {
     console.error('Error in integrations GET:', error);
@@ -51,31 +47,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Service is required' }, { status: 400 });
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    // Upsert the integration
-    const { data, error } = await supabase
-      .from('user_integrations')
-      .upsert({
-        user_id: session.user.id,
-        service,
-        api_key: api_key || null,
-        webhook_secret: webhook_secret || null,
-        is_active: !!api_key,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,service',
-      })
-      .select('service, is_active, last_verified_at, created_at, updated_at')
-      .single();
-
-    if (error) {
-      console.error('Error saving integration:', error);
-      return NextResponse.json({ error: 'Failed to save integration' }, { status: 500 });
-    }
+    // Upsert the integration with encrypted API key
+    const integration = await upsertUserIntegration({
+      userId: session.user.id,
+      service,
+      apiKey: api_key || null,
+      webhookSecret: webhook_secret || null,
+      isActive: !!api_key,
+    });
 
     return NextResponse.json({
-      integration: data,
+      integration,
       message: 'Integration saved successfully',
     });
   } catch (error) {

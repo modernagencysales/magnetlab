@@ -1,10 +1,13 @@
 // API Route: Publish to Notion
 // POST /api/notion/publish
+//
+// Note: Access tokens are decrypted only when needed for API calls.
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { NotionClient } from '@/lib/integrations/notion';
-import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getNotionConnection } from '@/lib/utils/encrypted-storage';
 import type { ExtractedContent } from '@/lib/types/lead-magnet';
 
 export async function POST(request: Request) {
@@ -26,14 +29,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const supabase = await createSupabaseServerClient();
-
-    // Get Notion connection
-    const { data: connection } = await supabase
-      .from('notion_connections')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .single();
+    // Get Notion connection with decrypted access token
+    const connection = await getNotionConnection(session.user.id);
 
     if (!connection) {
       return NextResponse.json({ error: 'Notion not connected' }, { status: 400 });
@@ -48,11 +45,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create the Notion page
+    // Create the Notion page using decrypted access token
     const notion = new NotionClient({ accessToken: connection.access_token });
     const page = await notion.createLeadMagnetPage(targetParentId, content, icon);
 
     // Update lead magnet with Notion info
+    const supabase = createSupabaseAdminClient();
     await supabase
       .from('lead_magnets')
       .update({

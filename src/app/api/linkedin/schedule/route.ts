@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getLeadSharkClient } from '@/lib/integrations/leadshark';
+import { getUserLeadSharkClient } from '@/lib/integrations/leadshark';
 import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
 
 export async function POST(request: Request) {
@@ -49,8 +49,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Schedule via LeadShark
-    const leadShark = getLeadSharkClient();
+    // Schedule via LeadShark using user's encrypted API key
+    const leadShark = await getUserLeadSharkClient(session.user.id);
+    if (!leadShark) {
+      return NextResponse.json(
+        { error: 'LeadShark not connected. Add your API key in Settings.' },
+        { status: 400 }
+      );
+    }
 
     const scheduleResult = await leadShark.createScheduledPost({
       content,

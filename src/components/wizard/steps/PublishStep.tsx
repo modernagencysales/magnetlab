@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Copy, Check, CheckCircle2, Loader2, FileText, MessageSquare, Send } from 'lucide-react';
+import { ArrowLeft, Copy, Check, CheckCircle2, Loader2, FileText, MessageSquare, Send, Globe } from 'lucide-react';
+import Link from 'next/link';
 import type { ExtractedContent, PostVariation, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 
 interface PublishStepProps {
@@ -24,6 +25,7 @@ export function PublishStep({
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedLeadMagnetId, setSavedLeadMagnetId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Generate the full lead magnet document text
@@ -99,6 +101,8 @@ export function PublishStep({
         throw new Error(data.error || 'Failed to save');
       }
 
+      const data = await response.json();
+      setSavedLeadMagnetId(data.id);
       setSaved(true);
     } catch (error) {
       console.error('Save error:', error);
@@ -167,6 +171,29 @@ export function PublishStep({
           </div>
         )}
       </div>
+
+      {/* Funnel Page Builder - shows after save */}
+      {saved && savedLeadMagnetId && (
+        <div className="rounded-lg border bg-card p-5 transition-colors">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Globe className="h-6 w-6 text-violet-500" />
+              <div>
+                <h3 className="font-semibold">Create Opt-in Page</h3>
+                <p className="text-xs text-muted-foreground">
+                  Build a landing page to capture leads directly
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`/library/${savedLeadMagnetId}/funnel`}
+              className="flex items-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 transition-colors"
+            >
+              Configure Funnel Page &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Lead Magnet Content */}
       <div className="rounded-lg border bg-card">

@@ -1,9 +1,11 @@
 // Verify Integration API
 // POST /api/integrations/verify - Test an integration's API key
+//
+// Note: This endpoint verifies the provided API key before storing it encrypted.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { updateIntegrationVerified } from '@/lib/utils/encrypted-storage';
 import { LeadSharkClient } from '@/lib/integrations/leadshark';
 
 // POST - Verify an integration's API key
@@ -45,15 +47,7 @@ export async function POST(request: NextRequest) {
 
     // If verified, update the last_verified_at timestamp
     if (verified) {
-      const supabase = createSupabaseAdminClient();
-      await supabase
-        .from('user_integrations')
-        .update({
-          last_verified_at: new Date().toISOString(),
-          is_active: true,
-        })
-        .eq('user_id', session.user.id)
-        .eq('service', service);
+      await updateIntegrationVerified(session.user.id, service);
     }
 
     return NextResponse.json({
