@@ -2,3 +2,4 @@
 
 export * from './lead-magnet';
 export * from './integrations';
+export * from './funnel';

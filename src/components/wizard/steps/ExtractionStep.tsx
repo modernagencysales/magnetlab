@@ -76,7 +76,7 @@ export function ExtractionStep({
           </div>
           <h1 className="text-3xl font-bold">{concept.title}</h1>
           <p className="mt-2 text-muted-foreground">
-            Let's extract your unique expertise. Answer these questions to create genuinely valuable content.
+            Let&apos;s extract your unique expertise. Answer these questions to create genuinely valuable content.
           </p>
         </div>
         <button

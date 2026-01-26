@@ -101,7 +101,7 @@ export function GeneratingScreen() {
         </div>
 
         <p className="mt-6 max-w-md text-sm text-muted-foreground">
-          We're using AI to generate 10 unique lead magnet concepts based on your
+          We&apos;re using AI to generate 10 unique lead magnet concepts based on your
           specific expertise. Each one is designed to attract your ideal clients.
         </p>
       </motion.div>

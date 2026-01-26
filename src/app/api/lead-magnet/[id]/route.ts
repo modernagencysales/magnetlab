@@ -51,7 +51,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const supabase = await createSupabaseServerClient();
 
     // Remove fields that shouldn't be updated directly
-    const { id: _, user_id, created_at, ...updateData } = body;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, user_id: _userId, created_at: _createdAt, ...updateData } = body;
 
     const { data, error } = await supabase
       .from('lead_magnets')

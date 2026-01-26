@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Copy, Check, CheckCircle2, Loader2, FileText, MessageSquare, Send } from 'lucide-react';
+import { ArrowLeft, Copy, Check, CheckCircle2, Loader2, FileText, MessageSquare, Send, Globe } from 'lucide-react';
+import Link from 'next/link';
 import type { ExtractedContent, PostVariation, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 
 interface PublishStepProps {
@@ -24,6 +25,7 @@ export function PublishStep({
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedLeadMagnetId, setSavedLeadMagnetId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Generate the full lead magnet document text
@@ -99,6 +101,8 @@ export function PublishStep({
         throw new Error(data.error || 'Failed to save');
       }
 
+      const data = await response.json();
+      setSavedLeadMagnetId(data.id);
       setSaved(true);
     } catch (error) {
       console.error('Save error:', error);
@@ -116,7 +120,7 @@ export function PublishStep({
         <div>
           <h1 className="text-2xl font-semibold">Your Lead Magnet is Ready!</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Copy your content and LinkedIn post. Paste them wherever you'd like to share.
+            Copy your content and LinkedIn post. Paste them wherever you&apos;d like to share.
           </p>
         </div>
         <button
@@ -167,6 +171,29 @@ export function PublishStep({
           </div>
         )}
       </div>
+
+      {/* Funnel Page Builder - shows after save */}
+      {saved && savedLeadMagnetId && (
+        <div className="rounded-lg border bg-card p-5 transition-colors">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Globe className="h-6 w-6 text-violet-500" />
+              <div>
+                <h3 className="font-semibold">Create Opt-in Page</h3>
+                <p className="text-xs text-muted-foreground">
+                  Build a landing page to capture leads directly
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`/library/${savedLeadMagnetId}/funnel`}
+              className="flex items-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 transition-colors"
+            >
+              Configure Funnel Page &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Lead Magnet Content */}
       <div className="rounded-lg border bg-card">
@@ -231,7 +258,7 @@ export function PublishStep({
           </div>
           <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
             <span>Hook: <span className="font-medium text-foreground">{post.hookType}</span></span>
-            <span>CTA word: <span className="font-medium text-foreground">"{ctaWord}"</span></span>
+            <span>CTA word: <span className="font-medium text-foreground">&quot;{ctaWord}&quot;</span></span>
           </div>
         </div>
       </div>
@@ -243,7 +270,7 @@ export function PublishStep({
             <MessageSquare className="h-5 w-5 text-green-500" />
             <h3 className="font-semibold">DM Template</h3>
             <span className="text-xs text-muted-foreground">
-              (Send to people who comment "{ctaWord}")
+              (Send to people who comment &quot;{ctaWord}&quot;)
             </span>
           </div>
           <button
@@ -286,7 +313,7 @@ export function PublishStep({
           </li>
           <li className="flex items-start gap-2">
             <span className="font-semibold text-primary">3.</span>
-            Post the LinkedIn content and respond to "{ctaWord}" comments with the DM template
+            Post the LinkedIn content and respond to &quot;{ctaWord}&quot; comments with the DM template
           </li>
         </ol>
       </div>

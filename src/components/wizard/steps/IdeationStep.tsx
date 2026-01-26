@@ -177,7 +177,7 @@ export function IdeationStep({ result, onSelect, onBack }: IdeationStepProps) {
             onClick={handleContinue}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground shadow-lg"
           >
-            Continue with "{result.concepts[selectedIndex].title}"
+            Continue with &quot;{result.concepts[selectedIndex].title}&quot;
           </button>
         </motion.div>
       )}

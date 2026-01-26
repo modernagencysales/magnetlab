@@ -182,7 +182,7 @@ export function SettingsContent({
 
           {/* Usage */}
           <div className="mb-6 rounded-lg bg-muted p-4">
-            <p className="mb-2 text-sm font-medium">This Month's Usage</p>
+            <p className="mb-2 text-sm font-medium">This Month&apos;s Usage</p>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Lead Magnets</span>
               <span className="font-medium">
