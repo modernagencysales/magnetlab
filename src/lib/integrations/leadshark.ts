@@ -304,22 +304,16 @@ export function createLeadSharkClientWithKey(apiKey: string): LeadSharkClient {
 }
 
 // Helper to get user's LeadShark API key from database
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+// Note: API keys are encrypted at rest and decrypted only when needed
+import { getUserIntegration } from '@/lib/utils/encrypted-storage';
 
 export async function getUserLeadSharkClient(userId: string): Promise<LeadSharkClient | null> {
-  const supabase = createSupabaseAdminClient();
+  // Get integration with decrypted API key
+  const integration = await getUserIntegration(userId, 'leadshark');
 
-  const { data } = await supabase
-    .from('user_integrations')
-    .select('api_key')
-    .eq('user_id', userId)
-    .eq('service', 'leadshark')
-    .eq('is_active', true)
-    .single();
-
-  if (!data?.api_key) {
+  if (!integration?.api_key || !integration.is_active) {
     return null;
   }
 
-  return new LeadSharkClient({ apiKey: data.api_key });
+  return new LeadSharkClient({ apiKey: integration.api_key });
 }
