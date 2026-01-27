@@ -17,74 +17,102 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
-
-        const email = credentials.email as string;
-        const password = credentials.password as string;
-
-        const supabase = createSupabaseAdminClient();
-
-        // Check if user exists
-        const { data: existingUser } = await supabase
-          .from('users')
-          .select('id, email, name, avatar_url, password_hash')
-          .eq('email', email)
-          .single();
-
-        if (existingUser) {
-          // Verify password with backward compatibility for legacy SHA-256 hashes
-          const isValid = await verifyPassword(password, existingUser.password_hash);
-          if (!isValid) {
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            console.error('[Auth] Missing email or password');
             return null;
           }
 
-          // Migrate legacy SHA-256 hash to bcrypt on successful login
-          if (isLegacySha256Hash(existingUser.password_hash)) {
-            const newHash = await hashPassword(password);
-            await supabase
-              .from('users')
-              .update({ password_hash: newHash })
-              .eq('id', existingUser.id);
+          const email = credentials.email as string;
+          const password = credentials.password as string;
+
+          // Verify environment variables
+          if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error('[Auth] Missing Supabase environment variables');
+            throw new Error('Server configuration error');
           }
 
+          const supabase = createSupabaseAdminClient();
+
+          // Check if user exists
+          const { data: existingUser, error: fetchError } = await supabase
+            .from('users')
+            .select('id, email, name, avatar_url, password_hash')
+            .eq('email', email)
+            .single();
+
+          if (fetchError && fetchError.code !== 'PGRST116') {
+            // PGRST116 = no rows returned, which is fine for new users
+            console.error('[Auth] Database fetch error:', fetchError);
+            throw new Error('Database error');
+          }
+
+          if (existingUser) {
+            // Verify password with backward compatibility for legacy SHA-256 hashes
+            const isValid = await verifyPassword(password, existingUser.password_hash);
+            if (!isValid) {
+              console.error('[Auth] Invalid password for user:', email);
+              return null;
+            }
+
+            // Migrate legacy SHA-256 hash to bcrypt on successful login
+            if (isLegacySha256Hash(existingUser.password_hash)) {
+              const newHash = await hashPassword(password);
+              await supabase
+                .from('users')
+                .update({ password_hash: newHash })
+                .eq('id', existingUser.id);
+              console.log('[Auth] Migrated password hash for user:', email);
+            }
+
+            console.log('[Auth] Login successful for:', email);
+            return {
+              id: existingUser.id,
+              email: existingUser.email,
+              name: existingUser.name,
+              image: existingUser.avatar_url,
+            };
+          }
+
+          // Auto-create new user on first login
+          console.log('[Auth] Creating new user:', email);
+          const passwordHash = await hashPassword(password);
+          const { data: newUser, error } = await supabase
+            .from('users')
+            .insert({
+              email,
+              password_hash: passwordHash,
+            })
+            .select('id, email, name')
+            .single();
+
+          if (error || !newUser) {
+            console.error('[Auth] Failed to create user:', error);
+            throw new Error('Failed to create account');
+          }
+
+          // Create free subscription
+          const { error: subError } = await supabase.from('subscriptions').insert({
+            user_id: newUser.id,
+            plan: 'free',
+            status: 'active',
+          });
+
+          if (subError) {
+            console.error('[Auth] Failed to create subscription:', subError);
+            // Don't fail login for this, just log it
+          }
+
+          console.log('[Auth] New user created:', email);
           return {
-            id: existingUser.id,
-            email: existingUser.email,
-            name: existingUser.name,
-            image: existingUser.avatar_url,
+            id: newUser.id,
+            email: newUser.email,
+            name: newUser.name,
           };
+        } catch (error) {
+          console.error('[Auth] Authorize error:', error);
+          throw error; // Re-throw to show error to user
         }
-
-        // Auto-create new user on first login
-        const passwordHash = await hashPassword(password);
-        const { data: newUser, error } = await supabase
-          .from('users')
-          .insert({
-            email,
-            password_hash: passwordHash,
-          })
-          .select('id, email, name')
-          .single();
-
-        if (error || !newUser) {
-          console.error('Failed to create user:', error);
-          return null;
-        }
-
-        // Create free subscription
-        await supabase.from('subscriptions').insert({
-          user_id: newUser.id,
-          plan: 'free',
-          status: 'active',
-        });
-
-        return {
-          id: newUser.id,
-          email: newUser.email,
-          name: newUser.name,
-        };
       },
     }),
   ],
@@ -110,6 +138,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     strategy: 'jwt',
   },
   trustHost: true,
+  debug: process.env.NODE_ENV === 'development',
 });
 
 /**

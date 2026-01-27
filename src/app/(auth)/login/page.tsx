@@ -21,19 +21,34 @@ function LoginForm() {
     setLoading(true);
     setError('');
 
-    const result = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
 
-    if (result?.error) {
-      setError('Invalid email or password');
+      console.log('[Login] signIn result:', result);
+
+      if (result?.error) {
+        if (result.error === 'CredentialsSignin') {
+          setError('Invalid email or password');
+        } else {
+          setError(result.error);
+        }
+        setLoading(false);
+      } else if (result?.ok) {
+        // Use router.push with refresh to ensure session is established
+        router.refresh();
+        router.push(callbackUrl);
+      } else {
+        setError('Login failed. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('[Login] Error:', err);
+      setError('An unexpected error occurred');
       setLoading(false);
-    } else {
-      // Use router.push with refresh to ensure session is established
-      router.refresh();
-      router.push(callbackUrl);
     }
   };
 
@@ -41,7 +56,9 @@ function LoginForm() {
     <div className="mt-8 rounded-xl border bg-card p-8">
       {(error || callbackError) && (
         <div className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-          {error || 'Something went wrong. Please try again.'}
+          {error || (callbackError === 'CredentialsSignin'
+            ? 'Invalid email or password'
+            : `Authentication error: ${callbackError}`)}
         </div>
       )}
 
