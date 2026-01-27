@@ -45,6 +45,7 @@ export function ThankyouPage({
   const [qualificationComplete, setQualificationComplete] = useState(questions.length === 0);
   const [isQualified, setIsQualified] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Theme-based colors
   const isDark = theme === 'dark';
@@ -78,6 +79,7 @@ export function ThankyouPage({
 
     const newAnswers = { ...answers, [currentQuestion.id]: answer };
     setAnswers(newAnswers);
+    setError(null);
 
     if (currentQuestionIndex < questions.length - 1) {
       // More questions to go
@@ -94,15 +96,19 @@ export function ThankyouPage({
             body: JSON.stringify({ leadId, answers: newAnswers }),
           });
 
-          if (response.ok) {
-            const data = await response.json();
-            setIsQualified(data.isQualified);
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to submit answers');
           }
+
+          setIsQualified(data.isQualified);
         }
+        setQualificationComplete(true);
       } catch (err) {
+        setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
         console.error('Error submitting qualification:', err);
       } finally {
-        setQualificationComplete(true);
         setSubmitting(false);
       }
     }
@@ -180,6 +186,12 @@ export function ThankyouPage({
                 ))}
               </div>
             </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                <p className="text-sm text-red-400">{error}</p>
+              </div>
+            )}
 
             {submitting ? (
               <div className="flex items-center justify-center py-8">

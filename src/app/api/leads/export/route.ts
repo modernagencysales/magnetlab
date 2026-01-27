@@ -5,6 +5,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+// Maximum leads to export at once to prevent memory issues
+const MAX_EXPORT_LIMIT = 10000;
+
 export async function GET(request: Request) {
   try {
     const session = await auth();
@@ -34,7 +37,8 @@ export async function GET(request: Request) {
         lead_magnets!inner(title)
       `)
       .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(MAX_EXPORT_LIMIT);
 
     if (funnelId) {
       query = query.eq('funnel_page_id', funnelId);

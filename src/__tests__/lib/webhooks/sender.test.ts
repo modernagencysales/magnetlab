@@ -118,7 +118,7 @@ describe('Webhook Sender', () => {
     });
   });
 
-  it('should handle webhook delivery failures gracefully', async () => {
+  it('should handle webhook delivery failures gracefully with retries', async () => {
     const mockWebhooks = [
       { id: 'wh-1', url: 'https://example.com/webhook', name: 'Test' },
     ];
@@ -128,15 +128,38 @@ describe('Webhook Sender', () => {
       error: null,
     });
 
+    // Fail with 500 (retryable) all times
     (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
 
     // Should not throw
     await expect(
       deliverWebhook('user-123', 'lead.created', mockWebhookData)
     ).resolves.not.toThrow();
+
+    // Should retry 3 times
+    expect(global.fetch).toHaveBeenCalledTimes(3);
   });
 
-  it('should handle network errors gracefully', async () => {
+  it('should not retry on 4xx client errors', async () => {
+    const mockWebhooks = [
+      { id: 'wh-1', url: 'https://example.com/webhook', name: 'Test' },
+    ];
+
+    mockSupabaseClient.eq.mockResolvedValueOnce({
+      data: mockWebhooks,
+      error: null,
+    });
+
+    // 400 Bad Request is not retryable
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 400 });
+
+    await deliverWebhook('user-123', 'lead.created', mockWebhookData);
+
+    // Should only try once for non-retryable errors
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('should retry on network errors', async () => {
     const mockWebhooks = [
       { id: 'wh-1', url: 'https://example.com/webhook', name: 'Test' },
     ];
@@ -152,6 +175,30 @@ describe('Webhook Sender', () => {
     await expect(
       deliverWebhook('user-123', 'lead.created', mockWebhookData)
     ).resolves.not.toThrow();
+
+    // Should retry 3 times
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('should succeed on retry after initial failure', async () => {
+    const mockWebhooks = [
+      { id: 'wh-1', url: 'https://example.com/webhook', name: 'Test' },
+    ];
+
+    mockSupabaseClient.eq.mockResolvedValueOnce({
+      data: mockWebhooks,
+      error: null,
+    });
+
+    // Fail first attempt, succeed on second
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({ ok: false, status: 500 })
+      .mockResolvedValueOnce({ ok: true });
+
+    await deliverWebhook('user-123', 'lead.created', mockWebhookData);
+
+    // Should stop after success
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it('should handle Supabase errors gracefully', async () => {

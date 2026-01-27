@@ -8,11 +8,31 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { deliverWebhook } from '@/lib/webhooks/sender';
 
 // Simple in-memory rate limiting (10 requests per minute per IP)
+// Note: In-memory rate limiting is limited in serverless environments
+// For production, consider using Upstash Redis or Vercel KV for distributed rate limiting
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT = 10;
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 
+// Clean up old entries periodically to prevent memory leaks
+const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+let lastCleanup = Date.now();
+
+function cleanupRateLimitMap() {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL) return;
+
+  lastCleanup = now;
+  for (const [ip, entry] of rateLimitMap.entries()) {
+    if (now > entry.resetTime) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}
+
 function checkRateLimit(ip: string): boolean {
+  cleanupRateLimitMap();
+
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
 
@@ -29,13 +49,28 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
+// Get client IP securely - prioritize Vercel's trusted headers
+function getClientIp(request: Request): string {
+  // x-real-ip is set by Vercel and cannot be spoofed
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) return realIp;
+
+  // x-vercel-forwarded-for is Vercel-specific and trustworthy
+  const vercelForwarded = request.headers.get('x-vercel-forwarded-for');
+  if (vercelForwarded) return vercelForwarded.split(',')[0].trim();
+
+  // Fallback to x-forwarded-for (less secure, can be spoofed)
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0].trim();
+
+  return 'unknown';
+}
+
 // POST - Capture initial lead (email)
 export async function POST(request: Request) {
   try {
     // Rate limiting
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
+    const ip = getClientIp(request);
 
     if (!checkRateLimit(ip)) {
       return NextResponse.json(
@@ -55,9 +90,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    // Validate email format (stricter regex)
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email) || email.includes('..')) {
       return NextResponse.json(
         { error: 'Invalid email format' },
         { status: 400 }
@@ -165,6 +200,42 @@ export async function PATCH(request: Request) {
       .from('qualification_questions')
       .select('id, qualifying_answer')
       .eq('funnel_page_id', lead.funnel_page_id);
+
+    // Validate answers if there are questions
+    if (questions && questions.length > 0) {
+      const questionIds = new Set(questions.map(q => q.id));
+      const answerKeys = Object.keys(answers);
+
+      // Validate all answer keys are valid question IDs
+      for (const key of answerKeys) {
+        if (!questionIds.has(key)) {
+          return NextResponse.json(
+            { error: 'Invalid question ID in answers' },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Validate all answer values are 'yes' or 'no'
+      for (const value of Object.values(answers)) {
+        if (value !== 'yes' && value !== 'no') {
+          return NextResponse.json(
+            { error: 'Answer values must be "yes" or "no"' },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Validate all questions are answered
+      for (const q of questions) {
+        if (!(q.id in answers)) {
+          return NextResponse.json(
+            { error: 'All questions must be answered' },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     // Calculate if qualified (all answers must match qualifying_answer)
     let isQualified = true;

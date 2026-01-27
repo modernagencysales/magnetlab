@@ -74,7 +74,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   }
 }
 
-// DELETE - Delete a lead magnet
+// DELETE - Delete a lead magnet with cascade
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
@@ -85,6 +85,54 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { id } = await params;
     const supabase = await createSupabaseServerClient();
 
+    // First verify ownership
+    const { data: leadMagnet, error: findError } = await supabase
+      .from('lead_magnets')
+      .select('id')
+      .eq('id', id)
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (findError || !leadMagnet) {
+      return NextResponse.json({ error: 'Lead magnet not found' }, { status: 404 });
+    }
+
+    // Get all funnel pages for this lead magnet
+    const { data: funnels } = await supabase
+      .from('funnel_pages')
+      .select('id')
+      .eq('lead_magnet_id', id);
+
+    // Cascade delete related records for each funnel
+    if (funnels && funnels.length > 0) {
+      const funnelIds = funnels.map(f => f.id);
+
+      // Delete qualification questions
+      await supabase
+        .from('qualification_questions')
+        .delete()
+        .in('funnel_page_id', funnelIds);
+
+      // Delete funnel leads
+      await supabase
+        .from('funnel_leads')
+        .delete()
+        .in('funnel_page_id', funnelIds);
+
+      // Delete page views
+      await supabase
+        .from('page_views')
+        .delete()
+        .in('funnel_page_id', funnelIds);
+
+      // Delete funnel pages
+      await supabase
+        .from('funnel_pages')
+        .delete()
+        .eq('lead_magnet_id', id);
+    }
+
+    // Finally delete the lead magnet
     const { error } = await supabase
       .from('lead_magnets')
       .delete()
@@ -92,6 +140,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       .eq('user_id', session.user.id);
 
     if (error) {
+      console.error('Delete lead magnet error:', error);
       return NextResponse.json({ error: 'Failed to delete lead magnet' }, { status: 500 });
     }
 

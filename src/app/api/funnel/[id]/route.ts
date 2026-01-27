@@ -112,7 +112,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   }
 }
 
-// DELETE - Delete a funnel page
+// DELETE - Delete a funnel page with cascade
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
@@ -123,6 +123,38 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { id } = await params;
     const supabase = createSupabaseAdminClient();
 
+    // First verify ownership
+    const { data: funnel, error: findError } = await supabase
+      .from('funnel_pages')
+      .select('id')
+      .eq('id', id)
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (findError || !funnel) {
+      return NextResponse.json({ error: 'Funnel page not found' }, { status: 404 });
+    }
+
+    // Cascade delete related records
+    // Delete qualification questions
+    await supabase
+      .from('qualification_questions')
+      .delete()
+      .eq('funnel_page_id', id);
+
+    // Delete funnel leads
+    await supabase
+      .from('funnel_leads')
+      .delete()
+      .eq('funnel_page_id', id);
+
+    // Delete page views
+    await supabase
+      .from('page_views')
+      .delete()
+      .eq('funnel_page_id', id);
+
+    // Finally delete the funnel page
     const { error } = await supabase
       .from('funnel_pages')
       .delete()
