@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect } from 'react';
 
 interface CalendlyEmbedProps {
   url: string;
@@ -18,28 +18,27 @@ function detectEmbedType(url: string): EmbedType {
   return 'unknown';
 }
 
-// Extract Cal.com path from URL
-function getCalLink(url: string): string {
-  // URL format: https://cal.com/username/event-type
-  const match = url.match(/cal\.com\/(.+?)(?:\?|$)/);
-  if (match) {
-    return match[1];
+// Build Cal.com embed URL
+function getCalEmbedUrl(url: string): string {
+  // Ensure it's a full URL
+  let fullUrl = url;
+  if (!url.startsWith('https://')) {
+    fullUrl = `https://cal.com/${url}`;
   }
-  // If not a full URL, assume it's already the path
-  return url.replace(/^https?:\/\/cal\.com\//, '');
+
+  // Add embed parameters
+  const separator = fullUrl.includes('?') ? '&' : '?';
+  return `${fullUrl}${separator}embed=true&theme=dark&hideEventTypeDetails=false`;
 }
 
 export function CalendlyEmbed({ url }: CalendlyEmbedProps) {
-  const [embedType] = useState<EmbedType>(() => detectEmbedType(url));
-  const [scriptLoaded, setScriptLoaded] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const embedType = detectEmbedType(url);
 
   useEffect(() => {
     if (embedType === 'calendly') {
       // Check if script already exists
       const existingScript = document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]');
       if (existingScript) {
-        setScriptLoaded(true);
         return;
       }
 
@@ -47,83 +46,9 @@ export function CalendlyEmbed({ url }: CalendlyEmbedProps) {
       const script = document.createElement('script');
       script.src = 'https://assets.calendly.com/assets/external/widget.js';
       script.async = true;
-      script.onload = () => setScriptLoaded(true);
       document.body.appendChild(script);
-
-      return () => {
-        // Don't remove script on unmount as it might be used elsewhere
-      };
-    }
-
-    if (embedType === 'cal') {
-      // Check if Cal already loaded
-      if (typeof window !== 'undefined' && (window as unknown as { Cal?: unknown }).Cal) {
-        setScriptLoaded(true);
-        return;
-      }
-
-      // Load Cal.com embed script using their recommended method
-      const script = document.createElement('script');
-      script.innerHTML = `
-        (function (C, A, L) {
-          let p = function (a, ar) { a.q.push(ar); };
-          let d = C.document;
-          C.Cal = C.Cal || function () {
-            let cal = C.Cal;
-            let ar = arguments;
-            if (!cal.loaded) {
-              cal.ns = {};
-              cal.q = cal.q || [];
-              d.head.appendChild(d.createElement("script")).src = A;
-              cal.loaded = true;
-            }
-            if (ar[0] === L) {
-              const api = function () { p(api, arguments); };
-              const namespace = ar[1];
-              api.q = api.q || [];
-              typeof namespace === "string" ? (cal.ns[namespace] = api) && p(api, ar) : p(cal, ar);
-              return;
-            }
-            p(cal, ar);
-          };
-        })(window, "https://app.cal.com/embed/embed.js", "init");
-        Cal("init", {origin:"https://cal.com"});
-      `;
-      document.head.appendChild(script);
-
-      // Wait for Cal to be available
-      const checkCal = setInterval(() => {
-        if (typeof window !== 'undefined' && (window as unknown as { Cal?: unknown }).Cal) {
-          setScriptLoaded(true);
-          clearInterval(checkCal);
-        }
-      }, 100);
-
-      return () => {
-        clearInterval(checkCal);
-      };
     }
   }, [embedType]);
-
-  // Initialize Cal.com inline embed after script loads
-  useEffect(() => {
-    if (embedType === 'cal' && scriptLoaded && containerRef.current) {
-      const calLink = getCalLink(url);
-      const Cal = (window as unknown as { Cal: (action: string, target: HTMLElement | string, options: Record<string, unknown>) => void }).Cal;
-
-      if (Cal && containerRef.current) {
-        // Clear container first
-        containerRef.current.innerHTML = '';
-
-        Cal("inline", containerRef.current, {
-          calLink: calLink,
-          config: {
-            theme: "dark",
-          },
-        });
-      }
-    }
-  }, [embedType, scriptLoaded, url]);
 
   if (embedType === 'calendly') {
     const calendlyUrl = url.startsWith('https://') ? url : `https://calendly.com/${url}`;
@@ -143,23 +68,28 @@ export function CalendlyEmbed({ url }: CalendlyEmbedProps) {
   }
 
   if (embedType === 'cal') {
+    const embedUrl = getCalEmbedUrl(url);
     return (
       <div
-        ref={containerRef}
         className="rounded-xl overflow-hidden"
         style={{
           minWidth: '320px',
-          height: '630px',
+          height: '700px',
           background: '#18181B',
           border: '1px solid #27272A',
           borderRadius: '12px',
         }}
       >
-        {!scriptLoaded && (
-          <div className="flex items-center justify-center h-full text-zinc-500">
-            Loading calendar...
-          </div>
-        )}
+        <iframe
+          src={embedUrl}
+          style={{
+            width: '100%',
+            height: '100%',
+            border: 'none',
+          }}
+          title="Book a Call"
+          allow="camera; microphone; payment"
+        />
       </div>
     );
   }
