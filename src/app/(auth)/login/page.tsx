@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Magnet, Loader2, Mail, Lock } from 'lucide-react';
 
 function LoginForm() {
@@ -12,7 +12,9 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const searchParams = useSearchParams();
+  const router = useRouter();
   const callbackError = searchParams.get('error');
+  const callbackUrl = searchParams.get('callbackUrl') || '/library';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +31,9 @@ function LoginForm() {
       setError('Invalid email or password');
       setLoading(false);
     } else {
-      window.location.href = '/library';
+      // Use router.push with refresh to ensure session is established
+      router.refresh();
+      router.push(callbackUrl);
     }
   };
 
