@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { FunnelBuilder } from '@/components/funnel';
 import {
   funnelPageFromRow,
@@ -26,7 +26,6 @@ export default async function FunnelBuilderPage({ params }: PageProps) {
   }
 
   const { id } = await params;
-  const supabase = await createSupabaseServerClient();
   const adminClient = createSupabaseAdminClient();
 
   // Fetch lead magnet and verify ownership (use admin client to bypass RLS issues)
@@ -67,8 +66,8 @@ export default async function FunnelBuilderPage({ params }: PageProps) {
     updatedAt: leadMagnetData.updated_at,
   };
 
-  // Fetch existing funnel page (if any)
-  const { data: funnelData } = await supabase
+  // Fetch existing funnel page (if any) - use admin client to bypass RLS
+  const { data: funnelData } = await adminClient
     .from('funnel_pages')
     .select('*')
     .eq('lead_magnet_id', id)
@@ -79,10 +78,10 @@ export default async function FunnelBuilderPage({ params }: PageProps) {
     ? funnelPageFromRow(funnelData as FunnelPageRow)
     : null;
 
-  // Fetch questions if funnel exists
+  // Fetch questions if funnel exists - use admin client to bypass RLS
   let existingQuestions: ReturnType<typeof qualificationQuestionFromRow>[] = [];
   if (existingFunnel) {
-    const { data: questionsData } = await supabase
+    const { data: questionsData } = await adminClient
       .from('qualification_questions')
       .select('*')
       .eq('funnel_page_id', existingFunnel.id)
@@ -95,8 +94,8 @@ export default async function FunnelBuilderPage({ params }: PageProps) {
     }
   }
 
-  // Get user's username
-  const { data: userData } = await supabase
+  // Get user's username - use admin client to bypass RLS
+  const { data: userData } = await adminClient
     .from('users')
     .select('username')
     .eq('id', session.user.id)
