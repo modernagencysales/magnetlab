@@ -11,6 +11,15 @@ if (!global.crypto) {
   global.crypto = crypto.webcrypto;
 }
 
+// Polyfill AbortSignal.timeout for Node.js versions that don't have it
+if (!AbortSignal.timeout) {
+  AbortSignal.timeout = (ms) => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+  };
+}
+
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
