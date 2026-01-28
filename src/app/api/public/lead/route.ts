@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { deliverWebhook } from '@/lib/webhooks/sender';
+import { triggerEmailSequenceIfActive } from '@/lib/services/email-sequence-trigger';
 
 // Simple in-memory rate limiting (10 requests per minute per IP)
 // Note: In-memory rate limiting is limited in serverless environments
@@ -158,6 +159,16 @@ export async function POST(request: Request) {
       utmCampaign: lead.utm_campaign,
       createdAt: lead.created_at,
     }).catch((err) => console.error('Webhook delivery error:', err));
+
+    // Trigger email sequence if active (async, don't wait)
+    triggerEmailSequenceIfActive({
+      leadId: lead.id,
+      userId: funnel.user_id,
+      email: lead.email,
+      name: lead.name,
+      leadMagnetId: funnel.lead_magnet_id,
+      leadMagnetTitle: leadMagnet?.title || '',
+    }).catch((err) => console.error('Email sequence trigger error:', err));
 
     return NextResponse.json({
       leadId: lead.id,

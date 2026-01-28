@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { User, CreditCard, Loader2, Check, Link2, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
 import { PRICING_PLANS } from '@/lib/types/integrations';
 import { UsernameSettings } from '@/components/settings/UsernameSettings';
+import { ResendSettings } from '@/components/settings/ResendSettings';
 
 interface Integration {
   service: string;
   is_active: boolean;
   last_verified_at: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 interface SettingsContentProps {
@@ -54,6 +56,7 @@ export function SettingsContent({
 
   const currentPlan = PRICING_PLANS.find((p) => p.id === subscription?.plan) || PRICING_PLANS[0];
   const leadsharkIntegration = integrations.find((i) => i.service === 'leadshark');
+  const resendIntegration = integrations.find((i) => i.service === 'resend');
 
   const handleSaveLeadshark = async () => {
     if (!leadsharkKey.trim()) return;
@@ -366,6 +369,13 @@ export function SettingsContent({
               </div>
             )}
           </div>
+
+          {/* Resend */}
+          <ResendSettings
+            isConnected={resendIntegration?.is_active ?? false}
+            lastVerifiedAt={resendIntegration?.last_verified_at ?? null}
+            metadata={resendIntegration?.metadata as { fromEmail?: string; fromName?: string } | undefined}
+          />
         </div>
 
         {/* Brand Kit */}

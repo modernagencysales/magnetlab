@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { service, api_key, webhook_secret } = body;
+    const { service, api_key, webhook_secret, metadata } = body;
 
     if (!service) {
       return NextResponse.json({ error: 'Service is required' }, { status: 400 });
@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       apiKey: api_key || null,
       webhookSecret: webhook_secret || null,
       isActive: !!api_key,
+      metadata: metadata || {},
     });
 
     return NextResponse.json({
