@@ -31,14 +31,21 @@ jest.mock('@/lib/webhooks/sender', () => ({
   deliverWebhook: jest.fn(() => Promise.resolve()),
 }));
 
+jest.mock('@/lib/services/email-sequence-trigger', () => ({
+  triggerEmailSequenceIfActive: jest.fn(() => Promise.resolve()),
+}));
+
 describe('Public Lead Capture API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Re-setup chain methods after clearing - these return the mock client for chaining
     mockSupabaseClient.from.mockReturnValue(mockSupabaseClient);
     mockSupabaseClient.select.mockReturnValue(mockSupabaseClient);
     mockSupabaseClient.insert.mockReturnValue(mockSupabaseClient);
     mockSupabaseClient.update.mockReturnValue(mockSupabaseClient);
     mockSupabaseClient.eq.mockReturnValue(mockSupabaseClient);
+    // Default single to return empty data - tests override as needed
+    mockSupabaseClient.single.mockResolvedValue({ data: null, error: null });
   });
 
   describe('POST /api/public/lead', () => {

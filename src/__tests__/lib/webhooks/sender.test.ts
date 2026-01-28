@@ -13,9 +13,10 @@ const mockSupabaseClient: MockSupabaseClient = {
   eq: jest.fn(),
 };
 
-// Setup chain methods
+// Setup chain methods - eq must also return mockSupabaseClient for chaining
 mockSupabaseClient.from.mockReturnValue(mockSupabaseClient);
 mockSupabaseClient.select.mockReturnValue(mockSupabaseClient);
+mockSupabaseClient.eq.mockReturnValue(mockSupabaseClient);
 
 jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(() => mockSupabaseClient),
@@ -25,6 +26,10 @@ describe('Webhook Sender', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockReset();
+    // Re-setup chain methods after clearing mocks
+    mockSupabaseClient.from.mockReturnValue(mockSupabaseClient);
+    mockSupabaseClient.select.mockReturnValue(mockSupabaseClient);
+    mockSupabaseClient.eq.mockReturnValue(mockSupabaseClient);
   });
 
   const mockWebhookData = {
@@ -42,10 +47,10 @@ describe('Webhook Sender', () => {
   };
 
   it('should not make any requests if no webhooks are configured', async () => {
-    mockSupabaseClient.eq.mockResolvedValueOnce({
-      data: [],
-      error: null,
-    });
+    // First eq returns mock client (for chaining), second eq returns the data
+    mockSupabaseClient.eq
+      .mockReturnValueOnce(mockSupabaseClient)
+      .mockResolvedValueOnce({ data: [], error: null });
 
     await deliverWebhook('user-123', 'lead.created', mockWebhookData);
 
@@ -58,10 +63,10 @@ describe('Webhook Sender', () => {
       { id: 'wh-2', url: 'https://example2.com/webhook', name: 'Webhook 2' },
     ];
 
-    mockSupabaseClient.eq.mockResolvedValueOnce({
-      data: mockWebhooks,
-      error: null,
-    });
+    // First eq returns mock client (for chaining), second eq returns the data
+    mockSupabaseClient.eq
+      .mockReturnValueOnce(mockSupabaseClient)
+      .mockResolvedValueOnce({ data: mockWebhooks, error: null });
 
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 
@@ -99,10 +104,9 @@ describe('Webhook Sender', () => {
       { id: 'wh-1', url: 'https://example.com/webhook', name: 'Test' },
     ];
 
-    mockSupabaseClient.eq.mockResolvedValueOnce({
-      data: mockWebhooks,
-      error: null,
-    });
+    mockSupabaseClient.eq
+      .mockReturnValueOnce(mockSupabaseClient)
+      .mockResolvedValueOnce({ data: mockWebhooks, error: null });
 
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 
@@ -123,10 +127,9 @@ describe('Webhook Sender', () => {
       { id: 'wh-1', url: 'https://example.com/webhook', name: 'Test' },
     ];
 
-    mockSupabaseClient.eq.mockResolvedValueOnce({
-      data: mockWebhooks,
-      error: null,
-    });
+    mockSupabaseClient.eq
+      .mockReturnValueOnce(mockSupabaseClient)
+      .mockResolvedValueOnce({ data: mockWebhooks, error: null });
 
     // Fail with 500 (retryable) all times
     (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
@@ -145,10 +148,9 @@ describe('Webhook Sender', () => {
       { id: 'wh-1', url: 'https://example.com/webhook', name: 'Test' },
     ];
 
-    mockSupabaseClient.eq.mockResolvedValueOnce({
-      data: mockWebhooks,
-      error: null,
-    });
+    mockSupabaseClient.eq
+      .mockReturnValueOnce(mockSupabaseClient)
+      .mockResolvedValueOnce({ data: mockWebhooks, error: null });
 
     // 400 Bad Request is not retryable
     (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 400 });
@@ -164,10 +166,9 @@ describe('Webhook Sender', () => {
       { id: 'wh-1', url: 'https://example.com/webhook', name: 'Test' },
     ];
 
-    mockSupabaseClient.eq.mockResolvedValueOnce({
-      data: mockWebhooks,
-      error: null,
-    });
+    mockSupabaseClient.eq
+      .mockReturnValueOnce(mockSupabaseClient)
+      .mockResolvedValueOnce({ data: mockWebhooks, error: null });
 
     (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
@@ -185,10 +186,9 @@ describe('Webhook Sender', () => {
       { id: 'wh-1', url: 'https://example.com/webhook', name: 'Test' },
     ];
 
-    mockSupabaseClient.eq.mockResolvedValueOnce({
-      data: mockWebhooks,
-      error: null,
-    });
+    mockSupabaseClient.eq
+      .mockReturnValueOnce(mockSupabaseClient)
+      .mockResolvedValueOnce({ data: mockWebhooks, error: null });
 
     // Fail first attempt, succeed on second
     (global.fetch as jest.Mock)
@@ -202,10 +202,9 @@ describe('Webhook Sender', () => {
   });
 
   it('should handle Supabase errors gracefully', async () => {
-    mockSupabaseClient.eq.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'Database error' },
-    });
+    mockSupabaseClient.eq
+      .mockReturnValueOnce(mockSupabaseClient)
+      .mockResolvedValueOnce({ data: null, error: { message: 'Database error' } });
 
     // Should not throw
     await expect(
