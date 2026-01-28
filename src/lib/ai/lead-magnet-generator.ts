@@ -398,10 +398,6 @@ export async function processContentExtraction(
   concept: LeadMagnetConcept,
   answers: Record<string, string>
 ): Promise<ExtractedContent> {
-  console.log('[processContentExtraction] Starting with archetype:', archetype);
-  console.log('[processContentExtraction] Concept:', concept?.title);
-  console.log('[processContentExtraction] Answer keys:', Object.keys(answers || {}));
-
   if (!archetype || !concept || !answers) {
     throw new Error(`Missing required parameters: archetype=${!!archetype}, concept=${!!concept}, answers=${!!answers}`);
   }
@@ -450,8 +446,6 @@ Also evaluate against the 5 viral criteria and note any weaknesses.
 
 Return ONLY valid JSON.`;
 
-  console.log('[processContentExtraction] Calling Anthropic API...');
-
   try {
     const response = await getAnthropicClient().messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -459,24 +453,17 @@ Return ONLY valid JSON.`;
       messages: [{ role: 'user', content: prompt }],
     });
 
-    console.log('[processContentExtraction] Anthropic API responded');
-
     const textContent = response.content.find((block) => block.type === 'text');
     if (!textContent || textContent.type !== 'text') {
       throw new Error('No text response from Claude');
     }
 
-    console.log('[processContentExtraction] Parsing JSON response...');
-
     const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const result = JSON.parse(jsonMatch[0]) as ExtractedContent;
-      console.log('[processContentExtraction] Successfully parsed response');
-      return result;
+      return JSON.parse(jsonMatch[0]) as ExtractedContent;
     }
     return JSON.parse(textContent.text) as ExtractedContent;
   } catch (error) {
-    console.error('[processContentExtraction] Error:', error);
     if (error instanceof Error) {
       throw new Error(`Content extraction failed: ${error.message}`);
     }

@@ -37,7 +37,6 @@ export default async function FunnelBuilderPage({ params }: PageProps) {
     .single();
 
   if (lmError || !leadMagnetData) {
-    console.error('Funnel page 404:', { id, userId: session.user.id, error: lmError });
     notFound();
   }
 

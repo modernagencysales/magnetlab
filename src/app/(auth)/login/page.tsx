@@ -28,8 +28,6 @@ function LoginForm() {
         redirect: false,
       });
 
-      console.log('[Login] signIn result:', result);
-
       if (result?.error) {
         if (result.error === 'CredentialsSignin') {
           setError('Invalid email or password');
@@ -45,8 +43,7 @@ function LoginForm() {
         setError('Login failed. Please try again.');
         setLoading(false);
       }
-    } catch (err) {
-      console.error('[Login] Error:', err);
+    } catch {
       setError('An unexpected error occurred');
       setLoading(false);
     }

@@ -147,12 +147,6 @@ export class LeadSharkClient extends BaseApiClient {
   }
 
   async createScheduledPost(data: SchedulePostRequest): Promise<ApiResponse<LeadSharkScheduledPost>> {
-    console.log('[LeadShark] Creating scheduled post:', {
-      content_length: data.content.length,
-      scheduled_time: data.scheduled_time,
-      has_automation: !!data.automation,
-    });
-
     // First try with JSON
     const jsonResult = await this.post<LeadSharkScheduledPost>('/api/scheduled-posts', {
       content: data.content,
@@ -166,8 +160,7 @@ export class LeadSharkClient extends BaseApiClient {
       return jsonResult;
     }
 
-    // If we get 405, try multipart/form-data
-    console.log('[LeadShark] JSON failed with 405, trying multipart...');
+    // If we get 405, try multipart/form-data (some endpoints require it)
     const formData = new FormData();
     formData.append('content', data.content);
     formData.append('scheduled_time', data.scheduled_time);
