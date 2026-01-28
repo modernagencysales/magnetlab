@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Users,
   Download,
@@ -150,9 +150,12 @@ export default function LeadsPage() {
     }
   };
 
-  const qualifiedCount = leads.filter(l => l.isQualified === true).length;
-  const unqualifiedCount = leads.filter(l => l.isQualified === false).length;
-  const pendingCount = leads.filter(l => l.isQualified === null).length;
+  // Memoize stats calculations to avoid recomputing on every render
+  const { qualifiedCount, unqualifiedCount, pendingCount } = useMemo(() => ({
+    qualifiedCount: leads.filter(l => l.isQualified === true).length,
+    unqualifiedCount: leads.filter(l => l.isQualified === false).length,
+    pendingCount: leads.filter(l => l.isQualified === null).length,
+  }), [leads]);
 
   return (
     <div className="container mx-auto px-4 py-8">

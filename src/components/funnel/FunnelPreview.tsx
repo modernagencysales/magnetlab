@@ -1,7 +1,7 @@
 'use client';
 
 import { Monitor, Smartphone, CheckCircle2, Play } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { QualificationQuestion, FunnelTheme, BackgroundStyle } from '@/lib/types/funnel';
 
 interface FunnelPreviewProps {
@@ -39,19 +39,23 @@ export function FunnelPreview({
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [pageView, setPageView] = useState<'optin' | 'thankyou'>('optin');
 
-  // Theme-based colors
+  // Theme-based colors - memoized to avoid recalculation on every render
   const isDark = theme === 'dark';
-  const bgColor = isDark ? '#09090B' : '#FAFAFA';
-  const textColor = isDark ? '#FAFAFA' : '#09090B';
-  const mutedColor = isDark ? '#A1A1AA' : '#71717A';
-  const borderColor = isDark ? '#27272A' : '#E4E4E7';
-  const inputBg = isDark ? '#09090B' : '#FFFFFF';
-  const placeholderColor = isDark ? '#71717A' : '#A1A1AA';
-  const browserBg = isDark ? '#18181B' : '#F4F4F5';
-  const browserBorder = isDark ? '#27272A' : '#E4E4E7';
+  const colors = useMemo(() => ({
+    bgColor: isDark ? '#09090B' : '#FAFAFA',
+    textColor: isDark ? '#FAFAFA' : '#09090B',
+    mutedColor: isDark ? '#A1A1AA' : '#71717A',
+    borderColor: isDark ? '#27272A' : '#E4E4E7',
+    inputBg: isDark ? '#09090B' : '#FFFFFF',
+    placeholderColor: isDark ? '#71717A' : '#A1A1AA',
+    browserBg: isDark ? '#18181B' : '#F4F4F5',
+    browserBorder: isDark ? '#27272A' : '#E4E4E7',
+  }), [isDark]);
 
-  // Background style
-  const getBackgroundStyle = () => {
+  const { bgColor, textColor, mutedColor, borderColor, inputBg, placeholderColor, browserBg, browserBorder } = colors;
+
+  // Background style - memoized
+  const getBackgroundStyle = useCallback(() => {
     if (backgroundStyle === 'gradient') {
       return isDark
         ? `linear-gradient(135deg, ${bgColor} 0%, #18181B 50%, ${bgColor} 100%)`
@@ -63,7 +67,7 @@ export function FunnelPreview({
         : `radial-gradient(circle at 50% 50%, ${primaryColor}15 0%, transparent 50%), ${bgColor}`;
     }
     return bgColor;
-  };
+  }, [backgroundStyle, isDark, bgColor, primaryColor]);
 
   return (
     <div className="space-y-4">
