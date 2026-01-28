@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmailSequence, generateDefaultEmailSequence } from '@/lib/ai/email-sequence-generator';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { EmailGenerationContext } from '@/lib/types/email';
 
 // POST - Generate email sequence for a lead magnet
@@ -12,17 +13,14 @@ export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
     const { leadMagnetId, useAI = true } = body;
 
     if (!leadMagnetId) {
-      return NextResponse.json(
-        { error: 'leadMagnetId is required' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('leadMagnetId is required');
     }
 
     const supabase = await createSupabaseServerClient();
@@ -36,7 +34,7 @@ export async function POST(request: Request) {
       .single();
 
     if (lmError || !leadMagnet) {
-      return NextResponse.json({ error: 'Lead magnet not found' }, { status: 404 });
+      return ApiErrors.notFound('Lead magnet');
     }
 
     // Get brand kit for sender name and content links
@@ -78,7 +76,7 @@ export async function POST(request: Request) {
       try {
         emails = await generateEmailSequence({ context });
       } catch (aiError) {
-        console.error('AI email generation failed, using fallback:', aiError);
+        logApiError('email-sequence/generate/ai', aiError, { leadMagnetId, note: 'Falling back to default' });
         emails = generateDefaultEmailSequence(leadMagnet.title, senderName);
       }
     } else {
@@ -106,11 +104,8 @@ export async function POST(request: Request) {
       .single();
 
     if (upsertError) {
-      console.error('Upsert email sequence error:', upsertError);
-      return NextResponse.json(
-        { error: 'Failed to save email sequence' },
-        { status: 500 }
-      );
+      logApiError('email-sequence/generate/save', upsertError, { leadMagnetId });
+      return ApiErrors.databaseError('Failed to save email sequence');
     }
 
     return NextResponse.json({
@@ -118,10 +113,7 @@ export async function POST(request: Request) {
       generated: true,
     });
   } catch (error) {
-    console.error('Generate email sequence error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate email sequence' },
-      { status: 500 }
-    );
+    logApiError('email-sequence/generate', error);
+    return ApiErrors.internalError('Failed to generate email sequence');
   }
 }

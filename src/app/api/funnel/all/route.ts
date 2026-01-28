@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const supabase = createSupabaseAdminClient();
@@ -29,13 +30,13 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching funnel pages:', error);
-      return NextResponse.json({ error: 'Failed to fetch pages' }, { status: 500 });
+      logApiError('funnel/all', error, { userId: session.user.id });
+      return ApiErrors.databaseError('Failed to fetch pages');
     }
 
     return NextResponse.json({ funnels: data });
   } catch (error) {
-    console.error('Error in funnel/all:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logApiError('funnel/all', error);
+    return ApiErrors.internalError('Failed to fetch pages');
   }
 }

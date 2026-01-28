@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
 import { emailSequenceFromRow } from '@/lib/types/email';
 import type { EmailSequenceRow } from '@/lib/types/email';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 interface RouteParams {
   params: Promise<{ leadMagnetId: string }>;
@@ -16,7 +17,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const { leadMagnetId } = await params;
@@ -31,7 +32,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       .single();
 
     if (lmError || !leadMagnet) {
-      return NextResponse.json({ error: 'Lead magnet not found' }, { status: 404 });
+      return ApiErrors.notFound('Lead magnet');
     }
 
     // Get the email sequence
@@ -44,8 +45,8 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     if (error && error.code !== 'PGRST116') {
       // PGRST116 is "no rows returned" - that's expected if no sequence exists
-      console.error('Get email sequence error:', error);
-      return NextResponse.json({ error: 'Failed to get email sequence' }, { status: 500 });
+      logApiError('email-sequence/get', error, { leadMagnetId });
+      return ApiErrors.databaseError('Failed to get email sequence');
     }
 
     if (!data) {
@@ -56,8 +57,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       emailSequence: emailSequenceFromRow(data as EmailSequenceRow),
     });
   } catch (error) {
-    console.error('Get email sequence error:', error);
-    return NextResponse.json({ error: 'Failed to get email sequence' }, { status: 500 });
+    logApiError('email-sequence/get', error);
+    return ApiErrors.internalError('Failed to get email sequence');
   }
 }
 
@@ -66,7 +67,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const { leadMagnetId } = await params;
@@ -74,10 +75,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const { emails } = body;
 
     if (!emails || !Array.isArray(emails)) {
-      return NextResponse.json(
-        { error: 'emails array is required' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('emails array is required');
     }
 
     // Validate email structure
@@ -87,10 +85,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
           typeof email.subject !== 'string' ||
           typeof email.body !== 'string' ||
           typeof email.replyTrigger !== 'string') {
-        return NextResponse.json(
-          { error: `Invalid email at index ${i}` },
-          { status: 400 }
-        );
+        return ApiErrors.validationError(`Invalid email at index ${i}`);
       }
     }
 
@@ -105,7 +100,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       .single();
 
     if (findError || !existingSequence) {
-      return NextResponse.json({ error: 'Email sequence not found' }, { status: 404 });
+      return ApiErrors.notFound('Email sequence');
     }
 
     // Update the sequence
@@ -124,15 +119,15 @@ export async function PUT(request: Request, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Update email sequence error:', error);
-      return NextResponse.json({ error: 'Failed to update email sequence' }, { status: 500 });
+      logApiError('email-sequence/update', error, { leadMagnetId });
+      return ApiErrors.databaseError('Failed to update email sequence');
     }
 
     return NextResponse.json({
       emailSequence: emailSequenceFromRow(data as EmailSequenceRow),
     });
   } catch (error) {
-    console.error('Update email sequence error:', error);
-    return NextResponse.json({ error: 'Failed to update email sequence' }, { status: 500 });
+    logApiError('email-sequence/update', error);
+    return ApiErrors.internalError('Failed to update email sequence');
   }
 }

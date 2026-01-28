@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 interface FunnelStats {
   total: number;
@@ -18,7 +19,7 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const supabase = createSupabaseAdminClient();
@@ -42,8 +43,8 @@ export async function GET() {
       .eq('user_id', session.user.id);
 
     if (leadsError) {
-      console.error('Fetch funnel leads error:', leadsError);
-      return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
+      logApiError('funnel/stats/leads', leadsError, { userId: session.user.id });
+      return ApiErrors.databaseError('Failed to fetch stats');
     }
 
     // Get view counts grouped by funnel
@@ -54,7 +55,7 @@ export async function GET() {
 
     if (viewsError) {
       // Table might not exist yet, continue without views
-      console.warn('Fetch page views error:', viewsError);
+      logApiError('funnel/stats/views', viewsError, { note: 'Non-critical, continuing without views' });
     }
 
     // Aggregate counts per funnel
@@ -106,7 +107,7 @@ export async function GET() {
 
     return NextResponse.json({ stats });
   } catch (error) {
-    console.error('Funnel stats error:', error);
-    return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
+    logApiError('funnel/stats', error);
+    return ApiErrors.internalError('Failed to fetch stats');
   }
 }

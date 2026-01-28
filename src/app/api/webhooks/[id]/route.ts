@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { webhookConfigFromRow, type WebhookConfigRow } from '@/lib/types/funnel';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,7 +16,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const { id } = await params;
@@ -34,17 +35,11 @@ export async function PUT(request: Request, { params }: RouteParams) {
       try {
         new URL(body.url);
       } catch {
-        return NextResponse.json(
-          { error: 'Invalid URL format' },
-          { status: 400 }
-        );
+        return ApiErrors.validationError('Invalid URL format');
       }
 
       if (!body.url.startsWith('https://')) {
-        return NextResponse.json(
-          { error: 'Webhook URL must use HTTPS' },
-          { status: 400 }
-        );
+        return ApiErrors.validationError('Webhook URL must use HTTPS');
       }
 
       updateData.url = body.url;
@@ -55,10 +50,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: 'No valid fields to update' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('No valid fields to update');
     }
 
     const { data, error } = await supabase
@@ -70,18 +62,18 @@ export async function PUT(request: Request, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Update webhook error:', error);
-      return NextResponse.json({ error: 'Failed to update webhook' }, { status: 500 });
+      logApiError('webhooks/update', error, { webhookId: id });
+      return ApiErrors.databaseError('Failed to update webhook');
     }
 
     if (!data) {
-      return NextResponse.json({ error: 'Webhook not found' }, { status: 404 });
+      return ApiErrors.notFound('Webhook');
     }
 
     return NextResponse.json({ webhook: webhookConfigFromRow(data as WebhookConfigRow) });
   } catch (error) {
-    console.error('Update webhook error:', error);
-    return NextResponse.json({ error: 'Failed to update webhook' }, { status: 500 });
+    logApiError('webhooks/update', error);
+    return ApiErrors.internalError('Failed to update webhook');
   }
 }
 
@@ -90,7 +82,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const { id } = await params;
@@ -103,14 +95,14 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       .eq('user_id', session.user.id);
 
     if (error) {
-      console.error('Delete webhook error:', error);
-      return NextResponse.json({ error: 'Failed to delete webhook' }, { status: 500 });
+      logApiError('webhooks/delete', error, { webhookId: id });
+      return ApiErrors.databaseError('Failed to delete webhook');
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Delete webhook error:', error);
-    return NextResponse.json({ error: 'Failed to delete webhook' }, { status: 500 });
+    logApiError('webhooks/delete', error);
+    return ApiErrors.internalError('Failed to delete webhook');
   }
 }
 
@@ -119,7 +111,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const { id } = await params;
@@ -134,7 +126,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       .single();
 
     if (error || !webhook) {
-      return NextResponse.json({ error: 'Webhook not found' }, { status: 404 });
+      return ApiErrors.notFound('Webhook');
     }
 
     // Send test payload
@@ -179,7 +171,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       });
     }
   } catch (error) {
-    console.error('Test webhook error:', error);
-    return NextResponse.json({ error: 'Failed to test webhook' }, { status: 500 });
+    logApiError('webhooks/test', error);
+    return ApiErrors.internalError('Failed to test webhook');
   }
 }

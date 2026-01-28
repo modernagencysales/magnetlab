@@ -5,13 +5,14 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { webhookConfigFromRow, type WebhookConfigRow } from '@/lib/types/funnel';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 // GET - List all webhooks for current user
 export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const supabase = createSupabaseAdminClient();
@@ -23,16 +24,16 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('List webhooks error:', error);
-      return NextResponse.json({ error: 'Failed to fetch webhooks' }, { status: 500 });
+      logApiError('webhooks/list', error, { userId: session.user.id });
+      return ApiErrors.databaseError('Failed to fetch webhooks');
     }
 
     const webhooks = (data as WebhookConfigRow[]).map(webhookConfigFromRow);
 
     return NextResponse.json({ webhooks });
   } catch (error) {
-    console.error('List webhooks error:', error);
-    return NextResponse.json({ error: 'Failed to fetch webhooks' }, { status: 500 });
+    logApiError('webhooks/list', error);
+    return ApiErrors.internalError('Failed to fetch webhooks');
   }
 }
 
@@ -41,35 +42,26 @@ export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
     const { name, url } = body;
 
     if (!name || !url) {
-      return NextResponse.json(
-        { error: 'name and url are required' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('name and url are required');
     }
 
     // Validate URL format
     try {
       new URL(url);
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid URL format' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('Invalid URL format');
     }
 
     // Only allow HTTPS URLs
     if (!url.startsWith('https://')) {
-      return NextResponse.json(
-        { error: 'Webhook URL must use HTTPS' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('Webhook URL must use HTTPS');
     }
 
     const supabase = createSupabaseAdminClient();
@@ -86,8 +78,8 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error('Create webhook error:', error);
-      return NextResponse.json({ error: 'Failed to create webhook' }, { status: 500 });
+      logApiError('webhooks/create', error, { userId: session.user.id });
+      return ApiErrors.databaseError('Failed to create webhook');
     }
 
     return NextResponse.json(
@@ -95,7 +87,7 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Create webhook error:', error);
-    return NextResponse.json({ error: 'Failed to create webhook' }, { status: 500 });
+    logApiError('webhooks/create', error);
+    return ApiErrors.internalError('Failed to create webhook');
   }
 }
