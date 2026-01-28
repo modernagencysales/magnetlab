@@ -8,13 +8,14 @@ import { auth } from '@/lib/auth';
 import { NotionClient } from '@/lib/integrations/notion';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getNotionConnection } from '@/lib/utils/encrypted-storage';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { ExtractedContent } from '@/lib/types/lead-magnet';
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
@@ -26,23 +27,20 @@ export async function POST(request: Request) {
     };
 
     if (!leadMagnetId || !content) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return ApiErrors.validationError('leadMagnetId and content are required');
     }
 
     // Get Notion connection with decrypted access token
     const connection = await getNotionConnection(session.user.id);
 
     if (!connection) {
-      return NextResponse.json({ error: 'Notion not connected' }, { status: 400 });
+      return ApiErrors.validationError('Notion not connected');
     }
 
     // Use default parent page if not specified
     const targetParentId = parentPageId || connection.default_parent_page_id;
     if (!targetParentId) {
-      return NextResponse.json(
-        { error: 'No parent page specified. Please select a page or set a default.' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('No parent page specified. Please select a page or set a default.');
     }
 
     // Create the Notion page using decrypted access token
@@ -66,10 +64,7 @@ export async function POST(request: Request) {
       title: page.title,
     });
   } catch (error) {
-    console.error('Notion publish error:', error);
-    return NextResponse.json(
-      { error: 'Failed to publish to Notion' },
-      { status: 500 }
-    );
+    logApiError('notion/publish', error);
+    return ApiErrors.internalError('Failed to publish to Notion');
   }
 }

@@ -5,12 +5,13 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getUserLeadSharkClient } from '@/lib/integrations/leadshark';
 import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
     };
 
     if (!leadMagnetId || !content || !scheduledTime) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return ApiErrors.validationError('leadMagnetId, content, and scheduledTime are required');
     }
 
     // Check subscription for scheduling feature
@@ -43,19 +44,13 @@ export async function POST(request: Request) {
       .single();
 
     if (!subscription || subscription.plan === 'free') {
-      return NextResponse.json(
-        { error: 'Scheduling requires a Pro or Unlimited subscription' },
-        { status: 403 }
-      );
+      return ApiErrors.forbidden('Scheduling requires a Pro or Unlimited subscription');
     }
 
     // Schedule via LeadShark using user's encrypted API key
     const leadShark = await getUserLeadSharkClient(session.user.id);
     if (!leadShark) {
-      return NextResponse.json(
-        { error: 'LeadShark not connected. Add your API key in Settings.' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('LeadShark not connected. Add your API key in Settings.');
     }
 
     const scheduleResult = await leadShark.createScheduledPost({
@@ -73,8 +68,8 @@ export async function POST(request: Request) {
     });
 
     if (scheduleResult.error) {
-      console.error('LeadShark scheduling error:', scheduleResult.error);
-      return NextResponse.json({ error: scheduleResult.error }, { status: 500 });
+      logApiError('linkedin/schedule/leadshark', new Error(scheduleResult.error), { leadMagnetId });
+      return ApiErrors.internalError(scheduleResult.error);
     }
 
     // Update lead magnet with scheduling info
@@ -100,10 +95,7 @@ export async function POST(request: Request) {
       scheduledTime,
     });
   } catch (error) {
-    console.error('LinkedIn schedule error:', error);
-    return NextResponse.json(
-      { error: 'Failed to schedule post' },
-      { status: 500 }
-    );
+    logApiError('linkedin/schedule', error);
+    return ApiErrors.internalError('Failed to schedule post');
   }
 }

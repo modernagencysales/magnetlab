@@ -4,13 +4,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 // PUT - Update Resend sender settings (fromEmail, fromName)
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
@@ -27,10 +28,7 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (fetchError || !existing) {
-      return NextResponse.json(
-        { error: 'Resend integration not found' },
-        { status: 404 }
-      );
+      return ApiErrors.notFound('Resend integration');
     }
 
     // Update metadata with new settings
@@ -49,11 +47,8 @@ export async function PUT(request: NextRequest) {
       .eq('id', existing.id);
 
     if (updateError) {
-      console.error('Error updating Resend settings:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update settings' },
-        { status: 500 }
-      );
+      logApiError('integrations/resend/settings', updateError, { userId: session.user.id });
+      return ApiErrors.databaseError('Failed to update settings');
     }
 
     return NextResponse.json({
@@ -61,7 +56,7 @@ export async function PUT(request: NextRequest) {
       message: 'Settings updated successfully',
     });
   } catch (error) {
-    console.error('Error in Resend settings PUT:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logApiError('integrations/resend/settings', error);
+    return ApiErrors.internalError('Failed to update settings');
   }
 }

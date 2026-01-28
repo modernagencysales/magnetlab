@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,8 +39,8 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching swipe file lead magnets:', error);
-      return NextResponse.json({ error: 'Failed to fetch lead magnets' }, { status: 500 });
+      logApiError('swipe-file/lead-magnets', error);
+      return ApiErrors.databaseError('Failed to fetch lead magnets');
     }
 
     return NextResponse.json({
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('Error in swipe-file lead-magnets GET:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logApiError('swipe-file/lead-magnets', error);
+    return ApiErrors.internalError();
   }
 }

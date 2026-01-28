@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { verifyLeadSharkWebhook } from '@/lib/webhooks/verify';
+import { logApiError } from '@/lib/api/errors';
 
 interface LeadSharkWebhookPayload {
   event_type: 'new_lead' | 'dm_sent' | 'connection_accepted' | 'follow_up_sent';
@@ -39,9 +40,9 @@ export async function POST(request: NextRequest) {
     // Verify webhook signature
     const verification = await verifyLeadSharkWebhook(request, body);
     if (!verification.valid) {
-      console.warn('LeadShark webhook signature verification failed:', verification.error);
+      logApiError('webhooks/leadshark/verify', new Error(verification.error || 'Signature verification failed'));
       return NextResponse.json(
-        { error: 'Invalid webhook signature' },
+        { error: 'Invalid webhook signature', code: 'UNAUTHORIZED' },
         { status: 401 }
       );
     }
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     if (!leadMagnet) {
       // No associated lead magnet found, but still acknowledge the webhook
-      console.log('LeadShark webhook: No lead magnet found for post_id:', payload.post_id);
+      logApiError('webhooks/leadshark', new Error('No lead magnet found'), { postId: payload.post_id, note: 'Non-critical' });
       return NextResponse.json({
         success: true,
         message: 'Webhook received but no associated lead magnet found',
@@ -117,21 +118,15 @@ export async function POST(request: NextRequest) {
     // Also store the lead info in the lead magnet's enrichment data (optional)
     // This could be expanded to a proper leads table in the future
 
-    console.log('LeadShark webhook processed:', {
-      event_type: payload.event_type,
-      lead_magnet_id: leadMagnet.id,
-      lead_name: `${payload.lead.first_name} ${payload.lead.last_name}`,
-    });
-
     return NextResponse.json({
       success: true,
       event_type: payload.event_type,
       lead_magnet_id: leadMagnet.id,
     });
   } catch (error) {
-    console.error('LeadShark webhook error:', error);
+    logApiError('webhooks/leadshark', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }

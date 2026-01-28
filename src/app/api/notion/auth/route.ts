@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getNotionOAuthUrl, exchangeNotionCode } from '@/lib/integrations/notion';
 import { upsertNotionConnection } from '@/lib/utils/encrypted-storage';
+import { logApiError } from '@/lib/api/errors';
 
 export async function GET(request: Request) {
   try {
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
           new URL('/settings?notion=connected', request.url)
         );
       } catch (err) {
-        console.error('Notion OAuth error:', err);
+        logApiError('notion/auth/callback', err);
         return NextResponse.redirect(
           new URL('/settings?error=notion_auth_failed', request.url)
         );
@@ -66,7 +67,7 @@ export async function GET(request: Request) {
     const authUrl = getNotionOAuthUrl(session.user.id);
     return NextResponse.redirect(authUrl);
   } catch (error) {
-    console.error('Notion auth error:', error);
+    logApiError('notion/auth', error);
     return NextResponse.redirect(
       new URL('/settings?error=auth_error', request.url)
     );

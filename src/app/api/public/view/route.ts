@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { createHash } from 'crypto';
+import { logApiError } from '@/lib/api/errors';
 
 export async function POST(request: Request) {
   try {
@@ -45,13 +46,13 @@ export async function POST(request: Request) {
     if (error) {
       // Ignore duplicate key errors
       if (error.code !== '23505') {
-        console.error('Track view error:', error);
+        logApiError('public/view', error, { funnelPageId });
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Track view error:', error);
-    return NextResponse.json({ error: 'Failed to track view' }, { status: 500 });
+    logApiError('public/view', error);
+    return NextResponse.json({ error: 'Failed to track view', code: 'INTERNAL_ERROR' }, { status: 500 });
   }
 }

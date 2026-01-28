@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 interface SubmitPostRequest {
   type: 'post';
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body: SubmitRequest = await request.json();
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     if (body.type === 'post') {
       if (!body.content) {
-        return NextResponse.json({ error: 'Content is required' }, { status: 400 });
+        return ApiErrors.validationError('Content is required');
       }
 
       const { data, error } = await supabase
@@ -72,8 +73,8 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) {
-        console.error('Error submitting post:', error);
-        return NextResponse.json({ error: 'Failed to submit post' }, { status: 500 });
+        logApiError('swipe-file/submit/post', error);
+        return ApiErrors.databaseError('Failed to submit post');
       }
 
       return NextResponse.json({
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     if (body.type === 'lead_magnet') {
       if (!body.title) {
-        return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+        return ApiErrors.validationError('Title is required');
       }
 
       const { data, error } = await supabase
@@ -109,8 +110,8 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) {
-        console.error('Error submitting lead magnet:', error);
-        return NextResponse.json({ error: 'Failed to submit lead magnet' }, { status: 500 });
+        logApiError('swipe-file/submit/lead-magnet', error);
+        return ApiErrors.databaseError('Failed to submit lead magnet');
       }
 
       return NextResponse.json({
@@ -119,9 +120,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ error: 'Invalid submission type' }, { status: 400 });
+    return ApiErrors.validationError('Invalid submission type');
   } catch (error) {
-    console.error('Error in swipe-file submit POST:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logApiError('swipe-file/submit', error);
+    return ApiErrors.internalError();
   }
 }

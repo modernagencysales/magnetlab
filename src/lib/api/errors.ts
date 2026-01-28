@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { logError } from '@/lib/utils/logger';
 
 // Error codes for client-side handling
 export const ErrorCodes = {
@@ -109,21 +110,12 @@ export function withErrorHandling<T>(
 
 /**
  * Log error with context (for structured logging)
+ * Re-exports logError from utils/logger for convenience in API routes.
  */
 export function logApiError(
   context: string,
   error: unknown,
   metadata?: Record<string, unknown>
 ): void {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  const errorStack = error instanceof Error ? error.stack : undefined;
-
-  console.error(JSON.stringify({
-    level: 'error',
-    context,
-    message: errorMessage,
-    stack: errorStack,
-    ...metadata,
-    timestamp: new Date().toISOString(),
-  }));
+  logError(context, error, metadata);
 }

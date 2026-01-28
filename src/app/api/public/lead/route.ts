@@ -8,6 +8,7 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { deliverWebhook } from '@/lib/webhooks/sender';
 import { triggerEmailSequenceIfActive } from '@/lib/services/email-sequence-trigger';
 import { leadCaptureSchema, leadQualificationSchema, validateBody } from '@/lib/validations/api';
+import { logApiError } from '@/lib/api/errors';
 
 // Rate limiting configuration
 // Uses database-based checking for serverless compatibility
@@ -32,7 +33,7 @@ async function checkRateLimitDb(
 
   if (error) {
     // On error, allow the request (fail open for availability)
-    console.warn('Rate limit check failed:', error.message);
+    logApiError('public/lead/rate-limit', error, { note: 'Allowing request (fail open)' });
     return true;
   }
 
@@ -116,8 +117,8 @@ export async function POST(request: Request) {
       .single();
 
     if (leadError) {
-      console.error('Create lead error:', leadError);
-      return NextResponse.json({ error: 'Failed to capture lead' }, { status: 500 });
+      logApiError('public/lead/create', leadError, { funnelPageId, email });
+      return NextResponse.json({ error: 'Failed to capture lead', code: 'DATABASE_ERROR' }, { status: 500 });
     }
 
     // Get lead magnet title for webhook
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
       utmMedium: lead.utm_medium,
       utmCampaign: lead.utm_campaign,
       createdAt: lead.created_at,
-    }).catch((err) => console.error('Webhook delivery error:', err));
+    }).catch((err) => logApiError('public/lead/webhook', err, { leadId: lead.id }));
 
     // Trigger email sequence if active (async, don't wait)
     triggerEmailSequenceIfActive({
@@ -150,15 +151,15 @@ export async function POST(request: Request) {
       name: lead.name,
       leadMagnetId: funnel.lead_magnet_id,
       leadMagnetTitle: leadMagnet?.title || '',
-    }).catch((err) => console.error('Email sequence trigger error:', err));
+    }).catch((err) => logApiError('public/lead/email-sequence', err, { leadId: lead.id }));
 
     return NextResponse.json({
       leadId: lead.id,
       success: true,
     }, { status: 201 });
   } catch (error) {
-    console.error('Lead capture error:', error);
-    return NextResponse.json({ error: 'Failed to capture lead' }, { status: 500 });
+    logApiError('public/lead', error);
+    return NextResponse.json({ error: 'Failed to capture lead', code: 'INTERNAL_ERROR' }, { status: 500 });
   }
 }
 
@@ -256,8 +257,8 @@ export async function PATCH(request: Request) {
       .single();
 
     if (updateError) {
-      console.error('Update lead error:', updateError);
-      return NextResponse.json({ error: 'Failed to update lead' }, { status: 500 });
+      logApiError('public/lead/qualification', updateError, { leadId });
+      return NextResponse.json({ error: 'Failed to update lead', code: 'DATABASE_ERROR' }, { status: 500 });
     }
 
     // Get funnel and lead magnet for webhook
@@ -286,7 +287,7 @@ export async function PATCH(request: Request) {
       utmMedium: updatedLead.utm_medium,
       utmCampaign: updatedLead.utm_campaign,
       createdAt: updatedLead.created_at,
-    }).catch((err) => console.error('Webhook delivery error:', err));
+    }).catch((err) => logApiError('public/lead/webhook', err, { leadId: lead.id }));
 
     return NextResponse.json({
       leadId: lead.id,
@@ -294,7 +295,7 @@ export async function PATCH(request: Request) {
       success: true,
     });
   } catch (error) {
-    console.error('Qualification update error:', error);
-    return NextResponse.json({ error: 'Failed to update qualification' }, { status: 500 });
+    logApiError('public/lead/qualification', error);
+    return NextResponse.json({ error: 'Failed to update qualification', code: 'INTERNAL_ERROR' }, { status: 500 });
   }
 }

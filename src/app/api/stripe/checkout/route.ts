@@ -5,25 +5,26 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createCheckoutSession, getOrCreateCustomer, STRIPE_PRICE_IDS } from '@/lib/integrations/stripe';
 import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { SubscriptionPlan } from '@/lib/types/integrations';
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id || !session.user.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
     const { plan } = body as { plan: SubscriptionPlan };
 
     if (!plan || plan === 'free') {
-      return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
+      return ApiErrors.validationError('Invalid plan');
     }
 
     const priceId = STRIPE_PRICE_IDS[plan];
     if (!priceId) {
-      return NextResponse.json({ error: 'Plan not available' }, { status: 400 });
+      return ApiErrors.validationError('Plan not available');
     }
 
     // Get existing customer ID if any
@@ -65,10 +66,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: checkoutSession.url });
   } catch (error) {
-    console.error('Checkout error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create checkout session' },
-      { status: 500 }
-    );
+    logApiError('stripe/checkout', error);
+    return ApiErrors.internalError('Failed to create checkout session');
   }
 }

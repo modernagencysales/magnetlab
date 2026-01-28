@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
 import { emailSequenceFromRow } from '@/lib/types/email';
 import type { EmailSequenceRow } from '@/lib/types/email';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 interface RouteParams {
   params: Promise<{ leadMagnetId: string }>;
@@ -16,7 +17,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const { leadMagnetId } = await params;
@@ -31,16 +32,13 @@ export async function POST(request: Request, { params }: RouteParams) {
       .single();
 
     if (seqError || !sequenceData) {
-      return NextResponse.json({ error: 'Email sequence not found' }, { status: 404 });
+      return ApiErrors.notFound('Email sequence');
     }
 
     const sequence = emailSequenceFromRow(sequenceData as EmailSequenceRow);
 
     if (!sequence.emails || sequence.emails.length === 0) {
-      return NextResponse.json(
-        { error: 'No emails in sequence. Generate emails first.' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('No emails in sequence. Generate emails first.');
     }
 
     // Update status to active
@@ -55,11 +53,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       .single();
 
     if (updateError) {
-      console.error('Activate sequence error:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to activate sequence' },
-        { status: 500 }
-      );
+      logApiError('email-sequence/activate', updateError, { leadMagnetId });
+      return ApiErrors.databaseError('Failed to activate sequence');
     }
 
     return NextResponse.json({
@@ -67,10 +62,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       message: 'Email sequence activated! New leads will automatically receive the welcome sequence.',
     });
   } catch (error) {
-    console.error('Activate email sequence error:', error);
-    return NextResponse.json(
-      { error: 'Failed to activate email sequence' },
-      { status: 500 }
-    );
+    logApiError('email-sequence/activate', error);
+    return ApiErrors.internalError('Failed to activate email sequence');
   }
 }

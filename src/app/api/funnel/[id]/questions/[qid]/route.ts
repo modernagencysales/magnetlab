@@ -8,6 +8,7 @@ import {
   qualificationQuestionFromRow,
   type QualificationQuestionRow,
 } from '@/lib/types/funnel';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 interface RouteParams {
   params: Promise<{ id: string; qid: string }>;
@@ -18,7 +19,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const { id, qid } = await params;
@@ -34,7 +35,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       .single();
 
     if (funnelError || !funnel) {
-      return NextResponse.json({ error: 'Funnel page not found' }, { status: 404 });
+      return ApiErrors.notFound('Funnel page');
     }
 
     // Build update object
@@ -48,19 +49,13 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
     if (body.qualifyingAnswer !== undefined) {
       if (!['yes', 'no'].includes(body.qualifyingAnswer)) {
-        return NextResponse.json(
-          { error: 'qualifyingAnswer must be "yes" or "no"' },
-          { status: 400 }
-        );
+        return ApiErrors.validationError('qualifyingAnswer must be "yes" or "no"');
       }
       updateData.qualifying_answer = body.qualifyingAnswer;
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: 'No valid fields to update' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('No valid fields to update');
     }
 
     // Update question
@@ -73,18 +68,18 @@ export async function PUT(request: Request, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Update question error:', error);
-      return NextResponse.json({ error: 'Failed to update question' }, { status: 500 });
+      logApiError('funnel/questions/update', error, { funnelId: id, questionId: qid });
+      return ApiErrors.databaseError('Failed to update question');
     }
 
     if (!data) {
-      return NextResponse.json({ error: 'Question not found' }, { status: 404 });
+      return ApiErrors.notFound('Question');
     }
 
     return NextResponse.json({ question: qualificationQuestionFromRow(data as QualificationQuestionRow) });
   } catch (error) {
-    console.error('Update question error:', error);
-    return NextResponse.json({ error: 'Failed to update question' }, { status: 500 });
+    logApiError('funnel/questions/update', error);
+    return ApiErrors.internalError('Failed to update question');
   }
 }
 
@@ -93,7 +88,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const { id, qid } = await params;
@@ -108,7 +103,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       .single();
 
     if (funnelError || !funnel) {
-      return NextResponse.json({ error: 'Funnel page not found' }, { status: 404 });
+      return ApiErrors.notFound('Funnel page');
     }
 
     // Delete question
@@ -119,13 +114,13 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       .eq('funnel_page_id', id);
 
     if (error) {
-      console.error('Delete question error:', error);
-      return NextResponse.json({ error: 'Failed to delete question' }, { status: 500 });
+      logApiError('funnel/questions/delete', error, { funnelId: id, questionId: qid });
+      return ApiErrors.databaseError('Failed to delete question');
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Delete question error:', error);
-    return NextResponse.json({ error: 'Failed to delete question' }, { status: 500 });
+    logApiError('funnel/questions/delete', error);
+    return ApiErrors.internalError('Failed to delete question');
   }
 }

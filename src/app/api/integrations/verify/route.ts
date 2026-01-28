@@ -9,23 +9,21 @@ import { updateIntegrationVerified } from '@/lib/utils/encrypted-storage';
 import { LeadSharkClient } from '@/lib/integrations/leadshark';
 import { LoopsClient } from '@/lib/integrations/loops';
 import { Resend } from 'resend';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 // POST - Verify an integration's API key
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
     const { service, api_key } = body;
 
     if (!service || !api_key) {
-      return NextResponse.json(
-        { error: 'Service and api_key are required' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('Service and api_key are required');
     }
 
     let verified = false;
@@ -65,10 +63,7 @@ export async function POST(request: NextRequest) {
         break;
       }
       default:
-        return NextResponse.json(
-          { error: `Unknown service: ${service}` },
-          { status: 400 }
-        );
+        return ApiErrors.validationError(`Unknown service: ${service}`);
     }
 
     // If verified, update the last_verified_at timestamp
@@ -81,10 +76,7 @@ export async function POST(request: NextRequest) {
       error,
     });
   } catch (error) {
-    console.error('Error verifying integration:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Verification failed' },
-      { status: 500 }
-    );
+    logApiError('integrations/verify', error);
+    return ApiErrors.internalError(error instanceof Error ? error.message : 'Verification failed');
   }
 }

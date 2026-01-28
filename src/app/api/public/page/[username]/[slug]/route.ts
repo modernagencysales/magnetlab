@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { logApiError } from '@/lib/api/errors';
 import type { PublicFunnelPageData } from '@/lib/types/funnel';
 
 interface RouteParams {
@@ -98,7 +99,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     return NextResponse.json(pageData);
   } catch (error) {
-    console.error('Get public page error:', error);
-    return NextResponse.json({ error: 'Failed to fetch page' }, { status: 500 });
+    logApiError('public/page', error);
+    return NextResponse.json({ error: 'Failed to fetch page', code: 'INTERNAL_ERROR' }, { status: 500 });
   }
 }

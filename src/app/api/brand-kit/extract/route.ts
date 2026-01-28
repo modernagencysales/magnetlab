@@ -4,30 +4,25 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { extractBusinessContext } from '@/lib/ai';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { ContentType } from '@/lib/types/lead-magnet';
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
 
     // Validate required fields
     if (!body.content || typeof body.content !== 'string') {
-      return NextResponse.json(
-        { error: 'content is required and must be a string' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('content is required and must be a string');
     }
 
     if (body.content.trim().length < 50) {
-      return NextResponse.json(
-        { error: 'Content is too short for meaningful extraction. Please provide more text (at least 50 characters).' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('Content is too short for meaningful extraction. Please provide more text (at least 50 characters).');
     }
 
     // Validate contentType if provided
@@ -41,10 +36,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error extracting business context:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to extract business context' },
-      { status: 500 }
-    );
+    logApiError('brand-kit/extract', error);
+    return ApiErrors.aiError(error instanceof Error ? error.message : 'Failed to extract business context');
   }
 }

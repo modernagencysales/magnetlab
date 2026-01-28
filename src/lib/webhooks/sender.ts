@@ -2,6 +2,7 @@
 // Sends webhook payloads to configured URLs with retry logic
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { logError } from '@/lib/utils/logger';
 import type { WebhookLeadPayload } from '@/lib/types/funnel';
 
 // Retry configuration
@@ -44,16 +45,16 @@ async function deliverWithRetry(
       if (response.status >= 400 && response.status < 500 &&
           response.status !== 408 && response.status !== 429) {
         lastError = `HTTP ${response.status}`;
-        console.error(`Webhook ${webhook.name} failed with non-retryable status: ${response.status}`);
+        logError('webhooks/deliver', new Error(`Non-retryable status: ${response.status}`), { webhookId: webhook.id, webhookName: webhook.name });
         return { success: false, attempts: attempt, error: lastError };
       }
 
       // Retryable error
       lastError = `HTTP ${response.status}`;
-      console.warn(`Webhook ${webhook.name} failed (attempt ${attempt}/${MAX_RETRIES}): ${response.status}`);
+      logError('webhooks/deliver', new Error(`Attempt ${attempt}/${MAX_RETRIES} failed: ${response.status}`), { webhookId: webhook.id, webhookName: webhook.name, attempt, note: 'Retrying' });
     } catch (err) {
       lastError = err instanceof Error ? err.message : 'Unknown error';
-      console.warn(`Webhook ${webhook.name} error (attempt ${attempt}/${MAX_RETRIES}):`, lastError);
+      logError('webhooks/deliver', err, { webhookId: webhook.id, webhookName: webhook.name, attempt, note: 'Retrying' });
     }
 
     // Wait before retrying (exponential backoff)
@@ -63,7 +64,7 @@ async function deliverWithRetry(
     }
   }
 
-  console.error(`Webhook ${webhook.name} failed after ${MAX_RETRIES} attempts: ${lastError}`);
+  logError('webhooks/deliver', new Error(`Failed after ${MAX_RETRIES} attempts: ${lastError}`), { webhookId: webhook.id, webhookName: webhook.name });
   return { success: false, attempts: MAX_RETRIES, error: lastError };
 }
 

@@ -5,12 +5,13 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { generateNotionThumbnail, generateBrandedThumbnail } from '@/lib/services/thumbnail';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
     };
 
     if (!leadMagnetId) {
-      return NextResponse.json({ error: 'Missing leadMagnetId' }, { status: 400 });
+      return ApiErrors.validationError('leadMagnetId is required');
     }
 
     let thumbnail: Buffer;
@@ -35,10 +36,7 @@ export async function POST(request: Request) {
       // Generate branded thumbnail
       thumbnail = await generateBrandedThumbnail(title, subtitle);
     } else {
-      return NextResponse.json(
-        { error: 'Either notionUrl or title must be provided' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('Either notionUrl or title must be provided');
     }
 
     // Upload to Supabase Storage
@@ -53,8 +51,8 @@ export async function POST(request: Request) {
       });
 
     if (uploadError) {
-      console.error('Upload error:', uploadError);
-      return NextResponse.json({ error: 'Failed to upload thumbnail' }, { status: 500 });
+      logApiError('thumbnail/generate/upload', uploadError, { leadMagnetId });
+      return ApiErrors.databaseError('Failed to upload thumbnail');
     }
 
     // Get public URL
@@ -74,10 +72,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ thumbnailUrl });
   } catch (error) {
-    console.error('Thumbnail generation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate thumbnail' },
-      { status: 500 }
-    );
+    logApiError('thumbnail/generate', error);
+    return ApiErrors.internalError('Failed to generate thumbnail');
   }
 }

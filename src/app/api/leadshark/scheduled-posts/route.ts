@@ -6,21 +6,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getUserLeadSharkClient } from '@/lib/integrations/leadshark';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 // GET - List all scheduled posts with automation info
 export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const client = await getUserLeadSharkClient(session.user.id);
     if (!client) {
-      return NextResponse.json(
-        { error: 'LeadShark not connected. Add your API key in Settings.' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('LeadShark not connected. Add your API key in Settings.');
     }
 
     // Fetch posts and automations in parallel
@@ -31,7 +29,7 @@ export async function GET() {
 
     // If scheduled posts endpoint fails, return empty list with warning
     if (postsResult.error) {
-      console.warn('LeadShark scheduled posts error:', postsResult.error);
+      logApiError('leadshark/scheduled-posts', new Error(postsResult.error as string), { note: 'Non-critical, returning empty list' });
       return NextResponse.json({
         posts: [],
         total: 0,
@@ -95,10 +93,8 @@ export async function GET() {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch scheduled posts' },
-      { status: 500 }
-    );
+    logApiError('leadshark/scheduled-posts', error);
+    return ApiErrors.internalError(error instanceof Error ? error.message : 'Failed to fetch scheduled posts');
   }
 }
 
@@ -107,25 +103,19 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
 
     // Validate required fields
     if (!body.content || !body.scheduled_time) {
-      return NextResponse.json(
-        { error: 'content and scheduled_time are required' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('content and scheduled_time are required');
     }
 
     // Validate content length
     if (body.content.length < 1 || body.content.length > 3000) {
-      return NextResponse.json(
-        { error: 'Content must be between 1 and 3000 characters' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('Content must be between 1 and 3000 characters');
     }
 
     // Validate scheduled_time is in the future (15min to 90 days)
@@ -135,18 +125,12 @@ export async function POST(request: NextRequest) {
     const maxTime = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
     if (scheduledTime < minTime || scheduledTime > maxTime) {
-      return NextResponse.json(
-        { error: 'Scheduled time must be between 15 minutes and 90 days in the future' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('Scheduled time must be between 15 minutes and 90 days in the future');
     }
 
     const client = await getUserLeadSharkClient(session.user.id);
     if (!client) {
-      return NextResponse.json(
-        { error: 'LeadShark not connected. Add your API key in Settings.' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('LeadShark not connected. Add your API key in Settings.');
     }
 
     // Create the scheduled post in LeadShark
@@ -158,7 +142,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return ApiErrors.internalError(result.error);
     }
 
     // If linked to a lead magnet, update the lead magnet record
@@ -180,10 +164,7 @@ export async function POST(request: NextRequest) {
       message: 'Scheduled post created successfully',
     });
   } catch (error) {
-    console.error('Error creating scheduled post:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create scheduled post' },
-      { status: 500 }
-    );
+    logApiError('leadshark/scheduled-posts/create', error);
+    return ApiErrors.internalError(error instanceof Error ? error.message : 'Failed to create scheduled post');
   }
 }

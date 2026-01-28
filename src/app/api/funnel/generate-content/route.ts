@@ -8,6 +8,7 @@ import {
   generateOptinContent,
   generateDefaultOptinContent,
 } from '@/lib/ai/funnel-content-generator';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { LeadMagnetConcept, ExtractedContent } from '@/lib/types/lead-magnet';
 
 // POST - Generate opt-in page content
@@ -15,17 +16,14 @@ export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return ApiErrors.unauthorized();
     }
 
     const body = await request.json();
     const { leadMagnetId, useAI = true } = body;
 
     if (!leadMagnetId) {
-      return NextResponse.json(
-        { error: 'leadMagnetId is required' },
-        { status: 400 }
-      );
+      return ApiErrors.validationError('leadMagnetId is required');
     }
 
     const supabase = createSupabaseAdminClient();
@@ -39,7 +37,7 @@ export async function POST(request: Request) {
       .single();
 
     if (lmError || !leadMagnet) {
-      return NextResponse.json({ error: 'Lead magnet not found' }, { status: 404 });
+      return ApiErrors.notFound('Lead magnet');
     }
 
     // Fetch brand kit for credibility
@@ -62,7 +60,7 @@ export async function POST(request: Request) {
           credibility,
         });
       } catch (aiError) {
-        console.error('AI generation failed, falling back to default:', aiError);
+        logApiError('funnel/generate-content/ai', aiError, { leadMagnetId, note: 'Falling back to default' });
         content = generateDefaultOptinContent(
           leadMagnet.title,
           leadMagnet.concept as LeadMagnetConcept | null
@@ -77,7 +75,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ content });
   } catch (error) {
-    console.error('Generate content error:', error);
-    return NextResponse.json({ error: 'Failed to generate content' }, { status: 500 });
+    logApiError('funnel/generate-content', error);
+    return ApiErrors.internalError('Failed to generate content');
   }
 }
