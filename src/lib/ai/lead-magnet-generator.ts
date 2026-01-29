@@ -784,7 +784,7 @@ Return ONLY valid JSON:
 }`;
 
   const response = await getAnthropicClient().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-opus-4-5-20251101',
     max_tokens: 8000,
     messages: [{ role: 'user', content: prompt }],
   });
