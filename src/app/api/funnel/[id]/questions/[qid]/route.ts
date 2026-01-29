@@ -7,8 +7,11 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import {
   qualificationQuestionFromRow,
   type QualificationQuestionRow,
+  type AnswerType,
 } from '@/lib/types/funnel';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+
+const VALID_ANSWER_TYPES: AnswerType[] = ['yes_no', 'text', 'textarea', 'multiple_choice'];
 
 interface RouteParams {
   params: Promise<{ id: string; qid: string }>;
@@ -47,11 +50,26 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (body.questionOrder !== undefined) {
       updateData.question_order = body.questionOrder;
     }
-    if (body.qualifyingAnswer !== undefined) {
-      if (!['yes', 'no'].includes(body.qualifyingAnswer)) {
-        return ApiErrors.validationError('qualifyingAnswer must be "yes" or "no"');
+    if (body.answerType !== undefined) {
+      if (!VALID_ANSWER_TYPES.includes(body.answerType)) {
+        return ApiErrors.validationError('answerType must be one of: yes_no, text, textarea, multiple_choice');
       }
+      updateData.answer_type = body.answerType;
+    }
+    if (body.qualifyingAnswer !== undefined) {
       updateData.qualifying_answer = body.qualifyingAnswer;
+    }
+    if (body.options !== undefined) {
+      updateData.options = body.options;
+    }
+    if (body.placeholder !== undefined) {
+      updateData.placeholder = body.placeholder;
+    }
+    if (body.isQualifying !== undefined) {
+      updateData.is_qualifying = body.isQualifying;
+    }
+    if (body.isRequired !== undefined) {
+      updateData.is_required = body.isRequired;
     }
 
     if (Object.keys(updateData).length === 0) {

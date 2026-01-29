@@ -66,10 +66,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       .eq('id', funnel.lead_magnet_id)
       .single();
 
-    // Get qualification questions
+    // Get qualification/survey questions
     const { data: questions } = await supabase
       .from('qualification_questions')
-      .select('id, question_text, question_order')
+      .select('id, question_text, question_order, answer_type, options, placeholder, is_required')
       .eq('funnel_page_id', funnel.id)
       .order('question_order', { ascending: true });
 
@@ -94,6 +94,10 @@ export async function GET(request: Request, { params }: RouteParams) {
         id: q.id,
         questionText: q.question_text,
         questionOrder: q.question_order,
+        answerType: (q.answer_type || 'yes_no') as import('@/lib/types/funnel').AnswerType,
+        options: q.options || null,
+        placeholder: q.placeholder || null,
+        isRequired: q.is_required ?? true,
       })),
     };
 

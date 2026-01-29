@@ -16,6 +16,7 @@ interface MockChainable {
   update: jest.Mock;
   eq: jest.Mock;
   gte: jest.Mock;
+  order: jest.Mock;
   single: jest.Mock;
   _setTableResult: (table: string, result: { data: unknown; error: unknown }) => void;
   _setSingleResults: (table: string, results: Array<{ data: unknown; error: unknown }>) => void;
@@ -45,16 +46,19 @@ function createMockSupabase(): MockChainable {
     insert: jest.fn(() => chainable),
     update: jest.fn(() => chainable),
     eq: jest.fn(() => {
-      // For qualification_questions, eq resolves directly (no .single())
-      if (currentTable === 'qualification_questions') {
-        return Promise.resolve(tableResults[currentTable] || { data: [], error: null });
-      }
       return chainable;
     }),
     gte: jest.fn(() => {
       // For rate limit queries (head: true), resolve with count: 0
       if (isHeadQuery) {
         return Promise.resolve({ count: 0, error: null });
+      }
+      return chainable;
+    }),
+    order: jest.fn(() => {
+      // For qualification_questions, order is the terminal call (no .single())
+      if (currentTable === 'qualification_questions') {
+        return Promise.resolve(tableResults[currentTable] || { data: [], error: null });
       }
       return chainable;
     }),
@@ -368,7 +372,6 @@ describe('Public Lead Capture API', () => {
       const leadId = '550e8400-e29b-41d4-a716-446655440001';
       const funnelPageId = '550e8400-e29b-41d4-a716-446655440002';
       const userId = '550e8400-e29b-41d4-a716-446655440003';
-      const leadMagnetId = '550e8400-e29b-41d4-a716-446655440004';
 
       // Setup funnel_leads results for: get lead, then update lead
       mockSupabaseClient._setSingleResults('funnel_leads', [
@@ -394,20 +397,18 @@ describe('Public Lead Capture API', () => {
         },
       ]);
 
-      // qualification_questions uses eq which resolves directly (no .single())
+      // qualification_questions now resolved via .order() with full fields
       mockSupabaseClient._setTableResult('qualification_questions', {
         data: [
-          { id: 'q-1', qualifying_answer: 'yes' },
-          { id: 'q-2', qualifying_answer: 'no' },
+          { id: 'q-1', question_text: 'Do you use LinkedIn?', answer_type: 'yes_no', qualifying_answer: 'yes', is_qualifying: true, is_required: true },
+          { id: 'q-2', question_text: 'Do you have a funnel?', answer_type: 'yes_no', qualifying_answer: 'no', is_qualifying: true, is_required: true },
         ],
         error: null,
       });
 
+      // funnel_pages now uses join: select('slug, lead_magnets(title)')
       mockSupabaseClient._setSingleResults('funnel_pages', [
-        { data: { slug: 'test', lead_magnet_id: leadMagnetId }, error: null },
-      ]);
-      mockSupabaseClient._setSingleResults('lead_magnets', [
-        { data: { title: 'Test Lead Magnet' }, error: null },
+        { data: { slug: 'test', lead_magnets: { title: 'Test Lead Magnet' } }, error: null },
       ]);
 
       const request = new Request('http://localhost:3000/api/public/lead', {
@@ -431,7 +432,6 @@ describe('Public Lead Capture API', () => {
       const leadId = '550e8400-e29b-41d4-a716-446655440010';
       const funnelPageId = '550e8400-e29b-41d4-a716-446655440011';
       const userId = '550e8400-e29b-41d4-a716-446655440012';
-      const leadMagnetId = '550e8400-e29b-41d4-a716-446655440013';
 
       mockSupabaseClient._setSingleResults('funnel_leads', [
         {
@@ -458,17 +458,15 @@ describe('Public Lead Capture API', () => {
 
       mockSupabaseClient._setTableResult('qualification_questions', {
         data: [
-          { id: 'q-1', qualifying_answer: 'yes' },
-          { id: 'q-2', qualifying_answer: 'yes' }, // Needs 'yes'
+          { id: 'q-1', question_text: 'Do you use LinkedIn?', answer_type: 'yes_no', qualifying_answer: 'yes', is_qualifying: true, is_required: true },
+          { id: 'q-2', question_text: 'Do you have a team?', answer_type: 'yes_no', qualifying_answer: 'yes', is_qualifying: true, is_required: true }, // Needs 'yes'
         ],
         error: null,
       });
 
+      // funnel_pages now uses join: select('slug, lead_magnets(title)')
       mockSupabaseClient._setSingleResults('funnel_pages', [
-        { data: { slug: 'test', lead_magnet_id: leadMagnetId }, error: null },
-      ]);
-      mockSupabaseClient._setSingleResults('lead_magnets', [
-        { data: { title: 'Test' }, error: null },
+        { data: { slug: 'test', lead_magnets: { title: 'Test' } }, error: null },
       ]);
 
       const request = new Request('http://localhost:3000/api/public/lead', {

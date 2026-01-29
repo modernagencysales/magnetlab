@@ -39,7 +39,7 @@ export type LeadCaptureInput = z.infer<typeof leadCaptureSchema>;
 
 export const leadQualificationSchema = z.object({
   leadId: z.string({ required_error: 'leadId is required' }).uuid('Invalid leadId format'),
-  answers: z.record(z.enum(['yes', 'no']), { required_error: 'answers is required' }),
+  answers: z.record(z.string(), { required_error: 'answers is required' }),
 });
 
 export type LeadQualificationInput = z.infer<typeof leadQualificationSchema>;

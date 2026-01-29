@@ -46,13 +46,19 @@ export interface FunnelPage {
 // ============================================
 
 export type QualifyingAnswer = 'yes' | 'no';
+export type AnswerType = 'yes_no' | 'text' | 'textarea' | 'multiple_choice';
 
 export interface QualificationQuestion {
   id: string;
   funnelPageId: string;
   questionText: string;
   questionOrder: number;
-  qualifyingAnswer: QualifyingAnswer;
+  answerType: AnswerType;
+  qualifyingAnswer: string | string[] | null; // "yes"/"no" for yes_no, string[] for multiple_choice, null if not qualifying
+  options: string[] | null; // For multiple_choice
+  placeholder: string | null; // For text/textarea
+  isQualifying: boolean;
+  isRequired: boolean;
   createdAt: string;
 }
 
@@ -129,13 +135,23 @@ export interface UpdateFunnelPagePayload {
 export interface CreateQuestionPayload {
   questionText: string;
   questionOrder?: number;
-  qualifyingAnswer: QualifyingAnswer;
+  answerType?: AnswerType;
+  qualifyingAnswer?: string | string[] | null;
+  options?: string[] | null;
+  placeholder?: string | null;
+  isQualifying?: boolean;
+  isRequired?: boolean;
 }
 
 export interface UpdateQuestionPayload {
   questionText?: string;
   questionOrder?: number;
-  qualifyingAnswer?: QualifyingAnswer;
+  answerType?: AnswerType;
+  qualifyingAnswer?: string | string[] | null;
+  options?: string[] | null;
+  placeholder?: string | null;
+  isQualifying?: boolean;
+  isRequired?: boolean;
 }
 
 export interface CaptureLeadPayload {
@@ -148,7 +164,7 @@ export interface CaptureLeadPayload {
 
 export interface SubmitQualificationPayload {
   leadId: string;
-  answers: Record<string, 'yes' | 'no'>;
+  answers: Record<string, string>;
 }
 
 export interface CreateWebhookPayload {
@@ -200,11 +216,15 @@ export interface PublicFunnelPageData {
   userName: string | null;
   userAvatar: string | null;
 
-  // Questions for qualification
+  // Questions for qualification/survey
   questions: Array<{
     id: string;
     questionText: string;
     questionOrder: number;
+    answerType: AnswerType;
+    options: string[] | null;
+    placeholder: string | null;
+    isRequired: boolean;
   }>;
 }
 
@@ -221,6 +241,7 @@ export interface WebhookLeadPayload {
     name: string | null;
     isQualified: boolean | null;
     qualificationAnswers: Record<string, string> | null;
+    surveyAnswers: Record<string, string> | null;
     leadMagnetTitle: string;
     funnelPageSlug: string;
     utmSource: string | null;
@@ -264,7 +285,12 @@ export interface QualificationQuestionRow {
   funnel_page_id: string;
   question_text: string;
   question_order: number;
-  qualifying_answer: string;
+  answer_type: string;
+  qualifying_answer: unknown; // JSONB: string, string[], or null
+  options: string[] | null;
+  placeholder: string | null;
+  is_qualifying: boolean;
+  is_required: boolean;
   created_at: string;
 }
 
@@ -325,12 +351,27 @@ export function funnelPageFromRow(row: FunnelPageRow): FunnelPage {
 }
 
 export function qualificationQuestionFromRow(row: QualificationQuestionRow): QualificationQuestion {
+  // qualifying_answer is JSONB: could be a string ("yes"), an array (["$10k+"]), or null
+  let qualifyingAnswer: string | string[] | null = null;
+  if (row.qualifying_answer !== null && row.qualifying_answer !== undefined) {
+    if (Array.isArray(row.qualifying_answer)) {
+      qualifyingAnswer = row.qualifying_answer as string[];
+    } else if (typeof row.qualifying_answer === 'string') {
+      qualifyingAnswer = row.qualifying_answer;
+    }
+  }
+
   return {
     id: row.id,
     funnelPageId: row.funnel_page_id,
     questionText: row.question_text,
     questionOrder: row.question_order,
-    qualifyingAnswer: row.qualifying_answer as QualifyingAnswer,
+    answerType: (row.answer_type || 'yes_no') as AnswerType,
+    qualifyingAnswer,
+    options: row.options || null,
+    placeholder: row.placeholder || null,
+    isQualifying: row.is_qualifying ?? true,
+    isRequired: row.is_required ?? true,
     createdAt: row.created_at,
   };
 }

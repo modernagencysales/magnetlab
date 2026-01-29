@@ -341,8 +341,12 @@ export function FunnelPreview({
                 <span className="text-muted-foreground truncate">
                   {q.questionText}
                 </span>
-                <span className="ml-auto text-xs text-green-600 dark:text-green-400">
-                  {q.qualifyingAnswer === 'yes' ? 'Yes' : 'No'} = Qualified
+                <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                  {q.isQualifying ? (
+                    <span className="text-green-600 dark:text-green-400">Qualifying</span>
+                  ) : (
+                    <span>{q.answerType === 'yes_no' ? 'Yes/No' : q.answerType === 'text' ? 'Text' : q.answerType === 'textarea' ? 'Long text' : 'Choice'}</span>
+                  )}
                 </span>
               </div>
             ))}

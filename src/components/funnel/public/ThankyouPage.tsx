@@ -5,10 +5,16 @@ import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { VideoEmbed } from './VideoEmbed';
 import { CalendlyEmbed } from './CalendlyEmbed';
 
+type AnswerType = 'yes_no' | 'text' | 'textarea' | 'multiple_choice';
+
 interface Question {
   id: string;
   questionText: string;
   questionOrder: number;
+  answerType: AnswerType;
+  options: string[] | null;
+  placeholder: string | null;
+  isRequired: boolean;
 }
 
 interface ThankyouPageProps {
@@ -45,7 +51,8 @@ export function ThankyouPage({
   leadMagnetTitle,
 }: ThankyouPageProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, 'yes' | 'no'>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [currentTextValue, setCurrentTextValue] = useState('');
   const [qualificationComplete, setQualificationComplete] = useState(questions.length === 0);
   const [isQualified, setIsQualified] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -78,44 +85,75 @@ export function ThankyouPage({
   const currentQuestion = questions[currentQuestionIndex];
   const hasQuestions = questions.length > 0;
 
-  const handleAnswer = async (answer: 'yes' | 'no') => {
-    if (!currentQuestion) return;
+  const submitAllAnswers = async (finalAnswers: Record<string, string>) => {
+    setSubmitting(true);
+    try {
+      if (leadId) {
+        const response = await fetch('/api/public/lead', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ leadId, answers: finalAnswers }),
+        });
 
-    const newAnswers = { ...answers, [currentQuestion.id]: answer };
-    setAnswers(newAnswers);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to submit answers');
+        }
+
+        setIsQualified(data.isQualified);
+      }
+      setQualificationComplete(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      console.error('Error submitting qualification:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const advanceOrSubmit = (newAnswers: Record<string, string>) => {
     setError(null);
+    setCurrentTextValue('');
 
     if (currentQuestionIndex < questions.length - 1) {
-      // More questions to go
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      // All questions answered, submit
-      setSubmitting(true);
-
-      try {
-        if (leadId) {
-          const response = await fetch('/api/public/lead', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ leadId, answers: newAnswers }),
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || 'Failed to submit answers');
-          }
-
-          setIsQualified(data.isQualified);
-        }
-        setQualificationComplete(true);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-        console.error('Error submitting qualification:', err);
-      } finally {
-        setSubmitting(false);
-      }
+      submitAllAnswers(newAnswers);
     }
+  };
+
+  const handleYesNoAnswer = (answer: 'yes' | 'no') => {
+    if (!currentQuestion) return;
+    const newAnswers = { ...answers, [currentQuestion.id]: answer };
+    setAnswers(newAnswers);
+    advanceOrSubmit(newAnswers);
+  };
+
+  const handleTextSubmit = () => {
+    if (!currentQuestion) return;
+    if (currentQuestion.isRequired && !currentTextValue.trim()) {
+      setError('This question requires an answer.');
+      return;
+    }
+    const newAnswers = { ...answers, [currentQuestion.id]: currentTextValue.trim() };
+    setAnswers(newAnswers);
+    advanceOrSubmit(newAnswers);
+  };
+
+  const handleMultipleChoiceSelect = (option: string) => {
+    if (!currentQuestion) return;
+    const newAnswers = { ...answers, [currentQuestion.id]: option };
+    setAnswers(newAnswers);
+    advanceOrSubmit(newAnswers);
+  };
+
+  const handleSkip = () => {
+    if (!currentQuestion) return;
+    const newAnswers = { ...answers };
+    // Don't add an answer for skipped questions
+    setAnswers(newAnswers);
+    advanceOrSubmit(newAnswers);
   };
 
   // If no questions, determine qualification (default to qualified)
@@ -233,22 +271,141 @@ export function ThankyouPage({
                   {currentQuestion?.questionText}
                 </p>
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleAnswer('yes')}
-                    className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
-                    style={{ background: cardBg, border: `1px solid ${borderColor}`, color: textColor }}
-                  >
-                    Yes
-                  </button>
-                  <button
-                    onClick={() => handleAnswer('no')}
-                    className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
-                    style={{ background: cardBg, border: `1px solid ${borderColor}`, color: textColor }}
-                  >
-                    No
-                  </button>
-                </div>
+                {/* Yes/No buttons */}
+                {currentQuestion?.answerType === 'yes_no' && (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleYesNoAnswer('yes')}
+                      className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
+                      style={{ background: cardBg, border: `1px solid ${borderColor}`, color: textColor }}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => handleYesNoAnswer('no')}
+                      className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
+                      style={{ background: cardBg, border: `1px solid ${borderColor}`, color: textColor }}
+                    >
+                      No
+                    </button>
+                  </div>
+                )}
+
+                {/* Short text input */}
+                {currentQuestion?.answerType === 'text' && (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={currentTextValue}
+                      onChange={(e) => setCurrentTextValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
+                      placeholder={currentQuestion.placeholder || 'Type your answer...'}
+                      className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors"
+                      style={{ background: cardBg, border: `1px solid ${borderColor}`, color: textColor }}
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-between">
+                      {!currentQuestion.isRequired && (
+                        <button
+                          onClick={handleSkip}
+                          className="text-sm transition-colors"
+                          style={{ color: placeholderColor }}
+                        >
+                          Skip
+                        </button>
+                      )}
+                      <button
+                        onClick={handleTextSubmit}
+                        className="ml-auto rounded-lg px-6 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+                        style={{ background: primaryColor, color: '#FFFFFF' }}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Long text (textarea) input */}
+                {currentQuestion?.answerType === 'textarea' && (
+                  <div className="space-y-3">
+                    <textarea
+                      value={currentTextValue}
+                      onChange={(e) => setCurrentTextValue(e.target.value)}
+                      placeholder={currentQuestion.placeholder || 'Type your answer...'}
+                      rows={4}
+                      className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors resize-none"
+                      style={{ background: cardBg, border: `1px solid ${borderColor}`, color: textColor }}
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-between">
+                      {!currentQuestion.isRequired && (
+                        <button
+                          onClick={handleSkip}
+                          className="text-sm transition-colors"
+                          style={{ color: placeholderColor }}
+                        >
+                          Skip
+                        </button>
+                      )}
+                      <button
+                        onClick={handleTextSubmit}
+                        className="ml-auto rounded-lg px-6 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+                        style={{ background: primaryColor, color: '#FFFFFF' }}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Multiple choice radio buttons */}
+                {currentQuestion?.answerType === 'multiple_choice' && currentQuestion.options && (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      {currentQuestion.options.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => handleMultipleChoiceSelect(option)}
+                          className="w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition-colors"
+                          style={{ background: cardBg, border: `1px solid ${borderColor}`, color: textColor }}
+                          onMouseEnter={(e) => (e.currentTarget.style.borderColor = primaryColor)}
+                          onMouseLeave={(e) => (e.currentTarget.style.borderColor = borderColor)}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                    {!currentQuestion.isRequired && (
+                      <button
+                        onClick={handleSkip}
+                        className="text-sm transition-colors"
+                        style={{ color: placeholderColor }}
+                      >
+                        Skip
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Fallback for unknown type - treat as yes/no */}
+                {currentQuestion && !['yes_no', 'text', 'textarea', 'multiple_choice'].includes(currentQuestion.answerType) && (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleYesNoAnswer('yes')}
+                      className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
+                      style={{ background: cardBg, border: `1px solid ${borderColor}`, color: textColor }}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => handleYesNoAnswer('no')}
+                      className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
+                      style={{ background: cardBg, border: `1px solid ${borderColor}`, color: textColor }}
+                    >
+                      No
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>

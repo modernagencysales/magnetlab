@@ -38,6 +38,7 @@ describe('Webhook Sender', () => {
     name: 'John Doe',
     isQualified: true,
     qualificationAnswers: { 'q-1': 'yes' },
+    surveyAnswers: null as Record<string, string> | null,
     leadMagnetTitle: 'Free Guide',
     funnelPageSlug: 'my-funnel',
     utmSource: 'linkedin',

@@ -135,6 +135,7 @@ export async function POST(request: Request) {
       name: lead.name,
       isQualified: null,
       qualificationAnswers: null,
+      surveyAnswers: null,
       leadMagnetTitle: leadMagnet?.title || '',
       funnelPageSlug: funnel.slug,
       utmSource: lead.utm_source,
@@ -191,11 +192,12 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Lead not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
-    // Get qualifying answers for questions
+    // Get questions with full data for qualification logic
     const { data: questions } = await supabase
       .from('qualification_questions')
-      .select('id, qualifying_answer')
-      .eq('funnel_page_id', lead.funnel_page_id);
+      .select('id, question_text, answer_type, qualifying_answer, is_qualifying, is_required')
+      .eq('funnel_page_id', lead.funnel_page_id)
+      .order('question_order', { ascending: true });
 
     // Validate answers if there are questions
     if (questions && questions.length > 0) {
@@ -212,36 +214,57 @@ export async function PATCH(request: Request) {
         }
       }
 
-      // Validate all answer values are 'yes' or 'no'
-      for (const value of Object.values(answers)) {
-        if (value !== 'yes' && value !== 'no') {
+      // Validate required questions are answered
+      for (const q of questions) {
+        if (q.is_required && !(q.id in answers)) {
           return NextResponse.json(
-            { error: 'Answer values must be "yes" or "no"' },
+            { error: 'All required questions must be answered' },
             { status: 400 }
           );
         }
       }
 
-      // Validate all questions are answered
+      // Validate yes_no answers are valid
       for (const q of questions) {
-        if (!(q.id in answers)) {
-          return NextResponse.json(
-            { error: 'All questions must be answered' },
-            { status: 400 }
-          );
+        if (q.answer_type === 'yes_no' && q.id in answers) {
+          const val = answers[q.id];
+          if (val !== 'yes' && val !== 'no') {
+            return NextResponse.json(
+              { error: 'Yes/No answer values must be "yes" or "no"' },
+              { status: 400 }
+            );
+          }
         }
       }
     }
 
-    // Calculate if qualified (all answers must match qualifying_answer)
+    // Calculate qualification: only is_qualifying questions affect the result
     let isQualified = true;
     if (questions && questions.length > 0) {
-      for (const q of questions) {
+      const qualifyingQuestions = questions.filter(q => q.is_qualifying);
+      for (const q of qualifyingQuestions) {
         const userAnswer = answers[q.id];
-        if (userAnswer !== q.qualifying_answer) {
+        if (!userAnswer) {
           isQualified = false;
           break;
         }
+
+        const qualAnswer = q.qualifying_answer;
+        if (q.answer_type === 'yes_no') {
+          // JSONB stored as string: compare directly
+          if (userAnswer !== qualAnswer) {
+            isQualified = false;
+            break;
+          }
+        } else if (q.answer_type === 'multiple_choice') {
+          // qualifying_answer is an array of acceptable options
+          const acceptableOptions = Array.isArray(qualAnswer) ? qualAnswer : [];
+          if (!acceptableOptions.includes(userAnswer)) {
+            isQualified = false;
+            break;
+          }
+        }
+        // text and textarea are never qualifying (enforced by design)
       }
     }
 
@@ -268,6 +291,22 @@ export async function PATCH(request: Request) {
       .eq('id', lead.funnel_page_id)
       .single();
 
+    // Build flat surveyAnswers using slugified question text as keys
+    let surveyAnswers: Record<string, string> | null = null;
+    if (questions && questions.length > 0) {
+      surveyAnswers = {};
+      for (const q of questions) {
+        if (q.id in answers) {
+          const key = q.question_text
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, '')
+            .replace(/\s+/g, '_')
+            .slice(0, 60);
+          surveyAnswers[key] = answers[q.id];
+        }
+      }
+    }
+
     // Deliver webhook with updated info
     const leadMagnets = funnel?.lead_magnets as { title: string } | { title: string }[] | null;
     const leadMagnetTitle = Array.isArray(leadMagnets) ? leadMagnets[0]?.title || '' : leadMagnets?.title || '';
@@ -277,6 +316,7 @@ export async function PATCH(request: Request) {
       name: lead.name,
       isQualified,
       qualificationAnswers: answers,
+      surveyAnswers,
       leadMagnetTitle,
       funnelPageSlug: funnel?.slug || '',
       utmSource: updatedLead.utm_source,

@@ -7,8 +7,11 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import {
   qualificationQuestionFromRow,
   type QualificationQuestionRow,
+  type AnswerType,
 } from '@/lib/types/funnel';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+
+const VALID_ANSWER_TYPES: AnswerType[] = ['yes_no', 'text', 'textarea', 'multiple_choice'];
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -75,8 +78,34 @@ export async function POST(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('questionText is required');
     }
 
-    if (!body.qualifyingAnswer || !['yes', 'no'].includes(body.qualifyingAnswer)) {
-      return ApiErrors.validationError('qualifyingAnswer must be "yes" or "no"');
+    const answerType: AnswerType = body.answerType || 'yes_no';
+    if (!VALID_ANSWER_TYPES.includes(answerType)) {
+      return ApiErrors.validationError('answerType must be one of: yes_no, text, textarea, multiple_choice');
+    }
+
+    // Validate options for multiple_choice
+    if (answerType === 'multiple_choice') {
+      if (!body.options || !Array.isArray(body.options) || body.options.length < 2) {
+        return ApiErrors.validationError('multiple_choice questions require at least 2 options');
+      }
+    }
+
+    // Determine qualifying answer
+    const isQualifying = body.isQualifying ?? (answerType === 'yes_no');
+    let qualifyingAnswer = null;
+
+    if (isQualifying) {
+      if (answerType === 'yes_no') {
+        qualifyingAnswer = body.qualifyingAnswer || 'yes';
+        if (qualifyingAnswer !== 'yes' && qualifyingAnswer !== 'no') {
+          return ApiErrors.validationError('qualifyingAnswer must be "yes" or "no" for yes_no questions');
+        }
+      } else if (answerType === 'multiple_choice') {
+        qualifyingAnswer = body.qualifyingAnswer || null;
+        if (qualifyingAnswer && !Array.isArray(qualifyingAnswer)) {
+          return ApiErrors.validationError('qualifyingAnswer must be an array for multiple_choice questions');
+        }
+      }
     }
 
     // Verify funnel ownership
@@ -109,7 +138,12 @@ export async function POST(request: Request, { params }: RouteParams) {
         funnel_page_id: id,
         question_text: body.questionText,
         question_order: nextOrder,
-        qualifying_answer: body.qualifyingAnswer,
+        answer_type: answerType,
+        qualifying_answer: qualifyingAnswer,
+        options: answerType === 'multiple_choice' ? body.options : null,
+        placeholder: body.placeholder || null,
+        is_qualifying: isQualifying,
+        is_required: body.isRequired ?? true,
       })
       .select()
       .single();

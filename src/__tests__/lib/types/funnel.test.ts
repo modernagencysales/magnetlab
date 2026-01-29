@@ -93,7 +93,12 @@ describe('Funnel Type Conversions', () => {
       funnel_page_id: 'funnel-456',
       question_text: 'Do you have a team?',
       question_order: 0,
+      answer_type: 'yes_no',
       qualifying_answer: 'yes',
+      options: null,
+      placeholder: null,
+      is_qualifying: true,
+      is_required: true,
       created_at: '2025-01-25T00:00:00Z',
     };
 
@@ -105,17 +110,53 @@ describe('Funnel Type Conversions', () => {
         funnelPageId: 'funnel-456',
         questionText: 'Do you have a team?',
         questionOrder: 0,
+        answerType: 'yes_no',
         qualifyingAnswer: 'yes',
+        options: null,
+        placeholder: null,
+        isQualifying: true,
+        isRequired: true,
         createdAt: '2025-01-25T00:00:00Z',
       });
     });
 
-    it('should preserve qualifyingAnswer as "yes" or "no"', () => {
+    it('should preserve qualifyingAnswer as "yes" or "no" for yes_no type', () => {
       const yesRow: QualificationQuestionRow = { ...mockRow, qualifying_answer: 'yes' };
       const noRow: QualificationQuestionRow = { ...mockRow, qualifying_answer: 'no' };
 
       expect(qualificationQuestionFromRow(yesRow).qualifyingAnswer).toBe('yes');
       expect(qualificationQuestionFromRow(noRow).qualifyingAnswer).toBe('no');
+    });
+
+    it('should handle array qualifyingAnswer for multiple_choice', () => {
+      const mcRow: QualificationQuestionRow = {
+        ...mockRow,
+        answer_type: 'multiple_choice',
+        qualifying_answer: ['$10k+', '$5-10k'],
+        options: ['$0-5k', '$5-10k', '$10k+'],
+        is_qualifying: true,
+      };
+
+      const result = qualificationQuestionFromRow(mcRow);
+      expect(result.answerType).toBe('multiple_choice');
+      expect(result.qualifyingAnswer).toEqual(['$10k+', '$5-10k']);
+      expect(result.options).toEqual(['$0-5k', '$5-10k', '$10k+']);
+    });
+
+    it('should handle null qualifyingAnswer for non-qualifying questions', () => {
+      const textRow: QualificationQuestionRow = {
+        ...mockRow,
+        answer_type: 'text',
+        qualifying_answer: null,
+        is_qualifying: false,
+        placeholder: 'Enter your name',
+      };
+
+      const result = qualificationQuestionFromRow(textRow);
+      expect(result.answerType).toBe('text');
+      expect(result.qualifyingAnswer).toBeNull();
+      expect(result.isQualifying).toBe(false);
+      expect(result.placeholder).toBe('Enter your name');
     });
   });
 

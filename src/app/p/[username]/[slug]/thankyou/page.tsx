@@ -94,10 +94,10 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
   const hasContent = !!(leadMagnet?.polished_content || leadMagnet?.extracted_content);
   const contentPageUrl = hasContent ? `/p/${username}/${slug}/content` : null;
 
-  // Get qualification questions
+  // Get qualification/survey questions
   const { data: questions } = await supabase
     .from('qualification_questions')
-    .select('id, question_text, question_order')
+    .select('id, question_text, question_order, answer_type, options, placeholder, is_required')
     .eq('funnel_page_id', funnel.id)
     .order('question_order', { ascending: true });
 
@@ -114,6 +114,10 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
         id: q.id,
         questionText: q.question_text,
         questionOrder: q.question_order,
+        answerType: (q.answer_type || 'yes_no') as 'yes_no' | 'text' | 'textarea' | 'multiple_choice',
+        options: q.options || null,
+        placeholder: q.placeholder || null,
+        isRequired: q.is_required ?? true,
       }))}
       theme={(funnel.theme as 'dark' | 'light') || 'dark'}
       primaryColor={funnel.primary_color || '#8b5cf6'}
