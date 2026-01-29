@@ -70,6 +70,19 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
         </div>
       )}
 
+      {/* Primary action: Open content page (when polished) */}
+      {contentUrl && hasPolished && (
+        <a
+          href={contentUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-4 py-3 text-sm font-medium text-white hover:bg-violet-600 transition-colors w-full"
+        >
+          <ExternalLink className="h-4 w-4" />
+          Open Content Page
+        </a>
+      )}
+
       {/* Polish status */}
       {hasPolished && polished ? (
         <div className="rounded-lg border p-4 space-y-3">
@@ -100,33 +113,23 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
         </div>
       ) : null}
 
-      {/* Actions */}
-      <div className="flex gap-3">
-        <button
-          onClick={handlePolish}
-          disabled={polishing}
-          className="flex items-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 disabled:opacity-50 transition-colors"
-        >
-          {polishing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          {hasPolished ? 'Re-polish Content' : 'Polish Content with AI'}
-        </button>
-
-        {contentUrl && hasPolished && (
-          <a
-            href={contentUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Preview Content Page
-          </a>
+      {/* Secondary: Polish / Re-polish */}
+      <button
+        onClick={handlePolish}
+        disabled={polishing}
+        className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+          hasPolished
+            ? 'border hover:bg-muted/50'
+            : 'bg-violet-500 text-white hover:bg-violet-600'
+        } disabled:opacity-50`}
+      >
+        {polishing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Sparkles className="h-4 w-4" />
         )}
-      </div>
+        {hasPolished ? 'Re-polish Content' : 'Polish Content with AI'}
+      </button>
     </div>
   );
 }

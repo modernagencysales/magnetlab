@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { Loader2 } from 'lucide-react';
 import { ContentHeader } from './ContentHeader';
 import { ContentHero } from './ContentHero';
 import { TableOfContents } from './TableOfContents';
 import { PolishedContentRenderer } from './PolishedContentRenderer';
+import { EditablePolishedContentRenderer } from './EditablePolishedContentRenderer';
 import { ExtractedContentRenderer } from './ExtractedContentRenderer';
 import { ContentFooter } from './ContentFooter';
 import { VideoEmbed } from '@/components/funnel/public/VideoEmbed';
-import { CalendlyEmbed } from '@/components/funnel/public/CalendlyEmbed';
+import { BookCallDrawer } from './BookCallDrawer';
 import type { PolishedContent, ExtractedContent, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 
 interface ContentPageClientProps {
@@ -22,6 +24,12 @@ interface ContentPageClientProps {
   logoUrl: string | null;
   vslUrl: string | null;
   calendlyUrl: string | null;
+  isOwner?: boolean;
+  leadMagnetId?: string;
+  funnelPageId?: string;
+  leadId?: string | null;
+  isQualified?: boolean | null;
+  hasQuestions?: boolean;
 }
 
 export function ContentPageClient({
@@ -33,28 +41,85 @@ export function ContentPageClient({
   logoUrl,
   vslUrl,
   calendlyUrl,
+  isOwner = false,
+  leadMagnetId,
+  funnelPageId,
+  leadId,
+  isQualified = null,
+  hasQuestions = false,
 }: ContentPageClientProps) {
   const [isDark, setIsDark] = useState(initialTheme === 'dark');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState<PolishedContent | null>(polishedContent);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const bgColor = isDark ? '#09090B' : '#FAFAFA';
+  const borderColor = isDark ? '#27272A' : '#E4E4E7';
+  const textColor = isDark ? '#FAFAFA' : '#09090B';
+
+  // The content to display (edited or original)
+  const displayContent = isEditing ? editContent : polishedContent;
 
   // Build TOC sections
-  const tocSections = polishedContent
-    ? polishedContent.sections.map((s) => ({ id: s.id, name: s.sectionName }))
+  const tocSections = displayContent
+    ? displayContent.sections.map((s) => ({ id: s.id, name: s.sectionName }))
     : extractedContent
       ? extractedContent.structure.map((s, i) => ({ id: `section-${i}`, name: s.sectionName }))
       : [];
 
-  const heroSummary = polishedContent?.heroSummary || null;
-  const readingTime = polishedContent?.metadata?.readingTimeMinutes || null;
-  const wordCount = polishedContent?.metadata?.wordCount || null;
+  const heroSummary = displayContent?.heroSummary || null;
+  const readingTime = displayContent?.metadata?.readingTimeMinutes || null;
+  const wordCount = displayContent?.metadata?.wordCount || null;
+
+  const handleToggleEdit = useCallback(() => {
+    if (isEditing) {
+      // Discard changes
+      setEditContent(polishedContent);
+    }
+    setIsEditing(!isEditing);
+    setSaveError(null);
+  }, [isEditing, polishedContent]);
+
+  const handleSave = async () => {
+    if (!editContent || !leadMagnetId) return;
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      const response = await fetch(`/api/lead-magnet/${leadMagnetId}/content`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ polishedContent: editContent }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to save');
+      }
+
+      // Exit edit mode after successful save
+      setIsEditing(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Show sticky CTA when calendly is configured, user has a leadId, and not in edit mode
+  const showStickyCta = !!calendlyUrl && !!leadId && !!funnelPageId && !isEditing;
 
   return (
-    <div style={{ background: bgColor, minHeight: '100vh' }}>
+    <div style={{ background: bgColor, minHeight: '100vh', paddingBottom: showStickyCta ? '5rem' : undefined }}>
       <ContentHeader
         logoUrl={logoUrl}
         isDark={isDark}
         onToggleTheme={() => setIsDark(!isDark)}
+        isOwner={isOwner}
+        isEditing={isEditing}
+        onToggleEdit={polishedContent ? handleToggleEdit : undefined}
       />
 
       <div
@@ -86,9 +151,16 @@ export function ContentPageClient({
         <div style={{ display: 'flex', gap: '3rem' }}>
           {/* Main content */}
           <div style={{ maxWidth: '700px', flex: 1, minWidth: 0 }}>
-            {polishedContent ? (
+            {isEditing && editContent ? (
+              <EditablePolishedContentRenderer
+                content={editContent}
+                isDark={isDark}
+                primaryColor={primaryColor}
+                onChange={setEditContent}
+              />
+            ) : displayContent ? (
               <PolishedContentRenderer
-                content={polishedContent}
+                content={displayContent}
                 isDark={isDark}
                 primaryColor={primaryColor}
               />
@@ -98,28 +170,10 @@ export function ContentPageClient({
                 isDark={isDark}
               />
             ) : null}
-
-            {/* Calendly */}
-            {calendlyUrl && (
-              <div style={{ marginTop: '3rem' }}>
-                <h2
-                  style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 600,
-                    color: isDark ? '#FAFAFA' : '#09090B',
-                    textAlign: 'center',
-                    marginBottom: '1.5rem',
-                  }}
-                >
-                  Book a Call
-                </h2>
-                <CalendlyEmbed url={calendlyUrl} />
-              </div>
-            )}
           </div>
 
           {/* TOC sidebar */}
-          {tocSections.length > 1 && (
+          {!isEditing && tocSections.length > 1 && (
             <TableOfContents
               sections={tocSections}
               isDark={isDark}
@@ -130,6 +184,133 @@ export function ContentPageClient({
       </div>
 
       <ContentFooter isDark={isDark} />
+
+      {/* Edit mode save bar */}
+      {isEditing && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 60,
+            background: isDark ? 'rgba(9,9,11,0.95)' : 'rgba(250,250,250,0.95)',
+            borderTop: `1px solid ${borderColor}`,
+            backdropFilter: 'blur(12px)',
+            padding: '0.75rem 1.5rem',
+          }}
+        >
+          <div
+            style={{
+              maxWidth: '1100px',
+              margin: '0 auto',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div>
+              {saveError && (
+                <p style={{ color: '#ef4444', fontSize: '0.875rem' }}>{saveError}</p>
+              )}
+              {!saveError && (
+                <p style={{ color: isDark ? '#A1A1AA' : '#71717A', fontSize: '0.875rem' }}>
+                  Editing mode — changes are not saved until you click Save
+                </p>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={handleToggleEdit}
+                disabled={saving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.5rem',
+                  border: `1px solid ${borderColor}`,
+                  background: 'transparent',
+                  color: textColor,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Discard
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.5rem',
+                  border: 'none',
+                  background: primaryColor,
+                  color: '#FFFFFF',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                {saving && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky Book-a-Call CTA */}
+      {showStickyCta && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 60,
+            background: isDark ? 'rgba(9,9,11,0.95)' : 'rgba(250,250,250,0.95)',
+            borderTop: `1px solid ${borderColor}`,
+            backdropFilter: 'blur(12px)',
+            padding: '0.75rem 1.5rem',
+          }}
+        >
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <button
+              onClick={() => setDrawerOpen(true)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                background: primaryColor,
+                color: '#FFFFFF',
+                fontWeight: 600,
+                fontSize: '1rem',
+                cursor: 'pointer',
+              }}
+            >
+              Book a Call
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Book Call Drawer */}
+      {showStickyCta && funnelPageId && leadId && (
+        <BookCallDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          calendlyUrl={calendlyUrl!}
+          funnelPageId={funnelPageId}
+          leadId={leadId}
+          isQualified={isQualified ?? null}
+          hasQuestions={hasQuestions}
+          isDark={isDark}
+          primaryColor={primaryColor}
+        />
+      )}
     </div>
   );
 }

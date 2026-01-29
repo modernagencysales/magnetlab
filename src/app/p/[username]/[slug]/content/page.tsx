@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ContentPageClient } from '@/components/content/ContentPageClient';
 import type { Metadata } from 'next';
@@ -66,6 +67,23 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
   const { leadId } = await searchParams;
   const supabase = createSupabaseAdminClient();
 
+  // Check if viewer is the owner
+  let isOwner = false;
+  try {
+    const session = await auth();
+    if (session?.user?.id) {
+      const { data: ownerCheck } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', session.user.id)
+        .eq('username', username)
+        .single();
+      isOwner = !!ownerCheck;
+    }
+  } catch {
+    // Not logged in — that's fine
+  }
+
   // Find user by username
   const { data: user, error: userError } = await supabase
     .from('users')
@@ -77,8 +95,8 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
     notFound();
   }
 
-  // Find published funnel page
-  const { data: funnel, error: funnelError } = await supabase
+  // Find published funnel page (owners can view unpublished)
+  const query = supabase
     .from('funnel_pages')
     .select(`
       id,
@@ -93,10 +111,19 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       calendly_url
     `)
     .eq('user_id', user.id)
-    .eq('slug', slug)
-    .single();
+    .eq('slug', slug);
 
-  if (funnelError || !funnel || !funnel.is_published) {
+  if (!isOwner) {
+    query.eq('is_published', true);
+  }
+
+  const { data: funnel, error: funnelError } = await query.single();
+
+  if (funnelError || !funnel) {
+    notFound();
+  }
+
+  if (!isOwner && !funnel.is_published) {
     notFound();
   }
 
@@ -111,32 +138,39 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
     notFound();
   }
 
-  // Must have at least extracted content
   if (!leadMagnet.extracted_content && !leadMagnet.polished_content) {
     notFound();
   }
 
-  // Check if lead is qualified (for gating Calendly)
-  let showCalendly = false;
-  if (funnel.calendly_url && leadId) {
+  // Check lead qualification status and whether questions exist
+  let isQualified: boolean | null = null;
+  if (leadId) {
     const { data: lead } = await supabase
       .from('funnel_leads')
       .select('is_qualified')
       .eq('id', leadId)
       .eq('funnel_page_id', funnel.id)
       .single();
-
-    showCalendly = lead?.is_qualified === true;
+    isQualified = lead?.is_qualified ?? null;
   }
 
-  // Track page view (fire-and-forget)
-  supabase
-    .from('page_views')
-    .insert({
-      funnel_page_id: funnel.id,
-      page_type: 'content',
-    })
-    .then(() => {});
+  // Check if funnel has qualification questions
+  let hasQuestions = false;
+  if (funnel.calendly_url) {
+    const { count } = await supabase
+      .from('qualification_questions')
+      .select('*', { count: 'exact', head: true })
+      .eq('funnel_page_id', funnel.id);
+    hasQuestions = (count ?? 0) > 0;
+  }
+
+  // Track page view (fire-and-forget, not for owners)
+  if (!isOwner) {
+    supabase
+      .from('page_views')
+      .insert({ funnel_page_id: funnel.id, page_type: 'content' })
+      .then(() => {});
+  }
 
   return (
     <ContentPageClient
@@ -149,7 +183,13 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       primaryColor={funnel.primary_color || '#8b5cf6'}
       logoUrl={funnel.logo_url}
       vslUrl={funnel.vsl_url}
-      calendlyUrl={showCalendly ? funnel.calendly_url : null}
+      calendlyUrl={funnel.calendly_url}
+      isOwner={isOwner}
+      leadMagnetId={leadMagnet.id}
+      funnelPageId={funnel.id}
+      leadId={leadId || null}
+      isQualified={isQualified}
+      hasQuestions={hasQuestions}
     />
   );
 }
