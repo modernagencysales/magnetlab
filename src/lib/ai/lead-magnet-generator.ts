@@ -67,7 +67,7 @@ Return ONLY valid JSON matching this exact structure:
 }`;
 
   const response = await getAnthropicClient().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5-20241022',
     max_tokens: 4000,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -137,7 +137,7 @@ Return ONLY valid JSON:
 }`;
 
   const response = await getAnthropicClient().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5-20241022',
     max_tokens: 2000,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -278,7 +278,7 @@ Return ONLY valid JSON with this structure:
 }`;
 
   const response = await getAnthropicClient().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5-20241022',
     max_tokens: 8000,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -448,7 +448,7 @@ Return ONLY valid JSON.`;
 
   try {
     const response = await getAnthropicClient().messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20241022',
       max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -542,7 +542,7 @@ Return ONLY valid JSON:
 }`;
 
   const response = await getAnthropicClient().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5-20241022',
     max_tokens: 6000,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -590,7 +590,7 @@ ${ARCHETYPE_QUESTIONS[archetype].map((q) => `- ${q.question.substring(0, 100)}..
 Keep responses concise but thorough. Ask one focused question at a time.`;
 
   const response = await getAnthropicClient().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5-20241022',
     max_tokens: 1000,
     system: systemPrompt,
     messages: messages.map((m) => ({
@@ -690,7 +690,7 @@ export async function extractBusinessContext(
   const prompt = CONTEXT_EXTRACTION_PROMPT.replace('{content}', content) + contextHint;
 
   const response = await getAnthropicClient().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5-20241022',
     max_tokens: 4000,
     messages: [{ role: 'user', content: prompt }],
   });
