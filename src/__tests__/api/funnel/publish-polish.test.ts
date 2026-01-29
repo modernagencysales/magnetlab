@@ -76,10 +76,13 @@ const mockPolishResult = {
   metadata: { readingTimeMinutes: 2, wordCount: 400 },
 };
 
-const mockPolishFn = jest.fn(() => Promise.resolve(mockPolishResult));
+const mockPolishFn = jest.fn<Promise<typeof mockPolishResult>, [unknown, unknown]>(
+  () => Promise.resolve(mockPolishResult)
+);
 
 jest.mock('@/lib/ai/lead-magnet-generator', () => ({
-  polishLeadMagnetContent: (...args: unknown[]) => mockPolishFn.apply(null, args),
+  polishLeadMagnetContent: (extractedContent: unknown, concept: unknown) =>
+    mockPolishFn(extractedContent, concept),
 }));
 
 function makeRequest(id: string, body: unknown) {
