@@ -8,6 +8,7 @@ export const revalidate = 300;
 
 interface PageProps {
   params: Promise<{ username: string; slug: string }>;
+  searchParams: Promise<{ leadId?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -60,8 +61,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function PublicContentPage({ params }: PageProps) {
+export default async function PublicContentPage({ params, searchParams }: PageProps) {
   const { username, slug } = await params;
+  const { leadId } = await searchParams;
   const supabase = createSupabaseAdminClient();
 
   // Find user by username
@@ -114,6 +116,19 @@ export default async function PublicContentPage({ params }: PageProps) {
     notFound();
   }
 
+  // Check if lead is qualified (for gating Calendly)
+  let showCalendly = false;
+  if (funnel.calendly_url && leadId) {
+    const { data: lead } = await supabase
+      .from('funnel_leads')
+      .select('is_qualified')
+      .eq('id', leadId)
+      .eq('funnel_page_id', funnel.id)
+      .single();
+
+    showCalendly = lead?.is_qualified === true;
+  }
+
   // Track page view (fire-and-forget)
   supabase
     .from('page_views')
@@ -134,7 +149,7 @@ export default async function PublicContentPage({ params }: PageProps) {
       primaryColor={funnel.primary_color || '#8b5cf6'}
       logoUrl={funnel.logo_url}
       vslUrl={funnel.vsl_url}
-      calendlyUrl={funnel.calendly_url}
+      calendlyUrl={showCalendly ? funnel.calendly_url : null}
     />
   );
 }

@@ -167,7 +167,7 @@ export function ThankyouPage({
         {contentPageUrl && (
           <div className="text-center">
             <a
-              href={contentPageUrl}
+              href={leadId ? `${contentPageUrl}?leadId=${leadId}` : contentPageUrl}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
