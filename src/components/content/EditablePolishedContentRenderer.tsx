@@ -109,7 +109,7 @@ function BlockTypeSelector({
 export function EditablePolishedContentRenderer({
   content,
   isDark,
-  primaryColor,
+  primaryColor: _primaryColor,
   onChange,
 }: EditablePolishedContentRendererProps) {
   const [addingBlockAt, setAddingBlockAt] = useState<{ sectionIdx: number; blockIdx: number } | null>(null);
