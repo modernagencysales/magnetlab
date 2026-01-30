@@ -1,8 +1,9 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Magnet, Library, BarChart3, Settings, Plus, LogOut, FileText, Globe, Users } from 'lucide-react';
+import { Magnet, Library, BarChart3, Settings, Plus, LogOut, FileText, Globe, Users, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface User {
@@ -16,7 +17,6 @@ interface DashboardNavProps {
 }
 
 const navItems = [
-  { href: '/create', label: 'Create', icon: Plus },
   { href: '/library', label: 'Library', icon: Library },
   { href: '/pages', label: 'Pages', icon: Globe },
   { href: '/leads', label: 'Leads', icon: Users },
@@ -24,6 +24,61 @@ const navItems = [
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
+
+function CreateDropdown({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const isActive = pathname === '/create' || pathname.startsWith('/create/');
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={cn(
+          'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+          isActive
+            ? 'bg-primary/10 text-primary'
+            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+        )}
+      >
+        <Plus className="h-4 w-4" />
+        Create
+        <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 w-48 rounded-lg border bg-card p-1 shadow-lg">
+          <Link
+            href="/create"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-secondary"
+          >
+            <Magnet className="h-4 w-4" />
+            Lead Magnet
+          </Link>
+          <Link
+            href="/create/page-quick"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-secondary"
+          >
+            <Globe className="h-4 w-4" />
+            Landing Page
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function DashboardNav({ user }: DashboardNavProps) {
   const pathname = usePathname();
@@ -40,6 +95,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
+            <CreateDropdown pathname={pathname} />
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
