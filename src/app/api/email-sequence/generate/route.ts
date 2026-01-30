@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmailSequence, generateDefaultEmailSequence } from '@/lib/ai/email-sequence-generator';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { EmailGenerationContext } from '@/lib/types/email';
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('leadMagnetId is required');
     }
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     // Get the lead magnet
     const { data: leadMagnet, error: lmError } = await supabase

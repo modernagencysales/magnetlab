@@ -4,7 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { generateNotionThumbnail, generateBrandedThumbnail } from '@/lib/services/thumbnail';
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 export async function POST(request: Request) {
@@ -63,8 +63,7 @@ export async function POST(request: Request) {
     const thumbnailUrl = urlData.publicUrl;
 
     // Update lead magnet
-    const serverSupabase = await createSupabaseServerClient();
-    await serverSupabase
+    await supabase
       .from('lead_magnets')
       .update({ thumbnail_url: thumbnailUrl })
       .eq('id', leadMagnetId)

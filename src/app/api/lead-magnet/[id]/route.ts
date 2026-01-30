@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 interface RouteParams {
@@ -19,7 +19,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     const { data, error } = await supabase
       .from('lead_magnets')
@@ -49,7 +49,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     // Remove fields that shouldn't be updated directly
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -84,7 +84,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     // First verify ownership
     const { data: leadMagnet, error: findError } = await supabase

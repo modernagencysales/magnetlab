@@ -117,7 +117,7 @@ const logoBarConfigSchema = z.object({
   logos: z.array(z.object({
     name: z.string().min(1).max(100),
     imageUrl: z.string().url(),
-  })).min(1).max(20),
+  })).max(20),
 });
 
 const stepsConfigSchema = z.object({

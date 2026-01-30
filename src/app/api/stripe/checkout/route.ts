@@ -4,7 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createCheckoutSession, getOrCreateCustomer, STRIPE_PRICE_IDS } from '@/lib/integrations/stripe';
-import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { SubscriptionPlan } from '@/lib/types/integrations';
 
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     // Get existing customer ID if any
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('stripe_customer_id')

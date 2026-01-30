@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { emailSequenceFromRow } from '@/lib/types/email';
 import type { EmailSequenceRow } from '@/lib/types/email';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
@@ -21,7 +21,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     const { leadMagnetId } = await params;
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     // First verify the lead magnet belongs to the user
     const { data: leadMagnet, error: lmError } = await supabase
@@ -100,7 +100,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('status must be draft, synced, or active');
     }
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     // Verify the sequence belongs to the user
     const { data: existingSequence, error: findError } = await supabase
