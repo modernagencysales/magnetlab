@@ -64,7 +64,7 @@ export function BookCallDrawer({
     }
 
     setLoading(true);
-    fetch(`/api/public/page/${funnelPageId}/questions`)
+    fetch(`/api/public/questions/${funnelPageId}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.questions && data.questions.length > 0) {

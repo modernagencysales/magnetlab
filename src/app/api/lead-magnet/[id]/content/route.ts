@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { PolishedContent } from '@/lib/types/lead-magnet';
 
@@ -43,7 +43,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       readingTimeMinutes: Math.max(1, Math.round(wordCount / 200)),
     };
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     const { data, error } = await supabase
       .from('lead_magnets')

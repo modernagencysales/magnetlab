@@ -1,5 +1,5 @@
 // API Route: Public - Get qualification questions for a funnel page
-// GET /api/public/page/[id]/questions
+// GET /api/public/questions/[id]
 
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';

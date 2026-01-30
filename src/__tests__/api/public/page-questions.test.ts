@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-import { GET } from '@/app/api/public/page/[id]/questions/route';
+import { GET } from '@/app/api/public/questions/[id]/route';
 
 // Mock chainable Supabase client with table tracking
 interface MockChainable {
@@ -59,9 +59,9 @@ const makeParams = (id: string) => ({
 });
 
 const makeRequest = (id: string) =>
-  new Request(`http://localhost:3000/api/public/page/${id}/questions`);
+  new Request(`http://localhost:3000/api/public/questions/${id}`);
 
-describe('GET /api/public/page/[id]/questions', () => {
+describe('GET /api/public/questions/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSupabaseClient._reset();
