@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus, ExternalLink, Calendar, Eye } from 'lucide-react';
+import { Plus, Calendar, Eye } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/utils/supabase-server';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';

@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 import { formatDate } from '@/lib/utils';
-import { ArrowLeft, Globe, ExternalLink, FileText, Calendar, Sparkles } from 'lucide-react';
+import { ArrowLeft, Globe, ExternalLink, Calendar, Sparkles } from 'lucide-react';
 
 export const metadata = {
   title: 'Lead Magnet | MagnetLab',

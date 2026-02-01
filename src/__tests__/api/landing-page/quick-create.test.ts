@@ -290,7 +290,7 @@ describe('POST /api/landing-page/quick-create', () => {
       });
 
     const response = await POST(makeRequest({ title: 'Title Only' }));
-    const data = await response.json();
+    await response.json();
 
     expect(response.status).toBe(201);
     expect(mockGenerateOptinContent).toHaveBeenCalledWith({
