@@ -57,58 +57,10 @@ export interface LeadSharkEnrichmentResult {
 }
 
 // ============================================
-// NOTION TYPES
-// ============================================
-
-export interface NotionConnection {
-  id: string;
-  userId: string;
-  accessToken: string;
-  workspaceId: string | null;
-  workspaceName: string | null;
-  workspaceIcon: string | null;
-  botId: string | null;
-  defaultParentPageId: string | null;
-  defaultParentPageName: string | null;
-  tokenExpiresAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface NotionPage {
-  id: string;
-  title: string;
-  icon?: string;
-  url: string;
-  parentId?: string;
-}
-
-export interface NotionPublishRequest {
-  title: string;
-  content: ExtractedContentForNotion;
-  parentPageId?: string;
-  icon?: string;
-}
-
-export interface ExtractedContentForNotion {
-  title: string;
-  format: string;
-  structure: Array<{
-    sectionName: string;
-    contents: string[];
-  }>;
-  nonObviousInsight: string;
-  personalExperience: string;
-  proof: string;
-  commonMistakes: string[];
-  differentiation: string;
-}
-
-// ============================================
 // STRIPE TYPES
 // ============================================
 
-export type SubscriptionPlan = 'free' | 'pro' | 'unlimited';
+export type SubscriptionPlan = 'free' | 'unlimited';
 export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
 
 export interface Subscription {
@@ -148,7 +100,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     features: [
       '2 lead magnets per month',
       'Basic AI generation',
-      'Notion publishing',
+      'Hosted content pages',
       'Community support',
     ],
     limits: {
@@ -159,38 +111,19 @@ export const PRICING_PLANS: PricingPlan[] = [
     },
   },
   {
-    id: 'pro',
-    name: 'Pro',
-    price: 49,
-    priceId: process.env.STRIPE_PRO_PRICE_ID || null,
-    features: [
-      '15 lead magnets per month',
-      'Advanced AI with variations',
-      'LinkedIn scheduling',
-      'Basic automation',
-      'Thumbnail generation',
-      'Email support',
-    ],
-    limits: {
-      leadMagnets: 15,
-      scheduling: true,
-      automation: true,
-      analytics: true,
-    },
-  },
-  {
     id: 'unlimited',
     name: 'Unlimited',
-    price: 149,
+    price: 250,
     priceId: process.env.STRIPE_UNLIMITED_PRICE_ID || null,
     features: [
       'Unlimited lead magnets',
       'Premium AI (Opus 4.5)',
-      'Advanced automation',
-      'Priority scheduling',
+      'Custom landing pages',
+      'Email sequences',
+      'LeadShark integration',
+      'LinkedIn scheduling',
       'Advanced analytics',
       'Priority support',
-      'Custom brand kit',
     ],
     limits: {
       leadMagnets: 999999,

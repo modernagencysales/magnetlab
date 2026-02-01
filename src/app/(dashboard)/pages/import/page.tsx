@@ -89,7 +89,7 @@ export default function ImportLeadMagnetPage() {
             disabled={loading}
           />
           <p className="mt-1.5 text-xs text-muted-foreground">
-            Link to your PDF, Google Doc, Notion page, Gumroad, etc.
+            Link to your PDF, Google Doc, Gumroad, etc.
           </p>
         </div>
 

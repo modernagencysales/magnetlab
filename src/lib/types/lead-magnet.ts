@@ -261,8 +261,6 @@ export interface LeadMagnet {
   postVariations: PostVariation[] | null;
   dmTemplate: string | null;
   ctaWord: string | null;
-  notionPageId: string | null;
-  notionPageUrl: string | null;
   thumbnailUrl: string | null;
   leadsharkPostId: string | null;
   leadsharkAutomationId: string | null;

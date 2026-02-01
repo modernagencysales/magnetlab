@@ -73,12 +73,6 @@ export default async function LibraryPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                {lm.notion_page_url && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <ExternalLink className="h-3 w-3" />
-                    Notion
-                  </span>
-                )}
                 {lm.thumbnail_url && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Eye className="h-3 w-3" />

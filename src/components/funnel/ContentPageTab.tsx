@@ -61,7 +61,7 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
     <div className="space-y-6">
       <h3 className="text-lg font-medium">Content Page</h3>
       <p className="text-sm text-muted-foreground">
-        Polish your extracted content into a beautiful, Notion-like reading experience with AI.
+        Polish your extracted content into a beautiful reading experience with AI.
       </p>
 
       {error && (

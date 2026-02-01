@@ -138,7 +138,7 @@ describe('Ideation Modes Types', () => {
     it('should capture effectiveness factors', () => {
       const analysis: CompetitorAnalysis = {
         detectedArchetype: 'template',
-        format: 'Notion template',
+        format: 'PDF template',
         painPointAddressed: 'Starting from scratch',
         effectivenessFactors: [
           'Provides immediate value',

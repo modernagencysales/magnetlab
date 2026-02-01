@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Magnet, Check, ArrowRight, Zap, Target, FileText, Calendar } from 'lucide-react';
+import { Magnet, Check, ArrowRight, Zap, Target, FileText, Calendar, Mail, Globe } from 'lucide-react';
 
 const features = [
   {
@@ -7,6 +7,18 @@ const features = [
     title: 'AI-Guided Extraction',
     description:
       'Our system asks the right questions to extract YOUR unique expertise, not generic AI content.',
+  },
+  {
+    icon: Globe,
+    title: 'Hosted Landing Pages',
+    description:
+      'Beautiful opt-in pages, thank you pages, and hosted content pages — no website needed.',
+  },
+  {
+    icon: Mail,
+    title: 'Email Sequences',
+    description:
+      'Automated drip campaigns that nurture leads after they opt in. Set it and forget it.',
   },
   {
     icon: Zap,
@@ -22,53 +34,49 @@ const features = [
   },
   {
     icon: Calendar,
-    title: 'LinkedIn Automation',
+    title: 'LeadShark Integration',
     description:
-      'Schedule posts and auto-DM commenters. Your lead magnet works while you sleep.',
+      'Schedule posts, auto-DM commenters, and capture leads directly through LeadShark.',
   },
 ];
 
 const comparisonPoints = [
-  { them: 'Generate generic content instantly', us: 'Extract YOUR unique expertise' },
-  { them: 'One-size-fits-all templates', us: '10 specialized archetypes' },
-  { them: 'AI-sounding posts', us: 'Anti-cliche post writing' },
-  { them: 'Manual follow-up', us: 'Automated comment-to-DM flow' },
-  { them: 'Basic formatting', us: 'Rich Notion pages + thumbnails' },
+  { them: '$3,000+/month retainer', us: '$250/month, cancel anytime' },
+  { them: 'Weeks to produce one lead magnet', us: 'Create unlimited lead magnets on demand' },
+  { them: 'Generic copywriter output', us: 'YOUR expertise extracted, not ghostwritten' },
+  { them: 'Manual lead follow-up', us: 'Automated comment-to-DM flow via LeadShark' },
+  { them: 'Separate tools for pages & email', us: 'Landing pages, emails, and automation built in' },
+  { them: 'You manage the agency', us: 'Self-serve — launch a full funnel in one session' },
 ];
 
 const pricing = [
   {
     name: 'Free',
     price: '$0',
-    features: ['2 lead magnets/month', 'Basic AI generation', 'Notion publishing'],
+    features: [
+      '2 lead magnets/month',
+      'Basic AI generation',
+      'Hosted content pages',
+      'Email sequences',
+    ],
     cta: 'Start Free',
     highlighted: false,
   },
   {
-    name: 'Pro',
-    price: '$49',
-    features: [
-      '15 lead magnets/month',
-      '3 post variations',
-      'LinkedIn scheduling',
-      'Auto-DM automation',
-      'Thumbnail generation',
-    ],
-    cta: 'Start Pro Trial',
-    highlighted: true,
-  },
-  {
     name: 'Unlimited',
-    price: '$149',
+    price: '$250',
     features: [
       'Unlimited lead magnets',
       'Premium AI (Opus 4.5)',
-      'Priority scheduling',
+      'Custom landing pages',
+      'Email sequences',
+      'LeadShark integration',
+      'LinkedIn scheduling',
       'Advanced analytics',
       'Priority support',
     ],
     cta: 'Go Unlimited',
-    highlighted: false,
+    highlighted: true,
   },
 ];
 
@@ -112,8 +120,8 @@ export default function HomePage() {
             <span className="text-primary">actually wants</span>
           </h1>
           <p className="mb-10 text-xl text-muted-foreground">
-            Other tools generate content for you. We extract YOUR unique expertise through
-            guided questions, creating lead magnets that showcase your real value.
+            Extract YOUR unique expertise, generate landing pages and email sequences,
+            and automate delivery through LeadShark — all in one platform.
           </p>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
@@ -141,14 +149,15 @@ export default function HomePage() {
               <h3 className="mb-4 text-xl font-semibold text-destructive">The Problem</h3>
               <p className="text-muted-foreground">
                 Generic AI tools generate the same bland lead magnets everyone else has.
-                Your audience can smell AI content from a mile away, and they&apos;re tired of it.
+                Then you need separate tools for landing pages, email sequences, and delivery.
+                It&apos;s a mess.
               </p>
             </div>
             <div className="rounded-xl border bg-primary/5 p-6">
               <h3 className="mb-4 text-xl font-semibold text-primary">Our Solution</h3>
               <p className="text-muted-foreground">
-                MagnetLab extracts YOUR unique insights, stories, and expertise through
-                archetype-specific questions. The result is content that only YOU could create.
+                MagnetLab extracts YOUR unique expertise, builds the landing page and email sequence,
+                and integrates with LeadShark for automated LinkedIn delivery. One platform, zero duct tape.
               </p>
             </div>
           </div>
@@ -165,7 +174,7 @@ export default function HomePage() {
                 step: '1',
                 title: 'Tell us about your business',
                 description:
-                  'Share your expertise, credibility markers, and the pains your audience faces. This takes 2 minutes.',
+                  'Share your expertise, credibility markers, and the pains your audience faces.',
               },
               {
                 step: '2',
@@ -181,9 +190,9 @@ export default function HomePage() {
               },
               {
                 step: '4',
-                title: 'Review and publish',
+                title: 'Launch your funnel',
                 description:
-                  'Preview your content, choose from 3 LinkedIn post variations, and publish to Notion with one click.',
+                  'We generate your landing page, email sequence, LinkedIn posts, and connect it all to LeadShark for automated delivery.',
               },
             ].map((item, index) => (
               <div key={index} className="flex gap-6">
@@ -203,8 +212,8 @@ export default function HomePage() {
       {/* Features */}
       <section className="border-y bg-muted/30 py-20">
         <div className="container mx-auto max-w-6xl px-4">
-          <h2 className="mb-12 text-center text-3xl font-bold">Why MagnetLab?</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <h2 className="mb-12 text-center text-3xl font-bold">Everything You Need</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
               <div key={index} className="rounded-xl border bg-card p-6">
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
@@ -221,12 +230,12 @@ export default function HomePage() {
       {/* Comparison */}
       <section className="py-20">
         <div className="container mx-auto max-w-3xl px-4">
-          <h2 className="mb-12 text-center text-3xl font-bold">MagnetLab vs The Rest</h2>
+          <h2 className="mb-12 text-center text-3xl font-bold">MagnetLab vs Hiring an Agency</h2>
           <div className="overflow-hidden rounded-xl border">
             <table className="w-full">
               <thead className="bg-muted">
                 <tr>
-                  <th className="px-6 py-4 text-left font-medium">Other Tools</th>
+                  <th className="px-6 py-4 text-left font-medium">Agency</th>
                   <th className="bg-primary/10 px-6 py-4 text-left font-medium text-primary">
                     MagnetLab
                   </th>
@@ -257,7 +266,7 @@ export default function HomePage() {
           <p className="mb-12 text-center text-muted-foreground">
             Start free, upgrade when you&apos;re ready
           </p>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 max-w-3xl mx-auto">
             {pricing.map((plan, index) => (
               <div
                 key={index}
@@ -266,7 +275,7 @@ export default function HomePage() {
                 }`}
               >
                 {plan.highlighted && (
-                  <div className="mb-4 text-sm font-medium text-primary">Most Popular</div>
+                  <div className="mb-4 text-sm font-medium text-primary">Full Platform</div>
                 )}
                 <h3 className="text-xl font-bold">{plan.name}</h3>
                 <div className="my-4">
@@ -302,7 +311,8 @@ export default function HomePage() {
         <div className="container mx-auto max-w-2xl px-4 text-center">
           <h2 className="mb-6 text-3xl font-bold">Ready to create your first lead magnet?</h2>
           <p className="mb-8 text-lg text-muted-foreground">
-            Join creators who are building lead magnets that actually convert.
+            From expertise extraction to automated delivery — everything you need to turn
+            LinkedIn engagement into leads.
           </p>
           <Link
             href="/login"
@@ -331,12 +341,12 @@ export default function HomePage() {
               <Link href="/privacy" className="hover:text-foreground">
                 Privacy
               </Link>
-              <a href="mailto:support@magnetlab.io" className="hover:text-foreground">
+              <a href="mailto:support@magnetlab.app" className="hover:text-foreground">
                 Support
               </a>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2025 MagnetLab. All rights reserved.
+              © 2026 MagnetLab. All rights reserved.
             </p>
           </div>
         </div>

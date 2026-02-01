@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       .single();
 
     if (!subscription || subscription.plan === 'free') {
-      return ApiErrors.forbidden('Scheduling requires a Pro or Unlimited subscription');
+      return ApiErrors.forbidden('Scheduling requires an Unlimited subscription');
     }
 
     // Schedule via LeadShark using user's encrypted API key

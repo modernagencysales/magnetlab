@@ -28,7 +28,7 @@ export function createResendClient(apiKey: string): Resend {
 }
 
 // Default sender configuration
-export const DEFAULT_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'hello@sends.magnetlab.io';
+export const DEFAULT_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'hello@sends.magnetlab.app';
 export const DEFAULT_FROM_NAME = process.env.RESEND_FROM_NAME || 'MagnetLab';
 
 /**

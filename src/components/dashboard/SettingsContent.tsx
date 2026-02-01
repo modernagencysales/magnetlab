@@ -209,7 +209,7 @@ export function SettingsContent({
           </div>
 
           {/* Pricing plans */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             {PRICING_PLANS.map((plan) => (
               <div
                 key={plan.id}
@@ -223,7 +223,7 @@ export function SettingsContent({
                   <span className="text-sm font-normal text-muted-foreground">/mo</span>
                 </p>
                 <ul className="mb-4 space-y-1 text-sm">
-                  {plan.features.slice(0, 4).map((feature, i) => (
+                  {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-center gap-2 text-muted-foreground">
                       <Check className="h-3 w-3 text-primary" />
                       {feature}

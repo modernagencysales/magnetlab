@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { generateNotionThumbnail, generateBrandedThumbnail } from '@/lib/services/thumbnail';
+import { generateBrandedThumbnail } from '@/lib/services/thumbnail';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 
@@ -15,29 +15,22 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { leadMagnetId, notionUrl, title, subtitle, useNotionScreenshot } = body as {
+    const { leadMagnetId, title, subtitle } = body as {
       leadMagnetId: string;
-      notionUrl?: string;
       title?: string;
       subtitle?: string;
-      useNotionScreenshot?: boolean;
     };
 
     if (!leadMagnetId) {
       return ApiErrors.validationError('leadMagnetId is required');
     }
 
-    let thumbnail: Buffer;
-
-    if (useNotionScreenshot && notionUrl) {
-      // Screenshot Notion page
-      thumbnail = await generateNotionThumbnail(notionUrl);
-    } else if (title) {
-      // Generate branded thumbnail
-      thumbnail = await generateBrandedThumbnail(title, subtitle);
-    } else {
-      return ApiErrors.validationError('Either notionUrl or title must be provided');
+    if (!title) {
+      return ApiErrors.validationError('title must be provided');
     }
+
+    // Generate branded thumbnail
+    const thumbnail = await generateBrandedThumbnail(title, subtitle);
 
     // Upload to Supabase Storage
     const supabase = createSupabaseAdminClient();

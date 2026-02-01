@@ -12,13 +12,13 @@ interface CustomIdeaStepProps {
 
 const ARCHETYPE_DEFAULT_FORMATS: Record<LeadMagnetArchetype, string> = {
   'single-breakdown': 'Google Doc / PDF',
-  'single-system': 'Google Doc / Notion',
+  'single-system': 'Google Doc / PDF',
   'focused-toolkit': 'Google Drive Folder',
   'single-calculator': 'Google Sheet',
-  'focused-directory': 'Notion / Google Sheet',
+  'focused-directory': 'Google Sheet',
   'mini-training': 'Loom Video + Doc',
   'one-story': 'Google Doc / PDF',
-  'prompt': 'Notion / Google Doc',
+  'prompt': 'Google Doc / PDF',
   'assessment': 'Google Sheet / Typeform',
   'workflow': 'Make.com / Zapier Template',
 };

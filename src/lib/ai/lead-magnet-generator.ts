@@ -261,7 +261,7 @@ Generate 10 lead magnet concepts (one for each archetype). For each, provide:
 5. whyNowHook: Which urgency technique to use
 6. linkedinPost: Complete post using hook through CTA, ready to copy-paste
 7. contents: Detailed description of what they'll receive
-8. deliveryFormat: Google Doc, Sheet, Notion, Loom, etc.
+8. deliveryFormat: Google Doc, Sheet, Loom, etc.
 9. viralCheck: Object with boolean for each of the 5 criteria
 10. creationTimeEstimate: Based on assets they already have
 11. bundlePotential: What other lead magnets could combine with this
@@ -719,7 +719,7 @@ export async function polishLeadMagnetContent(
   extractedContent: ExtractedContent,
   concept: LeadMagnetConcept
 ): Promise<PolishedContent> {
-  const prompt = `You are a content designer who transforms raw lead magnet content into beautifully structured, polished content blocks for a Notion-like reading experience.
+  const prompt = `You are a content designer who transforms raw lead magnet content into beautifully structured, polished content blocks for a clean reading experience.
 
 LEAD MAGNET:
 Title: ${concept.title}

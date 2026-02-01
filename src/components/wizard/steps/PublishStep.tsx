@@ -305,7 +305,7 @@ export function PublishStep({
         <ol className="mt-3 space-y-2 text-sm text-violet-800 dark:text-violet-200">
           <li className="flex items-start gap-2">
             <span className="font-semibold text-primary">1.</span>
-            Copy the lead magnet content and paste it into a Google Doc, Notion page, or your preferred tool
+            Copy the lead magnet content and paste it into a Google Doc or your preferred tool
           </li>
           <li className="flex items-start gap-2">
             <span className="font-semibold text-primary">2.</span>

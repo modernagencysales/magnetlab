@@ -1,5 +1,5 @@
 // Thumbnail Generation Service using Playwright
-// Generates LinkedIn-optimized thumbnails (1200x627) from Notion pages
+// Generates LinkedIn-optimized thumbnails (1200x627)
 
 import { chromium, type Browser, type Page } from 'playwright';
 
@@ -26,85 +26,8 @@ const DEFAULT_OPTIONS: ThumbnailOptions = {
   width: 1200,
   height: 627, // LinkedIn optimal ratio
   deviceScaleFactor: 2, // Retina quality
-  waitTime: 2000, // Wait for Notion to render
+  waitTime: 2000,
 };
-
-/**
- * Generate a thumbnail from a Notion page URL
- */
-export async function generateNotionThumbnail(
-  notionUrl: string,
-  options: ThumbnailOptions = {}
-): Promise<Buffer> {
-  const opts = { ...DEFAULT_OPTIONS, ...options };
-  const browser = await getBrowser();
-
-  let page: Page | null = null;
-
-  try {
-    page = await browser.newPage({
-      viewport: {
-        width: opts.width!,
-        height: opts.height!,
-      },
-      deviceScaleFactor: opts.deviceScaleFactor,
-    });
-
-    // Navigate to the Notion page
-    await page.goto(notionUrl, {
-      waitUntil: 'networkidle',
-      timeout: 30000,
-    });
-
-    // Wait for Notion content to load
-    if (opts.waitForSelector) {
-      await page.waitForSelector(opts.waitForSelector, { timeout: 10000 });
-    } else {
-      // Wait for Notion's main content area
-      await page.waitForSelector('.notion-page-content', { timeout: 10000 }).catch(() => {
-        // Fallback: wait for any content
-        return page!.waitForSelector('[data-block-id]', { timeout: 5000 });
-      });
-    }
-
-    // Additional wait for full render
-    if (opts.waitTime) {
-      await page.waitForTimeout(opts.waitTime);
-    }
-
-    // Hide Notion UI elements for cleaner screenshot
-    await page.evaluate(() => {
-      // Hide sidebar
-      const sidebar = document.querySelector('.notion-sidebar');
-      if (sidebar) (sidebar as HTMLElement).style.display = 'none';
-
-      // Hide topbar
-      const topbar = document.querySelector('.notion-topbar');
-      if (topbar) (topbar as HTMLElement).style.display = 'none';
-
-      // Hide peek modal close button
-      const closeBtn = document.querySelector('.notion-peek-modal-close');
-      if (closeBtn) (closeBtn as HTMLElement).style.display = 'none';
-    });
-
-    // Take screenshot
-    const screenshot = await page.screenshot({
-      type: 'png',
-      clip: {
-        x: 0,
-        y: 0,
-        width: opts.width!,
-        height: opts.height!,
-      },
-    });
-
-    return screenshot;
-  } finally {
-    if (page) {
-      await page.close();
-    }
-  }
-}
 
 /**
  * Generate a thumbnail from HTML content (for custom layouts)

@@ -11,15 +11,6 @@ export {
 } from './leadshark';
 
 export {
-  NotionClient,
-  getNotionOAuthUrl,
-  exchangeNotionCode,
-  type NotionConfig,
-  type NotionPage,
-  type NotionSearchResult,
-} from './notion';
-
-export {
   createCustomer,
   getCustomer,
   getOrCreateCustomer,

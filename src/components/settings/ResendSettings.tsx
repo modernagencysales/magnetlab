@@ -210,7 +210,7 @@ export function ResendSettings({ isConnected, lastVerifiedAt, metadata }: Resend
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Connect your Resend account to send emails from your own domain. Without this, emails are sent from sends.magnetlab.io.
+            Connect your Resend account to send emails from your own domain. Without this, emails are sent from sends.magnetlab.app.
           </p>
 
           <div className="space-y-3">

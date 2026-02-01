@@ -16,7 +16,6 @@ function getStripeClient(): Stripe {
 
 // Price IDs for each plan
 export const STRIPE_PRICE_IDS: Record<Exclude<SubscriptionPlan, 'free'>, string> = {
-  pro: process.env.STRIPE_PRO_PRICE_ID || '',
   unlimited: process.env.STRIPE_UNLIMITED_PRICE_ID || '',
 };
 
@@ -224,7 +223,6 @@ export function constructWebhookEvent(
 }
 
 export function getPlanFromPriceId(priceId: string): SubscriptionPlan {
-  if (priceId === STRIPE_PRICE_IDS.pro) return 'pro';
   if (priceId === STRIPE_PRICE_IDS.unlimited) return 'unlimited';
   return 'free';
 }

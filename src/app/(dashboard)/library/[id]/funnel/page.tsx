@@ -53,8 +53,6 @@ export default async function FunnelBuilderPage({ params }: PageProps) {
     postVariations: leadMagnetData.post_variations,
     dmTemplate: leadMagnetData.dm_template,
     ctaWord: leadMagnetData.cta_word,
-    notionPageId: leadMagnetData.notion_page_id,
-    notionPageUrl: leadMagnetData.notion_page_url,
     thumbnailUrl: leadMagnetData.thumbnail_url,
     leadsharkPostId: leadMagnetData.leadshark_post_id,
     leadsharkAutomationId: leadMagnetData.leadshark_automation_id,

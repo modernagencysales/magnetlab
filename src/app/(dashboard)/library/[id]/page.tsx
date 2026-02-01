@@ -148,36 +148,6 @@ export default async function LeadMagnetDetailPage({ params }: PageProps) {
           )}
         </div>
 
-        {/* Notion Card */}
-        <div className="rounded-xl border bg-card p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
-              <FileText className="h-5 w-5 text-orange-500" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Content</h3>
-              <p className="text-sm text-muted-foreground">
-                {leadMagnet.notion_page_url ? 'View in Notion' : 'No Notion page yet'}
-              </p>
-            </div>
-          </div>
-
-          {leadMagnet.notion_page_url ? (
-            <a
-              href={leadMagnet.notion_page_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-secondary"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Open in Notion
-            </a>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Connect Notion in settings to publish content.
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Concept Details */}
