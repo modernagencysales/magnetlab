@@ -9,6 +9,7 @@ import { deliverWebhook } from '@/lib/webhooks/sender';
 import { triggerEmailSequenceIfActive } from '@/lib/services/email-sequence-trigger';
 import { leadCaptureSchema, leadQualificationSchema, validateBody } from '@/lib/validations/api';
 import { logApiError } from '@/lib/api/errors';
+import { fireGtmLeadCreatedWebhook, fireGtmLeadQualifiedWebhook } from '@/lib/webhooks/gtm-system';
 
 // Rate limiting configuration
 // Uses database-based checking for serverless compatibility
@@ -143,6 +144,21 @@ export async function POST(request: Request) {
       utmCampaign: lead.utm_campaign,
       createdAt: lead.created_at,
     }).catch((err) => logApiError('public/lead/webhook', err, { leadId: lead.id }));
+
+    // Fire GTM system webhook (async, don't wait)
+    fireGtmLeadCreatedWebhook({
+      email: lead.email,
+      name: lead.name,
+      leadMagnetId: funnel.lead_magnet_id,
+      leadMagnetTitle: leadMagnet?.title || '',
+      funnelPageId: funnel.id,
+      funnelPageSlug: funnel.slug,
+      isQualified: false,
+      utmSource: lead.utm_source,
+      utmMedium: lead.utm_medium,
+      utmCampaign: lead.utm_campaign,
+      createdAt: lead.created_at,
+    }).catch((err) => logApiError('public/lead/gtm-webhook', err, { leadId: lead.id }));
 
     // Trigger email sequence if active (async, don't wait)
     triggerEmailSequenceIfActive({
@@ -324,6 +340,19 @@ export async function PATCH(request: Request) {
       utmCampaign: updatedLead.utm_campaign,
       createdAt: updatedLead.created_at,
     }).catch((err) => logApiError('public/lead/webhook', err, { leadId: lead.id }));
+
+    // Fire GTM system webhook for lead qualification (async, don't wait)
+    fireGtmLeadQualifiedWebhook({
+      email: lead.email,
+      name: lead.name,
+      leadMagnetTitle: leadMagnetTitle || null,
+      funnelPageSlug: funnel?.slug || null,
+      isQualified,
+      qualificationAnswers: answers,
+      utmSource: updatedLead.utm_source,
+      utmMedium: updatedLead.utm_medium,
+      utmCampaign: updatedLead.utm_campaign,
+    }).catch((err) => logApiError('public/lead/gtm-webhook-qualified', err, { leadId: lead.id }));
 
     return NextResponse.json({
       leadId: lead.id,

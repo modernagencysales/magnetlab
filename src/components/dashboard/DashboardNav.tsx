@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Magnet, Library, BarChart3, Settings, Plus, LogOut, FileText, Globe, Users, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ds';
 
 interface User {
   name?: string | null;
@@ -118,6 +119,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
         </div>
 
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <div className="flex items-center gap-3">
             {user.image ? (
               <img
