@@ -227,6 +227,30 @@ export const updateSectionSchema = z.object({
 export type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
 
 // ============================================
+// BULK IMPORT SCHEMAS
+// ============================================
+
+export const bulkPageItemSchema = z.object({
+  title: z.string().min(1, 'title is required').max(200),
+  slug: z.string().max(50).regex(/^[a-z0-9-]+$/, 'slug must be lowercase alphanumeric with hyphens').optional(),
+  optinHeadline: z.string().min(1, 'optinHeadline is required').max(500),
+  optinSubline: z.string().max(1000).optional(),
+  optinButtonText: z.string().max(100).optional(),
+  leadMagnetUrl: z.string().url('leadMagnetUrl must be a valid URL'),
+  thankyouHeadline: z.string().max(500).optional(),
+  thankyouSubline: z.string().max(1000).optional(),
+  autoPublish: z.boolean().optional(),
+});
+
+export type BulkPageItemInput = z.infer<typeof bulkPageItemSchema>;
+
+export const bulkCreatePagesSchema = z.object({
+  pages: z.array(bulkPageItemSchema).min(1, 'At least one page is required').max(100, 'Maximum 100 pages per request'),
+});
+
+export type BulkCreatePagesInput = z.infer<typeof bulkCreatePagesSchema>;
+
+// ============================================
 // VALIDATION HELPER
 // ============================================
 
