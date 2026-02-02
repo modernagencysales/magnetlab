@@ -208,6 +208,8 @@ describe('Funnel API Routes', () => {
         .mockResolvedValueOnce({ data: { id: 'lm-123', title: 'My Lead Magnet' }, error: null })
         // No existing funnel
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
+        // User profile (no theme defaults set)
+        .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
         // No slug collision
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
         // Created funnel
@@ -256,6 +258,8 @@ describe('Funnel API Routes', () => {
 
       mockSupabaseClient.single
         .mockResolvedValueOnce({ data: { id: 'lm-123', title: 'My Lead Magnet' }, error: null })
+        .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
+        // User profile (no theme defaults set)
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
         // Slug collision on first try
         .mockResolvedValueOnce({ data: { id: 'existing' }, error: null })

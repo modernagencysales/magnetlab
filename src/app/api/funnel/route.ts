@@ -102,6 +102,13 @@ export async function POST(request: Request) {
       return ApiErrors.conflict('Funnel page already exists for this lead magnet');
     }
 
+    // Fetch user theme defaults
+    const { data: profile } = await supabase
+      .from('users')
+      .select('default_theme, default_primary_color, default_background_style, default_logo_url')
+      .eq('id', session.user.id)
+      .single();
+
     // Check for slug collision and auto-increment if needed
     let finalSlug = slug;
     let slugSuffix = 0;
@@ -135,10 +142,10 @@ export async function POST(request: Request) {
       calendly_url: funnelData.calendlyUrl || null,
       qualification_pass_message: funnelData.qualificationPassMessage || 'Great! Book a call below.',
       qualification_fail_message: funnelData.qualificationFailMessage || 'Thanks for your interest!',
-      theme: funnelData.theme || 'dark',
-      primary_color: funnelData.primaryColor || '#8b5cf6',
-      background_style: funnelData.backgroundStyle || 'solid',
-      logo_url: funnelData.logoUrl || null,
+      theme: funnelData.theme || profile?.default_theme || 'dark',
+      primary_color: funnelData.primaryColor || profile?.default_primary_color || '#8b5cf6',
+      background_style: funnelData.backgroundStyle || profile?.default_background_style || 'solid',
+      logo_url: funnelData.logoUrl || profile?.default_logo_url || null,
     };
 
     let { data, error } = await supabase
