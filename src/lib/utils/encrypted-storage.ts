@@ -37,8 +37,8 @@ export interface UserIntegrationPublic {
 // =============================================================================
 
 /**
- * Save or update a user integration with encrypted API key
- * Uses the database-level encryption function
+ * Save or update a user integration with API key
+ * Uses direct table operations (RPC encryption not yet deployed to production)
  */
 export async function upsertUserIntegration(params: {
   userId: string;
@@ -50,27 +50,35 @@ export async function upsertUserIntegration(params: {
 }): Promise<UserIntegrationPublic | null> {
   const supabase = createSupabaseAdminClient();
 
-  const { data, error } = await supabase.rpc('upsert_user_integration', {
-    p_user_id: params.userId,
-    p_service: params.service,
-    p_api_key: params.apiKey ?? null,
-    p_webhook_secret: params.webhookSecret ?? null,
-    p_is_active: params.isActive ?? true,
-    p_metadata: params.metadata ?? {},
-  });
+  const { data, error } = await supabase
+    .from('user_integrations')
+    .upsert(
+      {
+        user_id: params.userId,
+        service: params.service,
+        api_key: params.apiKey ?? null,
+        webhook_secret: params.webhookSecret ?? null,
+        is_active: params.isActive ?? true,
+        metadata: params.metadata ?? {},
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: 'user_id,service',
+      }
+    )
+    .select('id, user_id, service, is_active, last_verified_at, metadata, created_at, updated_at')
+    .single();
 
   if (error) {
     console.error('Error upserting user integration:', error);
     throw new Error(`Failed to save integration: ${error.message}`);
   }
 
-  // The RPC returns an array, get the first result
-  const result = Array.isArray(data) ? data[0] : data;
-  return result as UserIntegrationPublic;
+  return data as UserIntegrationPublic;
 }
 
 /**
- * Get a user integration with decrypted API key
+ * Get a user integration with API key
  * Only use this when you actually need the API key for making API calls
  */
 export async function getUserIntegration(
@@ -79,19 +87,23 @@ export async function getUserIntegration(
 ): Promise<UserIntegration | null> {
   const supabase = createSupabaseAdminClient();
 
-  const { data, error } = await supabase.rpc('get_user_integration', {
-    p_user_id: userId,
-    p_service: service,
-  });
+  const { data, error } = await supabase
+    .from('user_integrations')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('service', service)
+    .single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null;
+    }
     console.error('Error getting user integration:', error);
     throw new Error(`Failed to get integration: ${error.message}`);
   }
 
-  // The RPC returns an array, get the first result
-  const result = Array.isArray(data) ? data[0] : data;
-  return result as UserIntegration | null;
+  return data as UserIntegration | null;
 }
 
 /**

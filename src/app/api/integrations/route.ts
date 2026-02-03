@@ -64,6 +64,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     logApiError('integrations/save', error);
-    return ApiErrors.internalError('Failed to save integration');
+    console.error('Integration save error details:', error);
+    return ApiErrors.internalError(
+      error instanceof Error ? error.message : 'Failed to save integration'
+    );
   }
 }

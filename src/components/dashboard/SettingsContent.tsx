@@ -90,7 +90,8 @@ export function SettingsContent({
       });
 
       if (!saveResponse.ok) {
-        throw new Error('Failed to save integration');
+        const saveData = await saveResponse.json().catch(() => ({}));
+        throw new Error(saveData.error || 'Failed to save integration');
       }
 
       setIntegrationStatus({ verifying: false, verified: true, error: null });
