@@ -1,12 +1,15 @@
 -- Libraries & Assets Schema
 -- Adds libraries (collections), external resources (tracked links), and funnel target flexibility
 
+-- Enable uuid-ossp extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- ============================================
 -- EXTERNAL RESOURCES
 -- ============================================
 
 CREATE TABLE external_resources (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
   url TEXT NOT NULL,
@@ -23,7 +26,7 @@ CREATE INDEX idx_external_resources_user ON external_resources(user_id);
 -- ============================================
 
 CREATE TABLE libraries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
@@ -43,7 +46,7 @@ CREATE INDEX idx_libraries_slug ON libraries(user_id, slug);
 -- ============================================
 
 CREATE TABLE library_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   library_id UUID REFERENCES libraries(id) ON DELETE CASCADE NOT NULL,
   asset_type TEXT NOT NULL CHECK (asset_type IN ('lead_magnet', 'external_resource')),
   lead_magnet_id UUID REFERENCES lead_magnets(id) ON DELETE CASCADE,
@@ -70,7 +73,7 @@ CREATE INDEX idx_library_items_sort ON library_items(library_id, sort_order);
 -- ============================================
 
 CREATE TABLE external_resource_clicks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   external_resource_id UUID REFERENCES external_resources(id) ON DELETE CASCADE NOT NULL,
   funnel_page_id UUID REFERENCES funnel_pages(id) ON DELETE SET NULL,
   library_id UUID REFERENCES libraries(id) ON DELETE SET NULL,
