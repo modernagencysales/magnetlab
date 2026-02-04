@@ -1,0 +1,4 @@
+[     337ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://www.magnetlab.app/favicon.ico:0
+[     389ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://www.magnetlab.app/privacy?_rsc=tvjct:0
+[     416ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://www.magnetlab.app/login:0
+[     438ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://www.magnetlab.app/terms?_rsc=tvjct:0

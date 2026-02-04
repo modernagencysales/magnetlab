@@ -361,7 +361,7 @@ export function WizardContainer() {
       <div className="min-h-screen bg-background">
         <WizardProgress currentStep={1} />
         <div className="container mx-auto max-w-4xl px-4 py-8">
-          <GeneratingScreen phase={generating === 'idle' && isJobLoading ? 'ideas' : generating} />
+          <GeneratingScreen />
         </div>
       </div>
     );

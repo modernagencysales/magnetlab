@@ -1,0 +1,10 @@
+[    1825ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://www.magnetlab.app/settings:0
+[    1826ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://www.magnetlab.app/settings:0
+[    2419ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://www.magnetlab.app/api/keys:0
+[    2987ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://www.magnetlab.app/api/user/defaults:0
+[   67670ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://www.magnetlab.app/api/keys:0
+[  112312ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://www.magnetlab.app/settings:0
+[  112314ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://www.magnetlab.app/settings:0
+[  112801ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://www.magnetlab.app/api/user/defaults:0
+[  253473ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://www.magnetlab.app/settings:0
+[  253474ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://www.magnetlab.app/settings:0

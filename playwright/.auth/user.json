@@ -1,0 +1,25 @@
+{
+  "cookies": [
+    {
+      "name": "authjs.session-token",
+      "value": "mock-session-token-for-e2e-tests",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1770071771,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "authjs.callback-url",
+      "value": "http://localhost:3000/library",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1770071771,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}

@@ -1,5 +1,7 @@
 // Background Jobs Types
 
+import type { CallTranscriptInsights, CompetitorAnalysis } from './lead-magnet';
+
 export type JobType = 'ideation' | 'extraction' | 'polish' | 'posts' | 'emails';
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
@@ -34,8 +36,8 @@ export interface IdeationJobInput {
     successExample?: string;
   };
   sources?: {
-    callTranscriptInsights?: unknown;
-    competitorAnalysis?: unknown;
+    callTranscriptInsights?: CallTranscriptInsights;
+    competitorAnalysis?: CompetitorAnalysis;
   };
 }
 
