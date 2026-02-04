@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     // Fetch user theme defaults
     const { data: profile } = await supabase
       .from('users')
-      .select('default_theme, default_primary_color, default_background_style, default_logo_url')
+      .select('default_theme, default_primary_color, default_background_style, default_logo_url, default_vsl_url')
       .eq('id', session.user.id)
       .single();
 
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
       optin_social_proof: funnelData.optinSocialProof || null,
       thankyou_headline: funnelData.thankyouHeadline || 'Thanks! Check your email.',
       thankyou_subline: funnelData.thankyouSubline || null,
-      vsl_url: funnelData.vslUrl || null,
+      vsl_url: funnelData.vslUrl || profile?.default_vsl_url || null,
       calendly_url: funnelData.calendlyUrl || null,
       qualification_pass_message: funnelData.qualificationPassMessage || 'Great! Book a call below.',
       qualification_fail_message: funnelData.qualificationFailMessage || 'Thanks for your interest!',

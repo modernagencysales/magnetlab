@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     // Fetch user profile for theme defaults and username
     const { data: profile, error: profileError } = await supabase
       .from('users')
-      .select('default_theme, default_primary_color, default_background_style, default_logo_url, username')
+      .select('default_theme, default_primary_color, default_background_style, default_logo_url, default_vsl_url, username')
       .eq('id', userId)
       .single();
 
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 async function createSinglePage(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   userId: string,
-  profile: { default_theme: string; default_primary_color: string; default_background_style: string; default_logo_url: string | null; username: string | null },
+  profile: { default_theme: string; default_primary_color: string; default_background_style: string; default_logo_url: string | null; default_vsl_url: string | null; username: string | null },
   page: BulkPageItemInput,
   index: number
 ): Promise<BulkResult> {
@@ -113,6 +113,7 @@ async function createSinglePage(
       optin_button_text: page.optinButtonText || 'Get It Now',
       thankyou_headline: page.thankyouHeadline || 'Thanks! Check your email.',
       thankyou_subline: page.thankyouSubline || null,
+      vsl_url: profile.default_vsl_url || null,
       qualification_pass_message: 'Great! Book a call below.',
       qualification_fail_message: 'Thanks for your interest!',
       theme: profile.default_theme || 'dark',
