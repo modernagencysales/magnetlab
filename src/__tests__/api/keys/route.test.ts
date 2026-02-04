@@ -73,8 +73,7 @@ describe('API Keys Routes', () => {
         error: null,
       });
 
-      const request = new Request('http://localhost:3000/api/keys');
-      const response = await GET(request);
+      const response = await GET();
       const data = await response.json();
 
       expect(response.status).toBe(200);

@@ -6,12 +6,18 @@
 
 export type FunnelTheme = 'dark' | 'light' | 'custom';
 export type BackgroundStyle = 'solid' | 'gradient' | 'pattern';
+export type FunnelTargetType = 'lead_magnet' | 'library' | 'external_resource';
 
 export interface FunnelPage {
   id: string;
-  leadMagnetId: string;
+  leadMagnetId: string | null; // Now nullable for library/external_resource targets
   userId: string;
   slug: string;
+
+  // Target type (what this funnel delivers)
+  targetType: FunnelTargetType;
+  libraryId: string | null;
+  externalResourceId: string | null;
 
   // Opt-in page configuration
   optinHeadline: string;
@@ -323,9 +329,14 @@ export interface WebhookLeadPayload {
 
 export interface FunnelPageRow {
   id: string;
-  lead_magnet_id: string;
+  lead_magnet_id: string | null; // Now nullable
   user_id: string;
   slug: string;
+  // Target type fields
+  target_type: string;
+  library_id: string | null;
+  external_resource_id: string | null;
+  // Opt-in fields
   optin_headline: string;
   optin_subline: string | null;
   optin_button_text: string;
@@ -395,6 +406,9 @@ export function funnelPageFromRow(row: FunnelPageRow): FunnelPage {
     leadMagnetId: row.lead_magnet_id,
     userId: row.user_id,
     slug: row.slug,
+    targetType: (row.target_type || 'lead_magnet') as FunnelTargetType,
+    libraryId: row.library_id || null,
+    externalResourceId: row.external_resource_id || null,
     optinHeadline: row.optin_headline,
     optinSubline: row.optin_subline,
     optinButtonText: row.optin_button_text,
