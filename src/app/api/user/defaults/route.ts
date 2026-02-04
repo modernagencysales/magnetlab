@@ -18,7 +18,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('users')
-      .select('default_vsl_url, default_theme, default_primary_color, default_background_style, default_logo_url')
+      .select('default_vsl_url')
       .eq('id', session.user.id)
       .single();
 
@@ -29,10 +29,6 @@ export async function GET() {
 
     return NextResponse.json({
       defaultVslUrl: data.default_vsl_url,
-      defaultTheme: data.default_theme,
-      defaultPrimaryColor: data.default_primary_color,
-      defaultBackgroundStyle: data.default_background_style,
-      defaultLogoUrl: data.default_logo_url,
     });
   } catch (error) {
     logApiError('user/defaults/get', error);
