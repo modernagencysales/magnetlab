@@ -11,8 +11,6 @@ interface RouteParams {
 
 export async function GET(request: Request, { params }: RouteParams) {
   const { username, slug, resourceId } = await params;
-  const url = new URL(request.url);
-  const leadId = url.searchParams.get('leadId');
 
   // Validate resourceId
   if (!isValidUUID(resourceId)) {
