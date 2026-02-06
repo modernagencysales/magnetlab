@@ -106,8 +106,8 @@ export function useBackgroundJob<TResult = unknown>(
     timeoutRef.current = setTimeout(() => {
       stopPolling();
       setStatus(null);
-      setError('Job timed out');
-      onErrorRef.current?.('Job timed out');
+      setError('Generation took too long. Please try again.');
+      onErrorRef.current?.('Generation took too long. Please try again.');
     }, timeout);
 
     // Initial poll

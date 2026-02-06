@@ -373,8 +373,15 @@ export function WizardContainer() {
 
       <div className="container mx-auto max-w-4xl px-4 py-8">
         {error && (
-          <div className="mb-6 rounded-lg bg-destructive/10 p-4 text-destructive">
-            {error}
+          <div className="mb-6 flex items-center justify-between rounded-lg bg-destructive/10 p-4 text-destructive">
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="ml-4 text-sm font-medium underline hover:no-underline"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
