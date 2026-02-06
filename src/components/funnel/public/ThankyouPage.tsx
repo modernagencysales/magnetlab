@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { VideoEmbed } from './VideoEmbed';
 import { CalendlyEmbed } from './CalendlyEmbed';
 import { getThemeVars } from '@/lib/utils/theme-vars';
-import { CTAButton, SectionRenderer } from '@/components/ds';
+import { SectionRenderer } from '@/components/ds';
 import type { FunnelPageSection } from '@/lib/types/funnel';
 
 type AnswerType = 'yes_no' | 'text' | 'textarea' | 'multiple_choice';
@@ -51,8 +51,6 @@ export function ThankyouPage({
   primaryColor = '#8b5cf6',
   backgroundStyle = 'solid',
   logoUrl,
-  contentPageUrl,
-  leadMagnetTitle,
   sections = [],
 }: ThankyouPageProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -62,6 +60,7 @@ export function ThankyouPage({
   const [isQualified, setIsQualified] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bookingRef = useRef<HTMLDivElement>(null);
 
   const themeVars = getThemeVars(theme, primaryColor);
   const isDark = theme === 'dark';
@@ -164,6 +163,17 @@ export function ThankyouPage({
       setIsQualified(true);
     }
   }, [questions.length]);
+
+  // Auto-scroll to booking embed after survey completion
+  useEffect(() => {
+    if (qualificationComplete && isQualified && calendlyUrl && bookingRef.current) {
+      // Small delay to let the DOM render the booking section
+      const timer = setTimeout(() => {
+        bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [qualificationComplete, isQualified, calendlyUrl]);
 
   return (
     <div
@@ -439,18 +449,7 @@ export function ThankyouPage({
           </div>
         )}
 
-        {/* 8. Resource CTA - moved after survey as the reward */}
-        {qualificationComplete && contentPageUrl && (
-          <div className="text-center">
-            <CTAButton
-              text={`Access Your ${leadMagnetTitle || 'Content'}`}
-              icon="arrow"
-              href={leadId ? `${contentPageUrl}?leadId=${leadId}` : contentPageUrl}
-            />
-          </div>
-        )}
-
-        {/* 9. Below-video sections */}
+        {/* 8. Below-video sections */}
         {belowSections.length > 0 && (
           <div className="space-y-6">
             {belowSections.map(s => <SectionRenderer key={s.id} section={s} />)}
@@ -458,9 +457,9 @@ export function ThankyouPage({
         )}
       </div>
 
-      {/* 10. Cal.com booking embed - wider container for desktop mode */}
+      {/* 9. Cal.com booking embed - wider container for desktop mode */}
       {qualificationComplete && isQualified && calendlyUrl && (
-        <div className="w-full max-w-5xl px-4 mt-8 space-y-4">
+        <div ref={bookingRef} className="w-full max-w-5xl px-4 mt-8 space-y-4">
           <h3
             className="text-lg font-semibold text-center"
             style={{ color: 'var(--ds-text)' }}
