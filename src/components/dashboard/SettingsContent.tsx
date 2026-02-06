@@ -279,25 +279,6 @@ export function SettingsContent({
     }
   };
 
-  const handleUpgrade = async (plan: string) => {
-    setLoading(plan);
-    try {
-      const response = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
-      });
-
-      const data = await response.json();
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch (error) {
-      console.error('Upgrade error:', error);
-    } finally {
-      setLoading(null);
-    }
-  };
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
@@ -362,47 +343,12 @@ export function SettingsContent({
             )}
           </div>
 
-          {/* Pricing plans */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {PRICING_PLANS.map((plan) => (
-              <div
-                key={plan.id}
-                className={`rounded-lg border p-4 transition-colors ${
-                  plan.id === subscription?.plan ? 'border-primary bg-primary/5' : 'hover:border-muted-foreground/30'
-                }`}
-              >
-                <h3 className="font-semibold">{plan.name}</h3>
-                <p className="mb-3 text-2xl font-semibold">
-                  ${plan.price}
-                  <span className="text-sm font-normal text-muted-foreground">/mo</span>
-                </p>
-                <ul className="mb-4 space-y-1 text-sm">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-muted-foreground">
-                      <Check className="h-3 w-3 text-primary" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                {plan.id === subscription?.plan ? (
-                  <button disabled className="w-full rounded-lg bg-secondary py-2 text-sm font-medium transition-colors">
-                    Current Plan
-                  </button>
-                ) : plan.id === 'free' ? null : (
-                  <button
-                    onClick={() => handleUpgrade(plan.id)}
-                    disabled={loading === plan.id}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-                  >
-                    {loading === plan.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      'Upgrade'
-                    )}
-                  </button>
-                )}
-              </div>
-            ))}
+          {/* Beta notice */}
+          <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-4">
+            <p className="text-sm font-medium text-primary">You have full access during the beta.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              All features are unlocked for beta testers. Use the feedback button in the bottom-right corner to report bugs or request features.
+            </p>
           </div>
         </div>
 
