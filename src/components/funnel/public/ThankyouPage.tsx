@@ -171,24 +171,28 @@ export function ThankyouPage({
       style={{ background: getBackgroundStyle(), ...themeVars }}
     >
       <div className="w-full max-w-2xl space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          {/* Logo */}
-          {logoUrl && (
-            <img
-              src={logoUrl}
-              alt="Logo"
-              className="h-12 w-auto mx-auto mb-4"
-            />
-          )}
+        {/* 1. Slim confirmation banner */}
+        <div
+          className="flex items-center gap-2 rounded-lg px-4 py-3"
+          style={{ background: 'var(--ds-card)' }}
+        >
+          <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+          <p className="text-sm" style={{ color: 'var(--ds-muted)' }}>
+            You&apos;re in! Check your inbox for your resource.
+          </p>
+        </div>
 
-          <div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4"
-            style={{ background: 'var(--ds-card)' }}
-          >
-            <CheckCircle2 className="w-8 h-8 text-green-500" />
-          </div>
+        {/* 2. Logo */}
+        {logoUrl && (
+          <img
+            src={logoUrl}
+            alt="Logo"
+            className="h-12 w-auto mx-auto"
+          />
+        )}
 
+        {/* 3. Value headline + subline (selling the survey) */}
+        <div className="text-center space-y-3">
           <h1
             className="text-2xl md:text-3xl font-semibold"
             style={{ color: 'var(--ds-text)' }}
@@ -203,102 +207,181 @@ export function ThankyouPage({
           )}
         </div>
 
-        {/* Content page link */}
-        {contentPageUrl && (
-          <div className="text-center">
-            <CTAButton
-              text={`Access Your ${leadMagnetTitle || 'Content'}`}
-              icon="arrow"
-              href={leadId ? `${contentPageUrl}?leadId=${leadId}` : contentPageUrl}
-            />
-          </div>
-        )}
-
-        {/* Above-video sections */}
+        {/* 4. Above-video sections (social proof) */}
         {aboveSections.length > 0 && (
           <div className="space-y-6">
             {aboveSections.map(s => <SectionRenderer key={s.id} section={s} />)}
           </div>
         )}
 
-        {/* Video (show immediately to everyone) */}
+        {/* 5. Video (sells filling in the survey) */}
         {vslUrl && (
           <VideoEmbed url={vslUrl} />
         )}
 
-        {/* Qualification Questions */}
+        {/* 6. Survey card - visually prominent */}
         {hasQuestions && !qualificationComplete && (
-          <div
-            className="rounded-xl p-6 space-y-6"
-            style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)' }}
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-sm" style={{ color: 'var(--ds-placeholder)' }}>
-                Question {currentQuestionIndex + 1} of {questions.length}
-              </p>
-              <div className="flex gap-1">
-                {questions.map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      background: i <= currentQuestionIndex ? 'var(--ds-primary)' : 'var(--ds-border)'
-                    }}
-                  />
-                ))}
+          <div className="relative">
+            {/* Background glow */}
+            <div
+              className="absolute -inset-3 rounded-2xl blur-xl opacity-30 pointer-events-none"
+              style={{ background: primaryColor }}
+            />
+            <div
+              className="relative rounded-xl p-6 md:p-8 space-y-6"
+              style={{
+                background: 'var(--ds-card)',
+                border: `2px solid color-mix(in srgb, ${primaryColor} 40%, transparent)`,
+                boxShadow: `0 0 30px color-mix(in srgb, ${primaryColor} 15%, transparent)`,
+              }}
+            >
+              {/* Quick Survey pill */}
+              <div className="flex justify-center -mt-10 md:-mt-12 mb-2">
+                <span
+                  className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white"
+                  style={{ background: primaryColor }}
+                >
+                  Quick Survey
+                </span>
               </div>
-            </div>
 
-            {error && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
-            )}
-
-            {submitting ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--ds-primary)' }} />
-              </div>
-            ) : (
-              <>
-                <p className="text-lg font-medium" style={{ color: 'var(--ds-text)' }}>
-                  {currentQuestion?.questionText}
+              <div className="flex items-center justify-between">
+                <p className="text-sm" style={{ color: 'var(--ds-placeholder)' }}>
+                  Question {currentQuestionIndex + 1} of {questions.length}
                 </p>
-
-                {/* Yes/No buttons */}
-                {currentQuestion?.answerType === 'yes_no' && (
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleYesNoAnswer('yes')}
-                      className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
-                      style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      onClick={() => handleYesNoAnswer('no')}
-                      className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
-                      style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                    >
-                      No
-                    </button>
-                  </div>
-                )}
-
-                {/* Short text input */}
-                {currentQuestion?.answerType === 'text' && (
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={currentTextValue}
-                      onChange={(e) => setCurrentTextValue(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
-                      placeholder={currentQuestion.placeholder || 'Type your answer...'}
-                      className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors"
-                      style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                      autoFocus
+                <div className="flex gap-1">
+                  {questions.map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-2 h-2 rounded-full"
+                      style={{
+                        background: i <= currentQuestionIndex ? 'var(--ds-primary)' : 'var(--ds-border)'
+                      }}
                     />
-                    <div className="flex items-center justify-between">
+                  ))}
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                  <p className="text-sm text-red-400">{error}</p>
+                </div>
+              )}
+
+              {submitting ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--ds-primary)' }} />
+                </div>
+              ) : (
+                <>
+                  <p className="text-lg font-medium" style={{ color: 'var(--ds-text)' }}>
+                    {currentQuestion?.questionText}
+                  </p>
+
+                  {/* Yes/No buttons */}
+                  {currentQuestion?.answerType === 'yes_no' && (
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleYesNoAnswer('yes')}
+                        className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
+                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        onClick={() => handleYesNoAnswer('no')}
+                        className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
+                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                      >
+                        No
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Short text input */}
+                  {currentQuestion?.answerType === 'text' && (
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={currentTextValue}
+                        onChange={(e) => setCurrentTextValue(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
+                        placeholder={currentQuestion.placeholder || 'Type your answer...'}
+                        className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors"
+                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-between">
+                        {!currentQuestion.isRequired && (
+                          <button
+                            onClick={handleSkip}
+                            className="text-sm transition-colors"
+                            style={{ color: 'var(--ds-placeholder)' }}
+                          >
+                            Skip
+                          </button>
+                        )}
+                        <button
+                          onClick={handleTextSubmit}
+                          className="ml-auto rounded-lg px-6 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                          style={{ background: 'var(--ds-primary)' }}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Long text (textarea) input */}
+                  {currentQuestion?.answerType === 'textarea' && (
+                    <div className="space-y-3">
+                      <textarea
+                        value={currentTextValue}
+                        onChange={(e) => setCurrentTextValue(e.target.value)}
+                        placeholder={currentQuestion.placeholder || 'Type your answer...'}
+                        rows={4}
+                        className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors resize-none"
+                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-between">
+                        {!currentQuestion.isRequired && (
+                          <button
+                            onClick={handleSkip}
+                            className="text-sm transition-colors"
+                            style={{ color: 'var(--ds-placeholder)' }}
+                          >
+                            Skip
+                          </button>
+                        )}
+                        <button
+                          onClick={handleTextSubmit}
+                          className="ml-auto rounded-lg px-6 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                          style={{ background: 'var(--ds-primary)' }}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Multiple choice radio buttons */}
+                  {currentQuestion?.answerType === 'multiple_choice' && currentQuestion.options && (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        {currentQuestion.options.map((option) => (
+                          <button
+                            key={option}
+                            onClick={() => handleMultipleChoiceSelect(option)}
+                            className="w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition-colors"
+                            style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = primaryColor)}
+                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = '')}
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
                       {!currentQuestion.isRequired && (
                         <button
                           onClick={handleSkip}
@@ -308,104 +391,35 @@ export function ThankyouPage({
                           Skip
                         </button>
                       )}
+                    </div>
+                  )}
+
+                  {/* Fallback for unknown type - treat as yes/no */}
+                  {currentQuestion && !['yes_no', 'text', 'textarea', 'multiple_choice'].includes(currentQuestion.answerType) && (
+                    <div className="flex gap-3">
                       <button
-                        onClick={handleTextSubmit}
-                        className="ml-auto rounded-lg px-6 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-                        style={{ background: 'var(--ds-primary)' }}
+                        onClick={() => handleYesNoAnswer('yes')}
+                        className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
+                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
                       >
-                        Next
+                        Yes
+                      </button>
+                      <button
+                        onClick={() => handleYesNoAnswer('no')}
+                        className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
+                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                      >
+                        No
                       </button>
                     </div>
-                  </div>
-                )}
-
-                {/* Long text (textarea) input */}
-                {currentQuestion?.answerType === 'textarea' && (
-                  <div className="space-y-3">
-                    <textarea
-                      value={currentTextValue}
-                      onChange={(e) => setCurrentTextValue(e.target.value)}
-                      placeholder={currentQuestion.placeholder || 'Type your answer...'}
-                      rows={4}
-                      className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors resize-none"
-                      style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                      autoFocus
-                    />
-                    <div className="flex items-center justify-between">
-                      {!currentQuestion.isRequired && (
-                        <button
-                          onClick={handleSkip}
-                          className="text-sm transition-colors"
-                          style={{ color: 'var(--ds-placeholder)' }}
-                        >
-                          Skip
-                        </button>
-                      )}
-                      <button
-                        onClick={handleTextSubmit}
-                        className="ml-auto rounded-lg px-6 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-                        style={{ background: 'var(--ds-primary)' }}
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Multiple choice radio buttons */}
-                {currentQuestion?.answerType === 'multiple_choice' && currentQuestion.options && (
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      {currentQuestion.options.map((option) => (
-                        <button
-                          key={option}
-                          onClick={() => handleMultipleChoiceSelect(option)}
-                          className="w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition-colors"
-                          style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                          onMouseEnter={(e) => (e.currentTarget.style.borderColor = primaryColor)}
-                          onMouseLeave={(e) => (e.currentTarget.style.borderColor = '')}
-                        >
-                          {option}
-                        </button>
-                      ))}
-                    </div>
-                    {!currentQuestion.isRequired && (
-                      <button
-                        onClick={handleSkip}
-                        className="text-sm transition-colors"
-                        style={{ color: 'var(--ds-placeholder)' }}
-                      >
-                        Skip
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Fallback for unknown type - treat as yes/no */}
-                {currentQuestion && !['yes_no', 'text', 'textarea', 'multiple_choice'].includes(currentQuestion.answerType) && (
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleYesNoAnswer('yes')}
-                      className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
-                      style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      onClick={() => handleYesNoAnswer('no')}
-                      className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
-                      style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                    >
-                      No
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Qualification Result */}
+        {/* 7. Qualification Result */}
         {qualificationComplete && isQualified !== null && (
           <div
             className={`rounded-xl p-6 text-center ${
@@ -425,28 +439,39 @@ export function ThankyouPage({
           </div>
         )}
 
-        {/* Below-video sections */}
+        {/* 8. Resource CTA - moved after survey as the reward */}
+        {qualificationComplete && contentPageUrl && (
+          <div className="text-center">
+            <CTAButton
+              text={`Access Your ${leadMagnetTitle || 'Content'}`}
+              icon="arrow"
+              href={leadId ? `${contentPageUrl}?leadId=${leadId}` : contentPageUrl}
+            />
+          </div>
+        )}
+
+        {/* 9. Below-video sections */}
         {belowSections.length > 0 && (
           <div className="space-y-6">
             {belowSections.map(s => <SectionRenderer key={s.id} section={s} />)}
           </div>
         )}
-
-        {/* Calendly (show only for qualified leads) */}
-        {qualificationComplete && isQualified && calendlyUrl && (
-          <div className="space-y-4">
-            <h3
-              className="text-lg font-semibold text-center"
-              style={{ color: 'var(--ds-text)' }}
-            >
-              Book Your Call
-            </h3>
-            <CalendlyEmbed url={calendlyUrl} />
-          </div>
-        )}
       </div>
 
-      {/* Powered by */}
+      {/* 10. Cal.com booking embed - wider container for desktop mode */}
+      {qualificationComplete && isQualified && calendlyUrl && (
+        <div className="w-full max-w-5xl px-4 mt-8 space-y-4">
+          <h3
+            className="text-lg font-semibold text-center"
+            style={{ color: 'var(--ds-text)' }}
+          >
+            Book Your Call
+          </h3>
+          <CalendlyEmbed url={calendlyUrl} />
+        </div>
+      )}
+
+      {/* 11. Powered by */}
       <div className="mt-12">
         <a
           href="https://magnetlab.app"
