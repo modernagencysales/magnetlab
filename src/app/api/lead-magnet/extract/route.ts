@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getExtractionQuestions, processContentExtraction } from '@/lib/ai/lead-magnet-generator';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-import type { LeadMagnetArchetype, LeadMagnetConcept } from '@/lib/types/lead-magnet';
+import type { LeadMagnetArchetype, LeadMagnetConcept, CallTranscriptInsights } from '@/lib/types/lead-magnet';
 
 // GET - Get extraction questions for an archetype
 export async function GET(request: Request) {
@@ -41,17 +41,24 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { archetype, concept, answers } = body as {
+    const { archetype, concept, answers, transcriptInsights } = body as {
       archetype: LeadMagnetArchetype;
       concept: LeadMagnetConcept;
       answers: Record<string, string>;
+      transcriptInsights?: CallTranscriptInsights;
     };
 
     if (!archetype || !concept || !answers) {
       return ApiErrors.validationError('Missing required fields: archetype, concept, answers');
     }
 
-    const extractedContent = await processContentExtraction(archetype, concept, answers);
+    // Pass transcript insights to enhance AI extraction with real customer data
+    const extractedContent = await processContentExtraction(
+      archetype,
+      concept,
+      answers,
+      transcriptInsights
+    );
 
     return NextResponse.json(extractedContent);
   } catch (error) {

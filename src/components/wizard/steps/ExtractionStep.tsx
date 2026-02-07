@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Loader2, MessageCircle, Send } from 'lucide-react';
-import type { LeadMagnetConcept, ContentExtractionQuestion, LeadMagnetArchetype } from '@/lib/types/lead-magnet';
+import { ArrowLeft, Loader2, MessageCircle, Send, Lightbulb, Quote } from 'lucide-react';
+import type { LeadMagnetConcept, ContentExtractionQuestion, LeadMagnetArchetype, IdeationSources } from '@/lib/types/lead-magnet';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 
 interface ExtractionStepProps {
@@ -11,7 +11,78 @@ interface ExtractionStepProps {
   onComplete: (answers: Record<string, string>, archetype: LeadMagnetArchetype, concept: LeadMagnetConcept) => void;
   onBack: () => void;
   loading: boolean;
+  ideationSources?: IdeationSources;
 }
+
+// Map of question IDs to relevant transcript insight types
+const QUESTION_INSIGHT_MAPPING: Record<string, ('painPoints' | 'frequentQuestions' | 'transformationOutcomes' | 'objections' | 'languagePatterns')[]> = {
+  // single-breakdown
+  example: ['painPoints', 'transformationOutcomes'],
+  walkthrough: ['languagePatterns'],
+  psychology: ['objections', 'painPoints'],
+  insight: ['frequentQuestions', 'painPoints'],
+  adaptation: ['transformationOutcomes', 'objections'],
+  // single-system
+  outcome: ['transformationOutcomes'],
+  steps: ['frequentQuestions'],
+  pitfalls: ['objections', 'painPoints'],
+  templates: ['languagePatterns'],
+  results: ['transformationOutcomes'],
+  differentiation: ['painPoints', 'objections'],
+  // focused-toolkit
+  useCase: ['painPoints', 'frequentQuestions'],
+  items: ['languagePatterns'],
+  content: ['languagePatterns'],
+  context: ['frequentQuestions'],
+  testing: ['transformationOutcomes'],
+  exclusions: ['objections'],
+  // single-calculator
+  question: ['frequentQuestions', 'painPoints'],
+  inputs: ['languagePatterns'],
+  logic: ['objections'],
+  output: ['transformationOutcomes'],
+  interpretation: ['frequentQuestions'],
+  limitations: ['objections'],
+  // focused-directory
+  need: ['painPoints', 'frequentQuestions'],
+  dataPoints: ['languagePatterns'],
+  experience: ['transformationOutcomes'],
+  choosing: ['frequentQuestions', 'objections'],
+  excluded: ['objections'],
+  // mini-training
+  skill: ['frequentQuestions', 'transformationOutcomes'],
+  chunks: ['frequentQuestions'],
+  teaching: ['languagePatterns', 'objections'],
+  practice: ['transformationOutcomes'],
+  mistakes: ['objections', 'painPoints'],
+  beforeAfter: ['transformationOutcomes'],
+  // one-story
+  summary: ['transformationOutcomes'],
+  before: ['painPoints'],
+  journey: ['objections', 'frequentQuestions'],
+  turningPoint: ['transformationOutcomes'],
+  after: ['transformationOutcomes'],
+  lessons: ['objections', 'painPoints'],
+  // prompt
+  task: ['painPoints', 'frequentQuestions'],
+  prompt: ['languagePatterns'],
+  examples: ['transformationOutcomes'],
+  technique: ['objections'],
+  tips: ['frequentQuestions'],
+  // assessment
+  evaluates: ['painPoints', 'frequentQuestions'],
+  questions: ['frequentQuestions', 'objections'],
+  scoring: ['languagePatterns'],
+  ranges: ['transformationOutcomes'],
+  actions: ['transformationOutcomes', 'objections'],
+  benchmarks: ['transformationOutcomes'],
+  // workflow
+  purpose: ['painPoints', 'frequentQuestions'],
+  setup: ['objections'],
+  customization: ['frequentQuestions'],
+  timeSaved: ['painPoints', 'transformationOutcomes'],
+  troubleshooting: ['objections'],
+};
 
 export function ExtractionStep({
   concept,
@@ -19,6 +90,7 @@ export function ExtractionStep({
   onComplete,
   onBack,
   loading,
+  ideationSources,
 }: ExtractionStepProps) {
   const [questions, setQuestions] = useState<ContentExtractionQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
@@ -46,6 +118,44 @@ export function ExtractionStep({
 
   const currentQuestion = questions[currentQuestionIndex];
   const isComplete = Object.keys(answers).length >= questions.filter((q) => q.required).length;
+
+  // Get transcript insights if available (used for contextual hints)
+  const transcriptInsights = ideationSources?.callTranscript?.insights;
+
+  // Get relevant insights for the current question
+  const getRelevantInsights = (questionId: string) => {
+    if (!transcriptInsights) return null;
+
+    const insightTypes = QUESTION_INSIGHT_MAPPING[questionId];
+    if (!insightTypes) return null;
+
+    const relevantInsights: {
+      painPoints?: typeof transcriptInsights.painPoints;
+      frequentQuestions?: typeof transcriptInsights.frequentQuestions;
+      transformationOutcomes?: typeof transcriptInsights.transformationOutcomes;
+      objections?: typeof transcriptInsights.objections;
+      languagePatterns?: string[];
+    } = {};
+
+    for (const type of insightTypes) {
+      if (type === 'painPoints' && transcriptInsights.painPoints?.length) {
+        relevantInsights.painPoints = transcriptInsights.painPoints.slice(0, 2);
+      } else if (type === 'frequentQuestions' && transcriptInsights.frequentQuestions?.length) {
+        relevantInsights.frequentQuestions = transcriptInsights.frequentQuestions.slice(0, 2);
+      } else if (type === 'transformationOutcomes' && transcriptInsights.transformationOutcomes?.length) {
+        relevantInsights.transformationOutcomes = transcriptInsights.transformationOutcomes.slice(0, 2);
+      } else if (type === 'objections' && transcriptInsights.objections?.length) {
+        relevantInsights.objections = transcriptInsights.objections.slice(0, 2);
+      } else if (type === 'languagePatterns' && transcriptInsights.languagePatterns?.length) {
+        relevantInsights.languagePatterns = transcriptInsights.languagePatterns.slice(0, 3);
+      }
+    }
+
+    // Return null if no insights were found
+    if (Object.keys(relevantInsights).length === 0) return null;
+
+    return relevantInsights;
+  };
 
   // Auto-scroll to current question when it changes
   useEffect(() => {
@@ -130,6 +240,8 @@ export function ExtractionStep({
             return null;
           }
 
+          const relevantInsights = isActive ? getRelevantInsights(question.id) : null;
+
           return (
             <div
               key={question.id}
@@ -149,6 +261,85 @@ export function ExtractionStep({
                   )}
                 </div>
               </div>
+
+              {/* Transcript insights panel - shown when available and question is active */}
+              {isActive && relevantInsights && (
+                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
+                  <div className="mb-2 flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-200">
+                    <Lightbulb className="h-4 w-4" />
+                    Insights from your coaching call
+                  </div>
+                  <div className="space-y-3 text-sm text-amber-900 dark:text-amber-100">
+                    {relevantInsights.painPoints && relevantInsights.painPoints.length > 0 && (
+                      <div>
+                        <span className="font-medium">Pain points mentioned:</span>
+                        <ul className="mt-1 space-y-1">
+                          {relevantInsights.painPoints.map((p, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <Quote className="mt-0.5 h-3 w-3 shrink-0 opacity-60" />
+                              <span className="italic">&ldquo;{p.quote}&rdquo;</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {relevantInsights.frequentQuestions && relevantInsights.frequentQuestions.length > 0 && (
+                      <div>
+                        <span className="font-medium">Questions prospects ask:</span>
+                        <ul className="mt-1 space-y-1">
+                          {relevantInsights.frequentQuestions.map((q, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="shrink-0">•</span>
+                              <span>{q.question}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {relevantInsights.transformationOutcomes && relevantInsights.transformationOutcomes.length > 0 && (
+                      <div>
+                        <span className="font-medium">Transformations desired:</span>
+                        <ul className="mt-1 space-y-1">
+                          {relevantInsights.transformationOutcomes.map((t, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="shrink-0">•</span>
+                              <span>{t.currentState} → {t.desiredState}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {relevantInsights.objections && relevantInsights.objections.length > 0 && (
+                      <div>
+                        <span className="font-medium">Objections heard:</span>
+                        <ul className="mt-1 space-y-1">
+                          {relevantInsights.objections.map((o, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <Quote className="mt-0.5 h-3 w-3 shrink-0 opacity-60" />
+                              <span className="italic">&ldquo;{o.objection}&rdquo;</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {relevantInsights.languagePatterns && relevantInsights.languagePatterns.length > 0 && (
+                      <div>
+                        <span className="font-medium">Language to use:</span>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {relevantInsights.languagePatterns.map((pattern, i) => (
+                            <span key={i} className="rounded-full bg-amber-200/50 px-2 py-0.5 text-xs dark:bg-amber-800/50">
+                              {pattern}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+                    Use these real insights to inform your answer
+                  </p>
+                </div>
+              )}
 
               <textarea
                 value={answers[question.id] || ''}

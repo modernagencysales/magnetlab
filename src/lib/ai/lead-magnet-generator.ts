@@ -677,7 +677,8 @@ export function getExtractionQuestions(archetype: LeadMagnetArchetype): ContentE
 export async function processContentExtraction(
   archetype: LeadMagnetArchetype,
   concept: LeadMagnetConcept,
-  answers: Record<string, string>
+  answers: Record<string, string>,
+  transcriptInsights?: CallTranscriptInsights
 ): Promise<ExtractedContent> {
   if (!archetype || !concept || !answers) {
     throw new Error(`Missing required parameters: archetype=${!!archetype}, concept=${!!concept}, answers=${!!answers}`);
@@ -692,6 +693,48 @@ export async function processContentExtraction(
     .map((q) => `Q: ${q.question}\nA: ${answers[q.id] || 'Not provided'}`)
     .join('\n\n');
 
+  // Build transcript context if available
+  let transcriptContext = '';
+  if (transcriptInsights) {
+    const parts: string[] = [];
+
+    if (transcriptInsights.painPoints?.length) {
+      parts.push(`PAIN POINTS (from real coaching calls):
+${transcriptInsights.painPoints.map((p) => `- "${p.quote}" (${p.frequency}, theme: ${p.theme})`).join('\n')}`);
+    }
+
+    if (transcriptInsights.frequentQuestions?.length) {
+      parts.push(`QUESTIONS PROSPECTS ASK:
+${transcriptInsights.frequentQuestions.map((q) => `- "${q.question}" — ${q.context}`).join('\n')}`);
+    }
+
+    if (transcriptInsights.transformationOutcomes?.length) {
+      parts.push(`DESIRED TRANSFORMATIONS:
+${transcriptInsights.transformationOutcomes.map((t) => `- From: "${t.currentState}" → To: "${t.desiredState}"`).join('\n')}`);
+    }
+
+    if (transcriptInsights.objections?.length) {
+      parts.push(`OBJECTIONS & CONCERNS:
+${transcriptInsights.objections.map((o) => `- "${o.objection}" (underlying concern: ${o.underlyingConcern})`).join('\n')}`);
+    }
+
+    if (transcriptInsights.languagePatterns?.length) {
+      parts.push(`LANGUAGE PATTERNS (use these exact phrases):
+${transcriptInsights.languagePatterns.map((p) => `- "${p}"`).join('\n')}`);
+    }
+
+    if (parts.length > 0) {
+      transcriptContext = `
+
+REAL CUSTOMER INSIGHTS FROM COACHING CALLS:
+Use these insights to make the content resonate with real pain points and use authentic customer language.
+
+${parts.join('\n\n')}
+
+IMPORTANT: Incorporate these real insights throughout the content. Use the exact language patterns where appropriate. Address the specific pain points and objections. Show transformations that match what prospects actually want.`;
+    }
+  }
+
   const prompt = `You are a lead magnet strategist. Based on the following Q&A extraction, structure the content for this lead magnet.
 
 LEAD MAGNET CONCEPT:
@@ -701,7 +744,7 @@ Pain Solved: ${concept.painSolved}
 Format: ${concept.deliveryFormat}
 
 EXTRACTED CONTENT:
-${qaPairs}
+${qaPairs}${transcriptContext}
 
 Now structure this into a deliverable. Provide:
 1. title: Final polished title
