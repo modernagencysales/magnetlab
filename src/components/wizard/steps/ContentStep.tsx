@@ -11,13 +11,22 @@ interface ContentStepProps {
   loading: boolean;
 }
 
-// Helper to normalize items that might be strings or objects with {item, explanation}
-function normalizeItem(item: string | { item?: string; explanation?: string }): string {
+// Helper to normalize items that might be strings or objects with various property names.
+// The AI may return objects like {item, explanation}, {mistake, explanation}, {error, reason}, etc.
+// This function handles any object by extracting the first two string values.
+function normalizeItem(item: string | Record<string, unknown>): string {
   if (typeof item === 'string') return item;
   if (item && typeof item === 'object') {
-    if (item.item && item.explanation) return `${item.item}: ${item.explanation}`;
-    if (item.item) return item.item;
-    if (item.explanation) return item.explanation;
+    // Get all string values from the object
+    const values = Object.values(item).filter((v): v is string => typeof v === 'string' && v.length > 0);
+    if (values.length >= 2) {
+      // Two values: format as "first: second" (e.g., "mistake: explanation")
+      return `${values[0]}: ${values[1]}`;
+    }
+    if (values.length === 1) {
+      return values[0];
+    }
+    // No string values found, fall back to JSON
     return JSON.stringify(item);
   }
   return String(item);
