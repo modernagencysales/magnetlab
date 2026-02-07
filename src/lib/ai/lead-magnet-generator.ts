@@ -19,8 +19,8 @@ function getAnthropicClient(): Anthropic {
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY is not set in environment variables');
   }
-  // Increased timeout for background jobs (2 minutes for complex AI generation)
-  return new Anthropic({ apiKey, timeout: 120_000 });
+  // Increased timeout for background jobs (4 minutes for complex AI generation like ideation)
+  return new Anthropic({ apiKey, timeout: 240_000 });
 }
 
 // =============================================================================
@@ -450,13 +450,18 @@ Return ONLY valid JSON.`;
   try {
     const response = await getAnthropicClient().messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 4000,
+      max_tokens: 16000,
       messages: [{ role: 'user', content: prompt }],
     });
 
     const textContent = response.content.find((block) => block.type === 'text');
     if (!textContent || textContent.type !== 'text') {
       throw new Error('No text response from Claude');
+    }
+
+    // Detect truncated response (hit max_tokens)
+    if (response.stop_reason === 'max_tokens') {
+      console.error(`Extraction response truncated for archetype "${archetype}" — stop_reason=max_tokens`);
     }
 
     const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);

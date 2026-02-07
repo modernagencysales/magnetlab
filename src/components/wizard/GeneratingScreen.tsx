@@ -84,7 +84,7 @@ export function GeneratingScreen() {
         </motion.h2>
 
         <p className="text-muted-foreground">
-          This usually takes 15-30 seconds
+          This usually takes 1-2 minutes
         </p>
 
         {/* Progress bar */}
@@ -94,7 +94,7 @@ export function GeneratingScreen() {
             initial={{ width: '0%' }}
             animate={{ width: '100%' }}
             transition={{
-              duration: 25,
+              duration: 90,
               ease: 'linear',
             }}
           />

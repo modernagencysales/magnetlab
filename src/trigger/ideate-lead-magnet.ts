@@ -14,7 +14,7 @@ export interface IdeateLeadMagnetPayload {
 export const ideateLeadMagnet = task({
   id: "ideate-lead-magnet",
   retry: {
-    maxAttempts: 2,
+    maxAttempts: 1,
   },
   run: async (payload: IdeateLeadMagnetPayload) => {
     const { jobId, userId, input } = payload;
