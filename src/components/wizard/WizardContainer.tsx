@@ -236,10 +236,18 @@ export function WizardContainer() {
     setError(null);
 
     try {
+      // Include transcript insights if available to enhance AI content extraction
+      const transcriptInsights = state.ideationSources?.callTranscript?.insights;
+
       const response = await fetch('/api/lead-magnet/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ archetype, concept, answers }),
+        body: JSON.stringify({
+          archetype,
+          concept,
+          answers,
+          transcriptInsights, // Pass coaching call insights to enhance extraction
+        }),
       });
 
       if (!response.ok) {
@@ -270,7 +278,7 @@ export function WizardContainer() {
     } finally {
       setGenerating('idle');
     }
-  }, []);
+  }, [state.ideationSources]);
 
   const handleContentApprove = useCallback(async () => {
     // Support both AI-generated and custom concepts
@@ -436,6 +444,7 @@ export function WizardContainer() {
                 onComplete={handleExtractionComplete}
                 onBack={() => goToStep(2)}
                 loading={generating === 'extraction'}
+                ideationSources={state.ideationSources}
               />
             )}
 
