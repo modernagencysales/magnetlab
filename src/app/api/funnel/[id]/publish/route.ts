@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { funnelPageFromRow, type FunnelPageRow } from '@/lib/types/funnel';
-import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { polishLeadMagnetContent } from '@/lib/ai/lead-magnet-generator';
 import type { ExtractedContent, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 
@@ -22,6 +22,10 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!isValidUUID(id)) {
+      return ApiErrors.validationError('Invalid funnel page ID');
+    }
+
     const body = await request.json();
     const { publish } = body;
 
@@ -68,6 +72,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           .from('lead_magnets')
           .select('id, extracted_content, polished_content, concept')
           .eq('id', funnel.lead_magnets.id)
+          .eq('user_id', session.user.id)
           .single();
 
         if (lm?.extracted_content && !lm.polished_content && lm.concept) {

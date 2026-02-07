@@ -4,7 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import type { PolishedContent } from '@/lib/types/lead-magnet';
 
 interface RouteParams {
@@ -19,6 +19,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!isValidUUID(id)) {
+      return ApiErrors.validationError('Invalid lead magnet ID');
+    }
+
     const body = await request.json();
     const polishedContent = body.polishedContent as PolishedContent;
 
@@ -29,15 +33,15 @@ export async function PUT(request: Request, { params }: RouteParams) {
     // Recalculate metadata
     let wordCount = 0;
     for (const section of polishedContent.sections) {
-      wordCount += section.introduction.split(/\s+/).length;
-      wordCount += section.keyTakeaway.split(/\s+/).length;
+      wordCount += (section.introduction || '').split(/\s+/).filter(Boolean).length;
+      wordCount += (section.keyTakeaway || '').split(/\s+/).filter(Boolean).length;
       for (const block of section.blocks) {
         if (block.content) {
           wordCount += block.content.split(/\s+/).length;
         }
       }
     }
-    wordCount += polishedContent.heroSummary.split(/\s+/).length;
+    wordCount += (polishedContent.heroSummary || '').split(/\s+/).filter(Boolean).length;
     polishedContent.metadata = {
       wordCount,
       readingTimeMinutes: Math.max(1, Math.round(wordCount / 200)),

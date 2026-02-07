@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { funnelPageFromRow, type FunnelPageRow } from '@/lib/types/funnel';
-import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -20,6 +20,10 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!isValidUUID(id)) {
+      return ApiErrors.validationError('Invalid funnel page ID');
+    }
+
     const supabase = createSupabaseAdminClient();
 
     const { data, error } = await supabase
@@ -49,6 +53,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!isValidUUID(id)) {
+      return ApiErrors.validationError('Invalid funnel page ID');
+    }
+
     const body = await request.json();
     const supabase = createSupabaseAdminClient();
 
@@ -71,6 +79,20 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (body.backgroundStyle !== undefined) updateData.background_style = body.backgroundStyle;
     if (body.logoUrl !== undefined) updateData.logo_url = body.logoUrl;
     if (body.qualificationFormId !== undefined) updateData.qualification_form_id = body.qualificationFormId;
+
+    // Verify ownership of qualificationFormId if provided
+    if (body.qualificationFormId) {
+      const { data: qf } = await supabase
+        .from('qualification_forms')
+        .select('id')
+        .eq('id', body.qualificationFormId)
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (!qf) {
+        return ApiErrors.notFound('Qualification form');
+      }
+    }
 
     // Check for slug collision if updating slug
     if (body.slug) {
@@ -120,6 +142,10 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!isValidUUID(id)) {
+      return ApiErrors.validationError('Invalid funnel page ID');
+    }
+
     const supabase = createSupabaseAdminClient();
 
     // First verify ownership
