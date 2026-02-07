@@ -132,6 +132,7 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
             type="button"
             onClick={resetToIdle}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            title="Clear this extraction and paste new content"
           >
             Start over
           </button>
@@ -149,6 +150,9 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
                     <li key={index}>{suggestion}</li>
                   ))}
                 </ul>
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                  Tip: You can add or edit items in any field below without starting over.
+                </p>
               </div>
             </div>
           </div>
