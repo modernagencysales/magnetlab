@@ -326,12 +326,11 @@ Generate ${archetypes.length} lead magnet concepts (one for each archetype liste
 3. title: Using a title formula - specific and outcome-focused
 4. painSolved: The ONE urgent pain it solves
 5. whyNowHook: Which urgency technique to use
-6. linkedinPost: Complete post using hook through CTA, ready to copy-paste
-7. contents: Detailed description of what they'll receive
-8. deliveryFormat: Google Doc, Sheet, Loom, etc.
-9. viralCheck: Object with boolean for each of the 5 criteria
-10. creationTimeEstimate: Based on assets they already have
-11. bundlePotential: What other lead magnets could combine with this
+6. contents: Detailed description of what they'll receive
+7. deliveryFormat: Google Doc, Sheet, Loom, etc.
+8. viralCheck: Object with boolean for each of the 5 criteria
+9. creationTimeEstimate: Based on assets they already have
+10. bundlePotential: What other lead magnets could combine with this
 
 Return ONLY valid JSON with this structure:
 {
@@ -340,7 +339,7 @@ Return ONLY valid JSON with this structure:
 
   const response = await getAnthropicClient().messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 4000, // Smaller batches need fewer tokens
+    max_tokens: 2500, // 2 concepts per batch, no linkedinPost = fewer tokens needed
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -412,7 +411,7 @@ Return ONLY valid JSON:
 }`;
 
   const response = await getAnthropicClient().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 1500,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -443,20 +442,22 @@ export async function generateLeadMagnetIdeasParallel(
     competitorAnalysis?: CompetitorAnalysis;
   }
 ): Promise<IdeationResult> {
-  // Split archetypes into 3 batches for parallel processing
-  const batch1Archetypes = ALL_ARCHETYPES.slice(0, 3);  // 0-2: single-breakdown, single-system, focused-toolkit
-  const batch2Archetypes = ALL_ARCHETYPES.slice(3, 7);  // 3-6: single-calculator, focused-directory, mini-training, one-story
-  const batch3Archetypes = ALL_ARCHETYPES.slice(7, 10); // 7-9: prompt, assessment, workflow
+  // Split archetypes into 5 batches of 2 for maximum parallelism
+  const batches = [
+    ALL_ARCHETYPES.slice(0, 2),   // single-breakdown, single-system
+    ALL_ARCHETYPES.slice(2, 4),   // focused-toolkit, single-calculator
+    ALL_ARCHETYPES.slice(4, 6),   // focused-directory, mini-training
+    ALL_ARCHETYPES.slice(6, 8),   // one-story, prompt
+    ALL_ARCHETYPES.slice(8, 10),  // assessment, workflow
+  ];
 
-  // Generate all concept batches in parallel
-  const [batch1Concepts, batch2Concepts, batch3Concepts] = await Promise.all([
-    generateConceptBatch(batch1Archetypes, context, sources),
-    generateConceptBatch(batch2Archetypes, context, sources),
-    generateConceptBatch(batch3Archetypes, context, sources),
-  ]);
+  // Generate all concept batches in parallel (5x2 instead of 3x3/4/3)
+  const batchResults = await Promise.all(
+    batches.map((archetypes) => generateConceptBatch(archetypes, context, sources))
+  );
 
   // Merge all concepts in order
-  const allConcepts = [...batch1Concepts, ...batch2Concepts, ...batch3Concepts];
+  const allConcepts = batchResults.flat();
 
   // Generate recommendations based on all concepts
   const { recommendations, suggestedBundle } = await generateRecommendationsAndBundle(

@@ -498,7 +498,7 @@ function ExtractedArrayField({ label, items, confidence, onChange, expanded, onT
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                    className="flex-1 px-2 py-1 border rounded text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="flex-1 px-2 py-1 border rounded bg-background text-foreground text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                     autoFocus
                   />
                   <button
@@ -544,7 +544,7 @@ function ExtractedArrayField({ label, items, confidence, onChange, expanded, onT
           onChange={(e) => setNewItem(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addItem()}
           placeholder={`Add ${label.toLowerCase()}...`}
-          className="flex-1 px-2 py-1 border rounded text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+          className="flex-1 px-2 py-1 border rounded bg-background text-foreground text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
         />
         <button
           type="button"

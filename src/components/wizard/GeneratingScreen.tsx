@@ -14,6 +14,7 @@ const LOADING_MESSAGES = [
 
 export function GeneratingScreen() {
   const [messageIndex, setMessageIndex] = useState(0);
+  const [progressDone, setProgressDone] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -84,20 +85,28 @@ export function GeneratingScreen() {
         </motion.h2>
 
         <p className="text-muted-foreground">
-          This usually takes 1-2 minutes
+          {progressDone ? 'Almost there — finalizing your ideas...' : 'This usually takes 1-2 minutes'}
         </p>
 
         {/* Progress bar */}
-        <div className="mx-auto mt-8 h-1.5 w-64 overflow-hidden rounded-full bg-muted">
+        <div className="relative mx-auto mt-8 h-1.5 w-64 overflow-hidden rounded-full bg-muted">
           <motion.div
-            className="h-full bg-primary"
+            className="absolute inset-0 bg-primary"
             initial={{ width: '0%' }}
             animate={{ width: '100%' }}
             transition={{
               duration: 90,
               ease: 'linear',
             }}
+            onAnimationComplete={() => setProgressDone(true)}
           />
+          {progressDone && (
+            <motion.div
+              className="absolute inset-0 bg-primary"
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          )}
         </div>
 
         <p className="mt-6 max-w-md text-sm text-muted-foreground">

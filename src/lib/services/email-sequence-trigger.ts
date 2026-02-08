@@ -30,7 +30,7 @@ async function shouldTriggerSequence(
   // Check if email sequence exists and is active
   const { data: sequence } = await supabase
     .from('email_sequences')
-    .select('*')
+    .select('id, lead_magnet_id, user_id, emails, loops_synced_at, loops_transactional_ids, status, created_at, updated_at')
     .eq('lead_magnet_id', leadMagnetId)
     .eq('user_id', userId)
     .single();

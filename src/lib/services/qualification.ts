@@ -25,13 +25,13 @@ export async function resolveQuestionsForFunnel(
   if (qualificationFormId) {
     query = supabase
       .from('qualification_questions')
-      .select('*')
+      .select('id, funnel_page_id, form_id, question_text, question_order, answer_type, qualifying_answer, options, placeholder, is_qualifying, is_required, created_at')
       .eq('form_id', qualificationFormId)
       .order('question_order', { ascending: true });
   } else {
     query = supabase
       .from('qualification_questions')
-      .select('*')
+      .select('id, funnel_page_id, form_id, question_text, question_order, answer_type, qualifying_answer, options, placeholder, is_qualifying, is_required, created_at')
       .eq('funnel_page_id', funnelPageId)
       .order('question_order', { ascending: true });
   }

@@ -74,7 +74,7 @@ export interface LeadMagnetConcept {
   title: string;
   painSolved: string;
   whyNowHook: string;
-  linkedinPost: string;
+  linkedinPost?: string;
   contents: string;
   deliveryFormat: string;
   viralCheck: {
