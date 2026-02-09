@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Magnet, Check, ArrowRight, Zap, Target, FileText, Calendar, Mail, Globe } from 'lucide-react';
+import { Magnet, Check, ArrowRight, Zap, Target, Globe, Brain, CalendarClock, Webhook, Mic } from 'lucide-react';
 
 const features = [
   {
@@ -9,34 +9,34 @@ const features = [
       'Our system asks the right questions to extract YOUR unique expertise, not generic AI content.',
   },
   {
+    icon: Mic,
+    title: 'AI Content Pipeline',
+    description:
+      'Import transcripts from any recorder. AI extracts insights and writes LinkedIn posts in your voice.',
+  },
+  {
+    icon: Brain,
+    title: 'AI Brain',
+    description:
+      'Semantic knowledge base that gets smarter with every call. Search your expertise instantly.',
+  },
+  {
     icon: Globe,
     title: 'Hosted Landing Pages',
     description:
       'Beautiful opt-in pages, thank you pages, and hosted content pages — no website needed.',
   },
   {
-    icon: Mail,
-    title: 'Email Sequences',
+    icon: CalendarClock,
+    title: 'Autopilot Publishing',
     description:
-      'Automated drip campaigns that nurture leads after they opt in. Set it and forget it.',
+      'Weekly planner with drag-and-drop Kanban board. Auto-publish to LinkedIn on your schedule.',
   },
   {
-    icon: Zap,
-    title: '10 Proven Archetypes',
+    icon: Webhook,
+    title: 'Universal Webhook',
     description:
-      'Choose from 10 battle-tested lead magnet formats that convert, each with specific extraction questions.',
-  },
-  {
-    icon: FileText,
-    title: 'Anti-Cliche Posts',
-    description:
-      'Our post writer avoids AI cliches and writes in your voice, with 3 variations to choose from.',
-  },
-  {
-    icon: Calendar,
-    title: 'LeadShark Integration',
-    description:
-      'Schedule posts, auto-DM commenters, and capture leads directly through LeadShark.',
+      'Connect Grain, Fireflies, Fathom, Otter, or any recording tool via a single webhook URL.',
   },
 ];
 
@@ -46,7 +46,7 @@ const comparisonPoints = [
   { them: 'Generic copywriter output', us: 'YOUR expertise extracted, not ghostwritten' },
   { them: 'Manual lead follow-up', us: 'Automated comment-to-DM flow via LeadShark' },
   { them: 'Separate tools for pages & email', us: 'Landing pages, emails, and automation built in' },
-  { them: 'You manage the agency', us: 'Self-serve — launch a full funnel in one session' },
+  { them: 'Manual content creation from scratch', us: 'AI turns your calls into ready-to-post content' },
 ];
 
 const pricing = [
@@ -69,7 +69,10 @@ const pricing = [
       'Unlimited lead magnets',
       'Premium AI (Opus 4.5)',
       'Custom landing pages',
-      'Email sequences',
+      'AI Content Pipeline',
+      'AI Brain (knowledge base)',
+      'Autopilot publishing',
+      'Universal webhook',
       'LeadShark integration',
       'LinkedIn scheduling',
       'Advanced analytics',
@@ -113,22 +116,23 @@ export default function HomePage() {
       <section className="py-20">
         <div className="container mx-auto max-w-4xl px-4 text-center">
           <div className="mb-6 inline-block rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-            The anti-generic lead magnet generator
+            Lead magnets + AI-powered content from your own calls
           </div>
           <h1 className="mb-6 text-4xl font-bold leading-tight md:text-6xl">
             Create lead magnets your ICP{' '}
-            <span className="text-primary">actually wants</span>
+            <span className="text-primary">actually wants</span> — then fuel your LinkedIn
+            with AI content
           </h1>
           <p className="mb-10 text-xl text-muted-foreground">
             Extract YOUR unique expertise, generate landing pages and email sequences,
-            and automate delivery through LeadShark — all in one platform.
+            and turn your call recordings into a steady stream of LinkedIn posts — all in one platform.
           </p>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
               href="/login"
               className="flex items-center gap-2 rounded-lg bg-primary px-8 py-4 text-lg font-semibold text-primary-foreground"
             >
-              Create Your First Lead Magnet
+              Get Started Free
               <ArrowRight className="h-5 w-5" />
             </Link>
             <Link
@@ -149,25 +153,37 @@ export default function HomePage() {
               <h3 className="mb-4 text-xl font-semibold text-destructive">The Problem</h3>
               <p className="text-muted-foreground">
                 Generic AI tools generate the same bland lead magnets everyone else has.
-                Then you need separate tools for landing pages, email sequences, and delivery.
+                Your calls are full of gold-mine content, but it stays trapped in recordings.
+                You need separate tools for pages, emails, content, and delivery.
                 It&apos;s a mess.
               </p>
             </div>
             <div className="rounded-xl border bg-primary/5 p-6">
               <h3 className="mb-4 text-xl font-semibold text-primary">Our Solution</h3>
               <p className="text-muted-foreground">
-                MagnetLab extracts YOUR unique expertise, builds the landing page and email sequence,
-                and integrates with LeadShark for automated LinkedIn delivery. One platform, zero duct tape.
+                MagnetLab extracts YOUR unique expertise for lead magnets, then turns your call
+                recordings into LinkedIn posts automatically. One platform for lead magnets, content
+                pipeline, and automated delivery. Zero duct tape.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* How It Works — Lead Magnets */}
       <section id="how-it-works" className="py-20">
         <div className="container mx-auto max-w-4xl px-4">
-          <h2 className="mb-12 text-center text-3xl font-bold">How It Works</h2>
+          <h2 className="mb-4 text-center text-3xl font-bold">How It Works</h2>
+          <p className="mb-12 text-center text-lg text-muted-foreground">
+            Two engines, one platform
+          </p>
+
+          {/* Lead Magnet Steps */}
+          <div className="mb-6">
+            <div className="mb-8 inline-block rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+              Lead Magnets
+            </div>
+          </div>
           <div className="space-y-8">
             {[
               {
@@ -193,6 +209,51 @@ export default function HomePage() {
                 title: 'Launch your funnel',
                 description:
                   'We generate your landing page, email sequence, LinkedIn posts, and connect it all to LeadShark for automated delivery.',
+              },
+            ].map((item, index) => (
+              <div key={index} className="flex gap-6">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
+                  {item.step}
+                </div>
+                <div>
+                  <h3 className="mb-2 text-xl font-semibold">{item.title}</h3>
+                  <p className="text-muted-foreground">{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Content Pipeline Steps */}
+          <div className="mb-6 mt-16">
+            <div className="mb-8 inline-block rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+              Content Pipeline
+            </div>
+          </div>
+          <div className="space-y-8">
+            {[
+              {
+                step: '1',
+                title: 'Import your call transcripts',
+                description:
+                  'Connect Grain, Fireflies, Fathom, or Otter via webhook — or paste and upload transcripts directly.',
+              },
+              {
+                step: '2',
+                title: 'AI extracts knowledge and post-worthy ideas',
+                description:
+                  'Your AI Brain learns from every call. It identifies key insights, frameworks, and stories worth sharing.',
+              },
+              {
+                step: '3',
+                title: 'Review, edit, and schedule in the Kanban board',
+                description:
+                  'Drag and drop posts through your weekly planner. Edit AI drafts or approve them as-is.',
+              },
+              {
+                step: '4',
+                title: 'Auto-publish to LinkedIn on your schedule',
+                description:
+                  'Set your posting slots, fill the buffer, and let Autopilot publish for you via LeadShark.',
               },
             ].map((item, index) => (
               <div key={index} className="flex gap-6">
@@ -285,7 +346,7 @@ export default function HomePage() {
                 <ul className="mb-6 space-y-2">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-primary" />
+                      <Check className="h-4 w-4 shrink-0 text-primary" />
                       {feature}
                     </li>
                   ))}
@@ -309,10 +370,10 @@ export default function HomePage() {
       {/* CTA */}
       <section className="py-20">
         <div className="container mx-auto max-w-2xl px-4 text-center">
-          <h2 className="mb-6 text-3xl font-bold">Ready to create your first lead magnet?</h2>
+          <h2 className="mb-6 text-3xl font-bold">Ready to turn your expertise into leads and content?</h2>
           <p className="mb-8 text-lg text-muted-foreground">
-            From expertise extraction to automated delivery — everything you need to turn
-            LinkedIn engagement into leads.
+            From lead magnets to AI-powered content from your own calls — everything you need to
+            own LinkedIn.
           </p>
           <Link
             href="/login"
