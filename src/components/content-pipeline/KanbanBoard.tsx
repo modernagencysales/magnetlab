@@ -253,6 +253,13 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
       } else {
         if (action === 'edit') {
           setModalPost(item.data);
+        } else if (action === 'publish') {
+          const res = await fetch(`/api/content-pipeline/posts/${item.data.id}/publish`, { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok && data.error?.includes('Settings')) {
+            alert(data.error);
+          }
+          refresh();
         } else if (action === 'delete') {
           await fetch(`/api/content-pipeline/posts/${item.data.id}`, { method: 'DELETE' });
           if (previewItem?.item.data.id === item.data.id) setPreviewItem(null);

@@ -22,7 +22,7 @@ export async function POST(
     // Fetch the idea
     const { data: idea, error: ideaError } = await supabase
       .from('cp_content_ideas')
-      .select('*')
+      .select('id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, status, created_at, updated_at')
       .eq('id', id)
       .eq('user_id', session.user.id)
       .single();

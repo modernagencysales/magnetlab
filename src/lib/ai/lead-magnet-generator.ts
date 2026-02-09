@@ -32,7 +32,11 @@ function getAnthropicClient(): Anthropic {
  */
 async function getKnowledgeContext(userId: string, searchQuery: string): Promise<string> {
   try {
-    const entries = await getRelevantContext(userId, searchQuery, 10);
+    const result = await getRelevantContext(userId, searchQuery, 10);
+    if (result.error) {
+      console.warn('Knowledge context search error:', result.error);
+    }
+    const entries = result.entries;
     if (!entries.length) return '';
 
     const insights = entries.filter(e => e.category === 'insight');

@@ -7,6 +7,11 @@ import type {
   KnowledgeCategory,
 } from '@/lib/types/content-pipeline';
 
+export interface SearchKnowledgeResult {
+  entries: KnowledgeEntryWithSimilarity[];
+  error?: string;
+}
+
 export async function searchKnowledge(
   userId: string,
   query: string,
@@ -16,7 +21,7 @@ export async function searchKnowledge(
     limit?: number;
     threshold?: number;
   } = {}
-): Promise<KnowledgeEntryWithSimilarity[]> {
+): Promise<SearchKnowledgeResult> {
   const { category, tags, limit = 10, threshold = 0.7 } = options;
 
   const queryEmbedding = await generateEmbedding(query);
@@ -31,7 +36,7 @@ export async function searchKnowledge(
 
   if (error) {
     console.error('Knowledge search failed:', error.message);
-    return [];
+    return { entries: [], error: error.message };
   }
 
   let results = (data || []) as KnowledgeEntryWithSimilarity[];
@@ -48,14 +53,14 @@ export async function searchKnowledge(
     );
   }
 
-  return results;
+  return { entries: results };
 }
 
 export async function getRelevantContext(
   userId: string,
   topic: string,
   maxEntries: number = 15
-): Promise<KnowledgeEntryWithSimilarity[]> {
+): Promise<SearchKnowledgeResult> {
   return searchKnowledge(userId, topic, {
     limit: maxEntries,
     threshold: 0.65,

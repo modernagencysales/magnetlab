@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Loader2, Copy, Check, Sparkles, Calendar, Send } from 'lucide-react';
+import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostPreview } from './PostPreview';
@@ -24,6 +24,8 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const [scheduling, setScheduling] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleTime, setScheduleTime] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   const displayContent = activeVariation !== null && post.variations?.[activeVariation]
     ? post.variations[activeVariation].content
@@ -50,6 +52,30 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
       setScheduling(false);
     }
   };
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      const response = await fetch(`/api/content-pipeline/posts/${post.id}/publish`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (response.ok) {
+        onUpdate();
+        onClose();
+      } else {
+        setPublishError(data.error || 'Failed to publish');
+      }
+    } catch {
+      setPublishError('Network error. Please try again.');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const canPublish = displayContent.trim().length > 0 &&
+    ['draft', 'reviewing', 'approved'].includes(post.status);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(displayContent);
@@ -227,7 +253,32 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
             <Calendar className="h-4 w-4" />
             Schedule
           </button>
+          {canPublish && (
+            <button
+              onClick={handlePublish}
+              disabled={publishing}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Linkedin className="h-4 w-4" />}
+              Publish to LinkedIn
+            </button>
+          )}
         </div>
+
+        {/* Publish Error / LeadShark not configured */}
+        {publishError && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/50">
+            <p className="text-sm text-amber-800 dark:text-amber-200">{publishError}</p>
+            {publishError.includes('Settings') && (
+              <a
+                href="/settings"
+                className="mt-1 inline-block text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Go to Settings
+              </a>
+            )}
+          </div>
+        )}
 
         {/* Schedule Panel */}
         {showSchedule && (

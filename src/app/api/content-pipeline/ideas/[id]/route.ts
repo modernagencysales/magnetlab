@@ -16,9 +16,22 @@ export async function PATCH(
     const body = await request.json();
     const supabase = createSupabaseAdminClient();
 
+    // Whitelist allowed fields to prevent arbitrary column updates
+    const ALLOWED_FIELDS = ['status', 'title', 'content_pillar', 'content_type', 'core_insight', 'why_post_worthy', 'full_context'] as const;
+    const filtered: Record<string, unknown> = {};
+    for (const key of ALLOWED_FIELDS) {
+      if (key in body) {
+        filtered[key] = body[key];
+      }
+    }
+
+    if (Object.keys(filtered).length === 0) {
+      return NextResponse.json({ error: 'No valid fields provided' }, { status: 400 });
+    }
+
     const { data, error } = await supabase
       .from('cp_content_ideas')
-      .update(body)
+      .update(filtered)
       .eq('id', id)
       .eq('user_id', session.user.id)
       .select()

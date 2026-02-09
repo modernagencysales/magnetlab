@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     // Get the plan
     const { data: plan, error: planError } = await supabase
       .from('cp_week_plans')
-      .select('*')
+      .select('id, user_id, week_start_date, posts_per_week, pillar_moments_pct, pillar_teaching_pct, pillar_human_pct, pillar_collab_pct, planned_posts, status, created_at, updated_at')
       .eq('id', plan_id)
       .eq('user_id', session.user.id)
       .single();

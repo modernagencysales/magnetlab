@@ -14,7 +14,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const callbackError = searchParams.get('error');
-  const callbackUrl = searchParams.get('callbackUrl') || '/library';
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

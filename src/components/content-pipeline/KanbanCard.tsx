@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { GripVertical, MoreVertical, PenLine, Archive, Trash2, Clock, Zap } from 'lucide-react';
+import { GripVertical, MoreVertical, PenLine, Archive, Trash2, Clock, Zap, Linkedin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PillarBadge } from './PillarBadge';
 import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
@@ -105,6 +105,9 @@ export function KanbanCard({
                 ) : (
                   <>
                     <MenuButton icon={<PenLine className="h-3.5 w-3.5" />} label="Edit" onClick={() => { onAction('edit'); setShowMenu(false); }} />
+                    {['draft', 'reviewing', 'approved'].includes(item.data.status) && (
+                      <MenuButton icon={<Linkedin className="h-3.5 w-3.5 text-blue-600" />} label="Publish" onClick={() => { onAction('publish'); setShowMenu(false); }} />
+                    )}
                     <MenuButton icon={<Trash2 className="h-3.5 w-3.5 text-red-500" />} label="Delete" className="text-red-600" onClick={() => { onAction('delete'); setShowMenu(false); }} />
                   </>
                 )}

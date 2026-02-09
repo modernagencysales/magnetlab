@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { X, Loader2, Check, AlertCircle, Sparkles, Copy, Calendar, ExternalLink, PenLine, ChevronDown } from 'lucide-react';
+import { X, Loader2, Check, AlertCircle, Sparkles, Copy, Calendar, ExternalLink, PenLine, ChevronDown, Linkedin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PillarBadge } from './PillarBadge';
 import { StatusBadge } from './StatusBadge';
@@ -155,6 +155,8 @@ function PostDetail({
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [copied, setCopied] = useState(false);
   const [polishing, setPolishing] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -231,6 +233,29 @@ function PostDetail({
     }
   };
 
+  const handlePublish = async () => {
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      const response = await fetch(`/api/content-pipeline/posts/${post.id}/publish`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (response.ok) {
+        onRefresh();
+      } else {
+        setPublishError(data.error || 'Failed to publish');
+      }
+    } catch {
+      setPublishError('Network error. Please try again.');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const canPublish = editContent.trim().length > 0 &&
+    ['draft', 'reviewing', 'approved'].includes(post.status);
+
   return (
     <div className="flex h-full flex-col border-l bg-background">
       {/* Header */}
@@ -304,6 +329,16 @@ function PostDetail({
           <Calendar className="h-3.5 w-3.5" />
           Schedule
         </button>
+        {canPublish && (
+          <button
+            onClick={handlePublish}
+            disabled={publishing}
+            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Linkedin className="h-3.5 w-3.5" />}
+            Publish
+          </button>
+        )}
         <div className="flex-1" />
         <button
           onClick={() => onOpenModal(post)}
@@ -313,6 +348,20 @@ function PostDetail({
           Full Editor
         </button>
       </div>
+      {/* Publish Error */}
+      {publishError && (
+        <div className="mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/50">
+          <p className="text-xs text-amber-800 dark:text-amber-200">{publishError}</p>
+          {publishError.includes('Settings') && (
+            <a
+              href="/settings"
+              className="mt-0.5 inline-block text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+            >
+              Go to Settings
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('cp_posting_slots')
-      .select('*')
+      .select('id, user_id, slot_number, time_of_day, day_of_week, timezone, is_active, created_at')
       .eq('user_id', session.user.id)
       .order('slot_number', { ascending: true });
 

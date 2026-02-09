@@ -14,10 +14,16 @@ export async function buildContentBrief(
   const { maxEntries = 15, includeCategories = ['insight', 'question', 'product_intel'] } = options;
 
   // Search knowledge base for relevant entries
-  const allEntries = await searchKnowledge(userId, topic, {
+  const searchResult = await searchKnowledge(userId, topic, {
     limit: maxEntries,
     threshold: 0.6,
   });
+
+  if (searchResult.error) {
+    console.warn('Knowledge search error in briefing-agent:', searchResult.error);
+  }
+
+  const allEntries = searchResult.entries;
 
   // Categorize entries
   const insights = allEntries.filter((e) => e.category === 'insight' && includeCategories.includes('insight'));

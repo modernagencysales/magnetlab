@@ -5,7 +5,7 @@ import { getUserLeadSharkClient } from '@/lib/integrations/leadshark';
 export const autoPublishCheck = schedules.task({
   id: 'auto-publish-check',
   cron: '0 * * * *', // Every hour
-  maxDuration: 120,
+  maxDuration: 300,
   run: async () => {
     const supabase = createSupabaseAdminClient();
 
@@ -46,7 +46,14 @@ export const autoPublishCheck = schedules.task({
         const scheduledTime = post.scheduled_time || new Date().toISOString();
 
         // Try LeadShark scheduling
-        const leadshark = await getUserLeadSharkClient(post.user_id);
+        let leadshark = null;
+        try {
+          leadshark = await getUserLeadSharkClient(post.user_id);
+        } catch (lsErr) {
+          logger.warn(`Failed to get LeadShark client for user ${post.user_id}`, {
+            error: lsErr instanceof Error ? lsErr.message : String(lsErr),
+          });
+        }
 
         if (leadshark) {
           const result = await leadshark.createScheduledPost({

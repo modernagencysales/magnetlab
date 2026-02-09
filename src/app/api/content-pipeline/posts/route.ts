@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('cp_pipeline_posts')
-      .select('*')
+      .select('id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, leadshark_post_id, created_at, updated_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(limit);

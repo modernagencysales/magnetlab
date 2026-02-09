@@ -13,7 +13,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('cp_business_context')
-      .select('*')
+      .select('id, user_id, business_description, target_audience, content_goals, tone_keywords, topics_to_avoid, created_at, updated_at')
       .eq('user_id', session.user.id)
       .single();
 

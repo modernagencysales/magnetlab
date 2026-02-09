@@ -11,4 +11,6 @@ export { scoreIdea, rankIdeas, getTopIdeas, deduplicateIdeas, getSuggestedPillar
 export type { ScoringContext, ScoreFactors, IdeaScore, RankedIdea } from './idea-scorer';
 export { generateWeekPlan, validatePillarDistribution, getSuggestedDistribution } from './week-planner';
 export { extractTemplateFromPost } from './template-extractor';
+export { buildContentBrief, buildContentBriefForIdea } from './briefing-agent';
+export { clusterTags } from './tag-clusterer';
 export { quickWrite } from './quick-writer';

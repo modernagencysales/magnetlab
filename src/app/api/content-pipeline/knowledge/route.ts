@@ -23,12 +23,15 @@ export async function GET(request: NextRequest) {
 
     // Semantic search
     if (query) {
-      const entries = await searchKnowledge(session.user.id, query, {
+      const result = await searchKnowledge(session.user.id, query, {
         category: category || undefined,
         limit: 20,
         threshold: 0.6,
       });
-      return NextResponse.json({ entries, total_count: entries.length });
+      if (result.error) {
+        return NextResponse.json({ error: result.error }, { status: 500 });
+      }
+      return NextResponse.json({ entries: result.entries, total_count: result.entries.length });
     }
 
     // Browse by category

@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Routes that require authentication
-const protectedRoutes = ['/create', '/library', '/analytics', '/settings', '/leads', '/pages', '/docs', '/content'];
+const protectedRoutes = ['/create', '/library', '/analytics', '/settings', '/leads', '/pages', '/docs', '/content', '/assets', '/swipe-file'];
 
-// Routes that should redirect to library if authenticated
+// Routes that should redirect to dashboard if authenticated
 const authRoutes = ['/login'];
 
 export function middleware(request: NextRequest) {
@@ -19,7 +19,12 @@ export function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from auth routes
   if (isAuthenticated && authRoutes.some((route) => pathname.startsWith(route))) {
-    return NextResponse.redirect(new URL('/library', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // Root path: unauthenticated users go to marketing page
+  if (!isAuthenticated && pathname === '/') {
+    return NextResponse.redirect(new URL('/home', request.url));
   }
 
   // Redirect unauthenticated users to login for protected routes

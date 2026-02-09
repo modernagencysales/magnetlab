@@ -1,11 +1,7 @@
-import { schedules, logger } from '@trigger.dev/sdk/v3';
+import { schedules, logger, tasks } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { extractIdeasFromTranscript } from '@/lib/ai/content-pipeline/content-extractor';
-import { extractKnowledgeFromTranscript } from '@/lib/ai/content-pipeline/knowledge-extractor';
-import { classifyTranscript } from '@/lib/ai/content-pipeline/transcript-classifier';
-import { generateEmbedding } from '@/lib/ai/embeddings';
 import { runNightlyBatch } from '@/lib/services/autopilot';
-import type { TranscriptType } from '@/lib/types/content-pipeline';
+import type { processTranscript } from './process-transcript';
 
 export const nightlyAutopilotBatch = schedules.task({
   id: 'nightly-autopilot-batch',
@@ -51,117 +47,21 @@ export const nightlyAutopilotBatch = schedules.task({
 
           for (const transcript of newTranscripts) {
             try {
-              // Classify if not already done
-              let transcriptType: TranscriptType = transcript.transcript_type || 'coaching';
-              if (!transcript.transcript_type) {
-                transcriptType = await classifyTranscript(transcript.raw_transcript);
-                await supabase
-                  .from('cp_call_transcripts')
-                  .update({ transcript_type: transcriptType })
-                  .eq('id', transcript.id);
-              }
-
-              // Extract knowledge if not done
-              if (!transcript.knowledge_extracted_at) {
-                const knowledgeResult = await extractKnowledgeFromTranscript(
-                  transcript.raw_transcript,
-                  transcriptType,
-                  {
-                    callTitle: transcript.title,
-                    participants: transcript.participants,
-                    callDate: transcript.call_date,
-                  }
-                );
-
-                // Generate embeddings in parallel (batches of 5)
-                const embeddingTexts = knowledgeResult.entries.map(
-                  (entry) => `${entry.category}: ${entry.content}\nContext: ${entry.context || ''}`
-                );
-                const embeddings: (number[] | null)[] = [];
-                for (let i = 0; i < embeddingTexts.length; i += 5) {
-                  const batch = embeddingTexts.slice(i, i + 5);
-                  const results = await Promise.allSettled(batch.map((text) => generateEmbedding(text)));
-                  for (const result of results) {
-                    embeddings.push(result.status === 'fulfilled' ? result.value : null);
-                  }
-                }
-
-                // Batch insert knowledge entries
-                const knowledgeInserts = knowledgeResult.entries.map((entry, idx) => ({
-                  user_id: userId,
-                  transcript_id: transcript.id,
-                  category: entry.category,
-                  speaker: entry.speaker,
-                  content: entry.content,
-                  context: entry.context,
-                  tags: entry.tags,
-                  transcript_type: transcriptType,
-                  embedding: embeddings[idx] ? JSON.stringify(embeddings[idx]) : null,
-                }));
-
-                if (knowledgeInserts.length > 0) {
-                  await supabase.from('cp_knowledge_entries').insert(knowledgeInserts);
-                }
-
-                // Increment tag counts atomically via RPC (parallel)
-                const tagCounts = new Map<string, number>();
-                for (const entry of knowledgeResult.entries) {
-                  for (const tag of entry.tags) {
-                    tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-                  }
-                }
-                await Promise.allSettled(
-                  Array.from(tagCounts).map(([tagName, count]) =>
-                    supabase.rpc('cp_increment_tag_count', {
-                      p_user_id: userId,
-                      p_tag_name: tagName,
-                      p_count: count,
-                    })
-                  )
-                );
-
-                await supabase
-                  .from('cp_call_transcripts')
-                  .update({ knowledge_extracted_at: new Date().toISOString() })
-                  .eq('id', transcript.id);
-              }
-
-              // Extract content ideas
-              const ideasResult = await extractIdeasFromTranscript(
-                transcript.raw_transcript,
-                {
-                  callTitle: transcript.title,
-                  participants: transcript.participants,
-                  callDate: transcript.call_date,
-                }
+              const result = await tasks.triggerAndWait<typeof processTranscript>(
+                'process-transcript',
+                { userId, transcriptId: transcript.id }
               );
 
-              if (ideasResult.ideas.length > 0) {
-                await supabase.from('cp_content_ideas').insert(
-                  ideasResult.ideas.map((idea) => ({
-                    user_id: userId,
-                    transcript_id: transcript.id,
-                    title: idea.title,
-                    core_insight: idea.core_insight,
-                    full_context: idea.full_context,
-                    why_post_worthy: idea.why_post_worthy,
-                    post_ready: idea.post_ready,
-                    content_type: idea.content_type,
-                    content_pillar: idea.content_pillar,
-                    status: 'extracted',
-                  }))
-                );
+              if (result.ok) {
+                logger.info('Processed transcript', {
+                  transcriptId: transcript.id,
+                  ideas: result.output?.contentIdeas ?? 0,
+                });
+              } else {
+                logger.error('process-transcript task failed', {
+                  transcriptId: transcript.id,
+                });
               }
-
-              await supabase
-                .from('cp_call_transcripts')
-                .update({ ideas_extracted_at: new Date().toISOString() })
-                .eq('id', transcript.id);
-
-              logger.info('Processed transcript', {
-                transcriptId: transcript.id,
-                ideas: ideasResult.total_count,
-              });
             } catch (transcriptError) {
               logger.error('Failed to process transcript', {
                 transcriptId: transcript.id,

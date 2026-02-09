@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import posthog from 'posthog-js';
-import { Magnet, Library, BarChart3, Settings, Plus, LogOut, FileText, Globe, Users, ChevronDown, BookOpen, PenTool } from 'lucide-react';
+import { Magnet, Library, BarChart3, Settings, Plus, LogOut, FileText, Globe, Users, ChevronDown, BookOpen, PenTool, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ds';
 
@@ -20,6 +20,7 @@ interface DashboardNavProps {
 }
 
 const navItems = [
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/library', label: 'Library', icon: Library },
   { href: '/assets', label: 'Assets', icon: Globe },
   { href: '/leads', label: 'Leads', icon: Users },
@@ -92,7 +93,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
     <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
         <div className="flex items-center gap-8">
-          <Link href="/library" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Magnet className="h-5 w-5 text-primary-foreground" />
             </div>
@@ -102,7 +103,9 @@ export function DashboardNav({ user }: DashboardNavProps) {
           <nav className="hidden items-center gap-1 md:flex">
             <CreateDropdown pathname={pathname} />
             {navItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const isActive = item.href === '/'
+                ? pathname === '/'
+                : pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <Link
                   key={item.href}

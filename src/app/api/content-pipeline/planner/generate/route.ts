@@ -23,24 +23,24 @@ export async function POST(request: NextRequest) {
     const [ideasResult, templatesResult, slotsResult, contextResult, recentPostsResult] = await Promise.all([
       supabase
         .from('cp_content_ideas')
-        .select('*')
+        .select('id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, status, post_ready, hook, key_points, target_audience, source_quote, composite_score, last_surfaced_at, similarity_hash, created_at, updated_at')
         .eq('user_id', session.user.id)
         .in('status', ['extracted', 'selected'])
         .order('composite_score', { ascending: false })
         .limit(50),
       supabase
         .from('cp_post_templates')
-        .select('*')
+        .select('*') // TODO: replace with explicit columns once cp_post_templates schema is confirmed
         .eq('user_id', session.user.id)
         .eq('is_active', true),
       supabase
         .from('cp_posting_slots')
-        .select('*')
+        .select('id, user_id, slot_number, time_of_day, day_of_week, timezone, is_active, created_at, updated_at')
         .eq('user_id', session.user.id)
         .eq('is_active', true),
       supabase
         .from('cp_business_context')
-        .select('*')
+        .select('id, user_id, company_name, industry, company_description, icp_title, icp_industry, icp_pain_points, target_audience, content_preferences, created_at, updated_at')
         .eq('user_id', session.user.id)
         .single(),
       supabase

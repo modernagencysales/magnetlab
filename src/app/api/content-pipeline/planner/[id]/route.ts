@@ -17,7 +17,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('cp_week_plans')
-      .select('*')
+      .select('id, user_id, week_start_date, posts_per_week, pillar_moments_pct, pillar_teaching_pct, pillar_human_pct, pillar_collab_pct, planned_posts, status, created_at, updated_at')
       .eq('id', id)
       .eq('user_id', session.user.id)
       .single();

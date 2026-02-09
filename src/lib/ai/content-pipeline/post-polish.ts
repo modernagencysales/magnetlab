@@ -289,7 +289,7 @@ export async function polishPost(
     });
 
     const rewrittenContent =
-      response.content[0].type === 'text' ? response.content[0].text : polished;
+      response.content?.[0]?.type === 'text' ? response.content[0].text : polished;
 
     const extractedPost = extractRewrittenPost(rewrittenContent);
     if (extractedPost) {
