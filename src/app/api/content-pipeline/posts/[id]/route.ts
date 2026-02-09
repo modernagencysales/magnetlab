@@ -52,11 +52,19 @@ export async function PATCH(
       'draft_content', 'final_content', 'dm_template', 'cta_word',
       'status', 'scheduled_time', 'is_buffer', 'buffer_position',
     ];
+    const VALID_POST_STATUSES = ['draft', 'reviewing', 'approved', 'scheduled', 'published', 'failed'];
     const updates: Record<string, unknown> = {};
     for (const field of allowedFields) {
       if (field in body) {
+        if (field === 'status' && !VALID_POST_STATUSES.includes(body[field])) {
+          return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
+        }
         updates[field] = body[field];
       }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
     }
 
     const { data, error } = await supabase

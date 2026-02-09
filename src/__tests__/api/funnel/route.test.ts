@@ -10,7 +10,9 @@ interface MockSupabaseClient {
   select: jest.Mock;
   insert: jest.Mock;
   eq: jest.Mock;
+  or: jest.Mock;
   single: jest.Mock;
+  range: jest.Mock;
 }
 
 const mockSupabaseClient: MockSupabaseClient = {
@@ -18,7 +20,9 @@ const mockSupabaseClient: MockSupabaseClient = {
   select: jest.fn(),
   insert: jest.fn(),
   eq: jest.fn(),
+  or: jest.fn(),
   single: jest.fn(),
+  range: jest.fn(),
 };
 
 jest.mock('@/lib/utils/supabase-server', () => ({
@@ -30,6 +34,8 @@ jest.mock('@/lib/auth', () => ({
   auth: () => mockAuth(),
 }));
 
+const validUUID = '550e8400-e29b-41d4-a716-446655440000';
+
 describe('Funnel API Routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -38,6 +44,8 @@ describe('Funnel API Routes', () => {
     mockSupabaseClient.select.mockReturnValue(mockSupabaseClient);
     mockSupabaseClient.insert.mockReturnValue(mockSupabaseClient);
     mockSupabaseClient.eq.mockReturnValue(mockSupabaseClient);
+    mockSupabaseClient.or.mockReturnValue(mockSupabaseClient);
+    mockSupabaseClient.range.mockReturnValue(mockSupabaseClient);
   });
 
   describe('GET /api/funnel', () => {
@@ -63,6 +71,17 @@ describe('Funnel API Routes', () => {
       expect(data.error).toBe('One of leadMagnetId, libraryId, or externalResourceId is required');
     });
 
+    it('should return 400 if leadMagnetId is not a valid UUID', async () => {
+      mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
+
+      const request = new Request('http://localhost:3000/api/funnel?leadMagnetId=abc');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Invalid leadMagnetId');
+    });
+
     it('should return 404 if lead magnet not found', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
       mockSupabaseClient.single.mockResolvedValueOnce({
@@ -70,7 +89,6 @@ describe('Funnel API Routes', () => {
         error: { code: 'PGRST116' },
       });
 
-      const validUUID = '550e8400-e29b-41d4-a716-446655440000';
       const request = new Request(`http://localhost:3000/api/funnel?leadMagnetId=${validUUID}`);
       const response = await GET(request);
       const data = await response.json();
@@ -81,7 +99,6 @@ describe('Funnel API Routes', () => {
 
     it('should return funnel page if found', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      const validUUID = '550e8400-e29b-41d4-a716-446655440000';
 
       // Lead magnet exists
       mockSupabaseClient.single
@@ -106,6 +123,11 @@ describe('Funnel API Routes', () => {
             calendly_url: null,
             qualification_pass_message: 'Great!',
             qualification_fail_message: 'Not a fit',
+            theme: 'dark',
+            primary_color: '#8b5cf6',
+            background_style: 'solid',
+            logo_url: null,
+            qualification_form_id: null,
             is_published: false,
             published_at: null,
             created_at: '2025-01-25T00:00:00Z',
@@ -126,7 +148,6 @@ describe('Funnel API Routes', () => {
 
     it('should return null funnel if not found but lead magnet exists', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      const validUUID = '550e8400-e29b-41d4-a716-446655440000';
 
       mockSupabaseClient.single
         .mockResolvedValueOnce({ data: { id: validUUID }, error: null })
@@ -158,7 +179,6 @@ describe('Funnel API Routes', () => {
 
     it('should return 400 if required fields are missing', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      const validUUID = '550e8400-e29b-41d4-a716-446655440000';
 
       const request = new Request('http://localhost:3000/api/funnel', {
         method: 'POST',
@@ -173,7 +193,6 @@ describe('Funnel API Routes', () => {
 
     it('should return 404 if lead magnet not found', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      const validUUID = '550e8400-e29b-41d4-a716-446655440000';
       mockSupabaseClient.single.mockResolvedValueOnce({
         data: null,
         error: { code: 'PGRST116' },
@@ -192,7 +211,6 @@ describe('Funnel API Routes', () => {
 
     it('should return 409 if funnel already exists for lead magnet', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      const validUUID = '550e8400-e29b-41d4-a716-446655440000';
 
       mockSupabaseClient.single
         .mockResolvedValueOnce({ data: { id: validUUID, title: 'My Lead Magnet' }, error: null })
@@ -211,7 +229,6 @@ describe('Funnel API Routes', () => {
 
     it('should create funnel page successfully', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      const validUUID = '550e8400-e29b-41d4-a716-446655440000';
 
       mockSupabaseClient.single
         // Lead magnet exists
@@ -220,9 +237,7 @@ describe('Funnel API Routes', () => {
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
         // User profile (no theme defaults set)
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
-        // No slug collision
-        .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
-        // Created funnel
+        // Created funnel (after slug check via .or() which returns via the or mock)
         .mockResolvedValueOnce({
           data: {
             id: 'new-funnel-123',
@@ -242,6 +257,11 @@ describe('Funnel API Routes', () => {
             calendly_url: null,
             qualification_pass_message: 'Great! Book a call below.',
             qualification_fail_message: 'Thanks for your interest!',
+            theme: 'dark',
+            primary_color: '#8b5cf6',
+            background_style: 'solid',
+            logo_url: null,
+            qualification_form_id: null,
             is_published: false,
             published_at: null,
             created_at: '2025-01-25T00:00:00Z',
@@ -249,6 +269,12 @@ describe('Funnel API Routes', () => {
           },
           error: null,
         });
+
+      // Slug collision check uses .or() which returns the mock chain, then resolves via Supabase
+      // The route does: supabase.from('funnel_pages').select('slug').eq('user_id', ...).or(...)
+      // The .or() returns mockSupabaseClient which then resolves (no .single() here, just the chain)
+      // We need to make .or() resolve the query - it returns a promise-like with {data, error}
+      mockSupabaseClient.or.mockResolvedValueOnce({ data: [], error: null });
 
       const request = new Request('http://localhost:3000/api/funnel', {
         method: 'POST',
@@ -268,17 +294,13 @@ describe('Funnel API Routes', () => {
 
     it('should auto-increment slug if collision detected', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      const validUUID = '550e8400-e29b-41d4-a716-446655440000';
 
       mockSupabaseClient.single
         .mockResolvedValueOnce({ data: { id: validUUID, title: 'My Lead Magnet' }, error: null })
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
         // User profile (no theme defaults set)
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
-        // Slug collision on first try
-        .mockResolvedValueOnce({ data: { id: 'existing' }, error: null })
-        // No collision on second try (test-1)
-        .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
+        // Created funnel with slug test-1
         .mockResolvedValueOnce({
           data: {
             id: 'new-funnel',
@@ -298,6 +320,11 @@ describe('Funnel API Routes', () => {
             calendly_url: null,
             qualification_pass_message: 'Great!',
             qualification_fail_message: 'Thanks!',
+            theme: 'dark',
+            primary_color: '#8b5cf6',
+            background_style: 'solid',
+            logo_url: null,
+            qualification_form_id: null,
             is_published: false,
             published_at: null,
             created_at: '2025-01-25T00:00:00Z',
@@ -305,6 +332,12 @@ describe('Funnel API Routes', () => {
           },
           error: null,
         });
+
+      // Slug collision: 'test' already exists
+      mockSupabaseClient.or.mockResolvedValueOnce({
+        data: [{ slug: 'test' }],
+        error: null,
+      });
 
       const request = new Request('http://localhost:3000/api/funnel', {
         method: 'POST',

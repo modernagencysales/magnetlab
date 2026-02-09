@@ -1,11 +1,12 @@
 import type { TranscriptType } from '@/lib/types/content-pipeline';
+import { CLAUDE_SONNET_MODEL } from './model-config';
 import { getAnthropicClient } from './anthropic-client';
 
 export async function classifyTranscript(transcript: string): Promise<TranscriptType> {
   const client = getAnthropicClient();
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: CLAUDE_SONNET_MODEL,
     max_tokens: 50,
     messages: [
       {

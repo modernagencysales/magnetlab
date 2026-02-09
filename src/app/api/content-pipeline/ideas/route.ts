@@ -2,6 +2,46 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { ideaId, status } = body;
+
+    if (!ideaId || typeof ideaId !== 'string') {
+      return NextResponse.json({ error: 'ideaId is required' }, { status: 400 });
+    }
+
+    const VALID_STATUSES = ['extracted', 'selected', 'writing', 'written', 'scheduled', 'published', 'archived'];
+    if (!status || !VALID_STATUSES.includes(status)) {
+      return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
+    }
+
+    const supabase = createSupabaseAdminClient();
+
+    const { data, error } = await supabase
+      .from('cp_content_ideas')
+      .update({ status })
+      .eq('id', ideaId)
+      .eq('user_id', session.user.id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: 'Idea not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ idea: data });
+  } catch (error) {
+    console.error('Idea update error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();

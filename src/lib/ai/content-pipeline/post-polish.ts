@@ -1,4 +1,5 @@
 import { getAnthropicClient } from './anthropic-client';
+import { CLAUDE_SONNET_MODEL } from './model-config';
 
 // ============================================
 // TYPES
@@ -282,7 +283,7 @@ export async function polishPost(
     const client = getAnthropicClient();
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: CLAUDE_SONNET_MODEL,
       max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     });

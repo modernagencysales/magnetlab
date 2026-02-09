@@ -28,8 +28,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { postId, action } = body;
 
-    if (!postId || !action) {
-      return NextResponse.json({ error: 'postId and action required' }, { status: 400 });
+    if (!postId || typeof postId !== 'string') {
+      return NextResponse.json({ error: 'postId is required and must be a string' }, { status: 400 });
+    }
+
+    if (action !== 'approve' && action !== 'reject') {
+      return NextResponse.json({ error: 'action must be "approve" or "reject"' }, { status: 400 });
     }
 
     if (action === 'approve') {

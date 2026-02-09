@@ -59,6 +59,41 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = request.nextUrl;
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Transcript id required' }, { status: 400 });
+    }
+
+    const supabase = createSupabaseAdminClient();
+
+    // Delete transcript (CASCADE will clean up knowledge entries + ideas via FK)
+    const { error } = await supabase
+      .from('cp_call_transcripts')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', session.user.id);
+
+    if (error) {
+      console.error('Failed to delete transcript:', error.message);
+      return NextResponse.json({ error: 'Failed to delete transcript' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Transcript delete error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function GET() {
   try {
     const session = await auth();

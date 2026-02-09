@@ -1,4 +1,5 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
+import { CLAUDE_SONNET_MODEL } from './model-config';
 import type { ContentType, ContentPillar } from '@/lib/types/content-pipeline';
 
 export interface ExtractedIdea {
@@ -95,7 +96,7 @@ Return your response as valid JSON in this exact format:
 
   const client = getAnthropicClient();
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: CLAUDE_SONNET_MODEL,
     max_tokens: 8000,
     messages: [{ role: 'user', content: prompt }],
   });

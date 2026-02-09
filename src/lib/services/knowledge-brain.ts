@@ -1,5 +1,6 @@
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmbedding } from '@/lib/ai/embeddings';
+import { clusterTags } from '@/lib/ai/content-pipeline/tag-clusterer';
 import type {
   KnowledgeEntry,
   KnowledgeEntryWithSimilarity,
@@ -84,15 +85,15 @@ export async function getKnowledgeByCategory(
   return data || [];
 }
 
-export async function getKnowledgeTags(userId: string): Promise<Array<{ tag_name: string; usage_count: number }>> {
+export async function getKnowledgeTags(userId: string): Promise<Array<{ tag_name: string; usage_count: number; cluster_id: string | null }>> {
   const supabase = createSupabaseAdminClient();
 
   const { data, error } = await supabase
     .from('cp_knowledge_tags')
-    .select('tag_name, usage_count')
+    .select('tag_name, usage_count, cluster_id')
     .eq('user_id', userId)
     .order('usage_count', { ascending: false })
-    .limit(50);
+    .limit(100);
 
   if (error) {
     console.error('Failed to fetch knowledge tags:', error.message);
@@ -100,4 +101,87 @@ export async function getKnowledgeTags(userId: string): Promise<Array<{ tag_name
   }
 
   return data || [];
+}
+
+export interface TagCluster {
+  id: string;
+  name: string;
+  description: string | null;
+  tags: Array<{ tag_name: string; usage_count: number }>;
+}
+
+export async function getTagClusters(userId: string): Promise<TagCluster[]> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data: clusters, error } = await supabase
+    .from('cp_tag_clusters')
+    .select('id, name, description')
+    .eq('user_id', userId)
+    .order('name');
+
+  if (error || !clusters?.length) return [];
+
+  const { data: tags } = await supabase
+    .from('cp_knowledge_tags')
+    .select('tag_name, usage_count, cluster_id')
+    .eq('user_id', userId)
+    .not('cluster_id', 'is', null)
+    .order('usage_count', { ascending: false });
+
+  return clusters.map((cluster) => ({
+    ...cluster,
+    tags: (tags || []).filter((t) => t.cluster_id === cluster.id),
+  }));
+}
+
+export async function runTagClustering(userId: string): Promise<{ clustersCreated: number }> {
+  const supabase = createSupabaseAdminClient();
+
+  // Get all tags for this user
+  const { data: tags } = await supabase
+    .from('cp_knowledge_tags')
+    .select('id, tag_name, usage_count')
+    .eq('user_id', userId)
+    .order('usage_count', { ascending: false })
+    .limit(200);
+
+  if (!tags?.length) return { clustersCreated: 0 };
+
+  // Run AI clustering
+  const result = await clusterTags(tags);
+
+  // Clear existing clusters for this user
+  await supabase.from('cp_tag_clusters').delete().eq('user_id', userId);
+
+  // Reset cluster_id on all tags
+  await supabase
+    .from('cp_knowledge_tags')
+    .update({ cluster_id: null })
+    .eq('user_id', userId);
+
+  // Create new clusters and assign tags
+  for (const cluster of result.clusters) {
+    const { data: created } = await supabase
+      .from('cp_tag_clusters')
+      .insert({
+        user_id: userId,
+        name: cluster.name,
+        description: cluster.description,
+      })
+      .select('id')
+      .single();
+
+    if (created) {
+      // Assign tags to this cluster
+      for (const tagName of cluster.tags) {
+        await supabase
+          .from('cp_knowledge_tags')
+          .update({ cluster_id: created.id })
+          .eq('user_id', userId)
+          .eq('tag_name', tagName);
+      }
+    }
+  }
+
+  return { clustersCreated: result.clusters.length };
 }

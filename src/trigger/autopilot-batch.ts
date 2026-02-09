@@ -73,39 +73,52 @@ export const nightlyAutopilotBatch = schedules.task({
                   }
                 );
 
-                // Save knowledge entries with embeddings
-                for (const entry of knowledgeResult.entries) {
-                  let embedding: number[] | null = null;
-                  try {
-                    embedding = await generateEmbedding(
-                      `${entry.category}: ${entry.content}\nContext: ${entry.context || ''}`
-                    );
-                  } catch {
-                    // Continue without embedding
-                  }
-
-                  await supabase.from('cp_knowledge_entries').insert({
-                    user_id: userId,
-                    transcript_id: transcript.id,
-                    category: entry.category,
-                    speaker: entry.speaker,
-                    content: entry.content,
-                    context: entry.context,
-                    tags: entry.tags,
-                    transcript_type: transcriptType,
-                    embedding: embedding ? JSON.stringify(embedding) : null,
-                  });
-
-                  // Update tags
-                  for (const tag of entry.tags) {
-                    await supabase
-                      .from('cp_knowledge_tags')
-                      .upsert(
-                        { user_id: userId, tag_name: tag, usage_count: 1 },
-                        { onConflict: 'user_id,tag_name' }
-                      );
+                // Generate embeddings in parallel (batches of 5)
+                const embeddingTexts = knowledgeResult.entries.map(
+                  (entry) => `${entry.category}: ${entry.content}\nContext: ${entry.context || ''}`
+                );
+                const embeddings: (number[] | null)[] = [];
+                for (let i = 0; i < embeddingTexts.length; i += 5) {
+                  const batch = embeddingTexts.slice(i, i + 5);
+                  const results = await Promise.allSettled(batch.map((text) => generateEmbedding(text)));
+                  for (const result of results) {
+                    embeddings.push(result.status === 'fulfilled' ? result.value : null);
                   }
                 }
+
+                // Batch insert knowledge entries
+                const knowledgeInserts = knowledgeResult.entries.map((entry, idx) => ({
+                  user_id: userId,
+                  transcript_id: transcript.id,
+                  category: entry.category,
+                  speaker: entry.speaker,
+                  content: entry.content,
+                  context: entry.context,
+                  tags: entry.tags,
+                  transcript_type: transcriptType,
+                  embedding: embeddings[idx] ? JSON.stringify(embeddings[idx]) : null,
+                }));
+
+                if (knowledgeInserts.length > 0) {
+                  await supabase.from('cp_knowledge_entries').insert(knowledgeInserts);
+                }
+
+                // Increment tag counts atomically via RPC (parallel)
+                const tagCounts = new Map<string, number>();
+                for (const entry of knowledgeResult.entries) {
+                  for (const tag of entry.tags) {
+                    tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+                  }
+                }
+                await Promise.allSettled(
+                  Array.from(tagCounts).map(([tagName, count]) =>
+                    supabase.rpc('cp_increment_tag_count', {
+                      p_user_id: userId,
+                      p_tag_name: tagName,
+                      p_count: count,
+                    })
+                  )
+                );
 
                 await supabase
                   .from('cp_call_transcripts')

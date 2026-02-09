@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Archive } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { PillarBadge } from './PillarBadge';
 import type { ContentIdea } from '@/lib/types/content-pipeline';
@@ -9,10 +9,12 @@ interface IdeaDetailModalProps {
   idea: ContentIdea;
   onClose: () => void;
   onWritePost: (ideaId: string) => void;
+  onArchive: (ideaId: string) => void;
   writing: boolean;
+  archiving: boolean;
 }
 
-export function IdeaDetailModal({ idea, onClose, onWritePost, writing }: IdeaDetailModalProps) {
+export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing, archiving }: IdeaDetailModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
@@ -111,6 +113,15 @@ export function IdeaDetailModal({ idea, onClose, onWritePost, writing }: IdeaDet
           >
             Close
           </button>
+          {idea.status !== 'archived' && (
+            <button
+              onClick={() => onArchive(idea.id)}
+              disabled={archiving}
+              className="flex items-center justify-center gap-2 rounded-lg border border-border py-2 px-4 text-sm font-medium hover:bg-muted disabled:opacity-50 transition-colors"
+            >
+              {archiving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Archive className="h-4 w-4" /> Archive</>}
+            </button>
+          )}
           {(idea.status === 'extracted' || idea.status === 'selected') && (
             <button
               onClick={() => onWritePost(idea.id)}

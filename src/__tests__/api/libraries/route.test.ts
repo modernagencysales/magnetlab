@@ -10,6 +10,7 @@ interface MockSupabaseClient {
   insert: jest.Mock;
   eq: jest.Mock;
   order: jest.Mock;
+  range: jest.Mock;
   single: jest.Mock;
 }
 
@@ -19,6 +20,7 @@ const mockSupabaseClient: MockSupabaseClient = {
   insert: jest.fn(),
   eq: jest.fn(),
   order: jest.fn(),
+  range: jest.fn(),
   single: jest.fn(),
 };
 
@@ -39,6 +41,7 @@ describe('Libraries API Routes', () => {
     mockSupabaseClient.insert.mockReturnValue(mockSupabaseClient);
     mockSupabaseClient.eq.mockReturnValue(mockSupabaseClient);
     mockSupabaseClient.order.mockReturnValue(mockSupabaseClient);
+    mockSupabaseClient.range.mockReturnValue(mockSupabaseClient);
   });
 
   describe('GET /api/libraries', () => {
@@ -69,7 +72,7 @@ describe('Libraries API Routes', () => {
         },
       ];
 
-      mockSupabaseClient.order.mockResolvedValueOnce({
+      mockSupabaseClient.range.mockResolvedValueOnce({
         data: mockLibraries,
         error: null,
       });
@@ -85,7 +88,7 @@ describe('Libraries API Routes', () => {
 
     it('should return empty array if no libraries', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      mockSupabaseClient.order.mockResolvedValueOnce({ data: [], error: null });
+      mockSupabaseClient.range.mockResolvedValueOnce({ data: [], error: null });
 
       const response = await GET(new Request('http://localhost/api/libraries'));
       const data = await response.json();

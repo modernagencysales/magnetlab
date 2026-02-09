@@ -85,6 +85,22 @@ jest.mock('@/lib/ai/lead-magnet-generator', () => ({
     mockPolishFn(extractedContent, concept),
 }));
 
+// Mock PostHog
+jest.mock('@/lib/posthog', () => ({
+  getPostHogServerClient: jest.fn(() => null),
+}));
+
+// Valid UUIDs for testing
+const funnelUUID1 = '550e8400-e29b-41d4-a716-446655440001';
+const funnelUUID2 = '550e8400-e29b-41d4-a716-446655440002';
+const funnelUUID3 = '550e8400-e29b-41d4-a716-446655440003';
+const funnelUUID4 = '550e8400-e29b-41d4-a716-446655440004';
+const funnelUUID5 = '550e8400-e29b-41d4-a716-446655440005';
+const lmUUID1 = '660e8400-e29b-41d4-a716-446655440001';
+const lmUUID2 = '660e8400-e29b-41d4-a716-446655440002';
+const lmUUID3 = '660e8400-e29b-41d4-a716-446655440003';
+const nonexistentUUID = '770e8400-e29b-41d4-a716-446655440099';
+
 function makeRequest(id: string, body: unknown) {
   const request = new Request(`http://localhost:3000/api/funnel/${id}/publish`, {
     method: 'POST',
@@ -104,14 +120,14 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
 
   it('should return 401 if not authenticated', async () => {
     currentSession = null;
-    const { request, params } = makeRequest('funnel-1', { publish: true });
+    const { request, params } = makeRequest(funnelUUID1, { publish: true });
 
     const response = await POST(request, { params });
     expect(response.status).toBe(401);
   });
 
   it('should return 400 if publish is not boolean', async () => {
-    const { request, params } = makeRequest('funnel-1', { publish: 'yes' });
+    const { request, params } = makeRequest(funnelUUID1, { publish: 'yes' });
 
     const response = await POST(request, { params });
     const data = await response.json();
@@ -125,35 +141,32 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
       { data: null, error: { code: 'PGRST116' } },
     ]);
 
-    const { request, params } = makeRequest('nonexistent', { publish: true });
+    const { request, params } = makeRequest(nonexistentUUID, { publish: true });
 
     const response = await POST(request, { params });
     expect(response.status).toBe(404);
   });
 
   it('should trigger auto-polish when publishing with extracted but no polished content', async () => {
-    const funnelId = 'funnel-auto-polish';
-    const lmId = 'lm-needs-polish';
-
     // Funnel page query
     mockSupabaseClient._setSingleResults('funnel_pages', [
       {
         data: {
-          id: funnelId,
+          id: funnelUUID2,
           user_id: 'test-user-id',
           slug: 'test-slug',
           optin_headline: 'Get the Guide',
           published_at: null,
-          lead_magnets: { id: lmId },
+          lead_magnets: { id: lmUUID1 },
         },
         error: null,
       },
       // Update result
       {
         data: {
-          id: funnelId,
+          id: funnelUUID2,
           user_id: 'test-user-id',
-          lead_magnet_id: lmId,
+          lead_magnet_id: lmUUID1,
           slug: 'test-slug',
           optin_headline: 'Get the Guide',
           optin_subline: null,
@@ -169,6 +182,10 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
           primary_color: '#8b5cf6',
           background_style: 'solid',
           logo_url: null,
+          target_type: 'lead_magnet',
+          library_id: null,
+          external_resource_id: null,
+          qualification_form_id: null,
           is_published: true,
           published_at: '2025-01-28T00:00:00Z',
           created_at: '2025-01-27T00:00:00Z',
@@ -188,7 +205,7 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
     mockSupabaseClient._setSingleResults('lead_magnets', [
       {
         data: {
-          id: lmId,
+          id: lmUUID1,
           extracted_content: { title: 'Guide', structure: [{ sectionName: 'Intro', contents: ['Hi'] }] },
           polished_content: null,
           concept: { title: 'Guide', archetypeName: 'System', painSolved: 'Pain' },
@@ -197,7 +214,7 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
       },
     ]);
 
-    const { request, params } = makeRequest(funnelId, { publish: true });
+    const { request, params } = makeRequest(funnelUUID2, { publish: true });
 
     const response = await POST(request, { params });
 
@@ -211,26 +228,23 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
   });
 
   it('should NOT auto-polish when content is already polished', async () => {
-    const funnelId = 'funnel-already-polished';
-    const lmId = 'lm-already-polished';
-
     mockSupabaseClient._setSingleResults('funnel_pages', [
       {
         data: {
-          id: funnelId,
+          id: funnelUUID3,
           user_id: 'test-user-id',
           slug: 'test-slug',
           optin_headline: 'Get the Guide',
           published_at: null,
-          lead_magnets: { id: lmId },
+          lead_magnets: { id: lmUUID2 },
         },
         error: null,
       },
       {
         data: {
-          id: funnelId,
+          id: funnelUUID3,
           user_id: 'test-user-id',
-          lead_magnet_id: lmId,
+          lead_magnet_id: lmUUID2,
           slug: 'test-slug',
           optin_headline: 'Get the Guide',
           optin_subline: null,
@@ -246,6 +260,10 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
           primary_color: '#8b5cf6',
           background_style: 'solid',
           logo_url: null,
+          target_type: 'lead_magnet',
+          library_id: null,
+          external_resource_id: null,
+          qualification_form_id: null,
           is_published: true,
           published_at: '2025-01-28T00:00:00Z',
           created_at: '2025-01-27T00:00:00Z',
@@ -263,7 +281,7 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
     mockSupabaseClient._setSingleResults('lead_magnets', [
       {
         data: {
-          id: lmId,
+          id: lmUUID2,
           extracted_content: { title: 'Guide', structure: [] },
           polished_content: { version: 1, sections: [] }, // Already polished
           concept: { title: 'Guide' },
@@ -272,7 +290,7 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
       },
     ]);
 
-    const { request, params } = makeRequest(funnelId, { publish: true });
+    const { request, params } = makeRequest(funnelUUID3, { publish: true });
 
     await POST(request, { params });
 
@@ -281,25 +299,23 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
   });
 
   it('should NOT auto-polish when unpublishing', async () => {
-    const funnelId = 'funnel-unpublish';
-
     mockSupabaseClient._setSingleResults('funnel_pages', [
       {
         data: {
-          id: funnelId,
+          id: funnelUUID4,
           user_id: 'test-user-id',
           slug: 'test-slug',
           optin_headline: 'Guide',
           published_at: '2025-01-27T00:00:00Z',
-          lead_magnets: { id: 'lm-1' },
+          lead_magnets: { id: lmUUID3 },
         },
         error: null,
       },
       {
         data: {
-          id: funnelId,
+          id: funnelUUID4,
           user_id: 'test-user-id',
-          lead_magnet_id: 'lm-1',
+          lead_magnet_id: lmUUID3,
           slug: 'test-slug',
           optin_headline: 'Guide',
           optin_subline: null,
@@ -315,6 +331,10 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
           primary_color: '#8b5cf6',
           background_style: 'solid',
           logo_url: null,
+          target_type: 'lead_magnet',
+          library_id: null,
+          external_resource_id: null,
+          qualification_form_id: null,
           is_published: false,
           published_at: '2025-01-27T00:00:00Z',
           created_at: '2025-01-27T00:00:00Z',
@@ -328,7 +348,7 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
       { data: { username: 'testuser' }, error: null },
     ]);
 
-    const { request, params } = makeRequest(funnelId, { publish: false });
+    const { request, params } = makeRequest(funnelUUID4, { publish: false });
 
     await POST(request, { params });
 
@@ -337,29 +357,26 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
   });
 
   it('should still publish even if auto-polish fails', async () => {
-    const funnelId = 'funnel-polish-fail';
-    const lmId = 'lm-polish-fail';
-
     // Make polish throw an error
     mockPolishFn.mockRejectedValueOnce(new Error('AI service unavailable'));
 
     mockSupabaseClient._setSingleResults('funnel_pages', [
       {
         data: {
-          id: funnelId,
+          id: funnelUUID5,
           user_id: 'test-user-id',
           slug: 'test-slug',
           optin_headline: 'Guide',
           published_at: null,
-          lead_magnets: { id: lmId },
+          lead_magnets: { id: lmUUID3 },
         },
         error: null,
       },
       {
         data: {
-          id: funnelId,
+          id: funnelUUID5,
           user_id: 'test-user-id',
-          lead_magnet_id: lmId,
+          lead_magnet_id: lmUUID3,
           slug: 'test-slug',
           optin_headline: 'Guide',
           optin_subline: null,
@@ -375,6 +392,10 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
           primary_color: '#8b5cf6',
           background_style: 'solid',
           logo_url: null,
+          target_type: 'lead_magnet',
+          library_id: null,
+          external_resource_id: null,
+          qualification_form_id: null,
           is_published: true,
           published_at: '2025-01-28T00:00:00Z',
           created_at: '2025-01-27T00:00:00Z',
@@ -392,7 +413,7 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
     mockSupabaseClient._setSingleResults('lead_magnets', [
       {
         data: {
-          id: lmId,
+          id: lmUUID3,
           extracted_content: { title: 'Guide', structure: [] },
           polished_content: null,
           concept: { title: 'Guide', archetypeName: 'System', painSolved: 'Pain' },
@@ -401,7 +422,7 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
       },
     ]);
 
-    const { request, params } = makeRequest(funnelId, { publish: true });
+    const { request, params } = makeRequest(funnelUUID5, { publish: true });
 
     const response = await POST(request, { params });
 

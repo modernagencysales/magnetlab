@@ -1,4 +1,5 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
+import { CLAUDE_SONNET_MODEL } from './model-config';
 import type { PostTemplate, StyleProfile, PostVariation } from '@/lib/types/content-pipeline';
 
 export interface IdeaContext {
@@ -131,7 +132,7 @@ Now write the post. Return ONLY valid JSON:
 
   const client = getAnthropicClient();
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: CLAUDE_SONNET_MODEL,
     max_tokens: 4000,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -195,7 +196,7 @@ Return ONLY valid JSON:
 
   const client = getAnthropicClient();
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: CLAUDE_SONNET_MODEL,
     max_tokens: 4000,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -267,7 +268,7 @@ Return ONLY the complete rewritten post (not just the changed section).`;
 
   const client = getAnthropicClient();
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: CLAUDE_SONNET_MODEL,
     max_tokens: 2000,
     messages: [{ role: 'user', content: prompt }],
   });

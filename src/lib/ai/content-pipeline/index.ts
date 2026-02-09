@@ -9,3 +9,6 @@ export { polishPost, detectAIPatterns, scoreHook, formatPost } from './post-poli
 export type { HookScore, PolishResult, PolishOptions } from './post-polish';
 export { scoreIdea, rankIdeas, getTopIdeas, deduplicateIdeas, getSuggestedPillar, generateSimilarityHash } from './idea-scorer';
 export type { ScoringContext, ScoreFactors, IdeaScore, RankedIdea } from './idea-scorer';
+export { generateWeekPlan, validatePillarDistribution, getSuggestedDistribution } from './week-planner';
+export { extractTemplateFromPost } from './template-extractor';
+export { quickWrite } from './quick-writer';

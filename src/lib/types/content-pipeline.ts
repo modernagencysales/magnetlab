@@ -161,6 +161,10 @@ export interface PipelinePost {
   buffer_position: number | null;
   auto_publish_after: string | null;
   published_at: string | null;
+  template_id: string | null;
+  style_id: string | null;
+  enable_automation: boolean;
+  automation_config: Record<string, unknown> | null;
   engagement_stats: EngagementStats | null;
   created_at: string;
   updated_at: string;
@@ -311,6 +315,80 @@ export interface PillarDistribution {
   teaching_promotion: number;
   human_personal: number;
   collaboration_social_proof: number;
+}
+
+// ============================================
+// BUSINESS CONTEXT
+// ============================================
+
+export interface BusinessContext {
+  id: string;
+  user_id: string;
+  company_name: string | null;
+  industry: string | null;
+  company_description: string | null;
+  icp_title: string | null;
+  icp_industry: string | null;
+  icp_pain_points: string[];
+  target_audience: string | null;
+  content_preferences: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// VIRAL POSTS / SCRAPING
+// ============================================
+
+export type ScrapeRunStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface ScrapeRun {
+  id: string;
+  user_id: string;
+  target_url: string | null;
+  status: ScrapeRunStatus;
+  posts_found: number;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface ViralPost {
+  id: string;
+  user_id: string;
+  scrape_run_id: string | null;
+  author_name: string | null;
+  author_headline: string | null;
+  author_url: string | null;
+  content: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  views: number;
+  percentile_rank: number | null;
+  extracted_template_id: string | null;
+  created_at: string;
+}
+
+// ============================================
+// CONTENT PIPELINE JOBS
+// ============================================
+
+export type PipelineJobStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface ContentPipelineJob {
+  id: string;
+  user_id: string;
+  job_type: string;
+  status: PipelineJobStatus;
+  progress_pct: number;
+  items_total: number;
+  items_completed: number;
+  result: Record<string, unknown> | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ============================================

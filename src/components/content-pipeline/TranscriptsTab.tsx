@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Mic, Radio, Clipboard, Loader2, Plus } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Mic, Radio, Clipboard, Loader2, Plus, Trash2 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { TranscriptPasteModal } from './TranscriptPasteModal';
@@ -17,6 +17,8 @@ export function TranscriptsTab() {
   const [transcripts, setTranscripts] = useState<CallTranscript[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPasteModal, setShowPasteModal] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchTranscripts = useCallback(async () => {
     setLoading(true);
@@ -34,6 +36,43 @@ export function TranscriptsTab() {
   useEffect(() => {
     fetchTranscripts();
   }, [fetchTranscripts]);
+
+  // Poll for processing updates when any transcripts are still processing
+  useEffect(() => {
+    const hasProcessing = transcripts.some(
+      (t) => !t.ideas_extracted_at || !t.knowledge_extracted_at
+    );
+    if (hasProcessing && !pollingRef.current) {
+      pollingRef.current = setInterval(() => {
+        fetchTranscripts();
+      }, 5000);
+    } else if (!hasProcessing && pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [transcripts, fetchTranscripts]);
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const response = await fetch(`/api/content-pipeline/transcripts?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        setTranscripts((prev) => prev.filter((t) => t.id !== id));
+      }
+    } catch {
+      // Silent failure
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const totalTranscripts = transcripts.length;
   const ideasExtracted = transcripts.filter((t) => t.ideas_extracted_at).length;
@@ -101,6 +140,7 @@ export function TranscriptsTab() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase sr-only">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -135,7 +175,28 @@ export function TranscriptsTab() {
                       {formatDate(t.call_date || t.created_at)}
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={getProcessingStatus(t)} />
+                      {getProcessingStatus(t) === 'processing' ? (
+                        <span className="flex items-center gap-1.5 text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Processing...
+                        </span>
+                      ) : (
+                        <StatusBadge status={getProcessingStatus(t)} />
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleDelete(t.id)}
+                        disabled={deletingId === t.id}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400 disabled:opacity-50 transition-colors"
+                        title="Delete transcript"
+                      >
+                        {deletingId === t.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
                     </td>
                   </tr>
                 );

@@ -1,4 +1,5 @@
 import { searchKnowledge } from '@/lib/services/knowledge-brain';
+import { CLAUDE_SONNET_MODEL } from './model-config';
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import type { ContentBrief, KnowledgeEntryWithSimilarity } from '@/lib/types/content-pipeline';
 
@@ -78,7 +79,7 @@ async function generateSuggestedAngles(topic: string, context: string): Promise<
     const client = getAnthropicClient();
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: CLAUDE_SONNET_MODEL,
       max_tokens: 500,
       messages: [
         {

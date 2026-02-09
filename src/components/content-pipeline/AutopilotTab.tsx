@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Loader2, Clock, Plus, Trash2 } from 'lucide-react';
+import { Zap, Loader2, Clock, Plus, Trash2, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BufferQueueCard } from './BufferQueueCard';
+import { PlannerView } from './PlannerView';
+import { BusinessContextModal } from './BusinessContextModal';
 import type { PipelinePost, PostingSlot, PillarDistribution, ContentPillar } from '@/lib/types/content-pipeline';
 import { CONTENT_PILLAR_LABELS } from '@/lib/types/content-pipeline';
 
@@ -32,25 +34,20 @@ export function AutopilotTab() {
   const [newSlotDay, setNewSlotDay] = useState<string>('');
   const [newSlotTimezone, setNewSlotTimezone] = useState('UTC');
   const [addingSlot, setAddingSlot] = useState(false);
+  const [showBusinessContext, setShowBusinessContext] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [bufferRes, slotsRes, statusRes] = await Promise.all([
-        fetch('/api/content-pipeline/schedule/buffer'),
-        fetch('/api/content-pipeline/schedule/slots'),
-        fetch('/api/content-pipeline/schedule/autopilot'),
+      const [bufferResult, slotsResult, statusResult] = await Promise.allSettled([
+        fetch('/api/content-pipeline/schedule/buffer').then((r) => r.json()),
+        fetch('/api/content-pipeline/schedule/slots').then((r) => r.json()),
+        fetch('/api/content-pipeline/schedule/autopilot').then((r) => r.json()),
       ]);
 
-      const [bufferData, slotsData, statusData] = await Promise.all([
-        bufferRes.json(),
-        slotsRes.json(),
-        statusRes.json(),
-      ]);
-
-      setBuffer(bufferData.buffer || []);
-      setSlots(slotsData.slots || []);
-      setAutopilotStatus(statusData);
+      if (bufferResult.status === 'fulfilled') setBuffer(bufferResult.value.buffer || []);
+      if (slotsResult.status === 'fulfilled') setSlots(slotsResult.value.slots || []);
+      if (statusResult.status === 'fulfilled') setAutopilotStatus(statusResult.value);
     } catch {
       // Silent failure
     } finally {
@@ -169,6 +166,23 @@ export function AutopilotTab() {
 
   return (
     <div className="space-y-6">
+      {/* Week Planner */}
+      <PlannerView />
+
+      {/* Business Context */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowBusinessContext(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
+        >
+          <Settings className="h-3 w-3" />
+          Business Context
+        </button>
+      </div>
+      {showBusinessContext && (
+        <BusinessContextModal onClose={() => setShowBusinessContext(false)} />
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border bg-card p-4">

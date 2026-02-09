@@ -50,14 +50,14 @@ export function BufferQueueCard({ post, pillar, position, onApprove, onReject, a
         <button
           onClick={() => onApprove(post.id)}
           disabled={approving || rejecting}
-          className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-green-600 dark:bg-green-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 transition-colors"
         >
           {approving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approve'}
         </button>
         <button
           onClick={() => onReject(post.id)}
           disabled={approving || rejecting}
-          className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-red-600 dark:bg-red-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 transition-colors"
         >
           {rejecting ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Reject'}
         </button>

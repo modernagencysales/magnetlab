@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Brain, Search, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Brain, Search, Loader2, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
 import type { KnowledgeCategory } from '@/lib/types/content-pipeline';
@@ -22,14 +22,31 @@ interface KnowledgeEntryResult {
   similarity?: number;
 }
 
+interface TagCluster {
+  id: string;
+  name: string;
+  description: string | null;
+  tags: Array<{ tag_name: string; usage_count: number }>;
+}
+
 export function KnowledgeBrainTab() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<KnowledgeCategory | ''>('');
   const [entries, setEntries] = useState<KnowledgeEntryResult[]>([]);
   const [tags, setTags] = useState<{ tag_name: string; usage_count: number }[]>([]);
+  const [clusters, setClusters] = useState<TagCluster[]>([]);
+  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [clustering, setClustering] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, []);
 
   const fetchEntries = useCallback(async (searchQuery: string, cat: string) => {
     setLoading(true);
@@ -59,24 +76,63 @@ export function KnowledgeBrainTab() {
     }
   }, []);
 
+  const fetchClusters = useCallback(async () => {
+    try {
+      const response = await fetch('/api/content-pipeline/knowledge/clusters');
+      const data = await response.json();
+      setClusters(data.clusters || []);
+    } catch {
+      // Silent failure
+    }
+  }, []);
+
   useEffect(() => {
     fetchEntries('', '');
     fetchTags();
-  }, [fetchEntries, fetchTags]);
+    fetchClusters();
+  }, [fetchEntries, fetchTags, fetchClusters]);
 
   const handleSearchChange = (value: string) => {
     setQuery(value);
-    if (searchTimeout) clearTimeout(searchTimeout);
-    const timeout = setTimeout(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
       fetchEntries(value, category);
     }, 400);
-    setSearchTimeout(timeout);
   };
 
   const handleCategoryChange = (cat: KnowledgeCategory | '') => {
     setCategory(cat);
     fetchEntries(query, cat);
   };
+
+  const handleOrganizeTags = async () => {
+    setClustering(true);
+    try {
+      await fetch('/api/content-pipeline/knowledge/clusters', { method: 'POST' });
+      await fetchClusters();
+      await fetchTags();
+    } catch {
+      // Silent failure
+    } finally {
+      setClustering(false);
+    }
+  };
+
+  const toggleCluster = (clusterId: string) => {
+    setExpandedClusters((prev) => {
+      const next = new Set(prev);
+      if (next.has(clusterId)) {
+        next.delete(clusterId);
+      } else {
+        next.add(clusterId);
+      }
+      return next;
+    });
+  };
+
+  // Find unclustered tags
+  const clusteredTagNames = new Set(clusters.flatMap((c) => c.tags.map((t) => t.tag_name)));
+  const unclusteredTags = tags.filter((t) => !clusteredTagNames.has(t.tag_name));
 
   return (
     <div>
@@ -130,7 +186,7 @@ export function KnowledgeBrainTab() {
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : entries.length === 0 ? (
+      ) : entries.length === 0 && !tags.length ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <Brain className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-muted-foreground">
@@ -142,19 +198,108 @@ export function KnowledgeBrainTab() {
         </div>
       ) : (
         <div>
-          {/* Tag Cloud (browse mode) */}
+          {/* Tag Clusters + Cloud (browse mode) */}
           {!query && tags.length > 0 && (
-            <div className="mb-6 flex flex-wrap gap-2">
-              {tags.slice(0, 20).map((tag) => (
+            <div className="mb-6">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase text-muted-foreground">Knowledge Topics</h3>
                 <button
-                  key={tag.tag_name}
-                  onClick={() => handleSearchChange(tag.tag_name)}
-                  className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
+                  onClick={handleOrganizeTags}
+                  disabled={clustering || tags.length < 4}
+                  className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
                 >
-                  {tag.tag_name}
-                  <span className="ml-1 text-muted-foreground/50">({tag.usage_count})</span>
+                  {clustering ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3 w-3" />
+                  )}
+                  {clustering ? 'Organizing...' : 'Organize Tags'}
                 </button>
-              ))}
+              </div>
+
+              {/* Cluster Groups */}
+              {clusters.length > 0 ? (
+                <div className="space-y-2 mb-4">
+                  {clusters.map((cluster) => (
+                    <div key={cluster.id} className="rounded-lg border bg-card">
+                      <button
+                        onClick={() => toggleCluster(cluster.id)}
+                        className="flex w-full items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          {expandedClusters.has(cluster.id) ? (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className="text-sm font-medium">{cluster.name}</span>
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                            {cluster.tags.length}
+                          </span>
+                        </div>
+                        {cluster.description && (
+                          <span className="text-xs text-muted-foreground hidden sm:block">
+                            {cluster.description}
+                          </span>
+                        )}
+                      </button>
+                      {expandedClusters.has(cluster.id) && (
+                        <div className="flex flex-wrap gap-2 px-3 pb-3">
+                          {cluster.tags.map((tag) => (
+                            <button
+                              key={tag.tag_name}
+                              onClick={() => handleSearchChange(tag.tag_name)}
+                              className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
+                            >
+                              {tag.tag_name}
+                              <span className="ml-1 text-muted-foreground/50">({tag.usage_count})</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Unclustered tags */}
+                  {unclusteredTags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {unclusteredTags.slice(0, 15).map((tag) => (
+                        <button
+                          key={tag.tag_name}
+                          onClick={() => handleSearchChange(tag.tag_name)}
+                          className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
+                        >
+                          {tag.tag_name}
+                          <span className="ml-1 text-muted-foreground/50">({tag.usage_count})</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Flat tag cloud (no clusters yet) */
+                <div className="mb-6 flex flex-wrap gap-2">
+                  {tags.slice(0, 20).map((tag) => (
+                    <button
+                      key={tag.tag_name}
+                      onClick={() => handleSearchChange(tag.tag_name)}
+                      className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
+                    >
+                      {tag.tag_name}
+                      <span className="ml-1 text-muted-foreground/50">({tag.usage_count})</span>
+                    </button>
+                  ))}
+                  {tags.length >= 4 && (
+                    <button
+                      onClick={handleOrganizeTags}
+                      disabled={clustering}
+                      className="rounded-full border border-dashed border-primary/30 px-3 py-1 text-xs text-primary hover:bg-primary/5 transition-colors"
+                    >
+                      {clustering ? 'Organizing...' : 'Organize into topics'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

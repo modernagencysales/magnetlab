@@ -1,26 +1,43 @@
 'use client';
 
-import { useState } from 'react';
-import { Mic, Brain, Lightbulb, FileText, Zap } from 'lucide-react';
+import { useState, Suspense } from 'react';
+import dynamic from 'next/dynamic';
+import { Mic, Brain, Lightbulb, FileText, Zap, Loader2, LayoutGrid, LayoutTemplate, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TranscriptsTab } from './TranscriptsTab';
-import { KnowledgeBrainTab } from './KnowledgeBrainTab';
-import { IdeasTab } from './IdeasTab';
-import { PostsTab } from './PostsTab';
-import { AutopilotTab } from './AutopilotTab';
 
-type Tab = 'transcripts' | 'brain' | 'ideas' | 'posts' | 'autopilot';
+// Dynamic imports for code splitting — each tab loads only when selected
+const TranscriptsTab = dynamic(() => import('./TranscriptsTab').then((m) => ({ default: m.TranscriptsTab })), { ssr: false });
+const KnowledgeBrainTab = dynamic(() => import('./KnowledgeBrainTab').then((m) => ({ default: m.KnowledgeBrainTab })), { ssr: false });
+const IdeasTab = dynamic(() => import('./IdeasTab').then((m) => ({ default: m.IdeasTab })), { ssr: false });
+const PostsTab = dynamic(() => import('./PostsTab').then((m) => ({ default: m.PostsTab })), { ssr: false });
+const AutopilotTab = dynamic(() => import('./AutopilotTab').then((m) => ({ default: m.AutopilotTab })), { ssr: false });
+const PipelineTab = dynamic(() => import('./PipelineTab').then((m) => ({ default: m.PipelineTab })), { ssr: false });
+const TemplatesTab = dynamic(() => import('./TemplatesTab').then((m) => ({ default: m.TemplatesTab })), { ssr: false });
+const QuickWriteModal = dynamic(() => import('./QuickWriteModal').then((m) => ({ default: m.QuickWriteModal })), { ssr: false });
+
+type Tab = 'transcripts' | 'brain' | 'ideas' | 'posts' | 'pipeline' | 'templates' | 'autopilot';
 
 const TABS: { id: Tab; label: string; icon: typeof Mic }[] = [
   { id: 'transcripts', label: 'Transcripts', icon: Mic },
   { id: 'brain', label: 'AI Brain', icon: Brain },
   { id: 'ideas', label: 'Ideas', icon: Lightbulb },
   { id: 'posts', label: 'Posts', icon: FileText },
+  { id: 'pipeline', label: 'Pipeline', icon: LayoutGrid },
+  { id: 'templates', label: 'Templates', icon: LayoutTemplate },
   { id: 'autopilot', label: 'Autopilot', icon: Zap },
 ];
 
+function TabLoader() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
 export function ContentPipelineContent() {
   const [activeTab, setActiveTab] = useState<Tab>('transcripts');
+  const [showQuickWrite, setShowQuickWrite] = useState(false);
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -52,11 +69,30 @@ export function ContentPipelineContent() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'transcripts' && <TranscriptsTab />}
-      {activeTab === 'brain' && <KnowledgeBrainTab />}
-      {activeTab === 'ideas' && <IdeasTab />}
-      {activeTab === 'posts' && <PostsTab />}
-      {activeTab === 'autopilot' && <AutopilotTab />}
+      <Suspense fallback={<TabLoader />}>
+        {activeTab === 'transcripts' && <TranscriptsTab />}
+        {activeTab === 'brain' && <KnowledgeBrainTab />}
+        {activeTab === 'ideas' && <IdeasTab />}
+        {activeTab === 'posts' && <PostsTab />}
+        {activeTab === 'pipeline' && <PipelineTab />}
+        {activeTab === 'templates' && <TemplatesTab />}
+        {activeTab === 'autopilot' && <AutopilotTab />}
+      </Suspense>
+
+      {/* Quick Write FAB */}
+      <button
+        onClick={() => setShowQuickWrite(true)}
+        className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+        title="Quick Write"
+      >
+        <Sparkles className="h-5 w-5" />
+      </button>
+      {showQuickWrite && (
+        <QuickWriteModal
+          onClose={() => setShowQuickWrite(false)}
+          onPostCreated={() => {}}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Lightbulb, Loader2, Search, Filter, ChevronDown, ChevronUp } from 'lucide-react';
+import { Lightbulb, Loader2, Search, Filter, ChevronDown, ChevronUp, Archive } from 'lucide-react';
 import { cn, truncate } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PillarBadge } from './PillarBadge';
@@ -48,6 +48,7 @@ export function IdeasTab() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIdea, setSelectedIdea] = useState<ContentIdea | null>(null);
   const [writingId, setWritingId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   const fetchIdeas = useCallback(async () => {
     setLoading(true);
@@ -86,6 +87,25 @@ export function IdeasTab() {
       // Silent failure
     } finally {
       setWritingId(null);
+    }
+  };
+
+  const handleArchive = async (ideaId: string) => {
+    setArchivingId(ideaId);
+    try {
+      const response = await fetch('/api/content-pipeline/ideas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ideaId, status: 'archived' }),
+      });
+      if (response.ok) {
+        await fetchIdeas();
+        setSelectedIdea(null);
+      }
+    } catch {
+      // Silent failure
+    } finally {
+      setArchivingId(null);
     }
   };
 
@@ -210,18 +230,33 @@ export function IdeasTab() {
                     <span className="text-xs text-muted-foreground">{idea.content_type}</span>
                   )}
                 </div>
-                {(idea.status === 'extracted' || idea.status === 'selected') && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleWritePost(idea.id);
-                    }}
-                    disabled={writingId === idea.id}
-                    className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  >
-                    {writingId === idea.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Write Post'}
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {idea.status !== 'archived' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleArchive(idea.id);
+                      }}
+                      disabled={archivingId === idea.id}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors"
+                      title="Archive idea"
+                    >
+                      {archivingId === idea.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
+                  {(idea.status === 'extracted' || idea.status === 'selected') && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleWritePost(idea.id);
+                      }}
+                      disabled={writingId === idea.id}
+                      className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      {writingId === idea.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Write Post'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -233,7 +268,9 @@ export function IdeasTab() {
           idea={selectedIdea}
           onClose={() => setSelectedIdea(null)}
           onWritePost={handleWritePost}
+          onArchive={handleArchive}
           writing={writingId === selectedIdea.id}
+          archiving={archivingId === selectedIdea.id}
         />
       )}
     </div>

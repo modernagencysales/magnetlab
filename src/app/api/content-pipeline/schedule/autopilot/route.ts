@@ -36,7 +36,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { postsPerBatch = 3, bufferTarget = 5, autoPublish = false } = body;
+    const postsPerBatch = Math.max(1, Math.min(10, Number(body.postsPerBatch) || 3));
+    const bufferTarget = Math.max(1, Math.min(20, Number(body.bufferTarget) || 5));
+    const autoPublish = body.autoPublish === true;
 
     const handle = await tasks.trigger<typeof runAutopilot>('run-autopilot', {
       userId: session.user.id,

@@ -77,7 +77,41 @@ async function getRecentPostTitles(userId: string, days: number = PILLAR_LOOKBAC
   return ideas?.map((i) => i.title) || [];
 }
 
-export async function getNextScheduledTime(userId: string): Promise<Date> {
+/**
+ * Convert a wall-clock time in a given timezone to a UTC Date.
+ * e.g. "14:00" in "America/New_York" → Date representing 14:00 ET in UTC
+ */
+function wallClockToUTC(baseDate: Date, hours: number, minutes: number, timezone: string): Date {
+  // Get the date as seen in the target timezone
+  const dateStr = baseDate.toLocaleDateString('en-CA', { timeZone: timezone }); // YYYY-MM-DD
+  const [y, m, d] = dateStr.split('-').map(Number);
+
+  // Create the wall-clock time as if UTC
+  const naiveUTC = new Date(Date.UTC(y, m - 1, d, hours, minutes, 0, 0));
+
+  // Find the timezone offset at this approximate time
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', hour12: false,
+  }).formatToParts(naiveUTC);
+
+  const tzHour = parseInt(parts.find((p) => p.type === 'hour')!.value);
+  const tzMinute = parseInt(parts.find((p) => p.type === 'minute')!.value);
+  const tzDay = parseInt(parts.find((p) => p.type === 'day')!.value);
+
+  // Offset = what the TZ shows minus what we wanted
+  const tzTotalMinutes = tzDay * 24 * 60 + tzHour * 60 + tzMinute;
+  const targetTotalMinutes = d * 24 * 60 + hours * 60 + minutes;
+  const offsetMinutes = tzTotalMinutes - targetTotalMinutes;
+
+  return new Date(naiveUTC.getTime() - offsetMinutes * 60 * 1000);
+}
+
+export async function getNextScheduledTime(
+  userId: string,
+  cachedScheduledTimes?: Set<number>
+): Promise<Date> {
   const supabase = createSupabaseAdminClient();
 
   const { data: slots } = await supabase
@@ -90,25 +124,29 @@ export async function getNextScheduledTime(userId: string): Promise<Date> {
   if (!slots?.length) {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(9, 0, 0, 0);
+    tomorrow.setUTCHours(9, 0, 0, 0);
     return tomorrow;
   }
 
-  // Find next available slot
+  // Find next available slot (timezone-aware)
   const now = new Date();
   const candidates: Date[] = [];
 
   for (let dayOffset = 0; dayOffset <= 7; dayOffset++) {
     for (const slot of slots) {
-      const candidate = new Date(now);
-      candidate.setDate(candidate.getDate() + dayOffset);
-
       const [hours, minutes] = slot.time_of_day.split(':').map(Number);
-      candidate.setHours(hours, minutes, 0, 0);
+      const tz = slot.timezone || 'UTC';
+
+      // Create a base date offset by dayOffset in the slot's timezone
+      const baseDate = new Date(now.getTime() + dayOffset * 86400000);
+      const candidate = wallClockToUTC(baseDate, hours, minutes, tz);
 
       if (candidate > now) {
-        // Check if slot matches day_of_week (null = any day)
-        if (slot.day_of_week === null || slot.day_of_week === candidate.getDay()) {
+        // Check day_of_week in the slot's timezone
+        const dayName = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(candidate);
+        const dayMap: Record<string, number> = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+        const dayInTZ = dayMap[dayName] ?? candidate.getUTCDay();
+        if (slot.day_of_week === null || slot.day_of_week === dayInTZ) {
           candidates.push(candidate);
         }
       }
@@ -117,18 +155,21 @@ export async function getNextScheduledTime(userId: string): Promise<Date> {
 
   candidates.sort((a, b) => a.getTime() - b.getTime());
 
-  // Check for conflicts with already scheduled posts
+  // Check for conflicts with already scheduled posts (use cache if provided)
   if (candidates.length > 0) {
-    const { data: scheduledPosts } = await supabase
-      .from('cp_pipeline_posts')
-      .select('scheduled_time')
-      .eq('user_id', userId)
-      .eq('status', 'scheduled')
-      .not('scheduled_time', 'is', null);
+    let scheduledTimes = cachedScheduledTimes;
+    if (!scheduledTimes) {
+      const { data: scheduledPosts } = await supabase
+        .from('cp_pipeline_posts')
+        .select('scheduled_time')
+        .eq('user_id', userId)
+        .eq('status', 'scheduled')
+        .not('scheduled_time', 'is', null);
 
-    const scheduledTimes = new Set(
-      scheduledPosts?.map((p) => new Date(p.scheduled_time!).getTime()) || []
-    );
+      scheduledTimes = new Set(
+        scheduledPosts?.map((p) => new Date(p.scheduled_time!).getTime()) || []
+      );
+    }
 
     for (const candidate of candidates) {
       if (!scheduledTimes.has(candidate.getTime())) {
@@ -137,10 +178,10 @@ export async function getNextScheduledTime(userId: string): Promise<Date> {
     }
   }
 
-  // Fallback: tomorrow 9 AM
+  // Fallback: tomorrow 9 AM UTC
   const fallback = new Date();
   fallback.setDate(fallback.getDate() + 1);
-  fallback.setHours(9, 0, 0, 0);
+  fallback.setUTCHours(9, 0, 0, 0);
   return fallback;
 }
 
@@ -188,6 +229,18 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
     // 3. Score and select top ideas
     const topIdeas = getTopIdeas(pendingIdeas as ContentIdea[], postsPerBatch, scoringContext);
 
+    // Pre-fetch scheduled times once for all posts in batch
+    const { data: existingScheduled } = await supabase
+      .from('cp_pipeline_posts')
+      .select('scheduled_time')
+      .eq('user_id', userId)
+      .eq('status', 'scheduled')
+      .not('scheduled_time', 'is', null);
+
+    const scheduledTimesCache = new Set(
+      existingScheduled?.map((p) => new Date(p.scheduled_time!).getTime()) || []
+    );
+
     // 4. Generate posts for each idea
     for (let i = 0; i < topIdeas.length; i++) {
       const { idea, score } = topIdeas[i];
@@ -233,9 +286,9 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
         // Polish post
         const polishResult = await polishPost(writtenPost.content);
 
-        // Determine scheduling
+        // Determine scheduling (use cached scheduled times)
         const isFirstPost = i === 0;
-        const scheduledTime = isFirstPost ? await getNextScheduledTime(userId) : null;
+        const scheduledTime = isFirstPost ? await getNextScheduledTime(userId, scheduledTimesCache) : null;
         const isBuffer = !isFirstPost;
 
         // Calculate buffer position
