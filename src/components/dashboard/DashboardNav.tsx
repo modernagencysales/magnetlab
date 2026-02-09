@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import posthog from 'posthog-js';
-import { Magnet, Library, BarChart3, Settings, Plus, LogOut, FileText, Globe, Users, ChevronDown, BookOpen } from 'lucide-react';
+import { Magnet, Library, BarChart3, Settings, Plus, LogOut, FileText, Globe, Users, ChevronDown, BookOpen, PenTool } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ds';
 
@@ -24,6 +24,7 @@ const navItems = [
   { href: '/assets', label: 'Assets', icon: Globe },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/swipe-file', label: 'Swipe File', icon: FileText },
+  { href: '/content', label: 'Content', icon: PenTool },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/docs', label: 'API Docs', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },

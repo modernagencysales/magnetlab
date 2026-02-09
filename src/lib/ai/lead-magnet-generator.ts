@@ -12,6 +12,8 @@ import type {
   CallTranscriptInsights,
   CompetitorAnalysis,
 } from '@/lib/types/lead-magnet';
+import { getRelevantContext } from '@/lib/services/knowledge-brain';
+import { buildContentBrief } from '@/lib/ai/content-pipeline/briefing-agent';
 
 // Lazy initialization to ensure env vars are loaded
 function getAnthropicClient(): Anthropic {
@@ -21,6 +23,41 @@ function getAnthropicClient(): Anthropic {
   }
   // Increased timeout for background jobs (4 minutes for complex AI generation like ideation)
   return new Anthropic({ apiKey, timeout: 240_000 });
+}
+
+/**
+ * Build knowledge context from the AI Brain for lead magnet generation.
+ * Returns a formatted string of relevant insights, or empty string if none found.
+ * Non-breaking: if knowledge base is empty or search fails, returns empty string.
+ */
+async function getKnowledgeContext(userId: string, searchQuery: string): Promise<string> {
+  try {
+    const entries = await getRelevantContext(userId, searchQuery, 10);
+    if (!entries.length) return '';
+
+    const insights = entries.filter(e => e.category === 'insight');
+    const questions = entries.filter(e => e.category === 'question');
+    const productIntel = entries.filter(e => e.category === 'product_intel');
+
+    const parts: string[] = [];
+
+    if (insights.length > 0) {
+      parts.push(`VALIDATED INSIGHTS FROM YOUR COACHING CALLS:\n${insights.map(e => `- ${e.content}`).join('\n')}`);
+    }
+    if (questions.length > 0) {
+      parts.push(`QUESTIONS YOUR AUDIENCE ACTUALLY ASKS:\n${questions.map(e => `- ${e.content}`).join('\n')}`);
+    }
+    if (productIntel.length > 0) {
+      parts.push(`REAL OUTCOMES & CASE STUDIES:\n${productIntel.map(e => `- ${e.content}`).join('\n')}`);
+    }
+
+    if (parts.length === 0) return '';
+
+    return `\n\nKNOWLEDGE BASE CONTEXT (from your actual calls):\nUse these real insights, questions, and outcomes to make concepts more authentic and grounded.\n\n${parts.join('\n\n')}`;
+  } catch {
+    // Non-critical — proceed without knowledge context
+    return '';
+  }
 }
 
 // =============================================================================
@@ -279,7 +316,7 @@ export async function generateConceptBatch(
   sources?: {
     callTranscriptInsights?: CallTranscriptInsights;
     competitorAnalysis?: CompetitorAnalysis;
-  }
+  },
 ): Promise<LeadMagnetConcept[]> {
   const additionalContext = buildAdditionalContext(sources);
 
@@ -440,8 +477,36 @@ export async function generateLeadMagnetIdeasParallel(
   sources?: {
     callTranscriptInsights?: CallTranscriptInsights;
     competitorAnalysis?: CompetitorAnalysis;
-  }
+  },
+  userId?: string
 ): Promise<IdeationResult> {
+  // Inject AI Brain knowledge if userId provided
+  if (userId) {
+    const searchQuery = `${context.businessDescription} ${context.urgentPains.join(' ')}`;
+    const knowledgeContext = await getKnowledgeContext(userId, searchQuery);
+    if (knowledgeContext) {
+      // Attach knowledge context to sources so it flows through to batch generation
+      sources = {
+        ...sources,
+        callTranscriptInsights: sources?.callTranscriptInsights ?? {
+          painPoints: [],
+          frequentQuestions: [],
+          transformationOutcomes: [],
+          objections: [],
+          languagePatterns: [],
+        },
+      };
+      // Append knowledge entries as language patterns for natural injection
+      const knowledgeEntries = knowledgeContext.split('\n').filter(l => l.startsWith('- ')).map(l => l.slice(2));
+      if (knowledgeEntries.length > 0 && sources.callTranscriptInsights) {
+        sources.callTranscriptInsights.languagePatterns = [
+          ...sources.callTranscriptInsights.languagePatterns,
+          ...knowledgeEntries.slice(0, 10),
+        ];
+      }
+    }
+  }
+
   // Split archetypes into 5 batches of 2 for maximum parallelism
   const batches = [
     ALL_ARCHETYPES.slice(0, 2),   // single-breakdown, single-system
@@ -477,10 +542,18 @@ export async function generateLeadMagnetIdeas(
   sources?: {
     callTranscriptInsights?: CallTranscriptInsights;
     competitorAnalysis?: CompetitorAnalysis;
-  }
+  },
+  userId?: string
 ): Promise<IdeationResult> {
   // Build additional context from sources
   let additionalContext = '';
+
+  // Inject AI Brain knowledge if userId provided
+  if (userId) {
+    const searchQuery = `${context.businessDescription} ${context.urgentPains.join(' ')}`;
+    const knowledgeContext = await getKnowledgeContext(userId, searchQuery);
+    additionalContext += knowledgeContext;
+  }
 
   if (sources?.callTranscriptInsights) {
     const insights = sources.callTranscriptInsights;
@@ -679,7 +752,8 @@ export async function processContentExtraction(
   archetype: LeadMagnetArchetype,
   concept: LeadMagnetConcept,
   answers: Record<string, string>,
-  transcriptInsights?: CallTranscriptInsights
+  transcriptInsights?: CallTranscriptInsights,
+  userId?: string
 ): Promise<ExtractedContent> {
   if (!archetype || !concept || !answers) {
     throw new Error(`Missing required parameters: archetype=${!!archetype}, concept=${!!concept}, answers=${!!answers}`);
@@ -736,6 +810,13 @@ IMPORTANT: Incorporate these real insights throughout the content. Use the exact
     }
   }
 
+  // Inject AI Brain knowledge if userId provided
+  let knowledgeBrainContext = '';
+  if (userId) {
+    const searchQuery = `${concept.title} ${concept.painSolved}`;
+    knowledgeBrainContext = await getKnowledgeContext(userId, searchQuery);
+  }
+
   const prompt = `You are a lead magnet strategist. Based on the following Q&A extraction, structure the content for this lead magnet.
 
 LEAD MAGNET CONCEPT:
@@ -745,7 +826,7 @@ Pain Solved: ${concept.painSolved}
 Format: ${concept.deliveryFormat}
 
 EXTRACTED CONTENT:
-${qaPairs}${transcriptContext}
+${qaPairs}${transcriptContext}${knowledgeBrainContext}
 
 Now structure this into a deliverable. Provide:
 1. title: Final polished title
@@ -834,9 +915,23 @@ HOOK TYPES:
 - Confession: "I spent 18 months doing this wrong."`;
 
 export async function generatePostVariations(
-  input: PostWriterInput
+  input: PostWriterInput,
+  userId?: string
 ): Promise<PostWriterResult> {
-  const prompt = `${POST_WRITER_SYSTEM}
+  // Inject AI Brain context if userId provided
+  let knowledgeSection = '';
+  if (userId) {
+    try {
+      const brief = await buildContentBrief(userId, `${input.leadMagnetTitle} ${input.problemSolved}`);
+      if (brief.compiledContext) {
+        knowledgeSection = `\n\nKNOWLEDGE BASE CONTEXT (from your actual calls):\nUse real outcomes, quotes, and examples to make the post more authentic.\n${brief.compiledContext}\n`;
+      }
+    } catch {
+      // Non-critical — proceed without knowledge context
+    }
+  }
+
+  const prompt = `${POST_WRITER_SYSTEM}${knowledgeSection}
 
 LEAD MAGNET DETAILS:
 - Title: ${input.leadMagnetTitle}

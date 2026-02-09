@@ -12,7 +12,8 @@ MagnetLab is a SaaS platform for creating AI-powered LinkedIn lead magnets -- us
 - **Database**: Supabase (PostgreSQL), 14 migrations
 - **Auth**: NextAuth v5 beta -- Google OAuth + Notion OAuth
 - **UI**: Tailwind CSS 3.4 + shadcn/ui + Framer Motion + Recharts
-- **AI**: @anthropic-ai/sdk (Claude) for content generation, style extraction, email sequences
+- **AI**: @anthropic-ai/sdk (Claude) for content generation, style extraction, email sequences + OpenAI (embeddings)
+- **AI Brain**: pgvector semantic search over transcript knowledge base (content pipeline)
 - **Payments**: Stripe (checkout, webhooks, subscriptions: free/pro/unlimited)
 - **Email**: Resend (transactional) + Loops (marketing automation)
 - **Jobs/Integrations**: Trigger.dev v4, Notion API, LeadShark, user webhooks
@@ -33,7 +34,7 @@ src/
 │   └── p/[username]/[slug]/ # Public opt-in, thankyou, content pages
 ├── components/            # wizard/, funnel/, content/, dashboard/, ds/, settings/, leads/, ui/
 ├── lib/                   # ai/, integrations/, auth/, types/, utils/, services/, validations/, webhooks/, constants/, api/
-├── trigger/               # Background jobs: create-lead-magnet.ts, email-sequence.ts
+├── trigger/               # Background jobs: create-lead-magnet.ts, email-sequence.ts, process-transcript.ts, autopilot-batch.ts, run-autopilot.ts
 ├── middleware.ts          # Auth guard for dashboard routes
 └── __tests__/             # 16 test files: api/, components/, lib/
 ```
@@ -98,6 +99,31 @@ Supabase PostgreSQL, 14 migrations. Tables:
 - `user_integrations` -- connected third-party accounts (encrypted keys)
 - `polished_content` -- AI-polished versions of content
 
+### Content Pipeline Tables (cp_ prefix)
+
+- `cp_call_transcripts` -- raw transcripts from Grain, Fireflies, or paste
+- `cp_knowledge_entries` -- extracted insights/questions/intel with vector embeddings
+- `cp_knowledge_tags` -- tag usage tracking per user
+- `cp_content_ideas` -- post-worthy ideas extracted from transcripts
+- `cp_pipeline_posts` -- posts in the autopilot pipeline (draft → review → schedule → publish)
+- `cp_posting_slots` -- user's publishing schedule (time slots per day)
+- `cp_post_templates` -- reusable post templates with embeddings
+- `cp_writing_styles` -- user style profiles
+
+RPCs: `cp_match_knowledge_entries()` (pgvector cosine similarity), `cp_decrement_buffer_positions()` (buffer reordering)
+
+### Content Pipeline API Routes
+
+- `api/webhooks/grain/` -- Grain transcript webhook
+- `api/webhooks/fireflies/` -- Fireflies transcript webhook
+- `api/content-pipeline/transcripts/` -- paste/upload + list transcripts
+- `api/content-pipeline/knowledge/` -- search/browse AI Brain knowledge base
+- `api/content-pipeline/ideas/` -- list, update, delete ideas; write post from idea
+- `api/content-pipeline/posts/` -- CRUD + polish posts
+- `api/content-pipeline/schedule/slots/` -- posting slots CRUD
+- `api/content-pipeline/schedule/autopilot/` -- trigger autopilot + status
+- `api/content-pipeline/schedule/buffer/` -- approve/reject buffer posts
+
 ## System Context
 
 MagnetLab is one of five interconnected repos in the GTM ecosystem:
@@ -131,7 +157,7 @@ Use this table to determine which repo owns a given feature. This prevents build
 | Webhook ingestion from 3rd parties | gtm-system | Central webhook hub for 14+ integrations |
 | Lead routing/pipeline orchestration | gtm-system | Owns lead lifecycle from capture to sales handoff |
 | Cold email campaigns | gtm-system | Owns all cold email: UI, campaign management, enrichment, pipeline |
-| Content scheduling/publishing | gtm-system | Owns content pipeline and auto-publishing |
+| Content scheduling/publishing | magnetlab | Owns content pipeline, autopilot, AI Brain (migrated from gtm-system) |
 | Reply classification/delivery | gtm-system | Owns the reply pipeline (AI classify -> Blueprint -> deliver) |
 | Funnel pages/opt-in pages | magnetlab | Owns funnel builder, opt-in, thank-you, content pages |
 | Stripe billing/subscriptions | magnetlab (SaaS billing) or copy-of-gtm-os (bootcamp subs) | Depends on which product the billing is for |
@@ -160,6 +186,9 @@ Use this table to determine which repo owns a given feature. This prevents build
 - `RESEND_API_KEY` -- Transactional email
 - `TRIGGER_SECRET_KEY` -- Background jobs
 - `GTM_SYSTEM_WEBHOOK_URL` / `GTM_SYSTEM_WEBHOOK_SECRET` -- GTM webhooks (optional, silently skipped if missing)
+- `OPENAI_API_KEY` -- Embeddings (text-embedding-3-small) for AI Brain / content pipeline
+- `GRAIN_WEBHOOK_SECRET` -- Grain transcript webhook auth
+- `FIREFLIES_WEBHOOK_SECRET` -- Fireflies transcript webhook auth
 
 ### Commands
 

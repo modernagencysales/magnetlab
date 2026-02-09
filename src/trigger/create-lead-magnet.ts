@@ -197,7 +197,7 @@ export const createLeadMagnetPipeline = task({
         businessType: "coach-consultant" as BusinessType,
       };
 
-      const ideationResult = await generateLeadMagnetIdeas(fullBusinessContext);
+      const ideationResult = await generateLeadMagnetIdeas(fullBusinessContext, undefined, userId);
 
       if (!ideationResult?.concepts?.length) {
         await updateStatus("failed");
@@ -224,7 +224,9 @@ export const createLeadMagnetPipeline = task({
       const extractedContent: ExtractedContent = await processContentExtraction(
         archetype,
         selectedConcept,
-        extractionAnswers
+        extractionAnswers,
+        undefined,
+        userId
       );
 
       // ==========================================
@@ -243,7 +245,7 @@ export const createLeadMagnetPipeline = task({
         urgencyAngle: selectedConcept.whyNowHook,
       };
 
-      const postResult: PostWriterResult = await generatePostVariations(postInput);
+      const postResult: PostWriterResult = await generatePostVariations(postInput, userId);
 
       // ==========================================
       // STEP F: Update lead magnet record

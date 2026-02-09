@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Routes that require authentication
-const protectedRoutes = ['/create', '/library', '/analytics', '/settings', '/leads', '/pages', '/docs'];
+const protectedRoutes = ['/create', '/library', '/analytics', '/settings', '/leads', '/pages', '/docs', '/content'];
 
 // Routes that should redirect to library if authenticated
 const authRoutes = ['/login'];
