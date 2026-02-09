@@ -23,7 +23,7 @@ export default async function DashboardLayout({
         name={session.user.name}
       />
       <DashboardNav user={session.user} />
-      <main>{children}</main>
+      <main className="lg:pl-64">{children}</main>
       <FeedbackWidget
         userEmail={session.user.email ?? null}
         userId={session.user.id ?? null}
