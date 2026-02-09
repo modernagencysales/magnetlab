@@ -12,9 +12,12 @@ import { PostStep } from './steps/PostStep';
 import { PublishStep } from './steps/PublishStep';
 import { GeneratingScreen } from './GeneratingScreen';
 import { WizardProgress } from './WizardProgress';
+import { DraftPicker } from './DraftPicker';
 import { useBackgroundJob } from '@/lib/hooks/useBackgroundJob';
+import { useWizardAutoSave } from '@/lib/hooks/useWizardAutoSave';
 import type {
   WizardState,
+  WizardDraft,
   BusinessContext,
   IdeationResult,
   ExtractedContent,
@@ -49,6 +52,11 @@ export function WizardContainer() {
   const [savedIdeation, setSavedIdeation] = useState<IdeationResult | null>(null);
   const [ideationGeneratedAt, setIdeationGeneratedAt] = useState<string | null>(null);
 
+  // Draft management
+  const [showDraftPicker, setShowDraftPicker] = useState(false);
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<WizardDraft[]>([]);
+
   const { startPolling, isLoading: isJobLoading } = useBackgroundJob<IdeationResult>({
     pollInterval: 2000,
     timeout: 360000, // 6 minutes - provides buffer after AI timeout (MOD-68)
@@ -67,13 +75,42 @@ export function WizardContainer() {
     },
   });
 
-  // Load saved brand kit and ideation on mount
+  // Auto-save hook
+  const autoSaveEnabled = generating === 'idle' && state.currentStep > 1 && state.currentStep < 6;
+  const { draftId, isSaving, lastSavedAt, hasUnsavedChanges } = useWizardAutoSave({
+    state,
+    draftId: activeDraftId,
+    enabled: autoSaveEnabled,
+  });
+
+  // Keep activeDraftId in sync with the hook's draftId (set after first save)
   useEffect(() => {
-    async function loadBrandKit() {
+    if (draftId !== activeDraftId) {
+      setActiveDraftId(draftId);
+    }
+  }, [draftId, activeDraftId]);
+
+  // Warn before closing with unsaved changes
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedChanges]);
+
+  // Load saved brand kit, ideation, and drafts on mount
+  useEffect(() => {
+    async function loadInitialData() {
       try {
-        const response = await fetch('/api/brand-kit');
-        if (response.ok) {
-          const data = await response.json();
+        const [brandKitRes, draftsRes] = await Promise.all([
+          fetch('/api/brand-kit'),
+          fetch('/api/wizard-draft'),
+        ]);
+
+        if (brandKitRes.ok) {
+          const data = await brandKitRes.json();
           if (data.brandKit) {
             const bk = data.brandKit;
             // Convert snake_case API response to camelCase BusinessContext
@@ -98,13 +135,40 @@ export function WizardContainer() {
             setIdeationGeneratedAt(data.ideationGeneratedAt);
           }
         }
+
+        if (draftsRes.ok) {
+          const data = await draftsRes.json();
+          if (data.drafts && data.drafts.length > 0) {
+            setDrafts(data.drafts);
+            setShowDraftPicker(true);
+          }
+        }
       } catch (err) {
-        console.warn('Failed to load brand kit:', err);
+        console.warn('Failed to load initial data:', err);
       } finally {
         setLoadingBrandKit(false);
       }
     }
-    loadBrandKit();
+    loadInitialData();
+  }, []);
+
+  const handleDraftSelect = useCallback((draft: WizardDraft) => {
+    setState(draft.wizard_state);
+    setActiveDraftId(draft.id);
+    setShowDraftPicker(false);
+  }, []);
+
+  const handleDraftDelete = useCallback((id: string) => {
+    setDrafts((prev) => {
+      const remaining = prev.filter((d) => d.id !== id);
+      if (remaining.length === 0) setShowDraftPicker(false);
+      return remaining;
+    });
+  }, []);
+
+  const handleStartNew = useCallback(() => {
+    setActiveDraftId(null);
+    setShowDraftPicker(false);
   }, []);
 
   const goToStep = useCallback((step: number) => {
@@ -370,6 +434,23 @@ export function WizardContainer() {
     );
   }
 
+  // Show draft picker
+  if (showDraftPicker) {
+    return (
+      <div className="min-h-screen bg-background">
+        <WizardProgress currentStep={1} />
+        <div className="container mx-auto max-w-4xl px-4 py-8">
+          <DraftPicker
+            drafts={drafts}
+            onSelect={handleDraftSelect}
+            onDelete={handleDraftDelete}
+            onStartNew={handleStartNew}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // Show generating screen when generating ideas or polling for job results
   if (generating === 'ideas' || isJobLoading) {
     return (
@@ -385,6 +466,17 @@ export function WizardContainer() {
   return (
     <div className="min-h-screen bg-background">
       <WizardProgress currentStep={state.currentStep} />
+
+      {/* Auto-save indicator */}
+      {autoSaveEnabled && (isSaving || lastSavedAt) && (
+        <div className="border-b bg-card">
+          <div className="container mx-auto max-w-4xl px-4 py-1.5">
+            <p className="text-xs text-muted-foreground">
+              {isSaving ? 'Saving draft...' : lastSavedAt ? `Draft saved ${formatTimeSince(lastSavedAt)}` : ''}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto max-w-4xl px-4 py-8">
         {error && (
@@ -473,6 +565,7 @@ export function WizardContainer() {
                 ctaWord={state.postResult?.ctaWord || ''}
                 concept={selectedConcept!}
                 onBack={() => goToStep(5)}
+                draftId={draftId}
               />
             )}
           </motion.div>
@@ -480,4 +573,12 @@ export function WizardContainer() {
       </div>
     </div>
   );
+}
+
+function formatTimeSince(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 5) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ago`;
 }

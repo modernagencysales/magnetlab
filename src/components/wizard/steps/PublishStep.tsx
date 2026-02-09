@@ -12,6 +12,7 @@ interface PublishStepProps {
   ctaWord: string;
   concept: LeadMagnetConcept;
   onBack: () => void;
+  draftId?: string | null;
 }
 
 export function PublishStep({
@@ -21,6 +22,7 @@ export function PublishStep({
   ctaWord,
   concept,
   onBack,
+  draftId,
 }: PublishStepProps) {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -104,6 +106,15 @@ export function PublishStep({
       const data = await response.json();
       setSavedLeadMagnetId(data.id);
       setSaved(true);
+
+      // Clean up the auto-saved draft
+      if (draftId) {
+        fetch('/api/wizard-draft', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: draftId }),
+        }).catch(() => {}); // fire-and-forget
+      }
     } catch (error) {
       console.error('Save error:', error);
       setSaveError(error instanceof Error ? error.message : 'Failed to save. You can still copy the content below.');

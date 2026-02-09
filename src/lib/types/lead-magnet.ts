@@ -355,6 +355,14 @@ export interface WizardState {
   customConcept: LeadMagnetConcept | null;
 }
 
+export interface WizardDraft {
+  id: string;
+  wizard_state: WizardState;
+  current_step: number;
+  draft_title: string | null;
+  updated_at: string;
+}
+
 export const WIZARD_STEPS = [
   { id: 1, name: 'Context', description: 'Tell us about your business' },
   { id: 2, name: 'Ideation', description: 'Choose your lead magnet concept' },
