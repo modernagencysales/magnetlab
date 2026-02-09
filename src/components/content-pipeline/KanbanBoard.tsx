@@ -1,21 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckSquare, Square } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { PipelinePost, ContentIdea } from '@/lib/types/content-pipeline';
 import type { CardItem } from './KanbanCard';
-import { KanbanColumn, type ColumnId } from './KanbanColumn';
+import { FocusedCard } from './KanbanCard';
+import { COLUMN_STYLES, type ColumnId } from './KanbanColumn';
 import { BulkSelectionBar } from './BulkSelectionBar';
 import { DetailPane } from './DetailPane';
 import { PostDetailModal } from './PostDetailModal';
-
-// ─── Types ────────────────────────────────────────────────
-
-interface DragData {
-  id: string;
-  type: 'idea' | 'post';
-  sourceColumn: ColumnId;
-}
 
 // ─── Component ────────────────────────────────────────────
 
@@ -25,9 +19,11 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
   const [posts, setPosts] = useState<PipelinePost[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Focused column
+  const [focusedColumn, setFocusedColumn] = useState<ColumnId>('ideas');
+
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [activeColumn, setActiveColumn] = useState<ColumnId | null>(null);
   const lastSelectedId = useRef<string | null>(null);
 
   // Preview
@@ -36,10 +32,6 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
   // Modal
   const [modalPost, setModalPost] = useState<PipelinePost | null>(null);
   const [polishing, setPolishing] = useState(false);
-
-  // Drag
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const dragData = useRef<DragData | null>(null);
 
   // Processing
   const [isProcessing, setIsProcessing] = useState(false);
@@ -97,43 +89,32 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
     }
   }, [ideas, posts]);
 
-  // Determine which column an item belongs to
-  const getItemColumn = useCallback((item: CardItem): ColumnId => {
-    if (item.type === 'idea') return 'ideas';
-    const status = item.data.status;
-    if (status === 'draft' || status === 'reviewing') return 'written';
-    if (status === 'approved') return 'review';
-    return 'scheduled';
+  // ─── Column switching ─────────────────────────────────────
+
+  const handleColumnSwitch = useCallback((col: ColumnId) => {
+    setFocusedColumn(col);
+    setSelectedIds(new Set());
+    lastSelectedId.current = null;
+    setPreviewItem(null);
   }, []);
 
   // ─── Selection ────────────────────────────────────────────
 
   const handleToggleSelect = useCallback((id: string, e: React.MouseEvent) => {
-    // Find which column this item is in
-    const columns: ColumnId[] = ['ideas', 'written', 'review', 'scheduled'];
-    let itemColumn: ColumnId | null = null;
-    for (const col of columns) {
-      if (getColumnItems(col).some((item) => item.data.id === id)) {
-        itemColumn = col;
-        break;
-      }
-    }
+    const items = getColumnItems(focusedColumn);
 
-    if (e.shiftKey && lastSelectedId.current && itemColumn && itemColumn === activeColumn) {
-      // Shift-click range selection
-      const colItems = getColumnItems(itemColumn);
-      const lastIdx = colItems.findIndex((item) => item.data.id === lastSelectedId.current);
-      const currIdx = colItems.findIndex((item) => item.data.id === id);
+    if (e.shiftKey && lastSelectedId.current) {
+      const lastIdx = items.findIndex((i) => i.data.id === lastSelectedId.current);
+      const currIdx = items.findIndex((i) => i.data.id === id);
       if (lastIdx !== -1 && currIdx !== -1) {
         const start = Math.min(lastIdx, currIdx);
         const end = Math.max(lastIdx, currIdx);
         setSelectedIds((prev) => {
           const next = new Set(prev);
-          for (let i = start; i <= end; i++) {
-            next.add(colItems[i].data.id);
-          }
+          for (let i = start; i <= end; i++) next.add(items[i].data.id);
           return next;
         });
+        lastSelectedId.current = id;
         return;
       }
     }
@@ -145,12 +126,15 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
       return next;
     });
     lastSelectedId.current = id;
-    setActiveColumn(itemColumn);
-  }, [activeColumn, getColumnItems]);
+  }, [focusedColumn, getColumnItems]);
+
+  const selectAll = useCallback(() => {
+    const items = getColumnItems(focusedColumn);
+    setSelectedIds(new Set(items.map((i) => i.data.id)));
+  }, [focusedColumn, getColumnItems]);
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
-    setActiveColumn(null);
     lastSelectedId.current = null;
   }, []);
 
@@ -163,15 +147,14 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
         setPreviewItem(null);
         return;
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'a' && activeColumn) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
         e.preventDefault();
-        const colItems = getColumnItems(activeColumn);
-        setSelectedIds(new Set(colItems.map((item) => item.data.id)));
+        selectAll();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeColumn, getColumnItems, clearSelection]);
+  }, [clearSelection, selectAll]);
 
   // ─── Card click → preview ─────────────────────────────────
 
@@ -185,51 +168,6 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
       setPreviewItem({ item, idea });
     }
   }, [previewItem, ideas]);
-
-  // ─── Drag and drop ────────────────────────────────────────
-
-  const handleDragStart = useCallback((e: React.DragEvent, item: CardItem) => {
-    const data: DragData = {
-      id: item.data.id,
-      type: item.type,
-      sourceColumn: getItemColumn(item),
-    };
-    dragData.current = data;
-    e.dataTransfer.setData('application/json', JSON.stringify(data));
-    e.dataTransfer.effectAllowed = 'move';
-    setDraggingId(item.data.id);
-  }, [getItemColumn]);
-
-  const handleDrop = useCallback(async (targetColumn: ColumnId) => {
-    const data = dragData.current;
-    setDraggingId(null);
-    dragData.current = null;
-    if (!data || data.sourceColumn === targetColumn) return;
-
-    try {
-      if (data.type === 'idea' && targetColumn === 'written') {
-        // Idea → Written: trigger write API
-        await fetch(`/api/content-pipeline/ideas/${data.id}/write`, { method: 'POST' });
-      } else if (data.type === 'post') {
-        // Map column to status
-        const statusMap: Record<ColumnId, string> = {
-          ideas: 'draft',
-          written: 'draft',
-          review: 'approved',
-          scheduled: 'scheduled',
-        };
-        const newStatus = statusMap[targetColumn];
-        await fetch(`/api/content-pipeline/posts/${data.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus }),
-        });
-      }
-      refresh();
-    } catch {
-      // Silent
-    }
-  }, [refresh]);
 
   // ─── Card actions ─────────────────────────────────────────
 
@@ -274,18 +212,16 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
   // ─── Bulk actions ─────────────────────────────────────────
 
   const handleBulkPrimary = useCallback(async () => {
-    if (!activeColumn || selectedIds.size === 0) return;
+    if (selectedIds.size === 0) return;
     setIsProcessing(true);
 
     try {
       const ids = [...selectedIds];
-      if (activeColumn === 'ideas') {
-        // Write all selected ideas
+      if (focusedColumn === 'ideas') {
         await Promise.allSettled(ids.map((id) =>
           fetch(`/api/content-pipeline/ideas/${id}/write`, { method: 'POST' })
         ));
-      } else if (activeColumn === 'written') {
-        // Move to review (approved)
+      } else if (focusedColumn === 'written') {
         await Promise.allSettled(ids.map((id) =>
           fetch(`/api/content-pipeline/posts/${id}`, {
             method: 'PATCH',
@@ -293,8 +229,7 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
             body: JSON.stringify({ status: 'approved' }),
           })
         ));
-      } else if (activeColumn === 'review') {
-        // Schedule all
+      } else if (focusedColumn === 'review') {
         await Promise.allSettled(ids.map((id) =>
           fetch('/api/content-pipeline/posts/schedule', {
             method: 'POST',
@@ -302,8 +237,7 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
             body: JSON.stringify({ post_id: id }),
           })
         ));
-      } else if (activeColumn === 'scheduled') {
-        // Move back to review
+      } else if (focusedColumn === 'scheduled') {
         await Promise.allSettled(ids.map((id) =>
           fetch(`/api/content-pipeline/posts/${id}`, {
             method: 'PATCH',
@@ -319,7 +253,7 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
       setIsProcessing(false);
       refresh();
     }
-  }, [activeColumn, selectedIds, clearSelection, refresh]);
+  }, [focusedColumn, selectedIds, clearSelection, refresh]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -327,7 +261,6 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
 
     try {
       const ids = [...selectedIds];
-      // Figure out if each id is an idea or a post
       const ideaIds = new Set(ideas.map((i) => i.id));
       await Promise.allSettled(ids.map((id) => {
         const endpoint = ideaIds.has(id)
@@ -391,53 +324,119 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
   }
 
   const columns: ColumnId[] = ['ideas', 'written', 'review', 'scheduled'];
+  const currentItems = getColumnItems(focusedColumn);
+  const allSelected = currentItems.length > 0 && currentItems.every((i) => selectedIds.has(i.data.id));
 
   return (
-    <div className="flex gap-3">
-      {/* Columns area */}
-      <div className="flex flex-1 gap-3 overflow-x-auto">
-        {columns.map((col) => (
-          <KanbanColumn
-            key={col}
-            columnId={col}
-            items={getColumnItems(col)}
-            selectedIds={selectedIds}
-            previewId={previewItem?.item.data.id ?? null}
-            draggingId={draggingId}
-            onToggleSelect={handleToggleSelect}
-            onCardClick={handleCardClick}
-            onDragStart={handleDragStart}
-            onDrop={handleDrop}
-            onCardAction={handleCardAction}
-          />
-        ))}
+    <div>
+      {/* Column tabs */}
+      <div className="flex gap-1 mb-4 p-1 rounded-lg bg-muted/50">
+        {columns.map((col) => {
+          const items = getColumnItems(col);
+          const config = COLUMN_STYLES[col];
+          const active = focusedColumn === col;
+          return (
+            <button
+              key={col}
+              onClick={() => handleColumnSwitch(col)}
+              className={cn(
+                'flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-all flex-1',
+                active
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+              )}
+            >
+              <span className={cn('h-2 w-2 rounded-full shrink-0', config.dotColor)} />
+              <span>{config.label}</span>
+              <span className={cn(
+                'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                active ? config.badgeColor : 'text-muted-foreground'
+              )}>
+                {items.length}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Detail pane */}
-      {previewItem && (
-        <div className="w-[400px] shrink-0">
-          <div className="sticky top-0 h-[calc(100vh-160px)]">
-            <DetailPane
-              item={
-                previewItem.item.type === 'idea'
-                  ? { type: 'idea', data: previewItem.item.data as ContentIdea }
-                  : { type: 'post', data: previewItem.item.data as PipelinePost, idea: previewItem.idea }
-              }
-              onClose={() => setPreviewItem(null)}
-              onWritePost={handleWritePost}
-              onContentUpdate={handleContentUpdate}
-              onOpenModal={handleOpenModal}
-              onRefresh={refresh}
-            />
+      {/* Focused column content */}
+      <div className="flex gap-4">
+        <div className="flex-1 min-w-0">
+          {/* Select all header */}
+          {currentItems.length > 0 && (
+            <div className="flex items-center gap-3 mb-3 px-1">
+              <button
+                onClick={allSelected ? clearSelection : selectAll}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {allSelected ? (
+                  <CheckSquare className="h-4 w-4 text-primary" />
+                ) : (
+                  <Square className="h-4 w-4" />
+                )}
+              </button>
+              <span className="text-xs text-muted-foreground">
+                {selectedIds.size > 0
+                  ? `${selectedIds.size} of ${currentItems.length} selected`
+                  : `${currentItems.length} items`}
+              </span>
+            </div>
+          )}
+
+          {/* Item list */}
+          <div className="space-y-2">
+            {currentItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <p className="text-sm">No items in this column</p>
+                <p className="text-xs mt-1">
+                  {focusedColumn === 'ideas' && 'Process some transcripts to generate ideas'}
+                  {focusedColumn === 'written' && 'Write posts from your ideas'}
+                  {focusedColumn === 'review' && 'Move written posts here for review'}
+                  {focusedColumn === 'scheduled' && 'Schedule approved posts for publishing'}
+                </p>
+              </div>
+            ) : (
+              currentItems.map((item) => (
+                <FocusedCard
+                  key={item.data.id}
+                  item={item}
+                  selected={selectedIds.has(item.data.id)}
+                  previewActive={previewItem?.item.data.id === item.data.id}
+                  onToggleSelect={(e) => handleToggleSelect(item.data.id, e)}
+                  onClick={() => handleCardClick(item)}
+                  onAction={(action) => handleCardAction(item, action)}
+                />
+              ))
+            )}
           </div>
         </div>
-      )}
+
+        {/* Detail pane */}
+        {previewItem && (
+          <div className="w-[400px] shrink-0">
+            <div className="sticky top-0 h-[calc(100vh-200px)]">
+              <DetailPane
+                item={
+                  previewItem.item.type === 'idea'
+                    ? { type: 'idea', data: previewItem.item.data as ContentIdea }
+                    : { type: 'post', data: previewItem.item.data as PipelinePost, idea: previewItem.idea }
+                }
+                onClose={() => setPreviewItem(null)}
+                onWritePost={handleWritePost}
+                onContentUpdate={handleContentUpdate}
+                onOpenModal={handleOpenModal}
+                onRefresh={refresh}
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Bulk selection bar */}
       {selectedIds.size > 0 && (
         <BulkSelectionBar
           count={selectedIds.size}
-          activeColumn={activeColumn}
+          activeColumn={focusedColumn}
           isProcessing={isProcessing}
           onPrimaryAction={handleBulkPrimary}
           onDelete={handleBulkDelete}

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Magnet, Check, ArrowRight, Zap, Target, Globe, Brain, CalendarClock, Webhook, Mic } from 'lucide-react';
+import { Magnet, Check, ArrowRight, Target, Globe, Brain, CalendarClock, Webhook, Mic } from 'lucide-react';
 
 const features = [
   {
