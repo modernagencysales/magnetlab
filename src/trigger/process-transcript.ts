@@ -12,7 +12,7 @@ interface ProcessTranscriptPayload {
 
 export const processTranscript = task({
   id: 'process-transcript',
-  maxDuration: 300,
+  maxDuration: 600, // 10 minutes — 4 sequential AI calls + embedding batches
   retry: { maxAttempts: 2 },
   run: async (payload: ProcessTranscriptPayload) => {
     const { userId, transcriptId } = payload;
@@ -30,6 +30,19 @@ export const processTranscript = task({
 
     if (fetchError || !transcript) {
       throw new Error(`Transcript not found: ${transcriptId}`);
+    }
+
+    // Duplicate prevention: skip if already fully processed
+    if (transcript.knowledge_extracted_at && transcript.ideas_extracted_at) {
+      logger.info('Transcript already processed, skipping', { transcriptId });
+      return {
+        transcriptId,
+        transcriptType: transcript.transcript_type,
+        knowledgeEntries: 0,
+        contentIdeas: 0,
+        postReadyIdeas: 0,
+        skipped: true,
+      };
     }
 
     // Step 1: Classify transcript type
@@ -57,24 +70,30 @@ export const processTranscript = task({
 
     logger.info('Extracted knowledge entries', { count: knowledgeResult.total_count });
 
-    // Step 3: Generate embeddings for knowledge entries + save
+    // Step 3: Generate embeddings in parallel + save knowledge
     logger.info('Step 3: Generating embeddings and saving knowledge');
-    const knowledgeInserts = [];
     const tagCounts = new Map<string, number>();
 
-    for (const entry of knowledgeResult.entries) {
-      let embedding: number[] | null = null;
-      try {
-        embedding = await generateEmbedding(
-          `${entry.category}: ${entry.content}\nContext: ${entry.context || ''}`
-        );
-      } catch (embeddingError) {
-        logger.warn('Failed to generate embedding for knowledge entry', {
-          error: embeddingError instanceof Error ? embeddingError.message : String(embeddingError),
-        });
-      }
+    // Generate all embeddings in parallel (batches of 5 to avoid rate limits)
+    const embeddingTexts = knowledgeResult.entries.map(
+      (entry) => `${entry.category}: ${entry.content}\nContext: ${entry.context || ''}`
+    );
+    const embeddings: (number[] | null)[] = [];
+    const BATCH_SIZE = 5;
 
-      knowledgeInserts.push({
+    for (let i = 0; i < embeddingTexts.length; i += BATCH_SIZE) {
+      const batch = embeddingTexts.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(batch.map((text) => generateEmbedding(text)));
+      for (const result of results) {
+        embeddings.push(result.status === 'fulfilled' ? result.value : null);
+      }
+    }
+
+    const knowledgeInserts = knowledgeResult.entries.map((entry, idx) => {
+      for (const tag of entry.tags) {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      }
+      return {
         user_id: userId,
         transcript_id: transcriptId,
         category: entry.category,
@@ -83,14 +102,9 @@ export const processTranscript = task({
         context: entry.context,
         tags: entry.tags,
         transcript_type: transcriptType,
-        embedding: embedding ? JSON.stringify(embedding) : null,
-      });
-
-      // Track tag usage
-      for (const tag of entry.tags) {
-        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-      }
-    }
+        embedding: embeddings[idx] ? JSON.stringify(embeddings[idx]) : null,
+      };
+    });
 
     if (knowledgeInserts.length > 0) {
       const { error: knowledgeError } = await supabase
@@ -104,19 +118,18 @@ export const processTranscript = task({
       }
     }
 
-    // Update knowledge tags
-    for (const [tagName, count] of tagCounts) {
-      const { error: tagError } = await supabase
-        .from('cp_knowledge_tags')
-        .upsert(
-          { user_id: userId, tag_name: tagName, usage_count: count },
-          { onConflict: 'user_id,tag_name' }
-        );
-
-      if (tagError) {
-        logger.warn('Failed to upsert tag', { tagName, error: tagError.message });
-      }
-    }
+    // Increment tag counts atomically via RPC (parallel)
+    await Promise.allSettled(
+      Array.from(tagCounts).map(([tagName, count]) =>
+        supabase.rpc('cp_increment_tag_count', {
+          p_user_id: userId,
+          p_tag_name: tagName,
+          p_count: count,
+        }).then(({ error }) => {
+          if (error) logger.warn('Failed to increment tag', { tagName, error: error.message });
+        })
+      )
+    );
 
     // Mark knowledge extracted
     await supabase

@@ -13,6 +13,7 @@ export interface IdeateLeadMagnetPayload {
 
 export const ideateLeadMagnet = task({
   id: "ideate-lead-magnet",
+  maxDuration: 600, // 10 minutes — ideation makes 5 parallel + 1 sequential AI calls
   retry: {
     maxAttempts: 1,
   },
