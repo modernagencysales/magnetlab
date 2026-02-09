@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { LayoutGrid, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KanbanBoard } from './KanbanBoard';
@@ -10,6 +10,11 @@ type PipelineView = 'board' | 'calendar';
 
 export function PipelineTab() {
   const [view, setView] = useState<PipelineView>('board');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   return (
     <div>
@@ -36,7 +41,11 @@ export function PipelineTab() {
         </button>
       </div>
 
-      {view === 'board' ? <KanbanBoard /> : <CalendarView />}
+      {view === 'board' ? (
+        <KanbanBoard key={refreshKey} onRefresh={handleRefresh} />
+      ) : (
+        <CalendarView />
+      )}
     </div>
   );
 }

@@ -1,22 +1,25 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Mic, Radio, Clipboard, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Mic, Radio, Clipboard, Upload, Loader2, Plus, Trash2, Link2 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { TranscriptPasteModal } from './TranscriptPasteModal';
+import { ConnectRecorderGuide } from './ConnectRecorderGuide';
 import type { CallTranscript } from '@/lib/types/content-pipeline';
 
 const SOURCE_ICONS: Record<string, typeof Mic> = {
   grain: Radio,
   fireflies: Mic,
   paste: Clipboard,
+  upload: Upload,
 };
 
 export function TranscriptsTab() {
   const [transcripts, setTranscripts] = useState<CallTranscript[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showConnectGuide, setShowConnectGuide] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -111,13 +114,20 @@ export function TranscriptsTab() {
       </div>
 
       {/* Actions */}
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex justify-end gap-2">
         <button
-          onClick={() => setShowPasteModal(true)}
+          onClick={() => setShowConnectGuide(true)}
+          className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+        >
+          <Link2 className="h-4 w-4" />
+          Connect Recorder
+        </button>
+        <button
+          onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          Paste Transcript
+          Add Transcript
         </button>
       </div>
 
@@ -125,10 +135,26 @@ export function TranscriptsTab() {
       {transcripts.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <Mic className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <p className="mt-4 text-muted-foreground">No transcripts yet</p>
-          <p className="mt-1 text-sm text-muted-foreground/70">
-            Paste a transcript or connect Grain/Fireflies
+          <p className="mt-4 text-base font-medium">No transcripts yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Get started by connecting your meeting recorder or pasting a transcript
           </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <button
+              onClick={() => setShowConnectGuide(true)}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Link2 className="h-4 w-4" />
+              Connect Recorder
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Paste or Upload
+            </button>
+          </div>
         </div>
       ) : (
         <div className="rounded-lg border overflow-hidden">
@@ -168,7 +194,7 @@ export function TranscriptsTab() {
                           {t.transcript_type}
                         </span>
                       ) : (
-                        <span className="text-sm text-muted-foreground">—</span>
+                        <span className="text-sm text-muted-foreground">&mdash;</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
@@ -206,10 +232,16 @@ export function TranscriptsTab() {
         </div>
       )}
 
-      {showPasteModal && (
+      {showAddModal && (
         <TranscriptPasteModal
-          onClose={() => setShowPasteModal(false)}
+          onClose={() => setShowAddModal(false)}
           onSuccess={fetchTranscripts}
+        />
+      )}
+
+      {showConnectGuide && (
+        <ConnectRecorderGuide
+          onClose={() => setShowConnectGuide(false)}
         />
       )}
     </div>
