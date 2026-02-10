@@ -1,7 +1,7 @@
 // AI module exports for MagnetLab
 
 export {
-  generateLeadMagnetIdeas,
+  generateLeadMagnetIdeasParallel,
   getExtractionQuestions,
   processContentExtraction,
   generatePostVariations,

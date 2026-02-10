@@ -1,7 +1,7 @@
 import { task } from "@trigger.dev/sdk/v3";
 import { createSupabaseAdminClient } from "@/lib/utils/supabase-server";
 import {
-  generateLeadMagnetIdeas,
+  generateLeadMagnetIdeasParallel,
   getExtractionQuestions,
   processContentExtraction,
   generatePostVariations,
@@ -197,7 +197,7 @@ export const createLeadMagnetPipeline = task({
         businessType: "coach-consultant" as BusinessType,
       };
 
-      const ideationResult = await generateLeadMagnetIdeas(fullBusinessContext, undefined, userId);
+      const ideationResult = await generateLeadMagnetIdeasParallel(fullBusinessContext, undefined, userId);
 
       if (!ideationResult?.concepts?.length) {
         await updateStatus("failed");

@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withExternalAuth, ExternalAuthContext } from '@/lib/middleware/external-auth';
-import { generateLeadMagnetIdeas } from '@/lib/ai/lead-magnet-generator';
+import { generateLeadMagnetIdeasParallel } from '@/lib/ai/lead-magnet-generator';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { BusinessContext, CallTranscriptInsights, CompetitorAnalysis } from '@/lib/types/lead-magnet';
@@ -49,7 +49,7 @@ async function handlePost(
     }
 
     // Generate ideas using AI
-    const result = await generateLeadMagnetIdeas(businessContext, sources);
+    const result = await generateLeadMagnetIdeasParallel(businessContext, sources, context.userId);
 
     // Save ideation result to brand_kit for future use
     try {
