@@ -750,6 +750,25 @@ export async function getContextAwareExtractionQuestions(
   if (!staticQuestions.length) return [];
 
   try {
+    // Detect gaps in business context from Step 1
+    const gaps: string[] = [];
+    if (!context.results?.length) gaps.push('- Missing: specific results/outcomes they deliver');
+    if (!context.credibilityMarkers?.length) gaps.push('- Missing: credibility markers (numbers, years, client count)');
+    if (!context.successExample) gaps.push('- Missing: success story or case study');
+    if (!context.templates?.length && !context.processes?.length) gaps.push('- Missing: frameworks, templates, or processes they use');
+    if (!context.urgentPains?.length) gaps.push('- Missing: specific pain points their audience faces');
+
+    const gapSection = gaps.length > 0 ? `
+
+GAPS IN THEIR CONTEXT (weave these naturally into the questions above — don't add extra questions):
+${gaps.join('\n')}
+
+When rewriting questions, if a gap is relevant to a question's topic, subtly ask for that information too. For example:
+- If "results" is missing and a question asks about outcomes, add "Include any specific numbers or client results you can share."
+- If "successExample" is missing and a question asks about experience, add "If you have a specific client story, walk me through it."
+- If "credibilityMarkers" is missing and a question asks about proof, add "Any specific numbers — revenue, clients served, years — that back this up?"
+` : '';
+
     const prompt = `You customize content extraction questions to be specific to someone's actual business and the lead magnet they chose.
 
 THE SELECTED LEAD MAGNET:
@@ -759,15 +778,15 @@ THE SELECTED LEAD MAGNET:
 
 THEIR BUSINESS:
 - Business: ${context.businessDescription}
-- Credibility: ${context.credibilityMarkers.join(', ') || 'Not specified'}
-- Results they achieve: ${context.results.join('; ') || 'Not specified'}
-- Processes they use: ${context.processes.join(', ') || 'Not specified'}
-- Tools: ${context.tools.join(', ') || 'Not specified'}
+- Credibility: ${context.credibilityMarkers?.join(', ') || 'Not specified'}
+- Results they achieve: ${context.results?.join('; ') || 'Not specified'}
+- Processes they use: ${context.processes?.join(', ') || 'Not specified'}
+- Tools: ${context.tools?.join(', ') || 'Not specified'}
 - Success example: ${context.successExample || 'Not specified'}
 
 ORIGINAL GENERIC QUESTIONS:
 ${staticQuestions.map((q, i) => `${i + 1}. [id: ${q.id}] ${q.question}`).join('\n')}
-
+${gapSection}
 Rewrite each question to reference THEIR specific business, results, and the concept they chose. Keep the same question IDs and required status. Make questions feel like they're asking about what the user already knows from their own experience — not asking them to invent something new.
 
 For example, instead of "What results have you gotten?" write "You mentioned achieving [their specific result]. Walk me through exactly how that happened step by step."
@@ -1159,10 +1178,18 @@ Respond in this exact JSON format:
     "successExample": "high|medium|low"
   },
   "suggestions": [
-    "Consider adding specific revenue numbers",
-    "The pain points could be more specific"
+    { "field": "credibilityMarkers", "suggestion": "Add specific revenue or client numbers to boost authority", "value": "$X revenue generated for clients" },
+    { "field": "urgentPains", "suggestion": "Make the pain points more specific and urgent", "value": "Struggling to convert leads into paying clients" }
   ]
-}`;
+}
+
+SUGGESTIONS RULES:
+- Each suggestion MUST map to a specific field from the FIELDS TO EXTRACT list above
+- "field" must be one of: businessDescription, businessType, credibilityMarkers, urgentPains, results, templates, processes, tools, frequentQuestions, successExample
+- "suggestion" is a short explanation of what's missing or could be improved
+- "value" is your best guess at what the value should be based on the content — the user can edit it
+- Only suggest for fields that are empty, low confidence, or clearly incomplete
+- Maximum 4 suggestions — focus on the most impactful gaps`;
 
 export async function extractBusinessContext(
   content: string,

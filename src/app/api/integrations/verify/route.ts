@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { service, api_key } = body;
+    const { service, api_key, metadata } = body;
 
     if (!service || !api_key) {
       return ApiErrors.validationError('Service and api_key are required');
@@ -59,6 +59,32 @@ export async function POST(request: NextRequest) {
         } catch (err) {
           verified = false;
           error = err instanceof Error ? err.message : 'Failed to verify Resend API key';
+        }
+        break;
+      }
+      case 'conductor': {
+        try {
+          const endpointUrl = metadata?.endpointUrl;
+          if (!endpointUrl || typeof endpointUrl !== 'string' || !endpointUrl.startsWith('https://')) {
+            verified = false;
+            error = 'A valid HTTPS Conductor endpoint URL is required';
+            break;
+          }
+          const res = await fetch(`${endpointUrl}/api/webhooks/conductor/verify`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${api_key}` },
+            signal: AbortSignal.timeout(10000),
+          });
+          if (res.ok) {
+            verified = true;
+          } else {
+            verified = false;
+            const errData = await res.json().catch(() => ({}));
+            error = errData.error || `Verification failed (status ${res.status})`;
+          }
+        } catch (err) {
+          verified = false;
+          error = err instanceof Error ? err.message : 'Failed to verify Conductor connection';
         }
         break;
       }

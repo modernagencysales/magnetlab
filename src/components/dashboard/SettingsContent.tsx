@@ -6,7 +6,9 @@ import { User, CreditCard, Loader2, Check, Link2, Eye, EyeOff, CheckCircle, XCir
 import { PRICING_PLANS } from '@/lib/types/integrations';
 import { UsernameSettings } from '@/components/settings/UsernameSettings';
 import { ResendSettings } from '@/components/settings/ResendSettings';
+import { ConductorSettings } from '@/components/settings/ConductorSettings';
 import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettings';
+import { WebhookSettings } from '@/components/settings/WebhookSettings';
 
 interface ApiKey {
   id: string;
@@ -84,6 +86,7 @@ export function SettingsContent({
   const currentPlan = PRICING_PLANS.find((p) => p.id === subscription?.plan) || PRICING_PLANS[0];
   const leadsharkIntegration = integrations.find((i) => i.service === 'leadshark');
   const resendIntegration = integrations.find((i) => i.service === 'resend');
+  const conductorIntegration = integrations.find((i) => i.service === 'conductor');
 
   // Fetch API keys and user defaults on mount
   useEffect(() => {
@@ -479,6 +482,13 @@ export function SettingsContent({
             metadata={resendIntegration?.metadata as { fromEmail?: string; fromName?: string } | undefined}
           />
 
+          {/* Conductor */}
+          <ConductorSettings
+            isConnected={conductorIntegration?.is_active ?? false}
+            lastVerifiedAt={conductorIntegration?.last_verified_at ?? null}
+            metadata={conductorIntegration?.metadata as { endpointUrl?: string } | undefined}
+          />
+
           {/* Tracking Pixels */}
           <div className="mt-6 pt-6 border-t">
             <h3 className="text-sm font-semibold mb-1">Tracking Pixels</h3>
@@ -486,6 +496,11 @@ export function SettingsContent({
               Add conversion tracking to your funnel pages. Events fire both client-side and server-side for maximum accuracy.
             </p>
             <TrackingPixelSettings integrations={integrations} />
+          </div>
+
+          {/* Webhooks */}
+          <div className="mt-6 pt-6 border-t">
+            <WebhookSettings />
           </div>
         </div>
 

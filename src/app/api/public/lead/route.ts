@@ -10,9 +10,23 @@ import { triggerEmailSequenceIfActive } from '@/lib/services/email-sequence-trig
 import { leadCaptureSchema, leadQualificationSchema, validateBody } from '@/lib/validations/api';
 import { logApiError } from '@/lib/api/errors';
 import { fireGtmLeadCreatedWebhook, fireGtmLeadQualifiedWebhook } from '@/lib/webhooks/gtm-system';
+import { deliverConductorWebhook } from '@/lib/webhooks/conductor';
 import { resolveFullQuestionsForFunnel } from '@/lib/services/qualification';
 import { fireTrackingPixelLeadEvent, fireTrackingPixelQualifiedEvent } from '@/lib/services/tracking-pixels';
 import { getPostHogServerClient } from '@/lib/posthog';
+
+/**
+ * Scan qualification answers for a LinkedIn profile URL.
+ * Returns the first URL matching linkedin.com/in/, or null.
+ */
+function extractLinkedInUrl(answers: Record<string, string>): string | null {
+  const linkedInRegex = /https?:\/\/(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/i;
+  for (const value of Object.values(answers)) {
+    const match = value?.match(linkedInRegex);
+    if (match) return match[0];
+  }
+  return null;
+}
 
 // Rate limiting configuration
 // Uses database-based checking for serverless compatibility
@@ -178,6 +192,18 @@ export async function POST(request: Request) {
       utmCampaign: lead.utm_campaign,
       createdAt: lead.created_at,
     }).catch((err) => logApiError('public/lead/gtm-webhook', err, { leadId: lead.id }));
+
+    // Deliver to user's Conductor instance (async, don't wait)
+    deliverConductorWebhook(funnel.user_id, 'lead.created', {
+      email: lead.email,
+      name: lead.name,
+      leadMagnetTitle: leadMagnet?.title || '',
+      funnelPageSlug: funnel.slug,
+      utmSource: lead.utm_source,
+      utmMedium: lead.utm_medium,
+      utmCampaign: lead.utm_campaign,
+      createdAt: lead.created_at,
+    }).catch((err) => logApiError('public/lead/conductor-webhook', err, { leadId: lead.id }));
 
     // Trigger email sequence if active (async, don't wait)
     triggerEmailSequenceIfActive({
@@ -418,6 +444,22 @@ export async function PATCH(request: Request) {
       utmMedium: updatedLead.utm_medium,
       utmCampaign: updatedLead.utm_campaign,
     }).catch((err) => logApiError('public/lead/gtm-webhook-qualified', err, { leadId: lead.id }));
+
+    // Deliver to user's Conductor instance (async, don't wait)
+    deliverConductorWebhook(lead.user_id, 'lead.qualified', {
+      email: lead.email,
+      name: lead.name,
+      funnelLeadId: lead.id,
+      leadMagnetTitle: leadMagnetTitle || null,
+      funnelPageSlug: funnel?.slug || null,
+      isQualified,
+      qualificationAnswers: answers,
+      surveyAnswers,
+      linkedinUrl: extractLinkedInUrl(answers),
+      utmSource: updatedLead.utm_source,
+      utmMedium: updatedLead.utm_medium,
+      utmCampaign: updatedLead.utm_campaign,
+    }).catch((err) => logApiError('public/lead/conductor-webhook-qualified', err, { leadId: lead.id }));
 
     try { getPostHogServerClient()?.capture({ distinctId: lead.user_id, event: 'lead_qualified', properties: { is_qualified: isQualified, question_count: questions?.length || 0 } }); } catch {}
 

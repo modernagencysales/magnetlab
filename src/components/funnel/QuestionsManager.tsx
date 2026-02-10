@@ -287,7 +287,7 @@ export function QuestionsManager({
             Add questions to qualify leads and collect data. Qualifying questions determine if a lead sees your Calendly.
           </p>
         </div>
-        {questions.length === 0 && (
+        {questions.length < SURVEY_TEMPLATE_QUESTIONS.length && (
           <button
             onClick={handleLoadTemplate}
             disabled={loadingTemplate}

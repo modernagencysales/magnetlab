@@ -160,7 +160,7 @@ export function ContentStep({ content, onApprove, onBack, loading }: ContentStep
               {content.commonMistakes.map((mistake, index) => (
                 <span
                   key={index}
-                  className="rounded-full bg-destructive/10 px-3 py-1 text-sm text-destructive"
+                  className="rounded-full bg-destructive/10 px-3 py-1 text-sm text-destructive dark:text-red-400"
                 >
                   {normalizeItem(mistake)}
                 </span>

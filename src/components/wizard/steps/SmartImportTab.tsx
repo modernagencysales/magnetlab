@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Sparkles, Check, AlertTriangle, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
-import type { BusinessContext, ExtractionResult, ConfidenceLevel } from '@/lib/types/lead-magnet';
+import { Loader2, Sparkles, Check, AlertTriangle, Edit2, ChevronDown, ChevronUp, ArrowRight, X } from 'lucide-react';
+import type { BusinessContext, ExtractionResult, ExtractionSuggestion, ConfidenceLevel } from '@/lib/types/lead-magnet';
 import { BUSINESS_TYPE_LABELS } from '@/lib/types/lead-magnet';
 
 interface SmartImportTabProps {
@@ -27,6 +27,47 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
   const [editedContext, setEditedContext] = useState<Partial<BusinessContext>>({});
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<number>>(new Set());
+
+  const FIELD_LABELS: Record<keyof BusinessContext, string> = {
+    businessDescription: 'Business Description',
+    businessType: 'Business Type',
+    credibilityMarkers: 'Credibility Markers',
+    urgentPains: 'Urgent Pains',
+    results: 'Results',
+    templates: 'Templates',
+    processes: 'Processes',
+    tools: 'Tools',
+    frequentQuestions: 'Frequent Questions',
+    successExample: 'Success Example',
+    audienceTools: 'Audience Tools',
+  };
+
+  const applySuggestion = (suggestion: ExtractionSuggestion, index: number) => {
+    const field = suggestion.field;
+    const currentValue = editedContext[field];
+
+    // Array fields: append the value
+    if (Array.isArray(currentValue)) {
+      updateField(field, [...currentValue, suggestion.value] as BusinessContext[typeof field]);
+    } else if (
+      field === 'credibilityMarkers' || field === 'urgentPains' || field === 'results' ||
+      field === 'templates' || field === 'processes' || field === 'tools' ||
+      field === 'frequentQuestions' || field === 'audienceTools'
+    ) {
+      // Field is an array type but currently empty/undefined
+      updateField(field, [suggestion.value] as BusinessContext[typeof field]);
+    } else {
+      // String fields: set the value
+      updateField(field, suggestion.value as BusinessContext[typeof field]);
+    }
+
+    setDismissedSuggestions((prev) => new Set(prev).add(index));
+  };
+
+  const dismissSuggestion = (index: number) => {
+    setDismissedSuggestions((prev) => new Set(prev).add(index));
+  };
 
   const handleExtract = async () => {
     if (!content.trim()) {
@@ -139,24 +180,94 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
         </div>
 
         {/* Suggestions */}
-        {result.suggestions.length > 0 && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Suggestions to improve</p>
-                <ul className="mt-1 text-sm text-amber-700 dark:text-amber-300 list-disc list-inside">
-                  {result.suggestions.map((suggestion, index) => (
-                    <li key={index}>{suggestion}</li>
-                  ))}
-                </ul>
-                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                  Tip: You can add or edit items in any field below without starting over.
-                </p>
+        {result.suggestions.length > 0 && (() => {
+          const visibleSuggestions = result.suggestions
+            .map((s, i) => ({ suggestion: s, originalIndex: i }))
+            .filter(({ originalIndex }) => !dismissedSuggestions.has(originalIndex));
+
+          if (visibleSuggestions.length === 0) return null;
+
+          // Check if any are structured (new format)
+          const hasStructured = visibleSuggestions.some(
+            ({ suggestion }) => typeof suggestion === 'object' && 'field' in suggestion
+          );
+
+          if (!hasStructured) {
+            // Legacy: plain string suggestions
+            return (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Suggestions to improve</p>
+                    <ul className="mt-1 text-sm text-amber-700 dark:text-amber-300 list-disc list-inside">
+                      {visibleSuggestions.map(({ suggestion, originalIndex }) => (
+                        <li key={originalIndex}>{suggestion as string}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
+            );
+          }
+
+          return (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                We found some gaps — click Apply to fill them in
+              </p>
+              {visibleSuggestions.map(({ suggestion, originalIndex }) => {
+                if (typeof suggestion === 'string') {
+                  return (
+                    <div key={originalIndex} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-300">
+                      {suggestion}
+                    </div>
+                  );
+                }
+
+                const s = suggestion as ExtractionSuggestion;
+                return (
+                  <div
+                    key={originalIndex}
+                    className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                          {s.suggestion}
+                        </p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                          Field: {FIELD_LABELS[s.field] || s.field}
+                        </p>
+                        <p className="text-sm text-amber-700 dark:text-amber-300 mt-1 italic truncate">
+                          &ldquo;{s.value}&rdquo;
+                        </p>
+                      </div>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => applySuggestion(s, originalIndex)}
+                          className="px-2.5 py-1 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors flex items-center gap-1"
+                        >
+                          Apply <ArrowRight className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => dismissSuggestion(originalIndex)}
+                          className="p-1 text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+                          title="Dismiss"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Extracted Fields */}
         <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">

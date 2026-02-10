@@ -206,10 +206,16 @@ export interface ExtractionConfidence {
   successExample: ConfidenceLevel;
 }
 
+export interface ExtractionSuggestion {
+  field: keyof BusinessContext;
+  suggestion: string;
+  value: string;
+}
+
 export interface ExtractionResult {
   extracted: Partial<BusinessContext>;
   confidence: Partial<ExtractionConfidence>;
-  suggestions: string[];
+  suggestions: (string | ExtractionSuggestion)[];
 }
 
 // ============================================
