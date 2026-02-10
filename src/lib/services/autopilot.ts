@@ -116,7 +116,7 @@ export async function getNextScheduledTime(
 
   const { data: slots } = await supabase
     .from('cp_posting_slots')
-    .select('*')
+    .select('id, user_id, slot_number, time_of_day, day_of_week, timezone, is_active, created_at, updated_at')
     .eq('user_id', userId)
     .eq('is_active', true)
     .order('slot_number', { ascending: true });
@@ -207,7 +207,7 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
     // 1. Fetch pending ideas
     const { data: pendingIdeas } = await supabase
       .from('cp_content_ideas')
-      .select('*')
+      .select('id, user_id, transcript_id, title, core_insight, full_context, why_post_worthy, post_ready, hook, key_points, target_audience, content_type, content_pillar, relevance_score, source_quote, status, composite_score, last_surfaced_at, similarity_hash, created_at, updated_at')
       .eq('user_id', userId)
       .eq('status', 'extracted')
       .order('created_at', { ascending: false })
@@ -410,7 +410,7 @@ export async function getBufferStatus(userId: string) {
 
   const { data } = await supabase
     .from('cp_pipeline_posts')
-    .select('*')
+    .select('id, user_id, idea_id, draft_content, final_content, dm_template, cta_word, variations, status, scheduled_time, leadshark_post_id, hook_score, polish_status, polish_notes, is_buffer, buffer_position, auto_publish_after, published_at, engagement_stats, created_at, updated_at')
     .eq('user_id', userId)
     .eq('is_buffer', true)
     .eq('status', 'approved')

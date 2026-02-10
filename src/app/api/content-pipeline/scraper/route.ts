@@ -14,13 +14,13 @@ export async function GET() {
     const [runsResult, postsResult] = await Promise.all([
       supabase
         .from('cp_scrape_runs')
-        .select('*') // TODO: replace with explicit columns once cp_scrape_runs schema is confirmed
+        .select('id, user_id, target_url, status, posts_found, error_message, started_at, completed_at, created_at')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(10),
       supabase
         .from('cp_viral_posts')
-        .select('*') // TODO: replace with explicit columns once cp_viral_posts schema is confirmed
+        .select('id, user_id, scrape_run_id, author_name, author_headline, author_url, content, likes, comments, shares, views, percentile_rank, extracted_template_id, created_at')
         .eq('user_id', session.user.id)
         .order('likes', { ascending: false })
         .limit(50),

@@ -36,7 +36,7 @@ export const nightlyAutopilotBatch = schedules.task({
         // Step 1: Process unprocessed transcripts
         const { data: newTranscripts } = await supabase
           .from('cp_call_transcripts')
-          .select('*')
+          .select('id, user_id, source, external_id, title, call_date, duration_minutes, participants, raw_transcript, summary, extracted_topics, transcript_type, ideas_extracted_at, knowledge_extracted_at, created_at')
           .eq('user_id', userId)
           .is('ideas_extracted_at', null)
           .order('created_at', { ascending: true })

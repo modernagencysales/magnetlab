@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
         .limit(50),
       supabase
         .from('cp_post_templates')
-        .select('*') // TODO: replace with explicit columns once cp_post_templates schema is confirmed
+        .select('id, user_id, name, category, description, structure, example_posts, use_cases, tags, usage_count, avg_engagement_score, is_active, created_at, updated_at')
         .eq('user_id', session.user.id)
         .eq('is_active', true),
       supabase

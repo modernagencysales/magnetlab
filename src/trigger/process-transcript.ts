@@ -23,7 +23,7 @@ export const processTranscript = task({
     // Fetch transcript
     const { data: transcript, error: fetchError } = await supabase
       .from('cp_call_transcripts')
-      .select('*')
+      .select('id, user_id, source, external_id, title, call_date, duration_minutes, participants, raw_transcript, summary, extracted_topics, transcript_type, ideas_extracted_at, knowledge_extracted_at, created_at')
       .eq('id', transcriptId)
       .eq('user_id', userId)
       .single();
