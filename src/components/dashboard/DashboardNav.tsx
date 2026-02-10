@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import posthog from 'posthog-js';
 import {
   Magnet, BarChart3, Settings, Plus, LogOut, FileText, Globe, Users,
@@ -222,16 +223,17 @@ function SidebarContent({ user, onNavigate }: {
         </div>
         <div className="flex items-center gap-1">
           <InlineThemeToggle />
-          <form action="/api/auth/signout" method="POST">
-            <button
-              type="submit"
-              onClick={() => { try { posthog.reset(); } catch {} }}
-              className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-              title="Sign out"
-            >
-              <LogOut size={16} />
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={() => {
+              try { posthog.reset(); } catch {}
+              signOut({ callbackUrl: '/login' });
+            }}
+            className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+            title="Sign out"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </div>
     </div>

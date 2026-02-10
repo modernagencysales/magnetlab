@@ -103,10 +103,10 @@ export default function HomePage() {
               Sign In
             </Link>
             <Link
-              href="/login"
+              href="/login?mode=signup"
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
             >
-              Get Started
+              Create Free Account
             </Link>
           </div>
         </div>
@@ -129,10 +129,10 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
-              href="/login"
+              href="/login?mode=signup"
               className="flex items-center gap-2 rounded-lg bg-primary px-8 py-4 text-lg font-semibold text-primary-foreground"
             >
-              Get Started Free
+              Create Free Account
               <ArrowRight className="h-5 w-5" />
             </Link>
             <Link
@@ -352,7 +352,7 @@ export default function HomePage() {
                   ))}
                 </ul>
                 <Link
-                  href="/login"
+                  href="/login?mode=signup"
                   className={`block w-full rounded-lg py-3 text-center font-medium ${
                     plan.highlighted
                       ? 'bg-primary text-primary-foreground'
@@ -376,10 +376,10 @@ export default function HomePage() {
             own LinkedIn.
           </p>
           <Link
-            href="/login"
+            href="/login?mode=signup"
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-4 text-lg font-semibold text-primary-foreground"
           >
-            Get Started Free
+            Create Free Account
             <ArrowRight className="h-5 w-5" />
           </Link>
         </div>
