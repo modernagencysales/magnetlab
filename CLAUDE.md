@@ -213,9 +213,9 @@ Tests in `src/__tests__/` mirror source structure (api/, components/, lib/). Use
   ```
   vercel --prod
   ```
-- **Trigger.dev tasks**: Deployed separately. Uses the shared leadmagnet project (`proj_lueymlvtfuvbroyvxzjw`):
+- **Trigger.dev tasks**: Deployed separately. Uses its own dedicated project (`proj_jdjofdqazqwitpinxady`):
   ```
-  TRIGGER_SECRET_KEY=tr_prod_Ep09hT1RE1QgjuCP9hXm npx trigger.dev@4.3.3 deploy
+  TRIGGER_SECRET_KEY=tr_prod_DB3vrdcduJYcXF19rrEB npx trigger.dev@4.3.3 deploy
   ```
 - **DO NOT** add Trigger.dev deploy to Vercel build — CLI needs `TRIGGER_ACCESS_TOKEN` (PAT), not `TRIGGER_SECRET_KEY`.
 

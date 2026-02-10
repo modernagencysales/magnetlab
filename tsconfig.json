@@ -36,6 +36,7 @@
   ],
   "exclude": [
     "node_modules",
-    "design-system"
+    "design-system",
+    "packages"
   ]
 }

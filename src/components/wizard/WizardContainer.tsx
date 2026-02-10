@@ -76,7 +76,7 @@ export function WizardContainer() {
   });
 
   // Auto-save hook
-  const autoSaveEnabled = generating === 'idle' && state.currentStep > 1 && state.currentStep < 6;
+  const autoSaveEnabled = generating === 'idle' && state.currentStep >= 1 && state.currentStep < 6;
   const { draftId, isSaving, lastSavedAt, hasUnsavedChanges } = useWizardAutoSave({
     state,
     draftId: activeDraftId,

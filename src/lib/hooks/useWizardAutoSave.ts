@@ -91,8 +91,8 @@ export function useWizardAutoSave({
   // Debounced auto-save on state change
   useEffect(() => {
     if (!enabled) return;
-    // Skip save when on step 1 (brand kit) or step 6 (publish)
-    if (state.currentStep <= 1 || state.currentStep >= 6) return;
+    // Skip save on step 6 (publish) — step 1 now auto-saves to preserve business context
+    if (state.currentStep >= 6) return;
 
     const snapshot = JSON.stringify(state);
     if (snapshot === lastSnapshotRef.current) {
@@ -114,7 +114,7 @@ export function useWizardAutoSave({
 
   const saveNow = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (state.currentStep > 1 && state.currentStep < 6) {
+    if (state.currentStep < 6) {
       save(state);
     }
   }, [state, save]);

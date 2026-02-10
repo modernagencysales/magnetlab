@@ -175,8 +175,15 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
     try {
       if (item.type === 'idea') {
         if (action === 'write') {
-          await fetch(`/api/content-pipeline/ideas/${item.data.id}/write`, { method: 'POST' });
-          refresh();
+          // Optimistic: remove idea from list immediately
+          setIdeas((prev) => prev.filter((i) => i.id !== item.data.id));
+          if (previewItem?.item.data.id === item.data.id) setPreviewItem(null);
+          fetch(`/api/content-pipeline/ideas/${item.data.id}/write`, { method: 'POST' })
+            .catch(() => {
+              // Revert on failure
+              setIdeas((prev) => [...prev, item.data as ContentIdea]);
+            });
+          return;
         } else if (action === 'archive') {
           await fetch(`/api/content-pipeline/ideas/${item.data.id}`, {
             method: 'PATCH',
@@ -218,9 +225,14 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
     try {
       const ids = [...selectedIds];
       if (focusedColumn === 'ideas') {
-        await Promise.allSettled(ids.map((id) =>
+        // Optimistic: remove all selected ideas immediately
+        setIdeas((prev) => prev.filter((i) => !selectedIds.has(i.id)));
+        if (previewItem && selectedIds.has(previewItem.item.data.id)) setPreviewItem(null);
+        Promise.allSettled(ids.map((id) =>
           fetch(`/api/content-pipeline/ideas/${id}/write`, { method: 'POST' })
-        ));
+        )).catch(() => {
+          fetchData(); // Revert on failure
+        });
       } else if (focusedColumn === 'written') {
         await Promise.allSettled(ids.map((id) =>
           fetch(`/api/content-pipeline/posts/${id}`, {
@@ -280,14 +292,15 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
   // ─── Detail pane callbacks ────────────────────────────────
 
   const handleWritePost = useCallback(async (ideaId: string) => {
-    try {
-      await fetch(`/api/content-pipeline/ideas/${ideaId}/write`, { method: 'POST' });
-      setPreviewItem(null);
-      refresh();
-    } catch {
-      // Silent
-    }
-  }, [refresh]);
+    // Optimistic: remove idea from list immediately
+    setIdeas((prev) => prev.filter((i) => i.id !== ideaId));
+    setPreviewItem(null);
+    fetch(`/api/content-pipeline/ideas/${ideaId}/write`, { method: 'POST' })
+      .catch(() => {
+        // Revert on failure — re-fetch to get the idea back
+        fetchData();
+      });
+  }, [fetchData]);
 
   const handleContentUpdate = useCallback((postId: string, content: string) => {
     setPosts((prev) =>
