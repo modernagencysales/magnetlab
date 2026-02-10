@@ -14,3 +14,7 @@ export { extractTemplateFromPost } from './template-extractor';
 export { buildContentBrief, buildContentBriefForIdea } from './briefing-agent';
 export { clusterTags } from './tag-clusterer';
 export { quickWrite } from './quick-writer';
+export { analyzePerformancePatterns, getTopPerformingAttributes, generatePerformanceInsights, biasIdeationPrompt } from './performance-analyzer';
+export type { PerformancePattern, TopAttribute, PerformanceInsight, PatternAnalysisResult } from './performance-analyzer';
+export { searchTopPerformingPosts, searchTopLeadMagnets, searchCreatorContent, searchHashtagContent, analyzeInspiration, batchAnalyzeInspiration, extractTrends } from './inspiration-researcher';
+export type { InspirationContent, InspirationAnalysis, TrendSummary } from './inspiration-researcher';
