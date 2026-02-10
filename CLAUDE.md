@@ -207,6 +207,18 @@ npm run db:generate      # Regenerate TS types from DB schema
 
 Tests in `src/__tests__/` mirror source structure (api/, components/, lib/). Uses `jest-environment-jsdom`, `@/` mapped via `moduleNameMapper`, mocks in `__tests__/__mocks__/`.
 
+## Deployment
+
+- **Vercel**: Auto-deploy is broken for private org repos (needs Vercel Pro). Deploy manually:
+  ```
+  vercel --prod
+  ```
+- **Trigger.dev tasks**: Deployed separately. Uses the shared leadmagnet project (`proj_lueymlvtfuvbroyvxzjw`):
+  ```
+  TRIGGER_SECRET_KEY=tr_prod_Ep09hT1RE1QgjuCP9hXm npx trigger.dev@4.3.3 deploy
+  ```
+- **DO NOT** add Trigger.dev deploy to Vercel build — CLI needs `TRIGGER_ACCESS_TOKEN` (PAT), not `TRIGGER_SECRET_KEY`.
+
 ## Related Repos
 
 | Repo | Path | Purpose |

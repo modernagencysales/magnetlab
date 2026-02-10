@@ -2,41 +2,26 @@
 
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import Google from 'next-auth/providers/google';
 import { timingSafeEqual } from 'crypto';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import bcrypt from 'bcryptjs';
+import {
+  checkLoginRateLimit,
+  recordFailedLogin,
+  clearLoginAttempts,
+  cleanupExpiredAttempts,
+} from '@/lib/auth/rate-limit';
 
 // Bcrypt configuration - 12 rounds provides good security/performance balance
 const BCRYPT_SALT_ROUNDS = 12;
 
-// In-memory login rate limiting (per-instance, resets on cold start)
-const loginAttempts = new Map<string, { count: number; resetAt: number }>();
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-
-function checkRateLimit(email: string): boolean {
-  const now = Date.now();
-  const entry = loginAttempts.get(email);
-  if (!entry || now > entry.resetAt) return true;
-  return entry.count < MAX_LOGIN_ATTEMPTS;
-}
-
-function recordFailedAttempt(email: string): void {
-  const now = Date.now();
-  const entry = loginAttempts.get(email);
-  if (!entry || now > entry.resetAt) {
-    loginAttempts.set(email, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
-  } else {
-    entry.count++;
-  }
-}
-
-function clearAttempts(email: string): void {
-  loginAttempts.delete(email);
-}
-
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
     Credentials({
       name: 'Email',
       credentials: {
@@ -53,9 +38,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const email = credentials.email as string;
           const password = credentials.password as string;
 
-          // Rate limit check
-          if (!checkRateLimit(email)) {
+          // Database-backed rate limit check (persists across cold starts)
+          const allowed = await checkLoginRateLimit(email);
+          if (!allowed) {
             console.error('[Auth] Rate limit exceeded for:', email);
+            // Opportunistically clean up expired entries
+            cleanupExpiredAttempts().catch(() => {});
             return null;
           }
 
@@ -84,7 +72,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // Verify password with backward compatibility for legacy SHA-256 hashes
             const isValid = await verifyPassword(password, existingUser.password_hash);
             if (!isValid) {
-              recordFailedAttempt(email);
+              await recordFailedLogin(email);
               console.error('[Auth] Invalid password for user:', email);
               return null;
             }
@@ -99,7 +87,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               console.log('[Auth] Migrated password hash for user:', email);
             }
 
-            clearAttempts(email);
+            await clearLoginAttempts(email);
             console.log('[Auth] Login successful for:', email);
             return {
               id: existingUser.id,
@@ -156,6 +144,78 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     error: '/login',
   },
   callbacks: {
+    /**
+     * signIn callback: handle Google OAuth account linking.
+     * If a user with the same email already exists (from credentials signup),
+     * we allow the sign-in and link to the existing user in the jwt callback.
+     * If no user exists, we auto-create one (same as credentials flow).
+     */
+    async signIn({ user, account }) {
+      if (account?.provider === 'google' && user.email) {
+        try {
+          const supabase = createSupabaseAdminClient();
+
+          const { data: existingUser, error: fetchError } = await supabase
+            .from('users')
+            .select('id, email, name, avatar_url')
+            .eq('email', user.email)
+            .single();
+
+          if (fetchError && fetchError.code !== 'PGRST116') {
+            console.error('[Auth/Google] Database fetch error:', fetchError);
+            return false;
+          }
+
+          if (existingUser) {
+            // Link: update profile info from Google if missing
+            const updates: Record<string, string> = {};
+            if (!existingUser.name && user.name) updates.name = user.name;
+            if (!existingUser.avatar_url && user.image) updates.avatar_url = user.image;
+
+            if (Object.keys(updates).length > 0) {
+              await supabase
+                .from('users')
+                .update(updates)
+                .eq('id', existingUser.id);
+            }
+
+            // Store the DB user ID so jwt callback can use it
+            user.id = existingUser.id;
+            console.log('[Auth/Google] Linked to existing user:', user.email);
+          } else {
+            // Auto-create new user (no password_hash for OAuth-only users)
+            const { data: newUser, error } = await supabase
+              .from('users')
+              .insert({
+                email: user.email,
+                name: user.name || null,
+                avatar_url: user.image || null,
+              })
+              .select('id')
+              .single();
+
+            if (error || !newUser) {
+              console.error('[Auth/Google] Failed to create user:', error);
+              return false;
+            }
+
+            // Create free subscription
+            await supabase.from('subscriptions').insert({
+              user_id: newUser.id,
+              plan: 'free',
+              status: 'active',
+            });
+
+            user.id = newUser.id;
+            console.log('[Auth/Google] Created new user:', user.email);
+          }
+        } catch (error) {
+          console.error('[Auth/Google] signIn callback error:', error);
+          return false;
+        }
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.userId = user.id;
