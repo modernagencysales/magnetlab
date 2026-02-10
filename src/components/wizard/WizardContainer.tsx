@@ -537,6 +537,7 @@ export function WizardContainer() {
                 onBack={() => goToStep(2)}
                 loading={generating === 'extraction'}
                 ideationSources={state.ideationSources}
+                businessContext={state.brandKit as BusinessContext}
               />
             )}
 

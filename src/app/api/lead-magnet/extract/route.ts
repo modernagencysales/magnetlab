@@ -1,14 +1,15 @@
 // API Route: Get Extraction Questions / Process Extraction
 // GET /api/lead-magnet/extract?archetype=single-system
+// GET /api/lead-magnet/extract?archetype=single-system&contextAware=true (+ body with concept + context)
 // POST /api/lead-magnet/extract - Process answers
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getExtractionQuestions, processContentExtraction } from '@/lib/ai/lead-magnet-generator';
+import { getExtractionQuestions, getContextAwareExtractionQuestions, processContentExtraction } from '@/lib/ai/lead-magnet-generator';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-import type { LeadMagnetArchetype, LeadMagnetConcept, CallTranscriptInsights } from '@/lib/types/lead-magnet';
+import type { LeadMagnetArchetype, LeadMagnetConcept, BusinessContext, CallTranscriptInsights } from '@/lib/types/lead-magnet';
 
-// GET - Get extraction questions for an archetype
+// GET - Get extraction questions for an archetype (static, fast)
 export async function GET(request: Request) {
   try {
     const session = await auth();
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST - Process extraction answers
+// POST - Process extraction answers OR get context-aware questions
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -41,6 +42,25 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+
+    // Context-aware questions mode: { action: 'contextual-questions', archetype, concept, businessContext }
+    if (body.action === 'contextual-questions') {
+      const { archetype, concept, businessContext } = body as {
+        action: string;
+        archetype: LeadMagnetArchetype;
+        concept: LeadMagnetConcept;
+        businessContext: BusinessContext;
+      };
+
+      if (!archetype || !concept || !businessContext) {
+        return ApiErrors.validationError('Missing required fields: archetype, concept, businessContext');
+      }
+
+      const questions = await getContextAwareExtractionQuestions(archetype, concept, businessContext);
+      return NextResponse.json({ questions });
+    }
+
+    // Default: process extraction answers
     const { archetype, concept, answers, transcriptInsights } = body as {
       archetype: LeadMagnetArchetype;
       concept: LeadMagnetConcept;
@@ -52,12 +72,13 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('Missing required fields: archetype, concept, answers');
     }
 
-    // Pass transcript insights to enhance AI extraction with real customer data
+    // Pass transcript insights and userId to enhance AI extraction with real customer data
     const extractedContent = await processContentExtraction(
       archetype,
       concept,
       answers,
-      transcriptInsights
+      transcriptInsights,
+      session.user.id
     );
 
     return NextResponse.json(extractedContent);

@@ -76,6 +76,10 @@ function ConceptCard({
 
       <p className="mb-3 text-sm text-muted-foreground">{concept.painSolved}</p>
 
+      {concept.groundedIn && (
+        <p className="mb-3 text-xs text-primary/80 italic">Based on: {concept.groundedIn}</p>
+      )}
+
       <div className="mb-3 flex items-center gap-2">
         <span className="text-xs text-muted-foreground">Viral Score:</span>
         <div className="flex gap-1">

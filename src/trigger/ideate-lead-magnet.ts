@@ -47,7 +47,8 @@ export const ideateLeadMagnet = task({
 
       // Generate ideas using parallel batching for ~60x faster performance
       // See MOD-71: splits 10 concepts into 3 parallel batches
-      const result = await generateLeadMagnetIdeasParallel(businessContext, input.sources);
+      // Pass userId so AI Brain knowledge from transcripts is injected into ideation
+      const result = await generateLeadMagnetIdeasParallel(businessContext, input.sources, userId);
 
       // Save result to brand_kit for future use
       try {

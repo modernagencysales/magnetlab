@@ -321,6 +321,7 @@ export async function generateConceptBatch(
     callTranscriptInsights?: CallTranscriptInsights;
     competitorAnalysis?: CompetitorAnalysis;
   },
+  knowledgeBrainContext?: string,
 ): Promise<LeadMagnetConcept[]> {
   const additionalContext = buildAdditionalContext(sources);
 
@@ -359,19 +360,26 @@ BUSINESS CONTEXT:
 - Results you've achieved: ${context.results.join('; ')}
 - Success example to break down: ${context.successExample || 'None specified'}
 - Business type: ${context.businessType}
+${knowledgeBrainContext ? `
+${knowledgeBrainContext}
+
+CRITICAL: The knowledge base above contains REAL insights from this person's actual coaching calls and sales conversations. Every concept you generate MUST be grounded in these real insights. Reference specific pain points, questions, and outcomes from the knowledge base. Do NOT generate generic concepts that ignore this context.` : ''}
 ${additionalContext}
 
-Generate ${archetypes.length} lead magnet concepts (one for each archetype listed above). For each, provide:
+Generate ${archetypes.length} lead magnet concepts (one for each archetype listed above). Each concept MUST reference at least one specific credibility marker, urgent pain, or result from the business context above. Do NOT generate generic templates — every concept should feel like it could only come from THIS specific person's expertise.
+
+For each, provide:
 1. archetype: The archetype key (e.g., "single-breakdown")
 2. archetypeName: Human-readable name (e.g., "The Single Breakdown")
 3. title: Using a title formula - specific and outcome-focused
-4. painSolved: The ONE urgent pain it solves
+4. painSolved: The ONE urgent pain it solves (must reference a specific pain from their business context)
 5. whyNowHook: Which urgency technique to use
 6. contents: Detailed description of what they'll receive
 7. deliveryFormat: Google Doc, Sheet, Loom, etc.
 8. viralCheck: Object with boolean for each of the 5 criteria
 9. creationTimeEstimate: Based on assets they already have
 10. bundlePotential: What other lead magnets could combine with this
+11. groundedIn: Brief explanation of which specific credibility marker, result, process, or pain from their business context this concept draws from. This proves the concept is personalized, not generic.
 
 Return ONLY valid JSON with this structure:
 {
@@ -485,30 +493,10 @@ export async function generateLeadMagnetIdeasParallel(
   userId?: string
 ): Promise<IdeationResult> {
   // Inject AI Brain knowledge if userId provided
+  let knowledgeBrainContext = '';
   if (userId) {
     const searchQuery = `${context.businessDescription} ${context.urgentPains.join(' ')}`;
-    const knowledgeContext = await getKnowledgeContext(userId, searchQuery);
-    if (knowledgeContext) {
-      // Attach knowledge context to sources so it flows through to batch generation
-      sources = {
-        ...sources,
-        callTranscriptInsights: sources?.callTranscriptInsights ?? {
-          painPoints: [],
-          frequentQuestions: [],
-          transformationOutcomes: [],
-          objections: [],
-          languagePatterns: [],
-        },
-      };
-      // Append knowledge entries as language patterns for natural injection
-      const knowledgeEntries = knowledgeContext.split('\n').filter(l => l.startsWith('- ')).map(l => l.slice(2));
-      if (knowledgeEntries.length > 0 && sources.callTranscriptInsights) {
-        sources.callTranscriptInsights.languagePatterns = [
-          ...sources.callTranscriptInsights.languagePatterns,
-          ...knowledgeEntries.slice(0, 10),
-        ];
-      }
-    }
+    knowledgeBrainContext = await getKnowledgeContext(userId, searchQuery);
   }
 
   // Split archetypes into 5 batches of 2 for maximum parallelism
@@ -522,7 +510,7 @@ export async function generateLeadMagnetIdeasParallel(
 
   // Generate all concept batches in parallel (5x2 instead of 3x3/4/3)
   const batchResults = await Promise.all(
-    batches.map((archetypes) => generateConceptBatch(archetypes, context, sources))
+    batches.map((archetypes) => generateConceptBatch(archetypes, context, sources, knowledgeBrainContext))
   );
 
   // Merge all concepts in order
@@ -746,6 +734,78 @@ const ARCHETYPE_QUESTIONS: Record<LeadMagnetArchetype, ContentExtractionQuestion
 
 export function getExtractionQuestions(archetype: LeadMagnetArchetype): ContentExtractionQuestion[] {
   return ARCHETYPE_QUESTIONS[archetype] || [];
+}
+
+/**
+ * Generate context-aware extraction questions that reference the user's
+ * actual business, the selected concept, and their credibility markers.
+ * Falls back to static questions on error.
+ */
+export async function getContextAwareExtractionQuestions(
+  archetype: LeadMagnetArchetype,
+  concept: LeadMagnetConcept,
+  context: BusinessContext,
+): Promise<ContentExtractionQuestion[]> {
+  const staticQuestions = ARCHETYPE_QUESTIONS[archetype] || [];
+  if (!staticQuestions.length) return [];
+
+  try {
+    const prompt = `You customize content extraction questions to be specific to someone's actual business and the lead magnet they chose.
+
+THE SELECTED LEAD MAGNET:
+- Title: "${concept.title}"
+- Archetype: ${concept.archetypeName}
+- Pain Solved: ${concept.painSolved}
+
+THEIR BUSINESS:
+- Business: ${context.businessDescription}
+- Credibility: ${context.credibilityMarkers.join(', ') || 'Not specified'}
+- Results they achieve: ${context.results.join('; ') || 'Not specified'}
+- Processes they use: ${context.processes.join(', ') || 'Not specified'}
+- Tools: ${context.tools.join(', ') || 'Not specified'}
+- Success example: ${context.successExample || 'Not specified'}
+
+ORIGINAL GENERIC QUESTIONS:
+${staticQuestions.map((q, i) => `${i + 1}. [id: ${q.id}] ${q.question}`).join('\n')}
+
+Rewrite each question to reference THEIR specific business, results, and the concept they chose. Keep the same question IDs and required status. Make questions feel like they're asking about what the user already knows from their own experience — not asking them to invent something new.
+
+For example, instead of "What results have you gotten?" write "You mentioned achieving [their specific result]. Walk me through exactly how that happened step by step."
+
+Instead of "Walk me through the system step by step" write "Your concept '${concept.title}' tackles [pain]. Based on your experience with [their process/tool], walk me through how you actually solve this for clients."
+
+Return ONLY valid JSON:
+{
+  "questions": [
+    { "id": "original_id", "question": "customized question text", "required": true }
+  ]
+}`;
+
+    const response = await getAnthropicClient().messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const textContent = response.content.find((block) => block.type === 'text');
+    if (!textContent || textContent.type !== 'text') {
+      return staticQuestions;
+    }
+
+    const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      const customized = parsed.questions as ContentExtractionQuestion[];
+      // Validate that all IDs match and we got the right count
+      if (customized.length === staticQuestions.length) {
+        return customized;
+      }
+    }
+    return staticQuestions;
+  } catch {
+    // Fall back to static questions on any error
+    return staticQuestions;
+  }
 }
 
 // =============================================================================

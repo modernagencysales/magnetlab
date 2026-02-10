@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Loader2, MessageCircle, Send, Lightbulb, Quote } from 'lucide-react';
-import type { LeadMagnetConcept, ContentExtractionQuestion, LeadMagnetArchetype, IdeationSources } from '@/lib/types/lead-magnet';
+import type { LeadMagnetConcept, ContentExtractionQuestion, LeadMagnetArchetype, IdeationSources, BusinessContext } from '@/lib/types/lead-magnet';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 
 interface ExtractionStepProps {
@@ -12,6 +12,7 @@ interface ExtractionStepProps {
   onBack: () => void;
   loading: boolean;
   ideationSources?: IdeationSources;
+  businessContext?: BusinessContext;
 }
 
 // Map of question IDs to relevant transcript insight types
@@ -91,6 +92,7 @@ export function ExtractionStep({
   onBack,
   loading,
   ideationSources,
+  businessContext,
 }: ExtractionStepProps) {
   const [questions, setQuestions] = useState<ContentExtractionQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
@@ -101,6 +103,29 @@ export function ExtractionStep({
   useEffect(() => {
     async function fetchQuestions() {
       try {
+        // Try context-aware questions first if we have business context
+        if (businessContext?.businessDescription) {
+          const contextualRes = await fetch('/api/lead-magnet/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'contextual-questions',
+              archetype: concept.archetype,
+              concept,
+              businessContext,
+            }),
+          });
+          if (contextualRes.ok) {
+            const data = await contextualRes.json();
+            if (data.questions?.length > 0) {
+              setQuestions(data.questions);
+              setLoadingQuestions(false);
+              return;
+            }
+          }
+        }
+
+        // Fallback to static questions
         const response = await fetch(
           `/api/lead-magnet/extract?archetype=${concept.archetype}`
         );
@@ -114,7 +139,7 @@ export function ExtractionStep({
     }
 
     fetchQuestions();
-  }, [concept.archetype]);
+  }, [concept.archetype, concept, businessContext]);
 
   const currentQuestion = questions[currentQuestionIndex];
   const isComplete = Object.keys(answers).length >= questions.filter((q) => q.required).length;

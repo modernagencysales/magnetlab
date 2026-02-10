@@ -86,6 +86,7 @@ export interface LeadMagnetConcept {
   };
   creationTimeEstimate: string;
   bundlePotential: string[];
+  groundedIn?: string;
 }
 
 export interface IdeationResult {
