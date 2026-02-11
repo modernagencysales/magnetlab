@@ -1,5 +1,7 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { PostHogIdentify } from '@/components/providers/PostHogIdentify';
@@ -15,6 +17,39 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
+  // Check for team memberships
+  const supabase = createSupabaseAdminClient();
+  const { data: memberships } = await supabase
+    .from('team_members')
+    .select('id, owner_id')
+    .eq('member_id', session.user.id)
+    .eq('status', 'active');
+
+  const cookieStore = await cookies();
+  const activeOwnerId = cookieStore.get('ml-team-context')?.value;
+
+  let teamContext: { isTeamMember: boolean; activeOwnerId: string | null; ownerName: string | null } | null = null;
+
+  if (activeOwnerId && activeOwnerId !== session.user.id) {
+    // Verify the membership is still valid
+    const isValid = memberships?.some(m => m.owner_id === activeOwnerId);
+    if (isValid) {
+      const { data: owner } = await supabase
+        .from('users')
+        .select('name, email')
+        .eq('id', activeOwnerId)
+        .single();
+
+      teamContext = {
+        isTeamMember: true,
+        activeOwnerId,
+        ownerName: owner?.name || owner?.email || null,
+      };
+    }
+  }
+
+  const hasMemberships = memberships && memberships.length > 0;
+
   return (
     <div className="min-h-screen bg-background">
       <PostHogIdentify
@@ -22,7 +57,11 @@ export default async function DashboardLayout({
         email={session.user.email}
         name={session.user.name}
       />
-      <DashboardNav user={session.user} />
+      <DashboardNav
+        user={session.user}
+        teamContext={teamContext}
+        hasMemberships={hasMemberships || false}
+      />
       <main className="lg:pl-64">{children}</main>
       <FeedbackWidget
         userEmail={session.user.email ?? null}

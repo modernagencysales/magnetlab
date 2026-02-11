@@ -9,6 +9,7 @@ import { ResendSettings } from '@/components/settings/ResendSettings';
 import { ConductorSettings } from '@/components/settings/ConductorSettings';
 import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettings';
 import { WebhookSettings } from '@/components/settings/WebhookSettings';
+import { TeamMembersSettings } from '@/components/settings/TeamMembersSettings';
 
 interface ApiKey {
   id: string;
@@ -503,6 +504,9 @@ export function SettingsContent({
             <WebhookSettings />
           </div>
         </div>
+
+        {/* Team Members Section */}
+        <TeamMembersSettings />
 
         {/* API Keys Section */}
         <div className="rounded-lg border bg-card p-6 transition-colors">

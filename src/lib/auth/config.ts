@@ -88,6 +88,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
 
             await clearLoginAttempts(email);
+
+            // Auto-link pending team invitations
+            await supabase
+              .from('team_members')
+              .update({ member_id: existingUser.id, status: 'active', accepted_at: new Date().toISOString() })
+              .eq('email', email)
+              .eq('status', 'pending')
+              .is('member_id', null);
+
             console.log('[Auth] Login successful for:', email);
             return {
               id: existingUser.id,
@@ -125,6 +134,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             console.error('[Auth] Failed to create subscription:', subError);
             // Don't fail login for this, just log it
           }
+
+          // Auto-link pending team invitations
+          await supabase
+            .from('team_members')
+            .update({ member_id: newUser.id, status: 'active', accepted_at: new Date().toISOString() })
+            .eq('email', email)
+            .eq('status', 'pending')
+            .is('member_id', null);
 
           console.log('[Auth] New user created:', email);
           return {
@@ -182,6 +199,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // Store the DB user ID so jwt callback can use it
             user.id = existingUser.id;
             console.log('[Auth/Google] Linked to existing user:', user.email);
+
+            // Auto-link pending team invitations
+            await supabase
+              .from('team_members')
+              .update({ member_id: existingUser.id, status: 'active', accepted_at: new Date().toISOString() })
+              .eq('email', user.email)
+              .eq('status', 'pending')
+              .is('member_id', null);
           } else {
             // Auto-create new user (no password_hash for OAuth-only users)
             const { data: newUser, error } = await supabase
@@ -208,6 +233,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             user.id = newUser.id;
             console.log('[Auth/Google] Created new user:', user.email);
+
+            // Auto-link pending team invitations
+            await supabase
+              .from('team_members')
+              .update({ member_id: newUser.id, status: 'active', accepted_at: new Date().toISOString() })
+              .eq('email', user.email)
+              .eq('status', 'pending')
+              .is('member_id', null);
           }
         } catch (error) {
           console.error('[Auth/Google] signIn callback error:', error);

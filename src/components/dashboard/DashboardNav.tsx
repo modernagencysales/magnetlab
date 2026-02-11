@@ -9,6 +9,7 @@ import posthog from 'posthog-js';
 import {
   Magnet, BarChart3, Settings, Plus, LogOut, FileText, Globe, Users,
   ChevronDown, BookOpen, PenTool, LayoutDashboard, Menu, X, Sun, Moon,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,8 +19,16 @@ interface User {
   image?: string | null;
 }
 
+interface TeamContext {
+  isTeamMember: boolean;
+  activeOwnerId: string | null;
+  ownerName: string | null;
+}
+
 interface DashboardNavProps {
   user: User;
+  teamContext?: TeamContext | null;
+  hasMemberships?: boolean;
 }
 
 // ─── Nav config ──────────────────────────────────────────
@@ -31,6 +40,10 @@ const mainNav = [
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/assets', label: 'Assets', icon: Globe },
   { href: '/swipe-file', label: 'Swipe File', icon: FileText },
+];
+
+const teamMemberNav = [
+  { href: '/catalog', label: 'Catalog', icon: Magnet },
 ];
 
 const bottomNav = [
@@ -162,11 +175,23 @@ function NavLink({ href, label, icon: Icon, onNavigate }: {
 
 // ─── Sidebar content (shared between desktop + mobile) ──
 
-function SidebarContent({ user, onNavigate }: {
+function SidebarContent({ user, teamContext, hasMemberships, onNavigate }: {
   user: User;
+  teamContext?: TeamContext | null;
+  hasMemberships?: boolean;
   onNavigate?: () => void;
 }) {
   const displayLabel = user.name || user.email?.split('@')[0] || 'User';
+  const isTeamMode = teamContext?.isTeamMember && teamContext.activeOwnerId;
+
+  // In team mode, show only catalog nav
+  const navItems = isTeamMode ? teamMemberNav : mainNav;
+  // In normal mode, add catalog if user has memberships or is an owner
+  const extraNavItems = !isTeamMode && hasMemberships
+    ? [{ href: '/catalog', label: 'Catalog', icon: Magnet }]
+    : !isTeamMode
+    ? [{ href: '/catalog', label: 'Catalog', icon: Magnet }]
+    : [];
 
   return (
     <div className="flex h-full flex-col">
@@ -183,14 +208,40 @@ function SidebarContent({ user, onNavigate }: {
           <h1 className="font-semibold text-sm">MagnetLab</h1>
         </Link>
 
-        <CreateDropdown onNavigate={onNavigate} />
+        {!isTeamMode && <CreateDropdown onNavigate={onNavigate} />}
+
+        {/* Team mode banner */}
+        {isTeamMode && (
+          <div className="rounded-lg bg-violet-500/10 border border-violet-500/20 p-2.5 mt-2">
+            <p className="text-xs font-medium text-violet-600 dark:text-violet-400 truncate">
+              Viewing {teamContext.ownerName}&apos;s catalog
+            </p>
+            <Link
+              href="/team-select"
+              onClick={onNavigate}
+              className="flex items-center gap-1 text-xs text-violet-500 hover:text-violet-600 mt-1 transition-colors"
+            >
+              <ArrowLeftRight size={12} />
+              Switch account
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* ── Main nav (scrollable) ── */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-hide">
-        {mainNav.map((item) => (
+        {navItems.map((item) => (
           <NavLink key={item.href} {...item} onNavigate={onNavigate} />
         ))}
+
+        {extraNavItems.length > 0 && (
+          <>
+            {!isTeamMode && <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-3" />}
+            {extraNavItems.map((item) => (
+              <NavLink key={item.href} {...item} onNavigate={onNavigate} />
+            ))}
+          </>
+        )}
 
         <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-3" />
 
@@ -242,7 +293,7 @@ function SidebarContent({ user, onNavigate }: {
 
 // ─── Main component ──────────────────────────────────────
 
-export function DashboardNav({ user }: DashboardNavProps) {
+export function DashboardNav({ user, teamContext, hasMemberships }: DashboardNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
@@ -288,6 +339,8 @@ export function DashboardNav({ user }: DashboardNavProps) {
             </div>
             <SidebarContent
               user={user}
+              teamContext={teamContext}
+              hasMemberships={hasMemberships}
               onNavigate={() => setMobileOpen(false)}
             />
           </aside>
@@ -296,7 +349,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
 
       {/* ── Desktop sidebar ── */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex-col lg:flex">
-        <SidebarContent user={user} />
+        <SidebarContent user={user} teamContext={teamContext} hasMemberships={hasMemberships} />
       </aside>
     </>
   );
