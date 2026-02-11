@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Mic, Radio, Clipboard, Upload, Loader2, Plus, Trash2, Link2 } from 'lucide-react';
+import { Mic, Radio, Clipboard, Upload, Video, Loader2, Plus, Trash2, Link2 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { TranscriptPasteModal } from './TranscriptPasteModal';
@@ -11,6 +11,7 @@ import type { CallTranscript } from '@/lib/types/content-pipeline';
 const SOURCE_ICONS: Record<string, typeof Mic> = {
   grain: Radio,
   fireflies: Mic,
+  fathom: Video,
   paste: Clipboard,
   upload: Upload,
 };

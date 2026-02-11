@@ -7,6 +7,7 @@ import { PRICING_PLANS } from '@/lib/types/integrations';
 import { UsernameSettings } from '@/components/settings/UsernameSettings';
 import { ResendSettings } from '@/components/settings/ResendSettings';
 import { ConductorSettings } from '@/components/settings/ConductorSettings';
+import { FathomSettings } from '@/components/settings/FathomSettings';
 import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettings';
 import { WebhookSettings } from '@/components/settings/WebhookSettings';
 import { TeamMembersSettings } from '@/components/settings/TeamMembersSettings';
@@ -88,6 +89,7 @@ export function SettingsContent({
   const leadsharkIntegration = integrations.find((i) => i.service === 'leadshark');
   const resendIntegration = integrations.find((i) => i.service === 'resend');
   const conductorIntegration = integrations.find((i) => i.service === 'conductor');
+  const fathomIntegration = integrations.find((i) => i.service === 'fathom');
 
   // Fetch API keys and user defaults on mount
   useEffect(() => {
@@ -488,6 +490,12 @@ export function SettingsContent({
             isConnected={conductorIntegration?.is_active ?? false}
             lastVerifiedAt={conductorIntegration?.last_verified_at ?? null}
             metadata={conductorIntegration?.metadata as { endpointUrl?: string } | undefined}
+          />
+
+          {/* Fathom */}
+          <FathomSettings
+            isConnected={fathomIntegration?.is_active ?? false}
+            lastSyncedAt={(fathomIntegration?.metadata as { last_synced_at?: string } | undefined)?.last_synced_at ?? null}
           />
 
           {/* Tracking Pixels */}

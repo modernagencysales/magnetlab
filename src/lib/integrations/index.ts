@@ -11,6 +11,14 @@ export {
 } from './leadshark';
 
 export {
+  FathomClient,
+  getUserFathomClient,
+  getFathomAuthorizationUrl,
+  exchangeFathomCode,
+  refreshFathomToken,
+} from './fathom';
+
+export {
   createCustomer,
   getCustomer,
   getOrCreateCustomer,

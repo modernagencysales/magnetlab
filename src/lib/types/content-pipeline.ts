@@ -5,7 +5,7 @@
 // ENUMS
 // ============================================
 
-export type TranscriptOrigin = 'grain' | 'fireflies' | 'paste';
+export type TranscriptOrigin = 'grain' | 'fireflies' | 'fathom' | 'paste';
 
 export type ContentType =
   | 'story'
