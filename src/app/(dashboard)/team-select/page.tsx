@@ -42,7 +42,7 @@ export default function TeamSelectPage() {
   }, []);
 
   const selectOwner = (ownerId: string) => {
-    document.cookie = `ml-team-context=${ownerId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+    document.cookie = `ml-team-context=${ownerId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
     router.push('/catalog');
   };
 

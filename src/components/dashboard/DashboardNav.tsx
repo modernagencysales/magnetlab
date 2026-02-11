@@ -184,12 +184,9 @@ function SidebarContent({ user, teamContext, hasMemberships, onNavigate }: {
   const displayLabel = user.name || user.email?.split('@')[0] || 'User';
   const isTeamMode = teamContext?.isTeamMember && teamContext.activeOwnerId;
 
-  // In team mode, show only catalog nav
+  // In team mode, show only catalog nav. In normal mode, show full nav + catalog link.
   const navItems = isTeamMode ? teamMemberNav : mainNav;
-  // In normal mode, add catalog if user has memberships or is an owner
-  const extraNavItems = !isTeamMode && hasMemberships
-    ? [{ href: '/catalog', label: 'Catalog', icon: Magnet }]
-    : !isTeamMode
+  const extraNavItems = !isTeamMode
     ? [{ href: '/catalog', label: 'Catalog', icon: Magnet }]
     : [];
 

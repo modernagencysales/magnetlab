@@ -19,11 +19,15 @@ export default async function DashboardLayout({
 
   // Check for team memberships
   const supabase = createSupabaseAdminClient();
-  const { data: memberships } = await supabase
+  const { data: memberships, error: membershipError } = await supabase
     .from('team_members')
     .select('id, owner_id')
     .eq('member_id', session.user.id)
     .eq('status', 'active');
+
+  if (membershipError) {
+    console.error('[Layout] Failed to fetch team memberships:', membershipError.message);
+  }
 
   const cookieStore = await cookies();
   const activeOwnerId = cookieStore.get('ml-team-context')?.value;

@@ -18,11 +18,15 @@ export default async function CatalogPage() {
   const activeOwnerId = cookieStore.get('ml-team-context')?.value;
 
   // Check if user has team memberships
-  const { data: memberships } = await supabase
+  const { data: memberships, error: membershipError } = await supabase
     .from('team_members')
     .select('id, owner_id')
     .eq('member_id', session.user.id)
     .eq('status', 'active');
+
+  if (membershipError) {
+    console.error('[Catalog] Failed to fetch memberships:', membershipError.message);
+  }
 
   const hasMemberships = memberships && memberships.length > 0;
 
