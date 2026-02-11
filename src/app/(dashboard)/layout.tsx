@@ -52,8 +52,6 @@ export default async function DashboardLayout({
     }
   }
 
-  const hasMemberships = memberships && memberships.length > 0;
-
   return (
     <div className="min-h-screen bg-background">
       <PostHogIdentify
@@ -64,7 +62,6 @@ export default async function DashboardLayout({
       <DashboardNav
         user={session.user}
         teamContext={teamContext}
-        hasMemberships={hasMemberships || false}
       />
       <main className="lg:pl-64">{children}</main>
       <FeedbackWidget

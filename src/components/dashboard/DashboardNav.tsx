@@ -28,7 +28,6 @@ interface TeamContext {
 interface DashboardNavProps {
   user: User;
   teamContext?: TeamContext | null;
-  hasMemberships?: boolean;
 }
 
 // ─── Nav config ──────────────────────────────────────────
@@ -175,10 +174,9 @@ function NavLink({ href, label, icon: Icon, onNavigate }: {
 
 // ─── Sidebar content (shared between desktop + mobile) ──
 
-function SidebarContent({ user, teamContext, hasMemberships, onNavigate }: {
+function SidebarContent({ user, teamContext, onNavigate }: {
   user: User;
   teamContext?: TeamContext | null;
-  hasMemberships?: boolean;
   onNavigate?: () => void;
 }) {
   const displayLabel = user.name || user.email?.split('@')[0] || 'User';
@@ -290,7 +288,7 @@ function SidebarContent({ user, teamContext, hasMemberships, onNavigate }: {
 
 // ─── Main component ──────────────────────────────────────
 
-export function DashboardNav({ user, teamContext, hasMemberships }: DashboardNavProps) {
+export function DashboardNav({ user, teamContext }: DashboardNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
@@ -337,7 +335,7 @@ export function DashboardNav({ user, teamContext, hasMemberships }: DashboardNav
             <SidebarContent
               user={user}
               teamContext={teamContext}
-              hasMemberships={hasMemberships}
+
               onNavigate={() => setMobileOpen(false)}
             />
           </aside>
@@ -346,7 +344,7 @@ export function DashboardNav({ user, teamContext, hasMemberships }: DashboardNav
 
       {/* ── Desktop sidebar ── */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex-col lg:flex">
-        <SidebarContent user={user} teamContext={teamContext} hasMemberships={hasMemberships} />
+        <SidebarContent user={user} teamContext={teamContext} />
       </aside>
     </>
   );
