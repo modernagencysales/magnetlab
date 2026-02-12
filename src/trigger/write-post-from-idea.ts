@@ -4,10 +4,13 @@ import { writePostFreeform } from '@/lib/ai/content-pipeline/post-writer';
 import { buildContentBriefForIdea } from '@/lib/ai/content-pipeline/briefing-agent';
 import { polishPost } from '@/lib/ai/content-pipeline/post-polish';
 import { isEmbeddingsConfigured } from '@/lib/ai/embeddings';
+import type { TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
 interface WritePostPayload {
   userId: string;
   ideaId: string;
+  teamId?: string;
+  profileId?: string;
 }
 
 export const writePostFromIdea = task({
@@ -15,15 +18,15 @@ export const writePostFromIdea = task({
   maxDuration: 120, // 2 minutes — briefing + write + polish
   retry: { maxAttempts: 2 },
   run: async (payload: WritePostPayload) => {
-    const { userId, ideaId } = payload;
+    const { userId, ideaId, teamId, profileId } = payload;
     const supabase = createSupabaseAdminClient();
 
-    logger.info('Writing post from idea', { userId, ideaId });
+    logger.info('Writing post from idea', { userId, ideaId, profileId });
 
     // Fetch the idea
     const { data: idea, error: ideaError } = await supabase
       .from('cp_content_ideas')
-      .select('id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, status, created_at, updated_at')
+      .select('id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, status, team_profile_id, created_at, updated_at')
       .eq('id', ideaId)
       .eq('user_id', userId)
       .single();
@@ -32,12 +35,31 @@ export const writePostFromIdea = task({
       throw new Error(`Idea not found: ${ideaId}`);
     }
 
+    // Resolve profile for voice (from payload or idea)
+    const resolvedProfileId = profileId || idea.team_profile_id;
+    let voiceProfile: TeamVoiceProfile | undefined;
+    let authorName: string | undefined;
+    let authorTitle: string | undefined;
+
+    if (resolvedProfileId) {
+      const { data: profile } = await supabase
+        .from('team_profiles')
+        .select('full_name, title, voice_profile')
+        .eq('id', resolvedProfileId)
+        .single();
+      if (profile) {
+        voiceProfile = profile.voice_profile as TeamVoiceProfile;
+        authorName = profile.full_name;
+        authorTitle = profile.title || undefined;
+      }
+    }
+
     // Build content brief from AI Brain (if embeddings configured)
     let knowledgeContext: string | undefined;
     if (isEmbeddingsConfigured()) {
       try {
         logger.info('Building content brief');
-        const brief = await buildContentBriefForIdea(userId, idea);
+        const brief = await buildContentBriefForIdea(userId, idea, { teamId, profileId: resolvedProfileId || undefined });
         if (brief.compiledContext) {
           knowledgeContext = brief.compiledContext;
         }
@@ -58,6 +80,9 @@ export const writePostFromIdea = task({
         content_type: idea.content_type,
       },
       knowledgeContext,
+      voiceProfile,
+      authorName,
+      authorTitle,
     });
 
     // Polish the post
@@ -79,6 +104,7 @@ export const writePostFromIdea = task({
         hook_score: polishResult.hookScore.score,
         polish_status: polishResult.changes.length > 0 ? 'polished' : 'pending',
         polish_notes: polishResult.changes.length > 0 ? polishResult.changes.join('; ') : null,
+        team_profile_id: resolvedProfileId || null,
       });
 
     if (postError) {

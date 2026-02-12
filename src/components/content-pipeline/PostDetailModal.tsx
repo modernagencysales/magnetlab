@@ -26,6 +26,7 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const [scheduleTime, setScheduleTime] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const displayContent = activeVariation !== null && post.variations?.[activeVariation]
     ? post.variations[activeVariation].content
@@ -33,6 +34,7 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
 
   const handleSchedule = async () => {
     setScheduling(true);
+    setScheduleError(null);
     try {
       const response = await fetch('/api/content-pipeline/posts/schedule', {
         method: 'POST',
@@ -45,9 +47,12 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
       if (response.ok) {
         onUpdate();
         onClose();
+      } else {
+        const data = await response.json();
+        setScheduleError(data.error || 'Failed to schedule');
       }
     } catch {
-      // Silent failure
+      setScheduleError('Network error. Please try again.');
     } finally {
       setScheduling(false);
     }
@@ -302,6 +307,19 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
                 Schedule to LinkedIn
               </button>
             </div>
+            {scheduleError && (
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/50">
+                <p className="text-sm text-amber-800 dark:text-amber-200">{scheduleError}</p>
+                {scheduleError.includes('Settings') && (
+                  <a
+                    href="/settings"
+                    className="mt-1 inline-block text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    Go to Settings
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

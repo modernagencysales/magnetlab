@@ -17,10 +17,19 @@ export async function POST(
     const { id } = await params;
     const supabase = createSupabaseAdminClient();
 
+    // Parse optional profileId from request body
+    let profileId: string | undefined;
+    try {
+      const body = await request.json();
+      profileId = body.profileId;
+    } catch {
+      // Body is optional
+    }
+
     // Verify idea exists and belongs to user
     const { data: idea, error: ideaError } = await supabase
       .from('cp_content_ideas')
-      .select('id, status')
+      .select('id, status, team_profile_id')
       .eq('id', id)
       .eq('user_id', session.user.id)
       .single();
@@ -37,9 +46,23 @@ export async function POST(
 
     // Fire-and-forget: trigger background task
     try {
+      // Resolve team context
+      let teamId: string | undefined;
+      const resolvedProfileId = profileId || idea.team_profile_id || undefined;
+      if (resolvedProfileId) {
+        const { data: profile } = await supabase
+          .from('team_profiles')
+          .select('team_id')
+          .eq('id', resolvedProfileId)
+          .single();
+        teamId = profile?.team_id || undefined;
+      }
+
       await tasks.trigger<typeof writePostFromIdea>('write-post-from-idea', {
         userId: session.user.id,
         ideaId: id,
+        teamId,
+        profileId: resolvedProfileId,
       });
     } catch (triggerError) {
       console.error('Failed to trigger write task:', triggerError);

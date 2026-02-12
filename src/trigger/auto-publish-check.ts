@@ -43,7 +43,12 @@ export const autoPublishCheck = schedules.task({
           continue;
         }
 
-        const scheduledTime = post.scheduled_time || new Date().toISOString();
+        // LeadShark requires scheduled_time at least 15 minutes in the future
+        const minTime = new Date(Date.now() + 16 * 60 * 1000);
+        const existingTime = post.scheduled_time ? new Date(post.scheduled_time) : null;
+        const scheduledTime = (existingTime && existingTime > minTime)
+          ? post.scheduled_time
+          : minTime.toISOString();
 
         // Try LeadShark scheduling
         let leadshark = null;
@@ -65,21 +70,31 @@ export const autoPublishCheck = schedules.task({
             throw new Error(`LeadShark error: ${result.error}`);
           }
 
-          await supabase
+          const { error: updateError } = await supabase
             .from('cp_pipeline_posts')
             .update({
               status: 'scheduled',
               leadshark_post_id: result.data?.id || null,
             })
-            .eq('id', post.id);
+            .eq('id', post.id)
+            .eq('user_id', post.user_id);
+
+          if (updateError) {
+            logger.error(`DB update failed after LeadShark schedule for post ${post.id}`, { error: updateError.message });
+          }
 
           logger.info(`Post ${post.id} scheduled via LeadShark`, { leadsharkId: result.data?.id });
         } else {
           // No LeadShark — mark as scheduled locally
-          await supabase
+          const { error: localError } = await supabase
             .from('cp_pipeline_posts')
             .update({ status: 'scheduled' })
-            .eq('id', post.id);
+            .eq('id', post.id)
+            .eq('user_id', post.user_id);
+
+          if (localError) {
+            logger.error(`DB update failed for local schedule of post ${post.id}`, { error: localError.message });
+          }
 
           logger.info(`Post ${post.id} marked as scheduled (no LeadShark)`);
         }
@@ -94,7 +109,8 @@ export const autoPublishCheck = schedules.task({
         await supabase
           .from('cp_pipeline_posts')
           .update({ status: 'failed' })
-          .eq('id', post.id);
+          .eq('id', post.id)
+          .eq('user_id', post.user_id);
       }
     }
 

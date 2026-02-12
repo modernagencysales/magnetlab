@@ -16,7 +16,11 @@ const SOURCE_ICONS: Record<string, typeof Mic> = {
   upload: Upload,
 };
 
-export function TranscriptsTab() {
+interface TranscriptsTabProps {
+  profileId?: string | null;
+}
+
+export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
   const [transcripts, setTranscripts] = useState<CallTranscript[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -27,7 +31,9 @@ export function TranscriptsTab() {
   const fetchTranscripts = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/content-pipeline/transcripts');
+      const params = new URLSearchParams();
+      if (profileId) params.append('speaker_profile_id', profileId);
+      const response = await fetch(`/api/content-pipeline/transcripts?${params}`);
       const data = await response.json();
       setTranscripts(data.transcripts || []);
     } catch {
@@ -35,7 +41,7 @@ export function TranscriptsTab() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [profileId]);
 
   useEffect(() => {
     fetchTranscripts();
@@ -163,6 +169,7 @@ export function TranscriptsTab() {
             <thead>
               <tr className="bg-muted/50">
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Title</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Speaker</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Source</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date</th>
@@ -177,6 +184,15 @@ export function TranscriptsTab() {
                   <tr key={t.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-sm font-medium">
                       {t.title || 'Untitled'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {(t as CallTranscript & { speaker_name?: string | null }).speaker_name ? (
+                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                          {(t as CallTranscript & { speaker_name?: string | null }).speaker_name}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">&mdash;</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className="flex items-center gap-1.5 text-sm text-muted-foreground">

@@ -71,6 +71,54 @@ export const KNOWLEDGE_CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
 export type PolishStatus = 'pending' | 'polished' | 'flagged' | 'skipped';
 
 // ============================================
+// TEAMS
+// ============================================
+
+export interface Team {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string | null;
+  industry: string | null;
+  target_audience: string | null;
+  shared_goal: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamVoiceProfile {
+  first_person_context?: string;
+  perspective_notes?: string;
+  tone?: string;
+  signature_phrases?: string[];
+  banned_phrases?: string[];
+  industry_jargon?: string[];
+  storytelling_style?: string;
+  hook_patterns?: string[];
+}
+
+export interface TeamProfile {
+  id: string;
+  team_id: string;
+  user_id: string | null;
+  email: string | null;
+  full_name: string;
+  title: string | null;
+  linkedin_url: string | null;
+  bio: string | null;
+  expertise_areas: string[];
+  voice_profile: TeamVoiceProfile;
+  avatar_url: string | null;
+  role: 'owner' | 'member';
+  status: 'active' | 'pending' | 'removed';
+  is_default: boolean;
+  invited_at: string | null;
+  accepted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
 // DATABASE ENTITIES
 // ============================================
 
@@ -89,6 +137,8 @@ export interface CallTranscript {
   transcript_type: TranscriptType | null;
   ideas_extracted_at: string | null;
   knowledge_extracted_at: string | null;
+  team_id?: string | null;
+  speaker_profile_id?: string | null;
   created_at: string;
 }
 
@@ -102,6 +152,8 @@ export interface KnowledgeEntry {
   context: string | null;
   tags: string[];
   transcript_type: TranscriptType | null;
+  team_id?: string | null;
+  source_profile_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -138,6 +190,7 @@ export interface ContentIdea {
   composite_score: number | null;
   last_surfaced_at: string | null;
   similarity_hash: string | null;
+  team_profile_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -166,6 +219,7 @@ export interface PipelinePost {
   enable_automation: boolean;
   automation_config: Record<string, unknown> | null;
   engagement_stats: EngagementStats | null;
+  team_profile_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -193,6 +247,7 @@ export interface PostingSlot {
   time_of_day: string;
   timezone: string;
   is_active: boolean;
+  team_profile_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -401,6 +456,8 @@ export interface AutoPilotConfig {
   bufferTarget: number;
   autoPublish: boolean;
   autoPublishDelayHours: number;
+  teamId?: string;
+  profileId?: string;
 }
 
 export interface BatchResult {

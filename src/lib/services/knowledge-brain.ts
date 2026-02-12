@@ -20,19 +20,36 @@ export async function searchKnowledge(
     tags?: string[];
     limit?: number;
     threshold?: number;
+    teamId?: string;
+    profileId?: string;
   } = {}
 ): Promise<SearchKnowledgeResult> {
-  const { category, tags, limit = 10, threshold = 0.7 } = options;
+  const { category, tags, limit = 10, threshold = 0.7, teamId, profileId } = options;
 
   const queryEmbedding = await generateEmbedding(query);
   const supabase = createSupabaseAdminClient();
 
-  const { data, error } = await supabase.rpc('cp_match_knowledge_entries', {
-    query_embedding: JSON.stringify(queryEmbedding),
-    p_user_id: userId,
-    threshold,
-    match_count: limit,
-  });
+  let data;
+  let error;
+
+  if (teamId) {
+    // Team-wide search with profile boosting
+    ({ data, error } = await supabase.rpc('cp_match_team_knowledge_entries', {
+      query_embedding: JSON.stringify(queryEmbedding),
+      p_team_id: teamId,
+      p_profile_id: profileId || null,
+      threshold,
+      match_count: limit,
+    }));
+  } else {
+    // Standard user-scoped search
+    ({ data, error } = await supabase.rpc('cp_match_knowledge_entries', {
+      query_embedding: JSON.stringify(queryEmbedding),
+      p_user_id: userId,
+      threshold,
+      match_count: limit,
+    }));
+  }
 
   if (error) {
     console.error('Knowledge search failed:', error.message);

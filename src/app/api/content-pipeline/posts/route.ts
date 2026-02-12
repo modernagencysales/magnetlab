@@ -12,13 +12,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const status = searchParams.get('status');
     const isBuffer = searchParams.get('is_buffer');
+    const teamProfileId = searchParams.get('team_profile_id');
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
     const supabase = createSupabaseAdminClient();
 
     let query = supabase
       .from('cp_pipeline_posts')
-      .select('id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, leadshark_post_id, created_at, updated_at')
+      .select('id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, leadshark_post_id, team_profile_id, created_at, updated_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
     if (status) query = query.eq('status', status);
     if (isBuffer === 'true') query = query.eq('is_buffer', true);
     if (isBuffer === 'false') query = query.eq('is_buffer', false);
+    if (teamProfileId) query = query.eq('team_profile_id', teamProfileId);
 
     const { data, error } = await query;
 
@@ -33,7 +35,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ posts: data || [] });
+    // Enrich with profile names
+    const posts = data || [];
+    const profileIds = [...new Set(posts.map(p => p.team_profile_id).filter(Boolean))] as string[];
+    let profileMap: Record<string, { full_name: string; title: string | null }> = {};
+
+    if (profileIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('team_profiles')
+        .select('id, full_name, title')
+        .in('id', profileIds);
+      if (profiles) {
+        profileMap = Object.fromEntries(profiles.map(p => [p.id, { full_name: p.full_name, title: p.title }]));
+      }
+    }
+
+    const enrichedPosts = posts.map(p => ({
+      ...p,
+      profile_name: p.team_profile_id ? profileMap[p.team_profile_id]?.full_name || null : null,
+    }));
+
+    return NextResponse.json({ posts: enrichedPosts });
   } catch (error) {
     console.error('Posts list error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

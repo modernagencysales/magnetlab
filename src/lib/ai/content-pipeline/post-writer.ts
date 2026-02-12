@@ -1,6 +1,6 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
-import type { PostTemplate, StyleProfile, PostVariation } from '@/lib/types/content-pipeline';
+import type { PostTemplate, StyleProfile, PostVariation, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
 export interface IdeaContext {
   id?: string;
@@ -19,6 +19,42 @@ export interface WritePostInput {
   styleProfile?: StyleProfile;
   targetAudience?: string;
   knowledgeContext?: string; // AI Brain context injected by briefing agent
+  voiceProfile?: TeamVoiceProfile;
+  authorName?: string;
+  authorTitle?: string;
+}
+
+function buildVoiceSection(input: WritePostInput): string {
+  const { voiceProfile, authorName, authorTitle } = input;
+  if (!voiceProfile || !authorName) return '';
+
+  const parts: string[] = [];
+  parts.push(`\nYOU ARE WRITING AS: ${authorName}${authorTitle ? `, ${authorTitle}` : ''}`);
+
+  if (voiceProfile.first_person_context) {
+    parts.push(`FIRST-PERSON CONTEXT: ${voiceProfile.first_person_context}`);
+  }
+  if (voiceProfile.perspective_notes) {
+    parts.push(`PERSPECTIVE: ${voiceProfile.perspective_notes}`);
+  }
+  if (voiceProfile.tone) {
+    parts.push(`TONE: ${voiceProfile.tone}`);
+  }
+  if (voiceProfile.signature_phrases?.length) {
+    parts.push(`SIGNATURE PHRASES (use naturally): ${voiceProfile.signature_phrases.join(', ')}`);
+  }
+  if (voiceProfile.banned_phrases?.length) {
+    parts.push(`BANNED PHRASES (never use): ${voiceProfile.banned_phrases.join(', ')}`);
+  }
+  if (voiceProfile.industry_jargon?.length) {
+    parts.push(`DOMAIN TERMS: ${voiceProfile.industry_jargon.join(', ')}`);
+  }
+  if (voiceProfile.storytelling_style) {
+    parts.push(`STORYTELLING STYLE: ${voiceProfile.storytelling_style}`);
+  }
+
+  parts.push(`\nWrite as this specific person. Use "I" from their experience. Do NOT write generically.\n`);
+  return parts.join('\n');
 }
 
 export interface WrittenPost {
@@ -86,9 +122,12 @@ ${knowledgeContext}
 Use specific quotes, real numbers, and validated insights from this context.\n`
     : '';
 
+  const voiceSection = buildVoiceSection(input);
+
   const prompt = `You are writing a LinkedIn post. Write the post without any preamble. Your first word is the first word of the post.
 
 ${getBaseStyleGuidelines()}
+${voiceSection}
 
 Audience: ${targetAudience || 'B2B professionals, agency owners, and marketers'}
 What this means for your writing:

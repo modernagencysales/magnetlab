@@ -17,7 +17,7 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
-  // Check for team memberships
+  // Check for team memberships (both legacy team_members and new team_profiles)
   const supabase = createSupabaseAdminClient();
   const { data: memberships, error: membershipError } = await supabase
     .from('team_members')
@@ -27,6 +27,24 @@ export default async function DashboardLayout({
 
   if (membershipError) {
     console.error('[Layout] Failed to fetch team memberships:', membershipError.message);
+  }
+
+  // Also check team_profiles memberships
+  const { data: profileMemberships } = await supabase
+    .from('team_profiles')
+    .select('id, team_id, teams!inner(owner_id)')
+    .eq('user_id', session.user.id)
+    .eq('status', 'active');
+
+  // Merge: add any team_profiles owners not already in memberships
+  if (profileMemberships?.length) {
+    const existingOwnerIds = new Set(memberships?.map(m => m.owner_id) || []);
+    for (const pm of profileMemberships) {
+      const ownerIdFromProfile = (pm as unknown as { teams: { owner_id: string } }).teams.owner_id;
+      if (ownerIdFromProfile !== session.user.id && !existingOwnerIds.has(ownerIdFromProfile)) {
+        memberships?.push({ id: pm.id, owner_id: ownerIdFromProfile });
+      }
+    }
   }
 
   const cookieStore = await cookies();

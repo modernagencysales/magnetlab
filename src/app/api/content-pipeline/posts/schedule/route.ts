@@ -36,10 +36,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Post has no content to schedule' }, { status: 400 });
     }
 
-    const scheduleTime = scheduled_time || post.scheduled_time;
-    if (!scheduleTime) {
-      return NextResponse.json({ error: 'scheduled_time is required' }, { status: 400 });
-    }
+    // LeadShark requires scheduled_time at least 15 minutes in the future
+    const minTime = new Date(Date.now() + 16 * 60 * 1000);
+    const candidate = scheduled_time || post.scheduled_time;
+    const candidateDate = candidate ? new Date(candidate) : null;
+    const scheduleTime = (candidateDate && candidateDate > minTime)
+      ? candidate
+      : minTime.toISOString();
 
     // Try to schedule via LeadShark
     const leadshark = await getUserLeadSharkClient(session.user.id);
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Update post with LeadShark post ID
-      await supabase
+      const { error: updateError } = await supabase
         .from('cp_pipeline_posts')
         .update({
           status: 'scheduled',
@@ -65,6 +68,11 @@ export async function POST(request: NextRequest) {
         .eq('id', post_id)
         .eq('user_id', session.user.id);
 
+      if (updateError) {
+        console.error('DB update failed after LeadShark schedule:', updateError.message);
+        return NextResponse.json({ error: 'Scheduled in LeadShark but failed to update local status' }, { status: 500 });
+      }
+
       return NextResponse.json({
         success: true,
         scheduled_via: 'leadshark',
@@ -73,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // No LeadShark — just update status locally
-    await supabase
+    const { error: localUpdateError } = await supabase
       .from('cp_pipeline_posts')
       .update({
         status: 'scheduled',
@@ -81,6 +89,11 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', post_id)
       .eq('user_id', session.user.id);
+
+    if (localUpdateError) {
+      console.error('DB update failed for local schedule:', localUpdateError.message);
+      return NextResponse.json({ error: 'Failed to update post status' }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,

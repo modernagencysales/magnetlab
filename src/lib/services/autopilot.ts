@@ -199,19 +199,42 @@ export async function getBufferSize(userId: string): Promise<number> {
 }
 
 export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchResult> {
-  const { userId, postsPerBatch = 3, autoPublish = false, autoPublishDelayHours = AUTO_PUBLISH_WINDOW_HOURS } = config;
+  const { userId, postsPerBatch = 3, autoPublish = false, autoPublishDelayHours = AUTO_PUBLISH_WINDOW_HOURS, teamId, profileId } = config;
   const supabase = createSupabaseAdminClient();
   const result: BatchResult = { postsCreated: 0, postsScheduled: 0, ideasProcessed: 0, errors: [] };
 
+  // Fetch voice profile if running for a specific team member
+  let voiceProfile: import('@/lib/types/content-pipeline').TeamVoiceProfile | undefined;
+  let authorName: string | undefined;
+  let authorTitle: string | undefined;
+  if (profileId) {
+    const { data: profile } = await supabase
+      .from('team_profiles')
+      .select('full_name, title, voice_profile')
+      .eq('id', profileId)
+      .single();
+    if (profile) {
+      voiceProfile = profile.voice_profile as import('@/lib/types/content-pipeline').TeamVoiceProfile;
+      authorName = profile.full_name;
+      authorTitle = profile.title || undefined;
+    }
+  }
+
   try {
-    // 1. Fetch pending ideas
-    const { data: pendingIdeas } = await supabase
+    // 1. Fetch pending ideas (filter by profile if set)
+    let ideasQuery = supabase
       .from('cp_content_ideas')
-      .select('id, user_id, transcript_id, title, core_insight, full_context, why_post_worthy, post_ready, hook, key_points, target_audience, content_type, content_pillar, relevance_score, source_quote, status, composite_score, last_surfaced_at, similarity_hash, created_at, updated_at')
+      .select('id, user_id, transcript_id, title, core_insight, full_context, why_post_worthy, post_ready, hook, key_points, target_audience, content_type, content_pillar, relevance_score, source_quote, status, composite_score, last_surfaced_at, similarity_hash, team_profile_id, created_at, updated_at')
       .eq('user_id', userId)
       .eq('status', 'extracted')
       .order('created_at', { ascending: false })
       .limit(50);
+
+    if (profileId) {
+      ideasQuery = ideasQuery.eq('team_profile_id', profileId);
+    }
+
+    const { data: pendingIdeas } = await ideasQuery;
 
     if (!pendingIdeas?.length) {
       return result;
@@ -250,7 +273,7 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
         let knowledgeContext: string | undefined;
         if (isEmbeddingsConfigured()) {
           try {
-            const brief = await buildContentBriefForIdea(userId, idea);
+            const brief = await buildContentBriefForIdea(userId, idea, { teamId, profileId });
             if (brief.compiledContext) {
               knowledgeContext = brief.compiledContext;
             }
@@ -281,6 +304,9 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
             content_type: idea.content_type,
           },
           knowledgeContext,
+          voiceProfile,
+          authorName,
+          authorTitle,
         });
 
         // Polish post
@@ -319,6 +345,7 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
             auto_publish_after: autoPublish && isFirstPost
               ? new Date(Date.now() + autoPublishDelayHours * 60 * 60 * 1000).toISOString()
               : null,
+            team_profile_id: profileId || null,
           });
 
         if (postError) {

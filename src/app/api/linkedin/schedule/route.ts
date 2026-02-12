@@ -53,9 +53,16 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('LeadShark not connected. Add your API key in Settings.');
     }
 
+    // LeadShark requires scheduled_time at least 15 minutes in the future
+    const minTime = new Date(Date.now() + 16 * 60 * 1000);
+    const requestedTime = new Date(scheduledTime);
+    const validScheduledTime = requestedTime > minTime
+      ? scheduledTime
+      : minTime.toISOString();
+
     const scheduleResult = await leadShark.createScheduledPost({
       content,
-      scheduled_time: scheduledTime,
+      scheduled_time: validScheduledTime,
       is_public: true,
       automation: enableAutomation
         ? {
@@ -73,15 +80,19 @@ export async function POST(request: Request) {
     }
 
     // Update lead magnet with scheduling info
-    await supabase
+    const { error: updateError } = await supabase
       .from('lead_magnets')
       .update({
         leadshark_post_id: scheduleResult.data?.id,
-        scheduled_time: scheduledTime,
+        scheduled_time: validScheduledTime,
         status: 'scheduled',
       })
       .eq('id', leadMagnetId)
       .eq('user_id', session.user.id);
+
+    if (updateError) {
+      logApiError('linkedin/schedule/db-update', new Error(updateError.message), { leadMagnetId });
+    }
 
     // Increment usage
     await supabase.rpc('increment_usage', {

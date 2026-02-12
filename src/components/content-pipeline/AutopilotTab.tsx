@@ -11,7 +11,11 @@ import { CONTENT_PILLAR_LABELS } from '@/lib/types/content-pipeline';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function AutopilotTab() {
+interface AutopilotTabProps {
+  profileId?: string | null;
+}
+
+export function AutopilotTab({ profileId }: AutopilotTabProps) {
   const [buffer, setBuffer] = useState<PipelinePost[]>([]);
   const [slots, setSlots] = useState<PostingSlot[]>([]);
   const [autopilotStatus, setAutopilotStatus] = useState<{
@@ -85,7 +89,7 @@ export function AutopilotTab() {
       await fetch('/api/content-pipeline/schedule/autopilot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postsPerBatch, autoPublish }),
+        body: JSON.stringify({ postsPerBatch, autoPublish, profileId: profileId || undefined }),
       });
       // Refresh after a short delay to let the task start
       setTimeout(() => fetchAll(), 2000);

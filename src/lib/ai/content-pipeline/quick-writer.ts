@@ -10,6 +10,9 @@ interface QuickWriteOptions {
   styleInstructions?: string;
   targetAudience?: string;
   knowledgeContext?: string;
+  voiceProfile?: Record<string, unknown>;
+  authorName?: string;
+  authorTitle?: string;
 }
 
 interface QuickWriteResult {
@@ -63,6 +66,9 @@ export async function quickWrite(
     idea: syntheticIdea,
     targetAudience: options.targetAudience,
     knowledgeContext: options.knowledgeContext,
+    voiceProfile: options.voiceProfile,
+    authorName: options.authorName,
+    authorTitle: options.authorTitle,
   });
 
   // Step 3: Polish the result

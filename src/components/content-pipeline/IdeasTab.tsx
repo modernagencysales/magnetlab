@@ -38,7 +38,11 @@ const CONTENT_TYPES: { value: ContentType | ''; label: string }[] = [
   { value: 'contrarian', label: 'Contrarian' },
 ];
 
-export function IdeasTab() {
+interface IdeasTabProps {
+  profileId?: string | null;
+}
+
+export function IdeasTab({ profileId }: IdeasTabProps) {
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,6 +61,7 @@ export function IdeasTab() {
       if (statusFilter) params.append('status', statusFilter);
       if (pillarFilter) params.append('pillar', pillarFilter);
       if (typeFilter) params.append('content_type', typeFilter);
+      if (profileId) params.append('team_profile_id', profileId);
 
       const response = await fetch(`/api/content-pipeline/ideas?${params}`);
       const data = await response.json();
@@ -66,7 +71,7 @@ export function IdeasTab() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, pillarFilter, typeFilter]);
+  }, [statusFilter, pillarFilter, typeFilter, profileId]);
 
   useEffect(() => {
     fetchIdeas();
@@ -208,6 +213,11 @@ export function IdeasTab() {
               <div className="mb-2 flex items-center gap-2 flex-wrap">
                 <PillarBadge pillar={idea.content_pillar} />
                 <StatusBadge status={idea.status} />
+                {(idea as ContentIdea & { profile_name?: string | null }).profile_name && (
+                  <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                    {(idea as ContentIdea & { profile_name?: string | null }).profile_name}
+                  </span>
+                )}
               </div>
 
               <h3 className="mb-1 font-medium text-sm">{idea.title}</h3>

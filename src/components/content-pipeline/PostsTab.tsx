@@ -15,7 +15,11 @@ const STATUS_FILTERS: { value: PostStatus | ''; label: string }[] = [
   { value: 'published', label: 'Published' },
 ];
 
-export function PostsTab() {
+interface PostsTabProps {
+  profileId?: string | null;
+}
+
+export function PostsTab({ profileId }: PostsTabProps) {
   const [posts, setPosts] = useState<PipelinePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<PostStatus | ''>('');
@@ -29,6 +33,7 @@ export function PostsTab() {
       const params = new URLSearchParams();
       if (statusFilter) params.append('status', statusFilter);
       params.append('is_buffer', 'false');
+      if (profileId) params.append('team_profile_id', profileId);
 
       const response = await fetch(`/api/content-pipeline/posts?${params}`);
       const data = await response.json();
@@ -38,7 +43,7 @@ export function PostsTab() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, profileId]);
 
   useEffect(() => {
     fetchPosts();
@@ -163,6 +168,11 @@ export function PostsTab() {
                   <div className="flex-1 min-w-0">
                     <div className="mb-2 flex items-center gap-2 flex-wrap">
                       <StatusBadge status={post.status} />
+                      {(post as PipelinePost & { profile_name?: string | null }).profile_name && (
+                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                          {(post as PipelinePost & { profile_name?: string | null }).profile_name}
+                        </span>
+                      )}
                       {post.hook_score !== null && post.hook_score !== undefined && (
                         <span className={cn(
                           'rounded-full px-2 py-0.5 text-xs font-semibold',

@@ -11,21 +11,39 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { raw_thought, template_structure, style_instructions, target_audience } = body;
+    const { raw_thought, template_structure, style_instructions, target_audience, profileId } = body;
 
     if (!raw_thought || typeof raw_thought !== 'string' || raw_thought.trim().length === 0) {
       return NextResponse.json({ error: 'raw_thought is required' }, { status: 400 });
+    }
+
+    const supabase = createSupabaseAdminClient();
+
+    // If a profile is specified, fetch voice profile for the writer
+    let voiceOptions: { voiceProfile?: Record<string, unknown>; authorName?: string; authorTitle?: string } = {};
+    if (profileId) {
+      const { data: profile } = await supabase
+        .from('team_profiles')
+        .select('full_name, title, voice_profile')
+        .eq('id', profileId)
+        .single();
+      if (profile) {
+        voiceOptions = {
+          voiceProfile: profile.voice_profile as Record<string, unknown>,
+          authorName: profile.full_name,
+          authorTitle: profile.title || undefined,
+        };
+      }
     }
 
     const result = await quickWrite(raw_thought, {
       templateStructure: template_structure,
       styleInstructions: style_instructions,
       targetAudience: target_audience,
+      ...voiceOptions,
     });
 
     // Save as a pipeline post
-    const supabase = createSupabaseAdminClient();
-
     const { data: post, error } = await supabase
       .from('cp_pipeline_posts')
       .insert({
@@ -39,6 +57,7 @@ export async function POST(request: NextRequest) {
         hook_score: result.polish.hookScore?.score || null,
         polish_status: 'polished',
         polish_notes: result.polish.changes.join('; '),
+        team_profile_id: profileId || null,
       })
       .select()
       .single();

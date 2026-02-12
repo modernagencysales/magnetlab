@@ -9,14 +9,18 @@ export async function buildContentBrief(
   options: {
     maxEntries?: number;
     includeCategories?: ('insight' | 'question' | 'product_intel')[];
+    teamId?: string;
+    profileId?: string;
   } = {}
 ): Promise<ContentBrief> {
-  const { maxEntries = 15, includeCategories = ['insight', 'question', 'product_intel'] } = options;
+  const { maxEntries = 15, includeCategories = ['insight', 'question', 'product_intel'], teamId, profileId } = options;
 
   // Search knowledge base for relevant entries
   const searchResult = await searchKnowledge(userId, topic, {
     limit: maxEntries,
     threshold: 0.6,
+    teamId,
+    profileId,
   });
 
   if (searchResult.error) {
@@ -112,12 +116,16 @@ Example: ["Contrarian take on why X actually hurts more than it helps", "Step-by
 
 export async function buildContentBriefForIdea(
   userId: string,
-  idea: { title: string; core_insight: string | null; content_type: string | null }
+  idea: { title: string; core_insight: string | null; content_type: string | null },
+  options: { teamId?: string; profileId?: string } = {}
 ): Promise<ContentBrief> {
   const searchQuery = [
     idea.title,
     idea.core_insight,
   ].filter(Boolean).join(' ');
 
-  return buildContentBrief(userId, searchQuery);
+  return buildContentBrief(userId, searchQuery, {
+    teamId: options.teamId,
+    profileId: options.profileId,
+  });
 }

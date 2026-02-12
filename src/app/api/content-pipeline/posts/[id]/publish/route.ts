@@ -42,8 +42,13 @@ export async function POST(
       );
     }
 
-    // Use existing scheduled_time or schedule for now
-    const scheduledTime = post.scheduled_time || new Date().toISOString();
+    // Use existing scheduled_time if it's far enough in the future, otherwise schedule 16 min from now
+    // LeadShark requires scheduled_time to be at least 15 minutes in the future
+    const minTime = new Date(Date.now() + 16 * 60 * 1000);
+    const existingTime = post.scheduled_time ? new Date(post.scheduled_time) : null;
+    const scheduledTime = (existingTime && existingTime > minTime)
+      ? post.scheduled_time
+      : minTime.toISOString();
 
     const result = await leadshark.createScheduledPost({
       content,

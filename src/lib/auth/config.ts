@@ -97,6 +97,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               .eq('status', 'pending')
               .is('member_id', null);
 
+            // Auto-link pending team_profiles
+            await supabase
+              .from('team_profiles')
+              .update({ user_id: existingUser.id, status: 'active', accepted_at: new Date().toISOString() })
+              .eq('email', email)
+              .eq('status', 'pending')
+              .is('user_id', null);
+
             console.log('[Auth] Login successful for:', email);
             return {
               id: existingUser.id,
@@ -142,6 +150,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .eq('email', email)
             .eq('status', 'pending')
             .is('member_id', null);
+
+          // Auto-link pending team_profiles
+          await supabase
+            .from('team_profiles')
+            .update({ user_id: newUser.id, status: 'active', accepted_at: new Date().toISOString() })
+            .eq('email', email)
+            .eq('status', 'pending')
+            .is('user_id', null);
 
           console.log('[Auth] New user created:', email);
           return {
@@ -207,6 +223,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               .eq('email', user.email)
               .eq('status', 'pending')
               .is('member_id', null);
+
+            // Auto-link pending team_profiles
+            await supabase
+              .from('team_profiles')
+              .update({ user_id: existingUser.id, status: 'active', accepted_at: new Date().toISOString() })
+              .eq('email', user.email)
+              .eq('status', 'pending')
+              .is('user_id', null);
           } else {
             // Auto-create new user (no password_hash for OAuth-only users)
             const { data: newUser, error } = await supabase
@@ -241,6 +265,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               .eq('email', user.email)
               .eq('status', 'pending')
               .is('member_id', null);
+
+            // Auto-link pending team_profiles
+            await supabase
+              .from('team_profiles')
+              .update({ user_id: newUser.id, status: 'active', accepted_at: new Date().toISOString() })
+              .eq('email', user.email)
+              .eq('status', 'pending')
+              .is('user_id', null);
           }
         } catch (error) {
           console.error('[Auth/Google] signIn callback error:', error);

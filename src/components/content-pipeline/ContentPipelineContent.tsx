@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { Mic, Brain, Lightbulb, FileText, Zap, Loader2, LayoutGrid, LayoutTemplate, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ProfileSwitcher } from './ProfileSwitcher';
 
 // Dynamic imports for code splitting — each tab loads only when selected
 const TranscriptsTab = dynamic(() => import('./TranscriptsTab').then((m) => ({ default: m.TranscriptsTab })), { ssr: false });
@@ -38,15 +39,22 @@ function TabLoader() {
 export function ContentPipelineContent() {
   const [activeTab, setActiveTab] = useState<Tab>('transcripts');
   const [showQuickWrite, setShowQuickWrite] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold">Content Pipeline</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Turn call transcripts into LinkedIn posts on autopilot
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold">Content Pipeline</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Turn call transcripts into LinkedIn posts on autopilot
+          </p>
+        </div>
+        <ProfileSwitcher
+          selectedProfileId={selectedProfileId}
+          onProfileChange={setSelectedProfileId}
+        />
       </div>
 
       {/* Tabs */}
@@ -70,13 +78,13 @@ export function ContentPipelineContent() {
 
       {/* Tab Content */}
       <Suspense fallback={<TabLoader />}>
-        {activeTab === 'transcripts' && <TranscriptsTab />}
+        {activeTab === 'transcripts' && <TranscriptsTab profileId={selectedProfileId} />}
         {activeTab === 'brain' && <KnowledgeBrainTab />}
-        {activeTab === 'ideas' && <IdeasTab />}
-        {activeTab === 'posts' && <PostsTab />}
+        {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
+        {activeTab === 'posts' && <PostsTab profileId={selectedProfileId} />}
         {activeTab === 'pipeline' && <PipelineTab />}
         {activeTab === 'templates' && <TemplatesTab />}
-        {activeTab === 'autopilot' && <AutopilotTab />}
+        {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}
       </Suspense>
 
       {/* Quick Write FAB */}
@@ -91,6 +99,7 @@ export function ContentPipelineContent() {
         <QuickWriteModal
           onClose={() => setShowQuickWrite(false)}
           onPostCreated={() => {}}
+          profileId={selectedProfileId}
         />
       )}
     </div>

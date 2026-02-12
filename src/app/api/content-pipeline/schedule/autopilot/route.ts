@@ -39,12 +39,16 @@ export async function POST(request: NextRequest) {
     const postsPerBatch = Math.max(1, Math.min(10, Number(body.postsPerBatch) || 3));
     const bufferTarget = Math.max(1, Math.min(20, Number(body.bufferTarget) || 5));
     const autoPublish = body.autoPublish === true;
+    const profileId = body.profileId || undefined;
+    const teamId = body.teamId || undefined;
 
     const handle = await tasks.trigger<typeof runAutopilot>('run-autopilot', {
       userId: session.user.id,
       postsPerBatch,
       bufferTarget,
       autoPublish,
+      teamId,
+      profileId,
     });
 
     return NextResponse.json({

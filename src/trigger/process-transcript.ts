@@ -8,6 +8,8 @@ import { generateEmbedding } from '@/lib/ai/embeddings';
 interface ProcessTranscriptPayload {
   userId: string;
   transcriptId: string;
+  teamId?: string;
+  speakerProfileId?: string;
 }
 
 export const processTranscript = task({
@@ -15,7 +17,7 @@ export const processTranscript = task({
   maxDuration: 600, // 10 minutes — 4 sequential AI calls + embedding batches
   retry: { maxAttempts: 2 },
   run: async (payload: ProcessTranscriptPayload) => {
-    const { userId, transcriptId } = payload;
+    const { userId, transcriptId, teamId, speakerProfileId } = payload;
     const supabase = createSupabaseAdminClient();
 
     logger.info('Processing transcript', { userId, transcriptId });
@@ -103,6 +105,8 @@ export const processTranscript = task({
         tags: entry.tags,
         transcript_type: transcriptType,
         embedding: embeddings[idx] ? JSON.stringify(embeddings[idx]) : null,
+        team_id: teamId || null,
+        source_profile_id: speakerProfileId || null,
       };
     });
 
@@ -166,6 +170,7 @@ export const processTranscript = task({
         content_type: idea.content_type,
         content_pillar: idea.content_pillar,
         status: 'extracted',
+        team_profile_id: speakerProfileId || null,
       }));
 
       const { error: ideasError } = await supabase

@@ -6,9 +6,10 @@ import { X, Loader2, Sparkles } from 'lucide-react';
 interface QuickWriteModalProps {
   onClose: () => void;
   onPostCreated: () => void;
+  profileId?: string | null;
 }
 
-export function QuickWriteModal({ onClose, onPostCreated }: QuickWriteModalProps) {
+export function QuickWriteModal({ onClose, onPostCreated, profileId }: QuickWriteModalProps) {
   const [rawThought, setRawThought] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,6 +32,7 @@ export function QuickWriteModal({ onClose, onPostCreated }: QuickWriteModalProps
         body: JSON.stringify({
           raw_thought: rawThought,
           target_audience: targetAudience || undefined,
+          profileId: profileId || undefined,
         }),
       });
 

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { X, Loader2, Check, Upload, FileText, Clipboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { TeamProfile } from '@/lib/types/content-pipeline';
 
 interface TranscriptPasteModalProps {
   onClose: () => void;
@@ -21,6 +22,19 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [teamProfiles, setTeamProfiles] = useState<TeamProfile[]>([]);
+  const [speakerProfileId, setSpeakerProfileId] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/teams/profiles')
+      .then(r => r.json())
+      .then(data => {
+        if (data.profiles?.length > 1) {
+          setTeamProfiles(data.profiles);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const ACCEPTED_TYPES = '.txt,.vtt,.srt';
 
@@ -59,7 +73,11 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
         const response = await fetch('/api/content-pipeline/transcripts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: title.trim() || undefined, transcript: transcript.trim() }),
+          body: JSON.stringify({
+            title: title.trim() || undefined,
+            transcript: transcript.trim(),
+            speakerProfileId: speakerProfileId || undefined,
+          }),
         });
         if (!response.ok) {
           const data = await response.json();
@@ -161,6 +179,28 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
                   placeholder="e.g., Client Discovery Call"
                 />
               </div>
+
+              {/* Speaker selector — only shown when team has multiple profiles */}
+              {teamProfiles.length > 1 && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Speaker</label>
+                  <select
+                    value={speakerProfileId}
+                    onChange={(e) => setSpeakerProfileId(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Auto-detect / Default</option>
+                    {teamProfiles.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.full_name}{p.title ? ` (${p.title})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Select who was speaking. Ideas will be assigned to this person.
+                  </p>
+                </div>
+              )}
 
               {mode === 'paste' ? (
                 /* Paste mode */

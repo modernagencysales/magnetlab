@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
 
-  // If viewing another owner's catalog, verify membership
+  // If viewing another owner's catalog, verify membership via team_members OR team_profiles
   if (ownerId !== session.user.id) {
     const { data: membership } = await supabase
       .from('team_members')
@@ -26,7 +26,29 @@ export async function GET(request: NextRequest) {
       .eq('status', 'active')
       .single();
 
-    if (!membership) {
+    let hasAccess = !!membership;
+
+    if (!hasAccess) {
+      // Check team_profiles: find the owner's team, then check if user is a profile member
+      const { data: ownerTeam } = await supabase
+        .from('teams')
+        .select('id')
+        .eq('owner_id', ownerId)
+        .single();
+
+      if (ownerTeam) {
+        const { data: profileMembership } = await supabase
+          .from('team_profiles')
+          .select('id')
+          .eq('team_id', ownerTeam.id)
+          .eq('user_id', session.user.id)
+          .eq('status', 'active')
+          .single();
+        hasAccess = !!profileMembership;
+      }
+    }
+
+    if (!hasAccess) {
       return ApiErrors.forbidden('You are not a member of this team');
     }
   }
