@@ -4,6 +4,7 @@
 
 const GTM_SYSTEM_WEBHOOK_URL = process.env.GTM_SYSTEM_WEBHOOK_URL;
 const GTM_SYSTEM_WEBHOOK_SECRET = process.env.GTM_SYSTEM_WEBHOOK_SECRET;
+const GTM_SYSTEM_TENANT_ID = process.env.GTM_SYSTEM_TENANT_ID;
 const GTM_WEBHOOK_TIMEOUT_MS = 5000; // 5 seconds
 
 export interface GtmLeadCreatedPayload {
@@ -90,6 +91,7 @@ export async function fireGtmLeadMagnetDeployedWebhook(
         headers: {
           'Content-Type': 'application/json',
           'x-webhook-secret': GTM_SYSTEM_WEBHOOK_SECRET,
+          ...(GTM_SYSTEM_TENANT_ID && { 'x-tenant-id': GTM_SYSTEM_TENANT_ID }),
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(GTM_WEBHOOK_TIMEOUT_MS),
@@ -139,6 +141,7 @@ export async function fireGtmLeadQualifiedWebhook(
         headers: {
           'Content-Type': 'application/json',
           'x-webhook-secret': GTM_SYSTEM_WEBHOOK_SECRET,
+          ...(GTM_SYSTEM_TENANT_ID && { 'x-tenant-id': GTM_SYSTEM_TENANT_ID }),
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(GTM_WEBHOOK_TIMEOUT_MS),
@@ -188,6 +191,7 @@ export async function fireGtmLeadCreatedWebhook(
         headers: {
           'Content-Type': 'application/json',
           'x-webhook-secret': GTM_SYSTEM_WEBHOOK_SECRET,
+          ...(GTM_SYSTEM_TENANT_ID && { 'x-tenant-id': GTM_SYSTEM_TENANT_ID }),
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(GTM_WEBHOOK_TIMEOUT_MS),
