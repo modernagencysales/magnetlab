@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { updateIntegrationVerified } from '@/lib/utils/encrypted-storage';
 import { LeadSharkClient } from '@/lib/integrations/leadshark';
+import { getUnipileClient } from '@/lib/integrations/unipile';
 import { LoopsClient } from '@/lib/integrations/loops';
 import { Resend } from 'resend';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
@@ -22,7 +23,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { service, api_key, metadata } = body;
 
-    if (!service || !api_key) {
+    // Unipile uses shared subscription (no per-user api_key), only needs metadata.unipile_account_id
+    if (!service || (!api_key && service !== 'unipile')) {
       return ApiErrors.validationError('Service and api_key are required');
     }
 
@@ -59,6 +61,24 @@ export async function POST(request: NextRequest) {
         } catch (err) {
           verified = false;
           error = err instanceof Error ? err.message : 'Failed to verify Resend API key';
+        }
+        break;
+      }
+      case 'unipile': {
+        try {
+          const accountId = metadata?.unipile_account_id;
+          if (!accountId || typeof accountId !== 'string') {
+            verified = false;
+            error = 'A Unipile account ID is required in metadata.unipile_account_id';
+            break;
+          }
+          const client = getUnipileClient();
+          const result = await client.verifyConnection(accountId);
+          verified = result.connected;
+          error = result.error || null;
+        } catch (err) {
+          verified = false;
+          error = err instanceof Error ? err.message : 'Failed to verify Unipile connection';
         }
         break;
       }

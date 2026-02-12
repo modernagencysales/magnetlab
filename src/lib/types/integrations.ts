@@ -57,6 +57,28 @@ export interface LeadSharkEnrichmentResult {
 }
 
 // ============================================
+// UNIPILE TYPES
+// ============================================
+
+export interface UnipilePost {
+  id: string;
+  social_id: string;
+  account_id: string;
+  provider: 'LINKEDIN';
+  text: string;
+  created_at: string;
+}
+
+export interface UnipilePostStats {
+  id: string;
+  social_id: string;
+  likes_count: number;
+  comments_count: number;
+  shares_count: number;
+  views_count: number;
+}
+
+// ============================================
 // STRIPE TYPES
 // ============================================
 

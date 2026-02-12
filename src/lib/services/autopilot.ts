@@ -437,7 +437,7 @@ export async function getBufferStatus(userId: string) {
 
   const { data } = await supabase
     .from('cp_pipeline_posts')
-    .select('id, user_id, idea_id, draft_content, final_content, dm_template, cta_word, variations, status, scheduled_time, leadshark_post_id, hook_score, polish_status, polish_notes, is_buffer, buffer_position, auto_publish_after, published_at, engagement_stats, created_at, updated_at')
+    .select('id, user_id, idea_id, draft_content, final_content, dm_template, cta_word, variations, status, scheduled_time, leadshark_post_id, linkedin_post_id, publish_provider, hook_score, polish_status, polish_notes, is_buffer, buffer_position, auto_publish_after, published_at, engagement_stats, created_at, updated_at')
     .eq('user_id', userId)
     .eq('is_buffer', true)
     .eq('status', 'approved')

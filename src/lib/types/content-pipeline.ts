@@ -207,6 +207,9 @@ export interface PipelinePost {
   status: PostStatus;
   scheduled_time: string | null;
   leadshark_post_id: string | null;
+  linkedin_post_id: string | null;
+  publish_provider: string | null;
+  lead_magnet_id: string | null;
   hook_score: number | null;
   polish_status: PolishStatus | null;
   polish_notes: string | null;

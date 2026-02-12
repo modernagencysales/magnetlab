@@ -1,121 +1,167 @@
 import { schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getUserLeadSharkClient } from '@/lib/integrations/leadshark';
+import { getUserLinkedInPublisher } from '@/lib/integrations/linkedin-publisher';
 
 export const autoPublishCheck = schedules.task({
   id: 'auto-publish-check',
-  cron: '0 * * * *', // Every hour
+  cron: '*/5 * * * *', // Every 5 minutes
   maxDuration: 300,
   run: async () => {
     const supabase = createSupabaseAdminClient();
+    const now = new Date().toISOString();
 
     logger.info('Starting auto-publish check');
 
-    // Find posts that are past their auto-publish deadline
-    const { data: posts, error } = await supabase
+    // ==========================================
+    // STEP 1: Auto-approve posts past their deadline
+    // ==========================================
+    const { data: approvedPosts, error: approveQueryError } = await supabase
       .from('cp_pipeline_posts')
-      .select('id, user_id, draft_content, final_content, scheduled_time, auto_publish_after')
+      .select('id, user_id')
       .eq('status', 'approved')
       .not('auto_publish_after', 'is', null)
-      .lte('auto_publish_after', new Date().toISOString())
+      .lte('auto_publish_after', now)
       .limit(20);
 
-    if (error) {
-      logger.error('Failed to query auto-publish posts', { error: error.message });
-      return { processed: 0, errors: [error.message] };
+    if (approveQueryError) {
+      logger.error('Failed to query auto-approve posts', { error: approveQueryError.message });
+    } else if (approvedPosts && approvedPosts.length > 0) {
+      logger.info(`Auto-approving ${approvedPosts.length} posts past deadline`);
+      for (const post of approvedPosts) {
+        const { error: updateErr } = await supabase
+          .from('cp_pipeline_posts')
+          .update({
+            status: 'scheduled',
+            scheduled_time: now,
+          })
+          .eq('id', post.id)
+          .eq('user_id', post.user_id);
+
+        if (updateErr) {
+          logger.error(`Failed to auto-approve post ${post.id}`, { error: updateErr.message });
+        }
+      }
     }
 
-    if (!posts || posts.length === 0) {
-      logger.info('No posts ready for auto-publish');
-      return { processed: 0, errors: [] };
+    // ==========================================
+    // STEP 2: Publish scheduled posts whose time has arrived
+    // ==========================================
+    const { data: scheduledPosts, error: scheduleError } = await supabase
+      .from('cp_pipeline_posts')
+      .select('id, user_id, draft_content, final_content, lead_magnet_id')
+      .eq('status', 'scheduled')
+      .not('scheduled_time', 'is', null)
+      .lte('scheduled_time', now)
+      .limit(20);
+
+    if (scheduleError) {
+      logger.error('Failed to query scheduled posts', { error: scheduleError.message });
+      return { approved: approvedPosts?.length || 0, published: 0, errors: [scheduleError.message] };
     }
 
-    logger.info(`Found ${posts.length} posts ready for auto-publish`);
+    if (!scheduledPosts || scheduledPosts.length === 0) {
+      logger.info('No scheduled posts ready for publishing');
+      return { approved: approvedPosts?.length || 0, published: 0, errors: [] };
+    }
+
+    logger.info(`Found ${scheduledPosts.length} scheduled posts ready to publish`);
 
     let published = 0;
     const errors: string[] = [];
 
-    for (const post of posts) {
+    for (const post of scheduledPosts) {
       try {
-        const content = post.final_content || post.draft_content;
-        if (!content) {
-          logger.warn(`Post ${post.id} has no content, skipping`);
+        // Atomic claim: only proceed if still scheduled (prevents double-publish from overlapping cron runs)
+        const { data: claimed, error: claimErr } = await supabase
+          .from('cp_pipeline_posts')
+          .update({ status: 'approved' }) // temporarily claim via status change
+          .eq('id', post.id)
+          .eq('status', 'scheduled') // only if still scheduled
+          .select('id')
+          .single();
+
+        if (claimErr || !claimed) {
+          logger.info(`Post ${post.id} already claimed by another run, skipping`);
           continue;
         }
 
-        // LeadShark requires scheduled_time at least 15 minutes in the future
-        const minTime = new Date(Date.now() + 16 * 60 * 1000);
-        const existingTime = post.scheduled_time ? new Date(post.scheduled_time) : null;
-        const scheduledTime = (existingTime && existingTime > minTime)
-          ? post.scheduled_time
-          : minTime.toISOString();
-
-        // Try LeadShark scheduling
-        let leadshark = null;
-        try {
-          leadshark = await getUserLeadSharkClient(post.user_id);
-        } catch (lsErr) {
-          logger.warn(`Failed to get LeadShark client for user ${post.user_id}`, {
-            error: lsErr instanceof Error ? lsErr.message : String(lsErr),
-          });
+        const content = post.final_content || post.draft_content;
+        if (!content) {
+          logger.warn(`Post ${post.id} has no content, reverting to scheduled`);
+          await supabase
+            .from('cp_pipeline_posts')
+            .update({ status: 'scheduled' })
+            .eq('id', post.id);
+          continue;
         }
 
-        if (leadshark) {
-          const result = await leadshark.createScheduledPost({
-            content,
-            scheduled_time: scheduledTime,
-          });
+        const publisher = await getUserLinkedInPublisher(post.user_id);
+        const publishedAt = new Date().toISOString();
 
-          if (result.error) {
-            throw new Error(`LeadShark error: ${result.error}`);
-          }
+        if (publisher) {
+          const result = await publisher.publishNow(content);
 
           const { error: updateError } = await supabase
             .from('cp_pipeline_posts')
             .update({
-              status: 'scheduled',
-              leadshark_post_id: result.data?.id || null,
+              status: 'published',
+              linkedin_post_id: result.postId || null,
+              publish_provider: result.provider,
+              published_at: publishedAt,
+              ...(result.provider === 'leadshark' ? { leadshark_post_id: result.postId || null } : {}),
             })
-            .eq('id', post.id)
-            .eq('user_id', post.user_id);
+            .eq('id', post.id);
 
           if (updateError) {
-            logger.error(`DB update failed after LeadShark schedule for post ${post.id}`, { error: updateError.message });
+            logger.error(`DB update failed after publish for post ${post.id}`, { error: updateError.message });
           }
 
-          logger.info(`Post ${post.id} scheduled via LeadShark`, { leadsharkId: result.data?.id });
+          // Update linked lead_magnet if present
+          if (post.lead_magnet_id) {
+            await supabase
+              .from('lead_magnets')
+              .update({
+                linkedin_post_id: result.postId || null,
+                publish_provider: result.provider,
+                status: 'published',
+              })
+              .eq('id', post.lead_magnet_id);
+          }
+
+          logger.info(`Post ${post.id} published via ${result.provider}`, { postId: result.postId });
         } else {
-          // No LeadShark — mark as scheduled locally
+          // No publisher available — mark as published locally (no LinkedIn post created)
           const { error: localError } = await supabase
             .from('cp_pipeline_posts')
-            .update({ status: 'scheduled' })
-            .eq('id', post.id)
-            .eq('user_id', post.user_id);
+            .update({
+              status: 'published',
+              published_at: publishedAt,
+            })
+            .eq('id', post.id);
 
           if (localError) {
-            logger.error(`DB update failed for local schedule of post ${post.id}`, { error: localError.message });
+            logger.error(`DB update failed for local publish of post ${post.id}`, { error: localError.message });
           }
 
-          logger.info(`Post ${post.id} marked as scheduled (no LeadShark)`);
+          logger.info(`Post ${post.id} marked as published (no publisher configured)`);
         }
 
         published++;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error';
-        logger.error(`Failed to auto-publish post ${post.id}`, { error: message });
+        logger.error(`Failed to publish post ${post.id}`, { error: message });
         errors.push(`Post ${post.id}: ${message}`);
 
         // Mark as failed
         await supabase
           .from('cp_pipeline_posts')
           .update({ status: 'failed' })
-          .eq('id', post.id)
-          .eq('user_id', post.user_id);
+          .eq('id', post.id);
       }
     }
 
     logger.info(`Auto-publish complete: ${published} published, ${errors.length} errors`);
 
-    return { processed: published, errors };
+    return { approved: approvedPosts?.length || 0, published, errors };
   },
 });

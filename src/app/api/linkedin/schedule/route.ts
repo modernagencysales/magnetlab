@@ -1,9 +1,9 @@
 // API Route: Schedule LinkedIn Post
 // POST /api/linkedin/schedule
+// Creates a cp_pipeline_posts row; the auto-publish cron handles actual publishing.
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getUserLeadSharkClient } from '@/lib/integrations/leadshark';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 
@@ -19,16 +19,10 @@ export async function POST(request: Request) {
       leadMagnetId,
       content,
       scheduledTime,
-      enableAutomation,
-      keywords,
-      dmTemplate,
     } = body as {
       leadMagnetId: string;
       content: string;
       scheduledTime: string;
-      enableAutomation?: boolean;
-      keywords?: string[];
-      dmTemplate?: string;
     };
 
     if (!leadMagnetId || !content || !scheduledTime) {
@@ -47,44 +41,29 @@ export async function POST(request: Request) {
       return ApiErrors.forbidden('Scheduling requires an Unlimited subscription');
     }
 
-    // Schedule via LeadShark using user's encrypted API key
-    const leadShark = await getUserLeadSharkClient(session.user.id);
-    if (!leadShark) {
-      return ApiErrors.validationError('LeadShark not connected. Add your API key in Settings.');
-    }
+    // Insert a cp_pipeline_posts row — the cron task will publish it
+    const { data: newPost, error: insertError } = await supabase
+      .from('cp_pipeline_posts')
+      .insert({
+        user_id: session.user.id,
+        final_content: content,
+        status: 'scheduled',
+        scheduled_time: scheduledTime,
+        lead_magnet_id: leadMagnetId,
+      })
+      .select('id')
+      .single();
 
-    // LeadShark requires scheduled_time at least 15 minutes in the future
-    const minTime = new Date(Date.now() + 16 * 60 * 1000);
-    const requestedTime = new Date(scheduledTime);
-    const validScheduledTime = requestedTime > minTime
-      ? scheduledTime
-      : minTime.toISOString();
-
-    const scheduleResult = await leadShark.createScheduledPost({
-      content,
-      scheduled_time: validScheduledTime,
-      is_public: true,
-      automation: enableAutomation
-        ? {
-            keywords: keywords || [],
-            dm_template: dmTemplate || '',
-            auto_connect: true,
-            auto_like: true,
-          }
-        : undefined,
-    });
-
-    if (scheduleResult.error) {
-      logApiError('linkedin/schedule/leadshark', new Error(scheduleResult.error), { leadMagnetId });
-      return ApiErrors.internalError(scheduleResult.error);
+    if (insertError) {
+      logApiError('linkedin/schedule/insert', new Error(insertError.message), { leadMagnetId });
+      return ApiErrors.internalError('Failed to create scheduled post');
     }
 
     // Update lead magnet with scheduling info
     const { error: updateError } = await supabase
       .from('lead_magnets')
       .update({
-        leadshark_post_id: scheduleResult.data?.id,
-        scheduled_time: validScheduledTime,
+        scheduled_time: scheduledTime,
         status: 'scheduled',
       })
       .eq('id', leadMagnetId)
@@ -102,8 +81,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      postId: scheduleResult.data?.id,
+      postId: newPost.id,
       scheduledTime,
+      scheduled_via: 'pending',
     });
   } catch (error) {
     logApiError('linkedin/schedule', error);
