@@ -39,7 +39,7 @@ export default function ImportLeadMagnetPage() {
       const { leadMagnetId } = await response.json();
 
       // Redirect to the funnel editor
-      router.push(`/library/${leadMagnetId}/funnel`);
+      router.push(`/magnets/${leadMagnetId}?tab=funnel`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to import lead magnet');
       setLoading(false);
@@ -52,11 +52,11 @@ export default function ImportLeadMagnetPage() {
     <div className="container mx-auto max-w-2xl px-4 py-8">
       {/* Back link */}
       <Link
-        href="/assets"
+        href="/pages"
         className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Assets
+        Back to Pages
       </Link>
 
       {/* Header */}

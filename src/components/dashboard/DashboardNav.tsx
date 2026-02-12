@@ -7,9 +7,9 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import posthog from 'posthog-js';
 import {
-  Magnet, BarChart3, Settings, Plus, LogOut, FileText, Globe, Users,
-  ChevronDown, BookOpen, PenTool, LayoutDashboard, Menu, X, Sun, Moon,
-  ArrowLeftRight,
+  Magnet, Settings, Plus, LogOut, Globe, Users,
+  ChevronDown, PenTool, Menu, X, Sun, Moon,
+  ArrowLeftRight, Home, Brain,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -33,12 +33,12 @@ interface DashboardNavProps {
 // ─── Nav config ──────────────────────────────────────────
 
 const mainNav = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/content', label: 'Content', icon: PenTool },
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/magnets', label: 'Lead Magnets', icon: Magnet },
+  { href: '/pages', label: 'Pages', icon: Globe },
+  { href: '/knowledge', label: 'Knowledge', icon: Brain },
+  { href: '/posts', label: 'Posts', icon: PenTool },
   { href: '/leads', label: 'Leads', icon: Users },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/assets', label: 'Assets', icon: Globe },
-  { href: '/swipe-file', label: 'Swipe File', icon: FileText },
 ];
 
 const teamMemberNav = [
@@ -46,7 +46,6 @@ const teamMemberNav = [
 ];
 
 const bottomNav = [
-  { href: '/docs', label: 'API Docs', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -126,7 +125,7 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
             Lead Magnet
           </Link>
           <Link
-            href="/create/page-quick"
+            href="/pages/new"
             onClick={() => { setOpen(false); onNavigate?.(); }}
             className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
@@ -144,7 +143,7 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
 function NavLink({ href, label, icon: Icon, onNavigate }: {
   href: string;
   label: string;
-  icon: typeof LayoutDashboard;
+  icon: typeof Home;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -152,10 +151,14 @@ function NavLink({ href, label, icon: Icon, onNavigate }: {
     ? pathname === '/'
     : pathname === href || pathname.startsWith(href + '/');
 
+  // data-tour attribute for product tour targeting
+  const tourId = href === '/' ? 'home' : href.slice(1);
+
   return (
     <Link
       href={href}
       onClick={onNavigate}
+      data-tour={tourId}
       className={cn(
         'flex items-center gap-2.5 w-full p-2 rounded-lg text-xs font-medium transition-all',
         isActive
@@ -182,11 +185,8 @@ function SidebarContent({ user, teamContext, onNavigate }: {
   const displayLabel = user.name || user.email?.split('@')[0] || 'User';
   const isTeamMode = teamContext?.isTeamMember && teamContext.activeOwnerId;
 
-  // In team mode, show only catalog nav. In normal mode, show full nav + catalog link.
+  // In team mode, show only catalog nav. In normal mode, show full nav.
   const navItems = isTeamMode ? teamMemberNav : mainNav;
-  const extraNavItems = !isTeamMode
-    ? [{ href: '/catalog', label: 'Catalog', icon: Magnet }]
-    : [];
 
   return (
     <div className="flex h-full flex-col">
@@ -228,15 +228,6 @@ function SidebarContent({ user, teamContext, onNavigate }: {
         {navItems.map((item) => (
           <NavLink key={item.href} {...item} onNavigate={onNavigate} />
         ))}
-
-        {extraNavItems.length > 0 && (
-          <>
-            {!isTeamMode && <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-3" />}
-            {extraNavItems.map((item) => (
-              <NavLink key={item.href} {...item} onNavigate={onNavigate} />
-            ))}
-          </>
-        )}
 
         <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-3" />
 

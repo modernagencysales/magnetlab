@@ -341,10 +341,10 @@ export function FunnelBuilder({
         {/* Save Button */}
         <div className="flex items-center justify-between pt-4 border-t">
           <Link
-            href="/library"
+            href="/magnets"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Back to Library
+            Back to Lead Magnets
           </Link>
           <button
             onClick={handleSave}

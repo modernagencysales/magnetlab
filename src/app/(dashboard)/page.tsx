@@ -13,11 +13,12 @@ import {
   CheckCircle2,
   Circle,
   ArrowRight,
+  Globe,
 } from 'lucide-react';
 import { DashboardWelcomeClient } from '@/components/dashboard/DashboardWelcomeClient';
 
 export const metadata = {
-  title: 'Dashboard | MagnetLab',
+  title: 'Home | MagnetLab',
   description: 'Your MagnetLab dashboard',
 };
 
@@ -27,12 +28,15 @@ interface DashboardStats {
   transcripts: number;
   posts: number;
   hasFunnels: boolean;
+  hasBrandKit: boolean;
+  recentDraft: { id: string; title: string } | null;
+  magnetsWithoutFunnels: { id: string; title: string }[];
 }
 
 async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
   const supabase = createSupabaseAdminClient();
 
-  const [leadMagnetsRes, leadsRes, transcriptsRes, postsRes, funnelsRes] =
+  const [leadMagnetsRes, leadsRes, transcriptsRes, postsRes, funnelsRes, brandKitRes, recentDraftRes, allMagnetsRes] =
     await Promise.all([
       supabase
         .from('lead_magnets')
@@ -52,9 +56,32 @@ async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
         .eq('user_id', userId),
       supabase
         .from('funnel_pages')
+        .select('id, lead_magnet_id', { count: 'exact' })
+        .eq('user_id', userId),
+      supabase
+        .from('brand_kits')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId),
+      supabase
+        .from('lead_magnets')
+        .select('id, title')
+        .eq('user_id', userId)
+        .eq('status', 'draft')
+        .order('updated_at', { ascending: false })
+        .limit(1),
+      supabase
+        .from('lead_magnets')
+        .select('id, title')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10),
     ]);
+
+  // Find magnets without funnels
+  const funnelMagnetIds = new Set((funnelsRes.data || []).map((f: { lead_magnet_id: string }) => f.lead_magnet_id));
+  const magnetsWithoutFunnels = (allMagnetsRes.data || [])
+    .filter((m: { id: string }) => !funnelMagnetIds.has(m.id))
+    .slice(0, 3);
 
   return {
     leadMagnets: leadMagnetsRes.count ?? 0,
@@ -62,6 +89,9 @@ async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
     transcripts: transcriptsRes.count ?? 0,
     posts: postsRes.count ?? 0,
     hasFunnels: (funnelsRes.count ?? 0) > 0,
+    hasBrandKit: (brandKitRes.count ?? 0) > 0,
+    recentDraft: recentDraftRes.data?.[0] || null,
+    magnetsWithoutFunnels,
   };
 }
 
@@ -92,11 +122,13 @@ function StatCard({
 function ChecklistItem({
   label,
   done,
+  href,
 }: {
   label: string;
   done: boolean;
+  href: string;
 }) {
-  return (
+  const content = (
     <div className="flex items-center gap-3 py-2">
       {done ? (
         <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
@@ -112,7 +144,18 @@ function ChecklistItem({
       >
         {label}
       </span>
+      {!done && (
+        <ArrowRight className="ml-auto h-3 w-3 text-muted-foreground/40" />
+      )}
     </div>
+  );
+
+  if (done) return content;
+
+  return (
+    <Link href={href} className="block hover:bg-secondary/50 -mx-2 px-2 rounded-lg transition-colors">
+      {content}
+    </Link>
   );
 }
 
@@ -157,17 +200,16 @@ async function DashboardContent() {
     stats.transcripts === 0 &&
     stats.posts === 0;
 
-  const showChecklist = stats.leadMagnets < 3;
-
   const checklistItems = [
-    { label: 'Create your first lead magnet', done: stats.leadMagnets > 0 },
-    { label: 'Build a funnel page', done: stats.hasFunnels },
-    { label: 'Capture your first lead', done: stats.leads > 0 },
-    { label: 'Upload a call transcript', done: stats.transcripts > 0 },
-    { label: 'Generate your first post', done: stats.posts > 0 },
+    { label: 'Set up your Brand Kit', done: stats.hasBrandKit, href: '/settings' },
+    { label: 'Create your first lead magnet', done: stats.leadMagnets > 0, href: '/create' },
+    { label: 'Build a funnel page', done: stats.hasFunnels, href: stats.magnetsWithoutFunnels[0] ? `/magnets/${stats.magnetsWithoutFunnels[0].id}?tab=funnel` : '/create' },
+    { label: 'Capture your first lead', done: stats.leads > 0, href: '/leads' },
+    { label: 'Write a LinkedIn post', done: stats.posts > 0, href: '/posts' },
   ];
 
   const completedCount = checklistItems.filter((item) => item.done).length;
+  const allComplete = completedCount === checklistItems.length;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -186,28 +228,68 @@ async function DashboardContent() {
         </p>
       </div>
 
+      {/* How MagnetLab Works — new user only */}
+      {isNewUser && (
+        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border bg-card p-5 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/10">
+              <Plus className="h-6 w-6 text-violet-500" />
+            </div>
+            <h3 className="mb-1 font-semibold">1. Create</h3>
+            <p className="text-sm text-muted-foreground">
+              Build a lead magnet from your expertise using AI
+            </p>
+          </div>
+          <div className="rounded-xl border bg-card p-5 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
+              <Globe className="h-6 w-6 text-emerald-500" />
+            </div>
+            <h3 className="mb-1 font-semibold">2. Publish</h3>
+            <p className="text-sm text-muted-foreground">
+              Create a funnel page and share it on LinkedIn
+            </p>
+          </div>
+          <div className="rounded-xl border bg-card p-5 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10">
+              <Users className="h-6 w-6 text-blue-500" />
+            </div>
+            <h3 className="mb-1 font-semibold">3. Capture</h3>
+            <p className="text-sm text-muted-foreground">
+              Collect leads and grow your audience automatically
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Continue where you left off */}
+      {!isNewUser && stats.recentDraft && (
+        <div className="mb-8">
+          <Link
+            href={`/magnets/${stats.recentDraft.id}`}
+            className="group flex items-center gap-4 rounded-xl border border-violet-200 bg-violet-50 p-5 transition-all hover:border-violet-300 hover:shadow-md dark:border-violet-500/20 dark:bg-violet-500/5 dark:hover:border-violet-500/30"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+              <Magnet className="h-5 w-5 text-violet-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium text-violet-600 dark:text-violet-400">
+                Continue where you left off
+              </div>
+              <div className="font-semibold truncate">
+                {stats.recentDraft.title}
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 shrink-0 text-violet-400 opacity-0 transition-opacity group-hover:opacity-100" />
+          </Link>
+        </div>
+      )}
+
       {/* Stats Row */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Lead Magnets Created"
-          value={stats.leadMagnets}
-          icon={Magnet}
-        />
-        <StatCard
-          label="Leads Captured"
-          value={stats.leads}
-          icon={Users}
-        />
-        <StatCard
-          label="Transcripts Processed"
-          value={stats.transcripts}
-          icon={Mic}
-        />
-        <StatCard
-          label="Posts Generated"
-          value={stats.posts}
-          icon={FileText}
-        />
+        <StatCard label="Lead Magnets" value={stats.leadMagnets} icon={Magnet} />
+        <StatCard label="Leads Captured" value={stats.leads} icon={Users} />
+        <StatCard label="Transcripts" value={stats.transcripts} icon={Mic} />
+        <StatCard label="Posts" value={stats.posts} icon={FileText} />
       </div>
 
       {/* Quick Actions */}
@@ -233,7 +315,7 @@ async function DashboardContent() {
           </Link>
 
           <Link
-            href="/content?tab=transcripts"
+            href="/knowledge"
             className="group flex items-center gap-4 rounded-xl border bg-card p-5 transition-all hover:border-primary hover:shadow-lg"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/20">
@@ -251,7 +333,7 @@ async function DashboardContent() {
           </Link>
 
           <Link
-            href="/content?tab=pipeline"
+            href="/posts"
             className="group flex items-center gap-4 rounded-xl border bg-card p-5 transition-all hover:border-primary hover:shadow-lg"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/20">
@@ -270,8 +352,37 @@ async function DashboardContent() {
         </div>
       </div>
 
+      {/* What to do next — contextual cards for active users */}
+      {!isNewUser && stats.magnetsWithoutFunnels.length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-4 text-lg font-semibold">What to do next</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {stats.magnetsWithoutFunnels.map((m) => (
+              <Link
+                key={m.id}
+                href={`/magnets/${m.id}?tab=funnel`}
+                className="group flex items-center gap-3 rounded-xl border bg-card p-4 transition-all hover:border-primary hover:shadow-md"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+                  <Globe className="h-4 w-4 text-amber-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate group-hover:text-primary">
+                    {m.title}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Needs a funnel page
+                  </div>
+                </div>
+                <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground/40 group-hover:text-primary" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Getting Started Checklist */}
-      {showChecklist && (
+      {!allComplete && (
         <div className="rounded-xl border bg-card p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Getting Started</h2>
@@ -293,6 +404,7 @@ async function DashboardContent() {
                 key={item.label}
                 label={item.label}
                 done={item.done}
+                href={item.href}
               />
             ))}
           </div>

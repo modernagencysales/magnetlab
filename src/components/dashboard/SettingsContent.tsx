@@ -737,6 +737,23 @@ export function SettingsContent({
             </a>
           </div>
         )}
+
+        {/* API Docs */}
+        <div id="api-docs" className="rounded-lg border bg-card p-6 transition-colors">
+          <div className="mb-4 flex items-center gap-3">
+            <Key className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">API & Content Pipeline Docs</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Documentation for the Content Pipeline API, webhooks, and integrations.
+          </p>
+          <a
+            href="#api-docs"
+            className="mt-4 inline-block text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            View Full Documentation &rarr;
+          </a>
+        </div>
       </div>
     </div>
   );

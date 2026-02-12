@@ -58,7 +58,7 @@ export default function NewExternalResourcePage() {
         throw new Error(data.error || 'Failed to create external resource');
       }
 
-      router.push('/assets?tab=external');
+      router.push('/pages');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create external resource');
       setIsSubmitting(false);
@@ -116,7 +116,7 @@ export default function NewExternalResourcePage() {
 
         <div className="flex gap-3">
           <Link
-            href="/assets"
+            href="/pages"
             className="px-4 py-2 border rounded-lg hover:bg-muted transition-colors"
           >
             Cancel

@@ -9,8 +9,8 @@ interface BackLinkProps {
 }
 
 export function BackLink({
-  href = '/assets',
-  children = 'Back to Assets',
+  href = '/pages',
+  children = 'Back to Pages',
 }: BackLinkProps): JSX.Element {
   return (
     <Link

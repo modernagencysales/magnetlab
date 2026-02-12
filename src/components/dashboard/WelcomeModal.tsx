@@ -70,7 +70,7 @@ export function WelcomeModal({ isNewUser }: WelcomeModalProps) {
           </Link>
 
           <Link
-            href="/content?tab=transcripts"
+            href="/knowledge"
             onClick={dismiss}
             className="group rounded-xl border p-5 transition-all hover:border-primary hover:shadow-lg"
           >

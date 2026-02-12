@@ -34,7 +34,7 @@ export default function QuickCreatePage() {
       }
 
       const data = await res.json();
-      router.push(`/library/${data.leadMagnetId}/funnel`);
+      router.push(`/magnets/${data.leadMagnetId}?tab=funnel`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {

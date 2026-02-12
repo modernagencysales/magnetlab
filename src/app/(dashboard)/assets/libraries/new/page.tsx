@@ -96,7 +96,7 @@ export default function NewLibraryPage() {
 
         <div className="flex gap-3">
           <Link
-            href="/assets"
+            href="/pages"
             className="px-4 py-2 border rounded-lg hover:bg-muted transition-colors"
           >
             Cancel

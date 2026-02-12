@@ -104,7 +104,7 @@ export function SwipeFileInspiration({
             <div className="py-6 text-center">
               <p className="text-sm text-muted-foreground">No examples yet</p>
               <Link
-                href="/swipe-file"
+                href="/posts?tab=inspiration"
                 className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80"
               >
                 Browse the full swipe file
@@ -190,7 +190,7 @@ export function SwipeFileInspiration({
 
               {/* Link to full swipe file */}
               <Link
-                href="/swipe-file"
+                href="/posts?tab=inspiration"
                 className="flex items-center justify-center gap-1 rounded-lg border py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
               >
                 Browse full swipe file

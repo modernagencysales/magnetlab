@@ -197,7 +197,7 @@ export function PublishStep({
               </div>
             </div>
             <Link
-              href={`/library/${savedLeadMagnetId}/funnel`}
+              href={`/magnets/${savedLeadMagnetId}?tab=funnel`}
               className="flex items-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 transition-colors"
             >
               Configure Funnel Page &rarr;
@@ -332,10 +332,10 @@ export function PublishStep({
       {saved && (
         <div className="flex justify-center">
           <Link
-            href="/library"
+            href="/magnets"
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            View Library
+            View Lead Magnets
           </Link>
         </div>
       )}

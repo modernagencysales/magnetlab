@@ -63,7 +63,7 @@ export default function LibraryEditorPage() {
       const response = await fetch(`/api/libraries/${libraryId}`);
       if (!response.ok) {
         if (response.status === 404) {
-          router.push('/assets');
+          router.push('/pages');
           return;
         }
         throw new Error('Failed to fetch library');
