@@ -6,48 +6,11 @@
  */
 
 import { describe, it, expect } from '@jest/globals';
-
-// Type definitions for ideation sources
-interface CallTranscriptInsights {
-  painPoints: Array<{
-    quote: string;
-    theme: string;
-    frequency: 'mentioned-once' | 'recurring' | 'dominant';
-  }>;
-  frequentQuestions: Array<{
-    question: string;
-    context: string;
-  }>;
-  transformationOutcomes: Array<{
-    desiredState: string;
-    currentState: string;
-  }>;
-  objections: Array<{
-    objection: string;
-    underlyingConcern: string;
-  }>;
-  languagePatterns: string[];
-}
-
-interface CompetitorAnalysis {
-  detectedArchetype: string | null;
-  format: string;
-  painPointAddressed: string;
-  effectivenessFactors: string[];
-  adaptationSuggestions: string[];
-  originalTitle: string;
-}
-
-interface IdeationSources {
-  callTranscript?: {
-    raw: string;
-    insights: CallTranscriptInsights;
-  };
-  competitorInspiration?: {
-    raw: string;
-    analysis: CompetitorAnalysis;
-  };
-}
+import type {
+  CallTranscriptInsights,
+  CompetitorAnalysis,
+  IdeationSources,
+} from '@/lib/types/lead-magnet';
 
 describe('Ideation Modes Types', () => {
   describe('CallTranscriptInsights', () => {
@@ -111,7 +74,7 @@ describe('Ideation Modes Types', () => {
   describe('CompetitorAnalysis', () => {
     it('should capture detected archetype', () => {
       const analysis: CompetitorAnalysis = {
-        detectedArchetype: 'checklist',
+        detectedArchetype: 'focused-toolkit',
         format: 'PDF download',
         painPointAddressed: 'Forgetting important steps',
         effectivenessFactors: ['Specific', 'Actionable'],
@@ -119,7 +82,7 @@ describe('Ideation Modes Types', () => {
         originalTitle: 'The Ultimate Checklist',
       };
 
-      expect(analysis.detectedArchetype).toBe('checklist');
+      expect(analysis.detectedArchetype).toBe('focused-toolkit');
     });
 
     it('should allow null archetype when not detected', () => {
@@ -137,7 +100,7 @@ describe('Ideation Modes Types', () => {
 
     it('should capture effectiveness factors', () => {
       const analysis: CompetitorAnalysis = {
-        detectedArchetype: 'template',
+        detectedArchetype: 'single-system',
         format: 'PDF template',
         painPointAddressed: 'Starting from scratch',
         effectivenessFactors: [
@@ -207,7 +170,7 @@ describe('Ideation Modes Types', () => {
         competitorInspiration: {
           raw: 'competitor content',
           analysis: {
-            detectedArchetype: 'swipe-file',
+            detectedArchetype: 'focused-directory',
             format: 'Collection',
             painPointAddressed: 'Need inspiration',
             effectivenessFactors: [],
@@ -260,7 +223,7 @@ describe('Ideation Modes Integration', () => {
         competitorInspiration: {
           raw: 'Competitor post...',
           analysis: {
-            detectedArchetype: 'calculator',
+            detectedArchetype: 'single-calculator',
             format: 'Interactive tool',
             painPointAddressed: 'Complex calculations',
             effectivenessFactors: ['Instant results', 'Visual output'],
@@ -275,7 +238,7 @@ describe('Ideation Modes Integration', () => {
         competitorAnalysis: sources.competitorInspiration?.analysis,
       };
 
-      expect(apiPayload.competitorAnalysis?.detectedArchetype).toBe('calculator');
+      expect(apiPayload.competitorAnalysis?.detectedArchetype).toBe('single-calculator');
       expect(apiPayload.competitorAnalysis?.adaptationSuggestions).toHaveLength(1);
     });
   });

@@ -13,11 +13,14 @@ import { SectionsManager } from './SectionsManager';
 import { FunnelPreview } from './FunnelPreview';
 import { PublishControls } from './PublishControls';
 import { LeadDeliveryInfo } from './LeadDeliveryInfo';
-import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, BackgroundStyle } from '@/lib/types/funnel';
+import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle } from '@/lib/types/funnel';
 import type { LeadMagnet, PolishedContent } from '@/lib/types/lead-magnet';
+import type { Library } from '@/lib/types/library';
 
 interface FunnelBuilderProps {
-  leadMagnet: LeadMagnet;
+  leadMagnet?: LeadMagnet;
+  library?: Library;
+  externalResource?: { id: string; title: string; url: string; icon: string };
   existingFunnel: FunnelPage | null;
   existingQuestions: QualificationQuestion[];
   username: string | null;
@@ -27,10 +30,20 @@ type TabType = 'optin' | 'thankyou' | 'questions' | 'theme' | 'sections' | 'cont
 
 export function FunnelBuilder({
   leadMagnet,
+  library,
+  externalResource,
   existingFunnel,
   existingQuestions,
   username,
 }: FunnelBuilderProps) {
+  // Derive target info
+  const targetType: FunnelTargetType = library ? 'library' : externalResource ? 'external_resource' : 'lead_magnet';
+  const targetTitle = leadMagnet?.title || library?.name || externalResource?.title || 'Untitled';
+  const targetId = leadMagnet?.id || library?.id || externalResource?.id || '';
+  const isLeadMagnetTarget = targetType === 'lead_magnet';
+  const backLink = isLeadMagnetTarget ? '/magnets' : '/pages';
+  const backLabel = isLeadMagnetTarget ? 'Back to Lead Magnets' : 'Back to Pages';
+
   const [activeTab, setActiveTab] = useState<TabType>('optin');
   const [funnel, setFunnel] = useState<FunnelPage | null>(existingFunnel);
   const [questions, setQuestions] = useState<QualificationQuestion[]>(existingQuestions);
@@ -39,11 +52,11 @@ export function FunnelBuilder({
   const [error, setError] = useState<string | null>(null);
 
   // Form state for opt-in page
-  const [optinHeadline, setOptinHeadline] = useState(existingFunnel?.optinHeadline || leadMagnet.title);
+  const [optinHeadline, setOptinHeadline] = useState(existingFunnel?.optinHeadline || targetTitle);
   const [optinSubline, setOptinSubline] = useState(existingFunnel?.optinSubline || '');
   const [optinButtonText, setOptinButtonText] = useState(existingFunnel?.optinButtonText || 'Get Free Access');
   const [optinSocialProof, setOptinSocialProof] = useState(existingFunnel?.optinSocialProof || '');
-  const [slug, setSlug] = useState(existingFunnel?.slug || generateSlug(leadMagnet.title));
+  const [slug, setSlug] = useState(existingFunnel?.slug || generateSlug(targetTitle));
 
   // Form state for thank-you page
   const [thankyouHeadline, setThankyouHeadline] = useState(existingFunnel?.thankyouHeadline || 'Thanks! Check your email.');
@@ -60,7 +73,7 @@ export function FunnelBuilder({
   const [logoUrl, setLogoUrl] = useState<string | null>(existingFunnel?.logoUrl || null);
 
   // Lead magnet state (for content tab updates)
-  const [currentLeadMagnet, setCurrentLeadMagnet] = useState<LeadMagnet>(leadMagnet);
+  const [currentLeadMagnet, setCurrentLeadMagnet] = useState<LeadMagnet | undefined>(leadMagnet);
 
   // Sections state (shared between SectionsManager and FunnelPreview)
   const [sections, setSections] = useState<FunnelPageSection[]>([]);
@@ -92,6 +105,7 @@ export function FunnelBuilder({
   }
 
   const handleGenerateContent = async () => {
+    if (!leadMagnet) return;
     setGenerating(true);
     setError(null);
 
@@ -124,9 +138,9 @@ export function FunnelBuilder({
     setError(null);
 
     try {
-      const payload = {
-        leadMagnetId: leadMagnet.id,
+      const payload: Record<string, unknown> = {
         slug,
+        targetType,
         optinHeadline,
         optinSubline: optinSubline || null,
         optinButtonText,
@@ -142,6 +156,15 @@ export function FunnelBuilder({
         backgroundStyle,
         logoUrl,
       };
+
+      // Set the correct target ID field
+      if (targetType === 'lead_magnet') {
+        payload.leadMagnetId = targetId;
+      } else if (targetType === 'library') {
+        payload.libraryId = targetId;
+      } else if (targetType === 'external_resource') {
+        payload.externalResourceId = targetId;
+      }
 
       let response;
       if (funnel) {
@@ -192,14 +215,16 @@ export function FunnelBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  const tabs = [
-    { id: 'optin' as const, label: 'Opt-in Page' },
-    { id: 'thankyou' as const, label: 'Thank-you Page' },
-    { id: 'questions' as const, label: 'Qualification' },
-    { id: 'theme' as const, label: 'Theme' },
-    { id: 'sections' as const, label: 'Sections' },
-    { id: 'content' as const, label: 'Content' },
-    { id: 'email' as const, label: 'Email' },
+  // Build tabs based on target type
+  const tabs: { id: TabType; label: string }[] = [
+    { id: 'optin', label: 'Opt-in Page' },
+    { id: 'thankyou', label: 'Thank-you Page' },
+    { id: 'questions', label: 'Qualification' },
+    { id: 'theme', label: 'Theme' },
+    { id: 'sections', label: 'Sections' },
+    // Content tab only for lead magnets
+    ...(isLeadMagnetTarget ? [{ id: 'content' as const, label: 'Content' }] : []),
+    { id: 'email', label: 'Email' },
   ];
 
   return (
@@ -208,7 +233,7 @@ export function FunnelBuilder({
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Funnel Page Builder</h1>
-          {!funnel && (
+          {!funnel && isLeadMagnetTarget && (
             <button
               onClick={handleGenerateContent}
               disabled={generating}
@@ -231,12 +256,12 @@ export function FunnelBuilder({
         )}
 
         {/* Tabs */}
-        <div className="flex border-b">
+        <div className="flex border-b overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -316,7 +341,7 @@ export function FunnelBuilder({
             />
           )}
 
-          {activeTab === 'content' && (
+          {activeTab === 'content' && isLeadMagnetTarget && currentLeadMagnet && (
             <ContentPageTab
               leadMagnet={currentLeadMagnet}
               username={username}
@@ -331,20 +356,28 @@ export function FunnelBuilder({
             />
           )}
 
-          {activeTab === 'email' && (
+          {activeTab === 'email' && isLeadMagnetTarget && leadMagnet && (
             <EmailSequenceTab
               leadMagnetId={leadMagnet.id}
             />
+          )}
+
+          {activeTab === 'email' && !isLeadMagnetTarget && (
+            <div className="rounded-lg border border-dashed p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                Email sequences are only available for lead magnet funnels.
+              </p>
+            </div>
           )}
         </div>
 
         {/* Save Button */}
         <div className="flex items-center justify-between pt-4 border-t">
           <Link
-            href="/magnets"
+            href={backLink}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Back to Lead Magnets
+            {backLabel}
           </Link>
           <button
             onClick={handleSave}

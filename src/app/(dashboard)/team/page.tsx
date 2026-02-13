@@ -28,6 +28,8 @@ export default function TeamPage() {
   const [profiles, setProfiles] = useState<TeamProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Team settings form
   const [teamName, setTeamName] = useState('');
@@ -71,6 +73,7 @@ export default function TeamPage() {
   const createTeam = async () => {
     if (!teamName.trim()) return;
     setSaving(true);
+    setError(null);
     try {
       const res = await fetch('/api/teams', {
         method: 'POST',
@@ -78,8 +81,14 @@ export default function TeamPage() {
         body: JSON.stringify({ name: teamName, industry: teamIndustry || undefined, shared_goal: teamGoal || undefined }),
       });
       if (res.ok) {
+        setSuccess('Team created successfully');
         await fetchData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to create team');
       }
+    } catch {
+      setError('Failed to create team');
     } finally {
       setSaving(false);
     }
@@ -87,13 +96,23 @@ export default function TeamPage() {
 
   const updateTeam = async () => {
     setSaving(true);
+    setError(null);
+    setSuccess(null);
     try {
-      await fetch('/api/teams', {
+      const res = await fetch('/api/teams', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: teamName, industry: teamIndustry || undefined, shared_goal: teamGoal || undefined }),
       });
-      await fetchData();
+      if (res.ok) {
+        setSuccess('Settings saved');
+        await fetchData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to save settings');
+      }
+    } catch {
+      setError('Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -122,22 +141,31 @@ export default function TeamPage() {
   const saveProfile = async () => {
     if (!profileForm.full_name.trim()) return;
     setSaving(true);
+    setError(null);
+    setSuccess(null);
     try {
-      if (editingProfile) {
-        await fetch(`/api/teams/profiles/${editingProfile.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(profileForm),
-        });
+      const res = editingProfile
+        ? await fetch(`/api/teams/profiles/${editingProfile.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(profileForm),
+          })
+        : await fetch('/api/teams/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(profileForm),
+          });
+
+      if (res.ok) {
+        setSuccess(editingProfile ? 'Profile updated' : 'Profile added');
+        setShowProfileModal(false);
+        await fetchData();
       } else {
-        await fetch('/api/teams/profiles', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(profileForm),
-        });
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to save profile');
       }
-      setShowProfileModal(false);
-      await fetchData();
+    } catch {
+      setError('Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -222,6 +250,19 @@ export default function TeamPage() {
           <p className="text-muted-foreground">Manage your team profiles and voice settings.</p>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 p-3 text-sm text-red-700 dark:text-red-400 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">&times;</button>
+        </div>
+      )}
+      {success && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950 p-3 text-sm text-green-700 dark:text-green-400 flex items-center justify-between">
+          <span>{success}</span>
+          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700">&times;</button>
+        </div>
+      )}
 
       {/* Team Settings */}
       <div className="border rounded-lg p-6 mb-8">

@@ -24,7 +24,7 @@ export async function GET() {
 
   const { data: profiles, error } = await supabase
     .from('team_profiles')
-    .select('*')
+    .select('id, team_id, user_id, email, full_name, title, linkedin_url, bio, expertise_areas, voice_profile, avatar_url, role, status, is_default, invited_at, accepted_at, created_at, updated_at')
     .eq('team_id', team.id)
     .neq('status', 'removed')
     .order('is_default', { ascending: false })
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       invited_at: new Date().toISOString(),
       accepted_at: linkedUserId ? new Date().toISOString() : null,
     })
-    .select('*')
+    .select('id, team_id, user_id, email, full_name, title, linkedin_url, bio, expertise_areas, voice_profile, avatar_url, role, status, is_default, invited_at, accepted_at, created_at, updated_at')
     .single();
 
   if (error) {

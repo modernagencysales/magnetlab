@@ -4,17 +4,20 @@
 // ARCHETYPES & BUSINESS TYPES
 // ============================================
 
-export type LeadMagnetArchetype =
-  | 'single-breakdown'
-  | 'single-system'
-  | 'focused-toolkit'
-  | 'single-calculator'
-  | 'focused-directory'
-  | 'mini-training'
-  | 'one-story'
-  | 'prompt'
-  | 'assessment'
-  | 'workflow';
+export const LEAD_MAGNET_ARCHETYPES = [
+  'single-breakdown',
+  'single-system',
+  'focused-toolkit',
+  'single-calculator',
+  'focused-directory',
+  'mini-training',
+  'one-story',
+  'prompt',
+  'assessment',
+  'workflow',
+] as const;
+
+export type LeadMagnetArchetype = (typeof LEAD_MAGNET_ARCHETYPES)[number];
 
 export type BusinessType =
   | 'coach-consultant'

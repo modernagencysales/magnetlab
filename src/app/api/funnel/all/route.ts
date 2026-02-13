@@ -21,9 +21,20 @@ export async function GET() {
         is_published,
         published_at,
         created_at,
+        target_type,
         lead_magnet_id,
+        library_id,
+        external_resource_id,
         lead_magnets (
           title
+        ),
+        libraries (
+          name,
+          icon
+        ),
+        external_resources (
+          title,
+          icon
         )
       `)
       .eq('user_id', session.user.id)

@@ -8,6 +8,7 @@ import { UsernameSettings } from '@/components/settings/UsernameSettings';
 import { ResendSettings } from '@/components/settings/ResendSettings';
 import { ConductorSettings } from '@/components/settings/ConductorSettings';
 import { FathomSettings } from '@/components/settings/FathomSettings';
+import { LinkedInSettings } from '@/components/settings/LinkedInSettings';
 import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettings';
 import { WebhookSettings } from '@/components/settings/WebhookSettings';
 import { TeamMembersSettings } from '@/components/settings/TeamMembersSettings';
@@ -90,6 +91,7 @@ export function SettingsContent({
   const resendIntegration = integrations.find((i) => i.service === 'resend');
   const conductorIntegration = integrations.find((i) => i.service === 'conductor');
   const fathomIntegration = integrations.find((i) => i.service === 'fathom');
+  const unipileIntegration = integrations.find((i) => i.service === 'unipile');
 
   // Fetch API keys and user defaults on mount
   useEffect(() => {
@@ -477,6 +479,12 @@ export function SettingsContent({
               </div>
             )}
           </div>
+
+          {/* LinkedIn (Unipile) */}
+          <LinkedInSettings
+            isConnected={unipileIntegration?.is_active ?? false}
+            accountName={(unipileIntegration?.metadata as { unipile_account_name?: string } | undefined)?.unipile_account_name ?? null}
+          />
 
           {/* Resend */}
           <ResendSettings

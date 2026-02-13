@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin, Users } from 'lucide-react';
+import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin, Users, Zap, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostPreview } from './PostPreview';
-import type { PipelinePost, PostVariation } from '@/lib/types/content-pipeline';
+import type { PipelinePost, PostVariation, LinkedInAutomation, AutomationStatus } from '@/lib/types/content-pipeline';
 
 interface PostDetailModalProps {
   post: PipelinePost;
@@ -34,6 +34,19 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const [campaignId, setCampaignId] = useState(post.heyreach_campaign_id || '');
   const [engagementLoading, setEngagementLoading] = useState(false);
   const [engagementSaving, setEngagementSaving] = useState(false);
+
+  // Automation state
+  const [automation, setAutomation] = useState<LinkedInAutomation | null>(null);
+  const [automationLoading, setAutomationLoading] = useState(false);
+  const [automationSaving, setAutomationSaving] = useState(false);
+  const [showAutomationSetup, setShowAutomationSetup] = useState(false);
+  const [autoKeywords, setAutoKeywords] = useState('');
+  const [autoDmTemplate, setAutoDmTemplate] = useState(post.dm_template || '');
+  const [autoConnect, setAutoConnect] = useState(false);
+  const [autoLike, setAutoLike] = useState(true);
+  const [autoFollowUp, setAutoFollowUp] = useState(false);
+  const [autoFollowUpTemplate, setAutoFollowUpTemplate] = useState('');
+  const [automationEventCount, setAutomationEventCount] = useState(0);
 
   const isPublishedWithLinkedIn = post.status === 'published' && !!post.linkedin_post_id;
 
@@ -70,6 +83,93 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
       }
     } catch { /* silent */ } finally {
       setEngagementSaving(false);
+    }
+  };
+
+  // Fetch automation for this post
+  const fetchAutomation = useCallback(async () => {
+    if (!isPublishedWithLinkedIn) return;
+    setAutomationLoading(true);
+    try {
+      const res = await fetch('/api/linkedin/automations');
+      if (res.ok) {
+        const data = await res.json();
+        const existing = (data.automations || []).find(
+          (a: LinkedInAutomation) => a.post_id === post.id || a.post_social_id === post.linkedin_post_id
+        );
+        if (existing) {
+          setAutomation(existing);
+          setAutoKeywords((existing.keywords || []).join(', '));
+          setAutoDmTemplate(existing.dm_template || post.dm_template || '');
+          setAutoConnect(existing.auto_connect);
+          setAutoLike(existing.auto_like);
+          setAutoFollowUp(existing.enable_follow_up);
+          setAutoFollowUpTemplate(existing.follow_up_template || '');
+
+          // Get event count
+          const evtRes = await fetch(`/api/linkedin/automations/${existing.id}`);
+          if (evtRes.ok) {
+            const evtData = await evtRes.json();
+            setAutomationEventCount((evtData.events || []).length);
+          }
+        }
+      }
+    } catch { /* silent */ } finally {
+      setAutomationLoading(false);
+    }
+  }, [post.id, post.linkedin_post_id, post.dm_template, isPublishedWithLinkedIn]);
+
+  useEffect(() => {
+    fetchAutomation();
+  }, [fetchAutomation]);
+
+  const handleCreateAutomation = async () => {
+    setAutomationSaving(true);
+    try {
+      const keywords = autoKeywords.split(',').map(k => k.trim()).filter(Boolean);
+      const body = {
+        name: `Auto: ${(post.final_content || post.draft_content || '').substring(0, 30)}...`,
+        postId: post.id,
+        postSocialId: post.linkedin_post_id,
+        keywords,
+        dmTemplate: autoDmTemplate || null,
+        autoConnect,
+        autoLike,
+        enableFollowUp: autoFollowUp,
+        followUpTemplate: autoFollowUpTemplate || null,
+      };
+
+      const res = await fetch('/api/linkedin/automations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAutomation(data.automation);
+        setShowAutomationSetup(false);
+      }
+    } catch { /* silent */ } finally {
+      setAutomationSaving(false);
+    }
+  };
+
+  const handleToggleAutomation = async (newStatus: AutomationStatus) => {
+    if (!automation) return;
+    setAutomationSaving(true);
+    try {
+      const res = await fetch(`/api/linkedin/automations/${automation.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAutomation(data.automation);
+      }
+    } catch { /* silent */ } finally {
+      setAutomationSaving(false);
     }
   };
 
@@ -341,6 +441,174 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
                 {engagementSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Comment→DM Automation (published posts with LinkedIn ID) */}
+        {isPublishedWithLinkedIn && (
+          <div className="mb-4 rounded-lg border bg-muted/50 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium">Comment→DM Automation</p>
+                {automationLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              </div>
+              {automation && (
+                <span className={cn(
+                  'rounded-full px-2 py-0.5 text-xs font-medium',
+                  automation.status === 'running'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                    : automation.status === 'paused'
+                      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                )}>
+                  {automation.status}
+                </span>
+              )}
+            </div>
+
+            {automation ? (
+              <>
+                {/* Automation stats */}
+                <div className="mb-3 grid grid-cols-3 gap-2">
+                  <div className="rounded-md bg-background px-2 py-1.5 text-center">
+                    <p className="text-lg font-semibold">{automation.leads_captured || 0}</p>
+                    <p className="text-xs text-muted-foreground">DMs Sent</p>
+                  </div>
+                  <div className="rounded-md bg-background px-2 py-1.5 text-center">
+                    <p className="text-lg font-semibold">{(automation.keywords || []).length}</p>
+                    <p className="text-xs text-muted-foreground">Keywords</p>
+                  </div>
+                  <div className="rounded-md bg-background px-2 py-1.5 text-center">
+                    <p className="text-lg font-semibold">{automationEventCount}</p>
+                    <p className="text-xs text-muted-foreground">Events</p>
+                  </div>
+                </div>
+
+                {/* Toggle buttons */}
+                <div className="flex gap-2">
+                  {automation.status !== 'running' && (
+                    <button
+                      onClick={() => handleToggleAutomation('running')}
+                      disabled={automationSaving}
+                      className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                    >
+                      {automationSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                      Start
+                    </button>
+                  )}
+                  {automation.status === 'running' && (
+                    <button
+                      onClick={() => handleToggleAutomation('paused')}
+                      disabled={automationSaving}
+                      className="flex items-center gap-1.5 rounded-lg bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-700 disabled:opacity-50 transition-colors"
+                    >
+                      {automationSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      Pause
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                {!showAutomationSetup ? (
+                  <button
+                    onClick={() => setShowAutomationSetup(true)}
+                    className="flex items-center gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground hover:bg-muted transition-colors w-full justify-center"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Set up Comment→DM automation for this post
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                        Trigger Keywords (comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={autoKeywords}
+                        onChange={(e) => setAutoKeywords(e.target.value)}
+                        placeholder={post.cta_word ? `e.g. ${post.cta_word}, guide, yes, send` : 'e.g. guide, yes, send, interested'}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">DM Template</label>
+                      <textarea
+                        value={autoDmTemplate}
+                        onChange={(e) => setAutoDmTemplate(e.target.value)}
+                        rows={3}
+                        placeholder="Hey {{name}}! Thanks for your interest..."
+                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">Variables: {'{{name}}'}, {'{{full_name}}'}, {'{{comment}}'}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={autoLike}
+                          onChange={(e) => setAutoLike(e.target.checked)}
+                          className="rounded"
+                        />
+                        Auto-like comments
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={autoConnect}
+                          onChange={(e) => setAutoConnect(e.target.checked)}
+                          className="rounded"
+                        />
+                        Auto-connect
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={autoFollowUp}
+                          onChange={(e) => setAutoFollowUp(e.target.checked)}
+                          className="rounded"
+                        />
+                        Follow-up DM
+                      </label>
+                    </div>
+
+                    {autoFollowUp && (
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">Follow-up Template (sent after 24h)</label>
+                        <textarea
+                          value={autoFollowUpTemplate}
+                          onChange={(e) => setAutoFollowUpTemplate(e.target.value)}
+                          rows={2}
+                          placeholder="Hey {{name}}, just following up..."
+                          className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowAutomationSetup(false)}
+                        className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleCreateAutomation}
+                        disabled={automationSaving || !autoKeywords.trim()}
+                        className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                      >
+                        {automationSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                        Create Automation
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 

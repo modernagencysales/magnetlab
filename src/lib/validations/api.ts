@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { LEAD_MAGNET_ARCHETYPES } from '@/lib/types/lead-magnet';
 
 // ============================================
 // COMMON SCHEMAS
@@ -50,18 +51,7 @@ export type LeadQualificationInput = z.infer<typeof leadQualificationSchema>;
 // LEAD MAGNET SCHEMAS
 // ============================================
 
-export const leadMagnetArchetypes = [
-  'checklist',
-  'template',
-  'swipe-file',
-  'cheat-sheet',
-  'assessment',
-  'calculator',
-  'case-study',
-  'quick-start-guide',
-  'resource-list',
-  'comparison-chart',
-] as const;
+export const leadMagnetArchetypes = LEAD_MAGNET_ARCHETYPES;
 
 const conceptSchema = z.object({
   archetype: z.string().optional(),

@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { Mic, Brain, Lightbulb, FileText, Zap, Loader2, LayoutGrid, LayoutTemplate, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ProfileSwitcher } from './ProfileSwitcher';
+import { ProfileSwitcher, useProfileSelection } from './ProfileSwitcher';
 
 // Dynamic imports for code splitting — each tab loads only when selected
 const TranscriptsTab = dynamic(() => import('./TranscriptsTab').then((m) => ({ default: m.TranscriptsTab })), { ssr: false });
@@ -39,7 +39,7 @@ function TabLoader() {
 export function ContentPipelineContent() {
   const [activeTab, setActiveTab] = useState<Tab>('transcripts');
   const [showQuickWrite, setShowQuickWrite] = useState(false);
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const { selectedProfileId, onProfileChange } = useProfileSelection();
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -53,7 +53,7 @@ export function ContentPipelineContent() {
         </div>
         <ProfileSwitcher
           selectedProfileId={selectedProfileId}
-          onProfileChange={setSelectedProfileId}
+          onProfileChange={onProfileChange}
         />
       </div>
 

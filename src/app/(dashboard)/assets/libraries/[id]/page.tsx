@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, Plus, Trash2, GripVertical, ExternalLink, FileText, Search, Save } from 'lucide-react';
+import { Loader2, Plus, Trash2, GripVertical, ExternalLink, FileText, Search, Save, Globe } from 'lucide-react';
+import Link from 'next/link';
 import { BackLink, FormError, IconPicker, LIBRARY_ICONS } from '@/components/assets';
 
 interface LibraryItem {
@@ -283,6 +284,29 @@ export default function LibraryEditorPage() {
               Save Changes
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Funnel Page */}
+      <div className="border rounded-lg p-6 mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Globe size={20} className="text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Funnel Page</h2>
+              <p className="text-sm text-muted-foreground">
+                Create a landing page to share this library
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/assets/libraries/${libraryId}/funnel`}
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            {items.length > 0 ? 'Edit Funnel' : 'Create Funnel'}
+          </Link>
         </div>
       </div>
 

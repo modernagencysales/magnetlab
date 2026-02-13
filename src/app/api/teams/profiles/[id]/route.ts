@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getTeamOwnerFromProfile } from '@/lib/utils/team-membership';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 
 // PATCH /api/teams/profiles/[id] — update a profile
@@ -36,13 +37,13 @@ export async function PATCH(
   // Verify ownership: profile must belong to user's team
   const { data: profile } = await supabase
     .from('team_profiles')
-    .select('id, team_id, teams!inner(owner_id)')
+    .select('id, team_id, teams(owner_id)')
     .eq('id', id)
     .single();
 
   if (!profile) return ApiErrors.notFound('Profile');
 
-  const teamOwner = (profile as unknown as { teams: { owner_id: string } }).teams.owner_id;
+  const teamOwner = getTeamOwnerFromProfile(profile);
   if (teamOwner !== userId) return ApiErrors.forbidden();
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -59,7 +60,7 @@ export async function PATCH(
     .from('team_profiles')
     .update(updates)
     .eq('id', id)
-    .select('*')
+    .select('id, team_id, user_id, email, full_name, title, linkedin_url, bio, expertise_areas, voice_profile, avatar_url, role, status, is_default, invited_at, accepted_at, created_at, updated_at')
     .single();
 
   if (error) {
@@ -87,13 +88,13 @@ export async function DELETE(
   // Verify ownership
   const { data: profile } = await supabase
     .from('team_profiles')
-    .select('id, role, team_id, teams!inner(owner_id)')
+    .select('id, role, team_id, teams(owner_id)')
     .eq('id', id)
     .single();
 
   if (!profile) return ApiErrors.notFound('Profile');
 
-  const teamOwner = (profile as unknown as { teams: { owner_id: string } }).teams.owner_id;
+  const teamOwner = getTeamOwnerFromProfile(profile);
   if (teamOwner !== userId) return ApiErrors.forbidden();
 
   // Cannot remove the owner profile

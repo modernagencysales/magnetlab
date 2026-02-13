@@ -11,28 +11,18 @@ import { timingSafeEqual } from 'crypto';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { createLeadMagnetPipeline } from '@/trigger/create-lead-magnet';
+import { LEAD_MAGNET_ARCHETYPES } from '@/lib/types/lead-magnet';
 import type { LeadMagnetArchetype } from '@/lib/types/lead-magnet';
 
 // ============================================
 // VALIDATION SCHEMA
 // ============================================
 
-const VALID_ARCHETYPES: LeadMagnetArchetype[] = [
-  'single-breakdown',
-  'single-system',
-  'focused-toolkit',
-  'single-calculator',
-  'focused-directory',
-  'mini-training',
-  'one-story',
-  'prompt',
-  'assessment',
-  'workflow',
-];
+const VALID_ARCHETYPES = LEAD_MAGNET_ARCHETYPES;
 
 const requestSchema = z.object({
   userId: z.string().min(1, 'userId is required'),
-  archetype: z.enum(VALID_ARCHETYPES as [string, ...string[]], {
+  archetype: z.enum(VALID_ARCHETYPES, {
     errorMap: () => ({ message: `archetype must be one of: ${VALID_ARCHETYPES.join(', ')}` }),
   }),
   businessContext: z.object({

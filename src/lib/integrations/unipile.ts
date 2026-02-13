@@ -117,6 +117,59 @@ export class UnipileClient extends BaseApiClient {
   }
 
   // ============================================
+  // MESSAGING
+  // ============================================
+
+  async startChat(accountId: string, attendeeProviderId: string, text: string): Promise<ApiResponse<{
+    chat_id: string;
+  }>> {
+    return this.post('/chats', {
+      account_id: accountId,
+      attendees_ids: [attendeeProviderId],
+      text,
+    });
+  }
+
+  async sendMessage(chatId: string, text: string): Promise<ApiResponse<{
+    id: string;
+  }>> {
+    return this.post(`/chats/${chatId}/messages`, { text });
+  }
+
+  // ============================================
+  // INTERACTIONS
+  // ============================================
+
+  async addComment(postSocialId: string, accountId: string, text: string): Promise<ApiResponse<{
+    id: string;
+  }>> {
+    return this.post(`/posts/${postSocialId}/comments`, {
+      account_id: accountId,
+      text,
+    });
+  }
+
+  async addReaction(postSocialId: string, accountId: string, type: string = 'LIKE'): Promise<ApiResponse<void>> {
+    return this.post(`/posts/${postSocialId}/reactions`, {
+      account_id: accountId,
+      type,
+    });
+  }
+
+  // ============================================
+  // CONNECTIONS
+  // ============================================
+
+  async sendInvitation(providerId: string, accountId: string, message?: string): Promise<ApiResponse<void>> {
+    const body: Record<string, unknown> = {
+      account_id: accountId,
+      provider_id: providerId,
+    };
+    if (message) body.message = message;
+    return this.post(`/users/${providerId}/invite`, body);
+  }
+
+  // ============================================
   // ACCOUNTS
   // ============================================
 

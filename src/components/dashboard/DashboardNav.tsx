@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import posthog from 'posthog-js';
 import {
-  Magnet, Settings, Plus, LogOut, Globe, Users,
+  Magnet, Settings, Plus, LogOut, Globe, Users, UsersRound,
   ChevronDown, PenTool, Menu, X, Sun, Moon,
   ArrowLeftRight, Home, Brain,
 } from 'lucide-react';
@@ -39,6 +39,7 @@ const mainNav = [
   { href: '/knowledge', label: 'Knowledge', icon: Brain },
   { href: '/posts', label: 'Posts', icon: PenTool },
   { href: '/leads', label: 'Leads', icon: Users },
+  { href: '/team', label: 'Team', icon: UsersRound },
 ];
 
 const teamMemberNav = [
@@ -131,6 +132,23 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
           >
             <Globe size={14} className="text-emerald-500" />
             Landing Page
+          </Link>
+          <div className="h-px bg-zinc-200 dark:bg-zinc-700 mx-2 my-1" />
+          <Link
+            href="/assets/libraries/new"
+            onClick={() => { setOpen(false); onNavigate?.(); }}
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          >
+            <span className="text-sm">📚</span>
+            Library
+          </Link>
+          <Link
+            href="/assets/external/new"
+            onClick={() => { setOpen(false); onNavigate?.(); }}
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          >
+            <span className="text-sm">🔗</span>
+            External Resource
           </Link>
         </div>
       )}

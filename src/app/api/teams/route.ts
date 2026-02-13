@@ -14,7 +14,7 @@ export async function GET() {
   // Fetch existing team
   const { data: team, error } = await supabase
     .from('teams')
-    .select('*')
+    .select('id, owner_id, name, description, industry, target_audience, shared_goal, created_at, updated_at')
     .eq('owner_id', userId)
     .single();
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       target_audience: body.target_audience?.trim() || null,
       shared_goal: body.shared_goal?.trim() || null,
     })
-    .select('*')
+    .select('id, owner_id, name, description, industry, target_audience, shared_goal, created_at, updated_at')
     .single();
 
   if (error) {
@@ -129,7 +129,7 @@ export async function PATCH(request: NextRequest) {
     .from('teams')
     .update(updates)
     .eq('owner_id', userId)
-    .select('*')
+    .select('id, owner_id, name, description, industry, target_audience, shared_goal, created_at, updated_at')
     .single();
 
   if (error) {

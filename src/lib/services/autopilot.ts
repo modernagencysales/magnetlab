@@ -17,18 +17,25 @@ const AUTO_PUBLISH_WINDOW_HOURS = 24;
 
 export async function getPillarCounts(
   userId: string,
-  days: number = PILLAR_LOOKBACK_DAYS
+  days: number = PILLAR_LOOKBACK_DAYS,
+  profileId?: string
 ): Promise<PillarDistribution> {
   const supabase = createSupabaseAdminClient();
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
 
-  const { data: posts } = await supabase
+  let postsQuery = supabase
     .from('cp_pipeline_posts')
     .select('idea_id')
     .eq('user_id', userId)
     .gte('created_at', cutoffDate.toISOString())
     .in('status', ['approved', 'scheduled', 'published']);
+
+  if (profileId) {
+    postsQuery = postsQuery.eq('team_profile_id', profileId);
+  }
+
+  const { data: posts } = await postsQuery;
 
   const ideaIds = posts?.map((p) => p.idea_id).filter(Boolean) || [];
 
@@ -55,16 +62,22 @@ export async function getPillarCounts(
   return counts;
 }
 
-async function getRecentPostTitles(userId: string, days: number = PILLAR_LOOKBACK_DAYS): Promise<string[]> {
+async function getRecentPostTitles(userId: string, days: number = PILLAR_LOOKBACK_DAYS, profileId?: string): Promise<string[]> {
   const supabase = createSupabaseAdminClient();
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
 
-  const { data: posts } = await supabase
+  let postsQuery = supabase
     .from('cp_pipeline_posts')
     .select('idea_id')
     .eq('user_id', userId)
     .gte('created_at', cutoffDate.toISOString());
+
+  if (profileId) {
+    postsQuery = postsQuery.eq('team_profile_id', profileId);
+  }
+
+  const { data: posts } = await postsQuery;
 
   const ideaIds = posts?.map((p) => p.idea_id).filter(Boolean) || [];
   if (ideaIds.length === 0) return [];
@@ -241,8 +254,8 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
     }
 
     // 2. Build scoring context
-    const recentPostTitles = await getRecentPostTitles(userId);
-    const pillarCounts = await getPillarCounts(userId);
+    const recentPostTitles = await getRecentPostTitles(userId, PILLAR_LOOKBACK_DAYS, profileId);
+    const pillarCounts = await getPillarCounts(userId, PILLAR_LOOKBACK_DAYS, profileId);
 
     const scoringContext: ScoringContext = {
       recentPostTitles,

@@ -527,3 +527,58 @@ export interface EnrichedContentIdea extends ContentIdea {
 export interface TranscriptWithIdeas extends CallTranscript {
   ideas: ContentIdea[];
 }
+
+// ============================================
+// LINKEDIN AUTOMATIONS
+// ============================================
+
+export type AutomationStatus = 'draft' | 'running' | 'paused';
+
+export type AutomationEventType =
+  | 'comment_detected'
+  | 'keyword_matched'
+  | 'dm_sent'
+  | 'dm_failed'
+  | 'connection_sent'
+  | 'connection_failed'
+  | 'like_sent'
+  | 'like_failed'
+  | 'reply_sent'
+  | 'reply_failed'
+  | 'follow_up_scheduled'
+  | 'follow_up_sent'
+  | 'follow_up_failed';
+
+export interface LinkedInAutomation {
+  id: string;
+  user_id: string;
+  name: string;
+  post_id: string | null;
+  post_social_id: string | null;
+  keywords: string[];
+  dm_template: string | null;
+  auto_connect: boolean;
+  auto_like: boolean;
+  comment_reply_template: string | null;
+  enable_follow_up: boolean;
+  follow_up_template: string | null;
+  follow_up_delay_minutes: number;
+  status: AutomationStatus;
+  unipile_account_id: string | null;
+  leads_captured: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LinkedInAutomationEvent {
+  id: string;
+  automation_id: string;
+  event_type: AutomationEventType;
+  commenter_name: string | null;
+  commenter_provider_id: string | null;
+  commenter_linkedin_url: string | null;
+  comment_text: string | null;
+  action_details: string | null;
+  error: string | null;
+  created_at: string;
+}
