@@ -80,6 +80,7 @@ export const scrapeEngagement = schedules.task({
       .eq('scrape_engagement', true)
       .eq('status', 'published')
       .not('linkedin_post_id', 'is', null)
+      .not('published_at', 'is', null)
       .limit(10);
 
     if (postsErr) {
@@ -121,10 +122,12 @@ export const scrapeEngagement = schedules.task({
         logger.info(`Scraping post ${post.id}`, { linkedinPostId: postId });
 
         // ==========================================
-        // STEP 2: Scrape comments (paginated)
+        // STEP 2: Scrape comments (paginated, max 50 pages)
         // ==========================================
+        const MAX_PAGES = 50;
         let commentCursor: string | undefined;
         let commentCount = 0;
+        let commentPages = 0;
         do {
           const commentsResult = await unipileClient.getPostComments(postId, undefined, commentCursor);
           if (commentsResult.error || !commentsResult.data?.items) {
@@ -160,13 +163,15 @@ export const scrapeEngagement = schedules.task({
 
           commentCount += comments.length;
           commentCursor = commentsResult.data.cursor;
-        } while (commentCursor);
+          commentPages++;
+        } while (commentCursor && commentPages < MAX_PAGES);
 
         // ==========================================
         // STEP 3: Scrape reactions (paginated)
         // ==========================================
         let reactionCursor: string | undefined;
         let reactionCount = 0;
+        let reactionPages = 0;
         do {
           const reactionsResult = await unipileClient.getPostReactions(postId, undefined, reactionCursor);
           if (reactionsResult.error || !reactionsResult.data?.items) {
@@ -201,7 +206,8 @@ export const scrapeEngagement = schedules.task({
 
           reactionCount += reactions.length;
           reactionCursor = reactionsResult.data.cursor;
-        } while (reactionCursor);
+          reactionPages++;
+        } while (reactionCursor && reactionPages < MAX_PAGES);
 
         logger.info(`Post ${post.id}: ${commentCount} comments, ${reactionCount} reactions scraped`);
 
@@ -212,6 +218,7 @@ export const scrapeEngagement = schedules.task({
           .from('cp_post_engagements')
           .select('id, provider_id')
           .eq('post_id', post.id)
+          .eq('user_id', post.user_id)
           .is('linkedin_url', null)
           .limit(20);
 
@@ -299,8 +306,10 @@ export const scrapeEngagement = schedules.task({
             .from('cp_post_engagements')
             .select('id, linkedin_url, first_name, last_name')
             .eq('post_id', post.id)
+            .eq('user_id', post.user_id)
             .not('linkedin_url', 'is', null)
             .is('heyreach_pushed_at', null)
+            .is('heyreach_error', null)
             .eq('heyreach_campaign_id', post.heyreach_campaign_id)
             .limit(100);
 

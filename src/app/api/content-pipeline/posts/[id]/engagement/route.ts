@@ -103,7 +103,11 @@ export async function PATCH(
       updates.scrape_engagement = body.scrape_engagement;
     }
     if ('heyreach_campaign_id' in body) {
-      updates.heyreach_campaign_id = body.heyreach_campaign_id || null;
+      const val = body.heyreach_campaign_id;
+      if (val && (typeof val !== 'string' || !/^\d+$/.test(val))) {
+        return NextResponse.json({ error: 'heyreach_campaign_id must be a numeric string' }, { status: 400 });
+      }
+      updates.heyreach_campaign_id = val || null;
     }
 
     if (Object.keys(updates).length === 0) {

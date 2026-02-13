@@ -32,11 +32,14 @@ export async function pushLeadsToHeyReach(
         'X-API-KEY': apiKey,
       },
       body: JSON.stringify({
-        campaignId,
-        leadItems: normalizedLeads.map(lead => ({
-          linkedInUrl: lead.profileUrl,
-          firstName: lead.firstName,
-          lastName: lead.lastName,
+        campaignId: Number(campaignId),
+        accountLeadPairs: normalizedLeads.map(lead => ({
+          linkedInAccountId: null,
+          lead: {
+            profileUrl: lead.profileUrl,
+            firstName: lead.firstName,
+            lastName: lead.lastName,
+          },
         })),
       }),
     });
