@@ -13,12 +13,37 @@ export interface UnipileConfig {
 }
 
 export class UnipileClient extends BaseApiClient {
+  private dsn: string;
+
   constructor(config: UnipileConfig) {
     super({
       baseUrl: `https://${config.dsn}/api/v1`,
       headers: {
         'X-API-KEY': config.accessToken,
       },
+    });
+    this.dsn = config.dsn;
+  }
+
+  // ============================================
+  // HOSTED AUTH
+  // ============================================
+
+  async requestHostedAuthLink(params: {
+    userId: string;
+    successRedirectUrl: string;
+    failureRedirectUrl: string;
+    notifyUrl: string;
+  }): Promise<ApiResponse<{ url: string }>> {
+    return this.post('/hosted/accounts/link', {
+      type: 'create',
+      providers: ['LINKEDIN'],
+      api_url: `https://${this.dsn}/api/v1`,
+      expiresOn: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      notify_url: params.notifyUrl,
+      name: params.userId,
+      success_redirect_url: params.successRedirectUrl,
+      failure_redirect_url: params.failureRedirectUrl,
     });
   }
 
@@ -41,23 +66,58 @@ export class UnipileClient extends BaseApiClient {
     return this.get<UnipilePostStats>(`/posts/${postId}?account_id=${monitorId}`);
   }
 
-  async getPostComments(postId: string, accountId?: string): Promise<ApiResponse<{
+  async getPostComments(postId: string, accountId?: string, cursor?: string): Promise<ApiResponse<{
     items: Array<{
       id: string;
       text: string;
       author: { name: string; provider_id: string };
       created_at: string;
     }>;
+    cursor?: string;
   }>> {
     const monitorId = accountId || getMonitorAccountId();
     if (!monitorId) {
       return { data: null, error: 'No monitor account configured', status: 0 };
     }
-    return this.get(`/posts/${postId}/comments?account_id=${monitorId}`);
+    const params = new URLSearchParams({ account_id: monitorId });
+    if (cursor) params.set('cursor', cursor);
+    return this.get(`/posts/${postId}/comments?${params}`);
+  }
+
+  async getPostReactions(postId: string, accountId?: string, cursor?: string): Promise<ApiResponse<{
+    items: Array<{
+      type: string;
+      author: { name: string; provider_id: string };
+    }>;
+    cursor?: string;
+  }>> {
+    const monitorId = accountId || getMonitorAccountId();
+    if (!monitorId) {
+      return { data: null, error: 'No monitor account configured', status: 0 };
+    }
+    const params = new URLSearchParams({ account_id: monitorId });
+    if (cursor) params.set('cursor', cursor);
+    return this.get(`/posts/${postId}/reactions?${params}`);
+  }
+
+  async getUserProfile(providerId: string, accountId?: string): Promise<ApiResponse<{
+    id: string;
+    provider_id: string;
+    name: string;
+    first_name?: string;
+    last_name?: string;
+    public_identifier?: string;
+    headline?: string;
+  }>> {
+    const monitorId = accountId || getMonitorAccountId();
+    if (!monitorId) {
+      return { data: null, error: 'No monitor account configured', status: 0 };
+    }
+    return this.get(`/users/${providerId}?account_id=${monitorId}`);
   }
 
   // ============================================
-  // HEALTH CHECK
+  // ACCOUNTS
   // ============================================
 
   async verifyConnection(accountId: string): Promise<{ connected: boolean; error?: string }> {
@@ -66,6 +126,10 @@ export class UnipileClient extends BaseApiClient {
       return { connected: false, error: result.error };
     }
     return { connected: true };
+  }
+
+  async deleteAccount(accountId: string): Promise<ApiResponse<void>> {
+    return this.delete(`/accounts/${accountId}`);
   }
 }
 

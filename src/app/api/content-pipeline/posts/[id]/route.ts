@@ -17,7 +17,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('cp_pipeline_posts')
-      .select('id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, leadshark_post_id, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, created_at, updated_at')
+      .select('id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, leadshark_post_id, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, scrape_engagement, heyreach_campaign_id, last_engagement_scrape_at, engagement_scrape_count, created_at, updated_at')
       .eq('id', id)
       .eq('user_id', session.user.id)
       .single();
@@ -51,6 +51,7 @@ export async function PATCH(
     const allowedFields = [
       'draft_content', 'final_content', 'dm_template', 'cta_word',
       'status', 'scheduled_time', 'is_buffer', 'buffer_position',
+      'scrape_engagement', 'heyreach_campaign_id',
     ];
     const VALID_POST_STATUSES = ['draft', 'reviewing', 'approved', 'scheduled', 'published', 'failed'];
     const updates: Record<string, unknown> = {};

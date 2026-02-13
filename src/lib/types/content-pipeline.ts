@@ -222,6 +222,10 @@ export interface PipelinePost {
   enable_automation: boolean;
   automation_config: Record<string, unknown> | null;
   engagement_stats: EngagementStats | null;
+  scrape_engagement: boolean;
+  heyreach_campaign_id: string | null;
+  last_engagement_scrape_at: string | null;
+  engagement_scrape_count: number;
   team_profile_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -240,6 +244,24 @@ export interface EngagementStats {
   comments: number;
   shares: number;
   captured_at: string;
+}
+
+export interface PostEngagement {
+  id: string;
+  user_id: string;
+  post_id: string;
+  provider_id: string;
+  engagement_type: 'comment' | 'reaction';
+  reaction_type: string | null;
+  comment_text: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  linkedin_url: string | null;
+  heyreach_campaign_id: string | null;
+  heyreach_pushed_at: string | null;
+  heyreach_error: string | null;
+  engaged_at: string | null;
+  created_at: string;
 }
 
 export interface PostingSlot {

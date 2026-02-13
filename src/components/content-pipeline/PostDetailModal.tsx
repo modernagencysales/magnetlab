@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostPreview } from './PostPreview';
@@ -27,6 +27,51 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  // Engagement scraping state
+  const [engagementStats, setEngagementStats] = useState<{ comments: number; reactions: number; resolved: number; pushed: number } | null>(null);
+  const [scrapeEnabled, setScrapeEnabled] = useState(post.scrape_engagement || false);
+  const [campaignId, setCampaignId] = useState(post.heyreach_campaign_id || '');
+  const [engagementLoading, setEngagementLoading] = useState(false);
+  const [engagementSaving, setEngagementSaving] = useState(false);
+
+  const isPublishedWithLinkedIn = post.status === 'published' && !!post.linkedin_post_id;
+
+  const fetchEngagementStats = useCallback(async () => {
+    if (!isPublishedWithLinkedIn) return;
+    setEngagementLoading(true);
+    try {
+      const res = await fetch(`/api/content-pipeline/posts/${post.id}/engagement`);
+      if (res.ok) {
+        const data = await res.json();
+        setEngagementStats(data.stats);
+        setScrapeEnabled(data.config.scrape_engagement);
+        setCampaignId(data.config.heyreach_campaign_id || '');
+      }
+    } catch { /* silent */ } finally {
+      setEngagementLoading(false);
+    }
+  }, [post.id, isPublishedWithLinkedIn]);
+
+  useEffect(() => {
+    fetchEngagementStats();
+  }, [fetchEngagementStats]);
+
+  const handleEngagementSave = async (updates: { scrape_engagement?: boolean; heyreach_campaign_id?: string }) => {
+    setEngagementSaving(true);
+    try {
+      const res = await fetch(`/api/content-pipeline/posts/${post.id}/engagement`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        await fetchEngagementStats();
+      }
+    } catch { /* silent */ } finally {
+      setEngagementSaving(false);
+    }
+  };
 
   const displayContent = activeVariation !== null && post.variations?.[activeVariation]
     ? post.variations[activeVariation].content
@@ -223,6 +268,79 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
           <div className="mb-4">
             <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">Polish Notes</p>
             <p className="text-sm text-muted-foreground">{post.polish_notes}</p>
+          </div>
+        )}
+
+        {/* Engagement Scraping (published posts with LinkedIn ID only) */}
+        {isPublishedWithLinkedIn && (
+          <div className="mb-4 rounded-lg border bg-muted/50 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm font-medium">Engagement Scraping</p>
+              {engagementLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+            </div>
+
+            {/* Stats */}
+            {engagementStats && (
+              <div className="mb-3 grid grid-cols-4 gap-2">
+                <div className="rounded-md bg-background px-2 py-1.5 text-center">
+                  <p className="text-lg font-semibold">{engagementStats.comments}</p>
+                  <p className="text-xs text-muted-foreground">Comments</p>
+                </div>
+                <div className="rounded-md bg-background px-2 py-1.5 text-center">
+                  <p className="text-lg font-semibold">{engagementStats.reactions}</p>
+                  <p className="text-xs text-muted-foreground">Reactions</p>
+                </div>
+                <div className="rounded-md bg-background px-2 py-1.5 text-center">
+                  <p className="text-lg font-semibold">{engagementStats.resolved}</p>
+                  <p className="text-xs text-muted-foreground">Resolved</p>
+                </div>
+                <div className="rounded-md bg-background px-2 py-1.5 text-center">
+                  <p className="text-lg font-semibold">{engagementStats.pushed}</p>
+                  <p className="text-xs text-muted-foreground">Pushed</p>
+                </div>
+              </div>
+            )}
+
+            {/* Toggle */}
+            <div className="mb-2 flex items-center gap-3">
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={scrapeEnabled}
+                  onChange={(e) => {
+                    const enabled = e.target.checked;
+                    setScrapeEnabled(enabled);
+                    handleEngagementSave({ scrape_engagement: enabled });
+                  }}
+                  className="peer sr-only"
+                  disabled={engagementSaving}
+                />
+                <div className="peer h-5 w-9 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-full dark:bg-gray-600 dark:peer-checked:bg-blue-500" />
+              </label>
+              <span className="text-sm">Scrape engagement from this post</span>
+            </div>
+
+            {/* Campaign ID */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">HeyReach Campaign ID</label>
+                <input
+                  type="text"
+                  value={campaignId}
+                  onChange={(e) => setCampaignId(e.target.value)}
+                  placeholder="e.g. 301276"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <button
+                onClick={() => handleEngagementSave({ heyreach_campaign_id: campaignId })}
+                disabled={engagementSaving}
+                className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {engagementSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+              </button>
+            </div>
           </div>
         )}
 
