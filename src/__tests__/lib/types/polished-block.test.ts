@@ -1,6 +1,5 @@
 import type {
   PolishedBlock,
-  PolishedBlockType,
 } from '@/lib/types/lead-magnet';
 
 describe('PolishedBlock types', () => {

@@ -1,7 +1,7 @@
 'use client';
 
 import type { PolishedContent } from '@/lib/types/lead-magnet';
-import { Callout, RichParagraph, BulletList, BlockQuote, SectionDivider } from './ContentBlocks';
+import { Callout, RichParagraph, BulletList, BlockQuote, SectionDivider, CodeBlock, TableBlock, AccordionBlock, ImageBlock, EmbedBlock } from './ContentBlocks';
 
 interface PolishedContentRendererProps {
   content: PolishedContent;
@@ -98,6 +98,16 @@ export function PolishedContentRenderer({
                 );
               case 'divider':
                 return <SectionDivider key={blockIdx} colors={colors} />;
+              case 'code':
+                return <CodeBlock key={blockIdx} block={block} isDark={isDark} />;
+              case 'table':
+                return <TableBlock key={blockIdx} block={block} isDark={isDark} />;
+              case 'accordion':
+                return <AccordionBlock key={blockIdx} block={block} />;
+              case 'image':
+                return <ImageBlock key={blockIdx} block={block} />;
+              case 'embed':
+                return <EmbedBlock key={blockIdx} block={block} />;
               default:
                 return null;
             }

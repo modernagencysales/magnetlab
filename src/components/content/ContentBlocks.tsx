@@ -1,7 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import type { CalloutStyle } from '@/lib/types/lead-magnet';
+import type { CalloutStyle, PolishedBlock } from '@/lib/types/lead-magnet';
 
 interface ThemeColors {
   text: string;
@@ -219,5 +220,171 @@ export function SectionDivider({ colors }: { colors: ThemeColors }) {
         margin: '2rem 0',
       }}
     />
+  );
+}
+
+// ---- CodeBlock ----
+
+export function CodeBlock({ block, isDark }: { block: PolishedBlock; isDark: boolean }) {
+  const [html, setHtml] = useState<string>('');
+
+  useEffect(() => {
+    async function highlight() {
+      try {
+        const { codeToHtml } = await import('shiki');
+        const result = await codeToHtml(block.content, {
+          lang: block.language || 'text',
+          theme: isDark ? 'github-dark' : 'github-light',
+        });
+        setHtml(result);
+      } catch {
+        // Fallback for unknown languages
+        setHtml('');
+      }
+    }
+    highlight();
+  }, [block.content, block.language, isDark]);
+
+  if (!html) {
+    return (
+      <pre className="rounded-lg border p-4 text-sm overflow-x-auto" style={{
+        backgroundColor: isDark ? '#1a1a2e' : '#f5f5f5',
+        color: 'var(--ds-text-body)',
+      }}>
+        <code>{block.content}</code>
+      </pre>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border overflow-hidden text-sm [&_pre]:p-4 [&_pre]:m-0 [&_pre]:overflow-x-auto">
+      {block.language && (
+        <div className="px-4 py-1.5 text-xs font-mono border-b" style={{
+          backgroundColor: isDark ? '#1a1a2e' : '#f0f0f0',
+          color: 'var(--ds-text-muted)',
+        }}>
+          {block.language}
+        </div>
+      )}
+      <div dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
+  );
+}
+
+// ---- TableBlock ----
+
+export function TableBlock({ block, isDark }: { block: PolishedBlock; isDark: boolean }) {
+  if (!block.headers || !block.rows) return null;
+
+  return (
+    <div className="overflow-x-auto rounded-lg border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr style={{ backgroundColor: isDark ? '#1a1a2e' : '#f5f5f5' }}>
+            {block.headers.map((header, i) => (
+              <th key={i} className="px-4 py-3 text-left font-semibold" style={{ color: 'var(--ds-text-heading)' }}>
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {block.rows.map((row, rowIdx) => (
+            <tr key={rowIdx} className="border-t" style={{
+              backgroundColor: rowIdx % 2 === 1 ? (isDark ? '#0d0d1a' : '#fafafa') : 'transparent',
+            }}>
+              {row.map((cell, cellIdx) => (
+                <td key={cellIdx} className="px-4 py-3" style={{ color: 'var(--ds-text-body)' }}>
+                  {renderRichText(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ---- AccordionBlock ----
+
+export function AccordionBlock({ block }: { block: PolishedBlock }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="rounded-lg border" style={{ borderColor: 'var(--ds-border)' }}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left font-medium"
+        style={{ color: 'var(--ds-text-heading)' }}
+      >
+        <span>{block.title || 'Details'}</span>
+        <svg
+          className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="border-t px-4 py-3" style={{ color: 'var(--ds-text-body)' }}>
+          {renderRichText(block.content)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- ImageBlock ----
+
+export function ImageBlock({ block }: { block: PolishedBlock }) {
+  if (!block.src) return null;
+
+  return (
+    <figure className="my-2">
+      <img
+        src={block.src}
+        alt={block.alt || ''}
+        className="w-full rounded-lg"
+        loading="lazy"
+      />
+      {block.caption && (
+        <figcaption className="mt-2 text-center text-sm" style={{ color: 'var(--ds-text-muted)' }}>
+          {block.caption}
+        </figcaption>
+      )}
+    </figure>
+  );
+}
+
+// ---- EmbedBlock ----
+
+export function EmbedBlock({ block }: { block: PolishedBlock }) {
+  if (!block.url) return null;
+
+  let embedUrl = block.url;
+  if (block.url.includes('youtube.com/watch')) {
+    const videoId = new URL(block.url).searchParams.get('v');
+    if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}`;
+  } else if (block.url.includes('youtu.be/')) {
+    const videoId = block.url.split('youtu.be/')[1]?.split('?')[0];
+    if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}`;
+  } else if (block.url.includes('vimeo.com/')) {
+    const videoId = block.url.split('vimeo.com/')[1]?.split('?')[0];
+    if (videoId) embedUrl = `https://player.vimeo.com/video/${videoId}`;
+  } else if (block.url.includes('loom.com/share/')) {
+    embedUrl = block.url.replace('/share/', '/embed/');
+  }
+
+  return (
+    <div className="relative w-full overflow-hidden rounded-lg" style={{ paddingBottom: '56.25%' }}>
+      <iframe
+        src={embedUrl}
+        className="absolute inset-0 h-full w-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        title={block.provider || 'Embedded video'}
+      />
+    </div>
   );
 }
