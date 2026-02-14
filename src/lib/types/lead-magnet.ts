@@ -279,6 +279,18 @@ export interface PolishedContent {
 }
 
 // ============================================
+// SCREENSHOT URLS (for LinkedIn post images)
+// ============================================
+
+export interface ScreenshotUrl {
+  type: 'hero' | 'section';
+  sectionIndex?: number;
+  sectionName?: string;
+  url1200x627: string;
+  url1080x1080: string;
+}
+
+// ============================================
 // LEAD MAGNET DATABASE ENTITY
 // ============================================
 
@@ -300,6 +312,7 @@ export interface LeadMagnet {
   scheduledTime: string | null;
   polishedContent: PolishedContent | null;
   polishedAt: string | null;
+  screenshotUrls?: ScreenshotUrl[];
   status: LeadMagnetStatus;
   publishedAt: string | null;
   createdAt: string;
