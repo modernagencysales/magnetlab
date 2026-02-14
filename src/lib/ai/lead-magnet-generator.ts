@@ -14,6 +14,7 @@ import type {
 } from '@/lib/types/lead-magnet';
 import { getRelevantContext } from '@/lib/services/knowledge-brain';
 import { buildContentBrief } from '@/lib/ai/content-pipeline/briefing-agent';
+import { logError, logWarn } from '@/lib/utils/logger';
 
 // Lazy initialization to ensure env vars are loaded
 function getAnthropicClient(): Anthropic {
@@ -34,7 +35,7 @@ async function getKnowledgeContext(userId: string, searchQuery: string): Promise
   try {
     const result = await getRelevantContext(userId, searchQuery, 10);
     if (result.error) {
-      console.warn('Knowledge context search error:', result.error);
+      logWarn('ai/lead-magnet', 'Knowledge context search error', { error: result.error });
     }
     const entries = result.entries;
     if (!entries.length) return '';
@@ -949,7 +950,7 @@ Return ONLY valid JSON.`;
 
     // Detect truncated response (hit max_tokens)
     if (response.stop_reason === 'max_tokens') {
-      console.error(`Extraction response truncated for archetype "${archetype}" — stop_reason=max_tokens`);
+      logError('ai/lead-magnet', new Error('Extraction response truncated'), { archetype, stopReason: 'max_tokens' });
     }
 
     const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
@@ -1254,6 +1255,9 @@ Transform this into polished content blocks. For each section in the extracted c
    - "list": Bullet-pointed lists for steps, items, or enumerations. Use "- " prefix for each item, separated by newlines.
    - "quote": Powerful statements, memorable takeaways, or impactful phrases
    - "divider": Visual separator between major ideas (content should be empty string)
+   - "code": Code examples, terminal commands, or technical snippets. Include "language" field (e.g., "javascript", "typescript", "bash", "python", "json"). Only use for developer/technical content with actual code.
+   - "table": Comparison tables, feature matrices, or structured data. Include "headers" (string array) and "rows" (array of string arrays). Great for before/after comparisons, pricing tiers, feature lists, or step breakdowns.
+   - "accordion": Expandable Q&A or supplementary details. Include "title" (the toggle label). Use for FAQ sections, common objections, or nice-to-know details that don't need to be visible by default.
 3. End each section with a keyTakeaway (1 sentence, the single most actionable insight)
 
 Also provide:
@@ -1272,6 +1276,10 @@ CONTENT GUIDELINES:
 - Parse **bold** in paragraph content for emphasis on key phrases
 - Keep the voice professional but direct — respect the reader's time
 - Every section should have at least 3-5 blocks for visual variety
+- Use "code" blocks only when showing actual code, terminal commands, API examples, or technical configurations — not for regular text
+- Use "table" blocks for structured comparisons with 2+ columns (before/after, feature matrices, pros/cons, tool comparisons)
+- Use "accordion" blocks for FAQ sections, common objections, or supplementary details the reader may want to skip
+- Do NOT use "image" or "embed" blocks — those are added manually by the user
 
 Return ONLY valid JSON:
 {
@@ -1287,7 +1295,10 @@ Return ONLY valid JSON:
         { "type": "callout", "content": "Key insight here", "style": "info" },
         { "type": "list", "content": "- Item one\\n- Item two\\n- Item three" },
         { "type": "quote", "content": "Memorable statement" },
-        { "type": "divider", "content": "" }
+        { "type": "divider", "content": "" },
+        { "type": "code", "content": "npm install example-package", "language": "bash" },
+        { "type": "table", "content": "", "headers": ["Before", "After"], "rows": [["Manual process", "Automated"]] },
+        { "type": "accordion", "content": "Detailed explanation here...", "title": "Why does this matter?" }
       ],
       "keyTakeaway": "Main insight from this section"
     }
