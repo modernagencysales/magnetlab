@@ -3,6 +3,16 @@
 import Script from 'next/script';
 import { useEffect } from 'react';
 
+export function sanitizePixelId(id: string | undefined): string {
+  if (!id) return '';
+  return id.replace(/[^0-9]/g, '');
+}
+
+export function sanitizePartnerId(id: string | undefined): string {
+  if (!id) return '';
+  return id.replace(/[^a-zA-Z0-9]/g, '');
+}
+
 export interface PixelConfig {
   meta?: {
     pixelId: string;
@@ -62,7 +72,7 @@ export function PixelScripts({ config }: PixelScriptsProps) {
               t.src=v;s=b.getElementsByTagName(e)[0];
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', '${config.meta.pixelId}');
+              fbq('init', '${sanitizePixelId(config.meta.pixelId)}');
             `,
           }}
         />
@@ -75,7 +85,7 @@ export function PixelScripts({ config }: PixelScriptsProps) {
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
-              _linkedin_partner_id = "${config.linkedin.partnerId}";
+              _linkedin_partner_id = "${sanitizePartnerId(config.linkedin.partnerId)}";
               window._linkedin_data_partner_ids = window._linkedin_data_partner_ids || [];
               window._linkedin_data_partner_ids.push(_linkedin_partner_id);
               (function(l) {
