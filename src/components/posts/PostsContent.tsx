@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Lightbulb, FileText, LayoutGrid, Sparkles, Loader2, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ProfileSwitcher } from '@/components/content-pipeline/ProfileSwitcher';
+import { ProfileSwitcher, useProfileSelection } from '@/components/content-pipeline/ProfileSwitcher';
 
 const IdeasTab = dynamic(
   () => import('@/components/content-pipeline/IdeasTab').then((m) => ({ default: m.IdeasTab })),
@@ -63,7 +63,7 @@ export function PostsContent() {
     tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'ideas'
   );
   const [showQuickWrite, setShowQuickWrite] = useState(false);
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const { selectedProfileId, onProfileChange } = useProfileSelection();
 
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam)) {
@@ -95,7 +95,7 @@ export function PostsContent() {
         </div>
         <ProfileSwitcher
           selectedProfileId={selectedProfileId}
-          onProfileChange={setSelectedProfileId}
+          onProfileChange={onProfileChange}
         />
       </div>
 

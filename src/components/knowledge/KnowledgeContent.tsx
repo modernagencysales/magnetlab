@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Mic, Brain, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ProfileSwitcher } from '@/components/content-pipeline/ProfileSwitcher';
+import { ProfileSwitcher, useProfileSelection } from '@/components/content-pipeline/ProfileSwitcher';
 
 const TranscriptsTab = dynamic(
   () => import('@/components/content-pipeline/TranscriptsTab').then((m) => ({ default: m.TranscriptsTab })),
@@ -39,7 +39,7 @@ export function KnowledgeContent() {
   const [activeTab, setActiveTab] = useState<Tab>(
     tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'transcripts'
   );
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const { selectedProfileId, onProfileChange } = useProfileSelection();
 
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam)) {
@@ -71,7 +71,7 @@ export function KnowledgeContent() {
         </div>
         <ProfileSwitcher
           selectedProfileId={selectedProfileId}
-          onProfileChange={setSelectedProfileId}
+          onProfileChange={onProfileChange}
         />
       </div>
 

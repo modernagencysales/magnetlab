@@ -29,6 +29,7 @@ export default async function DashboardLayout({
     // Verify the membership is still valid
     const isValid = memberships?.some(m => m.owner_id === activeOwnerId);
     if (isValid) {
+      const supabase = createSupabaseAdminClient();
       const { data: owner } = await supabase
         .from('users')
         .select('name, email')
