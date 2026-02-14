@@ -27,7 +27,9 @@ export function PolishedContentRenderer({
       {content.sections.map((section, sectionIdx) => (
         <section
           key={section.id}
-          id={section.id}
+          data-section-index={sectionIdx}
+          data-section-name={section.sectionName}
+          id={`section-${section.id}`}
           style={{ marginBottom: '3rem', scrollMarginTop: '5rem' }}
         >
           {/* Section heading */}
