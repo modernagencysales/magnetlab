@@ -97,7 +97,8 @@ export async function POST(request: Request) {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
+        // Stripe API 2026-01-28.clover moved subscription to parent.subscription_details
+        const subscriptionId = (invoice.parent?.subscription_details?.subscription as string) || '';
 
         const { data: existingSub } = await supabase
           .from('subscriptions')

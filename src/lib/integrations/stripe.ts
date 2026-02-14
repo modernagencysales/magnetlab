@@ -10,7 +10,7 @@ function getStripeClient(): Stripe {
     throw new Error('STRIPE_SECRET_KEY is not set');
   }
   return new Stripe(secretKey, {
-    apiVersion: '2025-02-24.acacia',
+    apiVersion: '2026-01-28.clover',
   });
 }
 
@@ -244,15 +244,20 @@ export interface SubscriptionWebhookData {
 export function parseSubscriptionEvent(
   subscription: Stripe.Subscription
 ): SubscriptionWebhookData {
-  const priceId = subscription.items.data[0]?.price.id || '';
+  const firstItem = subscription.items.data[0];
+  const priceId = firstItem?.price.id || '';
+
+  // Stripe API 2026-01-28.clover moved period fields from subscription to item level
+  const periodStart = firstItem?.current_period_start ?? 0;
+  const periodEnd = firstItem?.current_period_end ?? 0;
 
   return {
     subscriptionId: subscription.id,
     customerId: subscription.customer as string,
     status: subscription.status,
     plan: getPlanFromPriceId(priceId),
-    currentPeriodStart: new Date(subscription.current_period_start * 1000),
-    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    currentPeriodStart: new Date(periodStart * 1000),
+    currentPeriodEnd: new Date(periodEnd * 1000),
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
   };
 }
