@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Team, TeamProfile, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
+import { logError } from '@/lib/utils/logger';
+
 interface ProfileFormData {
   full_name: string;
   email: string;
@@ -62,7 +64,7 @@ export default function TeamPage() {
       }
       setProfiles(profilesData.profiles || []);
     } catch (err) {
-      console.error('Failed to fetch team data:', err);
+      logError('dashboard/team', err, { step: 'failed_to_fetch_team_data' });
     } finally {
       setLoading(false);
     }

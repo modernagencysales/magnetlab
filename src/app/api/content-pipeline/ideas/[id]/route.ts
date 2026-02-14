@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -43,7 +45,7 @@ export async function PATCH(
 
     return NextResponse.json({ idea: data });
   } catch (error) {
-    console.error('Idea update error:', error);
+    logError('cp/ideas', error, { step: 'idea_update_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -73,7 +75,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Idea delete error:', error);
+    logError('cp/ideas', error, { step: 'idea_delete_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

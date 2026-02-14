@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2, Play, Loader2, Check, X, Globe } from 'lucide-react';
 import type { WebhookConfig } from '@/lib/types/funnel';
 
+import { logError } from '@/lib/utils/logger';
+
 export function WebhookSettings() {
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,7 @@ export function WebhookSettings() {
       const data = await response.json();
       setWebhooks(data.webhooks);
     } catch (err) {
-      console.error('Fetch webhooks error:', err);
+      logError('settings/webhooks', err, { step: 'fetch_webhooks_error' });
     } finally {
       setLoading(false);
     }
@@ -78,7 +80,7 @@ export function WebhookSettings() {
       const { webhook: updated } = await response.json();
       setWebhooks(webhooks.map((w) => (w.id === webhook.id ? updated : w)));
     } catch (err) {
-      console.error('Toggle webhook error:', err);
+      logError('settings/webhooks', err, { step: 'toggle_webhook_error' });
     }
   };
 
@@ -94,7 +96,7 @@ export function WebhookSettings() {
 
       setWebhooks(webhooks.filter((w) => w.id !== webhookId));
     } catch (err) {
-      console.error('Delete webhook error:', err);
+      logError('settings/webhooks', err, { step: 'delete_webhook_error' });
     }
   };
 

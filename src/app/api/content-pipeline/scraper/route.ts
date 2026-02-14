@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET() {
   try {
     const session = await auth();
@@ -31,7 +33,7 @@ export async function GET() {
       posts: postsResult.data || [],
     });
   } catch (error) {
-    console.error('Scraper list error:', error);
+    logError('cp/scraper', error, { step: 'scraper_list_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -107,7 +109,7 @@ export async function POST(request: NextRequest) {
       posts: insertedPosts || [],
     }, { status: 201 });
   } catch (error) {
-    console.error('Scraper import error:', error);
+    logError('cp/scraper', error, { step: 'scraper_import_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

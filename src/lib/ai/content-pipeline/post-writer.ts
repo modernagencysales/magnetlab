@@ -1,6 +1,7 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import type { PostTemplate, StyleProfile, PostVariation, TeamVoiceProfile } from '@/lib/types/content-pipeline';
+import { logError } from '@/lib/utils/logger';
 
 export interface IdeaContext {
   id?: string;
@@ -269,7 +270,7 @@ export async function bulkWritePosts(
           const result = await writePost(input);
           return { ideaId: input.idea.id || input.idea.title, result };
         } catch (error) {
-          console.error(`Failed to write post for idea "${input.idea.title}":`, error);
+          logError('ai/post-writer', error, { ideaTitle: input.idea.title });
           return { ideaId: input.idea.id || input.idea.title, result: null };
         }
       })

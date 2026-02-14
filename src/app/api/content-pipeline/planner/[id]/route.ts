@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -28,7 +30,7 @@ export async function GET(
 
     return NextResponse.json({ plan: data });
   } catch (error) {
-    console.error('Planner get error:', error);
+    logError('cp/planner', error, { step: 'planner_get_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -75,7 +77,7 @@ export async function PATCH(
 
     return NextResponse.json({ plan: data });
   } catch (error) {
-    console.error('Planner update error:', error);
+    logError('cp/planner', error, { step: 'planner_update_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -105,7 +107,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Planner delete error:', error);
+    logError('cp/planner', error, { step: 'planner_delete_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

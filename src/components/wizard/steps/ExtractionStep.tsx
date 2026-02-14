@@ -5,6 +5,8 @@ import { ArrowLeft, Loader2, MessageCircle, Send, Lightbulb, Quote } from 'lucid
 import type { LeadMagnetConcept, ContentExtractionQuestion, LeadMagnetArchetype, IdeationSources, BusinessContext } from '@/lib/types/lead-magnet';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 
+import { logError } from '@/lib/utils/logger';
+
 interface ExtractionStepProps {
   concept: LeadMagnetConcept;
   initialAnswers: Record<string, string>;
@@ -132,7 +134,7 @@ export function ExtractionStep({
         const data = await response.json();
         setQuestions(data.questions);
       } catch (error) {
-        console.error('Failed to fetch questions:', error);
+        logError('wizard/extraction', error, { step: 'failed_to_fetch_questions' });
       } finally {
         setLoadingQuestions(false);
       }

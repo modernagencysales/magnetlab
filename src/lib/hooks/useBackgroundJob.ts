@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { JobStatus, JobStatusResponse } from '@/lib/types/background-jobs';
+import { logError } from '@/lib/utils/logger';
 
 interface UseBackgroundJobOptions<TResult> {
   /** Polling interval in ms (default: 2000) */
@@ -83,7 +84,7 @@ export function useBackgroundJob<TResult = unknown>(
         onErrorRef.current?.(data.error || 'Job failed');
       }
     } catch (err) {
-      console.error('Poll error:', err);
+      logError('hooks/useBackgroundJob', err, { action: 'poll' });
       // Don't stop polling on network errors, just log
     }
   }, [stopPolling]);

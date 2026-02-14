@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 // GET: engagement stats + recent engagements for a post
 export async function GET(
   request: NextRequest,
@@ -77,7 +79,7 @@ export async function GET(
       engagements: recentEngagements || [],
     });
   } catch (error) {
-    console.error('Engagement fetch error:', error);
+    logError('cp/posts/engagement', error, { step: 'engagement_fetch_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -128,7 +130,7 @@ export async function PATCH(
 
     return NextResponse.json({ post: data });
   } catch (error) {
-    console.error('Engagement config update error:', error);
+    logError('cp/posts/engagement', error, { step: 'engagement_config_update_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

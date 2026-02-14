@@ -15,6 +15,8 @@ import { WizardProgress } from './WizardProgress';
 import { DraftPicker } from './DraftPicker';
 import { useBackgroundJob } from '@/lib/hooks/useBackgroundJob';
 import { useWizardAutoSave } from '@/lib/hooks/useWizardAutoSave';
+import { logError, logWarn } from '@/lib/utils/logger';
+
 import type {
   WizardState,
   WizardDraft,
@@ -144,7 +146,7 @@ export function WizardContainer() {
           }
         }
       } catch (err) {
-        console.warn('Failed to load initial data:', err);
+        logWarn('wizard/container', 'Failed to load initial data', { detail: String(err) });
       } finally {
         setLoadingBrandKit(false);
       }
@@ -229,7 +231,7 @@ export function WizardContainer() {
       // Start polling for results
       startPolling(jobId);
     } catch (err) {
-      console.error('Context submit error:', err);
+      logError('wizard/container', err, { step: 'context_submit_error' });
       setError(err instanceof Error ? err.message : 'An error occurred');
       setState((prev) => ({ ...prev, currentStep: 1 }));
       setGenerating('idle');
@@ -268,7 +270,7 @@ export function WizardContainer() {
       });
 
       if (!brandKitResponse.ok) {
-        console.warn('Failed to save brand kit, continuing anyway');
+        logWarn('wizard/container', 'Failed to save brand kit, continuing anyway');
       }
 
       setState((prev) => ({
@@ -322,7 +324,7 @@ export function WizardContainer() {
           throw new Error(data.error || 'Failed to process extraction');
         } else {
           const text = await response.text();
-          console.error('Non-JSON error response:', text);
+          logError('wizard/container', new Error(text), { step: 'non-json_error_response' });
           throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
         }
       }
@@ -337,7 +339,7 @@ export function WizardContainer() {
         currentStep: 4,
       }));
     } catch (err) {
-      console.error('Extraction error:', err);
+      logError('wizard/container', err, { step: 'extraction_error' });
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setGenerating('idle');

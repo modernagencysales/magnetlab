@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET() {
   try {
     const session = await auth();
@@ -34,7 +36,7 @@ export async function GET() {
       example_payload: examplePayload,
     });
   } catch (error) {
-    console.error('Webhook config error:', error);
+    logError('cp/transcripts', error, { step: 'webhook_config_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

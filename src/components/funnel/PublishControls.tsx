@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Globe, Copy, Check, ExternalLink, Loader2, AlertCircle, Users } from 'lucide-react';
 import type { FunnelPage } from '@/lib/types/funnel';
 
+import { logError } from '@/lib/utils/logger';
+
 interface FunnelStats {
   total: number;
   qualified: number;
@@ -42,7 +44,7 @@ export function PublishControls({
           }
         }
       } catch (err) {
-        console.error('Failed to fetch stats:', err);
+        logError('funnel/publish', err, { step: 'failed_to_fetch_stats' });
       }
     }
     fetchStats();

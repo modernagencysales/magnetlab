@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET() {
   try {
     const session = await auth();
@@ -24,7 +26,7 @@ export async function GET() {
 
     return NextResponse.json({ plans: data || [] });
   } catch (error) {
-    console.error('Planner list error:', error);
+    logError('cp/planner', error, { step: 'planner_list_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ plan: data }, { status: 201 });
   } catch (error) {
-    console.error('Planner create error:', error);
+    logError('cp/planner', error, { step: 'planner_create_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

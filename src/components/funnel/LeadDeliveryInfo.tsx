@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Webhook, AlertTriangle, CheckCircle, ExternalLink, Loader2, Settings } from 'lucide-react';
 import type { WebhookConfig } from '@/lib/types/funnel';
 
+import { logError } from '@/lib/utils/logger';
+
 export function LeadDeliveryInfo() {
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +20,7 @@ export function LeadDeliveryInfo() {
           setWebhooks(data.webhooks || []);
         }
       } catch (err) {
-        console.error('Failed to fetch webhooks:', err);
+        logError('funnel/lead-delivery', err, { step: 'failed_to_fetch_webhooks' });
       } finally {
         setLoading(false);
       }

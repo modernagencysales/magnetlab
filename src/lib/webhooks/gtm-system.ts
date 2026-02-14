@@ -2,6 +2,8 @@
 // Fires a non-blocking webhook to gtm-system when a lead is captured
 // This is a system-level webhook, separate from user-configurable webhooks
 
+import { logError, logInfo } from '@/lib/utils/logger';
+
 const GTM_SYSTEM_WEBHOOK_URL = process.env.GTM_SYSTEM_WEBHOOK_URL;
 const GTM_SYSTEM_WEBHOOK_SECRET = process.env.GTM_SYSTEM_WEBHOOK_SECRET;
 const GTM_SYSTEM_TENANT_ID = process.env.GTM_SYSTEM_TENANT_ID;
@@ -99,17 +101,12 @@ export async function fireGtmLeadMagnetDeployedWebhook(
     );
 
     if (response.ok) {
-      console.log('[gtm-system] lead_magnet.deployed webhook delivered successfully');
+      logInfo('webhooks/gtm-system', 'lead_magnet.deployed webhook delivered successfully');
     } else {
-      console.error(
-        `[gtm-system] lead_magnet.deployed webhook failed with status ${response.status}`
-      );
+      logError('webhooks/gtm-system', new Error('lead_magnet.deployed webhook failed'), { status: response.status });
     }
   } catch (err) {
-    console.error(
-      '[gtm-system] lead_magnet.deployed webhook error:',
-      err instanceof Error ? err.message : err
-    );
+    logError('webhooks/gtm-system', err, { event: 'lead_magnet.deployed' });
   }
 }
 
@@ -149,17 +146,12 @@ export async function fireGtmLeadQualifiedWebhook(
     );
 
     if (response.ok) {
-      console.log('[gtm-system] lead.qualified webhook delivered successfully');
+      logInfo('webhooks/gtm-system', 'lead.qualified webhook delivered successfully');
     } else {
-      console.error(
-        `[gtm-system] lead.qualified webhook failed with status ${response.status}`
-      );
+      logError('webhooks/gtm-system', new Error('lead.qualified webhook failed'), { status: response.status });
     }
   } catch (err) {
-    console.error(
-      '[gtm-system] lead.qualified webhook error:',
-      err instanceof Error ? err.message : err
-    );
+    logError('webhooks/gtm-system', err, { event: 'lead.qualified' });
   }
 }
 
@@ -199,16 +191,11 @@ export async function fireGtmLeadCreatedWebhook(
     );
 
     if (response.ok) {
-      console.log('[gtm-system] lead.created webhook delivered successfully');
+      logInfo('webhooks/gtm-system', 'lead.created webhook delivered successfully');
     } else {
-      console.error(
-        `[gtm-system] lead.created webhook failed with status ${response.status}`
-      );
+      logError('webhooks/gtm-system', new Error('lead.created webhook failed'), { status: response.status });
     }
   } catch (err) {
-    console.error(
-      '[gtm-system] lead.created webhook error:',
-      err instanceof Error ? err.message : err
-    );
+    logError('webhooks/gtm-system', err, { event: 'lead.created' });
   }
 }

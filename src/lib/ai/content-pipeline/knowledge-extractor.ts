@@ -1,6 +1,7 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import type { KnowledgeCategory, KnowledgeSpeaker, TranscriptType } from '@/lib/types/content-pipeline';
+import { logError } from '@/lib/utils/logger';
 
 export interface ExtractedKnowledgeEntry {
   category: KnowledgeCategory;
@@ -128,7 +129,7 @@ export async function batchExtractKnowledge(
           });
           return { id: t.id, result };
         } catch (error) {
-          console.error(`Failed to extract knowledge from transcript ${t.id}:`, error);
+          logError('ai/knowledge-extractor', error, { transcriptId: t.id });
           return { id: t.id, result: null };
         }
       })

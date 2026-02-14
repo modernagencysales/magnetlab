@@ -3,6 +3,8 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { tasks } from '@trigger.dev/sdk/v3';
 import type { processTranscript } from '@/trigger/process-transcript';
 
+import { logError, logWarn } from '@/lib/utils/logger';
+
 interface GrainWebhookPayload {
   recording_id: string;
   title?: string;
@@ -66,7 +68,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError || !transcript) {
-      console.error('Failed to insert Grain transcript:', insertError?.message);
+      logError('webhooks/grain', new Error(String(insertError?.message)), { step: 'failed_to_insert_grain_transcript' });
       return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 });
     }
 
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
         transcriptId: transcript.id,
       });
     } catch (triggerError) {
-      console.warn('Failed to trigger process-transcript:', triggerError);
+      logWarn('webhooks/grain', 'Failed to trigger process-transcript', { detail: String(triggerError) });
     }
 
     return NextResponse.json({
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
       transcript_id: transcript.id,
     });
   } catch (error) {
-    console.error('Grain webhook error:', error);
+    logError('webhooks/grain', error, { step: 'grain_webhook_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

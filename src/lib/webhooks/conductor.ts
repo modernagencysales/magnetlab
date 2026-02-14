@@ -4,6 +4,7 @@
 
 import { getUserIntegration } from '@/lib/utils/encrypted-storage';
 import { logApiError } from '@/lib/api/errors';
+import { logError, logInfo } from '@/lib/utils/logger';
 
 const CONDUCTOR_TIMEOUT_MS = 5000;
 
@@ -48,9 +49,9 @@ export async function deliverConductorWebhook(
     });
 
     if (response.ok) {
-      console.log(`[conductor] ${event} webhook delivered to ${endpointUrl}`);
+      logInfo('webhooks/conductor', `${event} webhook delivered`, { endpointUrl });
     } else {
-      console.error(`[conductor] ${event} webhook failed with status ${response.status}`);
+      logError('webhooks/conductor', new Error(`${event} webhook failed`), { status: response.status });
     }
   } catch (err) {
     logApiError('conductor/webhook-delivery', err, { userId, event });

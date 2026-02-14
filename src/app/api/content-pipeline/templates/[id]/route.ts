@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -28,7 +30,7 @@ export async function GET(
 
     return NextResponse.json({ template: data });
   } catch (error) {
-    console.error('Template get error:', error);
+    logError('cp/templates', error, { step: 'template_get_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -71,7 +73,7 @@ export async function PATCH(
 
     return NextResponse.json({ template: data });
   } catch (error) {
-    console.error('Template update error:', error);
+    logError('cp/templates', error, { step: 'template_update_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -101,7 +103,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Template delete error:', error);
+    logError('cp/templates', error, { step: 'template_delete_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

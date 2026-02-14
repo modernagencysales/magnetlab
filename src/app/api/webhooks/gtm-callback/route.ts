@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyGtmCallbackWebhook } from '@/lib/webhooks/verify';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { logError, logWarn, logInfo } from '@/lib/utils/logger';
 
 interface GtmCallbackPayload {
   event: 'lead_magnet.scheduled' | 'lead_magnet.schedule_failed';
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     // Verify webhook secret
     const verification = await verifyGtmCallbackWebhook(request);
     if (!verification.valid) {
-      console.warn('[gtm-callback] Verification failed:', verification.error);
+      logWarn('webhooks/gtm-callback', 'Verification failed', { error: verification.error });
       return NextResponse.json(
         { error: 'Invalid webhook secret' },
         { status: 401 }
@@ -57,16 +58,14 @@ export async function POST(request: NextRequest) {
           .eq('id', leadMagnetId);
 
         if (error) {
-          console.error('[gtm-callback] Failed to update lead magnet:', error);
+          logError('webhooks/gtm-callback', error, { step: 'update_lead_magnet', leadMagnetId });
           return NextResponse.json(
             { error: 'Failed to update lead magnet' },
             { status: 500 }
           );
         }
 
-        console.log(
-          `[gtm-callback] Lead magnet ${leadMagnetId} marked as scheduled`
-        );
+        logInfo('webhooks/gtm-callback', 'Lead magnet marked as scheduled', { leadMagnetId });
         break;
       }
 
@@ -90,21 +89,19 @@ export async function POST(request: NextRequest) {
           .eq('id', failedId);
 
         if (failError) {
-          console.error('[gtm-callback] Failed to update lead magnet on schedule failure:', failError);
+          logError('webhooks/gtm-callback', failError, { step: 'update_schedule_failure', leadMagnetId: failedId });
           return NextResponse.json(
             { error: 'Failed to update lead magnet' },
             { status: 500 }
           );
         }
 
-        console.log(
-          `[gtm-callback] Lead magnet ${failedId} scheduling failed: ${reason || 'unknown'}`
-        );
+        logInfo('webhooks/gtm-callback', 'Lead magnet scheduling failed', { leadMagnetId: failedId, reason: reason || 'unknown' });
         break;
       }
 
       default:
-        console.warn('[gtm-callback] Unknown event type:', payload.event);
+        logWarn('webhooks/gtm-callback', 'Unknown event type', { event: payload.event });
         return NextResponse.json(
           { error: `Unknown event type: ${payload.event}` },
           { status: 400 }
@@ -113,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[gtm-callback] Processing failed:', error);
+    logError('webhooks/gtm-callback', error, { step: 'processing' });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -2,6 +2,7 @@
 // Used for sending transactional emails including welcome sequences
 
 import { Resend } from 'resend';
+import { logError } from '@/lib/utils/logger';
 
 // Lazy initialization to ensure env vars are loaded
 let defaultResendClient: Resend | null = null;
@@ -76,14 +77,14 @@ export async function sendEmail(params: SendEmailParams): Promise<{ success: boo
     });
 
     if (error) {
-      console.error('Resend error:', error);
+      logError('integrations/resend', error);
       return { success: false, error: error.message };
     }
 
     return { success: true, id: data?.id };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Send email error:', message);
+    logError('integrations/resend', error, { action: 'send_email' });
     return { success: false, error: message };
   }
 }

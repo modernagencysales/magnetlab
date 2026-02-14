@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmbedding, createTemplateEmbeddingText } from '@/lib/ai/embeddings';
 
+import { logError } from '@/lib/utils/logger';
+
 const SEED_TEMPLATES = [
   {
     name: 'Before/After Transformation',
@@ -140,7 +142,7 @@ export async function POST() {
       seeded: data?.length || 0,
     }, { status: 201 });
   } catch (error) {
-    console.error('Template seed error:', error);
+    logError('cp/templates', error, { step: 'template_seed_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

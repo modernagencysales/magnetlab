@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { quickWrite } from '@/lib/ai/content-pipeline/quick-writer';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
       synthetic_idea: result.syntheticIdea,
     }, { status: 201 });
   } catch (error) {
-    console.error('Quick write error:', error);
+    logError('cp/quick-write', error, { step: 'quick_write_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

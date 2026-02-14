@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle, Mail } from 'lucide-react';
 
+import { logError } from '@/lib/utils/logger';
+
 interface ResendSettingsProps {
   isConnected: boolean;
   lastVerifiedAt: string | null;
@@ -94,7 +96,7 @@ export function ResendSettings({ isConnected, lastVerifiedAt, metadata }: Resend
       });
       window.location.reload();
     } catch (error) {
-      console.error('Disconnect error:', error);
+      logError('settings/resend', error, { step: 'disconnect_error' });
     } finally {
       setLoading(false);
     }
@@ -118,7 +120,7 @@ export function ResendSettings({ isConnected, lastVerifiedAt, metadata }: Resend
 
       window.location.reload();
     } catch (error) {
-      console.error('Update settings error:', error);
+      logError('settings/resend', error, { step: 'update_settings_error' });
     } finally {
       setLoading(false);
     }

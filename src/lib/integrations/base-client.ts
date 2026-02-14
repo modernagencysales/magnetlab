@@ -1,4 +1,5 @@
 // Base HTTP client for all integrations
+import { logError } from '@/lib/utils/logger';
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -55,7 +56,7 @@ export class BaseApiClient {
         } catch {
           errorMessage = errorText || `HTTP ${status}`;
         }
-        console.error(`API Error: ${method} ${url} -> ${status}`, errorMessage);
+        logError('integrations/api', new Error(errorMessage), { method, url, status });
         return { data: null, error: `HTTP ${status}: ${errorMessage}`, status };
       }
 
@@ -110,7 +111,7 @@ export class BaseApiClient {
         } catch {
           errorMessage = errorText || `HTTP ${status}`;
         }
-        console.error(`API Error: POST (multipart) ${url} -> ${status}`, errorMessage);
+        logError('integrations/api', new Error(errorMessage), { method: 'POST (multipart)', url, status });
         return { data: null, error: `HTTP ${status}: ${errorMessage}`, status };
       }
 
@@ -159,7 +160,7 @@ export class BaseApiClient {
         } catch {
           errorMessage = errorText || `HTTP ${status}`;
         }
-        console.error(`API Error: PUT (multipart) ${url} -> ${status}`, errorMessage);
+        logError('integrations/api', new Error(errorMessage), { method: 'PUT (multipart)', url, status });
         return { data: null, error: `HTTP ${status}: ${errorMessage}`, status };
       }
 

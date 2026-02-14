@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET() {
   try {
     const session = await auth();
@@ -23,7 +25,7 @@ export async function GET() {
 
     return NextResponse.json({ context: data || null });
   } catch (error) {
-    console.error('Business context get error:', error);
+    logError('cp/business-context', error, { step: 'business_context_get_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -62,7 +64,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ context: data });
   } catch (error) {
-    console.error('Business context upsert error:', error);
+    logError('cp/business-context', error, { step: 'business_context_upsert_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

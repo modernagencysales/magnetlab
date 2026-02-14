@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import type { Email, EmailSequence } from '@/lib/types/email';
 
+import { logError } from '@/lib/utils/logger';
+
 interface EmailSequenceTabProps {
   leadMagnetId: string;
 }
@@ -180,7 +182,7 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
           setSequence(data.emailSequence);
         }
       } catch (err) {
-        console.error('Error fetching email sequence:', err);
+        logError('funnel/email-sequence', err, { step: 'error_fetching_email_sequence' });
       } finally {
         setLoading(false);
       }

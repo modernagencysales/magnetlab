@@ -4,6 +4,8 @@ import { tasks } from '@trigger.dev/sdk/v3';
 import { getBufferSize, getNextScheduledTime, getPillarCounts } from '@/lib/services/autopilot';
 import type { runAutopilot } from '@/trigger/run-autopilot';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET() {
   try {
     const session = await auth();
@@ -23,7 +25,7 @@ export async function GET() {
       pillarCounts,
     });
   } catch (error) {
-    console.error('Autopilot status error:', error);
+    logError('cp/schedule/autopilot', error, { step: 'autopilot_status_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest) {
       runId: handle.id,
     });
   } catch (error) {
-    console.error('Autopilot trigger error:', error);
+    logError('cp/schedule/autopilot', error, { step: 'autopilot_trigger_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

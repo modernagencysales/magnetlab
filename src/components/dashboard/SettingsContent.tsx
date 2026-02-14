@@ -13,6 +13,8 @@ import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettin
 import { WebhookSettings } from '@/components/settings/WebhookSettings';
 import { TeamMembersSettings } from '@/components/settings/TeamMembersSettings';
 
+import { logError } from '@/lib/utils/logger';
+
 interface ApiKey {
   id: string;
   name: string;
@@ -95,7 +97,7 @@ export function SettingsContent({
           setApiKeys(data.keys || []);
         }
       } catch (error) {
-        console.error('Failed to fetch API keys:', error);
+        logError('dashboard/settings', error, { step: 'failed_to_fetch_api_keys' });
       } finally {
         setApiKeysLoading(false);
       }
@@ -109,7 +111,7 @@ export function SettingsContent({
           setDefaultVslUrl(data.defaultVslUrl || '');
         }
       } catch (error) {
-        console.error('Failed to fetch user defaults:', error);
+        logError('dashboard/settings', error, { step: 'failed_to_fetch_user_defaults' });
       } finally {
         setDefaultVslUrlLoading(false);
       }
@@ -174,7 +176,7 @@ export function SettingsContent({
         prev.map((k) => (k.id === keyId ? { ...k, isActive: false } : k))
       );
     } catch (error) {
-      console.error('Revoke error:', error);
+      logError('dashboard/settings', error, { step: 'revoke_error' });
     } finally {
       setLoading(null);
     }

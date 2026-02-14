@@ -170,6 +170,7 @@ export function OptinPage({
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email..."
             required
+            aria-label="Email address"
             className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors"
             style={{
               background: 'var(--ds-bg)',

@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { tasks } from '@trigger.dev/sdk/v3';
 import type { processTranscript } from '@/trigger/process-transcript';
+import { logError, logWarn } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError || !record) {
-      console.error('Failed to insert pasted transcript:', insertError?.message);
+      logError('cp/transcripts', new Error('Failed to insert pasted transcript'), { detail: insertError?.message });
       return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 });
     }
 
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
         speakerProfileId: speakerProfileId || undefined,
       });
     } catch (triggerError) {
-      console.warn('Failed to trigger process-transcript:', triggerError);
+      logWarn('cp/transcripts', 'Failed to trigger process-transcript', { error: String(triggerError) });
     }
 
     return NextResponse.json({
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
       transcript_id: record.id,
     });
   } catch (error) {
-    console.error('Transcript paste error:', error);
+    logError('cp/transcripts', error, { action: 'paste' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -105,13 +106,13 @@ export async function DELETE(request: NextRequest) {
       .eq('user_id', session.user.id);
 
     if (error) {
-      console.error('Failed to delete transcript:', error.message);
+      logError('cp/transcripts', new Error('Failed to delete transcript'), { detail: error.message });
       return NextResponse.json({ error: 'Failed to delete transcript' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Transcript delete error:', error);
+    logError('cp/transcripts', error, { action: 'delete' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
     const { data: transcripts, error } = await query;
 
     if (error) {
-      console.error('Failed to fetch transcripts:', error.message);
+      logError('cp/transcripts', new Error('Failed to fetch transcripts'), { detail: error.message });
       return NextResponse.json({ error: 'Failed to fetch transcripts' }, { status: 500 });
     }
 
@@ -166,7 +167,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ transcripts: enriched });
   } catch (error) {
-    console.error('Transcripts list error:', error);
+    logError('cp/transcripts', error, { action: 'list' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

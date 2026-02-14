@@ -3,6 +3,7 @@
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getUnipileClient, getUserPostingAccountId } from '@/lib/integrations/unipile';
+import { logError } from '@/lib/utils/logger';
 import type { LinkedInAutomation, AutomationEventType } from '@/lib/types/content-pipeline';
 
 interface CommentEvent {
@@ -32,7 +33,7 @@ export async function findAutomationsForPost(postSocialId: string): Promise<Link
     .eq('status', 'running');
 
   if (error) {
-    console.error('Failed to find automations:', error.message);
+    logError('services/linkedin-automation', new Error('Failed to find automations'), { detail: error.message });
     return [];
   }
 

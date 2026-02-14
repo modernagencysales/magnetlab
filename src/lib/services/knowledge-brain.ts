@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmbedding } from '@/lib/ai/embeddings';
 import { clusterTags } from '@/lib/ai/content-pipeline/tag-clusterer';
+import { logError } from '@/lib/utils/logger';
 import type {
   KnowledgeEntry,
   KnowledgeEntryWithSimilarity,
@@ -52,7 +53,7 @@ export async function searchKnowledge(
   }
 
   if (error) {
-    console.error('Knowledge search failed:', error.message);
+    logError('services/knowledge-brain', new Error('Knowledge search failed'), { detail: error.message });
     return { entries: [], error: error.message };
   }
 
@@ -100,7 +101,7 @@ export async function getKnowledgeByCategory(
     .limit(limit);
 
   if (error) {
-    console.error('Failed to fetch knowledge by category:', error.message);
+    logError('services/knowledge-brain', new Error('Failed to fetch knowledge by category'), { detail: error.message });
     return [];
   }
 
@@ -118,7 +119,7 @@ export async function getKnowledgeTags(userId: string): Promise<Array<{ tag_name
     .limit(100);
 
   if (error) {
-    console.error('Failed to fetch knowledge tags:', error.message);
+    logError('services/knowledge-brain', new Error('Failed to fetch knowledge tags'), { detail: error.message });
     return [];
   }
 

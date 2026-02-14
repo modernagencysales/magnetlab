@@ -4,6 +4,8 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { tasks } from '@trigger.dev/sdk/v3';
 import type { processTranscript } from '@/trigger/process-transcript';
 
+import { logError, logWarn } from '@/lib/utils/logger';
+
 function parseVTT(raw: string): string {
   const lines = raw.split('\n');
   const textLines: string[] = [];
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError || !record) {
-      console.error('Failed to insert uploaded transcript:', insertError?.message);
+      logError('cp/transcripts/upload', new Error(String(insertError?.message)), { step: 'failed_to_insert_uploaded_transcript' });
       return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 });
     }
 
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
         transcriptId: record.id,
       });
     } catch (triggerError) {
-      console.warn('Failed to trigger process-transcript:', triggerError);
+      logWarn('cp/transcripts/upload', 'Failed to trigger process-transcript', { detail: String(triggerError) });
     }
 
     return NextResponse.json({
@@ -124,7 +126,7 @@ export async function POST(request: NextRequest) {
       transcript_id: record.id,
     });
   } catch (error) {
-    console.error('Transcript upload error:', error);
+    logError('cp/transcripts/upload', error, { step: 'transcript_upload_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

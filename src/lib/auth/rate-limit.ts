@@ -2,6 +2,7 @@
 // Uses Supabase to persist attempts across serverless cold starts
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { logError } from '@/lib/utils/logger';
 
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
@@ -23,13 +24,13 @@ export async function checkLoginRateLimit(identifier: string): Promise<boolean> 
 
     if (error) {
       // If table doesn't exist or query fails, allow the request (fail open)
-      console.error('[RateLimit] Check failed:', error.message);
+      logError('rate-limit', new Error('Check failed: ' + error.message));
       return true;
     }
 
     return (count ?? 0) < MAX_ATTEMPTS;
   } catch (err) {
-    console.error('[RateLimit] Unexpected error in check:', err);
+    logError('rate-limit', err, { step: 'check' });
     return true; // fail open
   }
 }
@@ -46,10 +47,10 @@ export async function recordFailedLogin(identifier: string): Promise<void> {
       .insert({ identifier, attempted_at: new Date().toISOString() });
 
     if (error) {
-      console.error('[RateLimit] Record failed:', error.message);
+      logError('rate-limit', new Error('Record failed: ' + error.message));
     }
   } catch (err) {
-    console.error('[RateLimit] Unexpected error in record:', err);
+    logError('rate-limit', err, { step: 'record' });
   }
 }
 
@@ -66,10 +67,10 @@ export async function clearLoginAttempts(identifier: string): Promise<void> {
       .eq('identifier', identifier);
 
     if (error) {
-      console.error('[RateLimit] Clear failed:', error.message);
+      logError('rate-limit', new Error('Clear failed: ' + error.message));
     }
   } catch (err) {
-    console.error('[RateLimit] Unexpected error in clear:', err);
+    logError('rate-limit', err, { step: 'clear' });
   }
 }
 
@@ -88,9 +89,9 @@ export async function cleanupExpiredAttempts(): Promise<void> {
       .lt('attempted_at', cutoff);
 
     if (error) {
-      console.error('[RateLimit] Cleanup failed:', error.message);
+      logError('rate-limit', new Error('Cleanup failed: ' + error.message));
     }
   } catch (err) {
-    console.error('[RateLimit] Unexpected error in cleanup:', err);
+    logError('rate-limit', err, { step: 'cleanup' });
   }
 }

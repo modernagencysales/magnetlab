@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { logError } from '@/lib/utils/logger';
+
 import {
   FileText,
   Magnet,
@@ -510,14 +512,14 @@ function SubmitModal({
         }, 1500);
       }
     } catch (error) {
-      console.error('Submit error:', error);
+      logError('swipe-file', error, { step: 'submit_error' });
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Submit to Swipe File">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6">
         <h2 className="mb-4 text-lg font-semibold">Submit to Swipe File</h2>
 

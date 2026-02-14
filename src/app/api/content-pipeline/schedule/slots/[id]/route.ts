@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -42,7 +44,7 @@ export async function PATCH(
 
     return NextResponse.json({ slot: data });
   } catch (error) {
-    console.error('Slot update error:', error);
+    logError('cp/schedule/slots', error, { step: 'slot_update_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -72,7 +74,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Slot delete error:', error);
+    logError('cp/schedule/slots', error, { step: 'slot_delete_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

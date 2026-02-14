@@ -1,5 +1,6 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
+import { logError, logWarn } from '@/lib/utils/logger';
 
 // ============================================
 // Types
@@ -59,7 +60,7 @@ export async function searchTopPerformingPosts(
 ): Promise<InspirationContent[]> {
   const serperKey = process.env.SERPER_API_KEY;
   if (!serperKey) {
-    console.warn('SERPER_API_KEY not set, skipping web search for posts');
+    logWarn('ai/inspiration', 'SERPER_API_KEY not set, skipping web search for posts');
     return [];
   }
 
@@ -79,7 +80,7 @@ export async function searchTopPerformingPosts(
     });
 
     if (!response.ok) {
-      console.error('Serper search failed:', response.status, response.statusText);
+      logError('ai/inspiration', new Error('Serper search failed'), { status: response.status, statusText: response.statusText });
       return [];
     }
 
@@ -96,7 +97,7 @@ export async function searchTopPerformingPosts(
       engagement_metrics: {},
     }));
   } catch (error) {
-    console.error('Error searching for posts:', error);
+    logError('ai/inspiration', error, { action: 'search_posts' });
     return [];
   }
 }
@@ -107,7 +108,7 @@ export async function searchTopPerformingPosts(
 export async function searchTopLeadMagnets(query: string): Promise<InspirationContent[]> {
   const serperKey = process.env.SERPER_API_KEY;
   if (!serperKey) {
-    console.warn('SERPER_API_KEY not set, skipping web search for lead magnets');
+    logWarn('ai/inspiration', 'SERPER_API_KEY not set, skipping web search for lead magnets');
     return [];
   }
 
@@ -127,7 +128,7 @@ export async function searchTopLeadMagnets(query: string): Promise<InspirationCo
     });
 
     if (!response.ok) {
-      console.error('Serper search failed:', response.status, response.statusText);
+      logError('ai/inspiration', new Error('Serper search failed'), { status: response.status, statusText: response.statusText });
       return [];
     }
 
@@ -144,7 +145,7 @@ export async function searchTopLeadMagnets(query: string): Promise<InspirationCo
       engagement_metrics: {},
     }));
   } catch (error) {
-    console.error('Error searching for lead magnets:', error);
+    logError('ai/inspiration', error, { action: 'search_lead_magnets' });
     return [];
   }
 }
@@ -158,7 +159,7 @@ export async function searchCreatorContent(
 ): Promise<InspirationContent[]> {
   const serperKey = process.env.SERPER_API_KEY;
   if (!serperKey) {
-    console.warn('SERPER_API_KEY not set, skipping creator search');
+    logWarn('ai/inspiration', 'SERPER_API_KEY not set, skipping creator search');
     return [];
   }
 
@@ -196,7 +197,7 @@ export async function searchCreatorContent(
       engagement_metrics: {},
     }));
   } catch (error) {
-    console.error('Error searching creator content:', error);
+    logError('ai/inspiration', error, { action: 'search_creator_content' });
     return [];
   }
 }
@@ -210,7 +211,7 @@ export async function searchHashtagContent(
 ): Promise<InspirationContent[]> {
   const serperKey = process.env.SERPER_API_KEY;
   if (!serperKey) {
-    console.warn('SERPER_API_KEY not set, skipping hashtag search');
+    logWarn('ai/inspiration', 'SERPER_API_KEY not set, skipping hashtag search');
     return [];
   }
 
@@ -245,7 +246,7 @@ export async function searchHashtagContent(
       engagement_metrics: {},
     }));
   } catch (error) {
-    console.error('Error searching hashtag content:', error);
+    logError('ai/inspiration', error, { action: 'search_hashtag_content' });
     return [];
   }
 }

@@ -6,6 +6,8 @@ import { Loader2, Plus, Trash2, GripVertical, ExternalLink, FileText, Search, Sa
 import Link from 'next/link';
 import { BackLink, FormError, IconPicker, LIBRARY_ICONS } from '@/components/assets';
 
+import { logError } from '@/lib/utils/logger';
+
 interface LibraryItem {
   id: string;
   assetType: 'lead_magnet' | 'external_resource';
@@ -108,7 +110,7 @@ export default function LibraryEditorPage() {
 
       setAvailableAssets(assets);
     } catch (err) {
-      console.error('Failed to fetch available assets:', err);
+      logError('dashboard/assets/libraries', err, { step: 'failed_to_fetch_available_assets' });
     }
   }, []);
 

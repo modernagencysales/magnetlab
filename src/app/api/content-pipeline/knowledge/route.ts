@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { searchKnowledge, getKnowledgeByCategory, getKnowledgeTags } from '@/lib/services/knowledge-brain';
 import type { KnowledgeCategory } from '@/lib/types/content-pipeline';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
     const entries = await getKnowledgeByCategory(session.user.id, 'insight', 30);
     return NextResponse.json({ entries, total_count: entries.length });
   } catch (error) {
-    console.error('Knowledge API error:', error);
+    logError('cp/knowledge', error, { step: 'knowledge_api_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

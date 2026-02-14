@@ -178,7 +178,7 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Connect Your Meeting Recorder">
       <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-background shadow-xl">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-4">
@@ -188,7 +188,7 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
               Auto-import transcripts from any recording tool
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary">
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>

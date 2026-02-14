@@ -3,6 +3,7 @@
 // Uses Supabase Vault functions for encryption/decryption at the database level
 
 import { createSupabaseAdminClient } from './supabase-server';
+import { logError } from '@/lib/utils/logger';
 
 // =============================================================================
 // TYPES
@@ -70,7 +71,7 @@ export async function upsertUserIntegration(params: {
     .single();
 
   if (error) {
-    console.error('Error upserting user integration:', error);
+    logError('encrypted-storage', error, { action: 'upsert' });
     throw new Error(`Failed to save integration: ${error.message}`);
   }
 
@@ -99,7 +100,7 @@ export async function getUserIntegration(
       // No rows returned
       return null;
     }
-    console.error('Error getting user integration:', error);
+    logError('encrypted-storage', error, { action: 'get' });
     throw new Error(`Failed to get integration: ${error.message}`);
   }
 
@@ -122,7 +123,7 @@ export async function listUserIntegrations(
     .eq('user_id', userId);
 
   if (error) {
-    console.error('Error listing user integrations:', error);
+    logError('encrypted-storage', error, { action: 'list' });
     throw new Error(`Failed to list integrations: ${error.message}`);
   }
 
@@ -148,7 +149,7 @@ export async function updateIntegrationVerified(
     .eq('service', service);
 
   if (error) {
-    console.error('Error updating integration verified status:', error);
+    logError('encrypted-storage', error, { action: 'update_verified' });
     throw new Error(`Failed to update integration: ${error.message}`);
   }
 }
@@ -169,7 +170,7 @@ export async function deleteUserIntegration(
     .eq('service', service);
 
   if (error) {
-    console.error('Error deleting user integration:', error);
+    logError('encrypted-storage', error, { action: 'delete' });
     throw new Error(`Failed to delete integration: ${error.message}`);
   }
 }

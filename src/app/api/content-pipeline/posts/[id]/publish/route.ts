@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getUserLinkedInPublisher } from '@/lib/integrations/linkedin-publisher';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -59,7 +61,7 @@ export async function POST(
       .eq('user_id', session.user.id);
 
     if (updateError) {
-      console.error('Failed to update post after publish:', updateError.message);
+      logError('cp/posts/publish', new Error(String(updateError.message)), { step: 'failed_to_update_post_after_publish' });
       return NextResponse.json({ error: 'Published but failed to update status' }, { status: 500 });
     }
 
@@ -82,7 +84,7 @@ export async function POST(
       provider: result.provider,
     });
   } catch (error) {
-    console.error('Publish post error:', error);
+    logError('cp/posts/publish', error, { step: 'publish_post_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

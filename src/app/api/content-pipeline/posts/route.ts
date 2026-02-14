@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -57,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ posts: enrichedPosts });
   } catch (error) {
-    console.error('Posts list error:', error);
+    logError('cp/posts', error, { step: 'posts_list_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

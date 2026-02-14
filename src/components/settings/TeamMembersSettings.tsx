@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, Loader2, Trash2, CheckCircle, Clock, XCircle } from 'lucide-react';
 
+import { logError } from '@/lib/utils/logger';
+
 interface TeamMember {
   id: string;
   email: string;
@@ -30,7 +32,7 @@ export function TeamMembersSettings() {
         setMembers(data);
       }
     } catch (err) {
-      console.error('Failed to fetch team members:', err);
+      logError('settings/team-members', err, { step: 'failed_to_fetch_team_members' });
     } finally {
       setLoading(false);
     }
@@ -86,7 +88,7 @@ export function TeamMembersSettings() {
       }
       setMembers(prev => prev.filter(m => m.id !== memberId));
     } catch (err) {
-      console.error('Remove error:', err);
+      logError('settings/team-members', err, { step: 'remove_error' });
     } finally {
       setRemoving(null);
     }

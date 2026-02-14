@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { logError } from '@/lib/utils/logger';
+
 import {
   Users,
   Download,
@@ -100,7 +102,7 @@ export default function LeadsPage() {
         })) || []);
       }
     } catch (err) {
-      console.error('Failed to fetch funnels:', err);
+      logError('dashboard/leads', err, { step: 'failed_to_fetch_funnels' });
     }
   };
 

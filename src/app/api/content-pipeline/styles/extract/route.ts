@@ -4,6 +4,8 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { extractWritingStyle } from '@/lib/ai/style-extractor';
 import { generateEmbedding } from '@/lib/ai/embeddings';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
       recommendations: extractedStyle.recommendations,
     }, { status: 201 });
   } catch (error) {
-    console.error('Style extract error:', error);
+    logError('cp/styles', error, { step: 'style_extract_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

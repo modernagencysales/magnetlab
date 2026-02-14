@@ -2,6 +2,7 @@ import { searchKnowledge } from '@/lib/services/knowledge-brain';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import type { ContentBrief, KnowledgeEntryWithSimilarity } from '@/lib/types/content-pipeline';
+import { logWarn } from '@/lib/utils/logger';
 
 export async function buildContentBrief(
   userId: string,
@@ -24,7 +25,7 @@ export async function buildContentBrief(
   });
 
   if (searchResult.error) {
-    console.warn('Knowledge search error in briefing-agent:', searchResult.error);
+    logWarn('ai/briefing', 'Knowledge search error', { error: searchResult.error });
   }
 
   const allEntries = searchResult.entries;

@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmbedding, cosineSimilarity } from '@/lib/ai/embeddings';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ matches });
   } catch (error) {
-    console.error('Template match error:', error);
+    logError('cp/templates', error, { step: 'template_match_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

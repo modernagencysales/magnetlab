@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
       posts_created: updatedPlannedPosts.length,
     });
   } catch (error) {
-    console.error('Planner approve error:', error);
+    logError('cp/planner', error, { step: 'planner_approve_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

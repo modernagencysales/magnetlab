@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Download, ChevronLeft, ChevronRight, Filter, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import type { FunnelLead } from '@/lib/types/funnel';
 
+import { logError } from '@/lib/utils/logger';
+
 interface LeadsTableProps {
   funnelId?: string;
   leadMagnetId?: string;
@@ -36,7 +38,7 @@ export function LeadsTable({ funnelId, leadMagnetId }: LeadsTableProps) {
       setLeads(data.leads);
       setTotal(data.total);
     } catch (err) {
-      console.error('Fetch leads error:', err);
+      logError('leads/table', err, { step: 'fetch_leads_error' });
     } finally {
       setLoading(false);
     }

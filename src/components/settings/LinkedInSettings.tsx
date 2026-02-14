@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2, CheckCircle, XCircle, Linkedin } from 'lucide-react';
 
+import { logError } from '@/lib/utils/logger';
+
 interface LinkedInSettingsProps {
   isConnected: boolean;
   accountName: string | null;
@@ -45,7 +47,7 @@ export function LinkedInSettings({ isConnected, accountName }: LinkedInSettingsP
 
       window.location.reload();
     } catch (error) {
-      console.error('Disconnect error:', error);
+      logError('settings/linkedin', error, { step: 'disconnect_error' });
       setFeedback({ type: 'error', message: 'Failed to disconnect LinkedIn' });
     } finally {
       setLoading(false);

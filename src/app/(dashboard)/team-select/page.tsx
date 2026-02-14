@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, Loader2, Magnet, ArrowRight } from 'lucide-react';
 
+import { logError } from '@/lib/utils/logger';
+
 interface Membership {
   id: string;
   ownerId: string;
@@ -31,7 +33,7 @@ export default function TeamSelectPage() {
           }
         }
       } catch (err) {
-        console.error('Failed to fetch memberships:', err);
+        logError('dashboard/team-select', err, { step: 'failed_to_fetch_memberships' });
       } finally {
         setLoading(false);
       }

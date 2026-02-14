@@ -192,6 +192,7 @@ export function BookCallDrawer({
           <div style={{ width: '2rem', height: '0.25rem', background: borderColor, borderRadius: '2px', margin: '0 auto' }} />
           <button
             onClick={onClose}
+            aria-label="Close"
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: mutedColor, padding: '0.5rem', position: 'absolute', right: '1rem', top: '0.5rem' }}
           >
             <X size={20} />

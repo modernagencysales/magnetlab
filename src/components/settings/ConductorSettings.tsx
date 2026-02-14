@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle, Zap } from 'lucide-react';
 
+import { logError } from '@/lib/utils/logger';
+
 interface ConductorSettingsProps {
   isConnected: boolean;
   lastVerifiedAt: string | null;
@@ -93,7 +95,7 @@ export function ConductorSettings({ isConnected, lastVerifiedAt, metadata }: Con
       });
       window.location.reload();
     } catch (error) {
-      console.error('Disconnect error:', error);
+      logError('settings/conductor', error, { step: 'disconnect_error' });
     } finally {
       setLoading(false);
     }

@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { upsertUserIntegration } from '@/lib/utils/encrypted-storage';
 import { tasks } from '@trigger.dev/sdk/v3';
 import type { processLinkedInComment } from '@/trigger/process-linkedin-comment';
+import { logError, logWarn, logInfo, logDebug } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    console.log('Unipile webhook received:', JSON.stringify(body).substring(0, 500));
+    logDebug('webhooks/unipile', 'Webhook received', { body: JSON.stringify(body).substring(0, 500) });
 
     // ==========================================
     // Account connection callback
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
         isActive: true,
         metadata: { unipile_account_id: body.account_id },
       });
-      console.log('Unipile integration saved for user:', body.name);
+      logInfo('webhooks/unipile', 'Integration saved for user', { userId: body.name });
       return NextResponse.json({ received: true });
     }
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
       const comment = body.comment || body.data?.comment;
 
       if (!postSocialId || !comment?.text || !comment?.author?.provider_id) {
-        console.log('Unipile comment webhook: missing required fields', { eventType });
+        logWarn('webhooks/unipile', 'Comment webhook missing required fields', { eventType });
         return NextResponse.json({ received: true });
       }
 
@@ -55,10 +56,10 @@ export async function POST(request: NextRequest) {
             : undefined,
           commentedAt: comment.created_at || body.created_at || new Date().toISOString(),
         });
-        console.log('Comment processing triggered for post:', postSocialId);
+        logInfo('webhooks/unipile', 'Comment processing triggered', { postSocialId });
       } catch (triggerErr) {
         // Don't fail the webhook — log and continue
-        console.error('Failed to trigger comment processing:', triggerErr);
+        logError('webhooks/unipile', triggerErr, { step: 'trigger_comment_processing' });
       }
 
       return NextResponse.json({ received: true });
@@ -68,10 +69,10 @@ export async function POST(request: NextRequest) {
     // Other events (new_relation, account_status, etc.)
     // Log for now, handle later as needed
     // ==========================================
-    console.log('Unipile webhook: unhandled event type', { eventType: eventType || body.status });
+    logDebug('webhooks/unipile', 'Unhandled event type', { eventType: eventType || body.status });
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Unipile webhook error:', error);
+    logError('webhooks/unipile', error);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

@@ -5,6 +5,8 @@ import { ArrowLeft, Copy, Check, CheckCircle2, Loader2, FileText, MessageSquare,
 import Link from 'next/link';
 import type { ExtractedContent, PostVariation, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 
+import { logError } from '@/lib/utils/logger';
+
 interface PublishStepProps {
   content: ExtractedContent;
   post: PostVariation;
@@ -116,7 +118,7 @@ export function PublishStep({
         }).catch(() => {}); // fire-and-forget
       }
     } catch (error) {
-      console.error('Save error:', error);
+      logError('wizard/publish', error, { step: 'save_error' });
       setSaveError(error instanceof Error ? error.message : 'Failed to save. You can still copy the content below.');
     } finally {
       setSaving(false);

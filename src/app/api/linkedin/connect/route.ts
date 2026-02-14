@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getUnipileClient, isUnipileConfigured } from '@/lib/integrations/unipile';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -27,7 +29,7 @@ export async function GET() {
     });
 
     if (result.error || !result.data?.url) {
-      console.error('Unipile hosted auth link error:', result.error);
+      logError('api/linkedin', new Error(String(result.error)), { step: 'unipile_hosted_auth_link_error' });
       const errorUrl = new URL('/settings', appUrl);
       errorUrl.searchParams.set('linkedin', 'error');
       errorUrl.searchParams.set('reason', 'link_failed');
@@ -36,7 +38,7 @@ export async function GET() {
 
     return NextResponse.redirect(result.data.url);
   } catch (error) {
-    console.error('LinkedIn connect error:', error);
+    logError('api/linkedin', error, { step: 'linkedin_connect_error' });
     const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const errorUrl = new URL('/settings', appUrl);
     errorUrl.searchParams.set('linkedin', 'error');

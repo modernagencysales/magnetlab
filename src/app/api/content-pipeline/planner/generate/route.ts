@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateWeekPlan } from '@/lib/ai/content-pipeline/week-planner';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -106,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ plan, notes: result.generationNotes });
   } catch (error) {
-    console.error('Planner generate error:', error);
+    logError('cp/planner', error, { step: 'planner_generate_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

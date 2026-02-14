@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { polishPost } from '@/lib/ai/content-pipeline/post-polish';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -48,7 +50,7 @@ export async function POST(
       .maybeSingle();
 
     if (updateError) {
-      console.error('Failed to update polished post:', updateError.message);
+      logError('cp/posts/polish', new Error(String(updateError.message)), { step: 'failed_to_update_polished_post' });
       return NextResponse.json({ error: 'Failed to save polish result' }, { status: 500 });
     }
 
@@ -65,7 +67,7 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error('Polish post error:', error);
+    logError('cp/posts/polish', error, { step: 'polish_post_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

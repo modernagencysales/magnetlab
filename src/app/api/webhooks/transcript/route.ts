@@ -3,6 +3,8 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { tasks } from '@trigger.dev/sdk/v3';
 import type { processTranscript } from '@/trigger/process-transcript';
 
+import { logError, logWarn } from '@/lib/utils/logger';
+
 interface UniversalTranscriptPayload {
   source?: string;
   recording_id: string;
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError || !transcript) {
-      console.error('Failed to insert transcript:', insertError?.message);
+      logError('webhooks/transcript', new Error(String(insertError?.message)), { step: 'failed_to_insert_transcript' });
       return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 });
     }
 
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
         transcriptId: transcript.id,
       });
     } catch (triggerError) {
-      console.warn('Failed to trigger process-transcript:', triggerError);
+      logWarn('webhooks/transcript', 'Failed to trigger process-transcript', { detail: String(triggerError) });
     }
 
     return NextResponse.json({
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest) {
       transcript_id: transcript.id,
     });
   } catch (error) {
-    console.error('Universal transcript webhook error:', error);
+    logError('webhooks/transcript', error, { step: 'universal_transcript_webhook_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

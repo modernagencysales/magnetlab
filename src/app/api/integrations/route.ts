@@ -13,6 +13,8 @@ import {
 } from '@/lib/utils/encrypted-storage';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 
+import { logError } from '@/lib/utils/logger';
+
 // GET - List all integrations for the user
 export async function GET() {
   try {
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     logApiError('integrations/save', error);
-    console.error('Integration save error details:', error);
+    logError('api/integrations', error, { step: 'integration_save_error_details' });
     return ApiErrors.internalError(
       error instanceof Error ? error.message : 'Failed to save integration'
     );

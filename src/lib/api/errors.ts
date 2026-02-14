@@ -103,7 +103,7 @@ export function withErrorHandling<T>(
   errorMessage = 'An unexpected error occurred'
 ): Promise<T | NextResponse> {
   return handler().catch((error: unknown) => {
-    console.error('API Error:', error);
+    logError('api', error);
     return ApiErrors.internalError(errorMessage);
   });
 }

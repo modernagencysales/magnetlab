@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2, CheckCircle, XCircle, Video } from 'lucide-react';
 
+import { logError } from '@/lib/utils/logger';
+
 interface FathomSettingsProps {
   isConnected: boolean;
   lastSyncedAt: string | null;
@@ -46,7 +48,7 @@ export function FathomSettings({ isConnected, lastSyncedAt }: FathomSettingsProp
 
       window.location.reload();
     } catch (error) {
-      console.error('Disconnect error:', error);
+      logError('settings/fathom', error, { step: 'disconnect_error' });
       setFeedback({ type: 'error', message: 'Failed to disconnect Fathom' });
     } finally {
       setLoading(false);

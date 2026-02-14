@@ -74,3 +74,22 @@ export function logInfo(
 
   console.info(JSON.stringify(entry));
 }
+
+/**
+ * Log debug info (suppressed in production)
+ */
+export function logDebug(
+  context: string,
+  message: string,
+  metadata?: Record<string, unknown>
+): void {
+  if (process.env.NODE_ENV === 'production') return;
+  const entry: LogEntry = {
+    level: 'debug',
+    context,
+    message,
+    timestamp: new Date().toISOString(),
+    ...metadata,
+  };
+  console.debug(JSON.stringify(entry));
+}

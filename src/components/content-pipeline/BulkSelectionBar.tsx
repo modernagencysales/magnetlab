@@ -78,6 +78,7 @@ export function BulkSelectionBar({
           onClick={onClear}
           className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary transition-colors"
           title="Clear selection (Esc)"
+          aria-label="Clear selection"
         >
           <X className="h-4 w-4" />
         </button>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET() {
   try {
     const session = await auth();
@@ -23,7 +25,7 @@ export async function GET() {
 
     return NextResponse.json({ slots: data });
   } catch (error) {
-    console.error('Slots fetch error:', error);
+    logError('cp/schedule/slots', error, { step: 'slots_fetch_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ slot: data }, { status: 201 });
   } catch (error) {
-    console.error('Slot create error:', error);
+    logError('cp/schedule/slots', error, { step: 'slot_create_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

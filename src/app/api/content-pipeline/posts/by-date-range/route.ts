@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -34,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ posts: data || [] });
   } catch (error) {
-    console.error('Posts by date range error:', error);
+    logError('cp/posts', error, { step: 'posts_by_date_range_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

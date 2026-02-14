@@ -4,6 +4,8 @@ import { exchangeFathomCode } from '@/lib/integrations/fathom';
 import { upsertUserIntegration } from '@/lib/utils/encrypted-storage';
 import { cookies } from 'next/headers';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(new URL('/settings?fathom=connected', request.url));
   } catch (error) {
-    console.error('Fathom OAuth callback error:', error);
+    logError('api/integrations/fathom', error, { step: 'fathom_oauth_callback_error' });
     return NextResponse.redirect(new URL('/settings?fathom=error&reason=token_exchange_failed', request.url));
   }
 }

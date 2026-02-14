@@ -4,6 +4,8 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { tasks } from '@trigger.dev/sdk/v3';
 import type { writePostFromIdea } from '@/trigger/write-post-from-idea';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -65,7 +67,7 @@ export async function POST(
         profileId: resolvedProfileId,
       });
     } catch (triggerError) {
-      console.error('Failed to trigger write task:', triggerError);
+      logError('cp/ideas/write', triggerError, { step: 'trigger_write_task' });
       // Revert status on trigger failure
       await supabase
         .from('cp_content_ideas')
@@ -76,7 +78,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, status: 'writing' });
   } catch (error) {
-    console.error('Write post from idea error:', error);
+    logError('cp/ideas/write', error, { step: 'write_post_from_idea_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

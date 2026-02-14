@@ -2,6 +2,7 @@
 // API docs: https://developers.fathom.ai/
 
 import { BaseApiClient } from './base-client';
+import { logError } from '@/lib/utils/logger';
 import {
   getUserIntegration,
   upsertUserIntegration,
@@ -172,7 +173,7 @@ export async function getUserFathomClient(userId: string): Promise<FathomClient 
 
       return new FathomClient(tokens.access_token);
     } catch (error) {
-      console.error(`Fathom token refresh failed for user ${userId}:`, error);
+      logError('integrations/fathom', error, { action: 'token_refresh', userId });
       // Mark integration as inactive — user needs to re-authorize
       await upsertUserIntegration({
         userId,

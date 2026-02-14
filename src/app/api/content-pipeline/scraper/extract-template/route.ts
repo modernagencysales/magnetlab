@@ -4,6 +4,8 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { extractTemplateFromPost } from '@/lib/ai/content-pipeline/template-extractor';
 import { generateEmbedding, createTemplateEmbeddingText } from '@/lib/ai/embeddings';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ template }, { status: 201 });
   } catch (error) {
-    console.error('Template extraction error:', error);
+    logError('cp/scraper', error, { step: 'template_extraction_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

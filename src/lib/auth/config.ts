@@ -12,6 +12,7 @@ import {
   clearLoginAttempts,
   cleanupExpiredAttempts,
 } from '@/lib/auth/rate-limit';
+import { logError, logWarn, logInfo } from '@/lib/utils/logger';
 
 // Bcrypt configuration - 12 rounds provides good security/performance balance
 const BCRYPT_SALT_ROUNDS = 12;
@@ -31,7 +32,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         try {
           if (!credentials?.email || !credentials?.password) {
-            console.error('[Auth] Missing email or password');
+            logWarn('auth', 'Missing email or password');
             return null;
           }
 
@@ -41,7 +42,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // Database-backed rate limit check (persists across cold starts)
           const allowed = await checkLoginRateLimit(email);
           if (!allowed) {
-            console.error('[Auth] Rate limit exceeded for:', email);
+            logWarn('auth', 'Rate limit exceeded', { email });
             // Opportunistically clean up expired entries
             cleanupExpiredAttempts().catch(() => {});
             return null;
@@ -49,7 +50,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           // Verify environment variables
           if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-            console.error('[Auth] Missing Supabase environment variables');
+            logError('auth', new Error('Missing Supabase environment variables'));
             throw new Error('Server configuration error');
           }
 
@@ -64,7 +65,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           if (fetchError && fetchError.code !== 'PGRST116') {
             // PGRST116 = no rows returned, which is fine for new users
-            console.error('[Auth] Database fetch error:', fetchError);
+            logError('auth', fetchError, { step: 'database_fetch' });
             throw new Error('Database error');
           }
 
@@ -73,7 +74,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             const isValid = await verifyPassword(password, existingUser.password_hash);
             if (!isValid) {
               await recordFailedLogin(email);
-              console.error('[Auth] Invalid password for user:', email);
+              logWarn('auth', 'Invalid password', { email });
               return null;
             }
 
@@ -84,7 +85,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 .from('users')
                 .update({ password_hash: newHash })
                 .eq('id', existingUser.id);
-              console.log('[Auth] Migrated password hash for user:', email);
+              logInfo('auth', 'Migrated password hash', { email });
             }
 
             await clearLoginAttempts(email);
@@ -105,7 +106,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               .eq('status', 'pending')
               .is('user_id', null);
 
-            console.log('[Auth] Login successful for:', email);
+            logInfo('auth', 'Login successful', { email });
             return {
               id: existingUser.id,
               email: existingUser.email,
@@ -115,7 +116,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           // Auto-create new user on first login
-          console.log('[Auth] Creating new user:', email);
+          logInfo('auth', 'Creating new user', { email });
           const passwordHash = await hashPassword(password);
           const { data: newUser, error } = await supabase
             .from('users')
@@ -127,7 +128,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .single();
 
           if (error || !newUser) {
-            console.error('[Auth] Failed to create user:', error);
+            logError('auth', error, { step: 'create_user', email });
             throw new Error('Failed to create account');
           }
 
@@ -139,7 +140,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           });
 
           if (subError) {
-            console.error('[Auth] Failed to create subscription:', subError);
+            logError('auth', subError, { step: 'create_subscription' });
             // Don't fail login for this, just log it
           }
 
@@ -159,14 +160,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .eq('status', 'pending')
             .is('user_id', null);
 
-          console.log('[Auth] New user created:', email);
+          logInfo('auth', 'New user created', { email });
           return {
             id: newUser.id,
             email: newUser.email,
             name: newUser.name,
           };
         } catch (error) {
-          console.error('[Auth] Authorize error:', error);
+          logError('auth', error, { step: 'authorize' });
           throw error; // Re-throw to show error to user
         }
       },
@@ -195,7 +196,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .single();
 
           if (fetchError && fetchError.code !== 'PGRST116') {
-            console.error('[Auth/Google] Database fetch error:', fetchError);
+            logError('auth/google', fetchError, { step: 'database_fetch' });
             return false;
           }
 
@@ -214,7 +215,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             // Store the DB user ID so jwt callback can use it
             user.id = existingUser.id;
-            console.log('[Auth/Google] Linked to existing user:', user.email);
+            logInfo('auth/google', 'Linked to existing user', { email: user.email });
 
             // Auto-link pending team invitations
             await supabase
@@ -244,7 +245,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               .single();
 
             if (error || !newUser) {
-              console.error('[Auth/Google] Failed to create user:', error);
+              logError('auth/google', error, { step: 'create_user', email: user.email });
               return false;
             }
 
@@ -256,7 +257,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             });
 
             user.id = newUser.id;
-            console.log('[Auth/Google] Created new user:', user.email);
+            logInfo('auth/google', 'Created new user', { email: user.email });
 
             // Auto-link pending team invitations
             await supabase
@@ -275,7 +276,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               .is('user_id', null);
           }
         } catch (error) {
-          console.error('[Auth/Google] signIn callback error:', error);
+          logError('auth/google', error, { step: 'signIn_callback' });
           return false;
         }
       }

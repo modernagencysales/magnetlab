@@ -75,7 +75,7 @@ function IdeaDetail({
           <StatusBadge status={idea.status} />
           <PillarBadge pillar={idea.content_pillar} />
         </div>
-        <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary transition-colors">
+        <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary transition-colors" aria-label="Close">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -275,7 +275,7 @@ function PostDetail({
           {/* Save indicator */}
           <SaveIndicator state={saveState} />
         </div>
-        <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary transition-colors">
+        <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary transition-colors" aria-label="Close">
           <X className="h-4 w-4" />
         </button>
       </div>

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Copy, Check, ExternalLink, Pencil, X } from 'lucide-react';
 
+import { logError } from '@/lib/utils/logger';
+
 interface CatalogItem {
   id: string;
   title: string;
@@ -75,7 +77,7 @@ export function CatalogCard({ item, isOwner, baseUrl, onUpdate }: CatalogCardPro
         setEditing(false);
       }
     } catch (err) {
-      console.error('Save error:', err);
+      logError('catalog/card', err, { step: 'save_error' });
     } finally {
       setSaving(false);
     }

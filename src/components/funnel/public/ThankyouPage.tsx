@@ -9,6 +9,8 @@ import { SectionRenderer } from '@/components/ds';
 import { PixelScripts, type PixelConfig } from './PixelScripts';
 import type { FunnelPageSection } from '@/lib/types/funnel';
 
+import { logError } from '@/lib/utils/logger';
+
 type AnswerType = 'yes_no' | 'text' | 'textarea' | 'multiple_choice';
 
 interface Question {
@@ -110,7 +112,7 @@ export function ThankyouPage({
       setQualificationComplete(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-      console.error('Error submitting qualification:', err);
+      logError('funnel/thankyou', err, { step: 'error_submitting_qualification' });
     } finally {
       setSubmitting(false);
     }

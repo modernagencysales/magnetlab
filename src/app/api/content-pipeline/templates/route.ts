@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmbedding, createTemplateEmbeddingText } from '@/lib/ai/embeddings';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET() {
   try {
     const session = await auth();
@@ -25,7 +27,7 @@ export async function GET() {
 
     return NextResponse.json({ templates: data || [] });
   } catch (error) {
-    console.error('Templates list error:', error);
+    logError('cp/templates', error, { step: 'templates_list_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -81,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ template: data }, { status: 201 });
   } catch (error) {
-    console.error('Template create error:', error);
+    logError('cp/templates', error, { step: 'template_create_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

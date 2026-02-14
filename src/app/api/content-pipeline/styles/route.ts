@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET() {
   try {
     const session = await auth();
@@ -24,7 +26,7 @@ export async function GET() {
 
     return NextResponse.json({ styles: data || [] });
   } catch (error) {
-    console.error('Styles list error:', error);
+    logError('cp/styles', error, { step: 'styles_list_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { WizardState } from '@/lib/types/lead-magnet';
+import { logWarn } from '@/lib/utils/logger';
 
 interface UseWizardAutoSaveOptions {
   state: WizardState;
@@ -82,7 +83,7 @@ export function useWizardAutoSave({
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      console.warn('Auto-save failed:', err);
+      logWarn('hooks/useWizardAutoSave', 'Auto-save failed', { error: String(err) });
     } finally {
       setIsSaving(false);
     }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -49,7 +51,7 @@ export async function POST(request: NextRequest) {
       .eq('user_id', session.user.id);
 
     if (updateError) {
-      console.error('DB update failed for schedule:', updateError.message);
+      logError('cp/posts/schedule', new Error(String(updateError.message)), { step: 'db_update_failed_for_schedule' });
       return NextResponse.json({ error: 'Failed to update post status' }, { status: 500 });
     }
 
@@ -58,7 +60,7 @@ export async function POST(request: NextRequest) {
       scheduled_via: 'pending',
     });
   } catch (error) {
-    console.error('Post schedule error:', error);
+    logError('cp/posts/schedule', error, { step: 'post_schedule_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

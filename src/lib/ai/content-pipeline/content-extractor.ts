@@ -1,6 +1,7 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import type { ContentType, ContentPillar } from '@/lib/types/content-pipeline';
+import { logError } from '@/lib/utils/logger';
 
 export interface ExtractedIdea {
   title: string;
@@ -133,7 +134,7 @@ export async function batchExtractIdeas(
           });
           return { id: t.id, result };
         } catch (error) {
-          console.error(`Failed to extract ideas from transcript ${t.id}:`, error);
+          logError('ai/content-extractor', error, { transcriptId: t.id });
           return { id: t.id, result: null };
         }
       })

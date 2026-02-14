@@ -612,6 +612,7 @@ export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIde
                 type="button"
                 onClick={handleCloseModal}
                 className="p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -761,6 +762,7 @@ We'll extract:
                 type="button"
                 onClick={handleCloseModal}
                 className="p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>

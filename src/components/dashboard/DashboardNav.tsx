@@ -76,6 +76,7 @@ function InlineThemeToggle() {
       onClick={() => setIsDark(!isDark)}
       className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 dark:text-zinc-500 transition-colors"
       title="Toggle theme"
+      aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
     >
       {isDark ? <Sun size={16} /> : <Moon size={16} />}
     </button>
@@ -287,6 +288,7 @@ function SidebarContent({ user, teamContext, onNavigate }: {
             }}
             className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             title="Sign out"
+            aria-label="Sign out"
           >
             <LogOut size={16} />
           </button>
@@ -314,6 +316,7 @@ export function DashboardNav({ user, teamContext }: DashboardNavProps) {
         <button
           onClick={() => setMobileOpen(true)}
           className="p-2 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          aria-label="Open navigation menu"
         >
           <Menu size={20} />
         </button>
@@ -333,11 +336,12 @@ export function DashboardNav({ user, teamContext }: DashboardNavProps) {
             className="fixed inset-0 bg-black/50 dark:bg-black/70 z-30 lg:hidden backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 z-40 w-64 bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col lg:hidden">
+          <aside className="fixed inset-y-0 left-0 z-40 w-64 bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col lg:hidden" role="navigation" aria-label="Main navigation">
             <div className="flex h-14 items-center justify-end px-3 border-b border-zinc-200 dark:border-zinc-800">
               <button
                 onClick={() => setMobileOpen(false)}
                 className="p-2 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                aria-label="Close navigation menu"
               >
                 <X size={20} />
               </button>
@@ -353,7 +357,7 @@ export function DashboardNav({ user, teamContext }: DashboardNavProps) {
       )}
 
       {/* ── Desktop sidebar ── */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex-col lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex-col lg:flex" role="navigation" aria-label="Main navigation">
         <SidebarContent user={user} teamContext={teamContext} />
       </aside>
     </>

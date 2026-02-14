@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { CatalogView } from '@/components/catalog/CatalogView';
 
+import { logError } from '@/lib/utils/logger';
+
 export const metadata = {
   title: 'Catalog | MagnetLab',
   description: 'Lead magnet catalog for your team',
@@ -25,7 +27,7 @@ export default async function CatalogPage() {
     .eq('status', 'active');
 
   if (membershipError) {
-    console.error('[Catalog] Failed to fetch memberships:', membershipError.message);
+    logError('src//app/(dashboard)/catalog', new Error(String(membershipError.message)), { step: '[catalog]_failed_to_fetch_memberships' });
   }
 
   const hasMemberships = memberships && memberships.length > 0;

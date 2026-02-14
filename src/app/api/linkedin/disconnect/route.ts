@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { deleteUserIntegration, getUserIntegration } from '@/lib/utils/encrypted-storage';
 import { getUnipileClient, isUnipileConfigured } from '@/lib/integrations/unipile';
 
+import { logError, logWarn } from '@/lib/utils/logger';
+
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -20,7 +22,7 @@ export async function POST() {
           await client.deleteAccount(accountId);
         } catch (e) {
           // Non-critical — account may already be removed
-          console.warn('Failed to delete Unipile account (non-critical):', e);
+          logWarn('api/linkedin', 'Failed to delete Unipile account (non-critical)', { detail: String(e) });
         }
       }
     }
@@ -28,7 +30,7 @@ export async function POST() {
     await deleteUserIntegration(session.user.id, 'unipile');
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('LinkedIn disconnect error:', error);
+    logError('api/linkedin', error, { step: 'linkedin_disconnect_error' });
     return NextResponse.json(
       { error: 'Failed to disconnect' },
       { status: 500 }

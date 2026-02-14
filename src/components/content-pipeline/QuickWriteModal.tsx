@@ -52,14 +52,14 @@ export function QuickWriteModal({ onClose, onPostCreated, profileId }: QuickWrit
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Quick Write">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Quick Write</h2>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary">
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
