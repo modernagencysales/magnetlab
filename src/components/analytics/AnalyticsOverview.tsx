@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatCards } from '@/components/analytics/StatCards';
 import { TimeSeriesChart } from '@/components/analytics/TimeSeriesChart';
 import { UTMBreakdown } from '@/components/analytics/UTMBreakdown';
-import { BarChart3, ExternalLink } from 'lucide-react';
+import { BarChart3, ExternalLink, FileText } from 'lucide-react';
 import Link from 'next/link';
 
 type Range = '7d' | '30d' | '90d';
@@ -21,6 +21,17 @@ interface OverviewData {
     qualified: number;
     conversionRate: number;
     qualificationRate: number;
+  };
+  contentStats?: {
+    posts: {
+      total: number;
+      draft: number;
+      review: number;
+      scheduled: number;
+      published: number;
+    };
+    transcripts: number;
+    knowledgeEntries: number;
   };
 }
 
@@ -217,6 +228,41 @@ export function AnalyticsOverview() {
               <UTMBreakdown data={data.utmBreakdown} />
             </CardContent>
           </Card>
+
+          {/* Content Pipeline */}
+          {data.contentStats && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                <h2 className="text-base font-semibold">Content Pipeline</h2>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="rounded-xl border bg-card p-5">
+                  <p className="text-sm text-muted-foreground">Published Posts</p>
+                  <p className="mt-1 text-2xl font-bold">{data.contentStats.posts.published}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {data.contentStats.posts.total} total
+                  </p>
+                </div>
+                <div className="rounded-xl border bg-card p-5">
+                  <p className="text-sm text-muted-foreground">Draft / Review Posts</p>
+                  <p className="mt-1 text-2xl font-bold">
+                    {data.contentStats.posts.draft + data.contentStats.posts.review}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {data.contentStats.posts.scheduled} scheduled
+                  </p>
+                </div>
+                <div className="rounded-xl border bg-card p-5">
+                  <p className="text-sm text-muted-foreground">Knowledge Entries</p>
+                  <p className="mt-1 text-2xl font-bold">{data.contentStats.knowledgeEntries}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {data.contentStats.transcripts} transcript{data.contentStats.transcripts !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Funnel list */}
           {funnels.length > 0 && (

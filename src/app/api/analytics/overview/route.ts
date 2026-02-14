@@ -60,6 +60,36 @@ export async function GET(request: Request) {
 
     const funnelIds = funnels?.map((f: { id: string }) => f.id) || [];
 
+    // Fetch content pipeline stats (independent of funnels, scoped by user_id)
+    const [postsResult, transcriptsResult, knowledgeResult] = await Promise.all([
+      supabase
+        .from('cp_pipeline_posts')
+        .select('status')
+        .eq('user_id', session.user.id),
+      supabase
+        .from('cp_call_transcripts')
+        .select('id')
+        .eq('user_id', session.user.id),
+      supabase
+        .from('cp_knowledge_entries')
+        .select('id')
+        .eq('user_id', session.user.id),
+    ]);
+
+    // Aggregate content pipeline stats
+    const posts = postsResult.data || [];
+    const contentStats = {
+      posts: {
+        total: posts.length,
+        draft: posts.filter((p: { status: string }) => p.status === 'draft').length,
+        review: posts.filter((p: { status: string }) => p.status === 'review').length,
+        scheduled: posts.filter((p: { status: string }) => p.status === 'scheduled').length,
+        published: posts.filter((p: { status: string }) => p.status === 'published').length,
+      },
+      transcripts: transcriptsResult.data?.length || 0,
+      knowledgeEntries: knowledgeResult.data?.length || 0,
+    };
+
     // If no funnels, return empty response with zero-filled date ranges
     if (funnelIds.length === 0) {
       return NextResponse.json({
@@ -73,6 +103,7 @@ export async function GET(request: Request) {
           conversionRate: 0,
           qualificationRate: 0,
         },
+        contentStats,
       });
     }
 
@@ -161,6 +192,7 @@ export async function GET(request: Request) {
       leadsByDay,
       utmBreakdown,
       totals,
+      contentStats,
     });
   } catch (error) {
     logApiError('analytics/overview', error);

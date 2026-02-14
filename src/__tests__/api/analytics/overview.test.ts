@@ -90,6 +90,9 @@ describe('GET /api/analytics/overview', () => {
   it('should default to 30d range when no range param', async () => {
     (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
     mock.setResult('funnel_pages', { data: [], error: null });
+    mock.setResult('cp_pipeline_posts', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: [], error: null });
+    mock.setResult('cp_knowledge_entries', { data: [], error: null });
 
     const request = new Request('http://localhost:3000/api/analytics/overview');
     const response = await GET(request);
@@ -104,6 +107,9 @@ describe('GET /api/analytics/overview', () => {
   it('should return zeros/empty arrays when user has no funnels', async () => {
     (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
     mock.setResult('funnel_pages', { data: [], error: null });
+    mock.setResult('cp_pipeline_posts', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: [], error: null });
+    mock.setResult('cp_knowledge_entries', { data: [], error: null });
 
     const request = new Request('http://localhost:3000/api/analytics/overview?range=7d');
     const response = await GET(request);
@@ -136,6 +142,9 @@ describe('GET /api/analytics/overview', () => {
   it('should accept 7d range and return 7 days', async () => {
     (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
     mock.setResult('funnel_pages', { data: [], error: null });
+    mock.setResult('cp_pipeline_posts', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: [], error: null });
+    mock.setResult('cp_knowledge_entries', { data: [], error: null });
 
     const request = new Request('http://localhost:3000/api/analytics/overview?range=7d');
     const response = await GET(request);
@@ -149,6 +158,9 @@ describe('GET /api/analytics/overview', () => {
   it('should accept 90d range and return 90 days', async () => {
     (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
     mock.setResult('funnel_pages', { data: [], error: null });
+    mock.setResult('cp_pipeline_posts', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: [], error: null });
+    mock.setResult('cp_knowledge_entries', { data: [], error: null });
 
     const request = new Request('http://localhost:3000/api/analytics/overview?range=90d');
     const response = await GET(request);
@@ -172,6 +184,9 @@ describe('GET /api/analytics/overview', () => {
       data: [{ id: 'funnel-1' }],
       error: null,
     });
+    mock.setResult('cp_pipeline_posts', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: [], error: null });
+    mock.setResult('cp_knowledge_entries', { data: [], error: null });
     mock.setResult('page_views', {
       data: [
         { funnel_page_id: 'funnel-1', view_date: todayStr },
@@ -239,6 +254,9 @@ describe('GET /api/analytics/overview', () => {
       data: [{ id: 'funnel-1' }],
       error: null,
     });
+    mock.setResult('cp_pipeline_posts', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: [], error: null });
+    mock.setResult('cp_knowledge_entries', { data: [], error: null });
     mock.setResult('page_views', {
       data: [],
       error: null,
@@ -289,6 +307,9 @@ describe('GET /api/analytics/overview', () => {
       data: [{ id: 'funnel-1' }],
       error: null,
     });
+    mock.setResult('cp_pipeline_posts', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: [], error: null });
+    mock.setResult('cp_knowledge_entries', { data: [], error: null });
     mock.setResult('page_views', {
       data: [],
       error: null,
@@ -319,6 +340,9 @@ describe('GET /api/analytics/overview', () => {
       data: [{ id: 'funnel-1' }],
       error: null,
     });
+    mock.setResult('cp_pipeline_posts', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: [], error: null });
+    mock.setResult('cp_knowledge_entries', { data: [], error: null });
     mock.setResult('page_views', {
       data: [
         { funnel_page_id: 'funnel-1', view_date: new Date().toISOString().split('T')[0] },
@@ -352,6 +376,9 @@ describe('GET /api/analytics/overview', () => {
       data: [{ id: 'funnel-1' }, { id: 'funnel-2' }],
       error: null,
     });
+    mock.setResult('cp_pipeline_posts', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: [], error: null });
+    mock.setResult('cp_knowledge_entries', { data: [], error: null });
     mock.setResult('page_views', {
       data: [
         { funnel_page_id: 'funnel-1', view_date: today },
@@ -385,5 +412,74 @@ describe('GET /api/analytics/overview', () => {
     expect(data.totals.views).toBe(3);
     expect(data.totals.leads).toBe(2);
     expect(data.totals.qualified).toBe(1);
+  });
+
+  it('should return contentStats with post counts by status', async () => {
+    (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
+
+    mock.setResult('funnel_pages', { data: [], error: null });
+    mock.setResult('cp_pipeline_posts', {
+      data: [
+        { status: 'draft' },
+        { status: 'draft' },
+        { status: 'review' },
+        { status: 'scheduled' },
+        { status: 'published' },
+        { status: 'published' },
+        { status: 'published' },
+        { status: 'publishing' },
+      ],
+      error: null,
+    });
+    mock.setResult('cp_call_transcripts', {
+      data: [{ id: '1' }, { id: '2' }, { id: '3' }],
+      error: null,
+    });
+    mock.setResult('cp_knowledge_entries', {
+      data: [{ id: '1' }, { id: '2' }, { id: '3' }, { id: '4' }, { id: '5' }],
+      error: null,
+    });
+
+    const request = new Request('http://localhost:3000/api/analytics/overview?range=7d');
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    expect(data.contentStats).toBeDefined();
+    expect(data.contentStats.posts.total).toBe(8);
+    expect(data.contentStats.posts.draft).toBe(2);
+    expect(data.contentStats.posts.review).toBe(1);
+    expect(data.contentStats.posts.scheduled).toBe(1);
+    expect(data.contentStats.posts.published).toBe(3);
+    expect(data.contentStats.transcripts).toBe(3);
+    expect(data.contentStats.knowledgeEntries).toBe(5);
+  });
+
+  it('should return empty contentStats when no content pipeline data exists', async () => {
+    (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
+
+    mock.setResult('funnel_pages', { data: [], error: null });
+    mock.setResult('cp_pipeline_posts', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: [], error: null });
+    mock.setResult('cp_knowledge_entries', { data: [], error: null });
+
+    const request = new Request('http://localhost:3000/api/analytics/overview?range=7d');
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    expect(data.contentStats).toEqual({
+      posts: {
+        total: 0,
+        draft: 0,
+        review: 0,
+        scheduled: 0,
+        published: 0,
+      },
+      transcripts: 0,
+      knowledgeEntries: 0,
+    });
   });
 });
