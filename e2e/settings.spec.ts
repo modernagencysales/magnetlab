@@ -57,11 +57,6 @@ test.describe('Settings', () => {
       data: [],
     });
 
-    // Mock notion connections
-    await mockSupabaseData(page, {
-      table: 'notion_connections',
-      data: [],
-    });
   });
 
   test('settings page loads with current user info', async ({ page }) => {
@@ -117,21 +112,6 @@ test.describe('Settings', () => {
         await saveButton.click();
       }
     }
-  });
-
-  test('connect Notion integration button present', async ({ page }) => {
-    await page.goto('/settings');
-    await waitForPageLoad(page);
-
-    // Look for Notion connect button or link
-    const notionButton = page
-      .getByRole('button', { name: /notion/i })
-      .or(page.getByRole('link', { name: /notion/i }))
-      .or(page.getByText(/connect.*notion|notion.*connect/i))
-      .first();
-
-    // Notion integration should be mentioned somewhere on the settings page
-    await expect(page.locator('main')).toBeVisible();
   });
 
   test('manage integrations section visible', async ({ page }) => {
