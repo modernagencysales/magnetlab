@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { checkTeamRole, hasMinimumRole } from '@/lib/auth/rbac';
+import { logTeamActivity } from '@/lib/utils/activity-log';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 
 export async function DELETE(
@@ -32,6 +34,20 @@ export async function DELETE(
     return ApiErrors.forbidden();
   }
 
+  // RBAC: Look up the V2 team and verify owner role
+  const { data: ownerTeam } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('owner_id', session.user.id)
+    .single();
+
+  if (ownerTeam) {
+    const role = await checkTeamRole(session.user.id, ownerTeam.id);
+    if (!hasMinimumRole(role, 'owner')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+  }
+
   const { error } = await supabase
     .from('team_members')
     .delete()
@@ -43,12 +59,6 @@ export async function DELETE(
   }
 
   // Also soft-delete matching V2 team_profiles row to keep systems in sync
-  const { data: ownerTeam } = await supabase
-    .from('teams')
-    .select('id')
-    .eq('owner_id', session.user.id)
-    .single();
-
   if (ownerTeam) {
     // Match by user_id if available, otherwise by email
     if (member.member_id) {
@@ -66,6 +76,16 @@ export async function DELETE(
         .eq('email', member.email)
         .neq('role', 'owner');
     }
+
+    // Log activity
+    logTeamActivity({
+      teamId: ownerTeam.id,
+      userId: session.user.id,
+      action: 'member.removed',
+      targetType: 'member',
+      targetId: member.member_id || member.email,
+      details: { email: member.email },
+    });
   }
 
   return NextResponse.json({ success: true });

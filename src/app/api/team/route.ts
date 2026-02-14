@@ -1,8 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { checkTeamRole, hasMinimumRole } from '@/lib/auth/rbac';
+import { logTeamActivity } from '@/lib/utils/activity-log';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { sendEmail } from '@/lib/integrations/resend';
+
+import { logError } from '@/lib/utils/logger';
 
 export async function GET() {
   const session = await auth();
@@ -71,6 +75,20 @@ export async function POST(request: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
 
+  // RBAC: Verify user is team owner
+  const { data: ownerTeam } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('owner_id', session.user.id)
+    .single();
+
+  if (ownerTeam) {
+    const role = await checkTeamRole(session.user.id, ownerTeam.id);
+    if (!hasMinimumRole(role, 'owner')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+  }
+
   // Check if already invited
   const { data: existing } = await supabase
     .from('team_members')
@@ -138,7 +156,19 @@ export async function POST(request: NextRequest) {
         </a>
       </div>
     `,
-  }).catch(err => console.error('[Team] Failed to send invite email:', err));
+  }).catch(err => logError('api/team', err, { step: 'send_invite_email' }));
+
+  // Log activity (fire-and-forget)
+  if (ownerTeam) {
+    logTeamActivity({
+      teamId: ownerTeam.id,
+      userId: session.user.id,
+      action: 'member.invited',
+      targetType: 'member',
+      targetId: email,
+      details: { email, autoLinked: !!existingUser },
+    });
+  }
 
   return NextResponse.json({ success: true, autoLinked: !!existingUser }, { status: 201 });
 }

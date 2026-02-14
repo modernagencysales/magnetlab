@@ -2,6 +2,8 @@ import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getTeamOwnerFromProfile } from '@/lib/utils/team-membership';
+import { checkTeamRole, hasMinimumRole } from '@/lib/auth/rbac';
+import { logTeamActivity } from '@/lib/utils/activity-log';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 
 // PATCH /api/teams/profiles/[id] — update a profile
@@ -37,14 +39,23 @@ export async function PATCH(
   // Verify ownership: profile must belong to user's team
   const { data: profile } = await supabase
     .from('team_profiles')
-    .select('id, team_id, teams(owner_id)')
+    .select('id, team_id, user_id, teams(owner_id)')
     .eq('id', id)
     .single();
 
   if (!profile) return ApiErrors.notFound('Profile');
 
   const teamOwner = getTeamOwnerFromProfile(profile);
-  if (teamOwner !== userId) return ApiErrors.forbidden();
+  if (teamOwner !== userId) {
+    // Not the team owner — check if editing own profile (member allowed)
+    const role = await checkTeamRole(userId, profile.team_id);
+    const isOwnProfile = profile.user_id === userId;
+    if (isOwnProfile && hasMinimumRole(role, 'member')) {
+      // Member editing their own profile — allowed
+    } else {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+  }
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.full_name !== undefined) updates.full_name = body.full_name.trim();
@@ -67,6 +78,16 @@ export async function PATCH(
     logApiError('profiles-update', error, { userId, profileId: id });
     return ApiErrors.databaseError();
   }
+
+  // Log activity (fire-and-forget)
+  logTeamActivity({
+    teamId: profile.team_id,
+    userId,
+    action: 'profile.updated',
+    targetType: 'profile',
+    targetId: id,
+    details: { updatedFields: Object.keys(updates).filter(k => k !== 'updated_at') },
+  });
 
   return NextResponse.json({ profile: updated });
 }
@@ -94,8 +115,11 @@ export async function DELETE(
 
   if (!profile) return ApiErrors.notFound('Profile');
 
-  const teamOwner = getTeamOwnerFromProfile(profile);
-  if (teamOwner !== userId) return ApiErrors.forbidden();
+  // RBAC: Require owner role to delete profiles
+  const role = await checkTeamRole(userId, profile.team_id);
+  if (!hasMinimumRole(role, 'owner')) {
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+  }
 
   // Cannot remove the owner profile
   if (profile.role === 'owner') {
@@ -111,6 +135,15 @@ export async function DELETE(
     logApiError('profiles-delete', error, { userId, profileId: id });
     return ApiErrors.databaseError();
   }
+
+  // Log activity (fire-and-forget)
+  logTeamActivity({
+    teamId: profile.team_id,
+    userId,
+    action: 'profile.removed',
+    targetType: 'profile',
+    targetId: id,
+  });
 
   return NextResponse.json({ success: true });
 }

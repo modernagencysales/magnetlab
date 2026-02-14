@@ -1,6 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { checkTeamRole, hasMinimumRole } from '@/lib/auth/rbac';
+import { logTeamActivity } from '@/lib/utils/activity-log';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 // GET /api/teams — fetch the current user's team (auto-creates if none)
@@ -118,6 +120,20 @@ export async function PATCH(request: NextRequest) {
   const supabase = createSupabaseAdminClient();
   const userId = session.user.id;
 
+  // RBAC: Verify user is team owner before allowing updates
+  const { data: existingTeam } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('owner_id', userId)
+    .single();
+
+  if (existingTeam) {
+    const role = await checkTeamRole(userId, existingTeam.id);
+    if (!hasMinimumRole(role, 'owner')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+  }
+
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.name !== undefined) updates.name = body.name.trim();
   if (body.description !== undefined) updates.description = body.description?.trim() || null;
@@ -135,6 +151,18 @@ export async function PATCH(request: NextRequest) {
   if (error) {
     logApiError('teams-update', error, { userId });
     return ApiErrors.databaseError();
+  }
+
+  // Log activity (fire-and-forget)
+  if (team) {
+    logTeamActivity({
+      teamId: team.id,
+      userId,
+      action: 'team.updated',
+      targetType: 'team',
+      targetId: team.id,
+      details: { updatedFields: Object.keys(updates).filter(k => k !== 'updated_at') },
+    });
   }
 
   return NextResponse.json({ team });

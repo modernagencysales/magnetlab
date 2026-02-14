@@ -1,6 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { checkTeamRole, hasMinimumRole } from '@/lib/auth/rbac';
+import { logTeamActivity } from '@/lib/utils/activity-log';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 // GET /api/teams/profiles — list profiles for the user's team
@@ -77,6 +79,12 @@ export async function POST(request: NextRequest) {
     return ApiErrors.notFound('Team');
   }
 
+  // RBAC: Require owner role to create profiles
+  const role = await checkTeamRole(userId, team.id);
+  if (!hasMinimumRole(role, 'owner')) {
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+  }
+
   const email = body.email?.trim().toLowerCase() || null;
 
   // Check if email already exists in team
@@ -129,6 +137,18 @@ export async function POST(request: NextRequest) {
   if (error) {
     logApiError('profiles-create', error, { userId, teamId: team.id });
     return ApiErrors.databaseError();
+  }
+
+  // Log activity (fire-and-forget)
+  if (profile) {
+    logTeamActivity({
+      teamId: team.id,
+      userId,
+      action: 'profile.created',
+      targetType: 'profile',
+      targetId: profile.id,
+      details: { fullName, email },
+    });
   }
 
   return NextResponse.json({ profile }, { status: 201 });
