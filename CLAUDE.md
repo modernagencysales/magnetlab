@@ -4,19 +4,19 @@
 
 ## Identity
 
-MagnetLab is a SaaS platform for creating AI-powered LinkedIn lead magnets -- users go through a 6-step wizard to extract their expertise, generate content variations, publish to Notion/LinkedIn, and capture leads through customizable funnel pages.
+MagnetLab is a SaaS platform for creating AI-powered LinkedIn lead magnets -- users go through a 6-step wizard to extract their expertise, generate content variations, publish to LinkedIn, and capture leads through customizable funnel pages.
 
 ## Tech Stack
 
 - **Framework**: Next.js 15 (App Router), React 18.3, TypeScript 5.6+
 - **Database**: Supabase (PostgreSQL), 14 migrations
-- **Auth**: NextAuth v5 beta -- Google OAuth + Notion OAuth
+- **Auth**: NextAuth v5 beta -- Google OAuth
 - **UI**: Tailwind CSS 3.4 + shadcn/ui + Framer Motion + Recharts
 - **AI**: @anthropic-ai/sdk (Claude) for content generation, style extraction, email sequences + OpenAI (embeddings)
 - **AI Brain**: pgvector semantic search over transcript knowledge base (content pipeline)
 - **Payments**: Stripe (checkout, webhooks, subscriptions: free/pro/unlimited)
 - **Email**: Resend (transactional) + Loops (marketing automation)
-- **Jobs/Integrations**: Trigger.dev v4, Notion API, LeadShark, user webhooks
+- **Jobs/Integrations**: Trigger.dev v4, user webhooks
 - **Testing**: Jest 29 + React Testing Library + Playwright
 - **Deploy**: Vercel
 
@@ -74,7 +74,7 @@ src/
 
 ### API Routes (57 handlers)
 
-Groups: `lead-magnet/` (CRUD, content, polish, ideation), `funnel/` (pages, sections, publish, themes), `stripe/` (checkout, webhooks, portal), `notion/` (auth, publish, connections), `leads/` (management, export), `leadshark/` (enrichment), `brand-kit/` (extraction), `thumbnail/` (generation), `email-sequence/` (CRUD, trigger), `swipe-file/` (browse, save), `webhooks/` (user-configured), `integrations/` (connect/disconnect), `public/` (lead capture, page data, content delivery), `linkedin/` (post helpers), `landing-page/` (quick create), `user/` (profile), `external/` (third-party callbacks).
+Groups: `lead-magnet/` (CRUD, content, polish, ideation), `funnel/` (pages, sections, publish, themes), `stripe/` (checkout, webhooks, portal), `leads/` (management, export), `brand-kit/` (extraction), `thumbnail/` (generation), `email-sequence/` (CRUD, trigger), `swipe-file/` (browse, save), `webhooks/` (user-configured), `integrations/` (connect/disconnect), `public/` (lead capture, page data, content delivery), `linkedin/` (post helpers), `landing-page/` (quick create), `user/` (profile), `external/` (third-party callbacks).
 
 ## Database
 
@@ -87,7 +87,6 @@ Supabase PostgreSQL, 14 migrations. Tables:
 - `lead_magnets` -- core content entities (title, archetype, content blocks)
 - `lead_magnet_analytics` -- view/download metrics
 - `extraction_sessions` -- wizard state persistence (6-step progress)
-- `notion_connections` -- Notion OAuth tokens and workspace info
 - `funnel_pages` -- published funnel/opt-in pages (slug, theme, config)
 - `funnel_leads` -- captured leads with UTM tracking
 - `qualification_questions` -- survey questions per funnel
@@ -167,7 +166,6 @@ Use this table to determine which repo owns a given feature. This prevents build
 
 - **GTM webhooks**: Fires `lead.created`, `lead.qualified`, `lead_magnet.deployed` to gtm-system via `lib/webhooks/gtm-system.ts` (fire-and-forget, 5s timeout, `x-webhook-secret` auth)
 - **User webhooks**: Users configure their own endpoints for lead capture events (`lib/webhooks/sender.ts`, signature verify in `lib/webhooks/verify.ts`)
-- **Notion**: OAuth flow at `/api/notion/auth` + `/api/notion/callback`, publishes content as Notion pages, tokens in `notion_connections`
 - **Stripe**: Checkout/subscriptions/webhooks at `/api/stripe/`, state in `subscriptions` table, limits via `usage_tracking`
 
 ## Development
@@ -182,7 +180,6 @@ Use this table to determine which repo owns a given feature. This prevents build
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` -- Google OAuth
 - `ANTHROPIC_API_KEY` -- Claude AI
 - `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` -- Stripe
-- `NOTION_CLIENT_ID` / `NOTION_CLIENT_SECRET` -- Notion OAuth
 - `RESEND_API_KEY` -- Transactional email
 - `TRIGGER_SECRET_KEY` -- Background jobs
 - `GTM_SYSTEM_WEBHOOK_URL` / `GTM_SYSTEM_WEBHOOK_SECRET` -- GTM webhooks (optional, silently skipped if missing)
