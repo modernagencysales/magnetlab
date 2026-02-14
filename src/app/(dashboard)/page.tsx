@@ -5,7 +5,6 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import {
   Magnet,
   Users,
-  Mic,
   FileText,
   Plus,
   Upload,
@@ -14,6 +13,9 @@ import {
   Circle,
   ArrowRight,
   Globe,
+  Eye,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { DashboardWelcomeClient } from '@/components/dashboard/DashboardWelcomeClient';
 
@@ -31,12 +33,20 @@ interface DashboardStats {
   hasBrandKit: boolean;
   recentDraft: { id: string; title: string } | null;
   magnetsWithoutFunnels: { id: string; title: string }[];
+  viewsThisWeek: number;
+  viewsLastWeek: number;
+  leadsThisWeek: number;
+  leadsLastWeek: number;
 }
 
 async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
   const supabase = createSupabaseAdminClient();
 
-  const [leadMagnetsRes, leadsRes, transcriptsRes, postsRes, funnelsRes, brandKitRes, recentDraftRes, allMagnetsRes] =
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [leadMagnetsRes, leadsRes, transcriptsRes, postsRes, funnelsRes, brandKitRes, recentDraftRes, allMagnetsRes, leadsThisWeekRes, leadsLastWeekRes] =
     await Promise.all([
       supabase
         .from('lead_magnets')
@@ -75,6 +85,19 @@ async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(10),
+      // Leads this week
+      supabase
+        .from('funnel_leads')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', sevenDaysAgo),
+      // Leads last week
+      supabase
+        .from('funnel_leads')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', fourteenDaysAgo)
+        .lt('created_at', sevenDaysAgo),
     ]);
 
   // Find magnets without funnels
@@ -82,6 +105,29 @@ async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
   const magnetsWithoutFunnels = (allMagnetsRes.data || [])
     .filter((m: { id: string }) => !funnelMagnetIds.has(m.id))
     .slice(0, 3);
+
+  // Fetch page view trends — requires funnel IDs
+  const funnelIds = (funnelsRes.data || []).map((f: { id: string }) => f.id);
+  let viewsThisWeek = 0;
+  let viewsLastWeek = 0;
+
+  if (funnelIds.length > 0) {
+    const [viewsThisWeekRes, viewsLastWeekRes] = await Promise.all([
+      supabase
+        .from('page_views')
+        .select('id', { count: 'exact', head: true })
+        .in('funnel_page_id', funnelIds)
+        .gte('view_date', sevenDaysAgo),
+      supabase
+        .from('page_views')
+        .select('id', { count: 'exact', head: true })
+        .in('funnel_page_id', funnelIds)
+        .gte('view_date', fourteenDaysAgo)
+        .lt('view_date', sevenDaysAgo),
+    ]);
+    viewsThisWeek = viewsThisWeekRes.count ?? 0;
+    viewsLastWeek = viewsLastWeekRes.count ?? 0;
+  }
 
   return {
     leadMagnets: leadMagnetsRes.count ?? 0,
@@ -92,6 +138,10 @@ async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
     hasBrandKit: (brandKitRes.count ?? 0) > 0,
     recentDraft: recentDraftRes.data?.[0] || null,
     magnetsWithoutFunnels,
+    viewsThisWeek,
+    viewsLastWeek,
+    leadsThisWeek: leadsThisWeekRes.count ?? 0,
+    leadsLastWeek: leadsLastWeekRes.count ?? 0,
   };
 }
 
@@ -99,11 +149,38 @@ function StatCard({
   label,
   value,
   icon: Icon,
+  trend,
 }: {
   label: string;
   value: number;
   icon: React.ComponentType<{ className?: string }>;
+  trend?: { current: number; previous: number };
 }) {
+  const trendDisplay = (() => {
+    if (!trend) return null;
+    const { current, previous } = trend;
+    if (current === previous || (current === 0 && previous === 0)) {
+      return (
+        <span className="text-xs text-muted-foreground">No change</span>
+      );
+    }
+    const pct = Math.round(((current - previous) / Math.max(previous, 1)) * 100);
+    if (current > previous) {
+      return (
+        <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+          <TrendingUp className="h-3 w-3" />
+          {pct}% vs last week
+        </span>
+      );
+    }
+    return (
+      <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+        <TrendingDown className="h-3 w-3" />
+        {Math.abs(pct)}% vs last week
+      </span>
+    );
+  })();
+
   return (
     <div className="rounded-xl border bg-card p-5">
       <div className="mb-3 flex items-center gap-3">
@@ -115,6 +192,7 @@ function StatCard({
         </span>
       </div>
       <div className="text-3xl font-bold">{value}</div>
+      {trendDisplay && <div className="mt-1">{trendDisplay}</div>}
     </div>
   );
 }
@@ -285,11 +363,26 @@ async function DashboardContent() {
       )}
 
       {/* Stats Row */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Lead Magnets" value={stats.leadMagnets} icon={Magnet} />
-        <StatCard label="Leads Captured" value={stats.leads} icon={Users} />
-        <StatCard label="Transcripts" value={stats.transcripts} icon={Mic} />
+        <StatCard
+          label="Page Views"
+          value={stats.viewsThisWeek + stats.viewsLastWeek}
+          icon={Eye}
+          trend={{ current: stats.viewsThisWeek, previous: stats.viewsLastWeek }}
+        />
+        <StatCard
+          label="Leads Captured"
+          value={stats.leads}
+          icon={Users}
+          trend={{ current: stats.leadsThisWeek, previous: stats.leadsLastWeek }}
+        />
         <StatCard label="Posts" value={stats.posts} icon={FileText} />
+      </div>
+      <div className="mb-8 flex justify-end">
+        <Link href="/analytics" className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1">
+          View detailed analytics <ArrowRight className="h-3 w-3" />
+        </Link>
       </div>
 
       {/* Quick Actions */}
