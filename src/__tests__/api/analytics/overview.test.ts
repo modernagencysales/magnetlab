@@ -24,10 +24,13 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
  * Supabase PostgREST builder.
  */
 function createMockSupabase() {
-  const tableResults: Record<string, { data: unknown; error: unknown }> = {};
+  const tableResults: Record<string, { data: unknown; error: unknown; count?: number | null }> = {};
 
   function createChain(table: string) {
-    const resolve = () => Promise.resolve(tableResults[table] || { data: [], error: null });
+    const resolve = () => {
+      const result = tableResults[table] || { data: [], error: null };
+      return Promise.resolve(result);
+    };
 
     // Create a thenable object with chain methods
     const chain: Record<string, unknown> = {
@@ -50,7 +53,7 @@ function createMockSupabase() {
 
   return {
     client,
-    setResult: (table: string, result: { data: unknown; error: unknown }) => {
+    setResult: (table: string, result: { data: unknown; error: unknown; count?: number | null }) => {
       tableResults[table] = result;
     },
   };
@@ -432,12 +435,14 @@ describe('GET /api/analytics/overview', () => {
       error: null,
     });
     mock.setResult('cp_call_transcripts', {
-      data: [{ id: '1' }, { id: '2' }, { id: '3' }],
+      data: null,
       error: null,
+      count: 3,
     });
     mock.setResult('cp_knowledge_entries', {
-      data: [{ id: '1' }, { id: '2' }, { id: '3' }, { id: '4' }, { id: '5' }],
+      data: null,
       error: null,
+      count: 5,
     });
 
     const request = new Request('http://localhost:3000/api/analytics/overview?range=7d');
@@ -461,8 +466,8 @@ describe('GET /api/analytics/overview', () => {
 
     mock.setResult('funnel_pages', { data: [], error: null });
     mock.setResult('cp_pipeline_posts', { data: [], error: null });
-    mock.setResult('cp_call_transcripts', { data: [], error: null });
-    mock.setResult('cp_knowledge_entries', { data: [], error: null });
+    mock.setResult('cp_call_transcripts', { data: null, error: null, count: 0 });
+    mock.setResult('cp_knowledge_entries', { data: null, error: null, count: 0 });
 
     const request = new Request('http://localhost:3000/api/analytics/overview?range=7d');
     const response = await GET(request);

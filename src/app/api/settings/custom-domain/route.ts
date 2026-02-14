@@ -2,6 +2,13 @@
 // POST /api/settings/custom-domain - Set custom domain for a funnel page
 // DELETE /api/settings/custom-domain - Remove custom domain
 // GET /api/settings/custom-domain - List domains with verification status
+//
+// TODO: Custom domain routing is NOT yet implemented in middleware.
+// This API only stores the domain in the DB and returns DNS setup instructions.
+// To complete custom domain support:
+// 1. Add the domain in Vercel project settings (requires Vercel API or manual step)
+// 2. Add middleware logic to match incoming Host header against custom_domain column
+// 3. Rewrite matching requests to the correct /p/[username]/[slug] route
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';

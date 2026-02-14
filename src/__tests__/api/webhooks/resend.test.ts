@@ -5,6 +5,14 @@
 import { POST } from '@/app/api/webhooks/resend/route';
 import { NextRequest } from 'next/server';
 
+// Mock Svix Webhook class
+const mockVerify = jest.fn();
+jest.mock('svix', () => ({
+  Webhook: jest.fn().mockImplementation(() => ({
+    verify: mockVerify,
+  })),
+}));
+
 // Mock Supabase
 jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(),
@@ -82,10 +90,16 @@ function createMockSupabase() {
   };
 }
 
-function makeRequest(body: Record<string, unknown>): NextRequest {
+function makeRequest(body: Record<string, unknown>, options?: { omitSvixHeaders?: boolean }): NextRequest {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (!options?.omitSvixHeaders) {
+    headers['svix-id'] = 'msg_test123';
+    headers['svix-timestamp'] = '1234567890';
+    headers['svix-signature'] = 'v1,test-signature';
+  }
   return new NextRequest('http://localhost:3000/api/webhooks/resend', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   });
 }
@@ -97,6 +111,13 @@ describe('POST /api/webhooks/resend', () => {
     jest.clearAllMocks();
     mock = createMockSupabase();
     (createSupabaseAdminClient as jest.Mock).mockReturnValue(mock.client);
+    // Set webhook secret so verification is active, and mock verify to pass by default
+    process.env.RESEND_WEBHOOK_SECRET = 'whsec_test_secret';
+    mockVerify.mockReturnValue(undefined);
+  });
+
+  afterEach(() => {
+    delete process.env.RESEND_WEBHOOK_SECRET;
   });
 
   it('should process email.delivered event', async () => {
@@ -277,5 +298,94 @@ describe('POST /api/webhooks/resend', () => {
 
     // No insert should happen
     expect(mock.insertedRows).toHaveLength(0);
+  });
+
+  it('should return 401 when signature verification fails', async () => {
+    mockVerify.mockImplementation(() => {
+      throw new Error('Invalid signature');
+    });
+
+    const response = await POST(
+      makeRequest({
+        type: 'email.delivered',
+        data: {
+          email_id: 'resend-email-bad-sig',
+          to: ['test@example.com'],
+          subject: 'Tampered',
+        },
+      })
+    );
+
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.error).toBe('Invalid signature');
+
+    // No database operations should happen
+    expect(mock.insertedRows).toHaveLength(0);
+  });
+
+  it('should return 401 when svix headers are missing', async () => {
+    const response = await POST(
+      makeRequest(
+        {
+          type: 'email.delivered',
+          data: {
+            email_id: 'resend-email-no-headers',
+            to: ['test@example.com'],
+            subject: 'No headers',
+          },
+        },
+        { omitSvixHeaders: true }
+      )
+    );
+
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body.error).toBe('Missing signature headers');
+
+    // Verify should not have been called
+    expect(mockVerify).not.toHaveBeenCalled();
+    expect(mock.insertedRows).toHaveLength(0);
+  });
+
+  it('should skip verification when RESEND_WEBHOOK_SECRET is not set', async () => {
+    delete process.env.RESEND_WEBHOOK_SECRET;
+
+    mock.setLeadResult({
+      data: {
+        id: 'lead-no-secret',
+        user_id: 'user-1',
+        lead_magnet_id: 'lm-1',
+      },
+      error: null,
+    });
+
+    const response = await POST(
+      makeRequest(
+        {
+          type: 'email.delivered',
+          data: {
+            email_id: 'resend-email-no-secret',
+            to: ['test@example.com'],
+            subject: 'No secret configured',
+          },
+        },
+        { omitSvixHeaders: true }
+      )
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.received).toBe(true);
+
+    // Verify should not have been called
+    expect(mockVerify).not.toHaveBeenCalled();
+
+    // But the event should still be processed
+    expect(mock.insertedRows).toHaveLength(1);
+    expect(mock.insertedRows[0]).toMatchObject({
+      email_id: 'resend-email-no-secret',
+      event_type: 'delivered',
+    });
   });
 });

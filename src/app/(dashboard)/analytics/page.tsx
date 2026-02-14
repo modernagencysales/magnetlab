@@ -1,9 +1,23 @@
+import { Suspense } from 'react';
 import { AnalyticsOverview } from '@/components/analytics/AnalyticsOverview';
 
 export const metadata = {
   title: 'Analytics | MagnetLab',
   description: 'View your funnel performance metrics',
 };
+
+function AnalyticsSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-24 rounded-lg bg-muted" />
+        ))}
+      </div>
+      <div className="h-64 rounded-lg bg-muted" />
+    </div>
+  );
+}
 
 export default function AnalyticsPage() {
   return (
@@ -14,7 +28,9 @@ export default function AnalyticsPage() {
           Track your funnel performance and lead generation.
         </p>
       </div>
-      <AnalyticsOverview />
+      <Suspense fallback={<AnalyticsSkeleton />}>
+        <AnalyticsOverview />
+      </Suspense>
     </div>
   );
 }

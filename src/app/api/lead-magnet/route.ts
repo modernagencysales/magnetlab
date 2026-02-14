@@ -82,22 +82,6 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseAdminClient();
 
-    // Check usage limits (legacy RPC-based check)
-    try {
-      const { data: canCreate, error: rpcError } = await supabase.rpc('check_usage_limit', {
-        p_user_id: session.user.id,
-        p_limit_type: 'lead_magnets',
-      });
-
-      if (rpcError) {
-        logApiError('lead-magnet/usage-check', rpcError, { userId: session.user.id });
-      } else if (canCreate === false) {
-        return ApiErrors.usageLimitExceeded('Monthly lead magnet limit reached. Upgrade your plan for more.');
-      }
-    } catch (err) {
-      logApiError('lead-magnet/usage-check', err, { userId: session.user.id, note: 'RPC unavailable' });
-    }
-
     // Create the lead magnet
     const validated = validation.data;
     const { data, error } = await supabase
@@ -120,19 +104,6 @@ export async function POST(request: Request) {
     if (error) {
       logApiError('lead-magnet/create', error, { userId: session.user.id });
       return ApiErrors.databaseError('Failed to create lead magnet');
-    }
-
-    // Increment usage (gracefully handle if RPC doesn't exist)
-    try {
-      const { error: incrementError } = await supabase.rpc('increment_usage', {
-        p_user_id: session.user.id,
-        p_limit_type: 'lead_magnets',
-      });
-      if (incrementError) {
-        logApiError('lead-magnet/usage-increment', incrementError, { userId: session.user.id });
-      }
-    } catch (err) {
-      logApiError('lead-magnet/usage-increment', err, { userId: session.user.id, note: 'RPC unavailable' });
     }
 
     try { getPostHogServerClient()?.capture({ distinctId: session.user.id, event: 'lead_magnet_created', properties: { lead_magnet_id: data.id, title: validated.title, archetype: validated.archetype } }); } catch {}

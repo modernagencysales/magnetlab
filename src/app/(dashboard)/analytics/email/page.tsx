@@ -1,9 +1,23 @@
+import { Suspense } from 'react';
 import { EmailAnalytics } from '@/components/analytics/EmailAnalytics';
 
 export const metadata = {
   title: 'Email Analytics | MagnetLab',
   description: 'Track email delivery, opens, clicks, and bounces across your lead magnets',
 };
+
+function EmailAnalyticsSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-24 rounded-lg bg-muted" />
+        ))}
+      </div>
+      <div className="h-48 rounded-lg bg-muted" />
+    </div>
+  );
+}
 
 export default function EmailAnalyticsPage() {
   return (
@@ -14,7 +28,9 @@ export default function EmailAnalyticsPage() {
           Track delivery rates, opens, clicks, and bounces for your email sequences.
         </p>
       </div>
-      <EmailAnalytics />
+      <Suspense fallback={<EmailAnalyticsSkeleton />}>
+        <EmailAnalytics />
+      </Suspense>
     </div>
   );
 }

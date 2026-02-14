@@ -21,3 +21,22 @@ CREATE INDEX idx_email_events_lead_magnet ON email_events(lead_magnet_id);
 CREATE INDEX idx_email_events_email_id ON email_events(email_id);
 CREATE INDEX idx_email_events_type ON email_events(event_type);
 CREATE INDEX idx_email_events_created ON email_events(created_at);
+
+-- Enable RLS
+ALTER TABLE email_events ENABLE ROW LEVEL SECURITY;
+
+-- Service role (admin client) has full access; no anon/authenticated access needed
+-- since email_events are only written by webhook handler and read by analytics API,
+-- both of which use the admin client (bypasses RLS).
+CREATE POLICY "Service role full access on email_events"
+  ON email_events
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- Authenticated users can only read their own events
+CREATE POLICY "Users can read own email events"
+  ON email_events
+  FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());

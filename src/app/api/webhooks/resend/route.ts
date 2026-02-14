@@ -2,8 +2,10 @@
 // POST /api/webhooks/resend
 // Processes Resend email events (sent, delivered, opened, clicked, bounced, complained)
 // and stores them in the email_events table for analytics.
+// Signature verification via Svix (Resend uses Svix under the hood).
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Webhook } from 'svix';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError, logWarn, logInfo } from '@/lib/utils/logger';
 
@@ -40,7 +42,37 @@ interface ResendWebhookPayload {
 
 export async function POST(request: NextRequest) {
   try {
-    const payload: ResendWebhookPayload = await request.json();
+    // Read raw body for signature verification before parsing
+    const rawBody = await request.text();
+
+    // Verify webhook signature using Svix
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const svixId = request.headers.get('svix-id');
+      const svixTimestamp = request.headers.get('svix-timestamp');
+      const svixSignature = request.headers.get('svix-signature');
+
+      if (!svixId || !svixTimestamp || !svixSignature) {
+        logWarn('webhooks/resend', 'Missing Svix signature headers');
+        return NextResponse.json({ error: 'Missing signature headers' }, { status: 401 });
+      }
+
+      try {
+        const wh = new Webhook(webhookSecret);
+        wh.verify(rawBody, {
+          'svix-id': svixId,
+          'svix-timestamp': svixTimestamp,
+          'svix-signature': svixSignature,
+        });
+      } catch (verifyError) {
+        logError('webhooks/resend', verifyError, { step: 'signature_verification' });
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+    } else {
+      logWarn('webhooks/resend', 'RESEND_WEBHOOK_SECRET not set — skipping signature verification');
+    }
+
+    const payload: ResendWebhookPayload = JSON.parse(rawBody);
 
     // Map the event type
     const eventType = EVENT_TYPE_MAP[payload.type];

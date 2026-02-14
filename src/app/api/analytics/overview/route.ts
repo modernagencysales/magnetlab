@@ -6,24 +6,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-
-const VALID_RANGES = ['7d', '30d', '90d'] as const;
-type Range = (typeof VALID_RANGES)[number];
-
-function parseDays(range: Range): number {
-  return parseInt(range.replace('d', ''), 10);
-}
-
-function buildDateRange(days: number): string[] {
-  const dates: string[] = [];
-  const now = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().split('T')[0]);
-  }
-  return dates;
-}
+import { VALID_RANGES, parseDays, buildDateRange, type Range } from '@/lib/utils/analytics-helpers';
 
 export async function GET(request: Request) {
   try {
@@ -68,11 +51,11 @@ export async function GET(request: Request) {
         .eq('user_id', session.user.id),
       supabase
         .from('cp_call_transcripts')
-        .select('id')
+        .select('id', { count: 'exact', head: true })
         .eq('user_id', session.user.id),
       supabase
         .from('cp_knowledge_entries')
-        .select('id')
+        .select('id', { count: 'exact', head: true })
         .eq('user_id', session.user.id),
     ]);
 
@@ -86,8 +69,8 @@ export async function GET(request: Request) {
         scheduled: posts.filter((p: { status: string }) => p.status === 'scheduled').length,
         published: posts.filter((p: { status: string }) => p.status === 'published').length,
       },
-      transcripts: transcriptsResult.data?.length || 0,
-      knowledgeEntries: knowledgeResult.data?.length || 0,
+      transcripts: transcriptsResult.count || 0,
+      knowledgeEntries: knowledgeResult.count || 0,
     };
 
     // If no funnels, return empty response with zero-filled date ranges

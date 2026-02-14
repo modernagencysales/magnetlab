@@ -58,92 +58,96 @@ export async function GET() {
     const postIds = publishedPosts.map((p: { id: string }) => p.id);
 
     // 2. Query cp_post_engagements for engagement counts
+    // 3. Query linkedin_automation_events for DM counts
+    // Run both in parallel since they are independent
     const engagementsByPost: Record<string, { comments: number; reactions: number }> = {};
     let totalComments = 0;
     let totalReactions = 0;
-
-    try {
-      const { data: engagements, error: engError } = await supabase
-        .from('cp_post_engagements')
-        .select('post_id, engagement_type')
-        .in('post_id', postIds);
-
-      if (engError) {
-        // Table may not exist or have data yet -- log and continue with zeros
-        logApiError('analytics/engagement/engagements', engError, { userId });
-      } else if (engagements) {
-        for (const eng of engagements) {
-          const pid = eng.post_id as string;
-          if (!engagementsByPost[pid]) {
-            engagementsByPost[pid] = { comments: 0, reactions: 0 };
-          }
-          if (eng.engagement_type === 'comment') {
-            engagementsByPost[pid].comments++;
-            totalComments++;
-          } else if (eng.engagement_type === 'reaction') {
-            engagementsByPost[pid].reactions++;
-            totalReactions++;
-          }
-        }
-      }
-    } catch {
-      // Gracefully handle if table doesn't exist
-      logApiError('analytics/engagement/engagements-catch', 'cp_post_engagements query failed', { userId });
-    }
-
-    // 3. Query linkedin_automation_events for DM counts
-    // Events are linked through linkedin_automations which have post_id
     const dmsByPost: Record<string, number> = {};
     let totalDmsSent = 0;
     let totalDmsFailed = 0;
 
-    try {
-      // First get the user's automations with their post_id mappings
-      const { data: automations, error: autoError } = await supabase
-        .from('linkedin_automations')
-        .select('id, post_id')
-        .eq('user_id', userId)
-        .in('post_id', postIds);
+    await Promise.all([
+      (async () => {
+        try {
+          const { data: engagements, error: engError } = await supabase
+            .from('cp_post_engagements')
+            .select('post_id, engagement_type')
+            .in('post_id', postIds);
 
-      if (autoError) {
-        logApiError('analytics/engagement/automations', autoError, { userId });
-      } else if (automations && automations.length > 0) {
-        const automationIds = automations.map((a: { id: string }) => a.id);
-        const automationToPost: Record<string, string> = {};
-        for (const a of automations) {
-          if (a.post_id) {
-            automationToPost[a.id] = a.post_id;
-          }
-        }
-
-        // Get DM events for these automations
-        const { data: events, error: eventsError } = await supabase
-          .from('linkedin_automation_events')
-          .select('automation_id, event_type')
-          .in('automation_id', automationIds)
-          .in('event_type', ['dm_sent', 'dm_failed']);
-
-        if (eventsError) {
-          logApiError('analytics/engagement/events', eventsError, { userId });
-        } else if (events) {
-          for (const ev of events) {
-            const postId = automationToPost[ev.automation_id];
-
-            if (ev.event_type === 'dm_sent') {
-              totalDmsSent++;
-              if (postId) {
-                dmsByPost[postId] = (dmsByPost[postId] || 0) + 1;
+          if (engError) {
+            // Table may not exist or have data yet -- log and continue with zeros
+            logApiError('analytics/engagement/engagements', engError, { userId });
+          } else if (engagements) {
+            for (const eng of engagements) {
+              const pid = eng.post_id as string;
+              if (!engagementsByPost[pid]) {
+                engagementsByPost[pid] = { comments: 0, reactions: 0 };
               }
-            } else if (ev.event_type === 'dm_failed') {
-              totalDmsFailed++;
+              if (eng.engagement_type === 'comment') {
+                engagementsByPost[pid].comments++;
+                totalComments++;
+              } else if (eng.engagement_type === 'reaction') {
+                engagementsByPost[pid].reactions++;
+                totalReactions++;
+              }
             }
           }
+        } catch {
+          // Gracefully handle if table doesn't exist
+          logApiError('analytics/engagement/engagements-catch', 'cp_post_engagements query failed', { userId });
         }
-      }
-    } catch {
-      // Gracefully handle if tables don't exist
-      logApiError('analytics/engagement/events-catch', 'automation events query failed', { userId });
-    }
+      })(),
+      (async () => {
+        try {
+          // First get the user's automations with their post_id mappings
+          const { data: automations, error: autoError } = await supabase
+            .from('linkedin_automations')
+            .select('id, post_id')
+            .eq('user_id', userId)
+            .in('post_id', postIds);
+
+          if (autoError) {
+            logApiError('analytics/engagement/automations', autoError, { userId });
+          } else if (automations && automations.length > 0) {
+            const automationIds = automations.map((a: { id: string }) => a.id);
+            const automationToPost: Record<string, string> = {};
+            for (const a of automations) {
+              if (a.post_id) {
+                automationToPost[a.id] = a.post_id;
+              }
+            }
+
+            // Get DM events for these automations
+            const { data: events, error: eventsError } = await supabase
+              .from('linkedin_automation_events')
+              .select('automation_id, event_type')
+              .in('automation_id', automationIds)
+              .in('event_type', ['dm_sent', 'dm_failed']);
+
+            if (eventsError) {
+              logApiError('analytics/engagement/events', eventsError, { userId });
+            } else if (events) {
+              for (const ev of events) {
+                const postId = automationToPost[ev.automation_id];
+
+                if (ev.event_type === 'dm_sent') {
+                  totalDmsSent++;
+                  if (postId) {
+                    dmsByPost[postId] = (dmsByPost[postId] || 0) + 1;
+                  }
+                } else if (ev.event_type === 'dm_failed') {
+                  totalDmsFailed++;
+                }
+              }
+            }
+          }
+        } catch {
+          // Gracefully handle if tables don't exist
+          logApiError('analytics/engagement/events-catch', 'automation events query failed', { userId });
+        }
+      })(),
+    ]);
 
     // 4. Build per-post breakdown
     const byPost: PostEngagementRow[] = publishedPosts.map(

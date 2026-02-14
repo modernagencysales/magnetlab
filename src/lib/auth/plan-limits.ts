@@ -1,5 +1,7 @@
 // Plan limits configuration and enforcement for billing tiers
 
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+
 export interface PlanLimits {
   maxLeadMagnets: number;
   maxFunnelPages: number;
@@ -33,7 +35,6 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
 };
 
 export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
-  const { createSupabaseAdminClient } = await import('@/lib/utils/supabase-server');
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('subscriptions')
@@ -50,7 +51,6 @@ export async function checkResourceLimit(
   resource: 'lead_magnets' | 'funnel_pages' | 'email_sequences',
 ): Promise<{ allowed: boolean; current: number; limit: number }> {
   const limits = await getUserPlanLimits(userId);
-  const { createSupabaseAdminClient } = await import('@/lib/utils/supabase-server');
   const supabase = createSupabaseAdminClient();
 
   const { count } = await supabase
@@ -69,7 +69,6 @@ export async function checkResourceLimit(
 }
 
 export async function getUserPlan(userId: string): Promise<string> {
-  const { createSupabaseAdminClient } = await import('@/lib/utils/supabase-server');
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('subscriptions')
