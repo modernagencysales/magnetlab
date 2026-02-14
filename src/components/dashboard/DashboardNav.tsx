@@ -9,7 +9,7 @@ import posthog from 'posthog-js';
 import {
   Magnet, Settings, Plus, LogOut, Globe, Users, UsersRound,
   ChevronDown, PenTool, Menu, X, Sun, Moon,
-  ArrowLeftRight, Home, Brain,
+  ArrowLeftRight, Home, Brain, Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +38,7 @@ const mainNav = [
   { href: '/pages', label: 'Pages', icon: Globe },
   { href: '/knowledge', label: 'Knowledge', icon: Brain },
   { href: '/posts', label: 'Posts', icon: PenTool },
+  { href: '/automations', label: 'Automations', icon: Bot },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/team', label: 'Team', icon: UsersRound },
 ];

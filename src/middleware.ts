@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 // Routes that require authentication
 const protectedRoutes = [
   '/create', '/magnets', '/pages', '/knowledge', '/posts',
-  '/leads', '/settings',
+  '/leads', '/settings', '/automations',
   // Legacy routes (redirects handled in route files)
   '/library', '/content', '/assets', '/analytics',
   '/swipe-file', '/docs',
