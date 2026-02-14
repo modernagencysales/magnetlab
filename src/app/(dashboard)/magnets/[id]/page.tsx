@@ -33,7 +33,7 @@ export default async function MagnetDetailPage({ params }: PageProps) {
   const [leadMagnetResult, funnelResult, userResult] = await Promise.all([
     adminClient
       .from('lead_magnets')
-      .select('id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, status, published_at, created_at, updated_at')
+      .select('id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, screenshot_urls, status, published_at, created_at, updated_at')
       .eq('id', id)
       .eq('user_id', session.user.id)
       .single(),
@@ -75,6 +75,7 @@ export default async function MagnetDetailPage({ params }: PageProps) {
     scheduledTime: leadMagnetData.scheduled_time,
     polishedContent: leadMagnetData.polished_content,
     polishedAt: leadMagnetData.polished_at,
+    screenshotUrls: leadMagnetData.screenshot_urls || undefined,
     status: leadMagnetData.status,
     publishedAt: leadMagnetData.published_at,
     createdAt: leadMagnetData.created_at,

@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { FunnelBuilder } from '@/components/funnel';
 import type { LeadMagnet } from '@/lib/types/lead-magnet';
 import type { FunnelPage, QualificationQuestion } from '@/lib/types/funnel';
+import { ScreenshotGallery } from './ScreenshotGallery';
 
 type Tab = 'overview' | 'funnel' | 'post' | 'leads' | 'analytics';
 
@@ -158,7 +159,12 @@ export function MagnetDetail({
           username={username}
         />
       )}
-      {activeTab === 'post' && <PostTab leadMagnet={leadMagnet} />}
+      {activeTab === 'post' && (
+        <PostTab
+          leadMagnet={leadMagnet}
+          hasPublishedFunnel={!!existingFunnel?.isPublished}
+        />
+      )}
       {activeTab === 'leads' && <LeadsTab funnelId={existingFunnel?.id || null} />}
       {activeTab === 'analytics' && <AnalyticsTab magnetId={leadMagnet.id} />}
     </div>
@@ -282,12 +288,28 @@ function OverviewTab({
 
 // ─── Post Tab ───────────────────────────────────────────────
 
-function PostTab({ leadMagnet }: { leadMagnet: LeadMagnet }) {
+function PostTab({
+  leadMagnet,
+  hasPublishedFunnel,
+}: {
+  leadMagnet: LeadMagnet;
+  hasPublishedFunnel: boolean;
+}) {
   const variations = leadMagnet.postVariations || [];
   const mainPost = leadMagnet.linkedinPost;
 
   return (
     <div className="space-y-6">
+      {/* Screenshot Gallery */}
+      <div className="rounded-xl border bg-card p-6">
+        <ScreenshotGallery
+          screenshotUrls={leadMagnet.screenshotUrls || []}
+          leadMagnetId={leadMagnet.id}
+          hasPublishedFunnel={hasPublishedFunnel}
+          hasPolishedContent={!!leadMagnet.polishedContent}
+        />
+      </div>
+
       {mainPost && (
         <div className="rounded-xl border bg-card p-6">
           <h3 className="font-semibold mb-3">LinkedIn Post</h3>
