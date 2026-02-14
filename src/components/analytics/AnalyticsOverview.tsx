@@ -229,7 +229,7 @@ export function AnalyticsOverview() {
                   {funnels.map((funnel) => (
                     <Link
                       key={funnel.id}
-                      href={`/analytics/${funnel.id}`}
+                      href={`/analytics/funnel/${funnel.id}`}
                       className="flex items-center justify-between py-3 first:pt-0 last:pb-0 hover:opacity-80 transition-opacity"
                     >
                       <div className="flex items-center gap-3">
