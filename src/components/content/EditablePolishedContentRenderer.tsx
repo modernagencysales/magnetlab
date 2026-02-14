@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, X } from 'lucide-react';
 import type { PolishedContent, PolishedSection, PolishedBlock, PolishedBlockType, CalloutStyle } from '@/lib/types/lead-magnet';
+import { ImageBlock, EmbedBlock } from './ContentBlocks';
 
 interface EditablePolishedContentRendererProps {
   content: PolishedContent;
@@ -71,6 +72,11 @@ function BlockTypeSelector({
     { type: 'callout', label: 'Warning', style: 'warning' },
     { type: 'callout', label: 'Success', style: 'success' },
     { type: 'divider', label: 'Divider' },
+    { type: 'code', label: 'Code Block' },
+    { type: 'table', label: 'Table' },
+    { type: 'accordion', label: 'Accordion' },
+    { type: 'image', label: 'Image' },
+    { type: 'embed', label: 'Video Embed' },
   ];
 
   return (
@@ -136,11 +142,32 @@ export function EditablePolishedContentRenderer({
   const addBlock = (sectionIdx: number, afterBlockIdx: number, type: PolishedBlockType, style?: CalloutStyle) => {
     const newSections = [...content.sections];
     const newBlocks = [...newSections[sectionIdx].blocks];
-    const newBlock: PolishedBlock = {
-      type,
-      content: type === 'divider' ? '' : 'New content...',
-      ...(style ? { style } : {}),
-    };
+
+    let newBlock: PolishedBlock;
+    switch (type) {
+      case 'code':
+        newBlock = { type: 'code', content: '// Your code here', language: 'typescript' };
+        break;
+      case 'table':
+        newBlock = { type: 'table', content: '', headers: ['Column 1', 'Column 2'], rows: [['Value 1', 'Value 2']] };
+        break;
+      case 'accordion':
+        newBlock = { type: 'accordion', content: 'Expandable content here...', title: 'Click to expand' };
+        break;
+      case 'image':
+        newBlock = { type: 'image', content: '', src: '', alt: 'Image description' };
+        break;
+      case 'embed':
+        newBlock = { type: 'embed', content: '', url: '' };
+        break;
+      case 'divider':
+        newBlock = { type: 'divider', content: '' };
+        break;
+      default:
+        newBlock = { type, content: 'New content...', ...(style ? { style } : {}) };
+        break;
+    }
+
     newBlocks.splice(afterBlockIdx + 1, 0, newBlock);
     newSections[sectionIdx] = { ...newSections[sectionIdx], blocks: newBlocks };
     onChange({ ...content, sections: newSections });
@@ -203,6 +230,273 @@ export function EditablePolishedContentRenderer({
     alignItems: 'center',
     justifyContent: 'center',
     color: mutedColor,
+  };
+
+  const inputStyle: React.CSSProperties = {
+    background: 'transparent',
+    border: `1px dashed rgba(139,92,246,0.3)`,
+    borderRadius: '4px',
+    padding: '4px 6px',
+    outline: 'none',
+    width: '100%',
+    fontFamily: 'inherit',
+    fontSize: '0.875rem',
+    lineHeight: '1.5rem',
+    color: bodyColor,
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: '0.7rem',
+    color: mutedColor,
+    display: 'block',
+    marginBottom: '0.125rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  };
+
+  const CODE_LANGUAGES = [
+    'typescript', 'javascript', 'python', 'bash', 'html', 'css', 'json', 'sql', 'text',
+  ];
+
+  const renderBlockEditor = (block: PolishedBlock, sectionIdx: number, blockIdx: number) => {
+    switch (block.type) {
+      case 'divider':
+        return <hr style={{ border: 'none', borderTop: `1px solid ${borderColor}`, margin: '1rem 0' }} />;
+
+      case 'code':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div>
+              <label style={labelStyle}>Language</label>
+              <select
+                value={block.language || 'text'}
+                onChange={(e) => updateBlock(sectionIdx, blockIdx, { language: e.target.value })}
+                style={{
+                  ...inputStyle,
+                  width: 'auto',
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                  backgroundColor: isDark ? '#18181B' : '#FFFFFF',
+                }}
+              >
+                {CODE_LANGUAGES.map((lang) => (
+                  <option key={lang} value={lang}>{lang}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Code</label>
+              <textarea
+                value={block.content}
+                onChange={(e) => updateBlock(sectionIdx, blockIdx, { content: e.target.value })}
+                placeholder="Enter code..."
+                style={{
+                  ...inputStyle,
+                  fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+                  minHeight: '120px',
+                  resize: 'vertical',
+                  whiteSpace: 'pre',
+                  tabSize: 2,
+                }}
+              />
+            </div>
+          </div>
+        );
+
+      case 'table':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>Table</label>
+              <button
+                onClick={() => {
+                  const headers = [...(block.headers || []), `Column ${(block.headers?.length || 0) + 1}`];
+                  const rows = (block.rows || []).map((row) => [...row, '']);
+                  updateBlock(sectionIdx, blockIdx, { headers, rows });
+                }}
+                style={{ ...inputStyle, width: 'auto', padding: '2px 8px', fontSize: '0.7rem', cursor: 'pointer' }}
+              >
+                + Column
+              </button>
+              <button
+                onClick={() => {
+                  const cols = block.headers?.length || 2;
+                  const rows = [...(block.rows || []), Array(cols).fill('')];
+                  updateBlock(sectionIdx, blockIdx, { rows });
+                }}
+                style={{ ...inputStyle, width: 'auto', padding: '2px 8px', fontSize: '0.7rem', cursor: 'pointer' }}
+              >
+                + Row
+              </button>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {(block.headers || []).map((header, colIdx) => (
+                      <th key={colIdx} style={{ padding: '2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <input
+                            value={header}
+                            onChange={(e) => {
+                              const headers = [...(block.headers || [])];
+                              headers[colIdx] = e.target.value;
+                              updateBlock(sectionIdx, blockIdx, { headers });
+                            }}
+                            placeholder={`Header ${colIdx + 1}`}
+                            style={{ ...inputStyle, fontWeight: 600 }}
+                          />
+                          {(block.headers || []).length > 1 && (
+                            <button
+                              onClick={() => {
+                                const headers = (block.headers || []).filter((_, i) => i !== colIdx);
+                                const rows = (block.rows || []).map((row) => row.filter((_, i) => i !== colIdx));
+                                updateBlock(sectionIdx, blockIdx, { headers, rows });
+                              }}
+                              style={{ ...controlButtonStyle, color: '#ef4444', padding: '1px', flexShrink: 0 }}
+                            >
+                              <X size={10} />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(block.rows || []).map((row, rowIdx) => (
+                    <tr key={rowIdx}>
+                      {row.map((cell, cellIdx) => (
+                        <td key={cellIdx} style={{ padding: '2px' }}>
+                          <input
+                            value={cell}
+                            onChange={(e) => {
+                              const rows = (block.rows || []).map((r, ri) =>
+                                ri === rowIdx ? r.map((c, ci) => (ci === cellIdx ? e.target.value : c)) : [...r]
+                              );
+                              updateBlock(sectionIdx, blockIdx, { rows });
+                            }}
+                            placeholder="Cell value"
+                            style={inputStyle}
+                          />
+                        </td>
+                      ))}
+                      <td style={{ padding: '2px', width: '24px' }}>
+                        {(block.rows || []).length > 1 && (
+                          <button
+                            onClick={() => {
+                              const rows = (block.rows || []).filter((_, i) => i !== rowIdx);
+                              updateBlock(sectionIdx, blockIdx, { rows });
+                            }}
+                            style={{ ...controlButtonStyle, color: '#ef4444', padding: '1px' }}
+                          >
+                            <X size={10} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+
+      case 'accordion':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div>
+              <label style={labelStyle}>Title</label>
+              <input
+                value={block.title || ''}
+                onChange={(e) => updateBlock(sectionIdx, blockIdx, { title: e.target.value })}
+                placeholder="Accordion title..."
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Content</label>
+              <EditableText
+                value={block.content}
+                onChange={(val) => updateBlock(sectionIdx, blockIdx, { content: val })}
+                style={{ fontSize: '1rem', lineHeight: '1.75rem', color: bodyColor }}
+                multiline
+                placeholder="Accordion content..."
+              />
+            </div>
+          </div>
+        );
+
+      case 'image':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div>
+              <label style={labelStyle}>Image URL</label>
+              <input
+                value={block.src || ''}
+                onChange={(e) => updateBlock(sectionIdx, blockIdx, { src: e.target.value })}
+                placeholder="https://example.com/image.jpg"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Alt Text</label>
+              <input
+                value={block.alt || ''}
+                onChange={(e) => updateBlock(sectionIdx, blockIdx, { alt: e.target.value })}
+                placeholder="Describe the image..."
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Caption (optional)</label>
+              <input
+                value={block.caption || ''}
+                onChange={(e) => updateBlock(sectionIdx, blockIdx, { caption: e.target.value })}
+                placeholder="Image caption..."
+                style={inputStyle}
+              />
+            </div>
+            {block.src && (
+              <div style={{ marginTop: '0.25rem' }}>
+                <ImageBlock block={block} />
+              </div>
+            )}
+          </div>
+        );
+
+      case 'embed':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div>
+              <label style={labelStyle}>Video URL</label>
+              <input
+                value={block.url || ''}
+                onChange={(e) => updateBlock(sectionIdx, blockIdx, { url: e.target.value })}
+                placeholder="YouTube, Loom, or Vimeo URL"
+                style={inputStyle}
+              />
+            </div>
+            {block.url && (
+              <div style={{ marginTop: '0.25rem' }}>
+                <EmbedBlock block={block} />
+              </div>
+            )}
+          </div>
+        );
+
+      default:
+        // paragraph, callout, list, quote
+        return (
+          <EditableText
+            value={block.content}
+            onChange={(val) => updateBlock(sectionIdx, blockIdx, { content: val })}
+            style={{ fontSize: '1rem', lineHeight: '1.75rem', color: bodyColor }}
+            multiline
+            placeholder="Block content..."
+          />
+        );
+    }
   };
 
   return (
@@ -271,17 +565,7 @@ export function EditablePolishedContentRenderer({
                 </button>
               </div>
 
-              {block.type === 'divider' ? (
-                <hr style={{ border: 'none', borderTop: `1px solid ${borderColor}`, margin: '1rem 0' }} />
-              ) : (
-                <EditableText
-                  value={block.content}
-                  onChange={(val) => updateBlock(sectionIdx, blockIdx, { content: val })}
-                  style={{ fontSize: '1rem', lineHeight: '1.75rem', color: bodyColor }}
-                  multiline
-                  placeholder="Block content..."
-                />
-              )}
+              {renderBlockEditor(block, sectionIdx, blockIdx)}
 
               <div style={{ display: 'flex', justifyContent: 'center', margin: '0.5rem 0' }}>
                 {addingBlockAt?.sectionIdx === sectionIdx && addingBlockAt?.blockIdx === blockIdx ? (
