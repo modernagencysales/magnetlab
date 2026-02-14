@@ -54,7 +54,8 @@ export type PostStatus =
   | 'approved'
   | 'scheduled'
   | 'published'
-  | 'failed';
+  | 'failed'
+  | 'publish_failed';
 
 export type KnowledgeCategory = 'insight' | 'question' | 'product_intel';
 

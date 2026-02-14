@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+import { logError } from '@/lib/utils/logger';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -28,7 +30,7 @@ export async function GET(
 
     return NextResponse.json({ post: data });
   } catch (error) {
-    console.error('Post fetch error:', error);
+    logError('cp/posts', error, { step: 'post_fetch_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -53,7 +55,7 @@ export async function PATCH(
       'status', 'scheduled_time', 'is_buffer', 'buffer_position',
       'scrape_engagement', 'heyreach_campaign_id',
     ];
-    const VALID_POST_STATUSES = ['draft', 'reviewing', 'approved', 'scheduled', 'published', 'failed'];
+    const VALID_POST_STATUSES = ['draft', 'reviewing', 'approved', 'scheduled', 'published', 'failed', 'publish_failed'];
     const updates: Record<string, unknown> = {};
     for (const field of allowedFields) {
       if (field in body) {
@@ -82,7 +84,7 @@ export async function PATCH(
 
     return NextResponse.json({ post: data });
   } catch (error) {
-    console.error('Post update error:', error);
+    logError('cp/posts', error, { step: 'post_update_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -112,7 +114,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Post delete error:', error);
+    logError('cp/posts', error, { step: 'post_delete_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

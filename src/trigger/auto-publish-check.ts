@@ -151,10 +151,13 @@ export const autoPublishCheck = schedules.task({
         logger.error(`Failed to publish post ${post.id}`, { error: message });
         errors.push(`Post ${post.id}: ${message}`);
 
-        // Mark as failed
+        // Mark as publish_failed with error details
         await supabase
           .from('cp_pipeline_posts')
-          .update({ status: 'failed' })
+          .update({
+            status: 'publish_failed',
+            error_log: message,
+          })
           .eq('id', post.id);
       }
     }
