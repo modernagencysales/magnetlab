@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatCards } from '@/components/analytics/StatCards';
 import { TimeSeriesChart } from '@/components/analytics/TimeSeriesChart';
 import { UTMBreakdown } from '@/components/analytics/UTMBreakdown';
-import { BarChart3, ExternalLink, FileText, Activity } from 'lucide-react';
+import { BarChart3, ExternalLink, FileText, Activity, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 type Range = '7d' | '30d' | '90d';
@@ -264,12 +264,20 @@ export function AnalyticsOverview() {
             </div>
           )}
 
-          {/* Engagement link */}
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-muted-foreground" />
-            <Link href="/analytics/engagement" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-              View engagement metrics →
-            </Link>
+          {/* Sub-page links */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              <Link href="/analytics/engagement" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                View engagement metrics →
+              </Link>
+            </div>
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <Link href="/analytics/email" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                View email analytics →
+              </Link>
+            </div>
           </div>
 
           {/* Funnel list */}
