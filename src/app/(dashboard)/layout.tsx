@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getMergedMemberships } from '@/lib/utils/team-membership';
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { PostHogIdentify } from '@/components/providers/PostHogIdentify';
 
@@ -55,7 +56,7 @@ export default async function DashboardLayout({
         user={session.user}
         teamContext={teamContext}
       />
-      <main className="lg:pl-64">{children}</main>
+      <main className="lg:pl-64"><ErrorBoundary>{children}</ErrorBoundary></main>
       <FeedbackWidget
         userEmail={session.user.email ?? null}
         userId={session.user.id ?? null}
