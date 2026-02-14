@@ -8,6 +8,7 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { validateBody, createLeadMagnetSchema } from '@/lib/validations/api';
 import { getPostHogServerClient } from '@/lib/posthog';
+import { checkResourceLimit } from '@/lib/auth/plan-limits';
 
 // GET - List all lead magnets for current user
 export async function GET(request: Request) {
@@ -62,6 +63,17 @@ export async function POST(request: Request) {
       return ApiErrors.unauthorized();
     }
 
+    // Check plan-based resource limit
+    const limitCheck = await checkResourceLimit(session.user.id, 'lead_magnets');
+    if (!limitCheck.allowed) {
+      return NextResponse.json({
+        error: 'Plan limit reached',
+        current: limitCheck.current,
+        limit: limitCheck.limit,
+        upgrade: '/settings#billing',
+      }, { status: 403 });
+    }
+
     const body = await request.json();
     const validation = validateBody(body, createLeadMagnetSchema);
     if (!validation.success) {
@@ -70,7 +82,7 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseAdminClient();
 
-    // Check usage limits
+    // Check usage limits (legacy RPC-based check)
     try {
       const { data: canCreate, error: rpcError } = await supabase.rpc('check_usage_limit', {
         p_user_id: session.user.id,

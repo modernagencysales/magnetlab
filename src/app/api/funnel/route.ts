@@ -9,6 +9,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { funnelPageFromRow, type FunnelPageRow, type FunnelTargetType } from '@/lib/types/funnel';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
+import { checkResourceLimit } from '@/lib/auth/plan-limits';
 
 // GET - Get funnel page for a target (lead magnet, library, or external resource)
 export async function GET(request: Request) {
@@ -94,6 +95,17 @@ export async function POST(request: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return ApiErrors.unauthorized();
+    }
+
+    // Check plan-based resource limit
+    const limitCheck = await checkResourceLimit(session.user.id, 'funnel_pages');
+    if (!limitCheck.allowed) {
+      return NextResponse.json({
+        error: 'Plan limit reached',
+        current: limitCheck.current,
+        limit: limitCheck.limit,
+        upgrade: '/settings#billing',
+      }, { status: 403 });
     }
 
     const body = await request.json();

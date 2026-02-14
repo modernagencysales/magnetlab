@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmailSequence, generateDefaultEmailSequence } from '@/lib/ai/email-sequence-generator';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { EmailGenerationContext } from '@/lib/types/email';
+import { checkResourceLimit } from '@/lib/auth/plan-limits';
 
 // POST - Generate email sequence for a lead magnet
 export async function POST(request: Request) {
@@ -14,6 +15,17 @@ export async function POST(request: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return ApiErrors.unauthorized();
+    }
+
+    // Check plan-based resource limit
+    const limitCheck = await checkResourceLimit(session.user.id, 'email_sequences');
+    if (!limitCheck.allowed) {
+      return NextResponse.json({
+        error: 'Plan limit reached',
+        current: limitCheck.current,
+        limit: limitCheck.limit,
+        upgrade: '/settings#billing',
+      }, { status: 403 });
     }
 
     const body = await request.json();

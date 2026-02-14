@@ -32,8 +32,8 @@ export function ProductTour({ isNewUser }: ProductTourProps) {
           {
             element: '[data-tour="home"]',
             popover: {
-              title: 'Welcome Home',
-              description: 'Your dashboard gives you an overview of activity, quick actions, and a getting started checklist.',
+              title: 'Welcome to MagnetLab!',
+              description: 'This is your command center. See real-time metrics, track leads, and access quick actions. Start with the getting started checklist to set up your first lead magnet.',
               side: 'right',
               align: 'start',
             },
@@ -41,17 +41,8 @@ export function ProductTour({ isNewUser }: ProductTourProps) {
           {
             element: '[data-tour="magnets"]',
             popover: {
-              title: 'Lead Magnets',
-              description: 'Create and manage your AI-powered lead magnets here. Each one includes a funnel page, posts, and analytics.',
-              side: 'right',
-              align: 'start',
-            },
-          },
-          {
-            element: '[data-tour="pages"]',
-            popover: {
-              title: 'Pages',
-              description: 'View all your funnel and opt-in pages in one place. See which ones are live and how many leads they\'ve captured.',
+              title: 'Create Your First Lead Magnet',
+              description: 'Use the 6-step AI wizard to extract your expertise and turn it into a lead magnet. The AI handles content generation, post writing, and email sequences.',
               side: 'right',
               align: 'start',
             },
@@ -59,8 +50,8 @@ export function ProductTour({ isNewUser }: ProductTourProps) {
           {
             element: '[data-tour="knowledge"]',
             popover: {
-              title: 'Knowledge',
-              description: 'Import call transcripts and build your AI Brain. The AI extracts insights, questions, and stories from your conversations.',
+              title: 'Build Your AI Brain',
+              description: 'Connect Grain or Fireflies to auto-import call transcripts. The AI extracts insights, customer questions, and story angles — powering smarter content across the platform.',
               side: 'right',
               align: 'start',
             },
@@ -68,8 +59,17 @@ export function ProductTour({ isNewUser }: ProductTourProps) {
           {
             element: '[data-tour="posts"]',
             popover: {
-              title: 'Posts',
-              description: 'Manage your content pipeline — from ideas to drafts to published posts. Set up autopilot to generate posts automatically.',
+              title: 'Content Pipeline & Autopilot',
+              description: 'Turn ideas into LinkedIn posts with AI assistance. Set up autopilot to automatically generate and schedule posts from your knowledge base — hands-free content creation.',
+              side: 'right',
+              align: 'start',
+            },
+          },
+          {
+            element: '[data-tour="leads"]',
+            popover: {
+              title: 'Track & Manage Leads',
+              description: 'Every opt-in from your funnel pages appears here. View analytics, export leads, and see which lead magnets drive the most conversions from the analytics dashboard.',
               side: 'right',
               align: 'start',
             },

@@ -34,6 +34,11 @@ jest.mock('@/lib/auth', () => ({
   auth: () => mockAuth(),
 }));
 
+// Mock plan-limits to always allow resource creation
+jest.mock('@/lib/auth/plan-limits', () => ({
+  checkResourceLimit: jest.fn().mockResolvedValue({ allowed: true, current: 0, limit: 3 }),
+}));
+
 const validUUID = '550e8400-e29b-41d4-a716-446655440000';
 
 describe('Funnel API Routes', () => {

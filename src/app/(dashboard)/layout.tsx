@@ -47,6 +47,12 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground"
+      >
+        Skip to main content
+      </a>
       <PostHogIdentify
         userId={session.user.id!}
         email={session.user.email}
@@ -56,7 +62,7 @@ export default async function DashboardLayout({
         user={session.user}
         teamContext={teamContext}
       />
-      <main className="lg:pl-64"><ErrorBoundary>{children}</ErrorBoundary></main>
+      <main id="main-content" className="lg:pl-64"><ErrorBoundary>{children}</ErrorBoundary></main>
       <FeedbackWidget
         userEmail={session.user.email ?? null}
         userId={session.user.id ?? null}
