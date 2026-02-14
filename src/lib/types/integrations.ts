@@ -1,62 +1,6 @@
 // Integration Types for MagnetLab
 
 // ============================================
-// LEADSHARK TYPES
-// ============================================
-
-export interface LeadSharkAutomation {
-  id: string;
-  name: string;
-  post_id: string;
-  linkedin_post_url: string;
-  keywords: string[];
-  dm_template: string;
-  auto_connect: boolean;
-  auto_like: boolean;
-  comment_reply_template?: string;
-  non_first_degree_reply_template?: string;
-  enable_follow_up: boolean;
-  follow_up_template?: string;
-  follow_up_delay_minutes?: number;
-  status: 'Draft' | 'Running' | 'Paused';
-  leads_captured?: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface LeadSharkScheduledPost {
-  id: string;
-  content: string;
-  scheduled_time: string;
-  is_public: boolean;
-  automation?: Partial<LeadSharkAutomation>;
-  status: 'scheduled' | 'published' | 'failed';
-  created_at: string;
-}
-
-export interface LeadSharkEnrichmentResult {
-  linkedin_url: string;
-  first_name: string;
-  last_name: string;
-  headline: string;
-  location: string;
-  profile_picture_url?: string;
-  experience: Array<{
-    title: string;
-    company: string;
-    start_date: string;
-    end_date?: string;
-    is_current: boolean;
-  }>;
-  education: Array<{
-    school: string;
-    degree?: string;
-    field_of_study?: string;
-  }>;
-  skills: string[];
-}
-
-// ============================================
 // UNIPILE TYPES
 // ============================================
 
@@ -124,7 +68,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Premium AI generation',
       'Custom landing pages',
       'Email sequences',
-      'LeadShark integration',
+      'LinkedIn integration',
       'LinkedIn scheduling',
       'Advanced analytics',
     ],
@@ -145,7 +89,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Premium AI (Opus 4.5)',
       'Custom landing pages',
       'Email sequences',
-      'LeadShark integration',
+      'LinkedIn integration',
       'LinkedIn scheduling',
       'Advanced analytics',
       'Priority support',

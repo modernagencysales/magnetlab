@@ -44,7 +44,7 @@ const comparisonPoints = [
   { them: '$3,000+/month retainer', us: '$250/month, cancel anytime' },
   { them: 'Weeks to produce one lead magnet', us: 'Create unlimited lead magnets on demand' },
   { them: 'Generic copywriter output', us: 'YOUR expertise extracted, not ghostwritten' },
-  { them: 'Manual lead follow-up', us: 'Automated comment-to-DM flow via LeadShark' },
+  { them: 'Manual lead follow-up', us: 'Automated comment-to-DM flow via LinkedIn' },
   { them: 'Separate tools for pages & email', us: 'Landing pages, emails, and automation built in' },
   { them: 'Manual content creation from scratch', us: 'AI turns your calls into ready-to-post content' },
 ];
@@ -73,7 +73,7 @@ const pricing = [
       'AI Brain (knowledge base)',
       'Autopilot publishing',
       'Universal webhook',
-      'LeadShark integration',
+      'LinkedIn integration',
       'LinkedIn scheduling',
       'Advanced analytics',
       'Priority support',
@@ -208,7 +208,7 @@ export default function HomePage() {
                 step: '4',
                 title: 'Launch your funnel',
                 description:
-                  'We generate your landing page, email sequence, LinkedIn posts, and connect it all to LeadShark for automated delivery.',
+                  'We generate your landing page, email sequence, LinkedIn posts, and connect it all for automated delivery.',
               },
             ].map((item, index) => (
               <div key={index} className="flex gap-6">
@@ -253,7 +253,7 @@ export default function HomePage() {
                 step: '4',
                 title: 'Auto-publish to LinkedIn on your schedule',
                 description:
-                  'Set your posting slots, fill the buffer, and let Autopilot publish for you via LeadShark.',
+                  'Set your posting slots, fill the buffer, and let Autopilot publish for you automatically.',
               },
             ].map((item, index) => (
               <div key={index} className="flex gap-6">

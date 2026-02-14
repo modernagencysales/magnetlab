@@ -108,7 +108,6 @@ export const autoPublishCheck = schedules.task({
               linkedin_post_id: result.postId || null,
               publish_provider: result.provider,
               published_at: publishedAt,
-              ...(result.provider === 'leadshark' ? { leadshark_post_id: result.postId || null } : {}),
             })
             .eq('id', post.id);
 

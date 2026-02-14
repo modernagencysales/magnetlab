@@ -6,7 +6,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { updateIntegrationVerified } from '@/lib/utils/encrypted-storage';
-import { LeadSharkClient } from '@/lib/integrations/leadshark';
 import { getUnipileClient } from '@/lib/integrations/unipile';
 import { LoopsClient } from '@/lib/integrations/loops';
 import { Resend } from 'resend';
@@ -33,13 +32,6 @@ export async function POST(request: NextRequest) {
 
     // Verify based on service type
     switch (service) {
-      case 'leadshark': {
-        const client = new LeadSharkClient({ apiKey: api_key });
-        const result = await client.verifyConnection();
-        verified = result.connected;
-        error = result.error || null;
-        break;
-      }
       case 'loops': {
         const client = new LoopsClient({ apiKey: api_key });
         const result = await client.verifyConnection();

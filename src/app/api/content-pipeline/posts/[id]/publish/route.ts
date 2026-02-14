@@ -33,7 +33,7 @@ export async function POST(
       return NextResponse.json({ error: 'No content to publish' }, { status: 400 });
     }
 
-    // Get publisher (Unipile first, LeadShark fallback)
+    // Get publisher (Unipile)
     const publisher = await getUserLinkedInPublisher(session.user.id);
     if (!publisher) {
       return NextResponse.json(
@@ -46,7 +46,7 @@ export async function POST(
 
     const publishedAt = new Date().toISOString();
 
-    // Update post status — always mark as published (LeadShark delays ~16min but intent is to publish)
+    // Update post status
     const { error: updateError } = await supabase
       .from('cp_pipeline_posts')
       .update({
@@ -54,7 +54,6 @@ export async function POST(
         linkedin_post_id: result.postId || null,
         publish_provider: result.provider,
         published_at: publishedAt,
-        ...(result.provider === 'leadshark' ? { leadshark_post_id: result.postId || null } : {}),
       })
       .eq('id', id)
       .eq('user_id', session.user.id);

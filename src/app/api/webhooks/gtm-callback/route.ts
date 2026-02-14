@@ -7,8 +7,6 @@ interface GtmCallbackPayload {
   timestamp: string;
   data: {
     leadMagnetId: string;
-    leadsharkPostId?: string | null;
-    leadsharkAutomationId?: string | null;
     scheduledTime?: string;
     reason?: string;
   };
@@ -39,8 +37,7 @@ export async function POST(request: NextRequest) {
 
     switch (payload.event) {
       case 'lead_magnet.scheduled': {
-        const { leadMagnetId, leadsharkPostId, leadsharkAutomationId, scheduledTime } =
-          payload.data;
+        const { leadMagnetId, scheduledTime } = payload.data;
 
         if (!leadMagnetId) {
           return NextResponse.json(
@@ -53,8 +50,6 @@ export async function POST(request: NextRequest) {
         const { error } = await supabase
           .from('lead_magnets')
           .update({
-            leadshark_post_id: leadsharkPostId,
-            leadshark_automation_id: leadsharkAutomationId,
             scheduled_time: scheduledTime,
             status: 'scheduled',
             updated_at: new Date().toISOString(),

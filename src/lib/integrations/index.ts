@@ -3,14 +3,6 @@
 export { BaseApiClient, type ApiClientConfig, type ApiResponse } from './base-client';
 
 export {
-  LeadSharkClient,
-  getLeadSharkClient,
-  type LeadSharkConfig,
-  type CreateAutomationRequest,
-  type SchedulePostRequest,
-} from './leadshark';
-
-export {
   FathomClient,
   getUserFathomClient,
   getFathomAuthorizationUrl,

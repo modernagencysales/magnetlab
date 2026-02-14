@@ -272,8 +272,6 @@ export interface LeadMagnet {
   dmTemplate: string | null;
   ctaWord: string | null;
   thumbnailUrl: string | null;
-  leadsharkPostId: string | null;
-  leadsharkAutomationId: string | null;
   scheduledTime: string | null;
   polishedContent: PolishedContent | null;
   polishedAt: string | null;

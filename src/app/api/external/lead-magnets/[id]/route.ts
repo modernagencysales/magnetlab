@@ -27,7 +27,7 @@ async function handleGet(
 
     const { data, error } = await supabase
       .from('lead_magnets')
-      .select('id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, leadshark_post_id, leadshark_automation_id, scheduled_time, polished_content, polished_at, status, published_at, created_at, updated_at')
+      .select('id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, status, published_at, created_at, updated_at')
       .eq('id', id)
       .eq('user_id', context.userId)
       .single();

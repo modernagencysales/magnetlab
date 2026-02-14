@@ -206,7 +206,6 @@ export interface PipelinePost {
   variations: PostVariation[] | null;
   status: PostStatus;
   scheduled_time: string | null;
-  leadshark_post_id: string | null;
   linkedin_post_id: string | null;
   publish_provider: string | null;
   lead_magnet_id: string | null;

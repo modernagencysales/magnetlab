@@ -656,7 +656,7 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
           )}
         </div>
 
-        {/* Publish Error / LeadShark not configured */}
+        {/* Publish Error */}
         {publishError && (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/50">
             <p className="text-sm text-amber-800 dark:text-amber-200">{publishError}</p>

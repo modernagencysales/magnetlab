@@ -1,6 +1,5 @@
 // LinkedIn Publisher Abstraction
-// Unified interface for publishing LinkedIn posts.
-// Tries Unipile first, falls back to LeadShark.
+// Unified interface for publishing LinkedIn posts via Unipile.
 
 import {
   getUnipileClient,
@@ -8,30 +7,27 @@ import {
   isUnipileConfigured,
   getMonitorAccountId,
 } from './unipile';
-import { getUserLeadSharkClient } from './leadshark';
 import type { EngagementStats } from '@/lib/types/content-pipeline';
 
 export interface PublishResult {
   postId: string;
-  provider: 'unipile' | 'leadshark';
+  provider: 'unipile';
 }
 
 export interface LinkedInPublisher {
   publishNow(content: string): Promise<PublishResult>;
   getPostStats(postId: string): Promise<EngagementStats | null>;
-  provider: 'unipile' | 'leadshark';
+  provider: 'unipile';
 }
 
 /**
  * Get a LinkedIn publisher for the given user.
- * Tries Unipile first (user has integration + env vars configured),
- * falls back to LeadShark.
- * Returns null if neither is available.
+ * Uses Unipile (user has integration + env vars configured).
+ * Returns null if not available.
  */
 export async function getUserLinkedInPublisher(
   userId: string
 ): Promise<LinkedInPublisher | null> {
-  // Try Unipile first
   if (isUnipileConfigured()) {
     const accountId = await getUserPostingAccountId(userId);
     if (accountId) {
@@ -68,36 +64,6 @@ export async function getUserLinkedInPublisher(
         },
       };
     }
-  }
-
-  // Fallback to LeadShark
-  const leadshark = await getUserLeadSharkClient(userId);
-  if (leadshark) {
-    return {
-      provider: 'leadshark',
-
-      async publishNow(content: string): Promise<PublishResult> {
-        // LeadShark requires scheduled_time at least 15 min in future
-        const scheduledTime = new Date(Date.now() + 16 * 60 * 1000).toISOString();
-        const result = await leadshark.createScheduledPost({
-          content,
-          scheduled_time: scheduledTime,
-        });
-        if (result.error) {
-          throw new Error(`LeadShark publish failed: ${result.error}`);
-        }
-        return {
-          postId: result.data?.id || '',
-          provider: 'leadshark',
-        };
-      },
-
-      async getPostStats(): Promise<EngagementStats | null> {
-        // LeadShark stats require separate API call with cursor pagination
-        // Not worth implementing for fallback — return null
-        return null;
-      },
-    };
   }
 
   return null;
