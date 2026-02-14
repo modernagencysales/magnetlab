@@ -225,13 +225,38 @@ export interface ExtractionResult {
 // POLISHED CONTENT (for public content page)
 // ============================================
 
-export type PolishedBlockType = 'paragraph' | 'callout' | 'list' | 'quote' | 'divider';
+export type PolishedBlockType =
+  | 'paragraph'
+  | 'callout'
+  | 'list'
+  | 'quote'
+  | 'divider'
+  | 'image'
+  | 'embed'
+  | 'code'
+  | 'table'
+  | 'accordion';
+
 export type CalloutStyle = 'info' | 'warning' | 'success';
 
 export interface PolishedBlock {
   type: PolishedBlockType;
   content: string;
   style?: CalloutStyle;
+  // Image block fields
+  src?: string;
+  alt?: string;
+  caption?: string;
+  // Embed block fields
+  url?: string;
+  provider?: string;
+  // Code block fields
+  language?: string;
+  // Table block fields
+  headers?: string[];
+  rows?: string[][];
+  // Accordion block fields
+  title?: string;
 }
 
 export interface PolishedSection {
