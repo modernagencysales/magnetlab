@@ -89,11 +89,92 @@ const extractedContentSchema = z.object({
   differentiation: z.string(),
 }).passthrough();
 
+// ============================================
+// INTERACTIVE CONFIG SCHEMAS
+// ============================================
+
+const calculatorInputSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  type: z.enum(['number', 'select', 'slider']),
+  placeholder: z.string().optional(),
+  options: z.array(z.object({ label: z.string(), value: z.number() })).optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  step: z.number().optional(),
+  defaultValue: z.number().optional(),
+  unit: z.string().optional(),
+});
+
+const resultInterpretationSchema = z.object({
+  range: z.tuple([z.number(), z.number()]),
+  label: z.string(),
+  description: z.string(),
+  color: z.enum(['green', 'yellow', 'red']),
+});
+
+const calculatorConfigSchema = z.object({
+  type: z.literal('calculator'),
+  headline: z.string(),
+  description: z.string(),
+  inputs: z.array(calculatorInputSchema).min(1),
+  formula: z.string().min(1),
+  resultLabel: z.string(),
+  resultFormat: z.enum(['number', 'currency', 'percentage']),
+  resultInterpretation: z.array(resultInterpretationSchema).min(1),
+});
+
+const assessmentQuestionSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  type: z.enum(['single_choice', 'multiple_choice', 'scale']),
+  options: z.array(z.object({ label: z.string(), value: z.number() })).optional(),
+  scaleMin: z.number().optional(),
+  scaleMax: z.number().optional(),
+  scaleLabels: z.object({ min: z.string(), max: z.string() }).optional(),
+});
+
+const scoreRangeSchema = z.object({
+  min: z.number(),
+  max: z.number(),
+  label: z.string(),
+  description: z.string(),
+  recommendations: z.array(z.string()),
+});
+
+const assessmentConfigSchema = z.object({
+  type: z.literal('assessment'),
+  headline: z.string(),
+  description: z.string(),
+  questions: z.array(assessmentQuestionSchema).min(1),
+  scoring: z.object({
+    method: z.enum(['sum', 'average']),
+    ranges: z.array(scoreRangeSchema).min(1),
+  }),
+});
+
+const gptConfigSchema = z.object({
+  type: z.literal('gpt'),
+  name: z.string(),
+  description: z.string(),
+  systemPrompt: z.string().min(1),
+  welcomeMessage: z.string(),
+  suggestedPrompts: z.array(z.string()),
+  maxTokens: z.number().optional(),
+});
+
+export const interactiveConfigSchema = z.discriminatedUnion('type', [
+  calculatorConfigSchema,
+  assessmentConfigSchema,
+  gptConfigSchema,
+]);
+
 export const createLeadMagnetSchema = z.object({
   title: z.string().min(1).max(200),
   archetype: z.enum(leadMagnetArchetypes),
   concept: conceptSchema.optional(),
   extractedContent: extractedContentSchema.optional(),
+  interactiveConfig: interactiveConfigSchema.optional(),
   linkedinPost: z.string().optional(),
   postVariations: z.array(z.string()).optional(),
   dmTemplate: z.string().optional(),
