@@ -21,7 +21,7 @@ export default async function SettingsPage() {
   // Get brand kit
   const { data: brandKit } = await supabase
     .from('brand_kits')
-    .select('id, user_id, business_description, business_type, target_audience, credibility_markers, tone, content_pillars, primary_color, secondary_color, logo_url, sender_name, saved_ideation_result, ideation_generated_at, created_at, updated_at')
+    .select('id, user_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, created_at, updated_at')
     .eq('user_id', session?.user?.id)
     .single();
 
@@ -29,7 +29,7 @@ export default async function SettingsPage() {
   const monthYear = new Date().toISOString().slice(0, 7);
   const { data: usage } = await supabase
     .from('usage_tracking')
-    .select('id, user_id, month_year, lead_magnets_created, ai_calls_made, leads_captured, created_at, updated_at')
+    .select('id, user_id, month_year, lead_magnets_created, posts_scheduled, created_at, updated_at')
     .eq('user_id', session?.user?.id)
     .eq('month_year', monthYear)
     .single();

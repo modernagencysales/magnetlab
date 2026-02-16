@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('cp_performance_patterns')
-      .select('id, user_id, pattern_type, pattern_value, avg_engagement_rate, avg_views, avg_likes, avg_comments, sample_count, confidence, last_updated_at, created_at')
+      .select('id, user_id, pattern_type, pattern_value, avg_engagement_rate, avg_views, avg_likes, avg_comments, sample_count, confidence, last_updated_at')
       .eq('user_id', session.user.id)
       .order('avg_engagement_rate', { ascending: false });
 

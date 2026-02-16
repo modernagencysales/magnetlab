@@ -68,7 +68,7 @@ export default async function PublicLibraryPage({ params, searchParams }: PagePr
   // Find user
   const { data: user } = await supabase
     .from('users')
-    .select('id, name, image')
+    .select('id, name, avatar_url')
     .eq('username', username)
     .single();
 
@@ -193,7 +193,7 @@ export default async function PublicLibraryPage({ params, searchParams }: PagePr
       funnelSlug={funnel.slug}
       username={username}
       userName={user.name}
-      userAvatar={user.image}
+      userAvatar={user.avatar_url}
       theme={(funnel.theme as 'dark' | 'light') || 'dark'}
       primaryColor={funnel.primary_color || '#8b5cf6'}
       logoUrl={funnel.logo_url}

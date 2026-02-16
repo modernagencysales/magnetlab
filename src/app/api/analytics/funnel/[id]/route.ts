@@ -38,7 +38,7 @@ export async function GET(
     // Verify funnel ownership: must match both id and user_id
     const { data: funnel, error: funnelError } = await supabase
       .from('funnel_pages')
-      .select('id, title, slug')
+      .select('id, slug, optin_headline')
       .eq('id', funnelId)
       .eq('user_id', session.user.id)
       .single();
@@ -136,7 +136,7 @@ export async function GET(
     };
 
     return NextResponse.json({
-      funnel: { id: funnel.id, title: funnel.title, slug: funnel.slug },
+      funnel: { id: funnel.id, title: funnel.optin_headline, slug: funnel.slug },
       viewsByDay,
       leadsByDay,
       leads: leadsTable,

@@ -19,7 +19,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('brand_kits')
-      .select('id, user_id, business_description, business_type, target_audience, credibility_markers, tone, content_pillars, primary_color, secondary_color, logo_url, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, created_at, updated_at')
+      .select('id, user_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, best_video_url, best_video_title, content_links, community_url, created_at, updated_at')
       .eq('user_id', session.user.id)
       .single();
 
