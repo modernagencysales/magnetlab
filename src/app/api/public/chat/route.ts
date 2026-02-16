@@ -15,6 +15,23 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (typeof message !== 'string' || message.length > 10000) {
+      return new Response(JSON.stringify({ error: 'Message too long' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    if (typeof sessionToken !== 'string' || sessionToken.length > 100) {
+      return new Response(JSON.stringify({ error: 'Invalid session' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(leadMagnetId)) {
+      return new Response(JSON.stringify({ error: 'Invalid ID' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const supabase = createSupabaseAdminClient();
 
     // Load lead magnet
@@ -72,6 +89,22 @@ export async function POST(request: NextRequest) {
 
     if ((hourlyCount ?? 0) >= 50) {
       return new Response(JSON.stringify({ error: 'Rate limit reached. Try again later.' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Per-lead-magnet daily limit (5000 messages/day across all sessions)
+    const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
+    const { count: dailyCount } = await supabase
+      .from('interactive_chat_messages')
+      .select('id, interactive_chats!inner(lead_magnet_id)', { count: 'exact', head: true })
+      .eq('interactive_chats.lead_magnet_id', leadMagnetId)
+      .eq('role', 'user')
+      .gte('created_at', oneDayAgo);
+
+    if ((dailyCount ?? 0) >= 5000) {
+      return new Response(JSON.stringify({ error: 'This tool has reached its daily message limit.' }), {
         status: 429,
         headers: { 'Content-Type': 'application/json' },
       });

@@ -733,7 +733,7 @@ export function WizardContainer() {
 
             {state.currentStep === 6 && selectedPost && (state.extractedContent || state.interactiveConfig) && (
               <PublishStep
-                content={state.extractedContent!}
+                content={state.extractedContent}
                 post={selectedPost}
                 dmTemplate={state.postResult?.dmTemplate || ''}
                 ctaWord={state.postResult?.ctaWord || ''}
