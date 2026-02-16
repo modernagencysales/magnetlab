@@ -42,6 +42,7 @@ const INITIAL_STATE: WizardState = {
   extractedContent: null,
   postResult: null,
   selectedPostIndex: null,
+  interactiveConfig: null,
   isCustomIdea: false,
   customConcept: null,
 };

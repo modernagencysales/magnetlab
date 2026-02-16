@@ -40,6 +40,101 @@ export const ARCHETYPE_NAMES: Record<LeadMagnetArchetype, string> = {
   'workflow': 'The Workflow',
 };
 
+// ============================================
+// INTERACTIVE LEAD MAGNET CONFIGS
+// ============================================
+
+export interface CalculatorInput {
+  id: string;
+  label: string;
+  type: 'number' | 'select' | 'slider';
+  placeholder?: string;
+  options?: Array<{ label: string; value: number }>;
+  min?: number;
+  max?: number;
+  step?: number;
+  defaultValue?: number;
+  unit?: string;
+}
+
+export interface ResultInterpretation {
+  range: [number, number];
+  label: string;
+  description: string;
+  color: 'green' | 'yellow' | 'red';
+}
+
+export interface CalculatorConfig {
+  type: 'calculator';
+  headline: string;
+  description: string;
+  inputs: CalculatorInput[];
+  formula: string;
+  resultLabel: string;
+  resultFormat: 'number' | 'currency' | 'percentage';
+  resultInterpretation: ResultInterpretation[];
+}
+
+export interface AssessmentQuestion {
+  id: string;
+  text: string;
+  type: 'single_choice' | 'multiple_choice' | 'scale';
+  options?: Array<{ label: string; value: number }>;
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleLabels?: { min: string; max: string };
+}
+
+export interface ScoreRange {
+  min: number;
+  max: number;
+  label: string;
+  description: string;
+  recommendations: string[];
+}
+
+export interface AssessmentConfig {
+  type: 'assessment';
+  headline: string;
+  description: string;
+  questions: AssessmentQuestion[];
+  scoring: {
+    method: 'sum' | 'average';
+    ranges: ScoreRange[];
+  };
+}
+
+export interface GPTConfig {
+  type: 'gpt';
+  name: string;
+  description: string;
+  systemPrompt: string;
+  welcomeMessage: string;
+  suggestedPrompts: string[];
+  maxTokens?: number;
+}
+
+export type InteractiveConfig = CalculatorConfig | AssessmentConfig | GPTConfig;
+
+export const INTERACTIVE_ARCHETYPES: LeadMagnetArchetype[] = [
+  'single-calculator',
+  'assessment',
+  'prompt',
+];
+
+export function isInteractiveArchetype(archetype: LeadMagnetArchetype): boolean {
+  return INTERACTIVE_ARCHETYPES.includes(archetype);
+}
+
+export function getInteractiveType(archetype: LeadMagnetArchetype): InteractiveConfig['type'] | null {
+  switch (archetype) {
+    case 'single-calculator': return 'calculator';
+    case 'assessment': return 'assessment';
+    case 'prompt': return 'gpt';
+    default: return null;
+  }
+}
+
 export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   'coach-consultant': 'Coach / Consultant',
   'agency-owner': 'Agency Owner',
@@ -397,6 +492,7 @@ export interface WizardState {
   extractedContent: ExtractedContent | null;
   postResult: PostWriterResult | null;
   selectedPostIndex: number | null;
+  interactiveConfig: InteractiveConfig | null;
   isCustomIdea: boolean;
   customConcept: LeadMagnetConcept | null;
 }
