@@ -2,14 +2,13 @@
 
 import { useState } from 'react';
 import { ArrowLeft, Loader2, RefreshCw, Sparkles } from 'lucide-react';
-import type { InteractiveConfig, LeadMagnetConcept } from '@/lib/types/lead-magnet';
+import type { InteractiveConfig, LeadMagnetConcept, AssessmentConfig, GPTConfig } from '@/lib/types/lead-magnet';
 import { CalculatorPreview } from '@/components/interactive/CalculatorPreview';
 import { AssessmentPreview } from '@/components/interactive/AssessmentPreview';
 import { GPTPreview } from '@/components/interactive/GPTPreview';
 import { CalculatorEditor } from '@/components/interactive/editors/CalculatorEditor';
 import { AssessmentEditor } from '@/components/interactive/editors/AssessmentEditor';
 import { GPTEditor } from '@/components/interactive/editors/GPTEditor';
-import type { CalculatorConfig, AssessmentConfig, GPTConfig } from '@/lib/types/lead-magnet';
 
 interface InteractiveContentStepProps {
   config: InteractiveConfig;
