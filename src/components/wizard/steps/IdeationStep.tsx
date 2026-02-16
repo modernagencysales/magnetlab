@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, Star, Zap, Trophy } from 'lucide-react';
+import { ArrowLeft, Check, Star, Zap, Trophy, Sparkles } from 'lucide-react';
 import type { IdeationResult, LeadMagnetConcept } from '@/lib/types/lead-magnet';
-import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
+import { ARCHETYPE_NAMES, isInteractiveArchetype } from '@/lib/types/lead-magnet';
 import { cn } from '@/lib/utils';
 import { SwipeFileInspiration } from '@/components/swipe-file/SwipeFileInspiration';
 
@@ -65,6 +65,13 @@ function ConceptCard({
         >
           <badge.icon className="h-3 w-3" />
           {badge.label}
+        </div>
+      )}
+
+      {isInteractiveArchetype(concept.archetype) && (
+        <div className="absolute -top-2 left-4 flex items-center gap-1 rounded-full bg-blue-500 px-2 py-0.5 text-xs font-medium text-white">
+          <Sparkles className="h-3 w-3" />
+          Interactive
         </div>
       )}
 
