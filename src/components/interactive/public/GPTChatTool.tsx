@@ -37,6 +37,7 @@ export function GPTChatTool({ config, leadMagnetId, theme, primaryColor }: GPTCh
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const isDark = theme === 'dark';
 
@@ -99,6 +100,11 @@ export function GPTChatTool({ config, leadMagnetId, theme, primaryColor }: GPTCh
     loadExistingMessages();
   }, [sessionToken, leadMagnetId]);
 
+  // Abort in-flight request on unmount
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -133,6 +139,7 @@ export function GPTChatTool({ config, leadMagnetId, theme, primaryColor }: GPTCh
     }
 
     try {
+      abortRef.current = new AbortController();
       const response = await fetch('/api/public/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,6 +149,7 @@ export function GPTChatTool({ config, leadMagnetId, theme, primaryColor }: GPTCh
           message: userMessage.content,
           chatId,
         }),
+        signal: abortRef.current.signal,
       });
 
       if (!response.ok) {
@@ -198,6 +206,10 @@ export function GPTChatTool({ config, leadMagnetId, theme, primaryColor }: GPTCh
         setStreamingMessage('');
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        // User navigated away or component unmounted — not a real error
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to send message');
       setStreamingMessage('');
     } finally {

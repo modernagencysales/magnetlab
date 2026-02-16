@@ -145,6 +145,9 @@ export async function POST(request: NextRequest) {
           });
 
           for await (const event of anthropicStream) {
+            if (request.signal.aborted) {
+              break;
+            }
             if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
               fullResponse += event.delta.text;
               controller.enqueue(
@@ -153,12 +156,14 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Save assistant response
-          await supabase.from('interactive_chat_messages').insert({
-            chat_id: currentChatId,
-            role: 'assistant',
-            content: fullResponse,
-          });
+          // Only save assistant response if we have content and client is still connected
+          if (fullResponse && !request.signal.aborted) {
+            await supabase.from('interactive_chat_messages').insert({
+              chat_id: currentChatId,
+              role: 'assistant',
+              content: fullResponse,
+            });
+          }
 
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ type: 'done', chatId: currentChatId })}\n\n`)

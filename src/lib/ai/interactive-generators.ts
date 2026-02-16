@@ -1,4 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient } from '@/lib/ai/content-pipeline/anthropic-client';
+import { interactiveConfigSchema } from '@/lib/validations/api';
 import type {
   LeadMagnetConcept,
   CallTranscriptInsights,
@@ -6,15 +7,6 @@ import type {
   AssessmentConfig,
   GPTConfig,
 } from '@/lib/types/lead-magnet';
-
-// Lazy initialization to ensure env vars are loaded
-function getAnthropicClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not set in environment variables');
-  }
-  return new Anthropic({ apiKey, timeout: 240_000 });
-}
 
 /**
  * Format transcript insights into a context string for AI prompts.
@@ -128,10 +120,12 @@ Return ONLY valid JSON, no markdown fences:
   }
 
   const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    return JSON.parse(jsonMatch[0]) as CalculatorConfig;
+  const raw = JSON.parse(jsonMatch ? jsonMatch[0] : textContent.text);
+  const validated = interactiveConfigSchema.safeParse(raw);
+  if (!validated.success) {
+    throw new Error(`AI generated invalid config: ${validated.error.issues.map(i => i.message).join(', ')}`);
   }
-  return JSON.parse(textContent.text) as CalculatorConfig;
+  return validated.data as CalculatorConfig;
 }
 
 /**
@@ -223,10 +217,12 @@ Return ONLY valid JSON, no markdown fences:
   }
 
   const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    return JSON.parse(jsonMatch[0]) as AssessmentConfig;
+  const raw = JSON.parse(jsonMatch ? jsonMatch[0] : textContent.text);
+  const validated = interactiveConfigSchema.safeParse(raw);
+  if (!validated.success) {
+    throw new Error(`AI generated invalid config: ${validated.error.issues.map(i => i.message).join(', ')}`);
   }
-  return JSON.parse(textContent.text) as AssessmentConfig;
+  return validated.data as AssessmentConfig;
 }
 
 /**
@@ -302,8 +298,10 @@ Return ONLY valid JSON, no markdown fences:
   }
 
   const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    return JSON.parse(jsonMatch[0]) as GPTConfig;
+  const raw = JSON.parse(jsonMatch ? jsonMatch[0] : textContent.text);
+  const validated = interactiveConfigSchema.safeParse(raw);
+  if (!validated.success) {
+    throw new Error(`AI generated invalid config: ${validated.error.issues.map(i => i.message).join(', ')}`);
   }
-  return JSON.parse(textContent.text) as GPTConfig;
+  return validated.data as GPTConfig;
 }
