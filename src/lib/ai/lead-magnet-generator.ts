@@ -369,6 +369,8 @@ ${additionalContext}
 
 Generate ${archetypes.length} lead magnet concepts (one for each archetype listed above). Each concept MUST reference at least one specific credibility marker, urgent pain, or result from the business context above. Do NOT generate generic templates — every concept should feel like it could only come from THIS specific person's expertise.
 
+IMPORTANT: Write titles, painSolved, and contents descriptions in plain, specific language. Do NOT use AI clichés like "game-changer," "unlock the power of," "supercharge your," "revolutionizing," "actionable insights," "deep dive," "in today's fast-paced world," or similar filler. Be direct and concrete.
+
 For each, provide:
 1. archetype: The archetype key (e.g., "single-breakdown")
 2. archetypeName: Human-readable name (e.g., "The Single Breakdown")
@@ -932,6 +934,20 @@ Now structure this into a deliverable. Provide:
 
 IMPORTANT: This is NOT a checklist. Each piece of content should teach, explain, and provide context. Write as if you're explaining to someone who needs to understand the reasoning, not just see a list of items. Substance over brevity.
 
+WRITING STYLE — CRITICAL:
+Write like a knowledgeable peer explaining something over coffee. Not like a copywriter, not like a LinkedIn guru, not like an AI.
+
+Use real sentences with actual construction — subject, verb, object, clauses, flow. Make points through explanation and specifics, not through declarations or dramatic rhythm.
+
+BANNED PHRASES — Do NOT use any of these:
+- Templated intros: "In today's fast-paced [world/landscape]…", "In a world where…", "As the [industry] continues to evolve…", "Now more than ever…", "Let's dive in", "Let's break it down", "Here's the thing…", "Here's the uncomfortable truth:", "The goal?", "The result?"
+- Business hype: "Forward-thinking companies…", "Revolutionizing the way…", "A game-changer for…", "That's where [X] comes in", "Unlock the power of…", "Supercharge your…", "Transforming [X] into [Y]", "Future-proof your…", "Stay ahead of the curve", "Strategic advantage", "The bottom line…", "Next level", "Actionable insights", "Robust", "Seamless", "Comprehensive solution"
+- Faux-conversation: "Let's face it…", "But let's get real…", "What does this mean for you?", "Not all [X] are created equal", "It's no secret that…", "Whether you're a [A] or a [B]…", "The good news?", "The real unlock"
+- Filler declarations: "The secret is…", "It all comes down to…", "The truth is…", "The reality is…", "Let me be honest…", "Most people think X. But the reality is Y", "Does this sound familiar?", "You're not alone", "Are you struggling with…?", "Tired of [problem]?", "What if I told you…?", "I've cracked the code", "Excited to share"
+- Repetitive structures: "[Problem]? Meet [solution].", "It's time to…", "Here's what you need to know…", "X is more than just Y. It's Z.", "Do X, so you can Y."
+
+INSTEAD: Use direct statements, specific details, and concrete examples. Name real tools, real numbers, real scenarios. If you catch yourself writing a phrase that sounds like it came from a template, rewrite it as something only this specific lead magnet would say.
+
 Also evaluate against the 5 viral criteria and note any weaknesses.
 
 Return ONLY valid JSON.`;
@@ -1266,7 +1282,7 @@ Also provide:
 - metadata.readingTimeMinutes: Based on 200 words per minute
 
 CONTENT GUIDELINES:
-- Be concise and actionable — every sentence should teach, reveal, or direct. Cut filler, throat-clearing, and redundant transitions.
+- Be concise and practical — every sentence should teach, reveal, or direct. Cut filler, throat-clearing, and redundant transitions.
 - Prefer specific, concrete language over vague or generic phrasing
 - Break long paragraphs into multiple paragraph blocks
 - Use callouts for "Pro tip", "Common mistake", "Key insight" moments
@@ -1280,6 +1296,24 @@ CONTENT GUIDELINES:
 - Use "table" blocks for structured comparisons with 2+ columns (before/after, feature matrices, pros/cons, tool comparisons)
 - Use "accordion" blocks for FAQ sections, common objections, or supplementary details the reader may want to skip
 - Do NOT use "image" or "embed" blocks — those are added manually by the user
+
+AI PHRASE CLEANUP — CRITICAL:
+As you polish, actively detect and rewrite any AI-sounding phrases. These destroy credibility. Replace them with direct, specific language.
+
+FIND AND REPLACE these patterns:
+- "In today's fast-paced…" / "In a world where…" / "As [industry] continues to evolve…" / "Now more than ever…" → Just state the point directly
+- "Let's dive in" / "Let's break it down" / "Let's face it" / "But let's get real" → Cut entirely or start with the actual content
+- "Here's the thing…" / "Here's the uncomfortable truth:" / "The truth is…" / "The reality is…" / "Let me be honest…" → Remove the throat-clearing, keep the point
+- "Game-changer" / "Next level" / "Revolutionizing" / "Supercharge" / "Unlock the power of" / "Future-proof" → Replace with specific outcomes
+- "Actionable insights" / "Strategic advantage" / "Deep dive" / "Leverage" / "Robust" / "Seamless" / "Comprehensive" → Use plain language (tips, edge, analysis, use, solid, smooth, full)
+- "Forward-thinking companies" / "Modern professionals" / "Today's businesses" → Name the actual audience
+- "What does this mean for you?" / "Does this sound familiar?" / "You're not alone" / "Are you struggling with…?" → Cut — the reader doesn't need to be asked
+- "It's no secret that…" / "Not all [X] are created equal" / "Whether you're a [A] or a [B]…" → Cut the setup, make the point
+- "[Problem]? Meet [solution]." / "That's where [X] comes in." / "X is more than just Y. It's Z." → Rewrite as a direct explanation
+- "The bottom line…" / "The goal?" / "The result?" → Just state it
+- "Excited to share" / "Thrilled to announce" / "I've cracked the code" → Cut entirely
+
+The polished content should read like it was written by the actual expert — someone who knows their stuff and explains it clearly, not someone running content through a template.
 
 Return ONLY valid JSON:
 {
