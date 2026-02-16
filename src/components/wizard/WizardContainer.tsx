@@ -731,13 +731,14 @@ export function WizardContainer() {
               />
             )}
 
-            {state.currentStep === 6 && selectedPost && state.extractedContent && (
+            {state.currentStep === 6 && selectedPost && (state.extractedContent || state.interactiveConfig) && (
               <PublishStep
-                content={state.extractedContent}
+                content={state.extractedContent!}
                 post={selectedPost}
                 dmTemplate={state.postResult?.dmTemplate || ''}
                 ctaWord={state.postResult?.ctaWord || ''}
                 concept={selectedConcept!}
+                interactiveConfig={state.interactiveConfig}
                 onBack={() => goToStep(5)}
                 draftId={draftId}
               />

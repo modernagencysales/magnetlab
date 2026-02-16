@@ -3,16 +3,17 @@
 import { useState } from 'react';
 import { ArrowLeft, Copy, Check, CheckCircle2, Loader2, FileText, MessageSquare, Send, Globe, ChevronDown, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import type { ExtractedContent, PostVariation, LeadMagnetConcept } from '@/lib/types/lead-magnet';
+import type { ExtractedContent, PostVariation, LeadMagnetConcept, InteractiveConfig } from '@/lib/types/lead-magnet';
 
 import { logError } from '@/lib/utils/logger';
 
 interface PublishStepProps {
-  content: ExtractedContent;
+  content: ExtractedContent | null;
   post: PostVariation;
   dmTemplate: string;
   ctaWord: string;
   concept: LeadMagnetConcept;
+  interactiveConfig?: InteractiveConfig | null;
   onBack: () => void;
   draftId?: string | null;
 }
@@ -23,6 +24,7 @@ export function PublishStep({
   dmTemplate,
   ctaWord,
   concept,
+  interactiveConfig,
   onBack,
   draftId,
 }: PublishStepProps) {
@@ -32,12 +34,13 @@ export function PublishStep({
   const [savedLeadMagnetId, setSavedLeadMagnetId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveTitle, setSaveTitle] = useState(
-    content.title || concept.title || `${concept.archetype} Lead Magnet`
+    content?.title || concept.title || `${concept.archetype} Lead Magnet`
   );
   const [showRawContent, setShowRawContent] = useState(false);
 
   // Generate the full lead magnet document text
   const generateFullContent = () => {
+    if (!content) return '';
     let text = `# ${content.title}\n\n`;
     text += `*Format: ${content.format}*\n\n`;
     text += `---\n\n`;
@@ -103,6 +106,7 @@ export function PublishStep({
           archetype: concept.archetype,
           concept,
           extractedContent: content,
+          interactiveConfig,
           linkedinPost: post.post,
           postVariations: [post],
           dmTemplate,
