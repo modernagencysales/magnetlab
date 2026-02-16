@@ -17,12 +17,14 @@ import { useBackgroundJob } from '@/lib/hooks/useBackgroundJob';
 import { useWizardAutoSave } from '@/lib/hooks/useWizardAutoSave';
 import { logError, logWarn } from '@/lib/utils/logger';
 
+import { isInteractiveArchetype } from '@/lib/types/lead-magnet';
 import type {
   WizardState,
   WizardDraft,
   BusinessContext,
   IdeationResult,
   ExtractedContent,
+  InteractiveConfig,
   PostWriterResult,
   LeadMagnetArchetype,
   LeadMagnetConcept,
@@ -306,46 +308,87 @@ export function WizardContainer() {
       // Include transcript insights if available to enhance AI content extraction
       const transcriptInsights = state.ideationSources?.callTranscript?.insights;
 
-      const response = await fetch('/api/lead-magnet/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          archetype,
-          concept,
-          answers,
-          transcriptInsights, // Pass coaching call insights to enhance extraction
-        }),
-      });
+      if (isInteractiveArchetype(archetype)) {
+        // Interactive path: generate calculator/assessment/GPT config
+        const response = await fetch('/api/lead-magnet/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'generate-interactive',
+            archetype,
+            concept,
+            answers,
+            businessContext: state.brandKit,
+            transcriptInsights,
+          }),
+        });
 
-      if (!response.ok) {
-        // Handle both JSON and non-JSON error responses
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to process extraction');
-        } else {
-          const text = await response.text();
-          logError('wizard/container', new Error(text), { step: 'non-json_error_response' });
-          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to generate interactive config');
+          } else {
+            const text = await response.text();
+            logError('wizard/container', new Error(text), { step: 'non-json_error_response' });
+            throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+          }
         }
+
+        const { interactiveConfig } = await response.json() as { interactiveConfig: InteractiveConfig };
+        try { posthog.capture('wizard_extraction_completed', { archetype, interactive: true }); } catch {}
+
+        setState((prev) => ({
+          ...prev,
+          extractionAnswers: answers,
+          interactiveConfig,
+          extractedContent: null,  // No text content for interactive
+          currentStep: 4,
+        }));
+      } else {
+        // Standard text extraction path
+        const response = await fetch('/api/lead-magnet/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            archetype,
+            concept,
+            answers,
+            transcriptInsights, // Pass coaching call insights to enhance extraction
+          }),
+        });
+
+        if (!response.ok) {
+          // Handle both JSON and non-JSON error responses
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to process extraction');
+          } else {
+            const text = await response.text();
+            logError('wizard/container', new Error(text), { step: 'non-json_error_response' });
+            throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+          }
+        }
+
+        const extractedContent: ExtractedContent = await response.json();
+        try { posthog.capture('wizard_extraction_completed', { archetype }); } catch {}
+
+        setState((prev) => ({
+          ...prev,
+          extractionAnswers: answers,
+          extractedContent,
+          interactiveConfig: null,
+          currentStep: 4,
+        }));
       }
-
-      const extractedContent: ExtractedContent = await response.json();
-      try { posthog.capture('wizard_extraction_completed', { archetype }); } catch {}
-
-      setState((prev) => ({
-        ...prev,
-        extractionAnswers: answers,
-        extractedContent,
-        currentStep: 4,
-      }));
     } catch (err) {
       logError('wizard/container', err, { step: 'extraction_error' });
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setGenerating('idle');
     }
-  }, [state.ideationSources]);
+  }, [state.ideationSources, state.brandKit]);
 
   const handleContentApprove = useCallback(async () => {
     // Support both AI-generated and custom concepts
