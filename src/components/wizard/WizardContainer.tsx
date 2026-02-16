@@ -8,6 +8,7 @@ import { IdeationStep } from './steps/IdeationStep';
 import { CustomIdeaStep } from './steps/CustomIdeaStep';
 import { ExtractionStep } from './steps/ExtractionStep';
 import { ContentStep } from './steps/ContentStep';
+import { InteractiveContentStep } from './steps/InteractiveContentStep';
 import { PostStep } from './steps/PostStep';
 import { PublishStep } from './steps/PublishStep';
 import { GeneratingScreen } from './GeneratingScreen';
@@ -17,12 +18,14 @@ import { useBackgroundJob } from '@/lib/hooks/useBackgroundJob';
 import { useWizardAutoSave } from '@/lib/hooks/useWizardAutoSave';
 import { logError, logWarn } from '@/lib/utils/logger';
 
+import { isInteractiveArchetype } from '@/lib/types/lead-magnet';
 import type {
   WizardState,
   WizardDraft,
   BusinessContext,
   IdeationResult,
   ExtractedContent,
+  InteractiveConfig,
   PostWriterResult,
   LeadMagnetArchetype,
   LeadMagnetConcept,
@@ -42,6 +45,7 @@ const INITIAL_STATE: WizardState = {
   extractedContent: null,
   postResult: null,
   selectedPostIndex: null,
+  interactiveConfig: null,
   isCustomIdea: false,
   customConcept: null,
 };
@@ -305,46 +309,87 @@ export function WizardContainer() {
       // Include transcript insights if available to enhance AI content extraction
       const transcriptInsights = state.ideationSources?.callTranscript?.insights;
 
-      const response = await fetch('/api/lead-magnet/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          archetype,
-          concept,
-          answers,
-          transcriptInsights, // Pass coaching call insights to enhance extraction
-        }),
-      });
+      if (isInteractiveArchetype(archetype)) {
+        // Interactive path: generate calculator/assessment/GPT config
+        const response = await fetch('/api/lead-magnet/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'generate-interactive',
+            archetype,
+            concept,
+            answers,
+            businessContext: state.brandKit,
+            transcriptInsights,
+          }),
+        });
 
-      if (!response.ok) {
-        // Handle both JSON and non-JSON error responses
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to process extraction');
-        } else {
-          const text = await response.text();
-          logError('wizard/container', new Error(text), { step: 'non-json_error_response' });
-          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to generate interactive config');
+          } else {
+            const text = await response.text();
+            logError('wizard/container', new Error(text), { step: 'non-json_error_response' });
+            throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+          }
         }
+
+        const { interactiveConfig } = await response.json() as { interactiveConfig: InteractiveConfig };
+        try { posthog.capture('wizard_extraction_completed', { archetype, interactive: true }); } catch {}
+
+        setState((prev) => ({
+          ...prev,
+          extractionAnswers: answers,
+          interactiveConfig,
+          extractedContent: null,  // No text content for interactive
+          currentStep: 4,
+        }));
+      } else {
+        // Standard text extraction path
+        const response = await fetch('/api/lead-magnet/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            archetype,
+            concept,
+            answers,
+            transcriptInsights, // Pass coaching call insights to enhance extraction
+          }),
+        });
+
+        if (!response.ok) {
+          // Handle both JSON and non-JSON error responses
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to process extraction');
+          } else {
+            const text = await response.text();
+            logError('wizard/container', new Error(text), { step: 'non-json_error_response' });
+            throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+          }
+        }
+
+        const extractedContent: ExtractedContent = await response.json();
+        try { posthog.capture('wizard_extraction_completed', { archetype }); } catch {}
+
+        setState((prev) => ({
+          ...prev,
+          extractionAnswers: answers,
+          extractedContent,
+          interactiveConfig: null,
+          currentStep: 4,
+        }));
       }
-
-      const extractedContent: ExtractedContent = await response.json();
-      try { posthog.capture('wizard_extraction_completed', { archetype }); } catch {}
-
-      setState((prev) => ({
-        ...prev,
-        extractionAnswers: answers,
-        extractedContent,
-        currentStep: 4,
-      }));
     } catch (err) {
       logError('wizard/container', err, { step: 'extraction_error' });
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setGenerating('idle');
     }
-  }, [state.ideationSources]);
+  }, [state.ideationSources, state.brandKit]);
 
   const handleContentApprove = useCallback(async () => {
     // Support both AI-generated and custom concepts
@@ -400,6 +445,119 @@ export function WizardContainer() {
       setGenerating('idle');
     }
   }, [state.extractedContent, state.ideationResult, state.selectedConceptIndex, state.brandKit, state.isCustomIdea, state.customConcept]);
+
+  const handleInteractiveConfigChange = useCallback((config: InteractiveConfig) => {
+    setState((prev) => ({ ...prev, interactiveConfig: config }));
+  }, []);
+
+  const handleInteractiveApprove = useCallback(async () => {
+    const concept = state.isCustomIdea && state.customConcept
+      ? state.customConcept
+      : state.ideationResult && state.selectedConceptIndex !== null
+        ? state.ideationResult.concepts[state.selectedConceptIndex]
+        : null;
+
+    if (!state.interactiveConfig || !concept) return;
+
+    setGenerating('posts');
+    setError(null);
+
+    try {
+      // Build a summary of the interactive tool for the post writer
+      const toolSummary = state.interactiveConfig.type === 'calculator'
+        ? `${state.interactiveConfig.headline}: ${state.interactiveConfig.description}`
+        : state.interactiveConfig.type === 'assessment'
+          ? `${state.interactiveConfig.headline}: ${state.interactiveConfig.description}`
+          : `${state.interactiveConfig.name}: ${state.interactiveConfig.description}`;
+
+      const response = await fetch('/api/lead-magnet/write-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadMagnetTitle: concept.title,
+          format: concept.deliveryFormat,
+          contents: toolSummary,
+          problemSolved: concept.painSolved,
+          credibility: (state.brandKit.credibilityMarkers || []).join(', '),
+          audience: state.brandKit.businessType || 'B2B professionals',
+          audienceStyle: 'casual-direct',
+          proof: concept.contents,
+          ctaWord: 'LINK',
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to generate posts');
+      }
+
+      const postResult: PostWriterResult = await response.json();
+      try { posthog.capture('wizard_interactive_approved', { type: state.interactiveConfig.type }); } catch {}
+
+      setState((prev) => ({
+        ...prev,
+        postResult,
+        currentStep: 5,
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setGenerating('idle');
+    }
+  }, [state.interactiveConfig, state.brandKit, state.isCustomIdea, state.customConcept, state.ideationResult, state.selectedConceptIndex]);
+
+  const handleRegenerateInteractive = useCallback(async () => {
+    const concept = state.isCustomIdea && state.customConcept
+      ? state.customConcept
+      : state.ideationResult && state.selectedConceptIndex !== null
+        ? state.ideationResult.concepts[state.selectedConceptIndex]
+        : null;
+
+    if (!concept) return;
+
+    setGenerating('extraction');
+    setError(null);
+
+    try {
+      const transcriptInsights = state.ideationSources?.callTranscript?.insights;
+      const response = await fetch('/api/lead-magnet/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate-interactive',
+          archetype: concept.archetype,
+          concept,
+          answers: state.extractionAnswers,
+          businessContext: state.brandKit,
+          transcriptInsights,
+        }),
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to regenerate interactive config');
+        } else {
+          const text = await response.text();
+          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+        }
+      }
+
+      const { interactiveConfig } = await response.json() as { interactiveConfig: InteractiveConfig };
+      try { posthog.capture('wizard_interactive_regenerated', { type: interactiveConfig.type }); } catch {}
+
+      setState((prev) => ({
+        ...prev,
+        interactiveConfig,
+      }));
+    } catch (err) {
+      logError('wizard/container', err, { step: 'regenerate_interactive_error' });
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setGenerating('idle');
+    }
+  }, [state.isCustomIdea, state.customConcept, state.ideationResult, state.selectedConceptIndex, state.extractionAnswers, state.ideationSources, state.brandKit]);
 
   const handlePostSelect = useCallback((index: number) => {
     try { posthog.capture('wizard_post_selected', { post_index: index }); } catch {}
@@ -543,7 +701,20 @@ export function WizardContainer() {
               />
             )}
 
-            {state.currentStep === 4 && state.extractedContent && (
+            {state.currentStep === 4 && state.interactiveConfig && selectedConcept && (
+              <InteractiveContentStep
+                config={state.interactiveConfig}
+                concept={selectedConcept}
+                onConfigChange={handleInteractiveConfigChange}
+                onApprove={handleInteractiveApprove}
+                onBack={() => goToStep(3)}
+                onRegenerate={handleRegenerateInteractive}
+                loading={generating === 'posts'}
+                regenerating={generating === 'extraction'}
+              />
+            )}
+
+            {state.currentStep === 4 && state.extractedContent && !state.interactiveConfig && (
               <ContentStep
                 content={state.extractedContent}
                 onApprove={handleContentApprove}
@@ -560,13 +731,14 @@ export function WizardContainer() {
               />
             )}
 
-            {state.currentStep === 6 && selectedPost && state.extractedContent && (
+            {state.currentStep === 6 && selectedPost && (state.extractedContent || state.interactiveConfig) && (
               <PublishStep
                 content={state.extractedContent}
                 post={selectedPost}
                 dmTemplate={state.postResult?.dmTemplate || ''}
                 ctaWord={state.postResult?.ctaWord || ''}
                 concept={selectedConcept!}
+                interactiveConfig={state.interactiveConfig}
                 onBack={() => goToStep(5)}
                 draftId={draftId}
               />

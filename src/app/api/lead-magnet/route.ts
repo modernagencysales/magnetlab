@@ -92,6 +92,7 @@ export async function POST(request: Request) {
         archetype: validated.archetype,
         concept: validated.concept,
         extracted_content: validated.extractedContent,
+        interactive_config: validated.interactiveConfig,
         linkedin_post: validated.linkedinPost,
         post_variations: validated.postVariations,
         dm_template: validated.dmTemplate,
