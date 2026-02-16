@@ -13,7 +13,10 @@ import { VideoEmbed } from '@/components/funnel/public/VideoEmbed';
 import { BookCallDrawer } from './BookCallDrawer';
 import { getThemeVars } from '@/lib/utils/theme-vars';
 import { SectionRenderer } from '@/components/ds';
-import type { PolishedContent, ExtractedContent, LeadMagnetConcept } from '@/lib/types/lead-magnet';
+import { CalculatorTool } from '@/components/interactive/public/CalculatorTool';
+import { AssessmentTool } from '@/components/interactive/public/AssessmentTool';
+import { GPTChatTool } from '@/components/interactive/public/GPTChatTool';
+import type { PolishedContent, ExtractedContent, LeadMagnetConcept, InteractiveConfig } from '@/lib/types/lead-magnet';
 import type { FunnelPageSection } from '@/lib/types/funnel';
 
 interface ContentPageClientProps {
@@ -33,6 +36,7 @@ interface ContentPageClientProps {
   leadId?: string | null;
   isQualified?: boolean | null;
   hasQuestions?: boolean;
+  interactiveConfig?: InteractiveConfig | null;
   sections?: FunnelPageSection[];
 }
 
@@ -51,6 +55,7 @@ export function ContentPageClient({
   leadId,
   isQualified = null,
   hasQuestions = false,
+  interactiveConfig,
   sections = [],
 }: ContentPageClientProps) {
   const [isDark, setIsDark] = useState(initialTheme === 'dark');
@@ -121,6 +126,24 @@ export function ContentPageClient({
 
   // Show sticky CTA when calendly is configured, user has a leadId, and not in edit mode
   const showStickyCta = !!calendlyUrl && !!leadId && !!funnelPageId && !isEditing;
+
+  if (interactiveConfig) {
+    return (
+      <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-white text-gray-900'}`}>
+        <div className="mx-auto max-w-3xl px-4 py-12">
+          {interactiveConfig.type === 'calculator' && (
+            <CalculatorTool config={interactiveConfig} theme={theme} primaryColor={primaryColor} />
+          )}
+          {interactiveConfig.type === 'assessment' && (
+            <AssessmentTool config={interactiveConfig} theme={theme} primaryColor={primaryColor} />
+          )}
+          {interactiveConfig.type === 'gpt' && (
+            <GPTChatTool config={interactiveConfig} leadMagnetId={leadMagnetId!} theme={theme} primaryColor={primaryColor} />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: bgColor, minHeight: '100vh', paddingBottom: showStickyCta ? '5rem' : undefined, ...themeVars }}>

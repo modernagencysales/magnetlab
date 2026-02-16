@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ContentPageClient } from '@/components/content/ContentPageClient';
 import { funnelPageSectionFromRow, type FunnelPageSectionRow } from '@/lib/types/funnel';
 import type { Metadata } from 'next';
-import type { PolishedContent, ExtractedContent, LeadMagnetConcept } from '@/lib/types/lead-magnet';
+import type { PolishedContent, ExtractedContent, LeadMagnetConcept, InteractiveConfig } from '@/lib/types/lead-magnet';
 
 export const revalidate = 300;
 
@@ -131,7 +131,7 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
   // Get lead magnet with content
   const { data: leadMagnet, error: lmError } = await supabase
     .from('lead_magnets')
-    .select('id, title, extracted_content, polished_content, concept, thumbnail_url')
+    .select('id, title, extracted_content, polished_content, concept, thumbnail_url, interactive_config')
     .eq('id', funnel.lead_magnet_id)
     .single();
 
@@ -139,7 +139,7 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
     notFound();
   }
 
-  if (!leadMagnet.extracted_content && !leadMagnet.polished_content) {
+  if (!leadMagnet.extracted_content && !leadMagnet.polished_content && !leadMagnet.interactive_config) {
     notFound();
   }
 
@@ -197,6 +197,7 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       vslUrl={funnel.vsl_url}
       calendlyUrl={funnel.calendly_url}
       isOwner={isOwner}
+      interactiveConfig={leadMagnet.interactive_config as InteractiveConfig | null}
       leadMagnetId={leadMagnet.id}
       funnelPageId={funnel.id}
       leadId={leadId || null}
