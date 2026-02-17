@@ -18,6 +18,9 @@ import type { KnowledgeEntry } from '@/lib/types/content-pipeline';
 
 const SIMILARITY_THRESHOLD = 0.75;
 
+// Only sync knowledge from the playbook owner's account
+const PLAYBOOK_OWNER_USER_ID = '0f634817-6db8-4a54-adfd-6ab143950b8c'; // Tim Keen
+
 const EXISTING_MODULES = [
   'module-0-positioning',
   'module-1-lead-magnets',
@@ -220,6 +223,7 @@ export const playbookSync = schedules.task({
       const { data: newEntries } = await supabase
         .from('cp_knowledge_entries')
         .select('*')
+        .eq('user_id', PLAYBOOK_OWNER_USER_ID)
         .gt('created_at', windowStart)
         .order('created_at', { ascending: true });
 
@@ -238,6 +242,7 @@ export const playbookSync = schedules.task({
         const { data: fetchedOrphans } = await supabase
           .from('cp_knowledge_entries')
           .select('*')
+          .eq('user_id', PLAYBOOK_OWNER_USER_ID)
           .in('id', orphanEntryIds);
         orphanEntries = (fetchedOrphans as KnowledgeEntry[]) || [];
       }
