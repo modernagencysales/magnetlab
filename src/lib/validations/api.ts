@@ -172,10 +172,10 @@ export const interactiveConfigSchema = z.discriminatedUnion('type', [
 export const createLeadMagnetSchema = z.object({
   title: z.string().min(1).max(200),
   archetype: z.enum(leadMagnetArchetypes),
-  concept: conceptSchema.optional(),
-  extractedContent: extractedContentSchema.optional(),
-  interactiveConfig: interactiveConfigSchema.optional(),
-  linkedinPost: z.string().optional(),
+  concept: conceptSchema.nullable().optional(),
+  extractedContent: extractedContentSchema.nullable().optional(),
+  interactiveConfig: interactiveConfigSchema.nullable().optional(),
+  linkedinPost: z.string().nullable().optional(),
   postVariations: z.array(z.object({
     hookType: z.string(),
     post: z.string(),

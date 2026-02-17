@@ -59,6 +59,17 @@ describe('createLeadMagnetSchema', () => {
       expect(result.success).toBe(false);
     });
 
+    it('accepts null for optional object fields (calculator has no extractedContent)', () => {
+      const result = createLeadMagnetSchema.safeParse({
+        ...basePayload,
+        extractedContent: null,
+        interactiveConfig: null,
+        concept: null,
+        linkedinPost: null,
+      });
+      expect(result.success).toBe(true);
+    });
+
     it('accepts postVariations without evaluation (optional)', () => {
       const variationNoEval = {
         hookType: postVariation.hookType,
