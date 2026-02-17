@@ -81,7 +81,8 @@ export async function POST(request: Request, { params }: RouteParams) {
         if (lm?.extracted_content && !lm.polished_content && lm.concept) {
           const polished = await polishLeadMagnetContent(
             lm.extracted_content as ExtractedContent,
-            lm.concept as LeadMagnetConcept
+            lm.concept as LeadMagnetConcept,
+            { formattingOnly: true }
           );
           await supabase
             .from('lead_magnets')

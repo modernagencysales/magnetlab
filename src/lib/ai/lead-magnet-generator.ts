@@ -1250,9 +1250,24 @@ export async function extractBusinessContext(
 
 export async function polishLeadMagnetContent(
   extractedContent: ExtractedContent,
-  concept: LeadMagnetConcept
+  concept: LeadMagnetConcept,
+  options?: { formattingOnly?: boolean }
 ): Promise<PolishedContent> {
+  const formattingOnly = options?.formattingOnly ?? false;
+
   const prompt = `You are a content designer who transforms raw lead magnet content into beautifully structured, polished content blocks for a clean reading experience.
+${formattingOnly ? `
+CRITICAL: FORMATTING ONLY MODE
+- Your job is ONLY to format and structure the content — NOT to rewrite it.
+- Preserve the user's original wording exactly. Do not paraphrase, reword, or add new content.
+- Structure raw answers into clean blocks: headings, paragraphs, lists, callouts.
+- Convert bullet points to proper list blocks.
+- Wrap key insights in callout blocks.
+- Add proper section headings matching the section names.
+- Calculate reading time and word count.
+- Do NOT clean up "AI phrases" in this mode — preserve the text as-is.
+- Do NOT add filler, transitions, or new sentences.
+` : ''}
 
 LEAD MAGNET:
 Title: ${concept.title}
@@ -1297,7 +1312,7 @@ CONTENT GUIDELINES:
 - Use "accordion" blocks for FAQ sections, common objections, or supplementary details the reader may want to skip
 - Do NOT use "image" or "embed" blocks — those are added manually by the user
 
-AI PHRASE CLEANUP — CRITICAL:
+${formattingOnly ? '' : `AI PHRASE CLEANUP — CRITICAL:
 As you polish, actively detect and rewrite any AI-sounding phrases. These destroy credibility. Replace them with direct, specific language.
 
 FIND AND REPLACE these patterns:
@@ -1313,7 +1328,7 @@ FIND AND REPLACE these patterns:
 - "The bottom line…" / "The goal?" / "The result?" → Just state it
 - "Excited to share" / "Thrilled to announce" / "I've cracked the code" → Cut entirely
 
-The polished content should read like it was written by the actual expert — someone who knows their stuff and explains it clearly, not someone running content through a template.
+The polished content should read like it was written by the actual expert — someone who knows their stuff and explains it clearly, not someone running content through a template.`}
 
 Return ONLY valid JSON:
 {
