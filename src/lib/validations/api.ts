@@ -176,7 +176,19 @@ export const createLeadMagnetSchema = z.object({
   extractedContent: extractedContentSchema.optional(),
   interactiveConfig: interactiveConfigSchema.optional(),
   linkedinPost: z.string().optional(),
-  postVariations: z.array(z.string()).optional(),
+  postVariations: z.array(z.object({
+    hookType: z.string(),
+    post: z.string(),
+    whyThisAngle: z.string(),
+    evaluation: z.object({
+      hookStrength: z.enum(['strong', 'medium', 'weak']),
+      credibilityClear: z.boolean(),
+      problemResonance: z.enum(['high', 'medium', 'low']),
+      contentsSpecific: z.boolean(),
+      toneMatch: z.enum(['aligned', 'partial', 'off']),
+      aiClicheFree: z.boolean(),
+    }).optional(),
+  })).optional(),
   dmTemplate: z.string().optional(),
   ctaWord: z.string().optional(),
 });

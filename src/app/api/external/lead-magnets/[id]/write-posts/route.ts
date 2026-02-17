@@ -54,7 +54,7 @@ async function handlePost(
     const { error: updateError } = await supabase
       .from('lead_magnets')
       .update({
-        post_variations: result,
+        post_variations: result.variations,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
