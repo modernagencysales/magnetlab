@@ -9,6 +9,7 @@ import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { validateBody, createLeadMagnetSchema } from '@/lib/validations/api';
 import { getPostHogServerClient } from '@/lib/posthog';
 import { checkResourceLimit } from '@/lib/auth/plan-limits';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 // GET - List all lead magnets for current user
 export async function GET(request: Request) {
@@ -23,12 +24,14 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     let query = supabase
       .from('lead_magnets')
-      .select('*', { count: 'exact' })
-      .eq('user_id', session.user.id)
+      .select('*', { count: 'exact' });
+    query = applyScope(query, scope);
+    query = query
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -63,8 +66,10 @@ export async function POST(request: Request) {
       return ApiErrors.unauthorized();
     }
 
+    const scope = await getDataScope(session.user.id);
+
     // Check plan-based resource limit
-    const limitCheck = await checkResourceLimit(session.user.id, 'lead_magnets');
+    const limitCheck = await checkResourceLimit(scope, 'lead_magnets');
     if (!limitCheck.allowed) {
       return NextResponse.json({
         error: 'Plan limit reached',
@@ -88,6 +93,7 @@ export async function POST(request: Request) {
       .from('lead_magnets')
       .insert({
         user_id: session.user.id,
+        team_id: scope.teamId || null,
         title: validated.title,
         archetype: validated.archetype,
         concept: validated.concept,

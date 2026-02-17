@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { funnelPageSectionFromRow, type FunnelPageSectionRow } from '@/lib/types/funnel';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { validateBody, updateSectionSchema, sectionConfigSchemas } from '@/lib/validations/api';
@@ -20,6 +21,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const { id, sid } = await params;
     const body = await request.json();
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
     const validation = validateBody(body, updateSectionSchema);
     if (!validation.success) {
@@ -27,12 +29,12 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     // Verify funnel ownership
-    const { data: funnel, error: funnelError } = await supabase
+    let funnelQuery = supabase
       .from('funnel_pages')
       .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    funnelQuery = applyScope(funnelQuery, scope);
+    const { data: funnel, error: funnelError } = await funnelQuery.single();
 
     if (funnelError || !funnel) {
       return ApiErrors.notFound('Funnel page');
@@ -98,14 +100,15 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     const { id, sid } = await params;
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
     // Verify funnel ownership
-    const { data: funnel, error: funnelError } = await supabase
+    let funnelQuery = supabase
       .from('funnel_pages')
       .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    funnelQuery = applyScope(funnelQuery, scope);
+    const { data: funnel, error: funnelError } = await funnelQuery.single();
 
     if (funnelError || !funnel) {
       return ApiErrors.notFound('Funnel page');

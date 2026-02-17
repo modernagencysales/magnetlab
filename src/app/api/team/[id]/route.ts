@@ -5,6 +5,34 @@ import { checkTeamRole, hasMinimumRole } from '@/lib/auth/rbac';
 import { logTeamActivity } from '@/lib/utils/activity-log';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 
+// GET /api/team/[id] — fetch a specific team by ID (requires membership)
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) return ApiErrors.unauthorized();
+
+  const { id } = await params;
+  if (!isValidUUID(id)) {
+    return ApiErrors.validationError('Invalid team ID');
+  }
+
+  const role = await checkTeamRole(session.user.id, id);
+  if (!role) return ApiErrors.forbidden();
+
+  const supabase = createSupabaseAdminClient();
+  const { data: team, error } = await supabase
+    .from('teams')
+    .select('id, owner_id, name, description, industry, target_audience, shared_goal, created_at, updated_at')
+    .eq('id', id)
+    .single();
+
+  if (error || !team) return ApiErrors.notFound('Team');
+
+  return NextResponse.json({ team });
+}
+
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }

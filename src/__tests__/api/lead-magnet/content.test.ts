@@ -42,6 +42,12 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseServerClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
 }));
 
+// Mock team-context (routes now use getDataScope/applyScope for multi-team scoping)
+jest.mock('@/lib/utils/team-context', () => ({
+  getDataScope: jest.fn((userId: string) => Promise.resolve({ type: 'user', userId })),
+  applyScope: jest.fn((query: any, scope: any) => query.eq('user_id', scope.userId)),
+}));
+
 // Mock auth
 let currentSession: { user: { id: string; email: string } } | null = {
   user: { id: 'test-user-id', email: 'test@example.com' },

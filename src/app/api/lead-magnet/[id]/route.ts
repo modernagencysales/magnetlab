@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -19,14 +20,15 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('lead_magnets')
       .select('id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, status, published_at, created_at, updated_at')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    query = applyScope(query, scope);
+    const { data, error } = await query.single();
 
     if (error || !data) {
       return ApiErrors.notFound('Lead magnet');
@@ -49,17 +51,19 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     // Remove fields that shouldn't be updated directly
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { id: _id, user_id: _userId, created_at: _createdAt, ...updateData } = body;
+    const { id: _id, user_id: _userId, team_id: _teamId, created_at: _createdAt, ...updateData } = body;
 
-    const { data, error } = await supabase
+    let updateQuery = supabase
       .from('lead_magnets')
       .update(updateData)
-      .eq('id', id)
-      .eq('user_id', session.user.id)
+      .eq('id', id);
+    updateQuery = applyScope(updateQuery, scope);
+    const { data, error } = await updateQuery
       .select()
       .single();
 
@@ -84,15 +88,16 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     // First verify ownership
-    const { data: leadMagnet, error: findError } = await supabase
+    let findQuery = supabase
       .from('lead_magnets')
       .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    findQuery = applyScope(findQuery, scope);
+    const { data: leadMagnet, error: findError } = await findQuery.single();
 
     if (findError || !leadMagnet) {
       return ApiErrors.notFound('Lead magnet');
@@ -120,11 +125,12 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     }
 
     // Finally delete the lead magnet
-    const { error } = await supabase
+    let deleteQuery = supabase
       .from('lead_magnets')
       .delete()
-      .eq('id', id)
-      .eq('user_id', session.user.id);
+      .eq('id', id);
+    deleteQuery = applyScope(deleteQuery, scope);
+    const { error } = await deleteQuery;
 
     if (error) {
       logApiError('lead-magnet/delete', error, { userId: session.user.id, leadMagnetId: id });

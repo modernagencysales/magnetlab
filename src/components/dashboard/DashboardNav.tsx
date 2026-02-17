@@ -20,9 +20,10 @@ interface User {
 }
 
 interface TeamContext {
-  isTeamMember: boolean;
-  activeOwnerId: string | null;
-  ownerName: string | null;
+  isTeamMode: boolean;
+  teamId: string;
+  teamName: string;
+  isOwner: boolean;
 }
 
 interface DashboardNavProps {
@@ -41,10 +42,6 @@ const mainNav = [
   { href: '/automations', label: 'Automations', icon: Bot },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/team', label: 'Team', icon: UsersRound },
-];
-
-const teamMemberNav = [
-  { href: '/catalog', label: 'Catalog', icon: Magnet },
 ];
 
 const bottomNav = [
@@ -203,10 +200,10 @@ function SidebarContent({ user, teamContext, onNavigate }: {
   onNavigate?: () => void;
 }) {
   const displayLabel = user.name || user.email?.split('@')[0] || 'User';
-  const isTeamMode = teamContext?.isTeamMember && teamContext.activeOwnerId;
+  const isTeamMode = teamContext?.isTeamMode;
 
-  // In team mode, show only catalog nav. In normal mode, show full nav.
-  const navItems = isTeamMode ? teamMemberNav : mainNav;
+  // Full nav for everyone — team members get same access as owners
+  const navItems = mainNav;
 
   return (
     <div className="flex h-full flex-col">
@@ -223,13 +220,13 @@ function SidebarContent({ user, teamContext, onNavigate }: {
           <h1 className="font-semibold text-sm">MagnetLab</h1>
         </Link>
 
-        {!isTeamMode && <CreateDropdown onNavigate={onNavigate} />}
+        <CreateDropdown onNavigate={onNavigate} />
 
         {/* Team mode banner */}
-        {isTeamMode && (
+        {isTeamMode && teamContext && (
           <div className="rounded-lg bg-violet-500/10 border border-violet-500/20 p-2.5 mt-2">
             <p className="text-xs font-medium text-violet-600 dark:text-violet-400 truncate">
-              Viewing {teamContext.ownerName}&apos;s catalog
+              Working in: {teamContext.teamName}
             </p>
             <Link
               href="/team-select"
@@ -237,7 +234,7 @@ function SidebarContent({ user, teamContext, onNavigate }: {
               className="flex items-center gap-1 text-xs text-violet-500 hover:text-violet-600 mt-1 transition-colors"
             >
               <ArrowLeftRight size={12} />
-              Switch account
+              Switch team
             </Link>
           </div>
         )}

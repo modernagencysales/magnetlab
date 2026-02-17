@@ -11,6 +11,7 @@ import { funnelPageFromRow, type FunnelPageRow, type FunnelTargetType } from '@/
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { checkResourceLimit } from '@/lib/auth/plan-limits';
 import { getTemplate, DEFAULT_TEMPLATE_ID } from '@/lib/constants/funnel-templates';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 // GET - Get funnel page for a target (lead magnet, library, or external resource)
 export async function GET(request: Request) {
@@ -25,8 +26,12 @@ export async function GET(request: Request) {
     const libraryId = searchParams.get('libraryId');
     const externalResourceId = searchParams.get('externalResourceId');
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
-    let query = supabase.from('funnel_pages').select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at').eq('user_id', session.user.id);
+    let query = applyScope(
+      supabase.from('funnel_pages').select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at'),
+      scope
+    );
 
     // Determine which target type to query
     if (leadMagnetId) {
@@ -98,8 +103,10 @@ export async function POST(request: Request) {
       return ApiErrors.unauthorized();
     }
 
+    const scope = await getDataScope(session.user.id);
+
     // Check plan-based resource limit
-    const limitCheck = await checkResourceLimit(session.user.id, 'funnel_pages');
+    const limitCheck = await checkResourceLimit(scope, 'funnel_pages');
     if (!limitCheck.allowed) {
       return NextResponse.json({
         error: 'Plan limit reached',
@@ -229,6 +236,7 @@ export async function POST(request: Request) {
     // Create funnel page
     const funnelInsertData: Record<string, unknown> = {
       user_id: session.user.id,
+      team_id: scope.teamId || null,
       slug: finalSlug,
       target_type: resolvedTargetType,
       lead_magnet_id: resolvedTargetType === 'lead_magnet' ? leadMagnetId : null,

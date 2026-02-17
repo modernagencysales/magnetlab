@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import {
   generateOptinContent,
   generateDefaultOptinContent,
@@ -27,25 +28,26 @@ export async function POST(request: Request) {
     }
 
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
     // Fetch lead magnet data
-    const { data: leadMagnet, error: lmError } = await supabase
+    let lmQuery = supabase
       .from('lead_magnets')
       .select('title, concept, extracted_content')
-      .eq('id', leadMagnetId)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', leadMagnetId);
+    lmQuery = applyScope(lmQuery, scope);
+    const { data: leadMagnet, error: lmError } = await lmQuery.single();
 
     if (lmError || !leadMagnet) {
       return ApiErrors.notFound('Lead magnet');
     }
 
     // Fetch brand kit for credibility
-    const { data: brandKit } = await supabase
+    let bkQuery = supabase
       .from('brand_kits')
-      .select('credibility_markers')
-      .eq('user_id', session.user.id)
-      .single();
+      .select('credibility_markers');
+    bkQuery = applyScope(bkQuery, scope);
+    const { data: brandKit } = await bkQuery.single();
 
     const credibility = brandKit?.credibility_markers?.join('. ') || undefined;
 

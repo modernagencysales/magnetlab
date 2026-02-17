@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { emailSequenceFromRow } from '@/lib/types/email';
 import type { EmailSequenceRow } from '@/lib/types/email';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
@@ -22,26 +23,27 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const { leadMagnetId } = await params;
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
-    // First verify the lead magnet belongs to the user
-    const { data: leadMagnet, error: lmError } = await supabase
+    // First verify the lead magnet belongs to the user/team
+    let lmQuery = supabase
       .from('lead_magnets')
       .select('id')
-      .eq('id', leadMagnetId)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', leadMagnetId);
+    lmQuery = applyScope(lmQuery, scope);
+    const { data: leadMagnet, error: lmError } = await lmQuery.single();
 
     if (lmError || !leadMagnet) {
       return ApiErrors.notFound('Lead magnet');
     }
 
     // Get the email sequence
-    const { data, error } = await supabase
+    let seqQuery = supabase
       .from('email_sequences')
       .select('id, lead_magnet_id, user_id, emails, loops_synced_at, loops_transactional_ids, status, created_at, updated_at')
-      .eq('lead_magnet_id', leadMagnetId)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('lead_magnet_id', leadMagnetId);
+    seqQuery = applyScope(seqQuery, scope);
+    const { data, error } = await seqQuery.single();
 
     if (error && error.code !== 'PGRST116') {
       // PGRST116 is "no rows returned" - that's expected if no sequence exists
@@ -101,14 +103,15 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
-    // Verify the sequence belongs to the user
-    const { data: existingSequence, error: findError } = await supabase
+    // Verify the sequence belongs to the user/team
+    let findQuery = supabase
       .from('email_sequences')
       .select('id')
-      .eq('lead_magnet_id', leadMagnetId)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('lead_magnet_id', leadMagnetId);
+    findQuery = applyScope(findQuery, scope);
+    const { data: existingSequence, error: findError } = await findQuery.single();
 
     if (findError || !existingSequence) {
       return ApiErrors.notFound('Email sequence');
@@ -129,13 +132,12 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     // Update the sequence
-    const { data, error } = await supabase
+    let updateQuery = supabase
       .from('email_sequences')
       .update(updateData)
-      .eq('id', existingSequence.id)
-      .eq('user_id', session.user.id)
-      .select()
-      .single();
+      .eq('id', existingSequence.id);
+    updateQuery = applyScope(updateQuery, scope);
+    const { data, error } = await updateQuery.select().single();
 
     if (error) {
       logApiError('email-sequence/update', error, { leadMagnetId });

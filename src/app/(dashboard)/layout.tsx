@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getMergedMemberships } from '@/lib/utils/team-membership';
+import { checkTeamRole } from '@/lib/auth/rbac';
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
@@ -19,29 +19,29 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
-  const memberships = await getMergedMemberships(session.user.id);
-
   const cookieStore = await cookies();
-  const activeOwnerId = cookieStore.get('ml-team-context')?.value;
+  const activeTeamId = cookieStore.get('ml-team-context')?.value;
 
-  let teamContext: { isTeamMember: boolean; activeOwnerId: string | null; ownerName: string | null } | null = null;
+  let teamContext: { isTeamMode: boolean; teamId: string; teamName: string; isOwner: boolean } | null = null;
 
-  if (activeOwnerId && activeOwnerId !== session.user.id) {
-    // Verify the membership is still valid
-    const isValid = memberships?.some(m => m.owner_id === activeOwnerId);
-    if (isValid) {
-      const supabase = createSupabaseAdminClient();
-      const { data: owner } = await supabase
-        .from('users')
-        .select('name, email')
-        .eq('id', activeOwnerId)
-        .single();
+  if (activeTeamId) {
+    const supabase = createSupabaseAdminClient();
+    const { data: team } = await supabase
+      .from('teams')
+      .select('id, name, owner_id')
+      .eq('id', activeTeamId)
+      .single();
 
-      teamContext = {
-        isTeamMember: true,
-        activeOwnerId,
-        ownerName: owner?.name || owner?.email || null,
-      };
+    if (team) {
+      const role = await checkTeamRole(session.user.id, team.id);
+      if (role) {
+        teamContext = {
+          isTeamMode: true,
+          teamId: team.id,
+          teamName: team.name,
+          isOwner: role === 'owner',
+        };
+      }
     }
   }
 

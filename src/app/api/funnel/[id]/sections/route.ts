@@ -8,6 +8,7 @@ import {
   createSectionSchema,
   sectionConfigSchemas,
 } from '@/lib/validations/api';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -22,15 +23,17 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     // Verify funnel ownership
-    const { data: funnel, error: funnelError } = await supabase
-      .from('funnel_pages')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+    const { data: funnel, error: funnelError } = await applyScope(
+      supabase
+        .from('funnel_pages')
+        .select('id')
+        .eq('id', id),
+      scope
+    ).single();
 
     if (funnelError || !funnel) {
       return ApiErrors.notFound('Funnel page');
@@ -67,6 +70,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     // Validate base fields
@@ -89,12 +93,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     // Verify funnel ownership
-    const { data: funnel, error: funnelError } = await supabase
-      .from('funnel_pages')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+    const { data: funnel, error: funnelError } = await applyScope(
+      supabase
+        .from('funnel_pages')
+        .select('id')
+        .eq('id', id),
+      scope
+    ).single();
 
     if (funnelError || !funnel) {
       return ApiErrors.notFound('Funnel page');

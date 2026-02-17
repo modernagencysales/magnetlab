@@ -9,6 +9,7 @@ import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { polishLeadMagnetContent } from '@/lib/ai/lead-magnet-generator';
 import type { ExtractedContent, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 import { getPostHogServerClient } from '@/lib/posthog';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -34,15 +35,17 @@ export async function POST(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('publish must be a boolean');
     }
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     // Get current funnel page (left join so non-lead_magnet funnels still work)
-    const { data: funnel, error: fetchError } = await supabase
-      .from('funnel_pages')
-      .select('*, lead_magnets(id)')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+    const { data: funnel, error: fetchError } = await applyScope(
+      supabase
+        .from('funnel_pages')
+        .select('*, lead_magnets(id)')
+        .eq('id', id),
+      scope
+    ).single();
 
     if (fetchError || !funnel) {
       return ApiErrors.notFound('Funnel page');
@@ -107,13 +110,13 @@ export async function POST(request: Request, { params }: RouteParams) {
       updateData.published_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
-      .from('funnel_pages')
-      .update(updateData)
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .select()
-      .single();
+    const { data, error } = await applyScope(
+      supabase
+        .from('funnel_pages')
+        .update(updateData)
+        .eq('id', id),
+      scope
+    ).select().single();
 
     if (error) {
       logApiError('funnel/publish', error, { userId: session.user.id, funnelId: id });

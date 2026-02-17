@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { VALID_RANGES, parseDays, buildDateRange, type Range } from '@/lib/utils/analytics-helpers';
 
@@ -34,14 +35,15 @@ export async function GET(
     const startDate = dateRange[0];
 
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
-    // Verify funnel ownership: must match both id and user_id
-    const { data: funnel, error: funnelError } = await supabase
+    // Verify funnel ownership: must match both id and scope
+    let funnelQuery = supabase
       .from('funnel_pages')
       .select('id, slug, optin_headline')
-      .eq('id', funnelId)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', funnelId);
+    funnelQuery = applyScope(funnelQuery, scope);
+    const { data: funnel, error: funnelError } = await funnelQuery.single();
 
     if (funnelError && funnelError.code !== 'PGRST116') {
       // Actual database error (not a "row not found")

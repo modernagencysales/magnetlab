@@ -4,35 +4,24 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { checkTeamRole, hasMinimumRole } from '@/lib/auth/rbac';
 import { logTeamActivity } from '@/lib/utils/activity-log';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { getMergedMemberships } from '@/lib/utils/team-membership';
 
-// GET /api/teams — fetch the current user's team (auto-creates if none)
+const TEAM_SELECT = 'id, owner_id, name, description, industry, target_audience, shared_goal, created_at, updated_at';
+
+// GET /api/teams — fetch all teams the user owns + is a member of
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return ApiErrors.unauthorized();
 
-  const supabase = createSupabaseAdminClient();
-  const userId = session.user.id;
+  const memberships = await getMergedMemberships(session.user.id);
 
-  // Fetch existing team
-  const { data: team, error } = await supabase
-    .from('teams')
-    .select('id, owner_id, name, description, industry, target_audience, shared_goal, created_at, updated_at')
-    .eq('owner_id', userId)
-    .single();
+  const owned = memberships.filter(m => m.role === 'owner');
+  const member = memberships.filter(m => m.role === 'member');
 
-  if (error && error.code !== 'PGRST116') {
-    logApiError('teams-get', error, { userId });
-    return ApiErrors.databaseError();
-  }
-
-  if (!team) {
-    return NextResponse.json({ team: null });
-  }
-
-  return NextResponse.json({ team });
+  return NextResponse.json({ owned, member });
 }
 
-// POST /api/teams — create the user's team
+// POST /api/teams — create a new team (multiple allowed)
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return ApiErrors.unauthorized();
@@ -52,18 +41,7 @@ export async function POST(request: NextRequest) {
   const supabase = createSupabaseAdminClient();
   const userId = session.user.id;
 
-  // Check if team already exists
-  const { data: existing } = await supabase
-    .from('teams')
-    .select('id')
-    .eq('owner_id', userId)
-    .single();
-
-  if (existing) {
-    return ApiErrors.conflict('You already have a team');
-  }
-
-  // Create team
+  // Create team (no single-team restriction)
   const { data: team, error } = await supabase
     .from('teams')
     .insert({
@@ -74,7 +52,7 @@ export async function POST(request: NextRequest) {
       target_audience: body.target_audience?.trim() || null,
       shared_goal: body.shared_goal?.trim() || null,
     })
-    .select('id, owner_id, name, description, industry, target_audience, shared_goal, created_at, updated_at')
+    .select(TEAM_SELECT)
     .single();
 
   if (error) {
@@ -105,33 +83,29 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ team }, { status: 201 });
 }
 
-// PATCH /api/teams — update team settings
+// PATCH /api/teams — update team settings (requires team_id in body)
 export async function PATCH(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return ApiErrors.unauthorized();
 
-  let body: { name?: string; description?: string; industry?: string; target_audience?: string; shared_goal?: string };
+  let body: { team_id?: string; name?: string; description?: string; industry?: string; target_audience?: string; shared_goal?: string };
   try {
     body = await request.json();
   } catch {
     return ApiErrors.validationError('Invalid JSON');
   }
 
+  if (!body.team_id) {
+    return ApiErrors.validationError('team_id is required');
+  }
+
   const supabase = createSupabaseAdminClient();
   const userId = session.user.id;
 
-  // RBAC: Verify user is team owner before allowing updates
-  const { data: existingTeam } = await supabase
-    .from('teams')
-    .select('id')
-    .eq('owner_id', userId)
-    .single();
-
-  if (existingTeam) {
-    const role = await checkTeamRole(userId, existingTeam.id);
-    if (!hasMinimumRole(role, 'owner')) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-    }
+  // RBAC: Verify user is team owner
+  const role = await checkTeamRole(userId, body.team_id);
+  if (!hasMinimumRole(role, 'owner')) {
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
   }
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -144,8 +118,8 @@ export async function PATCH(request: NextRequest) {
   const { data: team, error } = await supabase
     .from('teams')
     .update(updates)
-    .eq('owner_id', userId)
-    .select('id, owner_id, name, description, industry, target_audience, shared_goal, created_at, updated_at')
+    .eq('id', body.team_id)
+    .select(TEAM_SELECT)
     .single();
 
   if (error) {

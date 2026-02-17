@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 // Maximum leads to export at once to prevent memory issues
 const MAX_EXPORT_LIMIT = 10000;
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
     const leadMagnetId = searchParams.get('leadMagnetId');
     const qualified = searchParams.get('qualified');
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     let query = supabase
@@ -36,8 +38,9 @@ export async function GET(request: Request) {
         created_at,
         funnel_pages!inner(slug),
         lead_magnets!inner(title)
-      `)
-      .eq('user_id', session.user.id)
+      `);
+    query = applyScope(query, scope);
+    query = query
       .order('created_at', { ascending: false })
       .limit(MAX_EXPORT_LIMIT);
 

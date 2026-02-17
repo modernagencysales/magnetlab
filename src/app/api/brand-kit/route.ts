@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 // GET - Get brand kit
 export async function GET() {
@@ -15,13 +16,14 @@ export async function GET() {
       return ApiErrors.unauthorized();
     }
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
-    const { data, error } = await supabase
+    let brandKitQuery = supabase
       .from('brand_kits')
-      .select('id, user_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, best_video_url, best_video_title, content_links, community_url, created_at, updated_at')
-      .eq('user_id', session.user.id)
-      .single();
+      .select('id, user_id, team_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, best_video_url, best_video_title, content_links, community_url, created_at, updated_at');
+    brandKitQuery = applyScope(brandKitQuery, scope);
+    const { data, error } = await brandKitQuery.single();
 
     if (error && error.code !== 'PGRST116') {
       // PGRST116 = no rows returned
@@ -52,10 +54,12 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     const brandKitData = {
       user_id: session.user.id,
+      team_id: scope.teamId || null,
       business_description: body.businessDescription,
       business_type: body.businessType,
       credibility_markers: body.credibilityMarkers || [],
@@ -71,9 +75,12 @@ export async function POST(request: Request) {
       style_profile: body.styleProfile,
     };
 
+    // In team mode, upsert by team_id; in personal mode, upsert by user_id
+    const onConflict = scope.type === 'team' ? 'team_id' : 'user_id';
+
     const { data, error } = await supabase
       .from('brand_kits')
-      .upsert(brandKitData, { onConflict: 'user_id' })
+      .upsert(brandKitData, { onConflict })
       .select()
       .single();
 

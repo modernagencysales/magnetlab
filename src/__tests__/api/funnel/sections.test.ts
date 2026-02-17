@@ -14,6 +14,12 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(),
 }));
 
+// Mock team-context (routes now use getDataScope/applyScope for multi-team scoping)
+jest.mock('@/lib/utils/team-context', () => ({
+  getDataScope: jest.fn((userId: string) => Promise.resolve({ type: 'user', userId })),
+  applyScope: jest.fn((query: any, scope: any) => query.eq('user_id', scope.userId)),
+}));
+
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 

@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { VALID_RANGES, parseDays, buildDateRange, type Range } from '@/lib/utils/analytics-helpers';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 export async function GET(request: Request) {
   try {
@@ -28,13 +29,15 @@ export async function GET(request: Request) {
     const dateRange = buildDateRange(days);
     const startDate = dateRange[0];
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
-    // Get user's funnel IDs
-    const { data: funnels, error: funnelsError } = await supabase
+    // Get user's/team's funnel IDs
+    let funnelQuery = supabase
       .from('funnel_pages')
-      .select('id')
-      .eq('user_id', session.user.id);
+      .select('id');
+    funnelQuery = applyScope(funnelQuery, scope);
+    const { data: funnels, error: funnelsError } = await funnelQuery;
 
     if (funnelsError) {
       logApiError('analytics/overview/funnels', funnelsError, { userId: session.user.id });
@@ -43,20 +46,18 @@ export async function GET(request: Request) {
 
     const funnelIds = funnels?.map((f: { id: string }) => f.id) || [];
 
-    // Fetch content pipeline stats (independent of funnels, scoped by user_id)
+    // Fetch content pipeline stats (independent of funnels, scoped by user/team)
+    let postsQuery = supabase.from('cp_pipeline_posts').select('status');
+    postsQuery = applyScope(postsQuery, scope);
+    let transcriptsQuery = supabase.from('cp_call_transcripts').select('id', { count: 'exact', head: true });
+    transcriptsQuery = applyScope(transcriptsQuery, scope);
+    let knowledgeQuery = supabase.from('cp_knowledge_entries').select('id', { count: 'exact', head: true });
+    knowledgeQuery = applyScope(knowledgeQuery, scope);
+
     const [postsResult, transcriptsResult, knowledgeResult] = await Promise.all([
-      supabase
-        .from('cp_pipeline_posts')
-        .select('status')
-        .eq('user_id', session.user.id),
-      supabase
-        .from('cp_call_transcripts')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', session.user.id),
-      supabase
-        .from('cp_knowledge_entries')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', session.user.id),
+      postsQuery,
+      transcriptsQuery,
+      knowledgeQuery,
     ]);
 
     // Aggregate content pipeline stats
