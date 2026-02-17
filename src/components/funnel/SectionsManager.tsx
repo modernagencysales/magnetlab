@@ -64,6 +64,7 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
 
 
   const filteredSections = sections
@@ -151,6 +152,30 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
       // ignore
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const handleResetToTemplate = async () => {
+    if (!funnelId) return;
+    if (!confirm(`This will replace all ${PAGE_LOCATIONS.find(l => l.value === activeLocation)?.label} sections with the template defaults. Continue?`)) return;
+
+    setResetting(true);
+    try {
+      const res = await fetch(`/api/funnel/${funnelId}/sections/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageLocation: activeLocation }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const otherSections = sections.filter(s => s.pageLocation !== activeLocation);
+        onSectionsChange([...otherSections, ...data.sections]);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -266,6 +291,16 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
           Add
         </button>
       </div>
+
+      {/* Reset to template */}
+      <button
+        onClick={handleResetToTemplate}
+        disabled={resetting}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {resetting ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+        Reset to template defaults
+      </button>
     </div>
   );
 }
