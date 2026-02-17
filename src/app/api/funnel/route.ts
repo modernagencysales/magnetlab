@@ -10,6 +10,7 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { funnelPageFromRow, type FunnelPageRow, type FunnelTargetType } from '@/lib/types/funnel';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { checkResourceLimit } from '@/lib/auth/plan-limits';
+import { getTemplate, DEFAULT_TEMPLATE_ID } from '@/lib/constants/funnel-templates';
 
 // GET - Get funnel page for a target (lead magnet, library, or external resource)
 export async function GET(request: Request) {
@@ -198,7 +199,7 @@ export async function POST(request: Request) {
     // Fetch user theme defaults
     const { data: profile } = await supabase
       .from('users')
-      .select('default_theme, default_primary_color, default_background_style, default_logo_url, default_vsl_url')
+      .select('default_theme, default_primary_color, default_background_style, default_logo_url, default_vsl_url, default_funnel_template')
       .eq('id', session.user.id)
       .single();
 
@@ -269,6 +270,33 @@ export async function POST(request: Request) {
     if (error) {
       logApiError('funnel/create', error, { userId: session.user.id, leadMagnetId });
       return ApiErrors.databaseError('Failed to create funnel page');
+    }
+
+    // Auto-populate sections from user's default template
+    const templateId = profile?.default_funnel_template || DEFAULT_TEMPLATE_ID;
+    const template = getTemplate(templateId);
+
+    if (template.sections.length > 0 && data) {
+      const sectionRows = template.sections.map(s => ({
+        funnel_page_id: data.id,
+        section_type: s.sectionType,
+        page_location: s.pageLocation,
+        sort_order: s.sortOrder,
+        is_visible: true,
+        config: s.config,
+      }));
+
+      const { error: sectionsError } = await supabase
+        .from('funnel_page_sections')
+        .insert(sectionRows);
+
+      if (sectionsError) {
+        logApiError('funnel/create/template-sections', sectionsError, {
+          userId: session.user.id,
+          funnelId: data.id,
+          templateId,
+        });
+      }
     }
 
     return NextResponse.json(

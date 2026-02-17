@@ -18,7 +18,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('users')
-      .select('default_vsl_url')
+      .select('default_vsl_url, default_funnel_template')
       .eq('id', session.user.id)
       .single();
 
@@ -29,6 +29,7 @@ export async function GET() {
 
     return NextResponse.json({
       defaultVslUrl: data.default_vsl_url,
+      defaultFunnelTemplate: data.default_funnel_template || 'social_proof',
     });
   } catch (error) {
     logApiError('user/defaults/get', error);
@@ -44,7 +45,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { defaultVslUrl } = body;
+    const { defaultVslUrl, defaultFunnelTemplate } = body;
 
     // Validate URL format if provided
     if (defaultVslUrl && typeof defaultVslUrl === 'string' && defaultVslUrl.trim()) {
@@ -59,15 +60,26 @@ export async function PUT(request: Request) {
       }
     }
 
+    // Validate template ID if provided
+    const validTemplateIds = ['minimal', 'social_proof', 'authority', 'full_suite'];
+    if (defaultFunnelTemplate !== undefined && !validTemplateIds.includes(defaultFunnelTemplate)) {
+      return ApiErrors.validationError('Invalid funnel template ID');
+    }
+
     const supabase = createSupabaseAdminClient();
+
+    const updateData: Record<string, unknown> = {
+      default_vsl_url: defaultVslUrl?.trim() || null,
+    };
+    if (defaultFunnelTemplate !== undefined) {
+      updateData.default_funnel_template = defaultFunnelTemplate;
+    }
 
     const { data, error } = await supabase
       .from('users')
-      .update({
-        default_vsl_url: defaultVslUrl?.trim() || null,
-      })
+      .update(updateData)
       .eq('id', session.user.id)
-      .select('default_vsl_url')
+      .select('default_vsl_url, default_funnel_template')
       .single();
 
     if (error) {
@@ -75,7 +87,10 @@ export async function PUT(request: Request) {
       return ApiErrors.databaseError('Failed to update defaults');
     }
 
-    return NextResponse.json({ defaultVslUrl: data.default_vsl_url });
+    return NextResponse.json({
+      defaultVslUrl: data.default_vsl_url,
+      defaultFunnelTemplate: data.default_funnel_template,
+    });
   } catch (error) {
     logApiError('user/defaults/update', error);
     return ApiErrors.internalError('Failed to update defaults');
