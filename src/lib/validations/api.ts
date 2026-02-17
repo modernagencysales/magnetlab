@@ -68,7 +68,7 @@ const conceptSchema = z.object({
     actionableUnder1h: z.boolean(),
     simple: z.boolean(),
     authorityBoosting: z.boolean(),
-  }).optional(),
+  }).nullable().optional(),
   creationTimeEstimate: z.string().optional(),
   bundlePotential: z.array(z.string()).optional(),
   isImported: z.boolean().optional(),
