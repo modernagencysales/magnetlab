@@ -365,6 +365,7 @@ export interface PolishedSection {
 export interface PolishedContent {
   version: number;
   polishedAt: string;
+  title?: string;
   sections: PolishedSection[];
   heroSummary: string;
   metadata: {
