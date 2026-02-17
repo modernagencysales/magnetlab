@@ -1,9 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Team, TeamProfile, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
 import { logError } from '@/lib/utils/logger';
+
+interface TeamMembership {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerAvatar: string | null;
+}
 
 interface ProfileFormData {
   full_name: string;
@@ -26,8 +35,10 @@ const emptyForm: ProfileFormData = {
 };
 
 export default function TeamPage() {
+  const router = useRouter();
   const [team, setTeam] = useState<Team | null>(null);
   const [profiles, setProfiles] = useState<TeamProfile[]>([]);
+  const [memberships, setMemberships] = useState<TeamMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,9 +60,10 @@ export default function TeamPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [teamRes, profilesRes] = await Promise.all([
+      const [teamRes, profilesRes, membershipsRes] = await Promise.all([
         fetch('/api/teams'),
         fetch('/api/teams/profiles'),
+        fetch('/api/team/memberships'),
       ]);
       const teamData = await teamRes.json();
       const profilesData = await profilesRes.json();
@@ -63,6 +75,11 @@ export default function TeamPage() {
         setTeamGoal(teamData.team.shared_goal || '');
       }
       setProfiles(profilesData.profiles || []);
+
+      if (membershipsRes.ok) {
+        const membershipsData = await membershipsRes.json();
+        setMemberships(membershipsData);
+      }
     } catch (err) {
       logError('dashboard/team', err, { step: 'failed_to_fetch_team_data' });
     } finally {
@@ -193,53 +210,99 @@ export default function TeamPage() {
     );
   }
 
-  // No team yet — show creation form
+  const selectOwner = (ownerId: string) => {
+    document.cookie = `ml-team-context=${ownerId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+    router.push('/catalog');
+  };
+
+  // No team yet — show memberships if any, otherwise creation form
   if (!team) {
     return (
       <div className="p-8 max-w-lg mx-auto mt-16">
-        <h1 className="text-2xl font-bold mb-2">Create Your Team</h1>
-        <p className="text-muted-foreground mb-6">
-          Set up a team to manage multiple LinkedIn profiles with shared knowledge.
-        </p>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Team Name</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border rounded-lg bg-background"
-              placeholder="e.g. Modern Agency Sales"
-              value={teamName}
-              onChange={e => setTeamName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Industry</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border rounded-lg bg-background"
-              placeholder="e.g. B2B SaaS, Marketing Agency"
-              value={teamIndustry}
-              onChange={e => setTeamIndustry(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Shared Goal</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border rounded-lg bg-background"
-              placeholder="e.g. Build thought leadership in our niche"
-              value={teamGoal}
-              onChange={e => setTeamGoal(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={createTeam}
-            disabled={!teamName.trim() || saving}
-            className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium disabled:opacity-50"
-          >
-            {saving ? 'Creating...' : 'Create Team'}
-          </button>
-        </div>
+        {memberships.length > 0 ? (
+          <>
+            <h1 className="text-2xl font-bold mb-2">Your Teams</h1>
+            <p className="text-muted-foreground mb-6">
+              You&apos;re a member of the following teams.
+            </p>
+            <div className="space-y-3">
+              {memberships.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center gap-4 rounded-lg border p-4"
+                >
+                  {m.ownerAvatar ? (
+                    <img
+                      src={m.ownerAvatar}
+                      alt={m.ownerName}
+                      className="w-10 h-10 rounded-lg shrink-0"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center w-10 h-10 bg-violet-500 rounded-lg text-white font-medium text-sm shrink-0">
+                      {m.ownerName.substring(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{m.ownerName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{m.ownerEmail}</p>
+                  </div>
+                  <button
+                    onClick={() => selectOwner(m.ownerId)}
+                    className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium shrink-0"
+                  >
+                    View Catalog
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold mb-2">Create Your Team</h1>
+            <p className="text-muted-foreground mb-6">
+              Set up a team to manage multiple LinkedIn profiles with shared knowledge.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Team Name</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg bg-background"
+                  placeholder="e.g. Modern Agency Sales"
+                  value={teamName}
+                  onChange={e => setTeamName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Industry</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg bg-background"
+                  placeholder="e.g. B2B SaaS, Marketing Agency"
+                  value={teamIndustry}
+                  onChange={e => setTeamIndustry(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Shared Goal</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg bg-background"
+                  placeholder="e.g. Build thought leadership in our niche"
+                  value={teamGoal}
+                  onChange={e => setTeamGoal(e.target.value)}
+                />
+              </div>
+              <button
+                onClick={createTeam}
+                disabled={!teamName.trim() || saving}
+                className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium disabled:opacity-50"
+              >
+                {saving ? 'Creating...' : 'Create Team'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     );
   }

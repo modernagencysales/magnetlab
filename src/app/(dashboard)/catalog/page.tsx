@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getMergedMemberships } from '@/lib/utils/team-membership';
 import { CatalogView } from '@/components/catalog/CatalogView';
 
 import { logError } from '@/lib/utils/logger';
@@ -19,18 +20,15 @@ export default async function CatalogPage() {
   const cookieStore = await cookies();
   const activeOwnerId = cookieStore.get('ml-team-context')?.value;
 
-  // Check if user has team memberships
-  const { data: memberships, error: membershipError } = await supabase
-    .from('team_members')
-    .select('id, owner_id')
-    .eq('member_id', session.user.id)
-    .eq('status', 'active');
-
-  if (membershipError) {
-    logError('src//app/(dashboard)/catalog', new Error(String(membershipError.message)), { step: '[catalog]_failed_to_fetch_memberships' });
+  // Check if user has team memberships (merges V1 + V2)
+  let memberships: { id: string; owner_id: string; status: string }[] = [];
+  try {
+    memberships = await getMergedMemberships(session.user.id);
+  } catch (err) {
+    logError('src/app/(dashboard)/catalog', err instanceof Error ? err : new Error(String(err)), { step: '[catalog]_failed_to_fetch_memberships' });
   }
 
-  const hasMemberships = memberships && memberships.length > 0;
+  const hasMemberships = memberships.length > 0;
 
   // Determine which owner's catalog to show
   let ownerId: string;

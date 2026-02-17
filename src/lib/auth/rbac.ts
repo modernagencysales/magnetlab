@@ -20,17 +20,17 @@ export async function checkTeamRole(userId: string, teamId: string): Promise<Tea
   if (!team) return null;
   if (team.owner_id === userId) return 'owner';
 
-  // Check team_members table (V1)
+  // Check team_members table (V1 — has owner_id, not team_id/role)
   const { data: member } = await supabase
     .from('team_members')
-    .select('role, status')
-    .eq('team_id', teamId)
+    .select('id, status')
+    .eq('owner_id', team.owner_id)
     .eq('member_id', userId)
     .eq('status', 'active')
     .single();
 
   if (member) {
-    return member.role === 'owner' ? 'owner' : 'member';
+    return 'member';
   }
 
   // Check team_profiles table (V2)
