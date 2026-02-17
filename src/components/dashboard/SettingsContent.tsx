@@ -12,6 +12,7 @@ import { LinkedInSettings } from '@/components/settings/LinkedInSettings';
 import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettings';
 import { WebhookSettings } from '@/components/settings/WebhookSettings';
 import { TeamMembersSettings } from '@/components/settings/TeamMembersSettings';
+import { FunnelTemplateSettings } from '@/components/settings/FunnelTemplateSettings';
 
 import { logError } from '@/lib/utils/logger';
 
@@ -80,6 +81,7 @@ export function SettingsContent({
   const [savingDefaultVslUrl, setSavingDefaultVslUrl] = useState(false);
   const [defaultVslUrlSaved, setDefaultVslUrlSaved] = useState(false);
   const [defaultVslUrlError, setDefaultVslUrlError] = useState<string | null>(null);
+  const [defaultFunnelTemplate, setDefaultFunnelTemplate] = useState('social_proof');
 
   const currentPlan = PRICING_PLANS.find((p) => p.id === subscription?.plan) || PRICING_PLANS[0];
   const resendIntegration = integrations.find((i) => i.service === 'resend');
@@ -109,6 +111,7 @@ export function SettingsContent({
         if (response.ok) {
           const data = await response.json();
           setDefaultVslUrl(data.defaultVslUrl || '');
+          setDefaultFunnelTemplate(data.defaultFunnelTemplate || 'social_proof');
         }
       } catch (error) {
         logError('dashboard/settings', error, { step: 'failed_to_fetch_user_defaults' });
@@ -541,6 +544,14 @@ export function SettingsContent({
                 )}
               </>
             )}
+          </div>
+
+          {/* Funnel Template */}
+          <div className="rounded-lg border p-4 mt-4">
+            <FunnelTemplateSettings
+              currentTemplate={defaultFunnelTemplate}
+              onSaved={setDefaultFunnelTemplate}
+            />
           </div>
         </div>
 
