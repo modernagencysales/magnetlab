@@ -161,8 +161,8 @@ function addToSidebars(
 // Main scheduled task
 // ---------------------------------------------------------------------------
 
-export const weeklyPlaybookSync = schedules.task({
-  id: 'weekly-playbook-sync',
+export const playbookSync = schedules.task({
+  id: 'playbook-sync',
   cron: '0 0 * * 0', // Sunday midnight UTC
   maxDuration: 900, // 15 minutes
   retry: { maxAttempts: 1 },
