@@ -306,7 +306,6 @@ function PostTab({
           screenshotUrls={leadMagnet.screenshotUrls || []}
           leadMagnetId={leadMagnet.id}
           hasPublishedFunnel={hasPublishedFunnel}
-          hasPolishedContent={!!leadMagnet.polishedContent}
         />
       </div>
 

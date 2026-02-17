@@ -7,14 +7,12 @@ interface ScreenshotGalleryProps {
   screenshotUrls: ScreenshotUrl[];
   leadMagnetId: string;
   hasPublishedFunnel: boolean;
-  hasPolishedContent: boolean;
 }
 
 export function ScreenshotGallery({
   screenshotUrls: initialUrls,
   leadMagnetId,
   hasPublishedFunnel,
-  hasPolishedContent,
 }: ScreenshotGalleryProps) {
   const [screenshotUrls, setScreenshotUrls] = useState<ScreenshotUrl[]>(initialUrls);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -48,7 +46,7 @@ export function ScreenshotGallery({
     ? selectedFormat === '1200x627' ? selectedShot.url1200x627 : selectedShot.url1080x1080
     : null;
 
-  const canGenerate = hasPublishedFunnel && hasPolishedContent;
+  const canGenerate = hasPublishedFunnel;
 
   return (
     <div className="space-y-4">
@@ -58,7 +56,7 @@ export function ScreenshotGallery({
           onClick={handleGenerate}
           disabled={isGenerating || !canGenerate}
           className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          title={!canGenerate ? 'Requires polished content and a published funnel page' : undefined}
+          title={!canGenerate ? 'Publish a funnel page first' : undefined}
         >
           {isGenerating ? 'Generating...' : screenshotUrls.length ? 'Regenerate' : 'Generate Images'}
         </button>
@@ -70,9 +68,7 @@ export function ScreenshotGallery({
 
       {!canGenerate && screenshotUrls.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          {!hasPolishedContent
-            ? 'Polish your content first to generate post images.'
-            : 'Publish a funnel page first to generate post images.'}
+          Publish a funnel page first to generate post images.
         </p>
       )}
 

@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     // Get the lead magnet and verify ownership
     const { data: leadMagnet, error: fetchError } = await supabase
       .from('lead_magnets')
-      .select('id, user_id, polished_content')
+      .select('id, user_id, polished_content, interactive_config, extracted_content')
       .eq('id', id)
       .single();
 
@@ -40,11 +40,15 @@ export async function POST(request: Request, { params }: RouteParams) {
       return ApiErrors.forbidden('You do not own this lead magnet');
     }
 
-    // Verify polished content exists
+    // Verify some renderable content exists (polished, interactive, or extracted)
     const polishedContent = leadMagnet.polished_content as PolishedContent | null;
-    if (!polishedContent?.sections?.length) {
+    const hasPolished = !!polishedContent?.sections?.length;
+    const hasInteractive = !!leadMagnet.interactive_config;
+    const hasExtracted = !!leadMagnet.extracted_content;
+
+    if (!hasPolished && !hasInteractive && !hasExtracted) {
       return ApiErrors.validationError(
-        'Content must be polished before generating screenshots'
+        'No content available to screenshot. Create content or an interactive tool first.'
       );
     }
 
@@ -80,12 +84,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://magnetlab.ai';
     const pageUrl = `${appUrl}/p/${user.username}/${funnelPage.slug}/content`;
 
-    // Generate screenshots
+    // Generate screenshots (section shots only for polished content)
+    const sectionCount = hasPolished ? polishedContent!.sections.length : 0;
     let screenshotResults;
     try {
       screenshotResults = await generateContentScreenshots({
         pageUrl,
-        sectionCount: polishedContent.sections.length,
+        sectionCount,
       });
     } catch (screenshotError) {
       logApiError('lead-magnet/screenshots/generate', screenshotError, {
