@@ -60,7 +60,7 @@ describe('createLeadMagnetSchema', () => {
     });
 
     it('accepts postVariations without evaluation (optional)', () => {
-      const { evaluation, ...variationNoEval } = postVariation;
+      const { evaluation: _evaluation, ...variationNoEval } = postVariation;
       const result = createLeadMagnetSchema.safeParse({
         ...basePayload,
         postVariations: [variationNoEval],
@@ -129,7 +129,7 @@ describe('createLeadMagnetSchema', () => {
     });
 
     it('rejects calculator config without inputs', () => {
-      const { inputs, ...noInputs } = calculatorConfig;
+      const { inputs: _inputs, ...noInputs } = calculatorConfig;
       const result = createLeadMagnetSchema.safeParse({
         ...basePayload,
         interactiveConfig: noInputs,
@@ -231,7 +231,7 @@ describe('createLeadMagnetSchema', () => {
 
   describe('required fields', () => {
     it('rejects missing title', () => {
-      const { title, ...noTitle } = basePayload;
+      const { title: _title, ...noTitle } = basePayload;
       const result = createLeadMagnetSchema.safeParse(noTitle);
       expect(result.success).toBe(false);
     });
@@ -245,7 +245,7 @@ describe('createLeadMagnetSchema', () => {
     });
 
     it('rejects missing archetype', () => {
-      const { archetype, ...noArchetype } = basePayload;
+      const { archetype: _archetype, ...noArchetype } = basePayload;
       const result = createLeadMagnetSchema.safeParse(noArchetype);
       expect(result.success).toBe(false);
     });
