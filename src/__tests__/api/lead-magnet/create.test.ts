@@ -60,7 +60,11 @@ describe('createLeadMagnetSchema', () => {
     });
 
     it('accepts postVariations without evaluation (optional)', () => {
-      const { evaluation: _evaluation, ...variationNoEval } = postVariation;
+      const variationNoEval = {
+        hookType: postVariation.hookType,
+        post: postVariation.post,
+        whyThisAngle: postVariation.whyThisAngle,
+      };
       const result = createLeadMagnetSchema.safeParse({
         ...basePayload,
         postVariations: [variationNoEval],
@@ -129,7 +133,9 @@ describe('createLeadMagnetSchema', () => {
     });
 
     it('rejects calculator config without inputs', () => {
-      const { inputs: _inputs, ...noInputs } = calculatorConfig;
+      const noInputs = { ...calculatorConfig };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (noInputs as any).inputs;
       const result = createLeadMagnetSchema.safeParse({
         ...basePayload,
         interactiveConfig: noInputs,
@@ -231,7 +237,9 @@ describe('createLeadMagnetSchema', () => {
 
   describe('required fields', () => {
     it('rejects missing title', () => {
-      const { title: _title, ...noTitle } = basePayload;
+      const noTitle = { ...basePayload };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (noTitle as any).title;
       const result = createLeadMagnetSchema.safeParse(noTitle);
       expect(result.success).toBe(false);
     });
@@ -245,7 +253,9 @@ describe('createLeadMagnetSchema', () => {
     });
 
     it('rejects missing archetype', () => {
-      const { archetype: _archetype, ...noArchetype } = basePayload;
+      const noArchetype = { ...basePayload };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (noArchetype as any).archetype;
       const result = createLeadMagnetSchema.safeParse(noArchetype);
       expect(result.success).toBe(false);
     });
