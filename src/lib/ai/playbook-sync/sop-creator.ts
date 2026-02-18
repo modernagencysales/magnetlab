@@ -2,6 +2,40 @@ import { getAnthropicClient, parseJsonResponse } from '../content-pipeline/anthr
 import { CLAUDE_OPUS_MODEL, CLAUDE_SONNET_MODEL } from '../content-pipeline/model-config';
 import type { KnowledgeEntry } from '@/lib/types/content-pipeline';
 
+/**
+ * Escape curly-brace variable patterns that MDX interprets as JSX expressions.
+ * Handles {var}, {{var}}, and {{{var}}} — wraps them in backticks.
+ * Skips patterns already inside backticks or code fences.
+ */
+export function sanitizeMdxContent(content: string): string {
+  const lines = content.split('\n');
+  let inCodeFence = false;
+  const result = lines.map((line) => {
+    if (line.trim().startsWith('```')) {
+      inCodeFence = !inCodeFence;
+      return line;
+    }
+    if (inCodeFence) return line;
+
+    // Match {var}, {{var}}, {{{var}}} NOT already inside backticks.
+    // Captures the full brace expression including outer braces.
+    return line.replace(
+      /(?<!`)\{+([a-zA-Z_][a-zA-Z0-9_]*)\}+(?!`)/g,
+      (match) => {
+        // Check if this match is inside an existing backtick pair
+        const idx = line.indexOf(match);
+        const before = line.slice(0, idx);
+        const _after = line.slice(idx + match.length);
+        // Count unmatched backticks before — if odd, we're inside inline code
+        const backticksBeforeCount = (before.match(/`/g) || []).length;
+        if (backticksBeforeCount % 2 === 1) return match; // inside backticks
+        return '`' + match + '`';
+      }
+    );
+  });
+  return result.join('\n');
+}
+
 export interface OrphanCluster {
   entries: KnowledgeEntry[];
   suggestedModule: string;
@@ -91,10 +125,19 @@ export async function generateNewSop(
   const moduleNum = cluster.suggestedModule.match(/module-(\d+)/)?.[1] || '7';
   const sopId = `sop-${moduleNum}-${nextNumber}`;
 
-  const prompt = `You are writing a new SOP (Standard Operating Procedure) for a GTM playbook based on knowledge extracted from coaching and sales calls.
+  const prompt = `You are writing a short, punchy SOP for a GTM playbook based on knowledge from coaching and sales calls.
+
+## Writing Style
+- Write like a senior operator leaving notes for their team — direct, no fluff, no filler.
+- Every sentence must earn its place. If it restates something already said, cut it.
+- Steps should be 1 sentence each. "Do X" not "It's important to do X because Y and Z."
+- Key Lessons: 1 sentence each. State the lesson, not a paragraph explaining it.
+- Common Mistakes: 1 sentence each. State what NOT to do.
+- Overview: 2 sentences max.
+- Never use phrases like "It's worth noting", "This is crucial", "In practice", "It's important to", "Make sure to". Just state the action or fact.
+- Target total length: 150-300 words (excluding frontmatter). Shorter is better.
 
 ## Template
-Every SOP follows this structure:
 \`\`\`markdown
 ---
 id: ${sopId}-SLUG
@@ -104,21 +147,21 @@ title: "SOP ${moduleNum}.${nextNumber}: TITLE"
 # SOP ${moduleNum}.${nextNumber}: TITLE
 
 :::info Auto-Generated
-This SOP was created from patterns identified across multiple coaching and sales calls. It will continue to evolve as new knowledge is captured.
+This SOP was created from patterns identified across multiple coaching and sales calls.
 :::
 
 ## Overview
-Brief description of what this SOP covers and why it matters.
+1-2 sentences. What and why.
 
 ## Steps
-1. **Step Name** — Description
-2. **Step Name** — Description
+1. **Step Name** — One sentence.
+2. **Step Name** — One sentence.
 
 ## Key Lessons
-- Lesson from the field
+- One sentence per lesson.
 
 ## Common Mistakes
-- Mistake to avoid
+- One sentence per mistake.
 \`\`\`
 
 ## Knowledge Entries
@@ -127,9 +170,11 @@ ${entriesText}
 ## Suggested Title: ${cluster.suggestedTitle}
 
 ## Task
-Write a complete SOP following the template above. The content should be grounded in the knowledge entries — extract actionable steps, principles, and lessons. Make the SOP useful as a standalone reference.
+Write a complete SOP following the template. Extract only the actionable, non-obvious insights from the entries. If two entries say the same thing, use the more specific one and drop the other. Do not pad sections — 3 great steps beat 7 mediocre ones.
 
 The slug should be lowercase-hyphenated (e.g., "linkedin-voice-notes").
+
+CRITICAL: MDX content — wrap any \`{variable}\` in backticks.
 
 Return valid JSON:
 {
@@ -140,7 +185,7 @@ Return valid JSON:
 
   const response = await client.messages.create({
     model: CLAUDE_OPUS_MODEL,
-    max_tokens: 4000,
+    max_tokens: 2000,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -155,12 +200,15 @@ Return valid JSON:
     content: string;
   }>(textContent.text);
 
+  // Escape {variable} patterns that break MDX — wrap in backticks
+  const sanitizedContent = sanitizeMdxContent(parsed.content);
+
   const id = `${sopId}-${parsed.slug}`;
   const filePath = `docs/sops/${cluster.suggestedModule}/${id}.md`;
 
   return {
     filePath,
-    content: parsed.content,
+    content: sanitizedContent,
     title: parsed.title,
     id,
     module: cluster.suggestedModule,

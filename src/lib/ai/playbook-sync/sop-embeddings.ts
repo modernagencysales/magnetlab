@@ -55,7 +55,7 @@ export async function syncSopEmbeddings(sopFiles: RepoFile[]): Promise<CachedSop
     const hash = contentHash(file.content);
     const existing = cacheMap.get(file.path);
     const { title } = extractFrontmatter(file.content);
-    const module = extractModule(file.path);
+    const moduleName = extractModule(file.path);
 
     if (existing && existing.content_hash === hash && existing.embedding) {
       // Cache hit — use existing embedding
@@ -65,7 +65,7 @@ export async function syncSopEmbeddings(sopFiles: RepoFile[]): Promise<CachedSop
       results.push({
         filePath: file.path,
         title: existing.title || title,
-        module: existing.module || module,
+        module: existing.module || moduleName,
         content: file.content,
         embedding: embeddingArray,
       });
@@ -87,13 +87,13 @@ export async function syncSopEmbeddings(sopFiles: RepoFile[]): Promise<CachedSop
           content_hash: hash,
           embedding: JSON.stringify(embedding),
           title,
-          module,
+          module: moduleName,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'file_path' }
       );
 
-    results.push({ filePath: file.path, title, module, content: file.content, embedding });
+    results.push({ filePath: file.path, title, module: moduleName, content: file.content, embedding });
   }
 
   logger.info('SOP embedding sync complete', {
