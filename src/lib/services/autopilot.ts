@@ -1,7 +1,7 @@
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getTopIdeas, type ScoringContext } from '@/lib/ai/content-pipeline/idea-scorer';
 import { polishPost } from '@/lib/ai/content-pipeline/post-polish';
-import { writePostFreeform } from '@/lib/ai/content-pipeline/post-writer';
+import { writePostWithAutoTemplate } from '@/lib/ai/content-pipeline/post-writer';
 import { buildContentBriefForIdea } from '@/lib/ai/content-pipeline/briefing-agent';
 import { isEmbeddingsConfigured } from '@/lib/ai/embeddings';
 import type {
@@ -306,8 +306,8 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
           })
           .eq('id', idea.id);
 
-        // Write post
-        const writtenPost = await writePostFreeform({
+        // Write post (with automatic template RAG matching)
+        const writtenPost = await writePostWithAutoTemplate({
           idea: {
             id: idea.id,
             title: idea.title,
@@ -320,7 +320,7 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
           voiceProfile,
           authorName,
           authorTitle,
-        });
+        }, userId);
 
         // Polish post
         const polishResult = await polishPost(writtenPost.content);

@@ -1,6 +1,6 @@
 import { task, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { writePostFreeform } from '@/lib/ai/content-pipeline/post-writer';
+import { writePostWithAutoTemplate } from '@/lib/ai/content-pipeline/post-writer';
 import { buildContentBriefForIdea } from '@/lib/ai/content-pipeline/briefing-agent';
 import { polishPost } from '@/lib/ai/content-pipeline/post-polish';
 import { isEmbeddingsConfigured } from '@/lib/ai/embeddings';
@@ -68,9 +68,9 @@ export const writePostFromIdea = task({
       }
     }
 
-    // Write the post
+    // Write the post (with automatic template RAG matching)
     logger.info('Writing post');
-    const writtenPost = await writePostFreeform({
+    const writtenPost = await writePostWithAutoTemplate({
       idea: {
         id: idea.id,
         title: idea.title,
@@ -83,7 +83,7 @@ export const writePostFromIdea = task({
       voiceProfile,
       authorName,
       authorTitle,
-    });
+    }, userId);
 
     // Polish the post
     logger.info('Polishing post');

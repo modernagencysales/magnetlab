@@ -1,5 +1,6 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
+import { findBestTemplate, buildTemplateGuidance } from './template-matcher';
 import type { PostTemplate, StyleProfile, PostVariation, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 import { logError } from '@/lib/utils/logger';
 
@@ -254,6 +255,55 @@ export async function writePost(input: WritePostInput): Promise<WrittenPost> {
     return writePostWithTemplate(input);
   }
   return writePostFreeform(input);
+}
+
+export async function writePostWithAutoTemplate(
+  input: WritePostInput,
+  userId: string
+): Promise<WrittenPost & { matchedTemplateId?: string }> {
+  // If template already provided, use it directly
+  if (input.template) {
+    const result = await writePostWithTemplate(input);
+    return { ...result, matchedTemplateId: input.template.id };
+  }
+
+  // Build topic text for RAG matching
+  const topicText = [
+    input.idea.title,
+    input.idea.core_insight,
+    input.idea.full_context,
+    input.idea.content_type,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const match = await findBestTemplate(topicText, userId);
+
+  if (match) {
+    // Inject template guidance into the freeform prompt via knowledgeContext
+    const templateGuidance = buildTemplateGuidance(match);
+    const enhancedInput: WritePostInput = {
+      ...input,
+      knowledgeContext: input.knowledgeContext
+        ? `${input.knowledgeContext}\n\n${templateGuidance}`
+        : templateGuidance,
+    };
+    const result = await writePostFreeform(enhancedInput);
+
+    // Increment usage count (fire-and-forget)
+    incrementTemplateUsage(match.id).catch(() => {});
+
+    return { ...result, matchedTemplateId: match.id };
+  }
+
+  // No match — proceed freeform
+  return writePostFreeform(input);
+}
+
+async function incrementTemplateUsage(templateId: string): Promise<void> {
+  const { createSupabaseAdminClient } = await import('@/lib/utils/supabase-server');
+  const supabase = createSupabaseAdminClient();
+  await supabase.rpc('cp_increment_template_usage', { template_id: templateId });
 }
 
 export async function bulkWritePosts(
