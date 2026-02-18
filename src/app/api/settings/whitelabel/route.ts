@@ -19,7 +19,7 @@ export async function GET() {
     const supabase = createSupabaseAdminClient();
     const { data: team, error } = await supabase
       .from('teams')
-      .select('id, whitelabel_enabled, hide_branding, custom_favicon_url, custom_site_name, custom_email_sender_name')
+      .select('id, whitelabel_enabled, hide_branding, custom_favicon_url, custom_site_name, custom_email_sender_name, custom_from_email')
       .eq('owner_id', session.user.id)
       .limit(1)
       .single();

@@ -44,19 +44,49 @@ async function shouldTriggerSequence(
 }
 
 /**
- * Get sender info from brand kit
+ * Get sender info from brand kit + team email domain
  */
 async function getSenderInfo(userId: string): Promise<{ senderName: string; senderEmail?: string }> {
   const supabase = createSupabaseAdminClient();
 
-  const { data: brandKit } = await supabase
-    .from('brand_kits')
-    .select('sender_name')
-    .eq('user_id', userId)
-    .single();
+  // Run brand kit and team lookups in parallel
+  const [brandKitResult, teamResult] = await Promise.all([
+    supabase
+      .from('brand_kits')
+      .select('sender_name')
+      .eq('user_id', userId)
+      .single(),
+    supabase
+      .from('teams')
+      .select('id, custom_email_sender_name, custom_from_email')
+      .eq('owner_id', userId)
+      .limit(1)
+      .single(),
+  ]);
+
+  const brandKit = brandKitResult.data;
+  const team = teamResult.data;
+
+  // Check if team has a verified email domain
+  let hasVerifiedDomain = false;
+  if (team?.id) {
+    try {
+      const { data: emailDomain } = await supabase
+        .from('team_email_domains')
+        .select('id, domain, status')
+        .eq('team_id', team.id)
+        .eq('status', 'verified')
+        .single();
+
+      hasVerifiedDomain = !!emailDomain;
+    } catch {
+      // No verified domain found (PGRST116) or other error — fall back to defaults
+    }
+  }
 
   return {
-    senderName: brandKit?.sender_name || 'MagnetLab',
+    senderName: team?.custom_email_sender_name || brandKit?.sender_name || 'MagnetLab',
+    senderEmail: hasVerifiedDomain && team?.custom_from_email ? team.custom_from_email : undefined,
   };
 }
 
