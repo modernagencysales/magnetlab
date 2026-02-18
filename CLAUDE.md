@@ -162,6 +162,43 @@ Use this table to determine which repo owns a given feature. This prevents build
 | Stripe billing/subscriptions | magnetlab (SaaS billing) or copy-of-gtm-os (bootcamp subs) | Depends on which product the billing is for |
 | AI prompt management | leadmagnet-admin (Blueprint) or magnetlab (lead magnets) | Depends on which AI pipeline |
 
+## Branding & Conversion Tracking
+
+Team-level branding settings that apply across all funnels. Configured in Settings > Branding & Defaults.
+
+### Brand Kit Fields (on `brand_kits` table)
+
+- `logos` (jsonb array) -- client logos for logo bar sections
+- `default_testimonial` (jsonb) -- `{quote, author, role}` for testimonial sections
+- `default_steps` (jsonb) -- `{steps: [{icon, title, description}]}` for next-steps sections
+- `default_theme` -- `dark` or `light`
+- `default_primary_color` -- hex color (default `#8b5cf6`)
+- `default_background_style` -- `solid`, `gradient`, or `pattern`
+- `logo_url` -- uploaded logo (Supabase Storage `public-assets` bucket)
+- `font_family` -- Google Font name or custom font name
+- `font_url` -- custom .woff2 font URL (Supabase Storage)
+
+### How Branding Flows
+
+1. User configures branding in Settings (`BrandingSettings` component)
+2. On funnel creation (`POST /api/funnel`), brand kit values are fetched and merged into template sections (logo_bar, testimonial, steps) + theme/color/font defaults
+3. Font is snapshotted on `funnel_pages.font_family` / `font_url` at creation time -- changes to brand kit don't retroactively affect existing funnels
+4. `FontLoader` component handles both Google Fonts (CDN link) and custom .woff2 fonts (`@font-face` injection with XSS sanitization)
+
+### Conversion Tracking
+
+- `page_views` table has `page_type` column (`optin` or `thankyou`) with unique constraint on `(funnel_page_id, viewer_hash, page_type)`
+- Thank-you page tracks views via `POST /api/public/view` with `pageType: 'thankyou'`
+- Analytics API (`/api/analytics/funnel/[id]`) returns `thankyouViews`, `responded` (leads with qualification answers), and `responseRate`
+- Magnets page shows conversion rate badges (views → leads)
+
+### Key Files
+
+- `src/components/settings/BrandingSettings.tsx` -- 5-card settings UI (logo, theme, font, testimonial, steps)
+- `src/app/api/brand-kit/upload/route.ts` -- logo/font upload to Supabase Storage
+- `src/components/funnel/public/FontLoader.tsx` -- font loading + XSS sanitization, exports `GOOGLE_FONTS`
+- `src/app/api/public/view/route.ts` -- page view tracking with `pageType` validation
+
 ## Integration Points
 
 - **GTM webhooks**: Fires `lead.created`, `lead.qualified`, `lead_magnet.deployed` to gtm-system via `lib/webhooks/gtm-system.ts` (fire-and-forget, 5s timeout, `x-webhook-secret` auth)
@@ -272,3 +309,11 @@ npx playwright test e2e/wizard.spec.ts   # Single file
 | copy-of-gtm-os | `/Users/timlife/Documents/claude code/copy-of-gtm-os` | Public Blueprint pages, GC Portal, Bootcamp LMS |
 | leadmagnet-admin | `/Users/timlife/linkedin-leadmagnet-admin` | Admin dashboard for Blueprint Generator backend |
 | leadmagnet-backend | `/Users/timlife/linkedin-leadmagnet-backend` | Blueprint pipeline: scrape -> enrich -> generate |
+
+## Post-Feature Workflow
+
+After completing any new feature:
+
+1. **Code review** -- trigger `superpowers:requesting-code-review` to catch security issues, missing scoping, and spec compliance
+2. **Resolve issues** -- fix all critical and important findings from the review
+3. **Update docs** -- add feature documentation to this CLAUDE.md (architecture, key files, data flow)
