@@ -8,6 +8,7 @@ import { ViralPostsSection } from './ViralPostsSection';
 import { StylesSection } from './StylesSection';
 import { TemplateSearch } from './TemplateSearch';
 import { GlobalTemplateLibrary } from './GlobalTemplateLibrary';
+import { TrackedCreators } from './TrackedCreators';
 
 export function TemplatesTab() {
   const [templates, setTemplates] = useState<PostTemplate[]>([]);
@@ -354,6 +355,9 @@ export function TemplatesTab() {
           }}
         />
       )}
+
+      {/* Tracked Creators */}
+      <TrackedCreators />
 
       {/* Viral Posts Section */}
       <ViralPostsSection onTemplateExtracted={fetchTemplates} />
