@@ -1,11 +1,25 @@
 'use client';
 
-const GOOGLE_FONTS = [
+export const GOOGLE_FONTS = [
   'Inter', 'DM Sans', 'Poppins', 'Lato', 'Montserrat', 'Open Sans',
   'Raleway', 'Playfair Display', 'Roboto', 'Nunito', 'Source Sans 3',
   'Work Sans', 'Outfit', 'Plus Jakarta Sans', 'Space Grotesk',
   'Manrope', 'Sora', 'Lexend', 'Figtree', 'Geist',
 ];
+
+// Sanitize strings interpolated into CSS to prevent XSS via dangerouslySetInnerHTML
+function sanitizeCSS(val: string): string {
+  return val.replace(/['"<>{};\\/]/g, '');
+}
+
+function isValidStorageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.endsWith('.supabase.co');
+  } catch {
+    return false;
+  }
+}
 
 interface FontLoaderProps {
   fontFamily: string | null;
@@ -17,10 +31,12 @@ export function FontLoader({ fontFamily, fontUrl }: FontLoaderProps) {
 
   // Custom font via uploaded woff2
   if (fontUrl) {
+    if (!isValidStorageUrl(fontUrl)) return null;
+    const safeName = sanitizeCSS(fontFamily);
     return (
       <style dangerouslySetInnerHTML={{ __html: `
         @font-face {
-          font-family: '${fontFamily}';
+          font-family: '${safeName}';
           src: url('${fontUrl}') format('woff2');
           font-display: swap;
         }

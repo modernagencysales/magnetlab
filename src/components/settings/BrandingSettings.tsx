@@ -15,12 +15,7 @@ import {
   Check,
 } from 'lucide-react';
 
-const GOOGLE_FONTS = [
-  'Inter', 'DM Sans', 'Poppins', 'Lato', 'Montserrat', 'Open Sans',
-  'Raleway', 'Playfair Display', 'Roboto', 'Nunito', 'Source Sans 3',
-  'Work Sans', 'Outfit', 'Plus Jakarta Sans', 'Space Grotesk',
-  'Manrope', 'Sora', 'Lexend', 'Figtree', 'Geist',
-];
+import { GOOGLE_FONTS } from '@/components/funnel/public/FontLoader';
 
 interface LogoItem {
   name: string;
@@ -63,7 +58,7 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
   const [logoUrl, setLogoUrl] = useState(initialData.logo_url || '');
   const [logos, setLogos] = useState<LogoItem[]>(initialData.logos || []);
   const [theme, setTheme] = useState(initialData.default_theme || 'dark');
-  const [primaryColor, setPrimaryColor] = useState(initialData.default_primary_color || '#7c3aed');
+  const [primaryColor, setPrimaryColor] = useState(initialData.default_primary_color || '#8b5cf6');
   const [backgroundStyle, setBackgroundStyle] = useState(initialData.default_background_style || 'solid');
   const [fontFamily, setFontFamily] = useState(initialData.font_family || '');
   const [fontUrl, setFontUrl] = useState(initialData.font_url || '');
@@ -104,15 +99,17 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
       setSaving(true);
       setSaved(false);
       try {
-        await fetch('/api/brand-kit', {
+        const res = await fetch('/api/brand-kit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updates),
         });
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+        if (res.ok) {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        }
       } catch {
-        /* ignore */
+        // Network error — saved stays false
       } finally {
         setSaving(false);
       }

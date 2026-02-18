@@ -15,6 +15,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing funnelPageId' }, { status: 400 });
     }
 
+    const VALID_PAGE_TYPES = ['optin', 'thankyou'];
+    const resolvedPageType = VALID_PAGE_TYPES.includes(pageType) ? pageType : 'optin';
+
     // Get IP and User Agent for visitor hash
     const forwarded = request.headers.get('x-forwarded-for');
     const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
           funnel_page_id: funnelPageId,
           visitor_hash: visitorHash,
           view_date: new Date().toISOString().split('T')[0],
-          page_type: pageType || 'optin',
+          page_type: resolvedPageType,
         },
         {
           onConflict: 'funnel_page_id,visitor_hash,view_date,page_type',

@@ -13,6 +13,7 @@ import { VideoEmbed } from '@/components/funnel/public/VideoEmbed';
 import { BookCallDrawer } from './BookCallDrawer';
 import { getThemeVars } from '@/lib/utils/theme-vars';
 import { SectionRenderer } from '@/components/ds';
+import { FontLoader, getFontStyle } from '@/components/funnel/public/FontLoader';
 import { CalculatorTool } from '@/components/interactive/public/CalculatorTool';
 import { AssessmentTool } from '@/components/interactive/public/AssessmentTool';
 import { GPTChatTool } from '@/components/interactive/public/GPTChatTool';
@@ -28,6 +29,8 @@ interface ContentPageClientProps {
   theme: 'dark' | 'light';
   primaryColor: string;
   logoUrl: string | null;
+  fontFamily?: string | null;
+  fontUrl?: string | null;
   vslUrl: string | null;
   calendlyUrl: string | null;
   isOwner?: boolean;
@@ -47,6 +50,8 @@ export function ContentPageClient({
   theme: initialTheme,
   primaryColor,
   logoUrl,
+  fontFamily,
+  fontUrl,
   vslUrl,
   calendlyUrl,
   isOwner = false,
@@ -146,7 +151,8 @@ export function ContentPageClient({
   }
 
   return (
-    <div style={{ background: bgColor, minHeight: '100vh', paddingBottom: showStickyCta ? '5rem' : undefined, ...themeVars }}>
+    <div style={{ background: bgColor, minHeight: '100vh', paddingBottom: showStickyCta ? '5rem' : undefined, ...themeVars, ...getFontStyle(fontFamily) }}>
+      <FontLoader fontFamily={fontFamily || null} fontUrl={fontUrl || null} />
       <ContentHeader
         logoUrl={logoUrl}
         isDark={isDark}

@@ -61,20 +61,9 @@ async function MagnetsContent() {
     .select('id, lead_magnet_id, is_published, slug');
   funnelsQuery = applyScope(funnelsQuery, scope);
 
-  const viewsQuery = supabase
-    .from('page_views')
-    .select('funnel_page_id')
-    .eq('page_type', 'optin');
-
-  const leadsCountQuery = supabase
-    .from('funnel_leads')
-    .select('funnel_page_id');
-
-  const [leadMagnetsRes, funnelsRes, viewsRes, leadsCountRes] = await Promise.all([
+  const [leadMagnetsRes, funnelsRes] = await Promise.all([
     magnetsQuery,
     funnelsQuery,
-    viewsQuery,
-    leadsCountQuery,
   ]);
 
   const leadMagnets = leadMagnetsRes.data || [];
@@ -86,19 +75,30 @@ async function MagnetsContent() {
     funnelByMagnet.set(f.lead_magnet_id, f);
   }
 
-  const pageViews = viewsRes.data || [];
-  const funnelLeads = leadsCountRes.data || [];
-
-  // Count views per funnel
+  // Fetch views and leads scoped to user's funnels only
+  const funnelIds = funnels.map(f => f.id);
   const viewsByFunnel = new Map<string, number>();
-  for (const v of pageViews) {
-    viewsByFunnel.set(v.funnel_page_id, (viewsByFunnel.get(v.funnel_page_id) || 0) + 1);
-  }
-
-  // Count leads per funnel
   const leadsByFunnel = new Map<string, number>();
-  for (const l of funnelLeads) {
-    leadsByFunnel.set(l.funnel_page_id, (leadsByFunnel.get(l.funnel_page_id) || 0) + 1);
+
+  if (funnelIds.length > 0) {
+    const [viewsRes, leadsCountRes] = await Promise.all([
+      supabase
+        .from('page_views')
+        .select('funnel_page_id')
+        .eq('page_type', 'optin')
+        .in('funnel_page_id', funnelIds),
+      supabase
+        .from('funnel_leads')
+        .select('funnel_page_id')
+        .in('funnel_page_id', funnelIds),
+    ]);
+
+    for (const v of viewsRes.data || []) {
+      viewsByFunnel.set(v.funnel_page_id, (viewsByFunnel.get(v.funnel_page_id) || 0) + 1);
+    }
+    for (const l of leadsCountRes.data || []) {
+      leadsByFunnel.set(l.funnel_page_id, (leadsByFunnel.get(l.funnel_page_id) || 0) + 1);
+    }
   }
 
   return (

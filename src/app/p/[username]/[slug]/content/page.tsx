@@ -108,6 +108,8 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       primary_color,
       background_style,
       logo_url,
+      font_family,
+      font_url,
       vsl_url,
       calendly_url
     `)
@@ -194,6 +196,8 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       theme={(funnel.theme as 'dark' | 'light') || 'dark'}
       primaryColor={funnel.primary_color || '#8b5cf6'}
       logoUrl={funnel.logo_url}
+      fontFamily={funnel.font_family}
+      fontUrl={funnel.font_url}
       vslUrl={funnel.vsl_url}
       calendlyUrl={funnel.calendly_url}
       isOwner={isOwner}
