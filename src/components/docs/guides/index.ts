@@ -10,6 +10,9 @@ import CustomizeFunnel from './customize-funnel';
 import EmailSequences from './email-sequences';
 import Tracking from './tracking';
 import Troubleshooting from './troubleshooting';
+import McpSetup from './mcp-setup';
+import McpTools from './mcp-tools';
+import McpWorkflows from './mcp-workflows';
 
 export interface GuideMetadata {
   title: string;
@@ -104,4 +107,28 @@ guides['troubleshooting'] = {
     description: 'Common issues and how to fix them.',
   },
   component: Troubleshooting,
+};
+
+guides['mcp-setup'] = {
+  metadata: {
+    title: 'Create Pages with Claude',
+    description: 'Set up the MagnetLab MCP server for Claude Code and Claude Desktop.',
+  },
+  component: McpSetup,
+};
+
+guides['mcp-tools'] = {
+  metadata: {
+    title: 'MCP Tool Reference',
+    description: 'All 81 tools available in the MagnetLab MCP server.',
+  },
+  component: McpTools,
+};
+
+guides['mcp-workflows'] = {
+  metadata: {
+    title: 'Example Workflows',
+    description: 'Real examples of what you can build with the MagnetLab MCP server.',
+  },
+  component: McpWorkflows,
 };
