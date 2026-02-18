@@ -54,7 +54,6 @@ export const scrapeLinkedinContent = schedules.task({
     });
 
     let totalPostsSaved = 0;
-    let totalNewPosts = 0;
     let totalWinners = 0;
     const errors: string[] = [];
 
@@ -114,10 +113,9 @@ export const scrapeLinkedinContent = schedules.task({
 
         // Upsert — dupes (same bright_data_id) get updated with latest engagement
         if (postRows.length > 0) {
-          const { data: upsertedRows, error: upsertError } = await supabase
+          const { error: upsertError } = await supabase
             .from('cp_viral_posts')
-            .upsert(postRows, { onConflict: 'bright_data_id', count: 'exact' })
-            .select('id');
+            .upsert(postRows, { onConflict: 'bright_data_id' });
 
           if (upsertError) {
             logger.error('Upsert failed', { creator: creator.name, error: upsertError.message });
