@@ -6,6 +6,10 @@
  *
  * Pattern: POST /trigger -> poll /progress/{snapshotId} -> GET /snapshot/{snapshotId}?format=json
  *
+ * The Profile Posts dataset uses "discover_new" mode with "discover_by=profile_url"
+ * to find posts from a given creator's profile. The response uses Bright Data's
+ * raw field names which we map to our LinkedInPost interface.
+ *
  * Docs: https://docs.brightdata.com/scraping-automation/web-data-apis
  */
 
@@ -17,10 +21,8 @@ const BASE_URL = 'https://api.brightdata.com/datasets/v3';
 
 // Dataset IDs for different types of LinkedIn data
 const DATASET_IDS = {
-  /** Posts by individual from their profile URL */
+  /** Posts discovered from a profile URL (discover_new mode) */
   PROFILE_POSTS: 'gd_lyy3tktm25m4avu764',
-  /** LinkedIn search results (for viral post discovery) */
-  SEARCH_POSTS: 'gd_l7q7dkf244hwjntr0',
 } as const;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -40,6 +42,23 @@ export interface LinkedInPost {
     comments: number;
     shares: number;
   };
+}
+
+/** Raw response from Bright Data profile posts discover endpoint */
+interface BrightDataPost {
+  url: string;
+  user_id: string;
+  use_url: string;
+  title?: string;
+  headline?: string;
+  post_text: string;
+  date_posted: string;
+  num_likes: number;
+  num_comments: number;
+  user_followers?: number;
+  user_title?: string;
+  post_type?: string;
+  discovery_input?: { url: string };
 }
 
 interface TriggerResponse {
@@ -76,13 +95,42 @@ function authHeaders(): Record<string, string> {
 }
 
 /**
+ * Map Bright Data raw post to our LinkedInPost interface.
+ */
+function mapBrightDataPost(raw: BrightDataPost): LinkedInPost {
+  return {
+    url: raw.url,
+    author: {
+      name: raw.user_id || 'Unknown',
+      headline: raw.user_title || raw.headline || '',
+      profile_url: raw.use_url || raw.discovery_input?.url || '',
+      followers: raw.user_followers ?? undefined,
+    },
+    content: raw.post_text || '',
+    posted_date: raw.date_posted || '',
+    engagement: {
+      likes: raw.num_likes || 0,
+      comments: raw.num_comments || 0,
+      shares: 0, // Bright Data doesn't return shares for this dataset
+    },
+  };
+}
+
+/**
  * Trigger a scrape job. Returns the snapshot ID to poll.
  */
 async function triggerScrape(
   datasetId: string,
-  params: Record<string, unknown>[]
+  params: Record<string, unknown>[],
+  extraQuery?: Record<string, string>
 ): Promise<string> {
-  const url = `${BASE_URL}/trigger?dataset_id=${datasetId}&format=json&uncompressed_webhook=true`;
+  const qp = new URLSearchParams({
+    dataset_id: datasetId,
+    format: 'json',
+    uncompressed_webhook: 'true',
+    ...extraQuery,
+  });
+  const url = `${BASE_URL}/trigger?${qp.toString()}`;
 
   logInfo(LOG_CTX, 'Triggering scrape', { datasetId, inputCount: params.length });
 
@@ -126,7 +174,7 @@ async function getProgress(snapshotId: string): Promise<ProgressResponse> {
 }
 
 /**
- * Fetch completed results for a snapshot.
+ * Fetch completed results for a snapshot and map to LinkedInPost.
  */
 async function getResults(snapshotId: string): Promise<LinkedInPost[]> {
   const url = `${BASE_URL}/snapshot/${snapshotId}?format=json`;
@@ -141,7 +189,9 @@ async function getResults(snapshotId: string): Promise<LinkedInPost[]> {
     throw new Error(`Bright Data results fetch failed (HTTP ${response.status}): ${errorText}`);
   }
 
-  return (await response.json()) as LinkedInPost[];
+  const raw = (await response.json()) as BrightDataPost[];
+  logInfo(LOG_CTX, 'Raw results fetched', { count: raw.length, snapshotId });
+  return raw.map(mapBrightDataPost);
 }
 
 /**
@@ -199,41 +249,32 @@ export function isBrightDataConfigured(): boolean {
 /**
  * Scrape one creator's recent posts from their LinkedIn profile.
  *
- * Triggers an async Bright Data job, polls until ready, returns posts.
+ * Uses Bright Data's "discover_new" mode to find posts from a profile URL.
+ * Note: date filtering is not supported in discover mode — returns ~10 most recent posts.
  *
  * @param profileUrl - LinkedIn profile URL (e.g. https://linkedin.com/in/username)
- * @param daysBack - How many days of posts to fetch (default 7)
  */
 export async function scrapeCreatorPosts(
-  profileUrl: string,
-  daysBack: number = 7
+  profileUrl: string
 ): Promise<LinkedInPost[]> {
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - daysBack);
-
-  const params = [
-    {
-      url: profileUrl,
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString(),
-    },
-  ];
+  const params = [{ url: profileUrl }];
 
   try {
-    const snapshotId = await triggerScrape(DATASET_IDS.PROFILE_POSTS, params);
+    const snapshotId = await triggerScrape(DATASET_IDS.PROFILE_POSTS, params, {
+      type: 'discover_new',
+      discover_by: 'profile_url',
+    });
     await pollUntilReady(snapshotId);
     const posts = await getResults(snapshotId);
 
     logInfo(LOG_CTX, 'Creator posts scraped', {
       profileUrl,
-      daysBack,
       postCount: posts.length,
     });
 
     return posts;
   } catch (error) {
-    logError(LOG_CTX, error, { profileUrl, daysBack });
+    logError(LOG_CTX, error, { profileUrl });
     throw error;
   }
 }
@@ -241,37 +282,32 @@ export async function scrapeCreatorPosts(
 /**
  * Batch scrape multiple creators' posts in a single Bright Data job.
  *
+ * Uses Bright Data's "discover_new" mode. Returns ~10 posts per profile.
+ * With 479 profiles, expect the job to take several minutes.
+ *
  * @param profileUrls - Array of LinkedIn profile URLs
- * @param daysBack - How many days of posts to fetch (default 7)
  */
 export async function scrapeCreatorPostsBatch(
-  profileUrls: string[],
-  daysBack: number = 7
+  profileUrls: string[]
 ): Promise<LinkedInPost[]> {
   if (profileUrls.length === 0) {
     logWarn(LOG_CTX, 'scrapeCreatorPostsBatch called with empty URL array');
     return [];
   }
 
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - daysBack);
-
-  const params = profileUrls.map((url) => ({
-    url,
-    start_date: startDate.toISOString(),
-    end_date: endDate.toISOString(),
-  }));
+  const params = profileUrls.map((url) => ({ url }));
 
   try {
-    const snapshotId = await triggerScrape(DATASET_IDS.PROFILE_POSTS, params);
-    // Batch jobs get a longer timeout (5 minutes)
-    await pollUntilReady(snapshotId, 300_000, 10_000);
+    const snapshotId = await triggerScrape(DATASET_IDS.PROFILE_POSTS, params, {
+      type: 'discover_new',
+      discover_by: 'profile_url',
+    });
+    // Batch jobs with many profiles get a longer timeout (10 minutes)
+    await pollUntilReady(snapshotId, 600_000, 15_000);
     const posts = await getResults(snapshotId);
 
     logInfo(LOG_CTX, 'Batch posts scraped', {
       creatorCount: profileUrls.length,
-      daysBack,
       postCount: posts.length,
     });
 
@@ -279,39 +315,7 @@ export async function scrapeCreatorPostsBatch(
   } catch (error) {
     logError(LOG_CTX, error, {
       creatorCount: profileUrls.length,
-      daysBack,
     });
-    throw error;
-  }
-}
-
-/**
- * Scrape LinkedIn search results (for viral post discovery).
- *
- * @param searchUrl - Full LinkedIn search URL
- */
-export async function scrapeSearchPosts(
-  searchUrl: string
-): Promise<LinkedInPost[]> {
-  const params = [
-    {
-      url: searchUrl,
-    },
-  ];
-
-  try {
-    const snapshotId = await triggerScrape(DATASET_IDS.SEARCH_POSTS, params);
-    await pollUntilReady(snapshotId);
-    const posts = await getResults(snapshotId);
-
-    logInfo(LOG_CTX, 'Search posts scraped', {
-      searchUrl,
-      postCount: posts.length,
-    });
-
-    return posts;
-  } catch (error) {
-    logError(LOG_CTX, error, { searchUrl });
     throw error;
   }
 }

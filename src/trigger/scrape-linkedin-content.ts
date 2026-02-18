@@ -3,11 +3,17 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import {
   isBrightDataConfigured,
   scrapeCreatorPostsBatch,
-  scrapeSearchPosts,
   computeEngagementScore,
   filterWinners,
   type LinkedInPost,
 } from '@/lib/integrations/bright-data-linkedin';
+
+/**
+ * How many creators to scrape per daily run.
+ * With ~480 creators and 70/day, each creator gets scraped roughly weekly.
+ * Bright Data charges per record, so this keeps costs predictable.
+ */
+const DAILY_BATCH_SIZE = 70;
 
 export const scrapeLinkedinContent = schedules.task({
   id: 'scrape-linkedin-content',
@@ -24,86 +30,72 @@ export const scrapeLinkedinContent = schedules.task({
 
     const supabase = createSupabaseAdminClient();
 
-    // ─── 1. Fetch active creators ──────────────────────────────────────────────
+    // ─── 1. Pick creators to scrape (oldest-scraped first) ───────────────────
     const { data: creators, error: creatorsError } = await supabase
       .from('cp_tracked_creators')
       .select('id, linkedin_url, name')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .order('last_scraped_at', { ascending: true, nullsFirst: true })
+      .limit(DAILY_BATCH_SIZE);
 
     if (creatorsError) {
       logger.error('Failed to fetch tracked creators', { error: creatorsError.message });
       throw new Error(`Failed to fetch creators: ${creatorsError.message}`);
     }
 
-    // ─── 2. Fetch active searches ──────────────────────────────────────────────
-    const { data: searches, error: searchesError } = await supabase
-      .from('cp_scrape_searches')
-      .select('id, query, label')
-      .eq('is_active', true);
-
-    if (searchesError) {
-      logger.error('Failed to fetch scrape searches', { error: searchesError.message });
-      throw new Error(`Failed to fetch searches: ${searchesError.message}`);
+    if (!creators || creators.length === 0) {
+      logger.info('No active creators to scrape');
+      return { skipped: true, reason: 'No active creators' };
     }
 
-    logger.info('Scrape targets loaded', {
-      creators: creators?.length ?? 0,
-      searches: searches?.length ?? 0,
+    logger.info('Scrape batch selected', {
+      batchSize: creators.length,
+      dailyLimit: DAILY_BATCH_SIZE,
     });
 
     let totalPostsSaved = 0;
+    let totalNewPosts = 0;
     let totalWinners = 0;
     const errors: string[] = [];
 
-    // ─── 3. Batch scrape creator posts ─────────────────────────────────────────
+    // ─── 2. Batch scrape creator posts via Bright Data ───────────────────────
     let allCreatorPosts: LinkedInPost[] = [];
+    const profileUrls = creators.map((c) => c.linkedin_url);
 
-    if (creators && creators.length > 0) {
-      const profileUrls = creators.map((c) => c.linkedin_url);
-
-      try {
-        allCreatorPosts = await scrapeCreatorPostsBatch(profileUrls, 7);
-        logger.info('Creator batch scrape complete', { postCount: allCreatorPosts.length });
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        logger.error('Creator batch scrape failed', { error: msg });
-        errors.push(`Creator batch scrape: ${msg}`);
-      }
+    try {
+      allCreatorPosts = await scrapeCreatorPostsBatch(profileUrls);
+      logger.info('Batch scrape complete', { postCount: allCreatorPosts.length });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error('Batch scrape failed', { error: msg });
+      errors.push(`Batch scrape: ${msg}`);
     }
 
-    // ─── 4. Group creator posts by profile URL and filter winners ──────────────
-    if (allCreatorPosts.length > 0 && creators) {
-      // Build a lookup: normalized profile URL -> creator record
-      const creatorByUrl = new Map<string, { id: string; linkedin_url: string; name: string }>();
+    // ─── 3. Group posts by creator and upsert ────────────────────────────────
+    if (allCreatorPosts.length > 0) {
+      const creatorByUrl = new Map<string, (typeof creators)[0]>();
       for (const creator of creators) {
         creatorByUrl.set(normalizeUrl(creator.linkedin_url), creator);
       }
 
-      // Group posts by creator
       const postsByCreator = new Map<string, LinkedInPost[]>();
       for (const post of allCreatorPosts) {
-        const normalizedAuthorUrl = normalizeUrl(post.author.profile_url);
-        const existing = postsByCreator.get(normalizedAuthorUrl) || [];
-        existing.push(post);
-        postsByCreator.set(normalizedAuthorUrl, existing);
+        const key = normalizeUrl(post.author.profile_url);
+        const arr = postsByCreator.get(key) || [];
+        arr.push(post);
+        postsByCreator.set(key, arr);
       }
 
-      // Process each creator's posts
       for (const [normalizedUrl, posts] of postsByCreator) {
         const creator = creatorByUrl.get(normalizedUrl);
         if (!creator) {
-          logger.warn('Could not match posts to creator', {
-            authorUrl: normalizedUrl,
-            postCount: posts.length,
-          });
+          logger.warn('Unmatched posts', { authorUrl: normalizedUrl, count: posts.length });
           continue;
         }
 
-        // Filter winners: absoluteFloor 100 likes, top 30%
         const winners = filterWinners(posts, { minLikes: 100, topPercentile: 30 });
         const winnerUrls = new Set(winners.map((w) => w.url));
 
-        // Save all posts (winners and non-winners) to cp_viral_posts
         const postRows = posts.map((post) => ({
           bright_data_id: post.url,
           user_id: null,
@@ -120,17 +112,16 @@ export const scrapeLinkedinContent = schedules.task({
           is_winner: winnerUrls.has(post.url),
         }));
 
+        // Upsert — dupes (same bright_data_id) get updated with latest engagement
         if (postRows.length > 0) {
-          const { error: upsertError } = await supabase
+          const { data: upsertedRows, error: upsertError } = await supabase
             .from('cp_viral_posts')
-            .upsert(postRows, { onConflict: 'bright_data_id' });
+            .upsert(postRows, { onConflict: 'bright_data_id', count: 'exact' })
+            .select('id');
 
           if (upsertError) {
-            logger.error('Failed to upsert creator posts', {
-              creatorId: creator.id,
-              error: upsertError.message,
-            });
-            errors.push(`Upsert creator ${creator.name}: ${upsertError.message}`);
+            logger.error('Upsert failed', { creator: creator.name, error: upsertError.message });
+            errors.push(`Upsert ${creator.name}: ${upsertError.message}`);
           } else {
             totalPostsSaved += postRows.length;
             totalWinners += winners.length;
@@ -139,11 +130,9 @@ export const scrapeLinkedinContent = schedules.task({
 
         // Update creator stats
         const avgEngagement =
-          posts.length > 0
-            ? posts.reduce((sum, p) => sum + computeEngagementScore(p), 0) / posts.length
-            : 0;
+          posts.reduce((sum, p) => sum + computeEngagementScore(p), 0) / posts.length;
 
-        const { error: updateError } = await supabase
+        await supabase
           .from('cp_tracked_creators')
           .update({
             last_scraped_at: new Date().toISOString(),
@@ -151,131 +140,45 @@ export const scrapeLinkedinContent = schedules.task({
             post_count: posts.length,
           })
           .eq('id', creator.id);
-
-        if (updateError) {
-          logger.warn('Failed to update creator stats', {
-            creatorId: creator.id,
-            error: updateError.message,
-          });
-        }
-
-        logger.info('Creator processed', {
-          creatorName: creator.name,
-          totalPosts: posts.length,
-          winners: winners.length,
-          avgEngagement: Math.round(avgEngagement),
-        });
       }
     }
 
-    // ─── 5. Scrape search results ──────────────────────────────────────────────
-    if (searches && searches.length > 0) {
-      for (const search of searches) {
-        try {
-          const searchPosts = await scrapeSearchPosts(search.query);
-          logger.info('Search scrape complete', {
-            searchId: search.id,
-            label: search.label,
-            postCount: searchPosts.length,
-          });
-
-          if (searchPosts.length === 0) continue;
-
-          // Filter winners: absoluteFloor 200 likes, top 30%
-          const winners = filterWinners(searchPosts, { minLikes: 200, topPercentile: 30 });
-          const winnerUrls = new Set(winners.map((w) => w.url));
-
-          // Save all posts
-          const postRows = searchPosts.map((post) => ({
-            bright_data_id: post.url,
-            user_id: null,
-            author_name: post.author.name,
-            author_headline: post.author.headline,
-            author_url: post.author.profile_url,
-            content: post.content,
-            likes: post.engagement.likes,
-            comments: post.engagement.comments,
-            shares: post.engagement.shares,
-            engagement_score: computeEngagementScore(post),
-            creator_id: null,
-            source_search_id: search.id,
-            is_winner: winnerUrls.has(post.url),
-          }));
-
-          const { error: upsertError } = await supabase
-            .from('cp_viral_posts')
-            .upsert(postRows, { onConflict: 'bright_data_id' });
-
-          if (upsertError) {
-            logger.error('Failed to upsert search posts', {
-              searchId: search.id,
-              error: upsertError.message,
-            });
-            errors.push(`Upsert search ${search.label}: ${upsertError.message}`);
-          } else {
-            totalPostsSaved += postRows.length;
-            totalWinners += winners.length;
-          }
-        } catch (error) {
-          const msg = error instanceof Error ? error.message : String(error);
-          logger.error('Search scrape failed', {
-            searchId: search.id,
-            label: search.label,
-            error: msg,
-          });
-          errors.push(`Search ${search.label}: ${msg}`);
-        }
-      }
-    }
-
-    // ─── 6. Log the scrape run ─────────────────────────────────────────────────
-    const { error: logError } = await supabase.from('cp_pipeline_scrape_runs').insert({
+    // ─── 4. Log the scrape run ───────────────────────────────────────────────
+    await supabase.from('cp_pipeline_scrape_runs').insert({
+      run_type: 'creator',
       started_at: runStartedAt,
       completed_at: new Date().toISOString(),
-      creators_scraped: creators?.length ?? 0,
-      searches_scraped: searches?.length ?? 0,
       posts_found: totalPostsSaved,
       winners_found: totalWinners,
-      errors: errors.length > 0 ? errors : null,
+      error_log: errors.length > 0 ? errors.join('; ') : null,
     });
 
-    if (logError) {
-      logger.warn('Failed to log scrape run', { error: logError.message });
-    }
-
-    // ─── 7. Trigger template extraction if winners found ───────────────────────
+    // ─── 5. Trigger template extraction if new winners found ─────────────────
     if (totalWinners > 0) {
       try {
         await tasks.trigger('extract-winning-templates', {});
         logger.info('Triggered extract-winning-templates', { winnersCount: totalWinners });
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        logger.warn('Failed to trigger extract-winning-templates (task may not exist yet)', {
-          error: msg,
-        });
+        logger.warn('extract-winning-templates trigger failed', { error: msg });
       }
     }
 
     const summary = {
-      creatorsScraped: creators?.length ?? 0,
-      searchesScraped: searches?.length ?? 0,
+      creatorsScraped: creators.length,
       totalPostsSaved,
       totalWinners,
       errors: errors.length,
+      errorMessages: errors.slice(0, 5),
     };
 
     logger.info('Scrape run complete', summary);
-
     return summary;
   },
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/**
- * Normalize a LinkedIn profile URL for matching.
- * Strips trailing slashes and lowercases.
- */
 function normalizeUrl(url: string): string {
   return url.toLowerCase().replace(/\/+$/, '');
 }

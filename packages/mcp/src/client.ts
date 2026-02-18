@@ -15,7 +15,7 @@ import type {
   ExtractContentType,
 } from './constants.js'
 
-const DEFAULT_BASE_URL = 'https://magnetlab.ai/api'
+const DEFAULT_BASE_URL = 'https://magnetlab.app/api'
 
 export interface MagnetLabClientOptions {
   baseUrl?: string

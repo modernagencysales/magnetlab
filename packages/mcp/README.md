@@ -1,6 +1,6 @@
 # @magnetlab/mcp
 
-MCP server for [MagnetLab](https://magnetlab.ai) -- control your lead magnets, funnels, content pipeline, and analytics from Claude Code or Claude Desktop.
+MCP server for [MagnetLab](https://magnetlab.app) -- control your lead magnets, funnels, content pipeline, and analytics from Claude Code or Claude Desktop.
 
 ## Quick Setup
 
@@ -42,7 +42,7 @@ Add to your `claude_desktop_config.json`:
 
 ## Getting Your API Key
 
-1. Log in to [MagnetLab](https://magnetlab.ai)
+1. Log in to [MagnetLab](https://magnetlab.app)
 2. Go to **Settings > API Keys**
 3. Click **Create API Key**
 4. Copy the key (starts with `ml_live_`)
@@ -69,7 +69,7 @@ Add to your `claude_desktop_config.json`:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `MAGNETLAB_API_KEY` | Yes | Your MagnetLab API key (starts with `ml_live_`) |
-| `MAGNETLAB_BASE_URL` | No | Override the API base URL (default: `https://magnetlab.ai`) |
+| `MAGNETLAB_BASE_URL` | No | Override the API base URL (default: `https://magnetlab.app`) |
 
 ## CLI Usage
 
