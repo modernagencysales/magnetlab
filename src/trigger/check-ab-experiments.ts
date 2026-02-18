@@ -260,6 +260,12 @@ export const checkAbExperiments = schedules.task({
           });
         }
 
+        // Clear control's experiment_id
+        await supabase
+          .from('funnel_pages')
+          .update({ experiment_id: null })
+          .eq('id', controlId);
+
         completed++;
       } catch (err) {
         logger.error('Error processing experiment', {

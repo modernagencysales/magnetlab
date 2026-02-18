@@ -73,6 +73,7 @@ export async function GET(
             .from('funnel_leads')
             .select('funnel_page_id')
             .in('funnel_page_id', variantIds)
+            .not('qualification_answers', 'is', null)
         : Promise.resolve({ data: [] as { funnel_page_id: string }[], error: null }),
     ]);
 
@@ -112,7 +113,7 @@ export async function GET(
         label: v.is_variant ? (v.variant_label || 'Variant B') : 'Control',
         views,
         completions,
-        completionRate: views > 0 ? Math.round((completions / views) * 1000) / 10 : 0,
+        completionRate: views > 0 ? Math.round((completions / views) * 10000) / 100 : 0,
         headline: v.thankyou_headline,
         subline: v.thankyou_subline,
         vslUrl: v.vsl_url,

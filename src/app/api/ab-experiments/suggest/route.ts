@@ -87,7 +87,7 @@ export async function POST(request: Request) {
         leadMagnetContext = [
           leadMagnet.title ? `Lead Magnet Title: ${leadMagnet.title}` : '',
           leadMagnet.archetype ? `Archetype: ${leadMagnet.archetype}` : '',
-          leadMagnet.concept ? `Concept: ${leadMagnet.concept}` : '',
+          leadMagnet.concept ? `Concept: ${JSON.stringify(leadMagnet.concept)}` : '',
         ].filter(Boolean).join('\n');
       }
     }

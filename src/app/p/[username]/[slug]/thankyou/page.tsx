@@ -26,13 +26,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: 'Page Not Found' };
   }
 
-  // Find funnel page
+  // Find funnel page (exclude variants)
   const { data: funnel } = await supabase
     .from('funnel_pages')
     .select('thankyou_headline')
     .eq('user_id', user.id)
     .eq('slug', slug)
     .eq('is_published', true)
+    .eq('is_variant', false)
     .single();
 
   if (!funnel) {

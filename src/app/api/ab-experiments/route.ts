@@ -97,17 +97,19 @@ export async function POST(request: Request) {
     const supabase = createSupabaseAdminClient();
 
     // Verify ownership: must be a non-variant funnel page owned by this user
-    const { data: control, error: controlError } = await supabase
+    const { data: controlRow, error: controlError } = await supabase
       .from('funnel_pages')
-      .select('*')
+      .select('id, slug, lead_magnet_id, user_id, team_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, font_family, font_url, target_type, library_id, external_resource_id')
       .eq('id', funnelPageId)
       .eq('user_id', session.user.id)
       .eq('is_variant', false)
       .single();
 
-    if (controlError || !control) {
+    if (controlError || !controlRow) {
       return ApiErrors.notFound('Funnel page');
     }
+
+    const control = controlRow as Record<string, unknown>;
 
     // Check for existing draft or running experiment on this funnel page
     const { data: existing } = await supabase
