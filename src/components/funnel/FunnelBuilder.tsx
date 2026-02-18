@@ -13,6 +13,7 @@ import { SectionsManager } from './SectionsManager';
 import { FunnelPreview } from './FunnelPreview';
 import { PublishControls } from './PublishControls';
 import { LeadDeliveryInfo } from './LeadDeliveryInfo';
+import { ABTestPanel } from './ABTestPanel';
 import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle } from '@/lib/types/funnel';
 import type { LeadMagnet, PolishedContent } from '@/lib/types/lead-magnet';
 import type { Library } from '@/lib/types/library';
@@ -290,20 +291,23 @@ export function FunnelBuilder({
           )}
 
           {activeTab === 'thankyou' && (
-            <ThankyouPageEditor
-              headline={thankyouHeadline}
-              setHeadline={setThankyouHeadline}
-              subline={thankyouSubline}
-              setSubline={setThankyouSubline}
-              vslUrl={vslUrl}
-              setVslUrl={setVslUrl}
-              calendlyUrl={calendlyUrl}
-              setCalendlyUrl={setCalendlyUrl}
-              passMessage={qualificationPassMessage}
-              setPassMessage={setQualificationPassMessage}
-              failMessage={qualificationFailMessage}
-              setFailMessage={setQualificationFailMessage}
-            />
+            <div className="space-y-6">
+              <ThankyouPageEditor
+                headline={thankyouHeadline}
+                setHeadline={setThankyouHeadline}
+                subline={thankyouSubline}
+                setSubline={setThankyouSubline}
+                vslUrl={vslUrl}
+                setVslUrl={setVslUrl}
+                calendlyUrl={calendlyUrl}
+                setCalendlyUrl={setCalendlyUrl}
+                passMessage={qualificationPassMessage}
+                setPassMessage={setQualificationPassMessage}
+                failMessage={qualificationFailMessage}
+                setFailMessage={setQualificationFailMessage}
+              />
+              {funnel && <ABTestPanel funnelPageId={funnel.id} />}
+            </div>
           )}
 
           {activeTab === 'questions' && (
