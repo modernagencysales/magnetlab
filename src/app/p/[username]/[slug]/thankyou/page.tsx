@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createHash } from 'crypto';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getWhitelabelConfig } from '@/lib/utils/whitelabel';
 import { ThankyouPage } from '@/components/funnel/public';
 import { funnelPageSectionFromRow, type FunnelPageSectionRow } from '@/lib/types/funnel';
 import type { Metadata } from 'next';
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Find funnel page (exclude variants)
   const { data: funnel } = await supabase
     .from('funnel_pages')
-    .select('thankyou_headline')
+    .select('thankyou_headline, team_id')
     .eq('user_id', user.id)
     .eq('slug', slug)
     .eq('is_published', true)
@@ -40,9 +41,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: 'Page Not Found' };
   }
 
+  const whitelabel = await getWhitelabelConfig(funnel.team_id);
+  const siteName = whitelabel?.customSiteName || 'MagnetLab';
+
   return {
-    title: funnel.thankyou_headline,
+    title: `${funnel.thankyou_headline} | ${siteName}`,
     robots: { index: false, follow: false },
+    ...(whitelabel?.customFaviconUrl ? { icons: { icon: whitelabel.customFaviconUrl } } : {}),
   };
 }
 
@@ -82,7 +87,8 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       logo_url,
       qualification_form_id,
       font_family,
-      font_url
+      font_url,
+      team_id
     `)
     .eq('user_id', user.id)
     .eq('slug', slug)
@@ -92,6 +98,8 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
   if (funnelError || !funnel || !funnel.is_published) {
     notFound();
   }
+
+  const whitelabel = await getWhitelabelConfig(funnel.team_id);
 
   // A/B experiment bucketing
   let activeFunnel = funnel;
@@ -227,6 +235,7 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       funnelPageId={activeFunnel.id}
       fontFamily={funnel.font_family}
       fontUrl={funnel.font_url}
+      hideBranding={whitelabel?.hideBranding || false}
     />
   );
 }

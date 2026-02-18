@@ -44,6 +44,7 @@ interface ThankyouPageProps {
   funnelPageId?: string;
   fontFamily?: string | null;
   fontUrl?: string | null;
+  hideBranding?: boolean;
 }
 
 export function ThankyouPage({

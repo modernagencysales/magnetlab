@@ -27,6 +27,7 @@ interface OptinPageProps {
   leadMagnetTitle?: string | null;
   fontFamily?: string | null;
   fontUrl?: string | null;
+  hideBranding?: boolean;
 }
 
 export function OptinPage({

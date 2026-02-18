@@ -41,6 +41,7 @@ interface ContentPageClientProps {
   hasQuestions?: boolean;
   interactiveConfig?: InteractiveConfig | null;
   sections?: FunnelPageSection[];
+  hideBranding?: boolean;
 }
 
 export function ContentPageClient({
