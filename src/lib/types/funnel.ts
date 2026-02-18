@@ -7,6 +7,7 @@
 export type FunnelTheme = 'dark' | 'light' | 'custom';
 export type BackgroundStyle = 'solid' | 'gradient' | 'pattern';
 export type FunnelTargetType = 'lead_magnet' | 'library' | 'external_resource';
+export type RedirectTrigger = 'none' | 'immediate' | 'after_qualification';
 
 export interface FunnelPage {
   id: string;
@@ -32,6 +33,11 @@ export interface FunnelPage {
   calendlyUrl: string | null;
   qualificationPassMessage: string;
   qualificationFailMessage: string;
+
+  // Redirect configuration
+  redirectTrigger: RedirectTrigger;
+  redirectUrl: string | null;
+  redirectFailUrl: string | null;
 
   // Theme configuration
   theme: FunnelTheme;
@@ -222,6 +228,9 @@ export interface UpdateFunnelPagePayload {
   calendlyUrl?: string | null;
   qualificationPassMessage?: string;
   qualificationFailMessage?: string;
+  redirectTrigger?: RedirectTrigger;
+  redirectUrl?: string | null;
+  redirectFailUrl?: string | null;
   theme?: FunnelTheme;
   primaryColor?: string;
   backgroundStyle?: BackgroundStyle;
@@ -371,6 +380,9 @@ export interface FunnelPageRow {
   calendly_url: string | null;
   qualification_pass_message: string;
   qualification_fail_message: string;
+  redirect_trigger: string;
+  redirect_url: string | null;
+  redirect_fail_url: string | null;
   theme: string;
   primary_color: string;
   background_style: string;
@@ -445,6 +457,9 @@ export function funnelPageFromRow(row: FunnelPageRow): FunnelPage {
     calendlyUrl: row.calendly_url,
     qualificationPassMessage: row.qualification_pass_message,
     qualificationFailMessage: row.qualification_fail_message,
+    redirectTrigger: (row.redirect_trigger || 'none') as RedirectTrigger,
+    redirectUrl: row.redirect_url || null,
+    redirectFailUrl: row.redirect_fail_url || null,
     qualificationFormId: row.qualification_form_id || null,
     theme: (row.theme || 'dark') as FunnelTheme,
     primaryColor: row.primary_color || '#8b5cf6',

@@ -219,6 +219,9 @@ export const updateFunnelSchema = z.object({
   backgroundStyle: z.enum(['solid', 'gradient', 'pattern']).optional(),
   logoUrl: z.string().url().max(2000).nullable().optional(),
   qualificationFormId: z.string().uuid().nullable().optional(),
+  redirectTrigger: z.enum(['none', 'immediate', 'after_qualification']).optional(),
+  redirectUrl: z.string().url().max(2000).nullable().optional(),
+  redirectFailUrl: z.string().url().max(2000).nullable().optional(),
 });
 
 export type UpdateFunnelInput = z.infer<typeof updateFunnelSchema>;
