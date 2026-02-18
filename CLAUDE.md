@@ -238,6 +238,33 @@ Self-serve A/B testing for thank-you pages to maximize survey completion rate. T
 - One experiment per funnel at a time (create API enforces this)
 - Experiment paused/completed/draft → serve control (or winner if completed)
 
+## External Thank-You Page Redirect
+
+Funnel owners can redirect leads to an external URL instead of showing the built-in thank-you page.
+
+### Configuration
+
+Three modes via `redirect_trigger` column on `funnel_pages`:
+- `none` (default): Built-in thank-you page
+- `immediate`: Skip thank-you page, redirect right after opt-in
+- `after_qualification`: Show survey first, then redirect based on result
+
+### Data Model
+
+- `redirect_trigger` TEXT NOT NULL DEFAULT 'none' — mode selector
+- `redirect_url` TEXT — primary redirect URL (or qualified-lead URL)
+- `redirect_fail_url` TEXT — unqualified-lead redirect URL (after_qualification only)
+
+Both URLs get `?leadId=xxx&email=yyy` appended automatically.
+
+### Key Files
+
+- `src/components/funnel/ThankyouPageEditor.tsx` — redirect config UI (dropdown + URL inputs)
+- `src/components/funnel/public/OptinPage.tsx` — immediate redirect logic
+- `src/components/funnel/public/ThankyouPage.tsx` — post-qualification redirect effect
+- `src/app/p/[username]/[slug]/page.tsx` — passes redirect config to OptinPage
+- `src/app/p/[username]/[slug]/thankyou/page.tsx` — passes redirect config + lead email to ThankyouPage
+
 ## Custom Domains & White-Label
 
 Team-level custom domain and white-label support. One domain per team via CNAME → Vercel. Pro+ plan only.
