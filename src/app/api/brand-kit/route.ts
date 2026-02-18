@@ -32,13 +32,12 @@ export async function GET() {
     }
 
     // Return both brand kit and saved ideation
-    const response = NextResponse.json({
+    // No browser caching — team context changes the response for the same URL
+    return NextResponse.json({
       brandKit: data || null,
       savedIdeation: data?.saved_ideation_result || null,
       ideationGeneratedAt: data?.ideation_generated_at || null,
     });
-    response.headers.set('Cache-Control', 'private, max-age=120, stale-while-revalidate=240');
-    return response;
   } catch (error) {
     logApiError('brand-kit/get', error);
     return ApiErrors.internalError('Failed to fetch brand kit');

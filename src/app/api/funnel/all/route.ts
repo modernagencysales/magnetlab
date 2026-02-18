@@ -28,6 +28,9 @@ export async function GET() {
           lead_magnet_id,
           library_id,
           external_resource_id,
+          users (
+            username
+          ),
           lead_magnets (
             title
           ),
