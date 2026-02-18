@@ -58,7 +58,8 @@ async function MagnetsContent() {
 
   let funnelsQuery = supabase
     .from('funnel_pages')
-    .select('id, lead_magnet_id, is_published, slug');
+    .select('id, lead_magnet_id, is_published, slug')
+    .eq('is_variant', false);
   funnelsQuery = applyScope(funnelsQuery, scope);
 
   const [leadMagnetsRes, funnelsRes] = await Promise.all([

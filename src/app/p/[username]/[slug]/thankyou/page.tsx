@@ -1,4 +1,6 @@
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
+import { createHash } from 'crypto';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ThankyouPage } from '@/components/funnel/public';
 import { funnelPageSectionFromRow, type FunnelPageSectionRow } from '@/lib/types/funnel';
@@ -59,7 +61,7 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
     notFound();
   }
 
-  // Find published funnel page
+  // Find published funnel page (control only — variants have is_variant=true)
   const { data: funnel, error: funnelError } = await supabase
     .from('funnel_pages')
     .select(`
@@ -72,6 +74,7 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       qualification_pass_message,
       qualification_fail_message,
       is_published,
+      is_variant,
       theme,
       primary_color,
       background_style,
@@ -82,10 +85,52 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
     `)
     .eq('user_id', user.id)
     .eq('slug', slug)
+    .eq('is_variant', false)
     .single();
 
   if (funnelError || !funnel || !funnel.is_published) {
     notFound();
+  }
+
+  // A/B experiment bucketing
+  let activeFunnel = funnel;
+  const { data: activeExperiment } = await supabase
+    .from('ab_experiments')
+    .select('id, test_field')
+    .eq('funnel_page_id', funnel.id)
+    .eq('status', 'running')
+    .limit(1)
+    .maybeSingle();
+
+  if (activeExperiment) {
+    // Get all variants including control
+    const { data: variants } = await supabase
+      .from('funnel_pages')
+      .select('id, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message, is_variant, qualification_form_id')
+      .or(`id.eq.${funnel.id},experiment_id.eq.${activeExperiment.id}`)
+      .eq('is_published', true);
+
+    if (variants && variants.length > 1) {
+      // Deterministic bucketing: hash(IP + UA + experiment_id)
+      const headersList = await headers();
+      const forwarded = headersList.get('x-forwarded-for');
+      const ip = forwarded?.split(',')[0]?.trim() || 'unknown';
+      const ua = headersList.get('user-agent') || 'unknown';
+      const hash = createHash('sha256').update(`${ip}${ua}${activeExperiment.id}`).digest();
+      const bucketIndex = hash.readUInt32BE(0) % variants.length;
+      const selected = variants[bucketIndex];
+
+      // Override the thank-you fields with the selected variant
+      activeFunnel = {
+        ...funnel,
+        id: selected.id,
+        thankyou_headline: selected.thankyou_headline,
+        thankyou_subline: selected.thankyou_subline,
+        vsl_url: selected.vsl_url,
+        qualification_pass_message: selected.qualification_pass_message,
+        qualification_form_id: selected.qualification_form_id,
+      };
+    }
   }
 
   // Get lead magnet info for content page link
@@ -98,25 +143,25 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
   const hasContent = !!(leadMagnet?.polished_content || leadMagnet?.extracted_content);
   const contentPageUrl = hasContent ? `/p/${username}/${slug}/content` : null;
 
-  // Get qualification/survey questions (form-aware)
+  // Get qualification/survey questions (form-aware, uses activeFunnel for variant support)
   let questions;
-  if (funnel.qualification_form_id) {
+  if (activeFunnel.qualification_form_id) {
     const { data } = await supabase
       .from('qualification_questions')
       .select('id, question_text, question_order, answer_type, options, placeholder, is_required')
-      .eq('form_id', funnel.qualification_form_id)
+      .eq('form_id', activeFunnel.qualification_form_id)
       .order('question_order', { ascending: true });
     questions = data;
   } else {
     const { data } = await supabase
       .from('qualification_questions')
       .select('id, question_text, question_order, answer_type, options, placeholder, is_required')
-      .eq('funnel_page_id', funnel.id)
+      .eq('funnel_page_id', activeFunnel.id)
       .order('question_order', { ascending: true });
     questions = data;
   }
 
-  // Fetch page sections for thankyou
+  // Fetch page sections for thankyou (uses control funnel — variants share sections)
   const { data: sectionRows } = await supabase
     .from('funnel_page_sections')
     .select('id, funnel_page_id, section_type, page_location, sort_order, is_visible, config, created_at, updated_at')
@@ -155,11 +200,11 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
   return (
     <ThankyouPage
       leadId={leadId || null}
-      headline={funnel.thankyou_headline}
-      subline={funnel.thankyou_subline}
-      vslUrl={funnel.vsl_url}
+      headline={activeFunnel.thankyou_headline}
+      subline={activeFunnel.thankyou_subline}
+      vslUrl={activeFunnel.vsl_url}
       calendlyUrl={funnel.calendly_url}
-      passMessage={funnel.qualification_pass_message}
+      passMessage={activeFunnel.qualification_pass_message}
       failMessage={funnel.qualification_fail_message}
       questions={(questions || []).map((q) => ({
         id: q.id,
@@ -178,7 +223,7 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       leadMagnetTitle={leadMagnet?.title || null}
       sections={sections}
       pixelConfig={pixelConfig}
-      funnelPageId={funnel.id}
+      funnelPageId={activeFunnel.id}
       fontFamily={funnel.font_family}
       fontUrl={funnel.font_url}
     />
