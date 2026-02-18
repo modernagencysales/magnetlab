@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import {
   Magnet,
   Users,
@@ -41,6 +42,7 @@ interface DashboardStats {
 
 async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
   const supabase = createSupabaseAdminClient();
+  const scope = await getDataScope(userId);
 
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -48,14 +50,12 @@ async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
 
   const [leadMagnetsRes, leadsRes, transcriptsRes, postsRes, funnelsRes, brandKitRes, recentDraftRes, allMagnetsRes, leadsThisWeekRes, leadsLastWeekRes] =
     await Promise.all([
-      supabase
+      applyScope(supabase
         .from('lead_magnets')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId),
-      supabase
+        .select('id', { count: 'exact', head: true }), scope),
+      applyScope(supabase
         .from('funnel_leads')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId),
+        .select('id', { count: 'exact', head: true }), scope),
       supabase
         .from('cp_call_transcripts')
         .select('id', { count: 'exact', head: true })
@@ -64,40 +64,35 @@ async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
         .from('cp_pipeline_posts')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId),
-      supabase
+      applyScope(supabase
         .from('funnel_pages')
-        .select('id, lead_magnet_id', { count: 'exact' })
-        .eq('user_id', userId),
+        .select('id, lead_magnet_id', { count: 'exact' }), scope),
       supabase
         .from('brand_kits')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId),
-      supabase
+      applyScope(supabase
         .from('lead_magnets')
         .select('id, title')
-        .eq('user_id', userId)
         .eq('status', 'draft')
         .order('updated_at', { ascending: false })
-        .limit(1),
-      supabase
+        .limit(1), scope),
+      applyScope(supabase
         .from('lead_magnets')
         .select('id, title')
-        .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(10),
+        .limit(10), scope),
       // Leads this week
-      supabase
+      applyScope(supabase
         .from('funnel_leads')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .gte('created_at', sevenDaysAgo),
+        .gte('created_at', sevenDaysAgo), scope),
       // Leads last week
-      supabase
+      applyScope(supabase
         .from('funnel_leads')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
         .gte('created_at', fourteenDaysAgo)
-        .lt('created_at', sevenDaysAgo),
+        .lt('created_at', sevenDaysAgo), scope),
     ]);
 
   // Find magnets without funnels

@@ -2,7 +2,8 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { Plus, Calendar, Eye, Globe } from 'lucide-react';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 import { formatDate } from '@/lib/utils';
 
@@ -45,19 +46,23 @@ async function MagnetsContent() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const supabase = await createSupabaseServerClient();
-  const adminClient = createSupabaseAdminClient();
+  const supabase = createSupabaseAdminClient();
+  const scope = await getDataScope(session.user.id);
+
+  let magnetsQuery = supabase
+    .from('lead_magnets')
+    .select('id, user_id, title, archetype, concept, status, created_at, updated_at')
+    .order('created_at', { ascending: false });
+  magnetsQuery = applyScope(magnetsQuery, scope);
+
+  let funnelsQuery = supabase
+    .from('funnel_pages')
+    .select('lead_magnet_id, is_published, slug');
+  funnelsQuery = applyScope(funnelsQuery, scope);
 
   const [leadMagnetsRes, funnelsRes] = await Promise.all([
-    supabase
-      .from('lead_magnets')
-      .select('id, user_id, title, archetype, concept, status, created_at, updated_at')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false }),
-    adminClient
-      .from('funnel_pages')
-      .select('lead_magnet_id, is_published, slug')
-      .eq('user_id', session.user.id),
+    magnetsQuery,
+    funnelsQuery,
   ]);
 
   const leadMagnets = leadMagnetsRes.data || [];
