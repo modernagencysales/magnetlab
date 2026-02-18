@@ -14,6 +14,7 @@ import { WebhookSettings } from '@/components/settings/WebhookSettings';
 import { TeamMembersSettings } from '@/components/settings/TeamMembersSettings';
 import { FunnelTemplateSettings } from '@/components/settings/FunnelTemplateSettings';
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
+import { WhiteLabelSettings } from '@/components/settings/WhiteLabelSettings';
 
 import { logError } from '@/lib/utils/logger';
 
@@ -579,6 +580,9 @@ export function SettingsContent({
             }} />
           </div>
         </div>
+
+        {/* White Label Section */}
+        <WhiteLabelSettings plan={subscription?.plan} />
 
         {/* Brand Kit */}
         {brandKit && (
