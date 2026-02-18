@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('cp_post_templates')
       .insert(insertData)
-      .select('id, user_id, name, category, description, structure, example_posts, use_cases, tags, usage_count, avg_engagement_score, is_active, created_at, updated_at')
+      .select('id, user_id, name, category, description, structure, example_posts, use_cases, tags, usage_count, avg_engagement_score, is_active, is_global, source, created_at, updated_at')
       .single();
 
     if (error) {

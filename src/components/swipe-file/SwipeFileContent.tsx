@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { logError } from '@/lib/utils/logger';
 import { createSupabaseBrowserClient } from '@/lib/utils/supabase-browser';
 
@@ -22,6 +22,7 @@ import {
   TrendingUp,
   UserPlus,
   ArrowUpDown,
+  ExternalLink,
 } from 'lucide-react';
 
 interface SwipePost {
@@ -104,11 +105,22 @@ const NICHES = [
   { value: 'other', label: 'Other' },
 ];
 
+/**
+ * Detect if a post contains a "comment X to get Y" lead magnet CTA.
+ * Matches patterns like: "comment GUIDE", "comment below", "drop a YES",
+ * "DM me", "type SEND below", etc.
+ */
+const LEAD_MAGNET_CTA_PATTERN = /\b(comment\s+["']?\w+["']?|comment\s+below|drop\s+(a\s+)?["']?\w+["']?\s*(below|in\s+the\s+comments)?|DM\s+me\s+["']?\w+["']?|type\s+["']?\w+["']?\s*(below|in\s+the\s+comments)|send\s+me\s+["']?\w+["']?)\b/i;
+
+function hasLeadMagnetCTA(content: string): boolean {
+  return LEAD_MAGNET_CTA_PATTERN.test(content);
+}
+
 export function SwipeFileContent() {
-  const [activeTab, setActiveTab] = useState<'posts' | 'lead-magnets' | 'discovered'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'lead-magnets' | 'discovered'>('discovered');
   const [posts, setPosts] = useState<SwipePost[]>([]);
   const [leadMagnets, setLeadMagnets] = useState<SwipeLeadMagnet[]>([]);
-  const [discoveredPosts, setDiscoveredPosts] = useState<DiscoveredPost[]>([]);
+  const [allWinningPosts, setAllWinningPosts] = useState<DiscoveredPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -120,12 +132,62 @@ export function SwipeFileContent() {
 
   // Discovered tab state
   const [discoveredSort, setDiscoveredSort] = useState<'engagement' | 'recent'>('engagement');
+  const [creatorFilter, setCreatorFilter] = useState('');
   const [expandedPostIds, setExpandedPostIds] = useState<Set<string>>(new Set());
   const [trackedCreatorUrls, setTrackedCreatorUrls] = useState<Set<string>>(new Set());
   const [trackingInProgress, setTrackingInProgress] = useState<string | null>(null);
 
   // Submission modal
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+
+  // Split winning posts: CTA posts → lead magnets section, rest → discovered
+  const { ctaPosts, discoveredPosts } = useMemo(() => {
+    const cta: DiscoveredPost[] = [];
+    const discovered: DiscoveredPost[] = [];
+    for (const post of allWinningPosts) {
+      if (hasLeadMagnetCTA(post.content)) {
+        cta.push(post);
+      } else {
+        discovered.push(post);
+      }
+    }
+    return { ctaPosts: cta, discoveredPosts: discovered };
+  }, [allWinningPosts]);
+
+  // Build unique creator list for filter dropdown
+  const creatorOptions = useMemo(() => {
+    const currentPosts = activeTab === 'lead-magnets' ? ctaPosts : discoveredPosts;
+    const names = new Map<string, string>(); // url → name
+    for (const post of currentPosts) {
+      if (post.author_name && post.author_url) {
+        names.set(post.author_url, post.author_name);
+      }
+    }
+    return Array.from(names.entries())
+      .map(([url, name]) => ({ url, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [ctaPosts, discoveredPosts, activeTab]);
+
+  // Filter discovered/CTA posts by creator
+  const filteredDiscovered = useMemo(() => {
+    let posts = discoveredPosts;
+    if (creatorFilter) {
+      posts = posts.filter((p) => p.author_url === creatorFilter);
+    }
+    const orderKey = discoveredSort === 'engagement' ? 'engagement_score' : 'created_at';
+    return [...posts].sort((a, b) => {
+      if (orderKey === 'engagement_score') return b.engagement_score - a.engagement_score;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [discoveredPosts, creatorFilter, discoveredSort]);
+
+  const filteredCtaPosts = useMemo(() => {
+    let posts = ctaPosts;
+    if (creatorFilter) {
+      posts = posts.filter((p) => p.author_url === creatorFilter);
+    }
+    return [...posts].sort((a, b) => b.engagement_score - a.engagement_score);
+  }, [ctaPosts, creatorFilter]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -139,32 +201,36 @@ export function SwipeFileContent() {
         const response = await fetch(`/api/swipe-file/posts?${params}`);
         const data = await response.json();
         setPosts(data.posts || []);
-      } else if (activeTab === 'lead-magnets') {
-        const params = new URLSearchParams();
-        if (niche) params.append('niche', niche);
-        if (format) params.append('format', format);
-        if (featuredOnly) params.append('featured', 'true');
+      } else if (activeTab === 'lead-magnets' || activeTab === 'discovered') {
+        // Fetch all winning posts once for both tabs
+        if (allWinningPosts.length === 0) {
+          const supabase = createSupabaseBrowserClient();
+          const { data, error } = await supabase
+            .from('cp_viral_posts')
+            .select('id, author_name, author_headline, author_url, content, likes, comments, shares, engagement_score, template_extracted, extracted_template_id, created_at')
+            .eq('is_winner', true)
+            .is('user_id', null)
+            .order('engagement_score', { ascending: false })
+            .limit(500);
 
-        const response = await fetch(`/api/swipe-file/lead-magnets?${params}`);
-        const data = await response.json();
-        setLeadMagnets(data.leadMagnets || []);
-      } else if (activeTab === 'discovered') {
-        const supabase = createSupabaseBrowserClient();
-        const orderColumn = discoveredSort === 'engagement' ? 'engagement_score' : 'created_at';
+          if (error) {
+            logError('swipe-file', error, { step: 'discovered_fetch_error' });
+            setAllWinningPosts([]);
+          } else {
+            setAllWinningPosts(data || []);
+          }
+        }
 
-        const { data, error } = await supabase
-          .from('cp_viral_posts')
-          .select('id, author_name, author_headline, author_url, content, likes, comments, shares, engagement_score, template_extracted, extracted_template_id, created_at')
-          .eq('is_winner', true)
-          .is('user_id', null)
-          .order(orderColumn, { ascending: false })
-          .limit(50);
+        // Also fetch submitted lead magnets for the lead-magnets tab
+        if (activeTab === 'lead-magnets') {
+          const params = new URLSearchParams();
+          if (niche) params.append('niche', niche);
+          if (format) params.append('format', format);
+          if (featuredOnly) params.append('featured', 'true');
 
-        if (error) {
-          logError('swipe-file', error, { step: 'discovered_fetch_error' });
-          setDiscoveredPosts([]);
-        } else {
-          setDiscoveredPosts(data || []);
+          const response = await fetch(`/api/swipe-file/lead-magnets?${params}`);
+          const data = await response.json();
+          setLeadMagnets(data.leadMagnets || []);
         }
       }
     } catch {
@@ -172,11 +238,16 @@ export function SwipeFileContent() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, niche, postType, format, featuredOnly, discoveredSort]);
+  }, [activeTab, niche, postType, format, featuredOnly, allWinningPosts.length]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Reset creator filter when switching tabs
+  useEffect(() => {
+    setCreatorFilter('');
+  }, [activeTab]);
 
   const handleCopy = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
@@ -225,6 +296,141 @@ export function SwipeFileContent() {
     return content.slice(0, maxLength).trimEnd() + '...';
   };
 
+  // Shared post card renderer for discovered/CTA posts
+  const renderPostCard = (dPost: DiscoveredPost) => {
+    const isExpanded = expandedPostIds.has(dPost.id);
+    const isTracked = dPost.author_url ? trackedCreatorUrls.has(dPost.author_url) : false;
+    const isTrackingThis = trackingInProgress === dPost.id;
+
+    return (
+      <div
+        key={dPost.id}
+        className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30"
+      >
+        {/* Author info + badges */}
+        <div className="mb-3 flex items-start justify-between">
+          <div className="min-w-0 flex-1">
+            {dPost.author_name && (
+              <p className="font-medium leading-snug truncate">
+                {dPost.author_url ? (
+                  <a
+                    href={dPost.author_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                  >
+                    {dPost.author_name}
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                ) : (
+                  dPost.author_name
+                )}
+              </p>
+            )}
+            {dPost.author_headline && (
+              <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                {dPost.author_headline}
+              </p>
+            )}
+          </div>
+          <div className="ml-2 flex items-center gap-1.5 shrink-0">
+            {dPost.template_extracted && (
+              <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                Template
+              </span>
+            )}
+            <button
+              onClick={() => handleCopy(dPost.content, dPost.id)}
+              className="rounded-lg p-1.5 text-muted-foreground opacity-0 hover:bg-secondary hover:text-foreground group-hover:opacity-100 transition-all"
+              title="Copy content"
+            >
+              {copiedId === dPost.id ? (
+                <Check className="h-4 w-4 text-green-500" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Content preview / expanded */}
+        <div
+          className="mb-4 cursor-pointer"
+          onClick={() => toggleExpandPost(dPost.id)}
+        >
+          {isExpanded ? (
+            <div>
+              <p className="text-sm text-muted-foreground whitespace-pre-line">
+                {dPost.content}
+              </p>
+              <span className="mt-1 block text-xs text-primary font-medium">
+                Show less
+              </span>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {truncateContent(dPost.content)}
+              {dPost.content.length > 200 && (
+                <span className="ml-1 text-xs text-primary font-medium">
+                  Read more
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+
+        {/* Engagement metrics */}
+        <div className="mb-3 flex items-center gap-4 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <ThumbsUp className="h-3.5 w-3.5" />
+            {dPost.likes.toLocaleString()}
+          </span>
+          <span className="flex items-center gap-1">
+            <MessageCircle className="h-3.5 w-3.5" />
+            {dPost.comments.toLocaleString()}
+          </span>
+          <span className="flex items-center gap-1">
+            <Share2 className="h-3.5 w-3.5" />
+            {dPost.shares.toLocaleString()}
+          </span>
+          {dPost.engagement_score > 0 && (
+            <span className="flex items-center gap-1 font-medium text-primary">
+              <TrendingUp className="h-3.5 w-3.5" />
+              {dPost.engagement_score.toLocaleString()}
+            </span>
+          )}
+        </div>
+
+        {/* Track Creator button */}
+        {dPost.author_url && (
+          <button
+            onClick={() => handleTrackCreator(dPost)}
+            disabled={isTracked || isTrackingThis}
+            className={`flex w-full items-center justify-center gap-2 rounded-lg border py-2 text-sm font-medium transition-colors ${
+              isTracked
+                ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'
+                : 'hover:bg-secondary'
+            } disabled:opacity-70`}
+          >
+            {isTrackingThis ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isTracked ? (
+              <>
+                <Check className="h-4 w-4" />
+                Tracked!
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-4 w-4" />
+                Track Creator
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
       {/* Header */}
@@ -247,15 +453,20 @@ export function SwipeFileContent() {
       {/* Tabs */}
       <div className="mb-6 flex gap-2">
         <button
-          onClick={() => setActiveTab('posts')}
+          onClick={() => setActiveTab('discovered')}
           className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'posts'
+            activeTab === 'discovered'
               ? 'bg-primary text-primary-foreground'
               : 'bg-secondary hover:bg-secondary/80'
           }`}
         >
-          <FileText className="h-4 w-4" />
-          Posts
+          <Sparkles className="h-4 w-4" />
+          Discovered
+          {discoveredPosts.length > 0 && (
+            <span className="rounded-full bg-primary-foreground/20 px-1.5 py-0.5 text-xs">
+              {discoveredPosts.length}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('lead-magnets')}
@@ -267,22 +478,29 @@ export function SwipeFileContent() {
         >
           <Magnet className="h-4 w-4" />
           Lead Magnets
+          {ctaPosts.length > 0 && (
+            <span className={`rounded-full px-1.5 py-0.5 text-xs ${
+              activeTab === 'lead-magnets' ? 'bg-primary-foreground/20' : 'bg-primary/10 text-primary'
+            }`}>
+              {ctaPosts.length}
+            </span>
+          )}
         </button>
         <button
-          onClick={() => setActiveTab('discovered')}
+          onClick={() => setActiveTab('posts')}
           className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'discovered'
+            activeTab === 'posts'
               ? 'bg-primary text-primary-foreground'
               : 'bg-secondary hover:bg-secondary/80'
           }`}
         >
-          <Sparkles className="h-4 w-4" />
-          Discovered
+          <FileText className="h-4 w-4" />
+          Community Posts
         </button>
       </div>
 
       {/* Filters */}
-      {activeTab !== 'discovered' ? (
+      {activeTab === 'posts' ? (
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Filter className="h-4 w-4" />
@@ -305,38 +523,21 @@ export function SwipeFileContent() {
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
 
-          {/* Type/Format filter */}
-          {activeTab === 'posts' ? (
-            <div className="relative">
-              <select
-                value={postType}
-                onChange={(e) => setPostType(e.target.value)}
-                className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-              >
-                {POST_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="relative">
-              <select
-                value={format}
-                onChange={(e) => setFormat(e.target.value)}
-                className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-              >
-                {FORMATS.map((f) => (
-                  <option key={f.value} value={f.value}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            </div>
-          )}
+          {/* Type filter */}
+          <div className="relative">
+            <select
+              value={postType}
+              onChange={(e) => setPostType(e.target.value)}
+              className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+            >
+              {POST_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
 
           {/* Featured toggle */}
           <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -350,11 +551,68 @@ export function SwipeFileContent() {
             Featured only
           </label>
         </div>
+      ) : activeTab === 'lead-magnets' ? (
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          {/* Creator filter */}
+          {creatorOptions.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Filter className="h-4 w-4" />
+                Filter:
+              </div>
+              <div className="relative">
+                <select
+                  value={creatorFilter}
+                  onChange={(e) => setCreatorFilter(e.target.value)}
+                  className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                >
+                  <option value="">All Creators</option>
+                  {creatorOptions.map((c) => (
+                    <option key={c.url} value={c.url}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              </div>
+            </>
+          )}
+
+          {/* Also show format filters for submitted lead magnets */}
+          <div className="relative">
+            <select
+              value={niche}
+              onChange={(e) => setNiche(e.target.value)}
+              className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+            >
+              {NICHES.map((n) => (
+                <option key={n.value} value={n.value}>
+                  {n.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
+          <div className="relative">
+            <select
+              value={format}
+              onChange={(e) => setFormat(e.target.value)}
+              className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+            >
+              {FORMATS.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
+        </div>
       ) : (
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <ArrowUpDown className="h-4 w-4" />
-            Sort by:
+            Sort:
           </div>
           <button
             onClick={() => setDiscoveredSort('engagement')}
@@ -365,7 +623,7 @@ export function SwipeFileContent() {
             }`}
           >
             <TrendingUp className="h-3.5 w-3.5" />
-            Engagement Score
+            Engagement
           </button>
           <button
             onClick={() => setDiscoveredSort('recent')}
@@ -377,6 +635,32 @@ export function SwipeFileContent() {
           >
             Most Recent
           </button>
+
+          {/* Creator filter */}
+          {creatorOptions.length > 0 && (
+            <>
+              <div className="mx-1 h-5 w-px bg-border" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Users className="h-4 w-4" />
+                Creator:
+              </div>
+              <div className="relative">
+                <select
+                  value={creatorFilter}
+                  onChange={(e) => setCreatorFilter(e.target.value)}
+                  className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors max-w-[200px]"
+                >
+                  <option value="">All Creators ({creatorOptions.length})</option>
+                  {creatorOptions.map((c) => (
+                    <option key={c.url} value={c.url}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -472,233 +756,134 @@ export function SwipeFileContent() {
           )}
         </div>
       ) : activeTab === 'lead-magnets' ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {leadMagnets.length === 0 ? (
-            <div className="col-span-3 rounded-lg border border-dashed p-12 text-center">
+        <div className="space-y-8">
+          {/* Discovered CTA posts */}
+          {filteredCtaPosts.length > 0 && (
+            <div>
+              <div className="mb-4 flex items-center gap-2">
+                <Magnet className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+                  Lead Magnet Posts ({filteredCtaPosts.length})
+                </h3>
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                  Auto-detected CTA
+                </span>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {filteredCtaPosts.map(renderPostCard)}
+              </div>
+            </div>
+          )}
+
+          {/* Submitted lead magnets */}
+          {leadMagnets.length > 0 && (
+            <div>
+              <h3 className="mb-4 text-sm font-semibold uppercase text-muted-foreground">
+                Submitted Lead Magnets ({leadMagnets.length})
+              </h3>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {leadMagnets.map((lm) => (
+                  <div
+                    key={lm.id}
+                    className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30"
+                  >
+                    {lm.thumbnail_url && (
+                      <div className="mb-3 aspect-video overflow-hidden rounded-lg bg-muted">
+                        <img
+                          src={lm.thumbnail_url}
+                          alt={lm.title}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    <div className="mb-2 flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        {lm.status === 'featured' && (
+                          <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                        )}
+                        {lm.format && (
+                          <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            {lm.format}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <h3 className="mb-1 font-medium">{lm.title}</h3>
+
+                    {lm.description && (
+                      <p className="mb-3 text-sm text-muted-foreground line-clamp-2">
+                        {lm.description}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      {lm.leads_generated !== null && (
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5" />
+                          {lm.leads_generated} leads
+                        </span>
+                      )}
+                      {lm.conversion_rate !== null && (
+                        <span className="font-medium text-green-600">
+                          {lm.conversion_rate}% CVR
+                        </span>
+                      )}
+                    </div>
+
+                    {lm.content && (
+                      <button
+                        onClick={() => handleCopy(lm.content, lm.id)}
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border py-2 text-sm font-medium hover:bg-secondary transition-colors"
+                      >
+                        {copiedId === lm.id ? (
+                          <>
+                            <Check className="h-4 w-4 text-green-500" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4" />
+                            Copy Content
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {filteredCtaPosts.length === 0 && leadMagnets.length === 0 && (
+            <div className="rounded-lg border border-dashed p-12 text-center">
               <Magnet className="mx-auto h-12 w-12 text-muted-foreground/50" />
               <p className="mt-4 text-muted-foreground">No lead magnets found</p>
               <p className="mt-1 text-sm text-muted-foreground/70">
-                Be the first to submit a high-converting lead magnet!
+                Posts with &quot;comment X to get&quot; CTAs will automatically appear here.
               </p>
             </div>
-          ) : (
-            leadMagnets.map((lm) => (
-              <div
-                key={lm.id}
-                className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30"
-              >
-                {/* Thumbnail */}
-                {lm.thumbnail_url && (
-                  <div className="mb-3 aspect-video overflow-hidden rounded-lg bg-muted">
-                    <img
-                      src={lm.thumbnail_url}
-                      alt={lm.title}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                )}
-
-                {/* Header */}
-                <div className="mb-2 flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    {lm.status === 'featured' && (
-                      <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-                    )}
-                    {lm.format && (
-                      <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        {lm.format}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Title */}
-                <h3 className="mb-1 font-medium">{lm.title}</h3>
-
-                {/* Description */}
-                {lm.description && (
-                  <p className="mb-3 text-sm text-muted-foreground line-clamp-2">
-                    {lm.description}
-                  </p>
-                )}
-
-                {/* Metrics */}
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  {lm.leads_generated !== null && (
-                    <span className="flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5" />
-                      {lm.leads_generated} leads
-                    </span>
-                  )}
-                  {lm.conversion_rate !== null && (
-                    <span className="font-medium text-green-600">
-                      {lm.conversion_rate}% CVR
-                    </span>
-                  )}
-                </div>
-
-                {/* Copy content button */}
-                {lm.content && (
-                  <button
-                    onClick={() => handleCopy(lm.content, lm.id)}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border py-2 text-sm font-medium hover:bg-secondary transition-colors"
-                  >
-                    {copiedId === lm.id ? (
-                      <>
-                        <Check className="h-4 w-4 text-green-500" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4" />
-                        Copy Content
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-            ))
           )}
         </div>
       ) : (
         /* Discovered tab */
         <div className="grid gap-4 md:grid-cols-2">
-          {discoveredPosts.length === 0 ? (
+          {filteredDiscovered.length === 0 ? (
             <div className="col-span-2 rounded-lg border border-dashed p-12 text-center">
               <Sparkles className="mx-auto h-12 w-12 text-muted-foreground/50" />
-              <p className="mt-4 text-muted-foreground">No winning posts discovered yet</p>
+              <p className="mt-4 text-muted-foreground">
+                {creatorFilter ? 'No posts from this creator' : 'No winning posts discovered yet'}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground/70">
-                High-performing LinkedIn posts will appear here as they are scraped and analyzed.
+                {creatorFilter
+                  ? 'Try selecting a different creator or clear the filter.'
+                  : 'High-performing LinkedIn posts will appear here as they are scraped and analyzed.'}
               </p>
             </div>
           ) : (
-            discoveredPosts.map((dPost) => {
-              const isExpanded = expandedPostIds.has(dPost.id);
-              const isTracked = dPost.author_url ? trackedCreatorUrls.has(dPost.author_url) : false;
-              const isTrackingThis = trackingInProgress === dPost.id;
-
-              return (
-                <div
-                  key={dPost.id}
-                  className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30"
-                >
-                  {/* Author info + badges */}
-                  <div className="mb-3 flex items-start justify-between">
-                    <div className="min-w-0 flex-1">
-                      {dPost.author_name && (
-                        <p className="font-medium leading-snug truncate">
-                          {dPost.author_url ? (
-                            <a
-                              href={dPost.author_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:text-primary transition-colors"
-                            >
-                              {dPost.author_name}
-                            </a>
-                          ) : (
-                            dPost.author_name
-                          )}
-                        </p>
-                      )}
-                      {dPost.author_headline && (
-                        <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                          {dPost.author_headline}
-                        </p>
-                      )}
-                    </div>
-                    <div className="ml-2 flex items-center gap-1.5 shrink-0">
-                      {dPost.template_extracted && (
-                        <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                          Template Extracted
-                        </span>
-                      )}
-                      <button
-                        onClick={() => handleCopy(dPost.content, dPost.id)}
-                        className="rounded-lg p-1.5 text-muted-foreground opacity-0 hover:bg-secondary hover:text-foreground group-hover:opacity-100 transition-all"
-                        title="Copy content"
-                      >
-                        {copiedId === dPost.id ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Content preview / expanded */}
-                  <div
-                    className="mb-4 cursor-pointer"
-                    onClick={() => toggleExpandPost(dPost.id)}
-                  >
-                    {isExpanded ? (
-                      <p className="text-sm text-muted-foreground whitespace-pre-line">
-                        {dPost.content}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        {truncateContent(dPost.content)}
-                        {dPost.content.length > 200 && (
-                          <span className="ml-1 text-xs text-primary font-medium">
-                            Read more
-                          </span>
-                        )}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Engagement metrics */}
-                  <div className="mb-3 flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <ThumbsUp className="h-3.5 w-3.5" />
-                      {dPost.likes.toLocaleString()}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MessageCircle className="h-3.5 w-3.5" />
-                      {dPost.comments.toLocaleString()}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Share2 className="h-3.5 w-3.5" />
-                      {dPost.shares.toLocaleString()}
-                    </span>
-                    {dPost.engagement_score > 0 && (
-                      <span className="flex items-center gap-1 font-medium text-primary">
-                        <TrendingUp className="h-3.5 w-3.5" />
-                        {dPost.engagement_score.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Track Creator button */}
-                  {dPost.author_url && (
-                    <button
-                      onClick={() => handleTrackCreator(dPost)}
-                      disabled={isTracked || isTrackingThis}
-                      className={`flex w-full items-center justify-center gap-2 rounded-lg border py-2 text-sm font-medium transition-colors ${
-                        isTracked
-                          ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'
-                          : 'hover:bg-secondary'
-                      } disabled:opacity-70`}
-                    >
-                      {isTrackingThis ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isTracked ? (
-                        <>
-                          <Check className="h-4 w-4" />
-                          Tracked!
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="h-4 w-4" />
-                          Track Creator
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              );
-            })
+            filteredDiscovered.map(renderPostCard)
           )}
         </div>
       )}

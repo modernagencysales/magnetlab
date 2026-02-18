@@ -27,7 +27,8 @@ export function TrackedCreators() {
     try {
       const res = await fetch('/api/content-pipeline/creators');
       if (res.ok) {
-        setCreators(await res.json());
+        const data = await res.json();
+        setCreators(data.creators || []);
       }
     } finally {
       setLoading(false);
