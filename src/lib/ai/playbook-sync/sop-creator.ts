@@ -25,7 +25,6 @@ export function sanitizeMdxContent(content: string): string {
         // Check if this match is inside an existing backtick pair
         const idx = line.indexOf(match);
         const before = line.slice(0, idx);
-        const _after = line.slice(idx + match.length);
         // Count unmatched backticks before — if odd, we're inside inline code
         const backticksBeforeCount = (before.match(/`/g) || []).length;
         if (backticksBeforeCount % 2 === 1) return match; // inside backticks
