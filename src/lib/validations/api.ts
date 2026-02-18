@@ -189,6 +189,21 @@ export const createLeadMagnetSchema = z.object({
 export type CreateLeadMagnetInput = z.infer<typeof createLeadMagnetSchema>;
 
 // ============================================
+// SPREADSHEET IMPORT SCHEMAS
+// ============================================
+
+export const spreadsheetImportSchema = z.object({
+  spreadsheetData: z.string()
+    .min(10, 'Spreadsheet data is too short')
+    .max(100_000, 'Spreadsheet data is too large (max 100KB)'),
+  importType: z.literal('spreadsheet'),
+  title: z.string().max(200).optional(),
+  description: z.string().max(1000).optional(),
+});
+
+export type SpreadsheetImportInput = z.infer<typeof spreadsheetImportSchema>;
+
+// ============================================
 // FUNNEL SCHEMAS
 // ============================================
 

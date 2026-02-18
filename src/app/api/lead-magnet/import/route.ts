@@ -1,11 +1,15 @@
 // API Route: Import existing lead magnet
 // POST /api/lead-magnet/import - Import content and create lead magnet + funnel page
+// Supports text/URL import (focused-toolkit) and spreadsheet import (single-calculator)
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { getDataScope, applyScope, type DataScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { spreadsheetImportSchema, validateBody } from '@/lib/validations/api';
+import { parseSpreadsheet } from '@/lib/utils/spreadsheet-parser';
+import { generateCalculatorFromSpreadsheet } from '@/lib/ai/interactive-generators';
 import Anthropic from '@anthropic-ai/sdk';
 
 const getAnthropicClient = () => {
@@ -78,6 +82,76 @@ function generateSlug(title: string): string {
     .slice(0, 50);
 }
 
+async function createFunnelPage(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  userId: string,
+  scope: DataScope,
+  leadMagnetId: string,
+  title: string,
+  headline: string,
+  subline: string,
+  socialProof: string,
+  format: string
+) {
+  let slug = generateSlug(title);
+  let slugSuffix = 0;
+
+  while (true) {
+    let slugQuery = supabase
+      .from('funnel_pages')
+      .select('id')
+      .eq('slug', slug);
+    slugQuery = applyScope(slugQuery, scope);
+    const { data: slugExists } = await slugQuery.single();
+
+    if (!slugExists) break;
+    slugSuffix++;
+    slug = `${generateSlug(title)}-${slugSuffix}`;
+  }
+
+  const funnelInsertData = {
+    lead_magnet_id: leadMagnetId,
+    user_id: userId,
+    team_id: scope.teamId || null,
+    slug,
+    optin_headline: headline,
+    optin_subline: subline,
+    optin_button_text: 'Get Free Access',
+    optin_social_proof: socialProof,
+    thankyou_headline: 'Thanks! Check your email.',
+    thankyou_subline: `Your ${format || 'calculator'} is ready.`,
+    qualification_pass_message: 'Great! Book a call below.',
+    qualification_fail_message: 'Thanks for your interest!',
+    theme: 'dark',
+    primary_color: '#8b5cf6',
+    background_style: 'solid',
+  };
+
+  let { data: funnelPage, error: fpError } = await supabase
+    .from('funnel_pages')
+    .insert(funnelInsertData)
+    .select('id')
+    .single();
+
+  // Retry once with random suffix on unique constraint violation
+  if (fpError?.code === '23505') {
+    slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    ({ data: funnelPage, error: fpError } = await supabase
+      .from('funnel_pages')
+      .insert({ ...funnelInsertData, slug })
+      .select('id')
+      .single());
+  }
+
+  if (fpError) {
+    // Clean up the lead magnet if funnel page creation fails
+    await supabase.from('lead_magnets').delete().eq('id', leadMagnetId);
+    return { error: fpError };
+  }
+
+  return { data: funnelPage };
+}
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -86,15 +160,100 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+    const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
+
+    // Spreadsheet import path
+    if (body.importType === 'spreadsheet') {
+      const validation = validateBody(body, spreadsheetImportSchema);
+      if (!validation.success) {
+        return ApiErrors.validationError(validation.error, validation.details);
+      }
+
+      // Parse CSV into structured format
+      let parsed;
+      try {
+        parsed = parseSpreadsheet(validation.data.spreadsheetData);
+      } catch (parseError) {
+        return ApiErrors.validationError(
+          parseError instanceof Error ? parseError.message : 'Failed to parse spreadsheet data'
+        );
+      }
+
+      // Generate calculator config via AI
+      let interactiveConfig;
+      try {
+        interactiveConfig = await generateCalculatorFromSpreadsheet(parsed, {
+          title: validation.data.title,
+          description: validation.data.description,
+        });
+      } catch (aiError) {
+        logApiError('lead-magnet/import/spreadsheet-ai', aiError, { userId: session.user.id });
+        return ApiErrors.aiError('Failed to generate calculator from spreadsheet');
+      }
+
+      const calcTitle = interactiveConfig.headline || validation.data.title || 'Imported Calculator';
+
+      // Create lead magnet with calculator archetype
+      const { data: leadMagnet, error: lmError } = await supabase
+        .from('lead_magnets')
+        .insert({
+          user_id: session.user.id,
+          team_id: scope.teamId || null,
+          title: calcTitle,
+          archetype: 'single-calculator',
+          status: 'draft',
+          concept: {
+            title: calcTitle,
+            archetypeName: 'The Single Calculator',
+            painSolved: interactiveConfig.description || 'Calculate your key metrics',
+            deliveryFormat: 'Calculator',
+            contents: interactiveConfig.description || '',
+            isImported: true,
+          },
+          interactive_config: interactiveConfig,
+        })
+        .select('id, title')
+        .single();
+
+      if (lmError) {
+        logApiError('lead-magnet/import/spreadsheet-create-lm', lmError, { userId: session.user.id });
+        return ApiErrors.databaseError('Failed to create lead magnet');
+      }
+
+      // Create funnel page
+      const funnelResult = await createFunnelPage(
+        supabase,
+        session.user.id,
+        scope,
+        leadMagnet.id,
+        calcTitle,
+        interactiveConfig.headline || 'Try Our Calculator',
+        interactiveConfig.description || 'Get instant results',
+        'Built from real spreadsheet calculations',
+        'Calculator'
+      );
+
+      if (funnelResult.error) {
+        logApiError('lead-magnet/import/spreadsheet-create-fp', funnelResult.error, { userId: session.user.id });
+        return ApiErrors.databaseError('Failed to create funnel page');
+      }
+
+      return NextResponse.json({
+        success: true,
+        leadMagnetId: leadMagnet.id,
+        funnelPageId: funnelResult.data!.id,
+        archetype: 'single-calculator',
+        interactiveConfig,
+      }, { status: 201 });
+    }
+
+    // Existing text/URL import path
     const { url, content } = body;
 
-    // Validate at least one input is provided
     if (!url && !content) {
       return ApiErrors.validationError('Please provide either a URL or content to import');
     }
-
-    const supabase = createSupabaseAdminClient();
-    const scope = await getDataScope(session.user.id);
 
     // Combine inputs for analysis
     let analysisContent = '';
@@ -105,17 +264,15 @@ export async function POST(request: Request) {
       analysisContent += content;
     }
 
-    // Extract content using AI
     const extracted = await extractFromContent(analysisContent.trim(), url);
 
-    // Create lead magnet record
     const { data: leadMagnet, error: lmError } = await supabase
       .from('lead_magnets')
       .insert({
         user_id: session.user.id,
         team_id: scope.teamId || null,
         title: extracted.title,
-        archetype: 'focused-toolkit', // Default archetype for imported
+        archetype: 'focused-toolkit',
         status: 'draft',
         concept: {
           title: extracted.title,
@@ -132,69 +289,27 @@ export async function POST(request: Request) {
       return ApiErrors.databaseError('Failed to create lead magnet');
     }
 
-    // Generate unique slug
-    let slug = generateSlug(extracted.title);
-    let slugSuffix = 0;
+    const funnelResult = await createFunnelPage(
+      supabase,
+      session.user.id,
+      scope,
+      leadMagnet.id,
+      extracted.title,
+      extracted.headline,
+      extracted.subline,
+      extracted.socialProof,
+      extracted.format
+    );
 
-    while (true) {
-      let slugQuery = supabase
-        .from('funnel_pages')
-        .select('id')
-        .eq('slug', slug);
-      slugQuery = applyScope(slugQuery, scope);
-      const { data: slugExists } = await slugQuery.single();
-
-      if (!slugExists) break;
-      slugSuffix++;
-      slug = `${generateSlug(extracted.title)}-${slugSuffix}`;
-    }
-
-    // Create funnel page
-    const funnelInsertData = {
-      lead_magnet_id: leadMagnet.id,
-      user_id: session.user.id,
-      team_id: scope.teamId || null,
-      slug,
-      optin_headline: extracted.headline,
-      optin_subline: extracted.subline,
-      optin_button_text: 'Get Free Access',
-      optin_social_proof: extracted.socialProof,
-      thankyou_headline: 'Thanks! Check your email.',
-      thankyou_subline: `Your ${extracted.format || 'download'} is on its way.`,
-      qualification_pass_message: 'Great! Book a call below.',
-      qualification_fail_message: 'Thanks for your interest!',
-      theme: 'dark',
-      primary_color: '#8b5cf6',
-      background_style: 'solid',
-    };
-
-    let { data: funnelPage, error: fpError } = await supabase
-      .from('funnel_pages')
-      .insert(funnelInsertData)
-      .select('id')
-      .single();
-
-    // Retry once with random suffix on unique constraint violation
-    if (fpError?.code === '23505') {
-      slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
-      ({ data: funnelPage, error: fpError } = await supabase
-        .from('funnel_pages')
-        .insert({ ...funnelInsertData, slug })
-        .select('id')
-        .single());
-    }
-
-    if (fpError) {
-      // Clean up the lead magnet if funnel page creation fails
-      await supabase.from('lead_magnets').delete().eq('id', leadMagnet.id);
-      logApiError('lead-magnet/import/create-fp', fpError, { userId: session.user.id });
+    if (funnelResult.error) {
+      logApiError('lead-magnet/import/create-fp', funnelResult.error, { userId: session.user.id });
       return ApiErrors.databaseError('Failed to create funnel page');
     }
 
     return NextResponse.json({
       success: true,
       leadMagnetId: leadMagnet.id,
-      funnelPageId: funnelPage!.id,
+      funnelPageId: funnelResult.data!.id,
       extracted,
     }, { status: 201 });
   } catch (error) {

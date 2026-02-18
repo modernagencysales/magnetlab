@@ -7,6 +7,7 @@ import type {
   AssessmentConfig,
   GPTConfig,
 } from '@/lib/types/lead-magnet';
+import type { ParsedSpreadsheet } from '@/lib/utils/spreadsheet-parser';
 
 /**
  * Format transcript insights into a context string for AI prompts.
@@ -304,4 +305,96 @@ Return ONLY valid JSON, no markdown fences:
     throw new Error(`AI generated invalid config: ${validated.error.issues.map(i => i.message).join(', ')}`);
   }
   return validated.data as GPTConfig;
+}
+
+/**
+ * Generate a CalculatorConfig from parsed spreadsheet data.
+ * Uses AI to translate spreadsheet inputs/formulas/outputs into an interactive calculator.
+ */
+export async function generateCalculatorFromSpreadsheet(
+  spreadsheet: ParsedSpreadsheet,
+  context?: { title?: string; description?: string }
+): Promise<CalculatorConfig> {
+  const inputsList = spreadsheet.inputs
+    .map((inp) => `- ${inp.label} (type: ${inp.type}${inp.unit ? `, unit: ${inp.unit}` : ''}${inp.min !== undefined ? `, min: ${inp.min}` : ''}${inp.max !== undefined ? `, max: ${inp.max}` : ''})`)
+    .join('\n');
+
+  const formulasList = spreadsheet.formulas
+    .map((f) => `- ${f.label} = ${f.expression}`)
+    .join('\n');
+
+  const outputsList = spreadsheet.outputs
+    .map((o) => `- ${o.label} = ${o.expression} (format: ${o.format})`)
+    .join('\n');
+
+  const prompt = `You are an expert at designing interactive calculators. Convert this spreadsheet structure into a calculator configuration.
+
+${context?.title ? `CALCULATOR TITLE: ${context.title}` : ''}
+${context?.description ? `DESCRIPTION: ${context.description}` : ''}
+
+SPREADSHEET INPUTS (user-provided values):
+${inputsList || '(none detected)'}
+
+SPREADSHEET FORMULAS (intermediate calculations):
+${formulasList || '(none detected)'}
+
+SPREADSHEET OUTPUTS (final results):
+${outputsList || '(none detected)'}
+
+Generate a calculator config that:
+1. Maps each spreadsheet input to a calculator input with a unique camelCase ID
+2. Preserves the spreadsheet's mathematical relationships in the formula
+3. Sets reasonable min/max/step/defaultValue for each input based on its label and unit
+4. Uses the output's format for resultFormat
+5. Creates 3-4 resultInterpretation ranges covering all possible output values
+
+For inputs: use "number" type for most, "slider" for rates/percentages, "select" only if clearly categorical.
+For the formula: combine all formulas and outputs into a single evaluable expression using only input IDs as variables with standard math operators (+, -, *, /, parentheses).
+
+Return ONLY valid JSON, no markdown fences:
+{
+  "type": "calculator",
+  "headline": "...",
+  "description": "...",
+  "inputs": [
+    {
+      "id": "camelCaseId",
+      "label": "Human Label",
+      "type": "number",
+      "placeholder": "e.g. 5000",
+      "min": 0,
+      "max": 100000,
+      "step": 100,
+      "defaultValue": 5000,
+      "unit": "$"
+    }
+  ],
+  "formula": "monthlyRevenue * conversionRate / 100",
+  "resultLabel": "Estimated Result",
+  "resultFormat": "currency",
+  "resultInterpretation": [
+    { "range": [0, 1000], "label": "Low", "description": "...", "color": "red" },
+    { "range": [1001, 5000], "label": "Moderate", "description": "...", "color": "yellow" },
+    { "range": [5001, 100000], "label": "Strong", "description": "...", "color": "green" }
+  ]
+}`;
+
+  const response = await getAnthropicClient().messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const textContent = response.content.find((block) => block.type === 'text');
+  if (!textContent || textContent.type !== 'text') {
+    throw new Error('No text response from Claude');
+  }
+
+  const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
+  const raw = JSON.parse(jsonMatch ? jsonMatch[0] : textContent.text);
+  const validated = interactiveConfigSchema.safeParse(raw);
+  if (!validated.success) {
+    throw new Error(`AI generated invalid config: ${validated.error.issues.map(i => i.message).join(', ')}`);
+  }
+  return validated.data as CalculatorConfig;
 }
