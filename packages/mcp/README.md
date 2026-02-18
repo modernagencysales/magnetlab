@@ -13,7 +13,7 @@ Add to your project's `.mcp.json`:
   "mcpServers": {
     "magnetlab": {
       "command": "npx",
-      "args": ["-y", "@magnetlab/mcp", "serve"],
+      "args": ["-y", "--package", "@magnetlab/mcp", "magnetlab-mcp", "serve"],
       "env": {
         "MAGNETLAB_API_KEY": "ml_live_your_key_here"
       }
@@ -31,7 +31,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "magnetlab": {
       "command": "npx",
-      "args": ["-y", "@magnetlab/mcp", "serve"],
+      "args": ["-y", "--package", "@magnetlab/mcp", "magnetlab-mcp", "serve"],
       "env": {
         "MAGNETLAB_API_KEY": "ml_live_your_key_here"
       }
@@ -77,13 +77,13 @@ Start the MCP server (stdio transport):
 
 ```bash
 # Using environment variable
-MAGNETLAB_API_KEY=ml_live_xxx npx @magnetlab/mcp serve
+MAGNETLAB_API_KEY=ml_live_xxx npx --package @magnetlab/mcp magnetlab-mcp serve
 
 # Using --api-key flag
-npx @magnetlab/mcp serve --api-key ml_live_xxx
+npx --package @magnetlab/mcp magnetlab-mcp serve --api-key ml_live_xxx
 
 # With custom base URL
-npx @magnetlab/mcp serve --base-url http://localhost:3000
+npx --package @magnetlab/mcp magnetlab-mcp serve --base-url http://localhost:3000
 ```
 
 ## Example Prompts
