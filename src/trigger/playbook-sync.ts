@@ -7,7 +7,7 @@ import { syncSopEmbeddings } from '@/lib/ai/playbook-sync/sop-embeddings';
 import type { CachedSop } from '@/lib/ai/playbook-sync/sop-embeddings';
 import { classifyKnowledgeForSop } from '@/lib/ai/playbook-sync/classifier';
 import type { ClassificationResult } from '@/lib/ai/playbook-sync/classifier';
-import { generateSopEdit } from '@/lib/ai/playbook-sync/edit-generator';
+import { generateSopEdit, formatReferenceEntries, formatFaqEntries } from '@/lib/ai/playbook-sync/edit-generator';
 import type { GeneratedEdit } from '@/lib/ai/playbook-sync/edit-generator';
 import { clusterOrphans, generateNewSop } from '@/lib/ai/playbook-sync/sop-creator';
 import type { KnowledgeEntry } from '@/lib/types/content-pipeline';
@@ -17,6 +17,7 @@ import type { KnowledgeEntry } from '@/lib/types/content-pipeline';
 // ---------------------------------------------------------------------------
 
 const SIMILARITY_THRESHOLD = 0.60;
+const MAX_ENRICHMENTS_PER_FILE = 4;
 
 // Only sync knowledge from the playbook owner's account
 const PLAYBOOK_OWNER_USER_ID = '0f634817-6db8-4a54-adfd-6ab143950b8c'; // Tim Keen
@@ -231,7 +232,7 @@ export const playbookSync = schedules.task({
       const { data: priorOrphanMatches } = await supabase
         .from('cp_knowledge_sop_matches')
         .select('knowledge_entry_id')
-        .eq('action', 'orphaned');
+        .in('action', ['orphaned', 'deferred']);
 
       const orphanEntryIds = [
         ...new Set(priorOrphanMatches?.map((m) => m.knowledge_entry_id) || []),
@@ -409,6 +410,36 @@ export const playbookSync = schedules.task({
       });
 
       // -------------------------------------------------------------------
+      // Step 4b: Cap enrichments per file
+      // -------------------------------------------------------------------
+      for (const [sopPath, group] of enrichmentsBySop) {
+        if (group.entries.length > MAX_ENRICHMENTS_PER_FILE) {
+          logger.info('Capping enrichments for SOP', {
+            sop: sopPath,
+            total: group.entries.length,
+            cap: MAX_ENRICHMENTS_PER_FILE,
+          });
+          const deferred = group.entries.splice(MAX_ENRICHMENTS_PER_FILE);
+          group.targetSections.splice(MAX_ENRICHMENTS_PER_FILE);
+
+          for (const entry of deferred) {
+            entriesEnriched--;
+            entriesOrphaned++;
+            orphanedEntries.push(entry);
+
+            await supabase
+              .from('cp_knowledge_sop_matches')
+              .update({
+                action: 'deferred',
+                edit_summary: `Deferred: per-file cap of ${MAX_ENRICHMENTS_PER_FILE} exceeded`,
+              })
+              .eq('knowledge_entry_id', entry.id)
+              .eq('sync_run_id', runId);
+          }
+        }
+      }
+
+      // -------------------------------------------------------------------
       // Step 5: Generate edits for enriched SOPs
       // -------------------------------------------------------------------
       logger.info('Step 5: Generating SOP edits');
@@ -467,10 +498,58 @@ export const playbookSync = schedules.task({
       // -------------------------------------------------------------------
       logger.info('Step 6: Clustering orphans', { count: orphanedEntries.length });
 
+      // Track which orphans get consumed by clustering/routing
+      const consumedOrphanIds = new Set<string>();
+
       if (orphanedEntries.length >= 3) {
         try {
-          const clusters = await clusterOrphans(orphanedEntries, EXISTING_MODULES);
+          let clusters = await clusterOrphans(orphanedEntries, EXISTING_MODULES);
           logger.info('Orphan clusters found', { count: clusters.length });
+
+          // -----------------------------------------------------------------
+          // Step 6a: Merge overlapping clusters
+          // -----------------------------------------------------------------
+          if (clusters.length >= 2) {
+            const clusterEmbeddings = await Promise.all(
+              clusters.map((c) => {
+                const text = `${c.suggestedTitle}: ${c.entries.map((e) => e.content.slice(0, 100)).join('. ')}`;
+                return generateEmbedding(text);
+              })
+            );
+
+            const merged = new Set<number>();
+            const mergedClusters: typeof clusters = [];
+
+            for (let i = 0; i < clusters.length; i++) {
+              if (merged.has(i)) continue;
+              const current = { ...clusters[i], entries: [...clusters[i].entries] };
+
+              for (let j = i + 1; j < clusters.length; j++) {
+                if (merged.has(j)) continue;
+                const sim = cosineSimilarity(clusterEmbeddings[i], clusterEmbeddings[j]);
+                if (sim > 0.80) {
+                  logger.info('Merging overlapping clusters', {
+                    cluster1: current.suggestedTitle,
+                    cluster2: clusters[j].suggestedTitle,
+                    similarity: sim.toFixed(3),
+                  });
+                  current.entries.push(...clusters[j].entries);
+                  merged.add(j);
+                }
+              }
+
+              mergedClusters.push(current);
+            }
+
+            if (merged.size > 0) {
+              logger.info('Clusters after merge', {
+                before: clusters.length,
+                after: mergedClusters.length,
+              });
+            }
+
+            clusters = mergedClusters;
+          }
 
           if (clusters.length > 0) {
             // Fetch sidebars.js for updating
@@ -510,6 +589,7 @@ export const playbookSync = schedules.task({
 
                 // Update match records: mark orphaned entries as new_sop
                 for (const entry of cluster.entries) {
+                  consumedOrphanIds.add(entry.id);
                   await supabase
                     .from('cp_knowledge_sop_matches')
                     .update({
@@ -550,6 +630,141 @@ export const playbookSync = schedules.task({
           errors.push(`cluster: ${clusterError instanceof Error ? clusterError.message : String(clusterError)}`);
         }
       }
+
+      // -------------------------------------------------------------------
+      // Step 6b: Route product_intel → reference doc, question → FAQ
+      // -------------------------------------------------------------------
+      const remainingOrphans = orphanedEntries.filter(
+        (e) => !consumedOrphanIds.has(e.id)
+      );
+      const productIntelOrphans = remainingOrphans.filter(
+        (e) => e.category === 'product_intel'
+      );
+      const questionOrphans = remainingOrphans.filter(
+        (e) => e.category === 'question'
+      );
+
+      // Build a lookup for existing repo files
+      const repoFileByPath = new Map<string, string>();
+      for (const f of sopFiles) {
+        repoFileByPath.set(f.path, f.content);
+      }
+
+      // Route product_intel to docs/reference/tools-and-products.md
+      if (productIntelOrphans.length > 0) {
+        try {
+          logger.info('Routing product_intel orphans to reference doc', {
+            count: productIntelOrphans.length,
+          });
+
+          const formatted = await formatReferenceEntries(productIntelOrphans);
+          const refPath = 'docs/reference/tools-and-products.md';
+          const existing = repoFileByPath.get(refPath);
+
+          let refContent: string;
+          if (existing) {
+            refContent = existing + '\n\n' + formatted + '\n';
+          } else {
+            refContent = [
+              '---',
+              'id: tools-and-products',
+              'title: "Tools & Product Reference"',
+              '---',
+              '',
+              '# Tools & Product Reference',
+              '',
+              ':::info Auto-Generated',
+              'This reference is automatically maintained from product mentions across coaching and sales calls.',
+              ':::',
+              '',
+              formatted,
+              '',
+            ].join('\n');
+          }
+
+          fileChanges.push({ path: refPath, content: refContent });
+
+          // Update match records
+          for (const entry of productIntelOrphans) {
+            consumedOrphanIds.add(entry.id);
+            await supabase
+              .from('cp_knowledge_sop_matches')
+              .update({
+                action: 'reference',
+                sop_file_path: refPath,
+                edit_summary: 'Routed to tools & product reference',
+              })
+              .eq('knowledge_entry_id', entry.id)
+              .eq('sync_run_id', runId);
+          }
+        } catch (refError) {
+          logger.error('Failed to generate reference doc', {
+            error: refError instanceof Error ? refError.message : String(refError),
+          });
+          errors.push(`reference: ${refError instanceof Error ? refError.message : String(refError)}`);
+        }
+      }
+
+      // Route question orphans to docs/reference/faq.md
+      if (questionOrphans.length > 0) {
+        try {
+          logger.info('Routing question orphans to FAQ', {
+            count: questionOrphans.length,
+          });
+
+          const formatted = await formatFaqEntries(questionOrphans);
+          const faqPath = 'docs/reference/faq.md';
+          const existing = repoFileByPath.get(faqPath);
+
+          let faqContent: string;
+          if (existing) {
+            faqContent = existing + '\n\n' + formatted + '\n';
+          } else {
+            faqContent = [
+              '---',
+              'id: faq',
+              'title: "Frequently Asked Questions"',
+              '---',
+              '',
+              '# Frequently Asked Questions',
+              '',
+              ':::info Auto-Generated',
+              'These questions are collected from coaching and sales calls and organized for quick reference.',
+              ':::',
+              '',
+              formatted,
+              '',
+            ].join('\n');
+          }
+
+          fileChanges.push({ path: faqPath, content: faqContent });
+
+          // Update match records
+          for (const entry of questionOrphans) {
+            consumedOrphanIds.add(entry.id);
+            await supabase
+              .from('cp_knowledge_sop_matches')
+              .update({
+                action: 'faq',
+                sop_file_path: faqPath,
+                edit_summary: 'Routed to FAQ page',
+              })
+              .eq('knowledge_entry_id', entry.id)
+              .eq('sync_run_id', runId);
+          }
+        } catch (faqError) {
+          logger.error('Failed to generate FAQ page', {
+            error: faqError instanceof Error ? faqError.message : String(faqError),
+          });
+          errors.push(`faq: ${faqError instanceof Error ? faqError.message : String(faqError)}`);
+        }
+      }
+
+      logger.info('Step 6b complete', {
+        productIntelRouted: productIntelOrphans.length,
+        questionsRouted: questionOrphans.length,
+        remainingOrphans: remainingOrphans.length - productIntelOrphans.length - questionOrphans.length,
+      });
 
       // -------------------------------------------------------------------
       // Step 7: Commit to GitHub
@@ -607,6 +822,28 @@ export const playbookSync = schedules.task({
         }
       } else {
         logger.info('Step 7: No file changes to commit');
+      }
+
+      // -------------------------------------------------------------------
+      // Step 7b: Trigger Vercel deploy (if hook URL configured)
+      // -------------------------------------------------------------------
+      if (commitSha) {
+        const deployHookUrl = process.env.VERCEL_DEPLOY_HOOK_URL;
+        if (deployHookUrl) {
+          try {
+            const deployRes = await fetch(deployHookUrl, { method: 'POST' });
+            logger.info('Triggered Vercel deploy', {
+              status: deployRes.status,
+              ok: deployRes.ok,
+            });
+          } catch (deployError) {
+            logger.warn('Failed to trigger Vercel deploy (non-fatal)', {
+              error: deployError instanceof Error ? deployError.message : String(deployError),
+            });
+          }
+        } else {
+          logger.info('Skipping Vercel deploy (VERCEL_DEPLOY_HOOK_URL not set)');
+        }
       }
 
       // -------------------------------------------------------------------

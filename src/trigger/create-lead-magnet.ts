@@ -456,7 +456,7 @@ export const createLeadMagnetPipeline = task({
           post: v.post,
           whyThisAngle: v.whyThisAngle,
         })),
-      }).catch(() => {
+      }, userId).catch(() => {
         // Already logged inside the webhook function
       });
 

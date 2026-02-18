@@ -178,7 +178,7 @@ export async function POST(request: Request) {
       createdAt: lead.created_at,
     }).catch((err) => logApiError('public/lead/webhook', err, { leadId: lead.id }));
 
-    // Fire GTM system webhook (async, don't wait)
+    // Fire GTM system webhook (async, don't wait — only for GTM system owner's leads)
     fireGtmLeadCreatedWebhook({
       email: lead.email,
       name: lead.name,
@@ -192,7 +192,7 @@ export async function POST(request: Request) {
       utmMedium: lead.utm_medium,
       utmCampaign: lead.utm_campaign,
       createdAt: lead.created_at,
-    }).catch((err) => logApiError('public/lead/gtm-webhook', err, { leadId: lead.id }));
+    }, funnel.user_id).catch((err) => logApiError('public/lead/gtm-webhook', err, { leadId: lead.id }));
 
     // Deliver to user's Conductor instance (async, don't wait)
     deliverConductorWebhook(funnel.user_id, 'lead.created', {
@@ -433,7 +433,7 @@ export async function PATCH(request: Request) {
       qualificationAnswers: answers,
     }).catch((err) => logApiError('public/lead/tracking-pixels-qualified', err, { leadId: lead.id }));
 
-    // Fire GTM system webhook for lead qualification (async, don't wait)
+    // Fire GTM system webhook for lead qualification (async, don't wait — only for GTM system owner's leads)
     fireGtmLeadQualifiedWebhook({
       email: lead.email,
       name: lead.name,
@@ -444,7 +444,7 @@ export async function PATCH(request: Request) {
       utmSource: updatedLead.utm_source,
       utmMedium: updatedLead.utm_medium,
       utmCampaign: updatedLead.utm_campaign,
-    }).catch((err) => logApiError('public/lead/gtm-webhook-qualified', err, { leadId: lead.id }));
+    }, lead.user_id).catch((err) => logApiError('public/lead/gtm-webhook-qualified', err, { leadId: lead.id }));
 
     // Deliver to user's Conductor instance (async, don't wait)
     deliverConductorWebhook(lead.user_id, 'lead.qualified', {

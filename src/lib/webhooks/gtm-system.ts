@@ -7,7 +7,17 @@ import { logError, logInfo } from '@/lib/utils/logger';
 const GTM_SYSTEM_WEBHOOK_URL = process.env.GTM_SYSTEM_WEBHOOK_URL;
 const GTM_SYSTEM_WEBHOOK_SECRET = process.env.GTM_SYSTEM_WEBHOOK_SECRET;
 const GTM_SYSTEM_TENANT_ID = process.env.GTM_SYSTEM_TENANT_ID;
+const GTM_SYSTEM_USER_ID = process.env.GTM_SYSTEM_USER_ID;
 const GTM_WEBHOOK_TIMEOUT_MS = 5000; // 5 seconds
+
+/**
+ * Only fire GTM webhooks for the GTM system owner's leads.
+ * Other magnetlab users' leads should not be processed through gtm-system.
+ */
+function isGtmSystemOwner(userId: string): boolean {
+  if (!GTM_SYSTEM_USER_ID) return true; // If not configured, fire for all (backwards compat)
+  return userId === GTM_SYSTEM_USER_ID;
+}
 
 export interface GtmLeadCreatedPayload {
   event: 'lead.created';
@@ -71,10 +81,13 @@ export interface GtmLeadMagnetDeployedPayload {
  * Should be called without await so it does not block the response.
  */
 export async function fireGtmLeadMagnetDeployedWebhook(
-  data: GtmLeadMagnetDeployedPayload['data']
+  data: GtmLeadMagnetDeployedPayload['data'],
+  userId: string
 ): Promise<void> {
   if (!GTM_SYSTEM_WEBHOOK_URL || !GTM_SYSTEM_WEBHOOK_SECRET) {
-    // GTM system webhook not configured — silently skip
+    return;
+  }
+  if (!isGtmSystemOwner(userId)) {
     return;
   }
 
@@ -116,10 +129,13 @@ export async function fireGtmLeadMagnetDeployedWebhook(
  * Should be called without await so it does not block the response.
  */
 export async function fireGtmLeadQualifiedWebhook(
-  data: GtmLeadQualifiedPayload['data']
+  data: GtmLeadQualifiedPayload['data'],
+  userId: string
 ): Promise<void> {
   if (!GTM_SYSTEM_WEBHOOK_URL || !GTM_SYSTEM_WEBHOOK_SECRET) {
-    // GTM system webhook not configured — silently skip
+    return;
+  }
+  if (!isGtmSystemOwner(userId)) {
     return;
   }
 
@@ -161,10 +177,13 @@ export async function fireGtmLeadQualifiedWebhook(
  * Should be called without await so it does not block the response.
  */
 export async function fireGtmLeadCreatedWebhook(
-  data: GtmLeadCreatedPayload['data']
+  data: GtmLeadCreatedPayload['data'],
+  userId: string
 ): Promise<void> {
   if (!GTM_SYSTEM_WEBHOOK_URL || !GTM_SYSTEM_WEBHOOK_SECRET) {
-    // GTM system webhook not configured — silently skip
+    return;
+  }
+  if (!isGtmSystemOwner(userId)) {
     return;
   }
 

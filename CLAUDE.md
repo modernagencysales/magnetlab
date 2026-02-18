@@ -284,7 +284,7 @@ Team-level custom domain and white-label support. One domain per team via CNAME 
 
 ## Integration Points
 
-- **GTM webhooks**: Fires `lead.created`, `lead.qualified`, `lead_magnet.deployed` to gtm-system via `lib/webhooks/gtm-system.ts` (fire-and-forget, 5s timeout, `x-webhook-secret` auth)
+- **GTM webhooks**: Fires `lead.created`, `lead.qualified`, `lead_magnet.deployed` to gtm-system via `lib/webhooks/gtm-system.ts` (fire-and-forget, 5s timeout, `x-webhook-secret` auth). **Scoped to GTM system owner only** (`GTM_SYSTEM_USER_ID` env var) — other magnetlab users' leads are NOT sent to gtm-system.
 - **User webhooks**: Users configure their own endpoints for lead capture events (`lib/webhooks/sender.ts`, signature verify in `lib/webhooks/verify.ts`)
 - **Stripe**: Checkout/subscriptions/webhooks at `/api/stripe/`, state in `subscriptions` table, limits via `usage_tracking`
 
@@ -302,7 +302,7 @@ Team-level custom domain and white-label support. One domain per team via CNAME 
 - `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` -- Stripe
 - `RESEND_API_KEY` -- Transactional email
 - `TRIGGER_SECRET_KEY` -- Background jobs
-- `GTM_SYSTEM_WEBHOOK_URL` / `GTM_SYSTEM_WEBHOOK_SECRET` -- GTM webhooks (optional, silently skipped if missing)
+- `GTM_SYSTEM_WEBHOOK_URL` / `GTM_SYSTEM_WEBHOOK_SECRET` / `GTM_SYSTEM_USER_ID` -- GTM webhooks (optional, only fires for this user's leads)
 - `OPENAI_API_KEY` -- Embeddings (text-embedding-3-small) for AI Brain / content pipeline
 - `GRAIN_WEBHOOK_SECRET` -- Grain transcript webhook auth
 - `FIREFLIES_WEBHOOK_SECRET` -- Fireflies transcript webhook auth
