@@ -51,10 +51,7 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = `/p/${domainInfo.username}/${slug}`;
 
-    const response = NextResponse.rewrite(url);
-    response.headers.set('x-custom-domain', 'true');
-    response.headers.set('x-team-id', domainInfo.teamId);
-    return response;
+    return NextResponse.rewrite(url);
   }
 
   // --- Normal app routing ---

@@ -224,7 +224,12 @@ export async function DELETE() {
     }
 
     // Remove domain from Vercel
-    await removeDomain(domainRow.domain);
+    const removeResult = await removeDomain(domainRow.domain);
+    if (!removeResult.success) {
+      return ApiErrors.validationError(
+        'Failed to remove domain from Vercel. Please try again or contact support.'
+      );
+    }
 
     // Delete the domain row from DB
     const { error: deleteError } = await supabase

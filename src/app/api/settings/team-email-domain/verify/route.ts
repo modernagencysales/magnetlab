@@ -41,6 +41,10 @@ export async function POST() {
       return ApiErrors.notFound('Email domain');
     }
 
+    if (!domainRow.resend_domain_id) {
+      return ApiErrors.validationError('Email domain is missing its Resend reference. Please remove and re-add the domain.');
+    }
+
     // Trigger async verification on Resend
     const verifyResult = await verifyResendDomain(domainRow.resend_domain_id);
 

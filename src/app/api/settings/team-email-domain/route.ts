@@ -195,8 +195,19 @@ export async function DELETE() {
       return ApiErrors.notFound('Email domain');
     }
 
-    // Remove domain from Resend
-    await deleteResendDomain(domainRow.resend_domain_id);
+    // Remove domain from Resend (skip if resend_domain_id is missing due to partial creation)
+    if (domainRow.resend_domain_id) {
+      const deleteResult = await deleteResendDomain(domainRow.resend_domain_id);
+      if (deleteResult.error) {
+        logApiError('team-email-domain/delete/resend', new Error(deleteResult.error.message), {
+          resendDomainId: domainRow.resend_domain_id,
+          teamId: team.id,
+        });
+        return ApiErrors.validationError(
+          `Failed to remove domain from email provider: ${deleteResult.error.message}`
+        );
+      }
+    }
 
     // Delete the email domain row from DB
     const { error: deleteError } = await supabase
