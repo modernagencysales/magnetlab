@@ -156,9 +156,9 @@ describe('Spreadsheet Import (MOD-92)', () => {
 
   describe('AI generator (generateCalculatorFromSpreadsheet)', () => {
     it('should be exported from interactive-generators', async () => {
-      const module = await import('@/lib/ai/interactive-generators');
-      expect(module.generateCalculatorFromSpreadsheet).toBeDefined();
-      expect(typeof module.generateCalculatorFromSpreadsheet).toBe('function');
+      const interactiveModule = await import('@/lib/ai/interactive-generators');
+      expect(interactiveModule.generateCalculatorFromSpreadsheet).toBeDefined();
+      expect(typeof interactiveModule.generateCalculatorFromSpreadsheet).toBe('function');
     });
   });
 
@@ -292,7 +292,7 @@ describe('Spreadsheet Import (MOD-92)', () => {
     });
 
     it('should still create focused-toolkit for text/URL import', async () => {
-      const Anthropic = require('@anthropic-ai/sdk');
+      const { default: Anthropic } = await import('@anthropic-ai/sdk');
       const mockCreate = jest.fn().mockResolvedValue({
         content: [{
           type: 'text',
@@ -306,7 +306,7 @@ describe('Spreadsheet Import (MOD-92)', () => {
           }),
         }],
       });
-      Anthropic.mockImplementation(() => ({ messages: { create: mockCreate } }));
+      (Anthropic as unknown as jest.Mock).mockImplementation(() => ({ messages: { create: mockCreate } }));
 
       mockSupabaseClient.single
         .mockResolvedValueOnce(createMockSupabaseResponse({ id: 'lm-text-1', title: 'SEO Guide' }))
