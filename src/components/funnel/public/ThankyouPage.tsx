@@ -45,6 +45,10 @@ interface ThankyouPageProps {
   fontFamily?: string | null;
   fontUrl?: string | null;
   hideBranding?: boolean;
+  redirectTrigger?: 'none' | 'immediate' | 'after_qualification';
+  redirectUrl?: string | null;
+  redirectFailUrl?: string | null;
+  email?: string | null;
 }
 
 export function ThankyouPage({
@@ -66,6 +70,10 @@ export function ThankyouPage({
   fontFamily,
   fontUrl,
   hideBranding,
+  redirectTrigger = 'none',
+  redirectUrl,
+  redirectFailUrl,
+  email,
 }: ThankyouPageProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -188,6 +196,24 @@ export function ThankyouPage({
       return () => clearTimeout(timer);
     }
   }, [qualificationComplete, isQualified, calendlyUrl]);
+
+  // Redirect after qualification if configured
+  useEffect(() => {
+    if (redirectTrigger !== 'after_qualification') return;
+    if (!qualificationComplete) return;
+
+    const targetUrl = isQualified ? redirectUrl : redirectFailUrl;
+    if (!targetUrl) return; // Fall through to built-in UI
+
+    try {
+      const url = new URL(targetUrl);
+      if (leadId) url.searchParams.set('leadId', leadId);
+      if (email) url.searchParams.set('email', email);
+      window.location.href = url.toString();
+    } catch {
+      // Invalid URL — fall through to built-in UI
+    }
+  }, [qualificationComplete, isQualified, redirectTrigger, redirectUrl, redirectFailUrl, leadId, email]);
 
   // Track thank-you page view
   useEffect(() => {

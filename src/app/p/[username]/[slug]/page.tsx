@@ -88,7 +88,9 @@ export default async function PublicOptinPage({ params }: PageProps) {
       logo_url,
       font_family,
       font_url,
-      team_id
+      team_id,
+      redirect_trigger,
+      redirect_url
     `)
     .eq('user_id', user.id)
     .eq('slug', slug)
@@ -162,6 +164,8 @@ export default async function PublicOptinPage({ params }: PageProps) {
       fontFamily={funnel.font_family}
       fontUrl={funnel.font_url}
       hideBranding={whitelabel?.hideBranding || false}
+      redirectTrigger={(funnel.redirect_trigger as 'none' | 'immediate' | 'after_qualification') || 'none'}
+      redirectUrl={funnel.redirect_url}
     />
   );
 }

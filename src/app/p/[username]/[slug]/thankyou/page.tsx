@@ -88,7 +88,10 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       qualification_form_id,
       font_family,
       font_url,
-      team_id
+      team_id,
+      redirect_trigger,
+      redirect_url,
+      redirect_fail_url
     `)
     .eq('user_id', user.id)
     .eq('slug', slug)
@@ -148,6 +151,17 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
     .select('title, polished_content, extracted_content')
     .eq('id', funnel.lead_magnet_id)
     .single();
+
+  // Fetch lead email for redirect URL params
+  let leadEmail: string | null = null;
+  if (leadId) {
+    const { data: lead } = await supabase
+      .from('funnel_leads')
+      .select('email')
+      .eq('id', leadId)
+      .single();
+    leadEmail = lead?.email || null;
+  }
 
   const hasContent = !!(leadMagnet?.polished_content || leadMagnet?.extracted_content);
   const contentPageUrl = hasContent ? `/p/${username}/${slug}/content` : null;
@@ -236,6 +250,10 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       fontFamily={funnel.font_family}
       fontUrl={funnel.font_url}
       hideBranding={whitelabel?.hideBranding || false}
+      redirectTrigger={(funnel.redirect_trigger as 'none' | 'immediate' | 'after_qualification') || 'none'}
+      redirectUrl={funnel.redirect_url}
+      redirectFailUrl={funnel.redirect_fail_url}
+      email={leadEmail}
     />
   );
 }

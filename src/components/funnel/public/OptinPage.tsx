@@ -28,6 +28,8 @@ interface OptinPageProps {
   fontFamily?: string | null;
   fontUrl?: string | null;
   hideBranding?: boolean;
+  redirectTrigger?: 'none' | 'immediate' | 'after_qualification';
+  redirectUrl?: string | null;
 }
 
 export function OptinPage({
@@ -48,6 +50,8 @@ export function OptinPage({
   fontFamily,
   fontUrl,
   hideBranding,
+  redirectTrigger = 'none',
+  redirectUrl,
 }: OptinPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -126,7 +130,15 @@ export function OptinPage({
         fireClientLeadEvent(pixelConfig, leadId, leadMagnetTitle || undefined);
       }
 
-      router.push(`/p/${username}/${slug}/thankyou?leadId=${leadId}`);
+      // Redirect based on configuration
+      if (redirectTrigger === 'immediate' && redirectUrl) {
+        const url = new URL(redirectUrl);
+        url.searchParams.set('leadId', leadId);
+        url.searchParams.set('email', email);
+        window.location.href = url.toString();
+      } else {
+        router.push(`/p/${username}/${slug}/thankyou?leadId=${leadId}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {

@@ -14,7 +14,7 @@ import { FunnelPreview } from './FunnelPreview';
 import { PublishControls } from './PublishControls';
 import { LeadDeliveryInfo } from './LeadDeliveryInfo';
 import { ABTestPanel } from './ABTestPanel';
-import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle } from '@/lib/types/funnel';
+import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle, RedirectTrigger } from '@/lib/types/funnel';
 import type { LeadMagnet, PolishedContent } from '@/lib/types/lead-magnet';
 import type { Library } from '@/lib/types/library';
 
@@ -66,6 +66,11 @@ export function FunnelBuilder({
   const [calendlyUrl, setCalendlyUrl] = useState(existingFunnel?.calendlyUrl || '');
   const [qualificationPassMessage, setQualificationPassMessage] = useState(existingFunnel?.qualificationPassMessage || 'Great! Book a call below.');
   const [qualificationFailMessage, setQualificationFailMessage] = useState(existingFunnel?.qualificationFailMessage || 'Thanks for your interest!');
+
+  // Form state for redirect
+  const [redirectTrigger, setRedirectTrigger] = useState<RedirectTrigger>(existingFunnel?.redirectTrigger || 'none');
+  const [redirectUrl, setRedirectUrl] = useState(existingFunnel?.redirectUrl || '');
+  const [redirectFailUrl, setRedirectFailUrl] = useState(existingFunnel?.redirectFailUrl || '');
 
   // Form state for theme
   const [theme, setTheme] = useState<FunnelTheme>(existingFunnel?.theme || 'dark');
@@ -152,6 +157,9 @@ export function FunnelBuilder({
         calendlyUrl: calendlyUrl || null,
         qualificationPassMessage,
         qualificationFailMessage,
+        redirectTrigger,
+        redirectUrl: redirectUrl || null,
+        redirectFailUrl: redirectFailUrl || null,
         theme,
         primaryColor,
         backgroundStyle,
@@ -305,6 +313,12 @@ export function FunnelBuilder({
                 setPassMessage={setQualificationPassMessage}
                 failMessage={qualificationFailMessage}
                 setFailMessage={setQualificationFailMessage}
+                redirectTrigger={redirectTrigger}
+                setRedirectTrigger={setRedirectTrigger}
+                redirectUrl={redirectUrl}
+                setRedirectUrl={setRedirectUrl}
+                redirectFailUrl={redirectFailUrl}
+                setRedirectFailUrl={setRedirectFailUrl}
               />
               {funnel && <ABTestPanel funnelPageId={funnel.id} />}
             </div>
