@@ -38,10 +38,10 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseAdminClient();
 
-    // Get the lead magnet
+    // Get the lead magnet (include team_id so we can propagate it)
     const { data: leadMagnet, error: lmError } = await supabase
       .from('lead_magnets')
-      .select('id, user_id, title, archetype, concept, extracted_content')
+      .select('id, user_id, team_id, title, archetype, concept, extracted_content')
       .eq('id', leadMagnetId)
       .eq('user_id', session.user.id)
       .single();
@@ -106,6 +106,7 @@ export async function POST(request: Request) {
         {
           lead_magnet_id: leadMagnetId,
           user_id: session.user.id,
+          team_id: leadMagnet.team_id || null,
           emails,
           status: 'draft',
         },
