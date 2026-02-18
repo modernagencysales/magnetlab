@@ -40,7 +40,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Get the email sequence
     let seqQuery = supabase
       .from('email_sequences')
-      .select('id, lead_magnet_id, user_id, emails, loops_synced_at, loops_transactional_ids, status, created_at, updated_at')
+      .select('id, lead_magnet_id, user_id, emails, status, created_at, updated_at')
       .eq('lead_magnet_id', leadMagnetId);
     seqQuery = applyScope(seqQuery, scope);
     const { data, error } = await seqQuery.single();
@@ -133,8 +133,6 @@ export async function PUT(request: Request, { params }: RouteParams) {
       // When emails are edited, reset sync status
       updateData.emails = emails;
       updateData.status = 'draft';
-      updateData.loops_synced_at = null;
-      updateData.loops_transactional_ids = [];
     } else if (status) {
       // Just updating status (e.g., pausing/resuming)
       updateData.status = status;

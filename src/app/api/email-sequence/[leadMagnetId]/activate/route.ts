@@ -27,7 +27,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     // Get the email sequence
     const { data: sequenceData, error: seqError } = await supabase
       .from('email_sequences')
-      .select('id, lead_magnet_id, user_id, emails, loops_synced_at, loops_transactional_ids, status, created_at, updated_at')
+      .select('id, lead_magnet_id, user_id, emails, status, created_at, updated_at')
       .eq('lead_magnet_id', leadMagnetId)
       .eq('user_id', session.user.id)
       .single();

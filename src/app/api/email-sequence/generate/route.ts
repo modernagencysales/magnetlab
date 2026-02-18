@@ -114,7 +114,7 @@ export async function POST(request: Request) {
           onConflict: 'lead_magnet_id',
         }
       )
-      .select('id, lead_magnet_id, user_id, emails, loops_synced_at, loops_transactional_ids, status, created_at, updated_at')
+      .select('id, lead_magnet_id, user_id, emails, status, created_at, updated_at')
       .single();
 
     if (upsertError || !emailSequence) {
