@@ -14,6 +14,7 @@ import {
   Upload,
   X,
   ArrowUpRight,
+  Mail,
 } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
@@ -38,6 +39,27 @@ interface DnsInstructions {
   value: string;
   note: string;
   verification: Array<{ type: string; domain: string; value: string; reason: string }>;
+}
+
+interface EmailDomainDnsRecord {
+  record: string;   // "SPF" | "DKIM" | "DMARC" | "MX"
+  name: string;
+  type: string;     // "TXT" | "MX" | "CNAME"
+  value: string;
+  ttl: string;
+  status: string;   // "not_started" | "pending" | "verified" | "failed"
+  priority?: number;
+}
+
+interface EmailDomainData {
+  id: string;
+  domain: string;
+  resend_domain_id: string;
+  status: 'pending' | 'verified' | 'failed';
+  dns_records: EmailDomainDnsRecord[] | null;
+  region: string;
+  last_checked_at: string | null;
+  created_at: string;
 }
 
 interface WhiteLabelSettingsProps {
@@ -67,6 +89,28 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
   const [brandingSaved, setBrandingSaved] = useState(false);
   const [brandingError, setBrandingError] = useState<string | null>(null);
   const [faviconUploading, setFaviconUploading] = useState(false);
+
+  // Email domain state
+  const [emailDomain, setEmailDomain] = useState<EmailDomainData | null>(null);
+  const [emailDomainInput, setEmailDomainInput] = useState('');
+  const [emailDnsExpanded, setEmailDnsExpanded] = useState(false);
+  const [emailDomainLoading, setEmailDomainLoading] = useState(true);
+  const [emailDomainSaving, setEmailDomainSaving] = useState(false);
+  const [emailDomainVerifying, setEmailDomainVerifying] = useState(false);
+  const [emailDomainDeleting, setEmailDomainDeleting] = useState(false);
+  const [emailDomainError, setEmailDomainError] = useState<string | null>(null);
+  const [emailDomainSuccess, setEmailDomainSuccess] = useState<string | null>(null);
+
+  // Email domain polling
+  const emailPollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const emailPollCountRef = useRef(0);
+  const [isEmailPolling, setIsEmailPolling] = useState(false);
+
+  // From email
+  const [fromEmail, setFromEmail] = useState('');
+  const [fromEmailSaving, setFromEmailSaving] = useState(false);
+  const [fromEmailSaved, setFromEmailSaved] = useState(false);
+  const [fromEmailError, setFromEmailError] = useState<string | null>(null);
 
   // Copy state
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -116,6 +160,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
           setSiteName(data.whitelabel.custom_site_name || '');
           setFaviconUrl(data.whitelabel.custom_favicon_url || '');
           setEmailSenderName(data.whitelabel.custom_email_sender_name || '');
+          setFromEmail(data.whitelabel.custom_from_email || '');
         }
       }
     } catch (error) {
@@ -125,16 +170,35 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
     }
   }, []);
 
+  // Fetch email domain data
+  const fetchEmailDomain = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings/team-email-domain');
+      if (res.ok) {
+        const data = await res.json();
+        setEmailDomain(data.emailDomain || null);
+      }
+    } catch (error) {
+      logError('settings/whitelabel', error, { step: 'fetch_email_domain' });
+    } finally {
+      setEmailDomainLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchDomain();
     fetchWhitelabel();
-  }, [fetchDomain, fetchWhitelabel]);
+    fetchEmailDomain();
+  }, [fetchDomain, fetchWhitelabel, fetchEmailDomain]);
 
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
+      }
+      if (emailPollTimerRef.current) {
+        clearInterval(emailPollTimerRef.current);
       }
     };
   }, []);
@@ -282,6 +346,179 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
       setDomainError(error instanceof Error ? error.message : 'Failed to remove domain');
     } finally {
       setDomainDeleting(false);
+    }
+  };
+
+  // Start polling for email domain DNS verification
+  const startEmailPolling = useCallback(() => {
+    if (emailPollTimerRef.current) clearInterval(emailPollTimerRef.current);
+    emailPollCountRef.current = 0;
+    setIsEmailPolling(true);
+
+    emailPollTimerRef.current = setInterval(async () => {
+      emailPollCountRef.current += 1;
+      if (emailPollCountRef.current >= 12) {
+        if (emailPollTimerRef.current) clearInterval(emailPollTimerRef.current);
+        setIsEmailPolling(false);
+        return;
+      }
+      try {
+        const res = await fetch('/api/settings/team-email-domain/verify', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.verified) {
+            setEmailDomain(prev => prev ? { ...prev, status: 'verified', dns_records: data.records } : prev);
+            setEmailDomainSuccess('Email domain verified!');
+            if (emailPollTimerRef.current) clearInterval(emailPollTimerRef.current);
+            setIsEmailPolling(false);
+            setTimeout(() => setEmailDomainSuccess(null), 5000);
+          } else if (data.records) {
+            setEmailDomain(prev => prev ? { ...prev, dns_records: data.records } : prev);
+          }
+        }
+      } catch { /* ignore */ }
+    }, 10000);
+  }, []);
+
+  // Email domain handlers
+  const handleSaveEmailDomain = async () => {
+    if (!emailDomainInput.trim()) return;
+
+    setEmailDomainSaving(true);
+    setEmailDomainError(null);
+    setEmailDomainSuccess(null);
+
+    try {
+      const res = await fetch('/api/settings/team-email-domain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: emailDomainInput.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save email domain');
+      }
+
+      setEmailDomain(data.emailDomain);
+      setEmailDomainInput('');
+      if (data.dnsRecords) {
+        setEmailDnsExpanded(true);
+      }
+
+      if (data.emailDomain.status === 'verified') {
+        setEmailDomainSuccess('Email domain added and verified!');
+        setTimeout(() => setEmailDomainSuccess(null), 5000);
+      } else {
+        setEmailDomainSuccess('Email domain added. Configure DNS records and verify below.');
+        setTimeout(() => setEmailDomainSuccess(null), 5000);
+        startEmailPolling();
+      }
+    } catch (error) {
+      setEmailDomainError(error instanceof Error ? error.message : 'Failed to save email domain');
+    } finally {
+      setEmailDomainSaving(false);
+    }
+  };
+
+  const handleVerifyEmailDomain = async () => {
+    setEmailDomainVerifying(true);
+    setEmailDomainError(null);
+
+    try {
+      const res = await fetch('/api/settings/team-email-domain/verify', { method: 'POST' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to verify email domain');
+      }
+
+      if (data.verified) {
+        setEmailDomain(prev => prev ? { ...prev, status: 'verified', dns_records: data.records } : prev);
+        setEmailDomainSuccess('Email domain verified successfully!');
+        setTimeout(() => setEmailDomainSuccess(null), 5000);
+        if (emailPollTimerRef.current) {
+          clearInterval(emailPollTimerRef.current);
+          setIsEmailPolling(false);
+        }
+      } else {
+        if (data.records) {
+          setEmailDomain(prev => prev ? { ...prev, dns_records: data.records } : prev);
+        }
+        setEmailDomainError('DNS records not fully configured yet. Add all required records and wait for propagation.');
+      }
+    } catch (error) {
+      setEmailDomainError(error instanceof Error ? error.message : 'Failed to verify email domain');
+    } finally {
+      setEmailDomainVerifying(false);
+    }
+  };
+
+  const handleDeleteEmailDomain = async () => {
+    if (!confirm('Remove this email domain? Transactional emails will revert to the default sender.')) {
+      return;
+    }
+
+    setEmailDomainDeleting(true);
+    setEmailDomainError(null);
+
+    try {
+      const res = await fetch('/api/settings/team-email-domain', { method: 'DELETE' });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to remove email domain');
+      }
+
+      setEmailDomain(null);
+      setEmailDnsExpanded(false);
+      setEmailDomainSuccess('Email domain removed.');
+      setTimeout(() => setEmailDomainSuccess(null), 3000);
+
+      if (emailPollTimerRef.current) {
+        clearInterval(emailPollTimerRef.current);
+        setIsEmailPolling(false);
+      }
+    } catch (error) {
+      setEmailDomainError(error instanceof Error ? error.message : 'Failed to remove email domain');
+    } finally {
+      setEmailDomainDeleting(false);
+    }
+  };
+
+  const handleSaveFromEmail = async () => {
+    if (!fromEmail.trim()) return;
+
+    // Client-side validation: must end with @{emailDomain.domain}
+    if (emailDomain && !fromEmail.trim().endsWith(`@${emailDomain.domain}`)) {
+      setFromEmailError(`Email must end with @${emailDomain.domain}`);
+      return;
+    }
+
+    setFromEmailSaving(true);
+    setFromEmailError(null);
+    setFromEmailSaved(false);
+
+    try {
+      const res = await fetch('/api/settings/team-email-domain/from-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromEmail: fromEmail.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save from email');
+      }
+
+      setFromEmailSaved(true);
+      setTimeout(() => setFromEmailSaved(false), 3000);
+    } catch (error) {
+      setFromEmailError(error instanceof Error ? error.message : 'Failed to save from email');
+    } finally {
+      setFromEmailSaving(false);
     }
   };
 
@@ -785,6 +1022,260 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
               </p>
             )}
           </div>
+        )}
+      </div>
+
+      {/* ── Separator ── */}
+      <div className="my-6 border-t" />
+
+      {/* ── Email Domain ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Mail className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">Email Domain</h3>
+        </div>
+
+        {emailDomainLoading ? (
+          <div className="flex items-center gap-2 py-4">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Loading email domain settings...</span>
+          </div>
+        ) : emailDomain ? (
+          // Email domain is configured
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm font-medium truncate">{emailDomain.domain}</span>
+                {emailDomain.status === 'verified' ? (
+                  <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600 flex-shrink-0">
+                    <CheckCircle className="h-3 w-3" />
+                    Verified
+                  </span>
+                ) : emailDomain.status === 'failed' ? (
+                  <span className="flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 flex-shrink-0">
+                    <XCircle className="h-3 w-3" />
+                    Failed
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 flex-shrink-0">
+                    Pending DNS
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                {emailDomain.status !== 'verified' && (
+                  <button
+                    onClick={handleVerifyEmailDomain}
+                    disabled={emailDomainVerifying}
+                    className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    {emailDomainVerifying ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      'Verify'
+                    )}
+                  </button>
+                )}
+                <button
+                  onClick={handleDeleteEmailDomain}
+                  disabled={emailDomainDeleting}
+                  className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
+                >
+                  {emailDomainDeleting ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Polling indicator */}
+            {isEmailPolling && emailDomain.status !== 'verified' && (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Checking DNS automatically...
+              </p>
+            )}
+
+            {/* DNS Records (expandable) — shown when not verified */}
+            {emailDomain.dns_records && emailDomain.dns_records.length > 0 && emailDomain.status !== 'verified' && (
+              <div className="rounded-lg border">
+                <button
+                  type="button"
+                  onClick={() => setEmailDnsExpanded(!emailDnsExpanded)}
+                  className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+                >
+                  <span>DNS Records</span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-muted-foreground transition-transform ${
+                      emailDnsExpanded ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                {emailDnsExpanded && (
+                  <div className="border-t px-4 py-3 space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Add the following DNS records in your domain provider settings:
+                    </p>
+
+                    {emailDomain.dns_records.map((rec, i) => (
+                      <div key={i} className="rounded-lg bg-muted/50 p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase">{rec.record}</span>
+                          {rec.status === 'verified' ? (
+                            <span className="flex items-center gap-1 text-xs text-green-600">
+                              <CheckCircle className="h-3 w-3" />
+                              Verified
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-xs text-amber-600">
+                              <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                              Pending
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground">Type</span>
+                          <code className="text-sm font-mono">{rec.type}</code>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground">Name</span>
+                          <div className="flex items-center gap-2">
+                            <code className="text-sm font-mono break-all">{rec.name}</code>
+                            <button
+                              onClick={() => handleCopy(rec.name, `email-name-${i}`)}
+                              className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                            >
+                              {copiedField === `email-name-${i}` ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground">Value</span>
+                          <div className="flex items-center gap-2">
+                            <code className="text-sm font-mono break-all">{rec.value}</code>
+                            <button
+                              onClick={() => handleCopy(rec.value, `email-value-${i}`)}
+                              className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                            >
+                              {copiedField === `email-value-${i}` ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        {rec.priority !== undefined && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-muted-foreground">Priority</span>
+                            <code className="text-sm font-mono">{rec.priority}</code>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    <p className="text-xs text-muted-foreground">
+                      DNS propagation may take up to 48 hours. We will automatically check for verification.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* From email input — only shown when domain is verified */}
+            {emailDomain.status === 'verified' && (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">From Email Address</label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={fromEmail}
+                    onChange={(e) => {
+                      setFromEmail(e.target.value);
+                      setFromEmailError(null);
+                      setFromEmailSaved(false);
+                    }}
+                    placeholder={`hello@${emailDomain.domain}`}
+                    className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                  />
+                  <button
+                    onClick={handleSaveFromEmail}
+                    disabled={fromEmailSaving || !fromEmail.trim()}
+                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    {fromEmailSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      'Save'
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Transactional emails will be sent from this address
+                </p>
+                {fromEmailSaved && (
+                  <p className="flex items-center gap-1 text-sm text-green-600">
+                    <CheckCircle className="h-4 w-4" />
+                    Saved
+                  </p>
+                )}
+                {fromEmailError && (
+                  <p className="flex items-center gap-2 text-sm text-red-500">
+                    <XCircle className="h-4 w-4" />
+                    {fromEmailError}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          // No email domain configured — show input
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Send transactional emails from your own domain. Add a domain and configure DNS records to get started.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={emailDomainInput}
+                onChange={(e) => setEmailDomainInput(e.target.value)}
+                placeholder="yourdomain.com"
+                className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              />
+              <button
+                onClick={handleSaveEmailDomain}
+                disabled={emailDomainSaving || !emailDomainInput.trim()}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {emailDomainSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Add Email Domain'
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Email domain success/error messages */}
+        {emailDomainSuccess && (
+          <p className="flex items-center gap-2 text-sm text-green-600">
+            <CheckCircle className="h-4 w-4" />
+            {emailDomainSuccess}
+          </p>
+        )}
+        {emailDomainError && (
+          <p className="flex items-center gap-2 text-sm text-red-500">
+            <XCircle className="h-4 w-4" />
+            {emailDomainError}
+          </p>
         )}
       </div>
     </div>
