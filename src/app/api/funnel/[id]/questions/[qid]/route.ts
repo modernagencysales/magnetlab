@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import {
   qualificationQuestionFromRow,
   type QualificationQuestionRow,
@@ -28,14 +29,15 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const { id, qid } = await params;
     const body = await request.json();
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
     // Verify funnel ownership and get form reference
-    const { data: funnel, error: funnelError } = await supabase
+    let funnelQuery = supabase
       .from('funnel_pages')
       .select('id, qualification_form_id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    funnelQuery = applyScope(funnelQuery, scope);
+    const { data: funnel, error: funnelError } = await funnelQuery.single();
 
     if (funnelError || !funnel) {
       return ApiErrors.notFound('Funnel page');
@@ -116,14 +118,15 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     const { id, qid } = await params;
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
     // Verify funnel ownership and get form reference
-    const { data: funnel, error: funnelError } = await supabase
+    let funnelQuery = supabase
       .from('funnel_pages')
       .select('id, qualification_form_id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    funnelQuery = applyScope(funnelQuery, scope);
+    const { data: funnel, error: funnelError } = await funnelQuery.single();
 
     if (funnelError || !funnel) {
       return ApiErrors.notFound('Funnel page');

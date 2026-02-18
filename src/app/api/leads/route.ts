@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 // Pagination limits to prevent memory exhaustion
 const MAX_LIMIT = 100;
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
     const limit = Math.min(Math.max(1, rawLimit), MAX_LIMIT);
     const offset = Math.max(0, rawOffset);
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     // Build query with funnel info
@@ -75,8 +77,9 @@ export async function GET(request: Request) {
             title
           )
         )
-      `, { count: 'exact' })
-      .eq('user_id', session.user.id)
+      `, { count: 'exact' });
+    query = applyScope(query, scope);
+    query = query
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 

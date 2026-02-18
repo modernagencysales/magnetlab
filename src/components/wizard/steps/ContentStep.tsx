@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeft, Check, Loader2, Sparkles, Copy, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { ArrowLeft, Check, Loader2, Sparkles, Copy, ChevronDown, ChevronUp, Pencil, Plus, X, GripVertical } from 'lucide-react';
 import type { ExtractedContent } from '@/lib/types/lead-magnet';
 
 interface ContentStepProps {
@@ -9,6 +9,7 @@ interface ContentStepProps {
   onApprove: () => void;
   onBack: () => void;
   loading: boolean;
+  onContentChange?: (content: ExtractedContent) => void;
 }
 
 // Helper to normalize items that might be strings or objects with various property names.
@@ -32,9 +33,77 @@ function normalizeItem(item: string | Record<string, unknown>): string {
   return String(item);
 }
 
-export function ContentStep({ content, onApprove, onBack, loading }: ContentStepProps) {
+export function ContentStep({ content, onApprove, onBack, loading, onContentChange }: ContentStepProps) {
   const [showFullContent, setShowFullContent] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
+
+  const updateContent = useCallback(
+    (updates: Partial<ExtractedContent>) => {
+      onContentChange?.({ ...content, ...updates });
+    },
+    [content, onContentChange]
+  );
+
+  const updateSectionName = useCallback(
+    (sectionIndex: number, newName: string) => {
+      const newStructure = content.structure.map((s, i) =>
+        i === sectionIndex ? { ...s, sectionName: newName } : s
+      );
+      updateContent({ structure: newStructure });
+    },
+    [content.structure, updateContent]
+  );
+
+  const updateSectionItem = useCallback(
+    (sectionIndex: number, itemIndex: number, newValue: string) => {
+      const newStructure = content.structure.map((s, i) =>
+        i === sectionIndex
+          ? { ...s, contents: s.contents.map((c, j) => (j === itemIndex ? newValue : c)) }
+          : s
+      );
+      updateContent({ structure: newStructure });
+    },
+    [content.structure, updateContent]
+  );
+
+  const addSectionItem = useCallback(
+    (sectionIndex: number) => {
+      const newStructure = content.structure.map((s, i) =>
+        i === sectionIndex ? { ...s, contents: [...s.contents, ''] } : s
+      );
+      updateContent({ structure: newStructure });
+      setEditingField(`structure-${sectionIndex}-${content.structure[sectionIndex].contents.length}`);
+    },
+    [content.structure, updateContent]
+  );
+
+  const removeSectionItem = useCallback(
+    (sectionIndex: number, itemIndex: number) => {
+      const newStructure = content.structure.map((s, i) =>
+        i === sectionIndex
+          ? { ...s, contents: s.contents.filter((_, j) => j !== itemIndex) }
+          : s
+      );
+      updateContent({ structure: newStructure });
+    },
+    [content.structure, updateContent]
+  );
+
+  const addSection = useCallback(() => {
+    const newStructure = [...content.structure, { sectionName: '', contents: [''] }];
+    updateContent({ structure: newStructure });
+    setEditingField(`section-name-${content.structure.length}`);
+  }, [content.structure, updateContent]);
+
+  const removeSection = useCallback(
+    (sectionIndex: number) => {
+      if (content.structure.length <= 1) return;
+      const newStructure = content.structure.filter((_, i) => i !== sectionIndex);
+      updateContent({ structure: newStructure });
+    },
+    [content.structure, updateContent]
+  );
 
   // Generate the full lead magnet document text
   const generateFullContent = () => {
@@ -121,21 +190,103 @@ export function ContentStep({ content, onApprove, onBack, loading }: ContentStep
           <p>{content.nonObviousInsight}</p>
         </div>
 
-        {/* Sections */}
+        {/* Sections (Framework / Formula) */}
         <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium text-muted-foreground">Framework / Steps</div>
+            {onContentChange && (
+              <button
+                type="button"
+                onClick={() => setEditingField(editingField?.startsWith('structure') || editingField?.startsWith('section') ? null : 'structure')}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <Pencil className="h-3 w-3" />
+                {editingField?.startsWith('structure') || editingField?.startsWith('section') ? 'Done' : 'Edit'}
+              </button>
+            )}
+          </div>
           {content.structure.map((section, index) => (
-            <div key={index}>
-              <h3 className="mb-2 font-semibold">{section.sectionName}</h3>
-              <ul className="space-y-1">
-                {section.contents.map((item, itemIndex) => (
-                  <li key={itemIndex} className="flex items-start gap-2 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <span>{normalizeItem(item)}</span>
-                  </li>
-                ))}
-              </ul>
+            <div key={index} className="group relative">
+              {editingField?.startsWith('structure') || editingField?.startsWith('section') ? (
+                <div className="rounded-lg border border-dashed border-border p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                    <input
+                      type="text"
+                      value={section.sectionName}
+                      onChange={(e) => updateSectionName(index, e.target.value)}
+                      placeholder="Section name..."
+                      className="flex-1 bg-transparent font-semibold outline-none placeholder:text-muted-foreground/50 focus:ring-0"
+                      autoFocus={editingField === `section-name-${index}`}
+                    />
+                    {content.structure.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeSection(index)}
+                        className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        title="Remove section"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <ul className="space-y-1.5 pl-6">
+                    {section.contents.map((item, itemIndex) => (
+                      <li key={itemIndex} className="flex items-start gap-2">
+                        <Check className="mt-2 h-4 w-4 shrink-0 text-primary" />
+                        <input
+                          type="text"
+                          value={typeof item === 'string' ? item : normalizeItem(item)}
+                          onChange={(e) => updateSectionItem(index, itemIndex, e.target.value)}
+                          placeholder="Add a step or point..."
+                          className="flex-1 rounded border-0 bg-secondary/50 px-2 py-1 text-sm outline-none focus:bg-secondary focus:ring-1 focus:ring-primary/30"
+                          autoFocus={editingField === `structure-${index}-${itemIndex}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeSectionItem(index, itemIndex)}
+                          className="mt-1 rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          title="Remove item"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => addSectionItem(index)}
+                    className="ml-6 flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add item
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="mb-2 font-semibold">{section.sectionName}</h3>
+                  <ul className="space-y-1">
+                    {section.contents.map((item, itemIndex) => (
+                      <li key={itemIndex} className="flex items-start gap-2 text-sm">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <span>{normalizeItem(item)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           ))}
+          {(editingField?.startsWith('structure') || editingField?.startsWith('section')) && (
+            <button
+              type="button"
+              onClick={addSection}
+              className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground"
+            >
+              <Plus className="h-3 w-3" />
+              Add section
+            </button>
+          )}
         </div>
 
         {/* Personal Experience */}
@@ -146,10 +297,33 @@ export function ContentStep({ content, onApprove, onBack, loading }: ContentStep
           </div>
         )}
 
-        {/* Proof */}
+        {/* Proof & Results */}
         <div className="rounded-lg bg-green-500/10 p-4">
-          <div className="mb-1 text-sm font-medium text-green-600">Proof & Results</div>
-          <p className="text-sm">{content.proof}</p>
+          <div className="mb-1 flex items-center justify-between">
+            <div className="text-sm font-medium text-green-600">Proof & Results</div>
+            {onContentChange && (
+              <button
+                type="button"
+                onClick={() => setEditingField(editingField === 'proof' ? null : 'proof')}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-green-500/10 hover:text-foreground"
+              >
+                <Pencil className="h-3 w-3" />
+                {editingField === 'proof' ? 'Done' : 'Edit'}
+              </button>
+            )}
+          </div>
+          {editingField === 'proof' ? (
+            <textarea
+              value={content.proof}
+              onChange={(e) => updateContent({ proof: e.target.value })}
+              rows={4}
+              className="w-full rounded-md border border-green-300/30 bg-white/50 px-3 py-2 text-sm outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400/30 dark:bg-black/20"
+              placeholder="Describe your results, metrics, case studies..."
+              autoFocus
+            />
+          ) : (
+            <p className="text-sm">{content.proof}</p>
+          )}
         </div>
 
         {/* Common Mistakes */}

@@ -7,6 +7,7 @@ import { CalendlyEmbed } from './CalendlyEmbed';
 import { getThemeVars } from '@/lib/utils/theme-vars';
 import { SectionRenderer } from '@/components/ds';
 import { PixelScripts, type PixelConfig } from './PixelScripts';
+import { FontLoader, getFontStyle } from './FontLoader';
 import type { FunnelPageSection } from '@/lib/types/funnel';
 
 import { logError } from '@/lib/utils/logger';
@@ -40,6 +41,10 @@ interface ThankyouPageProps {
   leadMagnetTitle?: string | null;
   sections?: FunnelPageSection[];
   pixelConfig?: PixelConfig;
+  funnelPageId?: string;
+  fontFamily?: string | null;
+  fontUrl?: string | null;
+  hideBranding?: boolean;
 }
 
 export function ThankyouPage({
@@ -57,6 +62,10 @@ export function ThankyouPage({
   logoUrl,
   sections = [],
   pixelConfig,
+  funnelPageId,
+  fontFamily,
+  fontUrl,
+  hideBranding,
 }: ThankyouPageProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -180,13 +189,25 @@ export function ThankyouPage({
     }
   }, [qualificationComplete, isQualified, calendlyUrl]);
 
+  // Track thank-you page view
+  useEffect(() => {
+    if (funnelPageId) {
+      fetch('/api/public/view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ funnelPageId, pageType: 'thankyou' }),
+      }).catch(() => {});
+    }
+  }, [funnelPageId]);
+
   return (
     <>
     {pixelConfig && <PixelScripts config={pixelConfig} />}
     <div
       className="min-h-screen flex flex-col items-center px-4 py-12"
-      style={{ background: getBackgroundStyle(), ...themeVars }}
+      style={{ background: getBackgroundStyle(), ...themeVars, ...getFontStyle(fontFamily) }}
     >
+      <FontLoader fontFamily={fontFamily || null} fontUrl={fontUrl || null} />
       <div className="w-full max-w-2xl space-y-8">
         {/* 1. Slim confirmation banner */}
         <div
@@ -231,12 +252,20 @@ export function ThankyouPage({
           </div>
         )}
 
-        {/* 5. Video (sells filling in the survey) */}
-        {vslUrl && (
-          <VideoEmbed url={vslUrl} />
+        {/* 5. Survey bridge copy + incentive */}
+        {hasQuestions && !qualificationComplete && (
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-semibold" style={{ color: 'var(--ds-text)' }}>
+              One quick step to personalize your experience
+            </h2>
+            <p className="text-sm" style={{ color: 'var(--ds-muted)' }}>
+              Answer {questions.length} quick {questions.length === 1 ? 'question' : 'questions'} so we can tailor everything to your situation.
+              {calendlyUrl && ' Complete the survey to book a strategy call.'}
+            </p>
+          </div>
         )}
 
-        {/* 6. Survey card - visually prominent */}
+        {/* 6. Survey card - visually prominent (BEFORE video for higher completion) */}
         {hasQuestions && !qualificationComplete && (
           <div className="relative">
             {/* Background glow */}
@@ -245,27 +274,42 @@ export function ThankyouPage({
               style={{ background: primaryColor }}
             />
             <div
-              className="relative rounded-xl p-6 md:p-8 space-y-6"
+              className="relative rounded-xl p-4 sm:p-6 md:p-8 space-y-6"
               style={{
                 background: 'var(--ds-card)',
                 border: `2px solid color-mix(in srgb, ${primaryColor} 40%, transparent)`,
                 boxShadow: `0 0 30px color-mix(in srgb, ${primaryColor} 15%, transparent)`,
               }}
             >
-              {/* Quick Survey pill */}
-              <div className="flex justify-center -mt-10 md:-mt-12 mb-2">
+              {/* Time estimate pill */}
+              <div className="flex justify-center -mt-8 sm:-mt-10 md:-mt-12 mb-2">
                 <span
                   className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white"
                   style={{ background: primaryColor }}
                 >
-                  Quick Survey
+                  {questions.length <= 3 ? '30-second' : '2-minute'} survey
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
-                <p className="text-sm" style={{ color: 'var(--ds-placeholder)' }}>
-                  Question {currentQuestionIndex + 1} of {questions.length}
-                </p>
+                <div className="flex items-center gap-2">
+                  {currentQuestionIndex > 0 && (
+                    <button
+                      onClick={() => {
+                        setCurrentQuestionIndex(currentQuestionIndex - 1);
+                        setCurrentTextValue(answers[questions[currentQuestionIndex - 1]?.id] || '');
+                        setError(null);
+                      }}
+                      className="text-xs transition-opacity hover:opacity-80"
+                      style={{ color: 'var(--ds-muted)' }}
+                    >
+                      &larr; Back
+                    </button>
+                  )}
+                  <p className="text-sm" style={{ color: 'var(--ds-placeholder)' }}>
+                    Question {currentQuestionIndex + 1} of {questions.length}
+                  </p>
+                </div>
                 <div className="flex gap-1">
                   {questions.map((_, i) => (
                     <div
@@ -436,7 +480,12 @@ export function ThankyouPage({
           </div>
         )}
 
-        {/* 7. Qualification Result */}
+        {/* 7. Video — shown after survey to avoid distraction */}
+        {vslUrl && (qualificationComplete || !hasQuestions) && (
+          <VideoEmbed url={vslUrl} />
+        )}
+
+        {/* 8. Qualification Result */}
         {qualificationComplete && isQualified !== null && (
           <div
             className={`rounded-xl p-6 text-center ${
@@ -456,7 +505,7 @@ export function ThankyouPage({
           </div>
         )}
 
-        {/* 8. Below-video sections */}
+        {/* 9. Below-content sections */}
         {belowSections.length > 0 && (
           <div className="space-y-6">
             {belowSections.map(s => <SectionRenderer key={s.id} section={s} />)}
@@ -464,7 +513,7 @@ export function ThankyouPage({
         )}
       </div>
 
-      {/* 9. Cal.com booking embed - wider container for desktop mode */}
+      {/* 10. Cal.com booking embed - wider container for desktop mode */}
       {qualificationComplete && isQualified && calendlyUrl && (
         <div ref={bookingRef} className="w-full max-w-5xl px-4 mt-8 space-y-4">
           <h3
@@ -477,18 +526,20 @@ export function ThankyouPage({
         </div>
       )}
 
-      {/* 11. Powered by */}
-      <div className="mt-12">
-        <a
-          href="https://magnetlab.app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs transition-colors hover:opacity-80"
-          style={{ color: 'var(--ds-placeholder)' }}
-        >
-          Powered by MagnetLab
-        </a>
-      </div>
+      {/* 11. Powered by MagnetLab */}
+      {!hideBranding && (
+        <div className="mt-12">
+          <a
+            href="https://magnetlab.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs transition-colors hover:opacity-80"
+            style={{ color: 'var(--ds-placeholder)' }}
+          >
+            Powered by MagnetLab
+          </a>
+        </div>
+      )}
     </div>
     </>
   );

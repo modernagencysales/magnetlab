@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { generateBrandedThumbnail } from '@/lib/services/thumbnail';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 export async function POST(request: Request) {
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
 
     // Upload to Supabase Storage
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
     const fileName = `thumbnails/${session.user.id}/${leadMagnetId}.png`;
 
     const { error: uploadError } = await supabase.storage
@@ -56,11 +58,12 @@ export async function POST(request: Request) {
     const thumbnailUrl = urlData.publicUrl;
 
     // Update lead magnet
-    await supabase
+    let updateQuery = supabase
       .from('lead_magnets')
       .update({ thumbnail_url: thumbnailUrl })
-      .eq('id', leadMagnetId)
-      .eq('user_id', session.user.id);
+      .eq('id', leadMagnetId);
+    updateQuery = applyScope(updateQuery, scope);
+    await updateQuery;
 
     return NextResponse.json({ thumbnailUrl });
   } catch (error) {

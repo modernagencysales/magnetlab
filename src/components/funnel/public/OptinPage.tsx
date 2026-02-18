@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { getThemeVars } from '@/lib/utils/theme-vars';
 import { CTAButton, SectionRenderer } from '@/components/ds';
 import { PixelScripts, fireClientLeadEvent, type PixelConfig } from './PixelScripts';
+import { FontLoader, getFontStyle } from './FontLoader';
 import type { FunnelPageSection } from '@/lib/types/funnel';
 
 interface OptinPageProps {
@@ -24,6 +25,9 @@ interface OptinPageProps {
   sections?: FunnelPageSection[];
   pixelConfig?: PixelConfig;
   leadMagnetTitle?: string | null;
+  fontFamily?: string | null;
+  fontUrl?: string | null;
+  hideBranding?: boolean;
 }
 
 export function OptinPage({
@@ -41,6 +45,9 @@ export function OptinPage({
   sections = [],
   pixelConfig,
   leadMagnetTitle,
+  fontFamily,
+  fontUrl,
+  hideBranding,
 }: OptinPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -132,8 +139,9 @@ export function OptinPage({
     {pixelConfig && <PixelScripts config={pixelConfig} />}
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4 py-12"
-      style={{ background: getBackgroundStyle(), ...themeVars }}
+      style={{ background: getBackgroundStyle(), ...themeVars, ...getFontStyle(fontFamily) }}
     >
+      <FontLoader fontFamily={fontFamily || null} fontUrl={fontUrl || null} />
       <div className="w-full max-w-md space-y-8 text-center">
         {/* Logo */}
         {logoUrl && (
@@ -222,17 +230,19 @@ export function OptinPage({
       </div>
 
       {/* Powered by */}
-      <div className="mt-12">
-        <a
-          href="https://magnetlab.app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs transition-colors hover:opacity-80"
-          style={{ color: 'var(--ds-placeholder)' }}
-        >
-          Powered by MagnetLab
-        </a>
-      </div>
+      {!hideBranding && (
+        <div className="mt-12">
+          <a
+            href="https://magnetlab.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs transition-colors hover:opacity-80"
+            style={{ color: 'var(--ds-placeholder)' }}
+          >
+            Powered by MagnetLab
+          </a>
+        </div>
+      )}
     </div>
     </>
   );

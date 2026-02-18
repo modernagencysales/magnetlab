@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { funnelPageFromRow, type FunnelPageRow } from '@/lib/types/funnel';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { validateBody, updateFunnelSchema } from '@/lib/validations/api';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -25,14 +26,16 @@ export async function GET(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('Invalid funnel page ID');
     }
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
-    const { data, error } = await supabase
-      .from('funnel_pages')
-      .select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+    const { data, error } = await applyScope(
+      supabase
+        .from('funnel_pages')
+        .select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at')
+        .eq('id', id),
+      scope
+    ).single();
 
     if (error || !data) {
       return ApiErrors.notFound('Funnel page');
@@ -65,6 +68,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const validated = validation.data;
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     // Build update object with snake_case keys
@@ -89,12 +93,13 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     // Verify ownership of qualificationFormId if provided
     if (validated.qualificationFormId) {
-      const { data: qf } = await supabase
-        .from('qualification_forms')
-        .select('id')
-        .eq('id', validated.qualificationFormId)
-        .eq('user_id', session.user.id)
-        .single();
+      const { data: qf } = await applyScope(
+        supabase
+          .from('qualification_forms')
+          .select('id')
+          .eq('id', validated.qualificationFormId),
+        scope
+      ).single();
 
       if (!qf) {
         return ApiErrors.notFound('Qualification form');
@@ -103,26 +108,27 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     // Check for slug collision if updating slug
     if (validated.slug) {
-      const { data: existing } = await supabase
-        .from('funnel_pages')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .eq('slug', validated.slug)
-        .neq('id', id)
-        .single();
+      const { data: existing } = await applyScope(
+        supabase
+          .from('funnel_pages')
+          .select('id')
+          .eq('slug', validated.slug)
+          .neq('id', id),
+        scope
+      ).single();
 
       if (existing) {
         return ApiErrors.conflict('A funnel with this slug already exists');
       }
     }
 
-    const { data, error } = await supabase
-      .from('funnel_pages')
-      .update(updateData)
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .select()
-      .single();
+    const { data, error } = await applyScope(
+      supabase
+        .from('funnel_pages')
+        .update(updateData)
+        .eq('id', id),
+      scope
+    ).select().single();
 
     if (error) {
       logApiError('funnel/update', error, { userId: session.user.id, funnelId: id });
@@ -153,15 +159,17 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('Invalid funnel page ID');
     }
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     // First verify ownership
-    const { data: funnel, error: findError } = await supabase
-      .from('funnel_pages')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+    const { data: funnel, error: findError } = await applyScope(
+      supabase
+        .from('funnel_pages')
+        .select('id')
+        .eq('id', id),
+      scope
+    ).single();
 
     if (findError || !funnel) {
       return ApiErrors.notFound('Funnel page');
@@ -175,11 +183,13 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     ]);
 
     // Delete the funnel page (after child records are cleared)
-    const { error } = await supabase
-      .from('funnel_pages')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', session.user.id);
+    const { error } = await applyScope(
+      supabase
+        .from('funnel_pages')
+        .delete()
+        .eq('id', id),
+      scope
+    );
 
     if (error) {
       logApiError('funnel/delete', error, { userId: session.user.id, funnelId: id });

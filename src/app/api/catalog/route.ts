@@ -1,63 +1,25 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return ApiErrors.unauthorized();
 
-  const ownerIdParam = request.nextUrl.searchParams.get('owner_id');
-  const ownerId = ownerIdParam || session.user.id;
-
-  if (ownerIdParam && !isValidUUID(ownerIdParam)) {
-    return ApiErrors.validationError('Invalid owner_id');
-  }
-
+  const scope = await getDataScope(session.user.id);
   const supabase = createSupabaseAdminClient();
 
-  // If viewing another owner's catalog, verify membership via team_members OR team_profiles
-  if (ownerId !== session.user.id) {
-    const { data: membership } = await supabase
-      .from('team_members')
-      .select('id')
-      .eq('owner_id', ownerId)
-      .eq('member_id', session.user.id)
-      .eq('status', 'active')
-      .single();
+  // In team mode, the "owner" is the team owner; in personal mode, it's the user
+  const ownerId = scope.ownerId || session.user.id;
 
-    let hasAccess = !!membership;
-
-    if (!hasAccess) {
-      // Check team_profiles: find the owner's team, then check if user is a profile member
-      const { data: ownerTeam } = await supabase
-        .from('teams')
-        .select('id')
-        .eq('owner_id', ownerId)
-        .single();
-
-      if (ownerTeam) {
-        const { data: profileMembership } = await supabase
-          .from('team_profiles')
-          .select('id')
-          .eq('team_id', ownerTeam.id)
-          .eq('user_id', session.user.id)
-          .eq('status', 'active')
-          .single();
-        hasAccess = !!profileMembership;
-      }
-    }
-
-    if (!hasAccess) {
-      return ApiErrors.forbidden('You are not a member of this team');
-    }
-  }
-
-  // Fetch lead magnets with catalog fields
-  const { data: magnets, error } = await supabase
+  // Fetch lead magnets with catalog fields, scoped by team or user
+  let magnetsQuery = supabase
     .from('lead_magnets')
-    .select('id, title, archetype, pain_point, target_audience, short_description, status, created_at')
-    .eq('user_id', ownerId)
+    .select('id, title, archetype, pain_point, target_audience, short_description, status, created_at');
+  magnetsQuery = applyScope(magnetsQuery, scope);
+  const { data: magnets, error } = await magnetsQuery
     .neq('status', 'archived')
     .order('created_at', { ascending: false });
 

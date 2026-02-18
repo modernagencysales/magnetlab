@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope, type DataScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { spreadsheetImportSchema, validateBody } from '@/lib/validations/api';
 import { parseSpreadsheet } from '@/lib/utils/spreadsheet-parser';
@@ -84,6 +85,7 @@ function generateSlug(title: string): string {
 async function createFunnelPage(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   userId: string,
+  scope: DataScope,
   leadMagnetId: string,
   title: string,
   headline: string,
@@ -95,12 +97,12 @@ async function createFunnelPage(
   let slugSuffix = 0;
 
   while (true) {
-    const { data: slugExists } = await supabase
+    let slugQuery = supabase
       .from('funnel_pages')
       .select('id')
-      .eq('user_id', userId)
-      .eq('slug', slug)
-      .single();
+      .eq('slug', slug);
+    slugQuery = applyScope(slugQuery, scope);
+    const { data: slugExists } = await slugQuery.single();
 
     if (!slugExists) break;
     slugSuffix++;
@@ -110,6 +112,7 @@ async function createFunnelPage(
   const funnelInsertData = {
     lead_magnet_id: leadMagnetId,
     user_id: userId,
+    team_id: scope.teamId || null,
     slug,
     optin_headline: headline,
     optin_subline: subline,
@@ -158,6 +161,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
     // Spreadsheet import path
     if (body.importType === 'spreadsheet') {
@@ -195,6 +199,7 @@ export async function POST(request: Request) {
         .from('lead_magnets')
         .insert({
           user_id: session.user.id,
+          team_id: scope.teamId || null,
           title: calcTitle,
           archetype: 'single-calculator',
           status: 'draft',
@@ -220,6 +225,7 @@ export async function POST(request: Request) {
       const funnelResult = await createFunnelPage(
         supabase,
         session.user.id,
+        scope,
         leadMagnet.id,
         calcTitle,
         interactiveConfig.headline || 'Try Our Calculator',
@@ -249,6 +255,7 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('Please provide either a URL or content to import');
     }
 
+    // Combine inputs for analysis
     let analysisContent = '';
     if (url) {
       analysisContent += `URL: ${url}\n\n`;
@@ -263,6 +270,7 @@ export async function POST(request: Request) {
       .from('lead_magnets')
       .insert({
         user_id: session.user.id,
+        team_id: scope.teamId || null,
         title: extracted.title,
         archetype: 'focused-toolkit',
         status: 'draft',
@@ -284,6 +292,7 @@ export async function POST(request: Request) {
     const funnelResult = await createFunnelPage(
       supabase,
       session.user.id,
+      scope,
       leadMagnet.id,
       extracted.title,
       extracted.headline,

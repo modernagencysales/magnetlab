@@ -162,9 +162,129 @@ Use this table to determine which repo owns a given feature. This prevents build
 | Stripe billing/subscriptions | magnetlab (SaaS billing) or copy-of-gtm-os (bootcamp subs) | Depends on which product the billing is for |
 | AI prompt management | leadmagnet-admin (Blueprint) or magnetlab (lead magnets) | Depends on which AI pipeline |
 
+## Branding & Conversion Tracking
+
+Team-level branding settings that apply across all funnels. Configured in Settings > Branding & Defaults.
+
+### Brand Kit Fields (on `brand_kits` table)
+
+- `logos` (jsonb array) -- client logos for logo bar sections
+- `default_testimonial` (jsonb) -- `{quote, author, role}` for testimonial sections
+- `default_steps` (jsonb) -- `{steps: [{icon, title, description}]}` for next-steps sections
+- `default_theme` -- `dark` or `light`
+- `default_primary_color` -- hex color (default `#8b5cf6`)
+- `default_background_style` -- `solid`, `gradient`, or `pattern`
+- `logo_url` -- uploaded logo (Supabase Storage `public-assets` bucket)
+- `font_family` -- Google Font name or custom font name
+- `font_url` -- custom .woff2 font URL (Supabase Storage)
+
+### How Branding Flows
+
+1. User configures branding in Settings (`BrandingSettings` component)
+2. On funnel creation (`POST /api/funnel`), brand kit values are fetched and merged into template sections (logo_bar, testimonial, steps) + theme/color/font defaults
+3. Font is snapshotted on `funnel_pages.font_family` / `font_url` at creation time -- changes to brand kit don't retroactively affect existing funnels
+4. `FontLoader` component handles both Google Fonts (CDN link) and custom .woff2 fonts (`@font-face` injection with XSS sanitization)
+
+### Conversion Tracking
+
+- `page_views` table has `page_type` column (`optin` or `thankyou`) with unique constraint on `(funnel_page_id, viewer_hash, page_type)`
+- Thank-you page tracks views via `POST /api/public/view` with `pageType: 'thankyou'`
+- Analytics API (`/api/analytics/funnel/[id]`) returns `thankyouViews`, `responded` (leads with qualification answers), and `responseRate`
+- Magnets page shows conversion rate badges (views → leads)
+
+### Key Files
+
+- `src/components/settings/BrandingSettings.tsx` -- 5-card settings UI (logo, theme, font, testimonial, steps)
+- `src/app/api/brand-kit/upload/route.ts` -- logo/font upload to Supabase Storage
+- `src/components/funnel/public/FontLoader.tsx` -- font loading + XSS sanitization, exports `GOOGLE_FONTS`
+- `src/app/api/public/view/route.ts` -- page view tracking with `pageType` validation
+
+## A/B Testing (Thank-You Page)
+
+Self-serve A/B testing for thank-you pages to maximize survey completion rate. Tests one field at a time: headline, subline, video on/off, or pass message.
+
+### Data Model
+
+- `ab_experiments` table -- experiment definition (status, test_field, winner_id, significance, min_sample_size)
+- `funnel_pages` columns added: `experiment_id`, `is_variant` (boolean), `variant_label`
+- Variants are cloned `funnel_pages` rows linked via `experiment_id`. Existing `page_views` and `funnel_leads` tracking works unchanged per variant.
+
+### How It Works
+
+1. **Create test**: User picks a field to test on the funnel builder's thank-you tab. AI (Claude) generates 2-3 variant suggestions. User picks one (or writes custom).
+2. **Bucketing**: Server-side deterministic hash (`SHA-256(IP + User-Agent + experiment_id)`) assigns visitors to variants. No cookies. Same visitor always sees same variant.
+3. **Tracking**: Each variant has its own `funnel_page_id`, so `page_views` (page_type='thankyou') and `funnel_leads` track per-variant automatically.
+4. **Auto-winner**: Trigger.dev scheduled task (`check-ab-experiments`, every 6 hours) runs two-proportion z-test. At p < 0.05 with min sample size met, declares winner.
+5. **Winner promotion**: Winning field value is copied back to the control row. URL never changes. Variant rows are unpublished.
+
+### API Routes
+
+- `GET/POST /api/ab-experiments` -- list (with `?funnelPageId=` filter) and create experiments
+- `GET/PATCH/DELETE /api/ab-experiments/[id]` -- get with stats, pause/resume/declare-winner, delete
+- `POST /api/ab-experiments/suggest` -- AI variant suggestions using Claude (claude-sonnet-4-5-20250514)
+
+### Key Files
+
+- `src/components/funnel/ABTestPanel.tsx` -- dashboard UI (4 states: no test, creating, running, completed)
+- `src/components/funnel/FunnelBuilder.tsx` -- integrates ABTestPanel in thankyou tab
+- `src/app/p/[username]/[slug]/thankyou/page.tsx` -- server-side bucketing logic
+- `src/trigger/check-ab-experiments.ts` -- auto-winner detection (6-hour cron)
+- `src/app/api/ab-experiments/` -- CRUD + suggest APIs
+- `supabase/migrations/20260218200000_ab_experiments.sql` -- migration
+
+### Important Notes
+
+- Always filter funnel queries with `.eq('is_variant', false)` to hide variant rows from funnel lists
+- One experiment per funnel at a time (create API enforces this)
+- Experiment paused/completed/draft → serve control (or winner if completed)
+
+## Custom Domains & White-Label
+
+Team-level custom domain and white-label support. One domain per team via CNAME → Vercel. Pro+ plan only.
+
+### Database
+
+- `team_domains` table: `id, team_id, domain, vercel_domain_id, status, dns_config, last_checked_at, created_at, updated_at`
+- `teams` table columns: `hide_branding`, `custom_favicon_url`, `custom_site_name`, `custom_email_sender_name`, `whitelabel_enabled`
+- Status values: `pending_dns`, `verified`, `active`, `error`
+- RLS: public SELECT (middleware needs unauthenticated lookup), owner CRUD
+
+### How It Works
+
+1. **Domain setup**: User enters domain in Settings → `POST /api/settings/team-domain` → Vercel Domains API adds domain → returns DNS instructions
+2. **DNS verification**: User configures CNAME → clicks Verify (or auto-poll 10s×12) → `POST /api/settings/team-domain/verify` → Vercel API checks → status → `active`
+3. **Request routing**: `middleware.ts` reads Host header → `lookupCustomDomain()` (LRU cached 60s, 500 entries) → rewrites to `/p/[username]/[slug]` → sets `x-custom-domain` + `x-team-id` headers
+4. **White-label rendering**: Server components fetch `getWhitelabelConfig(teamId)` → pass `hideBranding` to client components → conditional "Powered by" footer
+5. **Metadata**: `custom_site_name` replaces "MagnetLab" in `<title>` suffix and og:site_name; `custom_favicon_url` as `<link rel="icon">`
+
+### Key Files
+
+- `src/lib/utils/domain-lookup.ts` -- LRU-cached domain → team/username resolution
+- `src/lib/utils/whitelabel.ts` -- `getWhitelabelConfig(teamId)` helper
+- `src/lib/integrations/vercel-domains.ts` -- Vercel Domains API client (add, check, remove, config)
+- `src/middleware.ts` -- Custom domain routing (Host header → rewrite)
+- `src/app/api/settings/team-domain/route.ts` -- Domain CRUD (GET, POST, DELETE)
+- `src/app/api/settings/team-domain/verify/route.ts` -- DNS verification
+- `src/app/api/settings/whitelabel/route.ts` -- White-label settings (GET, PATCH)
+- `src/components/settings/WhiteLabelSettings.tsx` -- Settings UI (domain + branding)
+- `src/components/funnel/public/OptinPage.tsx` -- Conditional branding
+- `src/components/funnel/public/ThankyouPage.tsx` -- Conditional branding
+- `src/components/content/ContentFooter.tsx` -- Conditional branding
+- `supabase/migrations/20260219000000_team_domains_whitelabel.sql` -- Migration
+
+### Env Vars
+
+- `VERCEL_TOKEN` -- Vercel API bearer token (required for domain provisioning)
+- `VERCEL_PROJECT_ID` -- Vercel project ID for magnetlab
+- `VERCEL_TEAM_ID` -- Vercel team ID (optional, for org accounts)
+
+### Deprecation
+
+- `funnel_pages.custom_domain` column is ignored — domain is now team-level via `team_domains`
+
 ## Integration Points
 
-- **GTM webhooks**: Fires `lead.created`, `lead.qualified`, `lead_magnet.deployed` to gtm-system via `lib/webhooks/gtm-system.ts` (fire-and-forget, 5s timeout, `x-webhook-secret` auth)
+- **GTM webhooks**: Fires `lead.created`, `lead.qualified`, `lead_magnet.deployed` to gtm-system via `lib/webhooks/gtm-system.ts` (fire-and-forget, 5s timeout, `x-webhook-secret` auth). **Scoped to GTM system owner only** (`GTM_SYSTEM_USER_ID` env var) — other magnetlab users' leads are NOT sent to gtm-system.
 - **User webhooks**: Users configure their own endpoints for lead capture events (`lib/webhooks/sender.ts`, signature verify in `lib/webhooks/verify.ts`)
 - **Stripe**: Checkout/subscriptions/webhooks at `/api/stripe/`, state in `subscriptions` table, limits via `usage_tracking`
 
@@ -182,10 +302,13 @@ Use this table to determine which repo owns a given feature. This prevents build
 - `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` -- Stripe
 - `RESEND_API_KEY` -- Transactional email
 - `TRIGGER_SECRET_KEY` -- Background jobs
-- `GTM_SYSTEM_WEBHOOK_URL` / `GTM_SYSTEM_WEBHOOK_SECRET` -- GTM webhooks (optional, silently skipped if missing)
+- `GTM_SYSTEM_WEBHOOK_URL` / `GTM_SYSTEM_WEBHOOK_SECRET` / `GTM_SYSTEM_USER_ID` -- GTM webhooks (optional, only fires for this user's leads)
 - `OPENAI_API_KEY` -- Embeddings (text-embedding-3-small) for AI Brain / content pipeline
 - `GRAIN_WEBHOOK_SECRET` -- Grain transcript webhook auth
 - `FIREFLIES_WEBHOOK_SECRET` -- Fireflies transcript webhook auth
+- `VERCEL_TOKEN` -- Vercel API token for custom domain provisioning
+- `VERCEL_PROJECT_ID` -- Vercel project ID for domain management
+- `VERCEL_TEAM_ID` -- Vercel team ID (optional, for org accounts)
 
 ### Commands
 
@@ -272,3 +395,11 @@ npx playwright test e2e/wizard.spec.ts   # Single file
 | copy-of-gtm-os | `/Users/timlife/Documents/claude code/copy-of-gtm-os` | Public Blueprint pages, GC Portal, Bootcamp LMS |
 | leadmagnet-admin | `/Users/timlife/linkedin-leadmagnet-admin` | Admin dashboard for Blueprint Generator backend |
 | leadmagnet-backend | `/Users/timlife/linkedin-leadmagnet-backend` | Blueprint pipeline: scrape -> enrich -> generate |
+
+## Post-Feature Workflow
+
+After completing any new feature:
+
+1. **Code review** -- trigger `superpowers:requesting-code-review` to catch security issues, missing scoping, and spec compliance
+2. **Resolve issues** -- fix all critical and important findings from the review
+3. **Update docs** -- add feature documentation to this CLAUDE.md (architecture, key files, data flow)

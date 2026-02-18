@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 export async function GET() {
   try {
@@ -10,35 +11,40 @@ export async function GET() {
       return ApiErrors.unauthorized();
     }
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
-    const { data, error } = await supabase
-      .from('funnel_pages')
-      .select(`
-        id,
-        slug,
-        optin_headline,
-        is_published,
-        published_at,
-        created_at,
-        target_type,
-        lead_magnet_id,
-        library_id,
-        external_resource_id,
-        lead_magnets (
-          title
-        ),
-        libraries (
-          name,
-          icon
-        ),
-        external_resources (
-          title,
-          icon
-        )
-      `)
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false });
+    const { data, error } = await applyScope(
+      supabase
+        .from('funnel_pages')
+        .select(`
+          id,
+          slug,
+          optin_headline,
+          is_published,
+          published_at,
+          created_at,
+          target_type,
+          lead_magnet_id,
+          library_id,
+          external_resource_id,
+          users (
+            username
+          ),
+          lead_magnets (
+            title
+          ),
+          libraries (
+            name,
+            icon
+          ),
+          external_resources (
+            title,
+            icon
+          )
+        `),
+      scope
+    ).order('created_at', { ascending: false });
 
     if (error) {
       logApiError('funnel/all', error, { userId: session.user.id });

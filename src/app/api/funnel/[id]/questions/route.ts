@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import {
   qualificationQuestionFromRow,
   type QualificationQuestionRow,
@@ -28,14 +29,15 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const { id } = await params;
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
     // Verify funnel ownership and get form reference
-    const { data: funnel, error: funnelError } = await supabase
+    let funnelQuery = supabase
       .from('funnel_pages')
       .select('id, qualification_form_id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    funnelQuery = applyScope(funnelQuery, scope);
+    const { data: funnel, error: funnelError } = await funnelQuery.single();
 
     if (funnelError || !funnel) {
       return ApiErrors.notFound('Funnel page');
@@ -108,12 +110,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     // Verify funnel ownership
-    const { data: funnel, error: funnelError } = await supabase
+    const scope = await getDataScope(session.user.id);
+    let funnelQuery = supabase
       .from('funnel_pages')
       .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    funnelQuery = applyScope(funnelQuery, scope);
+    const { data: funnel, error: funnelError } = await funnelQuery.single();
 
     if (funnelError || !funnel) {
       return ApiErrors.notFound('Funnel page');
@@ -180,12 +183,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     // Verify funnel ownership
-    const { data: funnel, error: funnelError } = await supabase
+    const scope = await getDataScope(session.user.id);
+    let funnelQuery = supabase
       .from('funnel_pages')
       .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    funnelQuery = applyScope(funnelQuery, scope);
+    const { data: funnel, error: funnelError } = await funnelQuery.single();
 
     if (funnelError || !funnel) {
       return ApiErrors.notFound('Funnel page');

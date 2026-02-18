@@ -15,6 +15,13 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(),
 }));
 
+// Mock team-context (routes now use getDataScope/applyScope for multi-team scoping)
+jest.mock('@/lib/utils/team-context', () => ({
+  getDataScope: jest.fn((userId: string) => Promise.resolve({ type: 'user', userId })),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  applyScope: jest.fn((query: any, scope: any) => query.eq('user_id', scope.userId)),
+}));
+
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
@@ -143,7 +150,7 @@ describe('GET /api/analytics/funnel/[id]', () => {
     (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
 
     mock.setSingleResult('funnel_pages', {
-      data: { id: 'funnel-1', title: 'My Funnel', slug: 'my-funnel' },
+      data: { id: 'funnel-1', optin_headline: 'My Funnel', slug: 'my-funnel' },
       error: null,
     });
     mock.setResult('page_views', { data: [], error: null });
@@ -173,7 +180,7 @@ describe('GET /api/analytics/funnel/[id]', () => {
     (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
 
     mock.setSingleResult('funnel_pages', {
-      data: { id: 'funnel-1', title: 'My Funnel', slug: 'my-funnel' },
+      data: { id: 'funnel-1', optin_headline: 'My Funnel', slug: 'my-funnel' },
       error: null,
     });
     mock.setResult('page_views', { data: [], error: null });
@@ -192,7 +199,7 @@ describe('GET /api/analytics/funnel/[id]', () => {
     (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
 
     mock.setSingleResult('funnel_pages', {
-      data: { id: 'funnel-1', title: 'My Funnel', slug: 'my-funnel' },
+      data: { id: 'funnel-1', optin_headline: 'My Funnel', slug: 'my-funnel' },
       error: null,
     });
     mock.setResult('page_views', { data: [], error: null });
@@ -217,7 +224,7 @@ describe('GET /api/analytics/funnel/[id]', () => {
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
     mock.setSingleResult('funnel_pages', {
-      data: { id: 'funnel-1', title: 'Test Funnel', slug: 'test-funnel' },
+      data: { id: 'funnel-1', optin_headline: 'Test Funnel', slug: 'test-funnel' },
       error: null,
     });
     mock.setResult('page_views', {
@@ -308,7 +315,7 @@ describe('GET /api/analytics/funnel/[id]', () => {
     (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
 
     mock.setSingleResult('funnel_pages', {
-      data: { id: 'funnel-1', title: 'Empty Funnel', slug: 'empty-funnel' },
+      data: { id: 'funnel-1', optin_headline: 'Empty Funnel', slug: 'empty-funnel' },
       error: null,
     });
     mock.setResult('page_views', { data: [], error: null });
@@ -348,7 +355,7 @@ describe('GET /api/analytics/funnel/[id]', () => {
     const today = new Date().toISOString().split('T')[0];
 
     mock.setSingleResult('funnel_pages', {
-      data: { id: 'funnel-1', title: 'No Views', slug: 'no-views' },
+      data: { id: 'funnel-1', optin_headline: 'No Views', slug: 'no-views' },
       error: null,
     });
     mock.setResult('page_views', { data: [], error: null });
@@ -375,7 +382,7 @@ describe('GET /api/analytics/funnel/[id]', () => {
     (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
 
     mock.setSingleResult('funnel_pages', {
-      data: { id: 'funnel-1', title: 'No Leads', slug: 'no-leads' },
+      data: { id: 'funnel-1', optin_headline: 'No Leads', slug: 'no-leads' },
       error: null,
     });
     mock.setResult('page_views', {
@@ -418,7 +425,7 @@ describe('GET /api/analytics/funnel/[id]', () => {
     const today = new Date().toISOString().split('T')[0];
 
     mock.setSingleResult('funnel_pages', {
-      data: { id: 'funnel-1', title: 'Funnel', slug: 'funnel' },
+      data: { id: 'funnel-1', optin_headline: 'Funnel', slug: 'funnel' },
       error: null,
     });
     mock.setResult('page_views', { data: [], error: null });

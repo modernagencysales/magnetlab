@@ -188,6 +188,18 @@ export function PublishControls({
         </div>
       )}
 
+      {funnel.isPublished && publicUrl && (
+        <div className="mt-4 pt-4 border-t">
+          <p className="text-sm text-muted-foreground">
+            Next:{' '}
+            <Link href="/docs/connect-email-list" className="text-violet-600 dark:text-violet-400 hover:underline">
+              connect your email list
+            </Link>
+            {' '}to receive leads in real-time.
+          </p>
+        </div>
+      )}
+
       {funnel.publishedAt && (
         <p className="text-xs text-muted-foreground">
           First published: {new Date(funnel.publishedAt).toLocaleDateString()}

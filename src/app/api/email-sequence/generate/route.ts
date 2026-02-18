@@ -6,7 +6,8 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmailSequence, generateDefaultEmailSequence } from '@/lib/ai/email-sequence-generator';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-import type { EmailGenerationContext } from '@/lib/types/email';
+import type { EmailGenerationContext, EmailSequenceRow } from '@/lib/types/email';
+import { emailSequenceFromRow } from '@/lib/types/email';
 import { checkResourceLimit } from '@/lib/auth/plan-limits';
 
 // POST - Generate email sequence for a lead magnet
@@ -37,10 +38,10 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseAdminClient();
 
-    // Get the lead magnet
+    // Get the lead magnet (include team_id so we can propagate it)
     const { data: leadMagnet, error: lmError } = await supabase
       .from('lead_magnets')
-      .select('id, user_id, title, archetype, concept, extracted_content')
+      .select('id, user_id, team_id, title, archetype, concept, extracted_content')
       .eq('id', leadMagnetId)
       .eq('user_id', session.user.id)
       .single();
@@ -105,6 +106,7 @@ export async function POST(request: Request) {
         {
           lead_magnet_id: leadMagnetId,
           user_id: session.user.id,
+          team_id: leadMagnet.team_id || null,
           emails,
           status: 'draft',
         },
@@ -112,16 +114,16 @@ export async function POST(request: Request) {
           onConflict: 'lead_magnet_id',
         }
       )
-      .select()
+      .select('id, lead_magnet_id, user_id, emails, loops_synced_at, loops_transactional_ids, status, created_at, updated_at')
       .single();
 
-    if (upsertError) {
+    if (upsertError || !emailSequence) {
       logApiError('email-sequence/generate/save', upsertError, { leadMagnetId });
       return ApiErrors.databaseError('Failed to save email sequence');
     }
 
     return NextResponse.json({
-      emailSequence,
+      emailSequence: emailSequenceFromRow(emailSequence as EmailSequenceRow),
       generated: true,
     });
   } catch (error) {

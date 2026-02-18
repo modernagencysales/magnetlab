@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { logError } from '@/lib/utils/logger';
+import { createSupabaseBrowserClient } from '@/lib/utils/supabase-browser';
 
 import {
   FileText,
@@ -16,6 +17,11 @@ import {
   Check,
   ChevronDown,
   Plus,
+  Sparkles,
+  Share2,
+  TrendingUp,
+  UserPlus,
+  ArrowUpDown,
 } from 'lucide-react';
 
 interface SwipePost {
@@ -52,6 +58,21 @@ interface SwipeLeadMagnet {
   created_at: string;
 }
 
+interface DiscoveredPost {
+  id: string;
+  author_name: string | null;
+  author_headline: string | null;
+  author_url: string | null;
+  content: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  engagement_score: number;
+  template_extracted: boolean;
+  extracted_template_id: string | null;
+  created_at: string;
+}
+
 const POST_TYPES = [
   { value: '', label: 'All Types' },
   { value: 'story', label: 'Story' },
@@ -84,9 +105,10 @@ const NICHES = [
 ];
 
 export function SwipeFileContent() {
-  const [activeTab, setActiveTab] = useState<'posts' | 'lead-magnets'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'lead-magnets' | 'discovered'>('posts');
   const [posts, setPosts] = useState<SwipePost[]>([]);
   const [leadMagnets, setLeadMagnets] = useState<SwipeLeadMagnet[]>([]);
+  const [discoveredPosts, setDiscoveredPosts] = useState<DiscoveredPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -95,6 +117,12 @@ export function SwipeFileContent() {
   const [postType, setPostType] = useState('');
   const [format, setFormat] = useState('');
   const [featuredOnly, setFeaturedOnly] = useState(false);
+
+  // Discovered tab state
+  const [discoveredSort, setDiscoveredSort] = useState<'engagement' | 'recent'>('engagement');
+  const [expandedPostIds, setExpandedPostIds] = useState<Set<string>>(new Set());
+  const [trackedCreatorUrls, setTrackedCreatorUrls] = useState<Set<string>>(new Set());
+  const [trackingInProgress, setTrackingInProgress] = useState<string | null>(null);
 
   // Submission modal
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -111,7 +139,7 @@ export function SwipeFileContent() {
         const response = await fetch(`/api/swipe-file/posts?${params}`);
         const data = await response.json();
         setPosts(data.posts || []);
-      } else {
+      } else if (activeTab === 'lead-magnets') {
         const params = new URLSearchParams();
         if (niche) params.append('niche', niche);
         if (format) params.append('format', format);
@@ -120,13 +148,31 @@ export function SwipeFileContent() {
         const response = await fetch(`/api/swipe-file/lead-magnets?${params}`);
         const data = await response.json();
         setLeadMagnets(data.leadMagnets || []);
+      } else if (activeTab === 'discovered') {
+        const supabase = createSupabaseBrowserClient();
+        const orderColumn = discoveredSort === 'engagement' ? 'engagement_score' : 'created_at';
+
+        const { data, error } = await supabase
+          .from('cp_viral_posts')
+          .select('id, author_name, author_headline, author_url, content, likes, comments, shares, engagement_score, template_extracted, extracted_template_id, created_at')
+          .eq('is_winner', true)
+          .is('user_id', null)
+          .order(orderColumn, { ascending: false })
+          .limit(50);
+
+        if (error) {
+          logError('swipe-file', error, { step: 'discovered_fetch_error' });
+          setDiscoveredPosts([]);
+        } else {
+          setDiscoveredPosts(data || []);
+        }
       }
     } catch {
       // Error handled silently - data will be empty
     } finally {
       setLoading(false);
     }
-  }, [activeTab, niche, postType, format, featuredOnly]);
+  }, [activeTab, niche, postType, format, featuredOnly, discoveredSort]);
 
   useEffect(() => {
     fetchData();
@@ -136,6 +182,47 @@ export function SwipeFileContent() {
     await navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const toggleExpandPost = (postId: string) => {
+    setExpandedPostIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+      }
+      return next;
+    });
+  };
+
+  const handleTrackCreator = async (post: DiscoveredPost) => {
+    if (!post.author_url) return;
+    setTrackingInProgress(post.id);
+    try {
+      const response = await fetch('/api/content-pipeline/creators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          linkedin_url: post.author_url,
+          name: post.author_name,
+          headline: post.author_headline,
+        }),
+      });
+
+      if (response.ok) {
+        setTrackedCreatorUrls((prev) => new Set(prev).add(post.author_url!));
+      }
+    } catch (error) {
+      logError('swipe-file', error, { step: 'track_creator_error' });
+    } finally {
+      setTrackingInProgress(null);
+    }
+  };
+
+  const truncateContent = (content: string, maxLength: number = 200) => {
+    if (content.length <= maxLength) return content;
+    return content.slice(0, maxLength).trimEnd() + '...';
   };
 
   return (
@@ -181,76 +268,117 @@ export function SwipeFileContent() {
           <Magnet className="h-4 w-4" />
           Lead Magnets
         </button>
+        <button
+          onClick={() => setActiveTab('discovered')}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'discovered'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-secondary hover:bg-secondary/80'
+          }`}
+        >
+          <Sparkles className="h-4 w-4" />
+          Discovered
+        </button>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Filter className="h-4 w-4" />
-          Filters:
-        </div>
+      {activeTab !== 'discovered' ? (
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            Filters:
+          </div>
 
-        {/* Niche filter */}
-        <div className="relative">
-          <select
-            value={niche}
-            onChange={(e) => setNiche(e.target.value)}
-            className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+          {/* Niche filter */}
+          <div className="relative">
+            <select
+              value={niche}
+              onChange={(e) => setNiche(e.target.value)}
+              className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+            >
+              {NICHES.map((n) => (
+                <option key={n.value} value={n.value}>
+                  {n.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
+
+          {/* Type/Format filter */}
+          {activeTab === 'posts' ? (
+            <div className="relative">
+              <select
+                value={postType}
+                onChange={(e) => setPostType(e.target.value)}
+                className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              >
+                {POST_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="relative">
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value)}
+                className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              >
+                {FORMATS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Featured toggle */}
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={featuredOnly}
+              onChange={(e) => setFeaturedOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <Star className="h-4 w-4 text-yellow-500" />
+            Featured only
+          </label>
+        </div>
+      ) : (
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <ArrowUpDown className="h-4 w-4" />
+            Sort by:
+          </div>
+          <button
+            onClick={() => setDiscoveredSort('engagement')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              discoveredSort === 'engagement'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary hover:bg-secondary/80'
+            }`}
           >
-            {NICHES.map((n) => (
-              <option key={n.value} value={n.value}>
-                {n.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <TrendingUp className="h-3.5 w-3.5" />
+            Engagement Score
+          </button>
+          <button
+            onClick={() => setDiscoveredSort('recent')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              discoveredSort === 'recent'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary hover:bg-secondary/80'
+            }`}
+          >
+            Most Recent
+          </button>
         </div>
-
-        {/* Type/Format filter */}
-        {activeTab === 'posts' ? (
-          <div className="relative">
-            <select
-              value={postType}
-              onChange={(e) => setPostType(e.target.value)}
-              className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-            >
-              {POST_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="relative">
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value)}
-              className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-            >
-              {FORMATS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          </div>
-        )}
-
-        {/* Featured toggle */}
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={featuredOnly}
-            onChange={(e) => setFeaturedOnly(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-          />
-          <Star className="h-4 w-4 text-yellow-500" />
-          Featured only
-        </label>
-      </div>
+      )}
 
       {/* Content */}
       {loading ? (
@@ -343,7 +471,7 @@ export function SwipeFileContent() {
             ))
           )}
         </div>
-      ) : (
+      ) : activeTab === 'lead-magnets' ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {leadMagnets.length === 0 ? (
             <div className="col-span-3 rounded-lg border border-dashed p-12 text-center">
@@ -430,6 +558,147 @@ export function SwipeFileContent() {
                 )}
               </div>
             ))
+          )}
+        </div>
+      ) : (
+        /* Discovered tab */
+        <div className="grid gap-4 md:grid-cols-2">
+          {discoveredPosts.length === 0 ? (
+            <div className="col-span-2 rounded-lg border border-dashed p-12 text-center">
+              <Sparkles className="mx-auto h-12 w-12 text-muted-foreground/50" />
+              <p className="mt-4 text-muted-foreground">No winning posts discovered yet</p>
+              <p className="mt-1 text-sm text-muted-foreground/70">
+                High-performing LinkedIn posts will appear here as they are scraped and analyzed.
+              </p>
+            </div>
+          ) : (
+            discoveredPosts.map((dPost) => {
+              const isExpanded = expandedPostIds.has(dPost.id);
+              const isTracked = dPost.author_url ? trackedCreatorUrls.has(dPost.author_url) : false;
+              const isTrackingThis = trackingInProgress === dPost.id;
+
+              return (
+                <div
+                  key={dPost.id}
+                  className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30"
+                >
+                  {/* Author info + badges */}
+                  <div className="mb-3 flex items-start justify-between">
+                    <div className="min-w-0 flex-1">
+                      {dPost.author_name && (
+                        <p className="font-medium leading-snug truncate">
+                          {dPost.author_url ? (
+                            <a
+                              href={dPost.author_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:text-primary transition-colors"
+                            >
+                              {dPost.author_name}
+                            </a>
+                          ) : (
+                            dPost.author_name
+                          )}
+                        </p>
+                      )}
+                      {dPost.author_headline && (
+                        <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                          {dPost.author_headline}
+                        </p>
+                      )}
+                    </div>
+                    <div className="ml-2 flex items-center gap-1.5 shrink-0">
+                      {dPost.template_extracted && (
+                        <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          Template Extracted
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleCopy(dPost.content, dPost.id)}
+                        className="rounded-lg p-1.5 text-muted-foreground opacity-0 hover:bg-secondary hover:text-foreground group-hover:opacity-100 transition-all"
+                        title="Copy content"
+                      >
+                        {copiedId === dPost.id ? (
+                          <Check className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Content preview / expanded */}
+                  <div
+                    className="mb-4 cursor-pointer"
+                    onClick={() => toggleExpandPost(dPost.id)}
+                  >
+                    {isExpanded ? (
+                      <p className="text-sm text-muted-foreground whitespace-pre-line">
+                        {dPost.content}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {truncateContent(dPost.content)}
+                        {dPost.content.length > 200 && (
+                          <span className="ml-1 text-xs text-primary font-medium">
+                            Read more
+                          </span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Engagement metrics */}
+                  <div className="mb-3 flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <ThumbsUp className="h-3.5 w-3.5" />
+                      {dPost.likes.toLocaleString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      {dPost.comments.toLocaleString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Share2 className="h-3.5 w-3.5" />
+                      {dPost.shares.toLocaleString()}
+                    </span>
+                    {dPost.engagement_score > 0 && (
+                      <span className="flex items-center gap-1 font-medium text-primary">
+                        <TrendingUp className="h-3.5 w-3.5" />
+                        {dPost.engagement_score.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Track Creator button */}
+                  {dPost.author_url && (
+                    <button
+                      onClick={() => handleTrackCreator(dPost)}
+                      disabled={isTracked || isTrackingThis}
+                      className={`flex w-full items-center justify-center gap-2 rounded-lg border py-2 text-sm font-medium transition-colors ${
+                        isTracked
+                          ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          : 'hover:bg-secondary'
+                      } disabled:opacity-70`}
+                    >
+                      {isTrackingThis ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isTracked ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Tracked!
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="h-4 w-4" />
+                          Track Creator
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       )}

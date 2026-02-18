@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 interface FunnelStats {
   total: number;
@@ -22,15 +23,18 @@ export async function GET() {
       return ApiErrors.unauthorized();
     }
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
-    // Get user's funnel IDs
-    const { data: funnels } = await supabase
-      .from('funnel_pages')
-      .select('id')
-      .eq('user_id', session.user.id);
+    // Get user's funnel IDs (scoped to team or personal)
+    const { data: funnels } = await applyScope(
+      supabase
+        .from('funnel_pages')
+        .select('id'),
+      scope
+    );
 
-    const funnelIds = funnels?.map(f => f.id) || [];
+    const funnelIds = funnels?.map((f: { id: string }) => f.id) || [];
 
     if (funnelIds.length === 0) {
       return NextResponse.json({ stats: {} });

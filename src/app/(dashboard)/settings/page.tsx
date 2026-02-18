@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { SettingsContent } from '@/components/dashboard/SettingsContent';
 
 export const metadata = {
@@ -18,12 +19,14 @@ export default async function SettingsPage() {
     .eq('user_id', session?.user?.id)
     .single();
 
-  // Get brand kit
-  const { data: brandKit } = await supabase
+  // Get brand kit (team-scoped)
+  const adminClient = createSupabaseAdminClient();
+  const scope = await getDataScope(session?.user?.id || '');
+  let brandKitQuery = adminClient
     .from('brand_kits')
-    .select('id, user_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, created_at, updated_at')
-    .eq('user_id', session?.user?.id)
-    .single();
+    .select('id, user_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, logos, default_testimonial, default_steps, default_theme, default_primary_color, default_background_style, logo_url, font_family, font_url, created_at, updated_at');
+  brandKitQuery = applyScope(brandKitQuery, scope);
+  const { data: brandKit } = await brandKitQuery.single();
 
   // Get usage
   const monthYear = new Date().toISOString().slice(0, 7);
@@ -35,7 +38,6 @@ export default async function SettingsPage() {
     .single();
 
   // Get integrations (use admin client to bypass RLS since we verify auth via NextAuth)
-  const adminClient = createSupabaseAdminClient();
   const { data: integrations } = await adminClient
     .from('user_integrations')
     .select('service, is_active, last_verified_at, metadata')

@@ -718,6 +718,9 @@ export function WizardContainer() {
               <ContentStep
                 content={state.extractedContent}
                 onApprove={handleContentApprove}
+                onContentChange={(updated) =>
+                  setState((prev) => ({ ...prev, extractedContent: updated }))
+                }
                 onBack={() => goToStep(3)}
                 loading={generating === 'posts'}
               />

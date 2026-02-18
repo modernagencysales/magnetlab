@@ -15,6 +15,9 @@ interface FunnelPage {
   lead_magnet_id: string | null;
   library_id: string | null;
   external_resource_id: string | null;
+  users?: {
+    username: string | null;
+  };
   lead_magnets?: {
     title: string;
   };
@@ -335,9 +338,9 @@ export default function PagesPage() {
                         Edit
                       </Link>
 
-                      {page.is_published && user?.username && (
+                      {page.is_published && (page.users?.username || user?.username) && (
                         <a
-                          href={`/p/${user.username}/${page.slug}`}
+                          href={`/p/${page.users?.username || user?.username}/${page.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"

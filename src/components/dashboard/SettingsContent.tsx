@@ -13,6 +13,8 @@ import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettin
 import { WebhookSettings } from '@/components/settings/WebhookSettings';
 import { TeamMembersSettings } from '@/components/settings/TeamMembersSettings';
 import { FunnelTemplateSettings } from '@/components/settings/FunnelTemplateSettings';
+import { BrandingSettings } from '@/components/settings/BrandingSettings';
+import { WhiteLabelSettings } from '@/components/settings/WhiteLabelSettings';
 
 import { logError } from '@/lib/utils/logger';
 
@@ -48,6 +50,15 @@ interface SettingsContentProps {
   brandKit: {
     business_description?: string;
     business_type?: string;
+    logos?: Array<{ name: string; imageUrl: string }>;
+    default_testimonial?: { quote: string; author?: string; role?: string; result?: string } | null;
+    default_steps?: { heading?: string; steps: Array<{ title: string; description: string }> } | null;
+    default_theme?: string | null;
+    default_primary_color?: string | null;
+    default_background_style?: string | null;
+    logo_url?: string | null;
+    font_family?: string | null;
+    font_url?: string | null;
   } | null;
   usage: {
     lead_magnets_created?: number;
@@ -553,7 +564,25 @@ export function SettingsContent({
               onSaved={setDefaultFunnelTemplate}
             />
           </div>
+
+          {/* Branding */}
+          <div className="rounded-lg border p-4 mt-4">
+            <BrandingSettings initialData={{
+              logos: brandKit?.logos,
+              default_testimonial: brandKit?.default_testimonial,
+              default_steps: brandKit?.default_steps,
+              default_theme: brandKit?.default_theme,
+              default_primary_color: brandKit?.default_primary_color,
+              default_background_style: brandKit?.default_background_style,
+              logo_url: brandKit?.logo_url,
+              font_family: brandKit?.font_family,
+              font_url: brandKit?.font_url,
+            }} />
+          </div>
         </div>
+
+        {/* White Label Section */}
+        <WhiteLabelSettings plan={subscription?.plan} />
 
         {/* Brand Kit */}
         {brandKit && (

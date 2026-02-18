@@ -2,9 +2,12 @@
 
 interface ContentFooterProps {
   isDark: boolean;
+  hideBranding?: boolean;
 }
 
-export function ContentFooter({ isDark }: ContentFooterProps) {
+export function ContentFooter({ isDark, hideBranding }: ContentFooterProps) {
+  if (hideBranding) return null;
+
   const mutedColor = isDark ? '#71717A' : '#A1A1AA';
 
   return (

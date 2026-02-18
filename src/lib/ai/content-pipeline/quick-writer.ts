@@ -1,11 +1,13 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import { writePostFreeform } from './post-writer';
+import { findBestTemplate, buildTemplateGuidance } from './template-matcher';
 import { polishPost } from './post-polish';
 import type { WrittenPost, IdeaContext } from './post-writer';
 import type { PolishResult } from './post-polish';
 
 interface QuickWriteOptions {
+  userId?: string;
   templateStructure?: string;
   styleInstructions?: string;
   targetAudience?: string;
@@ -61,17 +63,29 @@ export async function quickWrite(
   // Step 1: Expand raw thought into a structured idea
   const syntheticIdea = await expandToIdea(rawThought);
 
-  // Step 2: Write the post using the expanded idea
+  // Step 2: Find matching template via RAG (if userId provided)
+  let templateGuidance = '';
+  if (options.userId) {
+    const topicText = [syntheticIdea.title, syntheticIdea.core_insight, syntheticIdea.content_type].filter(Boolean).join('\n');
+    const match = await findBestTemplate(topicText, options.userId);
+    if (match) {
+      templateGuidance = buildTemplateGuidance(match);
+    }
+  }
+
+  const mergedKnowledge = [options.knowledgeContext, templateGuidance].filter(Boolean).join('\n\n');
+
+  // Step 3: Write the post using the expanded idea
   const post = await writePostFreeform({
     idea: syntheticIdea,
     targetAudience: options.targetAudience,
-    knowledgeContext: options.knowledgeContext,
+    knowledgeContext: mergedKnowledge || undefined,
     voiceProfile: options.voiceProfile,
     authorName: options.authorName,
     authorTitle: options.authorTitle,
   });
 
-  // Step 3: Polish the result
+  // Step 4: Polish the result
   const polish = await polishPost(post.content);
 
   return {

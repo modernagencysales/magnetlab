@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getWhitelabelConfig } from '@/lib/utils/whitelabel';
 import { ContentPageClient } from '@/components/content/ContentPageClient';
 import { funnelPageSectionFromRow, type FunnelPageSectionRow } from '@/lib/types/funnel';
 import type { Metadata } from 'next';
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const { data: funnel } = await supabase
     .from('funnel_pages')
-    .select('lead_magnet_id, optin_headline')
+    .select('lead_magnet_id, optin_headline, team_id')
     .eq('user_id', user.id)
     .eq('slug', slug)
     .eq('is_published', true)
@@ -38,6 +39,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!funnel) {
     return { title: 'Page Not Found' };
   }
+
+  const whitelabel = await getWhitelabelConfig(funnel.team_id);
+  const siteName = whitelabel?.customSiteName || 'MagnetLab';
 
   const { data: leadMagnet } = await supabase
     .from('lead_magnets')
@@ -53,13 +57,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const description = polished?.heroSummary || funnel.optin_headline;
 
   return {
-    title: leadMagnet.title,
+    title: `${leadMagnet.title} | ${siteName}`,
     description,
     openGraph: {
       title: leadMagnet.title,
       description,
       ...(leadMagnet.thumbnail_url ? { images: [leadMagnet.thumbnail_url] } : {}),
     },
+    ...(whitelabel?.customFaviconUrl ? { icons: { icon: whitelabel.customFaviconUrl } } : {}),
   };
 }
 
@@ -108,8 +113,11 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       primary_color,
       background_style,
       logo_url,
+      font_family,
+      font_url,
       vsl_url,
-      calendly_url
+      calendly_url,
+      team_id
     `)
     .eq('user_id', user.id)
     .eq('slug', slug);
@@ -127,6 +135,8 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
   if (!isOwner && !funnel.is_published) {
     notFound();
   }
+
+  const whitelabel = await getWhitelabelConfig(funnel.team_id);
 
   // Get lead magnet with content
   const { data: leadMagnet, error: lmError } = await supabase
@@ -194,6 +204,8 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       theme={(funnel.theme as 'dark' | 'light') || 'dark'}
       primaryColor={funnel.primary_color || '#8b5cf6'}
       logoUrl={funnel.logo_url}
+      fontFamily={funnel.font_family}
+      fontUrl={funnel.font_url}
       vslUrl={funnel.vsl_url}
       calendlyUrl={funnel.calendly_url}
       isOwner={isOwner}
@@ -204,6 +216,7 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       isQualified={isQualified}
       hasQuestions={hasQuestions}
       sections={sections}
+      hideBranding={whitelabel?.hideBranding || false}
     />
   );
 }

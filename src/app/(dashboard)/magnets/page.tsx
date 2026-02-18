@@ -2,7 +2,8 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { Plus, Calendar, Eye, Globe } from 'lucide-react';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 import { formatDate } from '@/lib/utils';
 
@@ -36,6 +37,7 @@ function MagnetsSkeleton() {
 }
 
 interface FunnelInfo {
+  id: string;
   lead_magnet_id: string;
   is_published: boolean;
   slug: string;
@@ -45,19 +47,24 @@ async function MagnetsContent() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const supabase = await createSupabaseServerClient();
-  const adminClient = createSupabaseAdminClient();
+  const supabase = createSupabaseAdminClient();
+  const scope = await getDataScope(session.user.id);
+
+  let magnetsQuery = supabase
+    .from('lead_magnets')
+    .select('id, user_id, title, archetype, concept, status, created_at, updated_at')
+    .order('created_at', { ascending: false });
+  magnetsQuery = applyScope(magnetsQuery, scope);
+
+  let funnelsQuery = supabase
+    .from('funnel_pages')
+    .select('id, lead_magnet_id, is_published, slug')
+    .eq('is_variant', false);
+  funnelsQuery = applyScope(funnelsQuery, scope);
 
   const [leadMagnetsRes, funnelsRes] = await Promise.all([
-    supabase
-      .from('lead_magnets')
-      .select('id, user_id, title, archetype, concept, status, created_at, updated_at')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false }),
-    adminClient
-      .from('funnel_pages')
-      .select('lead_magnet_id, is_published, slug')
-      .eq('user_id', session.user.id),
+    magnetsQuery,
+    funnelsQuery,
   ]);
 
   const leadMagnets = leadMagnetsRes.data || [];
@@ -67,6 +74,32 @@ async function MagnetsContent() {
   const funnelByMagnet = new Map<string, FunnelInfo>();
   for (const f of funnels) {
     funnelByMagnet.set(f.lead_magnet_id, f);
+  }
+
+  // Fetch views and leads scoped to user's funnels only
+  const funnelIds = funnels.map(f => f.id);
+  const viewsByFunnel = new Map<string, number>();
+  const leadsByFunnel = new Map<string, number>();
+
+  if (funnelIds.length > 0) {
+    const [viewsRes, leadsCountRes] = await Promise.all([
+      supabase
+        .from('page_views')
+        .select('funnel_page_id')
+        .eq('page_type', 'optin')
+        .in('funnel_page_id', funnelIds),
+      supabase
+        .from('funnel_leads')
+        .select('funnel_page_id')
+        .in('funnel_page_id', funnelIds),
+    ]);
+
+    for (const v of viewsRes.data || []) {
+      viewsByFunnel.set(v.funnel_page_id, (viewsByFunnel.get(v.funnel_page_id) || 0) + 1);
+    }
+    for (const l of leadsCountRes.data || []) {
+      leadsByFunnel.set(l.funnel_page_id, (leadsByFunnel.get(l.funnel_page_id) || 0) + 1);
+    }
   }
 
   return (
@@ -141,6 +174,17 @@ async function MagnetsContent() {
                       <span className="truncate max-w-[120px]">{lm.concept.whyNowHook}</span>
                     </span>
                   )}
+                  {funnel && (() => {
+                    const funnelViews = viewsByFunnel.get(funnel.id) || 0;
+                    const funnelLeadCount = leadsByFunnel.get(funnel.id) || 0;
+                    if (funnelViews === 0) return null;
+                    const rate = ((funnelLeadCount / funnelViews) * 100).toFixed(1);
+                    return (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        {rate}% conversion
+                      </span>
+                    );
+                  })()}
                 </div>
               </Link>
             );

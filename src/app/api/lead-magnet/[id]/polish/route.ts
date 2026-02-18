@@ -8,6 +8,7 @@ import { polishLeadMagnetContent } from '@/lib/ai/lead-magnet-generator';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { ExtractedContent, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 import { getPostHogServerClient } from '@/lib/posthog';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -21,15 +22,16 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     // Get the lead magnet
-    const { data: leadMagnet, error: fetchError } = await supabase
+    let fetchQuery = supabase
       .from('lead_magnets')
       .select('id, extracted_content, concept, user_id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    fetchQuery = applyScope(fetchQuery, scope);
+    const { data: leadMagnet, error: fetchError } = await fetchQuery.single();
 
     if (fetchError || !leadMagnet) {
       return ApiErrors.notFound('Lead magnet');
@@ -51,14 +53,15 @@ export async function POST(request: Request, { params }: RouteParams) {
     const polishedAt = new Date().toISOString();
 
     // Save to database
-    const { error: updateError } = await supabase
+    let updateQuery = supabase
       .from('lead_magnets')
       .update({
         polished_content: polishedContent,
         polished_at: polishedAt,
       })
-      .eq('id', id)
-      .eq('user_id', session.user.id);
+      .eq('id', id);
+    updateQuery = applyScope(updateQuery, scope);
+    const { error: updateError } = await updateQuery;
 
     if (updateError) {
       logApiError('lead-magnet/polish', updateError, { userId: session.user.id, leadMagnetId: id });

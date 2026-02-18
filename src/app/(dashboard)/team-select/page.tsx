@@ -2,21 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Loader2, Magnet, ArrowRight } from 'lucide-react';
+import { Users, Loader2, Magnet, ArrowRight, UsersRound } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
 
-interface Membership {
+interface TeamMembership {
   id: string;
+  teamId: string;
+  teamName: string;
   ownerId: string;
-  ownerName: string;
-  ownerEmail: string;
-  ownerAvatar: string | null;
+  role: 'owner' | 'member';
 }
 
 export default function TeamSelectPage() {
   const router = useRouter();
-  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [memberships, setMemberships] = useState<TeamMembership[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,9 +27,9 @@ export default function TeamSelectPage() {
           const data = await res.json();
           setMemberships(data);
 
-          // Auto-redirect if only one membership
+          // Auto-redirect if only one team
           if (data.length === 1) {
-            selectOwner(data[0].ownerId);
+            selectTeam(data[0].teamId);
           }
         }
       } catch (err) {
@@ -43,12 +43,12 @@ export default function TeamSelectPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const selectOwner = (ownerId: string) => {
-    document.cookie = `ml-team-context=${ownerId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
-    router.push('/catalog');
+  const selectTeam = (teamId: string) => {
+    document.cookie = `ml-team-context=${teamId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+    router.push('/');
   };
 
-  const selectOwnAccount = () => {
+  const selectPersonal = () => {
     document.cookie = 'ml-team-context=; path=/; max-age=0';
     router.push('/');
   };
@@ -67,24 +67,24 @@ export default function TeamSelectPage() {
         <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-xl mb-4">
           <Users className="h-6 w-6 text-primary" />
         </div>
-        <h1 className="text-2xl font-semibold mb-2">Select Account</h1>
+        <h1 className="text-2xl font-semibold mb-2">Switch Team</h1>
         <p className="text-sm text-muted-foreground">
-          Choose whose lead magnet catalog you want to view
+          Choose which team to work in
         </p>
       </div>
 
       <div className="space-y-3">
-        {/* Own account option */}
+        {/* Personal account option */}
         <button
-          onClick={selectOwnAccount}
+          onClick={selectPersonal}
           className="flex items-center gap-4 w-full rounded-lg border p-4 hover:border-primary/30 hover:bg-muted/50 transition-colors text-left"
         >
           <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-lg text-primary-foreground shrink-0">
             <Magnet size={18} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm">My Account</p>
-            <p className="text-xs text-muted-foreground">Access your own dashboard</p>
+            <p className="font-medium text-sm">Personal Account</p>
+            <p className="text-xs text-muted-foreground">Your own dashboard</p>
           </div>
           <ArrowRight size={16} className="text-muted-foreground shrink-0" />
         </button>
@@ -95,31 +95,23 @@ export default function TeamSelectPage() {
               <div className="w-full border-t" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-background px-3 text-xs text-muted-foreground">Team accounts</span>
+              <span className="bg-background px-3 text-xs text-muted-foreground">Teams</span>
             </div>
           </div>
         )}
 
         {memberships.map((m) => (
           <button
-            key={m.id}
-            onClick={() => selectOwner(m.ownerId)}
+            key={m.teamId}
+            onClick={() => selectTeam(m.teamId)}
             className="flex items-center gap-4 w-full rounded-lg border p-4 hover:border-primary/30 hover:bg-muted/50 transition-colors text-left"
           >
-            {m.ownerAvatar ? (
-              <img
-                src={m.ownerAvatar}
-                alt={m.ownerName}
-                className="w-10 h-10 rounded-lg shrink-0"
-              />
-            ) : (
-              <div className="flex items-center justify-center w-10 h-10 bg-violet-500 rounded-lg text-white font-medium text-sm shrink-0">
-                {m.ownerName.substring(0, 2).toUpperCase()}
-              </div>
-            )}
+            <div className="flex items-center justify-center w-10 h-10 bg-violet-500 rounded-lg text-white shrink-0">
+              <UsersRound size={18} />
+            </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{m.ownerName}</p>
-              <p className="text-xs text-muted-foreground truncate">{m.ownerEmail}</p>
+              <p className="font-medium text-sm truncate">{m.teamName}</p>
+              <p className="text-xs text-muted-foreground">{m.role === 'owner' ? 'Owner' : 'Member'}</p>
             </div>
             <ArrowRight size={16} className="text-muted-foreground shrink-0" />
           </button>

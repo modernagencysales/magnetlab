@@ -85,13 +85,18 @@ export function LeadDeliveryInfo() {
                   </div>
                 ))}
               </div>
-              <Link
-                href="/settings"
-                className="inline-flex items-center gap-1 mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Settings className="h-3 w-3" />
-                Manage webhooks
-              </Link>
+              <div className="flex items-center gap-4 mt-3">
+                <Link
+                  href="/settings"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Settings className="h-3 w-3" />
+                  Manage webhooks
+                </Link>
+                <Link href="/docs/connect-email-list" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  Integration guides →
+                </Link>
+              </div>
             </>
           ) : (
             <>
@@ -105,6 +110,9 @@ export function LeadDeliveryInfo() {
               >
                 <ExternalLink className="h-4 w-4" />
                 Set Up Webhook
+              </Link>
+              <Link href="/docs/connect-email-list" className="text-sm text-violet-600 dark:text-violet-400 hover:underline mt-2 inline-block">
+                Step-by-step integration guide →
               </Link>
             </>
           )}

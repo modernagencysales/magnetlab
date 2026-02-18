@@ -291,6 +291,9 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
   const handleSaveEdit = async () => {
     if (editingEmail === null || !editedEmail || !sequence) return;
 
+    setError(null);
+    setSuccess(null);
+
     const updatedEmails = [...sequence.emails];
     updatedEmails[editingEmail] = editedEmail;
 

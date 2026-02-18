@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import {
   generateContentScreenshots,
@@ -24,20 +25,18 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const { id } = await params;
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
     // Get the lead magnet and verify ownership
-    const { data: leadMagnet, error: fetchError } = await supabase
+    let lmQuery = supabase
       .from('lead_magnets')
       .select('id, user_id, polished_content, interactive_config, extracted_content')
-      .eq('id', id)
-      .single();
+      .eq('id', id);
+    lmQuery = applyScope(lmQuery, scope);
+    const { data: leadMagnet, error: fetchError } = await lmQuery.single();
 
     if (fetchError || !leadMagnet) {
       return ApiErrors.notFound('Lead magnet');
-    }
-
-    if (leadMagnet.user_id !== session.user.id) {
-      return ApiErrors.forbidden('You do not own this lead magnet');
     }
 
     // Verify some renderable content exists (polished, interactive, or extracted)
@@ -161,11 +160,12 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     // Save screenshot URLs to the lead_magnets table
-    const { error: updateError } = await supabase
+    let updateQuery = supabase
       .from('lead_magnets')
       .update({ screenshot_urls: screenshotUrls })
-      .eq('id', id)
-      .eq('user_id', session.user.id);
+      .eq('id', id);
+    updateQuery = applyScope(updateQuery, scope);
+    const { error: updateError } = await updateQuery;
 
     if (updateError) {
       logApiError('lead-magnet/screenshots/save', updateError, {

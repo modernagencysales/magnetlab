@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     // Verify funnel page exists and is published
     const { data: funnel, error: funnelError } = await supabase
       .from('funnel_pages')
-      .select('id, user_id, lead_magnet_id, slug, is_published')
+      .select('id, user_id, lead_magnet_id, slug, is_published, team_id')
       .eq('id', funnelPageId)
       .single();
 
@@ -125,6 +125,7 @@ export async function POST(request: Request) {
         funnel_page_id: funnelPageId,
         lead_magnet_id: funnel.lead_magnet_id,
         user_id: funnel.user_id,
+        team_id: funnel.team_id || null,
         email, // Already lowercased and trimmed by schema
         name: name || null,
         utm_source: utmSource || null,
@@ -177,7 +178,7 @@ export async function POST(request: Request) {
       createdAt: lead.created_at,
     }).catch((err) => logApiError('public/lead/webhook', err, { leadId: lead.id }));
 
-    // Fire GTM system webhook (async, don't wait)
+    // Fire GTM system webhook (async, don't wait — only for GTM system owner's leads)
     fireGtmLeadCreatedWebhook({
       email: lead.email,
       name: lead.name,
@@ -191,7 +192,7 @@ export async function POST(request: Request) {
       utmMedium: lead.utm_medium,
       utmCampaign: lead.utm_campaign,
       createdAt: lead.created_at,
-    }).catch((err) => logApiError('public/lead/gtm-webhook', err, { leadId: lead.id }));
+    }, funnel.user_id).catch((err) => logApiError('public/lead/gtm-webhook', err, { leadId: lead.id }));
 
     // Deliver to user's Conductor instance (async, don't wait)
     deliverConductorWebhook(funnel.user_id, 'lead.created', {
@@ -432,7 +433,7 @@ export async function PATCH(request: Request) {
       qualificationAnswers: answers,
     }).catch((err) => logApiError('public/lead/tracking-pixels-qualified', err, { leadId: lead.id }));
 
-    // Fire GTM system webhook for lead qualification (async, don't wait)
+    // Fire GTM system webhook for lead qualification (async, don't wait — only for GTM system owner's leads)
     fireGtmLeadQualifiedWebhook({
       email: lead.email,
       name: lead.name,
@@ -443,7 +444,7 @@ export async function PATCH(request: Request) {
       utmSource: updatedLead.utm_source,
       utmMedium: updatedLead.utm_medium,
       utmCampaign: updatedLead.utm_campaign,
-    }).catch((err) => logApiError('public/lead/gtm-webhook-qualified', err, { leadId: lead.id }));
+    }, lead.user_id).catch((err) => logApiError('public/lead/gtm-webhook-qualified', err, { leadId: lead.id }));
 
     // Deliver to user's Conductor instance (async, don't wait)
     deliverConductorWebhook(lead.user_id, 'lead.qualified', {

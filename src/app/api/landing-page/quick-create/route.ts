@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { generateOptinContent } from '@/lib/ai/funnel-content-generator';
 import { getPostHogServerClient } from '@/lib/posthog';
@@ -33,12 +34,14 @@ export async function POST(request: Request) {
     }
 
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
     // 1. Create stub lead magnet
     const { data: leadMagnet, error: lmError } = await supabase
       .from('lead_magnets')
       .insert({
         user_id: session.user.id,
+        team_id: scope.teamId || null,
         title: title.trim(),
         archetype: 'focused-toolkit',
         status: 'draft',
@@ -82,12 +85,12 @@ export async function POST(request: Request) {
     let slugSuffix = 0;
 
     while (true) {
-      const { data: slugExists } = await supabase
+      let slugQuery = supabase
         .from('funnel_pages')
         .select('id')
-        .eq('user_id', session.user.id)
-        .eq('slug', slug)
-        .single();
+        .eq('slug', slug);
+      slugQuery = applyScope(slugQuery, scope);
+      const { data: slugExists } = await slugQuery.single();
 
       if (!slugExists) break;
       slugSuffix++;
@@ -98,6 +101,7 @@ export async function POST(request: Request) {
     const funnelInsertData = {
       lead_magnet_id: leadMagnet.id,
       user_id: session.user.id,
+      team_id: scope.teamId || null,
       slug,
       optin_headline: optinContent.headline,
       optin_subline: optinContent.subline,

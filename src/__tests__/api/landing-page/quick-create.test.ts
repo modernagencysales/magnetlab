@@ -27,6 +27,13 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(() => mockSupabaseClient),
 }));
 
+// Mock team-context (routes now use getDataScope/applyScope for multi-team scoping)
+jest.mock('@/lib/utils/team-context', () => ({
+  getDataScope: jest.fn((userId: string) => Promise.resolve({ type: 'user', userId })),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  applyScope: jest.fn((query: any, scope: any) => query.eq('user_id', scope.userId)),
+}));
+
 // Mock auth
 const mockAuth = jest.fn();
 jest.mock('@/lib/auth', () => ({

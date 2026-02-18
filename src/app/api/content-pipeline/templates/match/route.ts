@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { generateEmbedding, cosineSimilarity } from '@/lib/ai/embeddings';
+import { generateEmbedding } from '@/lib/ai/embeddings';
 
 import { logError } from '@/lib/utils/logger';
 
@@ -13,53 +13,38 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { text, limit = 5 } = body;
+    const { topic, text, count = 5, minSimilarity = 0.3 } = body;
 
-    if (!text) {
-      return NextResponse.json({ error: 'text is required' }, { status: 400 });
+    // Support both 'topic' (new) and 'text' (legacy) field names
+    const topicText = topic || text;
+
+    if (!topicText) {
+      return NextResponse.json({ error: 'topic is required' }, { status: 400 });
     }
+
+    // Generate embedding for the topic text
+    const embedding = await generateEmbedding(topicText);
 
     const supabase = createSupabaseAdminClient();
 
-    // Generate embedding for the input text
-    const queryEmbedding = await generateEmbedding(text);
-
-    // Fetch all active templates with embeddings for this user
-    const { data: templates, error } = await supabase
-      .from('cp_post_templates')
-      .select('id, name, category, description, structure, use_cases, tags, embedding')
-      .eq('user_id', session.user.id)
-      .eq('is_active', true);
+    // Use the cp_match_templates RPC for server-side pgvector similarity search
+    // This returns user's own templates + global templates above the similarity threshold
+    const { data, error } = await supabase.rpc('cp_match_templates', {
+      query_embedding: JSON.stringify(embedding),
+      match_user_id: session.user.id,
+      match_count: count,
+      min_similarity: minSimilarity,
+    });
 
     if (error) {
+      logError('cp/templates', new Error('cp_match_templates RPC failed'), {
+        detail: error.message,
+        userId: session.user.id,
+      });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (!templates || templates.length === 0) {
-      return NextResponse.json({ matches: [] });
-    }
-
-    // Calculate similarity and rank
-    const matches = templates
-      .filter((t) => t.embedding)
-      .map((t) => {
-        const templateEmbedding = typeof t.embedding === 'string'
-          ? JSON.parse(t.embedding)
-          : t.embedding;
-        const similarity = cosineSimilarity(queryEmbedding, templateEmbedding);
-        return {
-          id: t.id,
-          name: t.name,
-          category: t.category,
-          description: t.description,
-          structure: t.structure,
-          similarity,
-        };
-      })
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, limit);
-
-    return NextResponse.json({ matches });
+    return NextResponse.json({ matches: data || [] });
   } catch (error) {
     logError('cp/templates', error, { step: 'template_match_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

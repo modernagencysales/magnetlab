@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Plus, Trash2, Play, Loader2, Check, X, Globe } from 'lucide-react';
 import type { WebhookConfig } from '@/lib/types/funnel';
 
@@ -322,6 +323,14 @@ export function WebhookSettings() {
   }
 }`}
         </pre>
+        <div className="mt-3 flex items-center gap-4">
+          <Link href="/docs/connect-email-list" className="text-sm text-violet-600 dark:text-violet-400 hover:underline">
+            Integration guides (Zapier, Make, n8n) →
+          </Link>
+          <Link href="/docs/webhook-reference-ai" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+            AI-friendly reference →
+          </Link>
+        </div>
       </div>
     </div>
   );

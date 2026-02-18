@@ -18,3 +18,5 @@ export { analyzePerformancePatterns, getTopPerformingAttributes, generatePerform
 export type { PerformancePattern, TopAttribute, PerformanceInsight, PatternAnalysisResult } from './performance-analyzer';
 export { searchTopPerformingPosts, searchTopLeadMagnets, searchCreatorContent, searchHashtagContent, analyzeInspiration, batchAnalyzeInspiration, extractTrends } from './inspiration-researcher';
 export type { InspirationContent, InspirationAnalysis, TrendSummary } from './inspiration-researcher';
+export { matchTemplates, findBestTemplate, buildTemplateGuidance } from './template-matcher';
+export type { MatchedTemplate, MatchTemplateOptions } from './template-matcher';

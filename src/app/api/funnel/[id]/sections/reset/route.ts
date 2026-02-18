@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { funnelPageSectionFromRow, type FunnelPageSectionRow, type PageLocation } from '@/lib/types/funnel';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { getTemplate, DEFAULT_TEMPLATE_ID } from '@/lib/constants/funnel-templates';
@@ -30,14 +31,15 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
     // Verify funnel ownership
-    const { data: funnel, error: funnelError } = await supabase
+    let funnelQuery = supabase
       .from('funnel_pages')
       .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
+      .eq('id', id);
+    funnelQuery = applyScope(funnelQuery, scope);
+    const { data: funnel, error: funnelError } = await funnelQuery.single();
 
     if (funnelError || !funnel) {
       return ApiErrors.notFound('Funnel page');

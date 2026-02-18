@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import type { WizardState } from '@/lib/types/lead-magnet';
 
@@ -33,14 +34,17 @@ export async function GET() {
     }
 
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('extraction_sessions')
       .select('id, wizard_state, current_step, draft_title, updated_at')
-      .eq('user_id', session.user.id)
       .or('expires_at.is.null,expires_at.gt.now()')
       .not('wizard_state', 'eq', '{}')
       .order('updated_at', { ascending: false });
+    query = applyScope(query, scope);
+
+    const { data, error } = await query;
 
     if (error) {
       logApiError('wizard-draft/list', error, { userId: session.user.id });
@@ -80,6 +84,7 @@ export async function PUT(request: Request) {
     }
 
     const supabase = createSupabaseAdminClient();
+    const scope = await getDataScope(session.user.id);
     const draftTitle = deriveDraftTitle(wizardState);
 
     if (id) {
@@ -108,6 +113,7 @@ export async function PUT(request: Request) {
         .from('extraction_sessions')
         .insert({
           user_id: session.user.id,
+          team_id: scope.teamId || null,
           wizard_state: wizardState,
           current_step: wizardState.currentStep,
           draft_title: draftTitle,

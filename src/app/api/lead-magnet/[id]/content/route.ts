@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { validateBody, updateContentBodySchema } from '@/lib/validations/api';
 import type { PolishedContent } from '@/lib/types/lead-magnet';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -50,13 +51,15 @@ export async function PUT(request: Request, { params }: RouteParams) {
       readingTimeMinutes: Math.max(1, Math.round(wordCount / 200)),
     };
 
+    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('lead_magnets')
       .update({ polished_content: polishedContent })
-      .eq('id', id)
-      .eq('user_id', session.user.id)
+      .eq('id', id);
+    query = applyScope(query, scope);
+    const { data, error } = await query
       .select('polished_content')
       .single();
 

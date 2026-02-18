@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getWhitelabelConfig } from '@/lib/utils/whitelabel';
 import { OptinPage } from '@/components/funnel/public';
 import { funnelPageSectionFromRow, type FunnelPageSectionRow } from '@/lib/types/funnel';
 import type { Metadata } from 'next';
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Find funnel page
   const { data: funnel } = await supabase
     .from('funnel_pages')
-    .select('optin_headline, optin_subline, lead_magnet_id')
+    .select('optin_headline, optin_subline, lead_magnet_id, team_id')
     .eq('user_id', user.id)
     .eq('slug', slug)
     .eq('is_published', true)
@@ -39,14 +40,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: 'Page Not Found' };
   }
 
+  const whitelabel = await getWhitelabelConfig(funnel.team_id);
+  const siteName = whitelabel?.customSiteName || 'MagnetLab';
+
   return {
-    title: funnel.optin_headline,
+    title: `${funnel.optin_headline} | ${siteName}`,
     description: funnel.optin_subline || undefined,
     openGraph: {
       title: funnel.optin_headline,
       description: funnel.optin_subline || undefined,
       type: 'website',
     },
+    ...(whitelabel?.customFaviconUrl ? { icons: { icon: whitelabel.customFaviconUrl } } : {}),
   };
 }
 
@@ -80,7 +85,10 @@ export default async function PublicOptinPage({ params }: PageProps) {
       theme,
       primary_color,
       background_style,
-      logo_url
+      logo_url,
+      font_family,
+      font_url,
+      team_id
     `)
     .eq('user_id', user.id)
     .eq('slug', slug)
@@ -89,6 +97,8 @@ export default async function PublicOptinPage({ params }: PageProps) {
   if (funnelError || !funnel || !funnel.is_published) {
     notFound();
   }
+
+  const whitelabel = await getWhitelabelConfig(funnel.team_id);
 
   // Fetch lead magnet title for pixel tracking content_name
   const { data: leadMagnet } = await supabase
@@ -149,6 +159,9 @@ export default async function PublicOptinPage({ params }: PageProps) {
       sections={sections}
       pixelConfig={pixelConfig}
       leadMagnetTitle={leadMagnet?.title || null}
+      fontFamily={funnel.font_family}
+      fontUrl={funnel.font_url}
+      hideBranding={whitelabel?.hideBranding || false}
     />
   );
 }
