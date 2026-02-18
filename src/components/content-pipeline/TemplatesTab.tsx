@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, Upload, Wand2, X } from 'lucide-react';
+import { Plus, Loader2, Upload, Wand2, X, Globe, User } from 'lucide-react';
 import type { PostTemplate } from '@/lib/types/content-pipeline';
 import { CSVTemplateImporter } from './CSVTemplateImporter';
 import { ViralPostsSection } from './ViralPostsSection';
 import { StylesSection } from './StylesSection';
+import { TemplateSearch } from './TemplateSearch';
+import { GlobalTemplateLibrary } from './GlobalTemplateLibrary';
 
 export function TemplatesTab() {
   const [templates, setTemplates] = useState<PostTemplate[]>([]);
@@ -14,6 +16,7 @@ export function TemplatesTab() {
   const [showImport, setShowImport] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<PostTemplate | null>(null);
+  const [activeSection, setActiveSection] = useState<'global' | 'mine'>('global');
 
   // Create/edit form state
   const [formName, setFormName] = useState('');
@@ -25,7 +28,7 @@ export function TemplatesTab() {
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const response = await fetch('/api/content-pipeline/templates');
+      const response = await fetch('/api/content-pipeline/templates?scope=mine');
       const data = await response.json();
       setTemplates(data.templates || []);
     } catch {
@@ -125,93 +128,135 @@ export function TemplatesTab() {
 
   return (
     <div className="space-y-8">
-      {/* Templates Section */}
+      {/* Semantic Search */}
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase text-muted-foreground">Post Templates</h3>
-          <div className="flex gap-2">
-            {templates.length === 0 && (
-              <button
-                onClick={handleSeed}
-                disabled={seeding}
-                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
-              >
-                {seeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-                Seed Defaults
-              </button>
-            )}
-            <button
-              onClick={() => setShowImport(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-            >
-              <Upload className="h-3 w-3" />
-              Import CSV
-            </button>
-            <button
-              onClick={openCreate}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="h-3 w-3" />
-              New Template
-            </button>
-          </div>
-        </div>
-
-        {templates.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-sm text-muted-foreground">No templates yet. Seed defaults or create your own.</p>
-          </div>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {templates.map((template) => (
-              <div key={template.id} className="rounded-lg border bg-card p-4">
-                <div className="mb-2 flex items-start justify-between">
-                  <div>
-                    <h4 className="text-sm font-semibold">{template.name}</h4>
-                    {template.category && (
-                      <span className="mt-0.5 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs">
-                        {template.category}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => openEdit(template)}
-                      className="rounded-lg p-1 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <span className="text-xs">Edit</span>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(template.id)}
-                      className="rounded-lg p-1 text-muted-foreground hover:text-red-500 transition-colors"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-                {template.description && (
-                  <p className="mb-2 text-xs text-muted-foreground">{template.description}</p>
-                )}
-                <pre className="max-h-24 overflow-hidden rounded bg-muted p-2 text-xs text-muted-foreground whitespace-pre-wrap">
-                  {template.structure}
-                </pre>
-                {template.tags && template.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {template.tags.map((tag) => (
-                      <span key={tag} className="rounded bg-secondary px-1.5 py-0.5 text-xs">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div className="mt-2 text-xs text-muted-foreground">
-                  Used {template.usage_count} times
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">Find Templates</h3>
+        <TemplateSearch />
       </div>
+
+      {/* Section Toggle */}
+      <div className="flex gap-1 rounded-lg bg-muted p-1">
+        <button
+          onClick={() => setActiveSection('global')}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            activeSection === 'global'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Globe className="h-3 w-3" />
+          Global Library
+        </button>
+        <button
+          onClick={() => setActiveSection('mine')}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            activeSection === 'mine'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <User className="h-3 w-3" />
+          My Templates
+        </button>
+      </div>
+
+      {/* Global Library Section */}
+      {activeSection === 'global' && (
+        <div>
+          <h3 className="mb-4 text-sm font-semibold uppercase text-muted-foreground">Global Template Library</h3>
+          <GlobalTemplateLibrary />
+        </div>
+      )}
+
+      {/* My Templates Section */}
+      {activeSection === 'mine' && (
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-sm font-semibold uppercase text-muted-foreground">My Templates</h3>
+            <div className="flex gap-2">
+              {templates.length === 0 && (
+                <button
+                  onClick={handleSeed}
+                  disabled={seeding}
+                  className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  {seeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                  Seed Defaults
+                </button>
+              )}
+              <button
+                onClick={() => setShowImport(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
+              >
+                <Upload className="h-3 w-3" />
+                Import CSV
+              </button>
+              <button
+                onClick={openCreate}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                New Template
+              </button>
+            </div>
+          </div>
+
+          {templates.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-8 text-center">
+              <p className="text-sm text-muted-foreground">No templates yet. Seed defaults or create your own.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {templates.map((template) => (
+                <div key={template.id} className="rounded-lg border bg-card p-4">
+                  <div className="mb-2 flex items-start justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold">{template.name}</h4>
+                      {template.category && (
+                        <span className="mt-0.5 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs">
+                          {template.category}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => openEdit(template)}
+                        className="rounded-lg p-1 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <span className="text-xs">Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(template.id)}
+                        className="rounded-lg p-1 text-muted-foreground hover:text-red-500 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  {template.description && (
+                    <p className="mb-2 text-xs text-muted-foreground">{template.description}</p>
+                  )}
+                  <pre className="max-h-24 overflow-hidden rounded bg-muted p-2 text-xs text-muted-foreground whitespace-pre-wrap">
+                    {template.structure}
+                  </pre>
+                  {template.tags && template.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {template.tags.map((tag) => (
+                        <span key={tag} className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Used {template.usage_count} times
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Create/Edit Modal */}
       {showCreate && (
