@@ -278,9 +278,27 @@ Team-level custom domain and white-label support. One domain per team via CNAME 
 - `VERCEL_PROJECT_ID` -- Vercel project ID for magnetlab
 - `VERCEL_TEAM_ID` -- Vercel team ID (optional, for org accounts)
 
-### Deprecation
+### Whitelabel Email Domains
+
+Teams can verify their own email sending domain via Resend API (in-app), so transactional emails send from their domain instead of `sends.magnetlab.app`.
+
+- `team_email_domains` table: `id, team_id, domain, resend_domain_id, status, dns_records, region, last_checked_at, created_at, updated_at`
+- `teams.custom_from_email` column: full sender address (e.g., `hello@clientbrand.com`)
+- Status values: `pending`, `verified`, `failed`
+- DNS records from Resend include SPF (TXT), DKIM (TXT), and MX with per-record verification status
+- Sender resolution priority in `getSenderInfo()`: user's own Resend account > team verified email domain + `custom_from_email` > default `hello@sends.magnetlab.app`
+
+Key files:
+- `src/lib/integrations/resend-domains.ts` -- Resend Domains API client (create, get, verify, delete)
+- `src/app/api/settings/team-email-domain/route.ts` -- Email domain CRUD
+- `src/app/api/settings/team-email-domain/verify/route.ts` -- DNS verification
+- `src/app/api/settings/team-email-domain/from-email/route.ts` -- From-email with domain suffix validation
+- `src/lib/services/email-sequence-trigger.ts` -- `getSenderInfo()` resolves team email domain
+
+### Deprecation / Removed
 
 - `funnel_pages.custom_domain` column is ignored — domain is now team-level via `team_domains`
+- **Loops integration removed** — `src/lib/integrations/loops.ts` deleted, all Loops types and references cleaned from email types and API routes. DB columns `loops_synced_at` / `loops_transactional_ids` remain in `email_sequences` table (harmless).
 
 ## Integration Points
 
