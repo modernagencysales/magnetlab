@@ -6,7 +6,8 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmailSequence, generateDefaultEmailSequence } from '@/lib/ai/email-sequence-generator';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-import type { EmailGenerationContext } from '@/lib/types/email';
+import type { EmailGenerationContext, EmailSequenceRow } from '@/lib/types/email';
+import { emailSequenceFromRow } from '@/lib/types/email';
 import { checkResourceLimit } from '@/lib/auth/plan-limits';
 
 // POST - Generate email sequence for a lead magnet
@@ -112,16 +113,16 @@ export async function POST(request: Request) {
           onConflict: 'lead_magnet_id',
         }
       )
-      .select()
+      .select('id, lead_magnet_id, user_id, emails, loops_synced_at, loops_transactional_ids, status, created_at, updated_at')
       .single();
 
-    if (upsertError) {
+    if (upsertError || !emailSequence) {
       logApiError('email-sequence/generate/save', upsertError, { leadMagnetId });
       return ApiErrors.databaseError('Failed to save email sequence');
     }
 
     return NextResponse.json({
-      emailSequence,
+      emailSequence: emailSequenceFromRow(emailSequence as EmailSequenceRow),
       generated: true,
     });
   } catch (error) {

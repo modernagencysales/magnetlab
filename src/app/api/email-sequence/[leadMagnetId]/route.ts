@@ -111,9 +111,18 @@ export async function PUT(request: Request, { params }: RouteParams) {
       .select('id')
       .eq('lead_magnet_id', leadMagnetId);
     findQuery = applyScope(findQuery, scope);
-    const { data: existingSequence, error: findError } = await findQuery.single();
+    const { data: existingSequence, error: findError } = await findQuery.maybeSingle();
 
-    if (findError || !existingSequence) {
+    if (findError) {
+      logApiError('email-sequence/update/find', findError, { leadMagnetId, userId: session.user.id });
+      return ApiErrors.databaseError('Failed to look up email sequence');
+    }
+
+    if (!existingSequence) {
+      logApiError('email-sequence/update/not-found', new Error('No matching email sequence'), {
+        leadMagnetId,
+        userId: session.user.id,
+      });
       return ApiErrors.notFound('Email sequence');
     }
 
