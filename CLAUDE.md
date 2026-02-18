@@ -199,6 +199,45 @@ Team-level branding settings that apply across all funnels. Configured in Settin
 - `src/components/funnel/public/FontLoader.tsx` -- font loading + XSS sanitization, exports `GOOGLE_FONTS`
 - `src/app/api/public/view/route.ts` -- page view tracking with `pageType` validation
 
+## A/B Testing (Thank-You Page)
+
+Self-serve A/B testing for thank-you pages to maximize survey completion rate. Tests one field at a time: headline, subline, video on/off, or pass message.
+
+### Data Model
+
+- `ab_experiments` table -- experiment definition (status, test_field, winner_id, significance, min_sample_size)
+- `funnel_pages` columns added: `experiment_id`, `is_variant` (boolean), `variant_label`
+- Variants are cloned `funnel_pages` rows linked via `experiment_id`. Existing `page_views` and `funnel_leads` tracking works unchanged per variant.
+
+### How It Works
+
+1. **Create test**: User picks a field to test on the funnel builder's thank-you tab. AI (Claude) generates 2-3 variant suggestions. User picks one (or writes custom).
+2. **Bucketing**: Server-side deterministic hash (`SHA-256(IP + User-Agent + experiment_id)`) assigns visitors to variants. No cookies. Same visitor always sees same variant.
+3. **Tracking**: Each variant has its own `funnel_page_id`, so `page_views` (page_type='thankyou') and `funnel_leads` track per-variant automatically.
+4. **Auto-winner**: Trigger.dev scheduled task (`check-ab-experiments`, every 6 hours) runs two-proportion z-test. At p < 0.05 with min sample size met, declares winner.
+5. **Winner promotion**: Winning field value is copied back to the control row. URL never changes. Variant rows are unpublished.
+
+### API Routes
+
+- `GET/POST /api/ab-experiments` -- list (with `?funnelPageId=` filter) and create experiments
+- `GET/PATCH/DELETE /api/ab-experiments/[id]` -- get with stats, pause/resume/declare-winner, delete
+- `POST /api/ab-experiments/suggest` -- AI variant suggestions using Claude (claude-sonnet-4-5-20250514)
+
+### Key Files
+
+- `src/components/funnel/ABTestPanel.tsx` -- dashboard UI (4 states: no test, creating, running, completed)
+- `src/components/funnel/FunnelBuilder.tsx` -- integrates ABTestPanel in thankyou tab
+- `src/app/p/[username]/[slug]/thankyou/page.tsx` -- server-side bucketing logic
+- `src/trigger/check-ab-experiments.ts` -- auto-winner detection (6-hour cron)
+- `src/app/api/ab-experiments/` -- CRUD + suggest APIs
+- `supabase/migrations/20260218200000_ab_experiments.sql` -- migration
+
+### Important Notes
+
+- Always filter funnel queries with `.eq('is_variant', false)` to hide variant rows from funnel lists
+- One experiment per funnel at a time (create API enforces this)
+- Experiment paused/completed/draft → serve control (or winner if completed)
+
 ## Integration Points
 
 - **GTM webhooks**: Fires `lead.created`, `lead.qualified`, `lead_magnet.deployed` to gtm-system via `lib/webhooks/gtm-system.ts` (fire-and-forget, 5s timeout, `x-webhook-secret` auth)
