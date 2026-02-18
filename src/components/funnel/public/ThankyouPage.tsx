@@ -65,6 +65,7 @@ export function ThankyouPage({
   funnelPageId,
   fontFamily,
   fontUrl,
+  hideBranding,
 }: ThankyouPageProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -526,17 +527,19 @@ export function ThankyouPage({
       )}
 
       {/* 11. Powered by MagnetLab */}
-      <div className="mt-12">
-        <a
-          href="https://magnetlab.app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs transition-colors hover:opacity-80"
-          style={{ color: 'var(--ds-placeholder)' }}
-        >
-          Powered by MagnetLab
-        </a>
-      </div>
+      {!hideBranding && (
+        <div className="mt-12">
+          <a
+            href="https://magnetlab.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs transition-colors hover:opacity-80"
+            style={{ color: 'var(--ds-placeholder)' }}
+          >
+            Powered by MagnetLab
+          </a>
+        </div>
+      )}
     </div>
     </>
   );

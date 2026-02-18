@@ -47,6 +47,7 @@ export function OptinPage({
   leadMagnetTitle,
   fontFamily,
   fontUrl,
+  hideBranding,
 }: OptinPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -229,17 +230,19 @@ export function OptinPage({
       </div>
 
       {/* Powered by */}
-      <div className="mt-12">
-        <a
-          href="https://magnetlab.app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs transition-colors hover:opacity-80"
-          style={{ color: 'var(--ds-placeholder)' }}
-        >
-          Powered by MagnetLab
-        </a>
-      </div>
+      {!hideBranding && (
+        <div className="mt-12">
+          <a
+            href="https://magnetlab.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs transition-colors hover:opacity-80"
+            style={{ color: 'var(--ds-placeholder)' }}
+          >
+            Powered by MagnetLab
+          </a>
+        </div>
+      )}
     </div>
     </>
   );

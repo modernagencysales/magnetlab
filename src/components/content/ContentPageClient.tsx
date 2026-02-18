@@ -63,6 +63,7 @@ export function ContentPageClient({
   hasQuestions = false,
   interactiveConfig,
   sections = [],
+  hideBranding,
 }: ContentPageClientProps) {
   const [isDark, setIsDark] = useState(initialTheme === 'dark');
   const [isEditing, setIsEditing] = useState(false);
@@ -238,7 +239,7 @@ export function ContentPageClient({
         </div>
       )}
 
-      <ContentFooter isDark={isDark} />
+      <ContentFooter isDark={isDark} hideBranding={hideBranding} />
 
       {/* Edit mode save bar */}
       {isEditing && (
