@@ -116,12 +116,16 @@ function hasLeadMagnetCTA(content: string): boolean {
   return LEAD_MAGNET_CTA_PATTERN.test(content);
 }
 
+const PAGE_SIZE = 50;
+
 export function SwipeFileContent() {
   const [activeTab, setActiveTab] = useState<'posts' | 'lead-magnets' | 'discovered'>('discovered');
   const [posts, setPosts] = useState<SwipePost[]>([]);
   const [leadMagnets, setLeadMagnets] = useState<SwipeLeadMagnet[]>([]);
   const [allWinningPosts, setAllWinningPosts] = useState<DiscoveredPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Filters
@@ -189,6 +193,46 @@ export function SwipeFileContent() {
     return [...posts].sort((a, b) => b.engagement_score - a.engagement_score);
   }, [ctaPosts, creatorFilter]);
 
+  const fetchWinningPosts = useCallback(async (reset: boolean) => {
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const offset = reset ? 0 : allWinningPosts.length;
+
+      const orderCol = discoveredSort === 'engagement' ? 'engagement_score' : 'created_at';
+
+      const { data, error } = await supabase
+        .from('cp_viral_posts')
+        .select('id, author_name, author_headline, author_url, content, likes, comments, shares, engagement_score, template_extracted, extracted_template_id, created_at')
+        .eq('is_winner', true)
+        .is('user_id', null)
+        .order(orderCol, { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      if (error) {
+        logError('swipe-file', error, { step: 'discovered_fetch_error' });
+        if (reset) setAllWinningPosts([]);
+      } else {
+        const newPosts = data || [];
+        setHasMore(newPosts.length === PAGE_SIZE);
+        if (reset) {
+          setAllWinningPosts(newPosts);
+        } else {
+          setAllWinningPosts((prev) => [...prev, ...newPosts]);
+        }
+      }
+    } catch {
+      if (reset) setAllWinningPosts([]);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [allWinningPosts.length, discoveredSort]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -201,24 +245,13 @@ export function SwipeFileContent() {
         const response = await fetch(`/api/swipe-file/posts?${params}`);
         const data = await response.json();
         setPosts(data.posts || []);
+        setLoading(false);
       } else if (activeTab === 'lead-magnets' || activeTab === 'discovered') {
-        // Fetch all winning posts once for both tabs
+        // Fetch first page of winning posts (or skip if already loaded)
         if (allWinningPosts.length === 0) {
-          const supabase = createSupabaseBrowserClient();
-          const { data, error } = await supabase
-            .from('cp_viral_posts')
-            .select('id, author_name, author_headline, author_url, content, likes, comments, shares, engagement_score, template_extracted, extracted_template_id, created_at')
-            .eq('is_winner', true)
-            .is('user_id', null)
-            .order('engagement_score', { ascending: false })
-            .limit(500);
-
-          if (error) {
-            logError('swipe-file', error, { step: 'discovered_fetch_error' });
-            setAllWinningPosts([]);
-          } else {
-            setAllWinningPosts(data || []);
-          }
+          await fetchWinningPosts(true);
+        } else {
+          setLoading(false);
         }
 
         // Also fetch submitted lead magnets for the lead-magnets tab
@@ -234,15 +267,21 @@ export function SwipeFileContent() {
         }
       }
     } catch {
-      // Error handled silently - data will be empty
-    } finally {
       setLoading(false);
     }
-  }, [activeTab, niche, postType, format, featuredOnly, allWinningPosts.length]);
+  }, [activeTab, niche, postType, format, featuredOnly, allWinningPosts.length, fetchWinningPosts]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Reset and re-fetch when sort changes
+  useEffect(() => {
+    if (allWinningPosts.length > 0) {
+      fetchWinningPosts(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discoveredSort]);
 
   // Reset creator filter when switching tabs
   useEffect(() => {
@@ -464,7 +503,7 @@ export function SwipeFileContent() {
           Discovered
           {discoveredPosts.length > 0 && (
             <span className="rounded-full bg-primary-foreground/20 px-1.5 py-0.5 text-xs">
-              {discoveredPosts.length}
+              {discoveredPosts.length}{hasMore ? '+' : ''}
             </span>
           )}
         </button>
@@ -482,7 +521,7 @@ export function SwipeFileContent() {
             <span className={`rounded-full px-1.5 py-0.5 text-xs ${
               activeTab === 'lead-magnets' ? 'bg-primary-foreground/20' : 'bg-primary/10 text-primary'
             }`}>
-              {ctaPosts.length}
+              {ctaPosts.length}{hasMore ? '+' : ''}
             </span>
           )}
         </button>
@@ -856,6 +895,29 @@ export function SwipeFileContent() {
             </div>
           )}
 
+          {/* Load More (shared data source with discovered tab) */}
+          {hasMore && !creatorFilter && filteredCtaPosts.length > 0 && (
+            <div className="flex justify-center">
+              <button
+                onClick={() => fetchWinningPosts(false)}
+                disabled={loadingMore}
+                className="flex items-center gap-2 rounded-lg border bg-card px-6 py-2.5 text-sm font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    Load More Posts
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
           {/* Empty state */}
           {filteredCtaPosts.length === 0 && leadMagnets.length === 0 && (
             <div className="rounded-lg border border-dashed p-12 text-center">
@@ -869,21 +931,44 @@ export function SwipeFileContent() {
         </div>
       ) : (
         /* Discovered tab */
-        <div className="grid gap-4 md:grid-cols-2">
-          {filteredDiscovered.length === 0 ? (
-            <div className="col-span-2 rounded-lg border border-dashed p-12 text-center">
-              <Sparkles className="mx-auto h-12 w-12 text-muted-foreground/50" />
-              <p className="mt-4 text-muted-foreground">
-                {creatorFilter ? 'No posts from this creator' : 'No winning posts discovered yet'}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground/70">
-                {creatorFilter
-                  ? 'Try selecting a different creator or clear the filter.'
-                  : 'High-performing LinkedIn posts will appear here as they are scraped and analyzed.'}
-              </p>
+        <div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {filteredDiscovered.length === 0 ? (
+              <div className="col-span-2 rounded-lg border border-dashed p-12 text-center">
+                <Sparkles className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                <p className="mt-4 text-muted-foreground">
+                  {creatorFilter ? 'No posts from this creator' : 'No winning posts discovered yet'}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground/70">
+                  {creatorFilter
+                    ? 'Try selecting a different creator or clear the filter.'
+                    : 'High-performing LinkedIn posts will appear here as they are scraped and analyzed.'}
+                </p>
+              </div>
+            ) : (
+              filteredDiscovered.map(renderPostCard)
+            )}
+          </div>
+          {hasMore && !creatorFilter && filteredDiscovered.length > 0 && (
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => fetchWinningPosts(false)}
+                disabled={loadingMore}
+                className="flex items-center gap-2 rounded-lg border bg-card px-6 py-2.5 text-sm font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    Load More Posts
+                  </>
+                )}
+              </button>
             </div>
-          ) : (
-            filteredDiscovered.map(renderPostCard)
           )}
         </div>
       )}
