@@ -495,9 +495,48 @@ export function QuestionsManager({
                               className="rounded border-border"
                             />
                           )}
-                          <span className="text-sm">{opt}</span>
+                          <input
+                            type="text"
+                            value={opt}
+                            onChange={(e) => {
+                              const updatedOptions = [...(question.options || [])];
+                              const oldVal = updatedOptions[optIdx];
+                              updatedOptions[optIdx] = e.target.value;
+                              // Update qualifying answers if the renamed option was qualifying
+                              let updatedQualifying = question.qualifyingAnswer;
+                              if (Array.isArray(question.qualifyingAnswer) && question.qualifyingAnswer.includes(oldVal)) {
+                                updatedQualifying = question.qualifyingAnswer.map(o => o === oldVal ? e.target.value : o);
+                              }
+                              handleUpdateQuestion(question.id, { options: updatedOptions, qualifyingAnswer: updatedQualifying });
+                            }}
+                            className="flex-1 rounded border border-border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
+                            placeholder={`Option ${optIdx + 1}`}
+                          />
+                          {(question.options || []).length > 2 && (
+                            <button
+                              onClick={() => {
+                                const updatedOptions = (question.options || []).filter((_, i) => i !== optIdx);
+                                const updatedQualifying = Array.isArray(question.qualifyingAnswer)
+                                  ? question.qualifyingAnswer.filter(o => o !== opt)
+                                  : question.qualifyingAnswer;
+                                handleUpdateQuestion(question.id, { options: updatedOptions, qualifyingAnswer: updatedQualifying });
+                              }}
+                              className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       ))}
+                      <button
+                        onClick={() => {
+                          const updatedOptions = [...(question.options || []), ''];
+                          handleUpdateQuestion(question.id, { options: updatedOptions });
+                        }}
+                        className="text-xs text-primary hover:text-primary/80 transition-colors"
+                      >
+                        + Add option
+                      </button>
                     </div>
                   </div>
                 )}
