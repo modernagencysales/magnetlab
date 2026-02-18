@@ -21,7 +21,7 @@ export default async function SettingsPage() {
   // Get brand kit
   const { data: brandKit } = await supabase
     .from('brand_kits')
-    .select('id, user_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, created_at, updated_at')
+    .select('id, user_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, logos, default_testimonial, default_steps, default_theme, default_primary_color, default_background_style, logo_url, font_family, font_url, created_at, updated_at')
     .eq('user_id', session?.user?.id)
     .single();
 

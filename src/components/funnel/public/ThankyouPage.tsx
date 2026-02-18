@@ -7,6 +7,7 @@ import { CalendlyEmbed } from './CalendlyEmbed';
 import { getThemeVars } from '@/lib/utils/theme-vars';
 import { SectionRenderer } from '@/components/ds';
 import { PixelScripts, type PixelConfig } from './PixelScripts';
+import { FontLoader, getFontStyle } from './FontLoader';
 import type { FunnelPageSection } from '@/lib/types/funnel';
 
 import { logError } from '@/lib/utils/logger';
@@ -40,6 +41,9 @@ interface ThankyouPageProps {
   leadMagnetTitle?: string | null;
   sections?: FunnelPageSection[];
   pixelConfig?: PixelConfig;
+  funnelPageId?: string;
+  fontFamily?: string | null;
+  fontUrl?: string | null;
 }
 
 export function ThankyouPage({
@@ -57,6 +61,9 @@ export function ThankyouPage({
   logoUrl,
   sections = [],
   pixelConfig,
+  funnelPageId,
+  fontFamily,
+  fontUrl,
 }: ThankyouPageProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -180,13 +187,25 @@ export function ThankyouPage({
     }
   }, [qualificationComplete, isQualified, calendlyUrl]);
 
+  // Track thank-you page view
+  useEffect(() => {
+    if (funnelPageId) {
+      fetch('/api/public/view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ funnelPageId, pageType: 'thankyou' }),
+      }).catch(() => {});
+    }
+  }, [funnelPageId]);
+
   return (
     <>
     {pixelConfig && <PixelScripts config={pixelConfig} />}
     <div
       className="min-h-screen flex flex-col items-center px-4 py-12"
-      style={{ background: getBackgroundStyle(), ...themeVars }}
+      style={{ background: getBackgroundStyle(), ...themeVars, ...getFontStyle(fontFamily) }}
     >
+      <FontLoader fontFamily={fontFamily || null} fontUrl={fontUrl || null} />
       <div className="w-full max-w-2xl space-y-8">
         {/* 1. Slim confirmation banner */}
         <div

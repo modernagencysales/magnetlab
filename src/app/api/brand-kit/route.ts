@@ -21,7 +21,7 @@ export async function GET() {
 
     let brandKitQuery = supabase
       .from('brand_kits')
-      .select('id, user_id, team_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, best_video_url, best_video_title, content_links, community_url, created_at, updated_at');
+      .select('id, user_id, team_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, best_video_url, best_video_title, content_links, community_url, logos, default_testimonial, default_steps, default_theme, default_primary_color, default_background_style, logo_url, font_family, font_url, created_at, updated_at');
     brandKitQuery = applyScope(brandKitQuery, scope);
     const { data, error } = await brandKitQuery.single();
 
@@ -73,6 +73,15 @@ export async function POST(request: Request) {
       audience_tools: body.audienceTools || [],
       preferred_tone: body.preferredTone || 'conversational',
       style_profile: body.styleProfile,
+      ...(body.logos !== undefined && { logos: body.logos }),
+      ...(body.defaultTestimonial !== undefined && { default_testimonial: body.defaultTestimonial }),
+      ...(body.defaultSteps !== undefined && { default_steps: body.defaultSteps }),
+      ...(body.defaultTheme !== undefined && { default_theme: body.defaultTheme }),
+      ...(body.defaultPrimaryColor !== undefined && { default_primary_color: body.defaultPrimaryColor }),
+      ...(body.defaultBackgroundStyle !== undefined && { default_background_style: body.defaultBackgroundStyle }),
+      ...(body.logoUrl !== undefined && { logo_url: body.logoUrl }),
+      ...(body.fontFamily !== undefined && { font_family: body.fontFamily }),
+      ...(body.fontUrl !== undefined && { font_url: body.fontUrl }),
     };
 
     // In team mode, upsert by team_id; in personal mode, upsert by user_id

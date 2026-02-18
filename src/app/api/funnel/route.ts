@@ -210,6 +210,13 @@ export async function POST(request: Request) {
       .eq('id', session.user.id)
       .single();
 
+    // Fetch brand kit defaults for this scope
+    let brandKitQuery = supabase
+      .from('brand_kits')
+      .select('logos, default_testimonial, default_steps, default_theme, default_primary_color, default_background_style, logo_url, font_family, font_url');
+    brandKitQuery = applyScope(brandKitQuery, scope);
+    const { data: brandKit } = await brandKitQuery.single();
+
     // Check for slug collision with a single query
     let finalSlug = slug;
     const { data: existingSlugs } = await supabase
@@ -252,10 +259,12 @@ export async function POST(request: Request) {
       calendly_url: funnelData.calendlyUrl || null,
       qualification_pass_message: funnelData.qualificationPassMessage || 'Great! Book a call below.',
       qualification_fail_message: funnelData.qualificationFailMessage || 'Thanks for your interest!',
-      theme: funnelData.theme || profile?.default_theme || 'dark',
-      primary_color: funnelData.primaryColor || profile?.default_primary_color || '#8b5cf6',
-      background_style: funnelData.backgroundStyle || profile?.default_background_style || 'solid',
-      logo_url: funnelData.logoUrl || profile?.default_logo_url || null,
+      theme: funnelData.theme || brandKit?.default_theme || profile?.default_theme || 'dark',
+      primary_color: funnelData.primaryColor || brandKit?.default_primary_color || profile?.default_primary_color || '#8b5cf6',
+      background_style: funnelData.backgroundStyle || brandKit?.default_background_style || profile?.default_background_style || 'solid',
+      logo_url: funnelData.logoUrl || brandKit?.logo_url || profile?.default_logo_url || null,
+      font_family: brandKit?.font_family || null,
+      font_url: brandKit?.font_url || null,
       qualification_form_id: qualificationFormId || null,
     };
 
@@ -285,14 +294,31 @@ export async function POST(request: Request) {
     const template = getTemplate(templateId);
 
     if (template.sections.length > 0 && data) {
-      const sectionRows = template.sections.map(s => ({
-        funnel_page_id: data.id,
-        section_type: s.sectionType,
-        page_location: s.pageLocation,
-        sort_order: s.sortOrder,
-        is_visible: true,
-        config: s.config,
-      }));
+      const sectionRows = template.sections.map(s => {
+        let config = { ...s.config };
+
+        // Merge brand kit content into matching sections
+        if (brandKit) {
+          if (s.sectionType === 'logo_bar' && brandKit.logos?.length > 0) {
+            config = { ...config, logos: brandKit.logos };
+          }
+          if (s.sectionType === 'testimonial' && brandKit.default_testimonial?.quote) {
+            config = { ...config, ...brandKit.default_testimonial };
+          }
+          if (s.sectionType === 'steps' && brandKit.default_steps?.steps?.length > 0) {
+            config = { ...config, ...brandKit.default_steps };
+          }
+        }
+
+        return {
+          funnel_page_id: data.id,
+          section_type: s.sectionType,
+          page_location: s.pageLocation,
+          sort_order: s.sortOrder,
+          is_visible: true,
+          config,
+        };
+      });
 
       const { error: sectionsError } = await supabase
         .from('funnel_page_sections')

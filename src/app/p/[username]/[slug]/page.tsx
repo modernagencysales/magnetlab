@@ -80,7 +80,9 @@ export default async function PublicOptinPage({ params }: PageProps) {
       theme,
       primary_color,
       background_style,
-      logo_url
+      logo_url,
+      font_family,
+      font_url
     `)
     .eq('user_id', user.id)
     .eq('slug', slug)
@@ -149,6 +151,8 @@ export default async function PublicOptinPage({ params }: PageProps) {
       sections={sections}
       pixelConfig={pixelConfig}
       leadMagnetTitle={leadMagnet?.title || null}
+      fontFamily={funnel.font_family}
+      fontUrl={funnel.font_url}
     />
   );
 }

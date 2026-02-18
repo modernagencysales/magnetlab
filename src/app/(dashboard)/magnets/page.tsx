@@ -37,6 +37,7 @@ function MagnetsSkeleton() {
 }
 
 interface FunnelInfo {
+  id: string;
   lead_magnet_id: string;
   is_published: boolean;
   slug: string;
@@ -57,12 +58,23 @@ async function MagnetsContent() {
 
   let funnelsQuery = supabase
     .from('funnel_pages')
-    .select('lead_magnet_id, is_published, slug');
+    .select('id, lead_magnet_id, is_published, slug');
   funnelsQuery = applyScope(funnelsQuery, scope);
 
-  const [leadMagnetsRes, funnelsRes] = await Promise.all([
+  const viewsQuery = supabase
+    .from('page_views')
+    .select('funnel_page_id')
+    .eq('page_type', 'optin');
+
+  const leadsCountQuery = supabase
+    .from('funnel_leads')
+    .select('funnel_page_id');
+
+  const [leadMagnetsRes, funnelsRes, viewsRes, leadsCountRes] = await Promise.all([
     magnetsQuery,
     funnelsQuery,
+    viewsQuery,
+    leadsCountQuery,
   ]);
 
   const leadMagnets = leadMagnetsRes.data || [];
@@ -72,6 +84,21 @@ async function MagnetsContent() {
   const funnelByMagnet = new Map<string, FunnelInfo>();
   for (const f of funnels) {
     funnelByMagnet.set(f.lead_magnet_id, f);
+  }
+
+  const pageViews = viewsRes.data || [];
+  const funnelLeads = leadsCountRes.data || [];
+
+  // Count views per funnel
+  const viewsByFunnel = new Map<string, number>();
+  for (const v of pageViews) {
+    viewsByFunnel.set(v.funnel_page_id, (viewsByFunnel.get(v.funnel_page_id) || 0) + 1);
+  }
+
+  // Count leads per funnel
+  const leadsByFunnel = new Map<string, number>();
+  for (const l of funnelLeads) {
+    leadsByFunnel.set(l.funnel_page_id, (leadsByFunnel.get(l.funnel_page_id) || 0) + 1);
   }
 
   return (
@@ -146,6 +173,17 @@ async function MagnetsContent() {
                       <span className="truncate max-w-[120px]">{lm.concept.whyNowHook}</span>
                     </span>
                   )}
+                  {funnel && (() => {
+                    const funnelViews = viewsByFunnel.get(funnel.id) || 0;
+                    const funnelLeadCount = leadsByFunnel.get(funnel.id) || 0;
+                    if (funnelViews === 0) return null;
+                    const rate = ((funnelLeadCount / funnelViews) * 100).toFixed(1);
+                    return (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        {rate}% conversion
+                      </span>
+                    );
+                  })()}
                 </div>
               </Link>
             );

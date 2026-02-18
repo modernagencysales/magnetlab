@@ -5,3 +5,4 @@ export { VideoEmbed } from './VideoEmbed';
 export { CalendlyEmbed } from './CalendlyEmbed';
 export { PixelScripts, fireClientLeadEvent } from './PixelScripts';
 export type { PixelConfig } from './PixelScripts';
+export { FontLoader, getFontStyle } from './FontLoader';

@@ -76,7 +76,9 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       primary_color,
       background_style,
       logo_url,
-      qualification_form_id
+      qualification_form_id,
+      font_family,
+      font_url
     `)
     .eq('user_id', user.id)
     .eq('slug', slug)
@@ -176,6 +178,9 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       leadMagnetTitle={leadMagnet?.title || null}
       sections={sections}
       pixelConfig={pixelConfig}
+      funnelPageId={funnel.id}
+      fontFamily={funnel.font_family}
+      fontUrl={funnel.font_url}
     />
   );
 }

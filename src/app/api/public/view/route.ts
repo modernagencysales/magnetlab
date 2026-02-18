@@ -9,7 +9,7 @@ import { logApiError } from '@/lib/api/errors';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { funnelPageId } = body;
+    const { funnelPageId, pageType } = body;
 
     if (!funnelPageId) {
       return NextResponse.json({ error: 'Missing funnelPageId' }, { status: 400 });
@@ -36,9 +36,10 @@ export async function POST(request: Request) {
           funnel_page_id: funnelPageId,
           visitor_hash: visitorHash,
           view_date: new Date().toISOString().split('T')[0],
+          page_type: pageType || 'optin',
         },
         {
-          onConflict: 'funnel_page_id,visitor_hash,view_date',
+          onConflict: 'funnel_page_id,visitor_hash,view_date,page_type',
           ignoreDuplicates: true,
         }
       );

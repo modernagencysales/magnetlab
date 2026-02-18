@@ -56,17 +56,25 @@ export async function GET(
       return ApiErrors.forbidden('You do not have access to this funnel');
     }
 
-    // Fetch views and leads in parallel
-    const [viewsResult, leadsResult] = await Promise.all([
+    // Fetch optin views, thankyou views, and leads in parallel
+    const [viewsResult, thankyouViewsResult, leadsResult] = await Promise.all([
       supabase
         .from('page_views')
         .select('view_date')
         .eq('funnel_page_id', funnelId)
+        .eq('page_type', 'optin')
+        .gte('view_date', startDate)
+        .order('view_date'),
+      supabase
+        .from('page_views')
+        .select('view_date')
+        .eq('funnel_page_id', funnelId)
+        .eq('page_type', 'thankyou')
         .gte('view_date', startDate)
         .order('view_date'),
       supabase
         .from('funnel_leads')
-        .select('id, email, name, is_qualified, utm_source, created_at')
+        .select('id, email, name, is_qualified, qualification_answers, utm_source, created_at')
         .eq('funnel_page_id', funnelId)
         .gte('created_at', `${startDate}T00:00:00Z`)
         .order('created_at'),
@@ -74,6 +82,10 @@ export async function GET(
 
     if (viewsResult.error) {
       logApiError('analytics/funnel/views', viewsResult.error, { userId: session.user.id, funnelId });
+    }
+
+    if (thankyouViewsResult.error) {
+      logApiError('analytics/funnel/thankyou-views', thankyouViewsResult.error, { userId: session.user.id, funnelId });
     }
 
     if (leadsResult.error) {
@@ -109,6 +121,28 @@ export async function GET(
       leads: leadsByDateMap.get(date) || 0,
     }));
 
+    const thankyouViews = thankyouViewsResult.data || [];
+
+    // Aggregate thankyou views by day
+    const thankyouViewsByDateMap = new Map<string, number>();
+    for (const view of thankyouViews) {
+      const date = view.view_date;
+      thankyouViewsByDateMap.set(date, (thankyouViewsByDateMap.get(date) || 0) + 1);
+    }
+
+    const thankyouViewsByDay = dateRange.map((date) => ({
+      date,
+      views: thankyouViewsByDateMap.get(date) || 0,
+    }));
+
+    // Count leads who submitted qualification answers
+    let totalResponded = 0;
+    for (const lead of leads) {
+      if (lead.qualification_answers) {
+        totalResponded++;
+      }
+    }
+
     // Build lead table
     const leadsTable = leads.map((lead) => ({
       id: lead.id,
@@ -129,17 +163,23 @@ export async function GET(
       }
     }
 
+    const totalThankyouViews = thankyouViews.length;
+
     const totals = {
       views: totalViews,
+      thankyouViews: totalThankyouViews,
       leads: totalLeads,
       qualified: totalQualified,
+      responded: totalResponded,
       conversionRate: totalViews > 0 ? Math.round((totalLeads / totalViews) * 100) : 0,
       qualificationRate: totalLeads > 0 ? Math.round((totalQualified / totalLeads) * 100) : 0,
+      responseRate: totalThankyouViews > 0 ? Math.round((totalResponded / totalThankyouViews) * 100) : 0,
     };
 
     return NextResponse.json({
       funnel: { id: funnel.id, title: funnel.optin_headline, slug: funnel.slug },
       viewsByDay,
+      thankyouViewsByDay,
       leadsByDay,
       leads: leadsTable,
       totals,
