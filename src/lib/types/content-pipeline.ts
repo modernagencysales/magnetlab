@@ -249,7 +249,7 @@ export interface EngagementStats {
 export interface PostEngagement {
   id: string;
   user_id: string;
-  post_id: string;
+  post_id: string | null;
   provider_id: string;
   engagement_type: 'comment' | 'reaction';
   reaction_type: string | null;
@@ -257,6 +257,10 @@ export interface PostEngagement {
   first_name: string | null;
   last_name: string | null;
   linkedin_url: string | null;
+  subtitle: string | null;
+  source: 'own_post' | 'competitor';
+  source_post_url: string | null;
+  competitor_id: string | null;
   heyreach_campaign_id: string | null;
   heyreach_pushed_at: string | null;
   heyreach_error: string | null;

@@ -66,6 +66,11 @@ export async function POST(request: NextRequest) {
     // Strip query params and trailing slash
     normalizedUrl = normalizedUrl.split('?')[0].replace(/\/$/, '');
 
+    // Validate LinkedIn profile URL
+    if (!normalizedUrl.match(/linkedin\.com\/in\//)) {
+      return NextResponse.json({ error: 'Must be a LinkedIn profile URL' }, { status: 400 });
+    }
+
     const supabase = createSupabaseAdminClient();
 
     // Check limit

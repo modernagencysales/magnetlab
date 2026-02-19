@@ -317,15 +317,21 @@ export const scrapeEngagement = schedules.task({
           // Update competitor name/headline from first post if available
           if (postsResult.data.length > 0) {
             const firstPost = postsResult.data[0];
-            await supabase
-              .from('cp_monitored_competitors')
-              .update({
-                name: firstPost.author?.firstName && firstPost.author?.lastName
-                  ? `${firstPost.author.firstName} ${firstPost.author.lastName}`
-                  : firstPost.authorName || undefined,
-                headline: firstPost.author?.occupation || undefined,
-              })
-              .eq('id', comp.id);
+            const updateFields: Record<string, string> = {};
+            if (firstPost.author?.firstName && firstPost.author?.lastName) {
+              updateFields.name = `${firstPost.author.firstName} ${firstPost.author.lastName}`;
+            } else if (firstPost.authorName) {
+              updateFields.name = firstPost.authorName;
+            }
+            if (firstPost.author?.occupation) {
+              updateFields.headline = firstPost.author.occupation;
+            }
+            if (Object.keys(updateFields).length > 0) {
+              await supabase
+                .from('cp_monitored_competitors')
+                .update(updateFields)
+                .eq('id', comp.id);
+            }
           }
 
           for (const post of recentPosts) {
