@@ -71,7 +71,7 @@ export const sendBroadcast = task({
         p_team_id: team_id,
         p_filter: broadcast.audience_filter,
       }
-    ) as { data: FilteredSubscriber[] | null; error: typeof subscribersError };
+    ) as { data: FilteredSubscriber[] | null; error: { message: string } | null };
 
     if (subscribersError) {
       console.error(`Failed to get subscribers for broadcast ${broadcast_id}:`, subscribersError.message);
