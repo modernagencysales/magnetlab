@@ -75,6 +75,8 @@ function BlockTypeSelector({
     { type: 'code', label: 'Code Block' },
     { type: 'table', label: 'Table' },
     { type: 'accordion', label: 'Accordion' },
+    { type: 'numbered-item', label: 'Numbered Item' },
+    { type: 'stat-card', label: 'Stat Card' },
     { type: 'image', label: 'Image' },
     { type: 'embed', label: 'Video Embed' },
   ];
@@ -153,6 +155,12 @@ export function EditablePolishedContentRenderer({
         break;
       case 'accordion':
         newBlock = { type: 'accordion', content: 'Expandable content here...', title: 'Click to expand' };
+        break;
+      case 'numbered-item':
+        newBlock = { type: 'numbered-item', content: 'Description...', title: 'Item Title', number: 1 };
+        break;
+      case 'stat-card':
+        newBlock = { type: 'stat-card', content: '0%', title: 'Stat description' };
         break;
       case 'image':
         newBlock = { type: 'image', content: '', src: '', alt: 'Image description' };
@@ -422,6 +430,103 @@ export function EditablePolishedContentRenderer({
                 style={{ fontSize: '1rem', lineHeight: '1.75rem', color: bodyColor }}
                 multiline
                 placeholder="Accordion content..."
+              />
+            </div>
+          </div>
+        );
+
+      case 'numbered-item':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ width: '4rem' }}>
+                <label style={labelStyle}>Number</label>
+                <input
+                  type="number"
+                  value={block.number ?? 1}
+                  onChange={(e) => updateBlock(sectionIdx, blockIdx, { number: parseInt(e.target.value) || 1 })}
+                  style={{ ...inputStyle, textAlign: 'center' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Title</label>
+                <input
+                  value={block.title || ''}
+                  onChange={(e) => updateBlock(sectionIdx, blockIdx, { title: e.target.value })}
+                  placeholder="Item title..."
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ width: '8rem' }}>
+                <label style={labelStyle}>Category</label>
+                <input
+                  value={block.category || ''}
+                  onChange={(e) => updateBlock(sectionIdx, blockIdx, { category: e.target.value })}
+                  placeholder="e.g. Critical"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Description</label>
+              <EditableText
+                value={block.content}
+                onChange={(val) => updateBlock(sectionIdx, blockIdx, { content: val })}
+                style={{ fontSize: '1rem', lineHeight: '1.75rem', color: bodyColor }}
+                multiline
+                placeholder="Short description..."
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Detail (Read more)</label>
+              <EditableText
+                value={block.detail || ''}
+                onChange={(val) => updateBlock(sectionIdx, blockIdx, { detail: val })}
+                style={{ fontSize: '0.875rem', lineHeight: '1.5rem', color: mutedColor }}
+                multiline
+                placeholder="Extended detail shown when expanded (optional)..."
+              />
+            </div>
+          </div>
+        );
+
+      case 'stat-card':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Stat Value</label>
+                <input
+                  value={block.content}
+                  onChange={(e) => updateBlock(sectionIdx, blockIdx, { content: e.target.value })}
+                  placeholder="35%, 2.3x, $50k+..."
+                  style={{ ...inputStyle, fontSize: '1.25rem', fontWeight: 700 }}
+                />
+              </div>
+              <div style={{ width: '8rem' }}>
+                <label style={labelStyle}>Style</label>
+                <select
+                  value={block.style || 'info'}
+                  onChange={(e) => updateBlock(sectionIdx, blockIdx, { style: e.target.value as CalloutStyle })}
+                  style={{
+                    ...inputStyle,
+                    cursor: 'pointer',
+                    backgroundColor: isDark ? '#18181B' : '#FFFFFF',
+                  }}
+                >
+                  <option value="info">Blue</option>
+                  <option value="warning">Amber</option>
+                  <option value="success">Green</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Description</label>
+              <input
+                value={block.title || ''}
+                onChange={(e) => updateBlock(sectionIdx, blockIdx, { title: e.target.value })}
+                placeholder="What the stat means..."
+                style={inputStyle}
               />
             </div>
           </div>

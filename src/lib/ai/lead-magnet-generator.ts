@@ -919,20 +919,22 @@ Now structure this into a deliverable. Provide:
 2. format: Delivery format (Google Doc, Sheet, etc.)
 3. structure: Array of sections, each with:
    - sectionName: Clear section heading
-   - introduction: 2-3 sentences explaining what this section covers and why it matters
-   - contents: Array of content items, where EACH item is a fully-fledged explanation (3-5 sentences minimum), NOT a one-line checklist item. Include:
-     * The what: What is this concept/step/element?
-     * The why: Why does this matter? What's the reasoning?
-     * The how: How do you actually implement or apply this?
-     * An example or context where relevant
-   - keyTakeaway: The main insight from this section in 1-2 sentences
+   - introduction: 1-2 sentences setting up the section (concise, no filler)
+   - contents: Array of content items. Each item should have:
+     * A clear headline (5-10 words that name the specific point)
+     * A summary (1-2 sentences: what it is and why it matters — scannable, direct)
+     * A detail (2-4 sentences: deeper explanation with how-to, example, or context — this will be shown as expandable "Read more" content)
+   - keyTakeaway: The main insight from this section in 1 sentence
 4. nonObviousInsight: The "aha" moment that makes this valuable
 5. personalExperience: Where the creator's unique experience shows
 6. proof: Specific numbers, results, or evidence included
 7. commonMistakes: Array of mistakes this helps avoid (with explanation of WHY each is a mistake)
 8. differentiation: What makes this different from generic advice
 
-IMPORTANT: This is NOT a checklist. Each piece of content should teach, explain, and provide context. Write as if you're explaining to someone who needs to understand the reasoning, not just see a list of items. Substance over brevity.
+IMPORTANT: The summary for each item must be SCANNABLE — the reader should get the key point in under 5 seconds. Put the deeper explanation in the detail field. Think: newspaper headline + first paragraph. The summary sells the point, the detail teaches it.
+
+AUDIENCE PRESERVATION — CRITICAL:
+The target audience comes from the business description. Do NOT change, generalize, or reinterpret who the audience is. If the business serves "ecommerce owners," do not change it to "agency owners" or "business leaders" or "entrepreneurs." Use the exact audience language from the business description.
 
 WRITING STYLE — CRITICAL:
 Write like a knowledgeable peer explaining something over coffee. Not like a copywriter, not like a LinkedIn guru, not like an AI.
@@ -1277,18 +1279,35 @@ Pain Solved: ${concept.painSolved}
 EXTRACTED CONTENT:
 ${JSON.stringify(extractedContent, null, 2)}
 
-Transform this into polished content blocks. For each section in the extracted content:
+Transform this into polished content blocks designed for a modern, landing-page-style reading experience. The output should feel like a premium resource — scannable, visually rich, and easy to digest.
 
-1. Write a concise introduction (1-2 sentences that set up the section)
-2. Transform the section contents into a mix of block types:
-   - "paragraph": Clear, direct text with **bold** for emphasis. Each paragraph should be 1-3 sentences. Say it once, say it well — no filler or restating.
-   - "callout": Key insights, warnings, or tips. Must include "style": "info" | "warning" | "success"
-   - "list": Bullet-pointed lists for steps, items, or enumerations. Use "- " prefix for each item, separated by newlines.
-   - "quote": Powerful statements, memorable takeaways, or impactful phrases
-   - "divider": Visual separator between major ideas (content should be empty string)
-   - "code": Code examples, terminal commands, or technical snippets. Include "language" field (e.g., "javascript", "typescript", "bash", "python", "json"). Only use for developer/technical content with actual code.
-   - "table": Comparison tables, feature matrices, or structured data. Include "headers" (string array) and "rows" (array of string arrays). Great for before/after comparisons, pricing tiers, feature lists, or step breakdowns.
-   - "accordion": Expandable Q&A or supplementary details. Include "title" (the toggle label). Use for FAQ sections, common objections, or nice-to-know details that don't need to be visible by default.
+For each section in the extracted content:
+
+1. Write a concise introduction (1 sentence that sets up the section — no filler)
+2. Transform the section contents into a mix of block types. PREFER the visually rich types (numbered-item, stat-card, table) over walls of paragraphs:
+
+   VISUAL/RICH BLOCKS (use these as your primary building blocks):
+   - "numbered-item": Individual items, tips, red flags, steps, or points that benefit from a numbered visual layout. Each gets a number badge, bold title, short description, and optional expandable detail. Include:
+     * "title": Bold headline for the item (5-10 words)
+     * "content": 1-2 sentence summary (scannable — reader gets the point in 5 seconds)
+     * "number": Sequential number within the section
+     * "detail": (optional) 2-4 sentence deeper explanation shown behind a "Read more" toggle
+     * "category": (optional) Priority/category label like "Critical", "Important", "Quick Win", "Monitor"
+   - "stat-card": Impressive numbers, results, or statistics displayed prominently. Include:
+     * "content": The stat value ("35%", "2.3x", "$50k+", "10 min")
+     * "title": What the stat means (1 sentence)
+     * "style": "info" | "warning" | "success" for accent color
+   - "table": Comparison tables, feature matrices, or structured data. Include "headers" (string array) and "rows" (array of string arrays).
+
+   SUPPORTING BLOCKS (use sparingly to complement the visual blocks):
+   - "paragraph": 1-2 sentences MAX with **bold** for emphasis. Use for brief transitions or context between visual blocks. NOT for long explanations.
+   - "callout": Key insights, warnings, or tips. Must include "style": "info" | "warning" | "success". Use for standout advice.
+   - "list": Bullet-pointed lists ONLY when items are too short for numbered-items. Use "- " prefix.
+   - "quote": Powerful, memorable one-liners worth sharing.
+   - "divider": Visual separator between major ideas (content = empty string). Use sparingly.
+   - "code": ONLY for actual code, terminal commands, API examples. Include "language" field.
+   - "accordion": FAQ, objections, or supplementary details. Include "title" (toggle label).
+
 3. End each section with a keyTakeaway (1 sentence, the single most actionable insight)
 
 Also provide:
@@ -1297,20 +1316,17 @@ Also provide:
 - metadata.readingTimeMinutes: Based on 200 words per minute
 
 CONTENT GUIDELINES:
-- Be concise and practical — every sentence should teach, reveal, or direct. Cut filler, throat-clearing, and redundant transitions.
-- Prefer specific, concrete language over vague or generic phrasing
-- Break long paragraphs into multiple paragraph blocks
-- Use callouts for "Pro tip", "Common mistake", "Key insight" moments
-- Use quotes for memorable, shareable statements
-- Use lists when there are 3+ items that work as bullets
-- Use dividers sparingly between major topic shifts within a section
-- Parse **bold** in paragraph content for emphasis on key phrases
-- Keep the voice professional but direct — respect the reader's time
-- Every section should have at least 3-5 blocks for visual variety
-- Use "code" blocks only when showing actual code, terminal commands, API examples, or technical configurations — not for regular text
-- Use "table" blocks for structured comparisons with 2+ columns (before/after, feature matrices, pros/cons, tool comparisons)
-- Use "accordion" blocks for FAQ sections, common objections, or supplementary details the reader may want to skip
-- Do NOT use "image" or "embed" blocks — those are added manually by the user
+- SCANNABLE FIRST: A reader should be able to skim the entire resource in 2 minutes and get value. Deep detail goes behind "Read more" (numbered-item detail field) or accordions.
+- For list-like content (tips, steps, red flags, items, tools, mistakes), ALWAYS use numbered-item blocks — never paragraphs.
+- Pull impressive numbers into stat-card blocks. Every resource should have at least 1-2 stat-cards.
+- Paragraphs are MAX 1-2 sentences. If you're writing 3+ sentences in a paragraph, it's too long — break it into a numbered-item or split it.
+- Use callouts only for standout "Pro tip" or "Warning" moments — not for regular content.
+- Parse **bold** in paragraph and numbered-item content for emphasis.
+- Keep the voice professional but direct — respect the reader's time.
+- Do NOT use "image" or "embed" blocks — those are added manually by the user.
+
+AUDIENCE PRESERVATION — CRITICAL:
+Do NOT change the target audience. If the lead magnet is for "ecommerce owners," keep all language directed at ecommerce owners. Do not generalize to "business owners" or swap in a different audience.
 
 ${formattingOnly ? '' : `AI PHRASE CLEANUP — CRITICAL:
 As you polish, actively detect and rewrite any AI-sounding phrases. These destroy credibility. Replace them with direct, specific language.
@@ -1338,16 +1354,16 @@ Return ONLY valid JSON:
     {
       "id": "section-slug",
       "sectionName": "Section Title",
-      "introduction": "2-3 sentence intro...",
+      "introduction": "One sentence setting up the section.",
       "blocks": [
-        { "type": "paragraph", "content": "Text with **bold**..." },
+        { "type": "stat-card", "content": "35%", "title": "of ad budgets are wasted on unqualified clicks", "style": "warning" },
+        { "type": "paragraph", "content": "Brief context with **bold emphasis**." },
+        { "type": "numbered-item", "content": "Short 1-2 sentence summary.", "title": "Item Title", "number": 1, "detail": "Longer explanation shown behind Read more...", "category": "Critical" },
+        { "type": "numbered-item", "content": "Another scannable point.", "title": "Second Item", "number": 2 },
         { "type": "callout", "content": "Key insight here", "style": "info" },
-        { "type": "list", "content": "- Item one\\n- Item two\\n- Item three" },
-        { "type": "quote", "content": "Memorable statement" },
-        { "type": "divider", "content": "" },
-        { "type": "code", "content": "npm install example-package", "language": "bash" },
         { "type": "table", "content": "", "headers": ["Before", "After"], "rows": [["Manual process", "Automated"]] },
-        { "type": "accordion", "content": "Detailed explanation here...", "title": "Why does this matter?" }
+        { "type": "quote", "content": "Memorable statement" },
+        { "type": "accordion", "content": "Supplementary details...", "title": "Why does this matter?" }
       ],
       "keyTakeaway": "Main insight from this section"
     }

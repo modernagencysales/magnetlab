@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Info, AlertTriangle, CheckCircle2, ChevronDown } from 'lucide-react';
 import type { CalloutStyle, PolishedBlock } from '@/lib/types/lead-magnet';
 
 interface ThemeColors {
@@ -385,6 +385,223 @@ export function EmbedBlock({ block }: { block: PolishedBlock }) {
         allowFullScreen
         title={block.provider || 'Embedded video'}
       />
+    </div>
+  );
+}
+
+// ---- NumberedItem ----
+
+const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
+  critical: { bg: 'rgba(239,68,68,0.1)', text: '#ef4444', border: '#ef4444' },
+  important: { bg: 'rgba(245,158,11,0.1)', text: '#f59e0b', border: '#f59e0b' },
+  'quick win': { bg: 'rgba(34,197,94,0.1)', text: '#22c55e', border: '#22c55e' },
+  monitor: { bg: 'rgba(59,130,246,0.1)', text: '#3b82f6', border: '#3b82f6' },
+};
+
+function getCategoryColor(category: string) {
+  return categoryColors[category.toLowerCase()] || {
+    bg: 'rgba(161,161,170,0.1)',
+    text: '#a1a1aa',
+    border: '#a1a1aa',
+  };
+}
+
+export function NumberedItem({
+  block,
+  colors,
+  primaryColor,
+  isDark,
+}: {
+  block: PolishedBlock;
+  colors: ThemeColors;
+  primaryColor: string;
+  isDark: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const num = block.number ?? 1;
+  const catColor = block.category ? getCategoryColor(block.category) : null;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: '1rem',
+        padding: '1.25rem',
+        margin: '0.75rem 0',
+        borderRadius: '0.75rem',
+        border: `1px solid ${colors.border}`,
+        background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+        transition: 'border-color 0.15s',
+      }}
+    >
+      {/* Number badge */}
+      <div
+        style={{
+          width: '2.25rem',
+          height: '2.25rem',
+          borderRadius: '50%',
+          background: primaryColor,
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 700,
+          fontSize: '0.875rem',
+          flexShrink: 0,
+          marginTop: '0.125rem',
+        }}
+      >
+        {num}
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Title row with optional category */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
+          <span
+            style={{
+              fontWeight: 600,
+              fontSize: '1.0625rem',
+              color: colors.text,
+              lineHeight: '1.5rem',
+            }}
+          >
+            {block.title || `Item ${num}`}
+          </span>
+          {catColor && block.category && (
+            <span
+              style={{
+                fontSize: '0.6875rem',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                padding: '0.125rem 0.5rem',
+                borderRadius: '9999px',
+                background: catColor.bg,
+                color: catColor.text,
+                border: `1px solid ${catColor.border}`,
+                lineHeight: '1.25rem',
+              }}
+            >
+              {block.category}
+            </span>
+          )}
+        </div>
+
+        {/* Description */}
+        <p
+          style={{
+            fontSize: '1rem',
+            lineHeight: '1.625rem',
+            color: colors.body,
+            margin: '0.375rem 0 0 0',
+          }}
+        >
+          {renderRichText(block.content)}
+        </p>
+
+        {/* Read more expandable detail */}
+        {block.detail && (
+          <>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                marginTop: '0.5rem',
+                padding: 0,
+                border: 'none',
+                background: 'none',
+                color: primaryColor,
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              {isExpanded ? 'Show less' : 'Read more'}
+              <ChevronDown
+                size={14}
+                style={{
+                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)',
+                  transition: 'transform 0.2s',
+                }}
+              />
+            </button>
+            {isExpanded && (
+              <p
+                style={{
+                  fontSize: '0.9375rem',
+                  lineHeight: '1.5rem',
+                  color: colors.muted,
+                  margin: '0.5rem 0 0 0',
+                  paddingLeft: '0.75rem',
+                  borderLeft: `2px solid ${colors.border}`,
+                }}
+              >
+                {renderRichText(block.detail)}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---- StatCard ----
+
+export function StatCard({
+  block,
+  isDark,
+  primaryColor,
+}: {
+  block: PolishedBlock;
+  isDark: boolean;
+  primaryColor: string;
+}) {
+  const accentColor = block.style === 'warning' ? '#f59e0b'
+    : block.style === 'success' ? '#22c55e'
+    : block.style === 'info' ? '#3b82f6'
+    : primaryColor;
+
+  return (
+    <div
+      style={{
+        textAlign: 'center',
+        padding: '2rem 1.5rem',
+        margin: '1.5rem 0',
+        borderRadius: '0.75rem',
+        border: `1px solid ${isDark ? '#27272A' : '#E4E4E7'}`,
+        background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.015)',
+      }}
+    >
+      <div
+        style={{
+          fontSize: '2.75rem',
+          fontWeight: 800,
+          letterSpacing: '-0.03em',
+          lineHeight: 1.1,
+          color: accentColor,
+        }}
+      >
+        {block.content}
+      </div>
+      {block.title && (
+        <div
+          style={{
+            fontSize: '1.0625rem',
+            lineHeight: '1.5rem',
+            color: isDark ? '#A1A1AA' : '#71717A',
+            marginTop: '0.5rem',
+            maxWidth: '20rem',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+          }}
+        >
+          {block.title}
+        </div>
+      )}
     </div>
   );
 }

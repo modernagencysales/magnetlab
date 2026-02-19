@@ -330,7 +330,9 @@ export type PolishedBlockType =
   | 'embed'
   | 'code'
   | 'table'
-  | 'accordion';
+  | 'accordion'
+  | 'numbered-item'
+  | 'stat-card';
 
 export type CalloutStyle = 'info' | 'warning' | 'success';
 
@@ -352,6 +354,10 @@ export interface PolishedBlock {
   rows?: string[][];
   // Accordion block fields
   title?: string;
+  // Numbered-item block fields
+  number?: number;
+  detail?: string;
+  category?: string;
 }
 
 export interface PolishedSection {

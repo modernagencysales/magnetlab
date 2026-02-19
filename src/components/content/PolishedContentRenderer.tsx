@@ -1,7 +1,7 @@
 'use client';
 
 import type { PolishedContent } from '@/lib/types/lead-magnet';
-import { Callout, RichParagraph, BulletList, BlockQuote, SectionDivider, CodeBlock, TableBlock, AccordionBlock, ImageBlock, EmbedBlock } from './ContentBlocks';
+import { Callout, RichParagraph, BulletList, BlockQuote, SectionDivider, CodeBlock, TableBlock, AccordionBlock, ImageBlock, EmbedBlock, NumberedItem, StatCard } from './ContentBlocks';
 
 interface PolishedContentRendererProps {
   content: PolishedContent;
@@ -110,6 +110,25 @@ export function PolishedContentRenderer({
                 return <ImageBlock key={blockIdx} block={block} />;
               case 'embed':
                 return <EmbedBlock key={blockIdx} block={block} />;
+              case 'numbered-item':
+                return (
+                  <NumberedItem
+                    key={blockIdx}
+                    block={block}
+                    colors={colors}
+                    primaryColor={primaryColor}
+                    isDark={isDark}
+                  />
+                );
+              case 'stat-card':
+                return (
+                  <StatCard
+                    key={blockIdx}
+                    block={block}
+                    isDark={isDark}
+                    primaryColor={primaryColor}
+                  />
+                );
               default:
                 return null;
             }
