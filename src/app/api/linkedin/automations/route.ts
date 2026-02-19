@@ -55,6 +55,8 @@ export async function POST(request: Request) {
       followUpTemplate,
       followUpDelayMinutes,
       unipileAccountId,
+      heyreachCampaignId,
+      resourceUrl,
     } = body as {
       name: string;
       postId?: string;
@@ -68,6 +70,8 @@ export async function POST(request: Request) {
       followUpTemplate?: string;
       followUpDelayMinutes?: number;
       unipileAccountId?: string;
+      heyreachCampaignId?: string;
+      resourceUrl?: string;
     };
 
     if (!name?.trim()) {
@@ -92,6 +96,8 @@ export async function POST(request: Request) {
         follow_up_template: followUpTemplate || null,
         follow_up_delay_minutes: followUpDelayMinutes || 1440,
         unipile_account_id: unipileAccountId || null,
+        heyreach_campaign_id: heyreachCampaignId || null,
+        resource_url: resourceUrl || null,
       })
       .select()
       .single();
