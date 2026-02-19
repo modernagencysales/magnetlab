@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Loader2,
   Check,
+  Globe,
 } from 'lucide-react';
 
 import { GOOGLE_FONTS } from '@/components/funnel/public/FontLoader';
@@ -50,6 +51,7 @@ interface BrandingSettingsProps {
     logo_url?: string | null;
     font_family?: string | null;
     font_url?: string | null;
+    website_url?: string | null;
   };
 }
 
@@ -62,6 +64,7 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
   const [backgroundStyle, setBackgroundStyle] = useState(initialData.default_background_style || 'solid');
   const [fontFamily, setFontFamily] = useState(initialData.font_family || '');
   const [fontUrl, setFontUrl] = useState(initialData.font_url || '');
+  const [websiteUrl, setWebsiteUrl] = useState(initialData.website_url || '');
   const [testimonial, setTestimonial] = useState<TestimonialData>(
     initialData.default_testimonial || { quote: '' }
   );
@@ -76,6 +79,7 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
     font: false,
     testimonial: false,
     steps: false,
+    website: false,
   });
 
   // Save state
@@ -224,6 +228,11 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
     setFontFamily(family);
     setFontUrl('');
     saveBranding({ fontFamily: family || null, fontUrl: null });
+  };
+
+  const handleWebsiteUrlChange = (url: string) => {
+    setWebsiteUrl(url);
+    saveBranding({ websiteUrl: url || null });
   };
 
   const handleTestimonialChange = (field: keyof TestimonialData, value: string) => {
@@ -721,6 +730,32 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
               <Plus className="h-4 w-4" />
               Add Step
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* Card 6: Website */}
+      <div className="rounded-lg border bg-card p-6">
+        <CardHeader
+          icon={<Globe className="h-5 w-5" />}
+          title="Website"
+          cardKey="website"
+        />
+        {openCards.website && (
+          <div className="mt-6 space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium">Website URL</label>
+              <input
+                type="url"
+                value={websiteUrl}
+                onChange={(e) => handleWebsiteUrlChange(e.target.value)}
+                placeholder="https://yourwebsite.com"
+                className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-full"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Default homepage link shown on thank-you pages. Can be overridden per funnel.
+              </p>
+            </div>
           </div>
         )}
       </div>
