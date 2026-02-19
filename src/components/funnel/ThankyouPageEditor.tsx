@@ -1,6 +1,6 @@
 'use client';
 
-import { Video, Calendar, MessageCircle, ExternalLink, Home } from 'lucide-react';
+import { Video, Calendar, MessageCircle, ExternalLink, Home, Mail } from 'lucide-react';
 
 interface ThankyouPageEditorProps {
   headline: string;
@@ -25,6 +25,8 @@ interface ThankyouPageEditorProps {
   setHomepageUrl: (value: string) => void;
   homepageLabel: string;
   setHomepageLabel: (value: string) => void;
+  sendResourceEmail: boolean;
+  setSendResourceEmail: (value: boolean) => void;
 }
 
 export function ThankyouPageEditor({
@@ -50,9 +52,51 @@ export function ThankyouPageEditor({
   setHomepageUrl,
   homepageLabel,
   setHomepageLabel,
+  sendResourceEmail,
+  setSendResourceEmail,
 }: ThankyouPageEditorProps) {
   return (
     <div className="space-y-6">
+      {/* Resource Email Delivery */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Mail className="h-4 w-4 text-emerald-500" />
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Resource Delivery
+          </h3>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+          <div>
+            <p className="text-sm font-medium">Email resource to lead on opt-in</p>
+            <p className="text-xs text-muted-foreground">
+              Skipped when an email sequence is active
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={sendResourceEmail}
+            onClick={() => setSendResourceEmail(!sendResourceEmail)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              sendResourceEmail ? 'bg-emerald-500' : 'bg-muted'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                sendResourceEmail ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+
+        {!sendResourceEmail && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            Resource will be shown directly on the thank-you page instead
+          </p>
+        )}
+      </div>
+
       {/* Redirect Configuration */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
