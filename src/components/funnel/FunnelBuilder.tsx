@@ -73,6 +73,7 @@ export function FunnelBuilder({
   const [redirectFailUrl, setRedirectFailUrl] = useState(existingFunnel?.redirectFailUrl || '');
   const [homepageUrl, setHomepageUrl] = useState(existingFunnel?.homepageUrl || '');
   const [homepageLabel, setHomepageLabel] = useState(existingFunnel?.homepageLabel || '');
+  const [sendResourceEmail, setSendResourceEmail] = useState(existingFunnel?.sendResourceEmail ?? true);
 
   // Form state for theme
   const [theme, setTheme] = useState<FunnelTheme>(existingFunnel?.theme || 'dark');
@@ -164,6 +165,7 @@ export function FunnelBuilder({
         redirectFailUrl: redirectTrigger === 'after_qualification' ? (redirectFailUrl || null) : null,
         homepageUrl: homepageUrl || null,
         homepageLabel: homepageLabel || null,
+        sendResourceEmail,
         theme,
         primaryColor,
         backgroundStyle,
@@ -327,6 +329,8 @@ export function FunnelBuilder({
                 setHomepageUrl={setHomepageUrl}
                 homepageLabel={homepageLabel}
                 setHomepageLabel={setHomepageLabel}
+                sendResourceEmail={sendResourceEmail}
+                setSendResourceEmail={setSendResourceEmail}
               />
               {funnel && <ABTestPanel funnelPageId={funnel.id} />}
             </div>

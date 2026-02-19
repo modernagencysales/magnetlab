@@ -43,6 +43,9 @@ export interface FunnelPage {
   homepageUrl: string | null;
   homepageLabel: string | null;
 
+  // Resource email delivery
+  sendResourceEmail: boolean;
+
   // Theme configuration
   theme: FunnelTheme;
   primaryColor: string;
@@ -389,6 +392,7 @@ export interface FunnelPageRow {
   redirect_fail_url: string | null;
   homepage_url: string | null;
   homepage_label: string | null;
+  send_resource_email: boolean;
   theme: string;
   primary_color: string;
   background_style: string;
@@ -468,6 +472,7 @@ export function funnelPageFromRow(row: FunnelPageRow): FunnelPage {
     redirectFailUrl: row.redirect_fail_url || null,
     homepageUrl: row.homepage_url || null,
     homepageLabel: row.homepage_label || null,
+    sendResourceEmail: row.send_resource_email ?? true,
     qualificationFormId: row.qualification_form_id || null,
     theme: (row.theme || 'dark') as FunnelTheme,
     primaryColor: row.primary_color || '#8b5cf6',
