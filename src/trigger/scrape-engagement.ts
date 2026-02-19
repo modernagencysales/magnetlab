@@ -1,6 +1,6 @@
 import { schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getUnipileClient } from '@/lib/integrations/unipile';
+import { scrapeEngagers, scrapeProfilePosts } from '@/lib/integrations/apify-engagers';
 import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach';
 
 // ============================================
@@ -13,23 +13,22 @@ function shouldScrapeNow(publishedAt: string, lastScrapeAt: string | null): bool
   const ageMs = now - published;
   const ageHours = ageMs / (1000 * 60 * 60);
 
-  // Post older than 7 days — should be disabled, not scraped
   if (ageHours > 7 * 24) return false;
-
-  if (!lastScrapeAt) return true; // Never scraped
+  if (!lastScrapeAt) return true;
 
   const lastScrape = new Date(lastScrapeAt).getTime();
-  const sinceScrapeMs = now - lastScrape;
-  const sinceScrapeMin = sinceScrapeMs / (1000 * 60);
+  const sinceScrapeMin = (now - lastScrape) / (1000 * 60);
 
-  // 0-2h: every 10 min
   if (ageHours <= 2) return sinceScrapeMin >= 10;
-  // 2-8h: every 30 min
   if (ageHours <= 8) return sinceScrapeMin >= 30;
-  // 8-24h: every 2 hours
   if (ageHours <= 24) return sinceScrapeMin >= 120;
-  // 1-7 days: every 6 hours
   return sinceScrapeMin >= 360;
+}
+
+function shouldScrapeCompetitor(lastScrapedAt: string | null): boolean {
+  if (!lastScrapedAt) return true;
+  const sinceScrapeMin = (Date.now() - new Date(lastScrapedAt).getTime()) / (1000 * 60);
+  return sinceScrapeMin >= 60; // competitors: every 60 min
 }
 
 function splitName(fullName: string): { firstName: string; lastName: string } {
@@ -38,7 +37,152 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
   return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
 }
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// ============================================
+// Helper: scrape + upsert engagers for a single post URL
+// ============================================
+
+interface ScrapeTarget {
+  postUrl: string;
+  userId: string;
+  postId?: string;          // null for competitor posts
+  competitorId?: string;    // null for own posts
+  source: 'own_post' | 'competitor';
+  heyreachCampaignId?: string;
+}
+
+async function scrapeAndStoreEngagers(target: ScrapeTarget): Promise<{ comments: number; likers: number; errors: string[] }> {
+  const supabase = createSupabaseAdminClient();
+  const errors: string[] = [];
+  let commentCount = 0;
+  let likerCount = 0;
+
+  // Scrape commenters
+  const commentersResult = await scrapeEngagers(target.postUrl, 'commenters');
+  if (commentersResult.error) {
+    errors.push(`commenters: ${commentersResult.error}`);
+  } else if (commentersResult.data.length > 0) {
+    const rows = commentersResult.data.map(c => {
+      const { firstName, lastName } = splitName(c.name);
+      return {
+        user_id: target.userId,
+        post_id: target.postId || null,
+        competitor_id: target.competitorId || null,
+        source: target.source,
+        source_post_url: target.postUrl,
+        provider_id: c.url_profile,
+        engagement_type: 'comment' as const,
+        comment_text: c.content || null,
+        first_name: firstName,
+        last_name: lastName,
+        linkedin_url: c.url_profile,
+        subtitle: c.subtitle || null,
+        engaged_at: c.datetime ? new Date(c.datetime).toISOString() : null,
+        heyreach_campaign_id: target.heyreachCampaignId || null,
+      };
+    });
+
+    const onConflict = target.postId
+      ? 'post_id,provider_id,engagement_type'
+      : 'source_post_url,provider_id,engagement_type';
+
+    const { error: upsertErr } = await supabase
+      .from('cp_post_engagements')
+      .upsert(rows, { onConflict, ignoreDuplicates: true });
+
+    if (upsertErr) {
+      errors.push(`comment upsert: ${upsertErr.message}`);
+    } else {
+      commentCount = rows.length;
+    }
+  }
+
+  // Scrape likers
+  const likersResult = await scrapeEngagers(target.postUrl, 'likers');
+  if (likersResult.error) {
+    errors.push(`likers: ${likersResult.error}`);
+  } else if (likersResult.data.length > 0) {
+    const rows = likersResult.data.map(l => {
+      const { firstName, lastName } = splitName(l.name);
+      return {
+        user_id: target.userId,
+        post_id: target.postId || null,
+        competitor_id: target.competitorId || null,
+        source: target.source,
+        source_post_url: target.postUrl,
+        provider_id: l.url_profile,
+        engagement_type: 'reaction' as const,
+        reaction_type: 'LIKE',
+        first_name: firstName,
+        last_name: lastName,
+        linkedin_url: l.url_profile,
+        subtitle: l.subtitle || null,
+        heyreach_campaign_id: target.heyreachCampaignId || null,
+      };
+    });
+
+    const onConflict = target.postId
+      ? 'post_id,provider_id,engagement_type'
+      : 'source_post_url,provider_id,engagement_type';
+
+    const { error: upsertErr } = await supabase
+      .from('cp_post_engagements')
+      .upsert(rows, { onConflict, ignoreDuplicates: true });
+
+    if (upsertErr) {
+      errors.push(`liker upsert: ${upsertErr.message}`);
+    } else {
+      likerCount = rows.length;
+    }
+  }
+
+  // Push unpushed leads to HeyReach
+  if (target.heyreachCampaignId) {
+    const whereClause = target.postId
+      ? { post_id: target.postId }
+      : { source_post_url: target.postUrl };
+
+    const { data: unpushed } = await supabase
+      .from('cp_post_engagements')
+      .select('id, linkedin_url, first_name, last_name')
+      .match(whereClause)
+      .eq('user_id', target.userId)
+      .not('linkedin_url', 'is', null)
+      .is('heyreach_pushed_at', null)
+      .is('heyreach_error', null)
+      .eq('heyreach_campaign_id', target.heyreachCampaignId)
+      .limit(100);
+
+    if (unpushed && unpushed.length > 0) {
+      const result = await pushLeadsToHeyReach(
+        target.heyreachCampaignId,
+        unpushed.map(l => ({
+          profileUrl: l.linkedin_url!,
+          firstName: l.first_name || undefined,
+          lastName: l.last_name || undefined,
+        }))
+      );
+
+      const now = new Date().toISOString();
+      const ids = unpushed.map(l => l.id);
+
+      if (result.success) {
+        await supabase
+          .from('cp_post_engagements')
+          .update({ heyreach_pushed_at: now })
+          .in('id', ids);
+        logger.info(`Pushed ${result.added} leads to HeyReach`, { campaignId: target.heyreachCampaignId });
+      } else {
+        await supabase
+          .from('cp_post_engagements')
+          .update({ heyreach_error: result.error || 'Unknown error' })
+          .in('id', ids);
+        errors.push(`heyreach: ${result.error}`);
+      }
+    }
+  }
+
+  return { comments: commentCount, likers: likerCount, errors };
+}
 
 // ============================================
 // CRON TASK: every 10 minutes
@@ -50,14 +194,16 @@ export const scrapeEngagement = schedules.task({
   maxDuration: 300,
   run: async () => {
     const supabase = createSupabaseAdminClient();
+    logger.info('Starting engagement scrape cycle (Apify)');
 
-    logger.info('Starting engagement scrape cycle');
+    let totalScraped = 0;
+    const allErrors: string[] = [];
 
     // ==========================================
     // STEP 0: Auto-disable scraping for old posts (7+ days)
     // ==========================================
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: expiredPosts, error: expireErr } = await supabase
+    const { data: expiredPosts } = await supabase
       .from('cp_pipeline_posts')
       .update({ scrape_engagement: false })
       .eq('scrape_engagement', true)
@@ -65,16 +211,14 @@ export const scrapeEngagement = schedules.task({
       .lt('published_at', sevenDaysAgo)
       .select('id');
 
-    if (expireErr) {
-      logger.error('Failed to disable expired posts', { error: expireErr.message });
-    } else if (expiredPosts && expiredPosts.length > 0) {
+    if (expiredPosts && expiredPosts.length > 0) {
       logger.info(`Disabled scraping for ${expiredPosts.length} expired posts`);
     }
 
     // ==========================================
-    // STEP 1: Find posts that need scraping
+    // STEP 1: Scrape OWN posts (priority)
     // ==========================================
-    const { data: posts, error: postsErr } = await supabase
+    const { data: ownPosts } = await supabase
       .from('cp_pipeline_posts')
       .select('id, user_id, linkedin_post_id, heyreach_campaign_id, published_at, last_engagement_scrape_at, engagement_scrape_count')
       .eq('scrape_engagement', true)
@@ -83,289 +227,144 @@ export const scrapeEngagement = schedules.task({
       .not('published_at', 'is', null)
       .limit(10);
 
-    if (postsErr) {
-      logger.error('Failed to query posts', { error: postsErr.message });
-      return { scraped: 0, errors: [postsErr.message] };
-    }
+    if (ownPosts) {
+      const eligible = ownPosts.filter(p =>
+        shouldScrapeNow(p.published_at!, p.last_engagement_scrape_at)
+      );
 
-    if (!posts || posts.length === 0) {
-      logger.info('No posts to scrape');
-      return { scraped: 0, errors: [] };
-    }
+      logger.info(`Own posts: ${eligible.length} eligible of ${ownPosts.length} total`);
 
-    // Filter by scrape schedule
-    const eligiblePosts = posts.filter(p =>
-      shouldScrapeNow(p.published_at!, p.last_engagement_scrape_at)
-    );
+      for (const post of eligible) {
+        try {
+          const postId = post.linkedin_post_id!;
+          let postUrl: string;
 
-    if (eligiblePosts.length === 0) {
-      logger.info('No posts due for scraping right now');
-      return { scraped: 0, errors: [] };
-    }
-
-    logger.info(`${eligiblePosts.length} posts eligible for scraping`);
-
-    let unipileClient;
-    try {
-      unipileClient = getUnipileClient();
-    } catch (err) {
-      logger.error('Failed to initialize Unipile client', { error: (err as Error).message });
-      return { scraped: 0, errors: ['Unipile not configured'] };
-    }
-
-    let totalScraped = 0;
-    const errors: string[] = [];
-
-    for (const post of eligiblePosts) {
-      try {
-        const postId = post.linkedin_post_id!;
-        logger.info(`Scraping post ${post.id}`, { linkedinPostId: postId });
-
-        // ==========================================
-        // STEP 2: Scrape comments (paginated, max 50 pages)
-        // ==========================================
-        const MAX_PAGES = 50;
-        let commentCursor: string | undefined;
-        let commentCount = 0;
-        let commentPages = 0;
-        do {
-          const commentsResult = await unipileClient.getPostComments(postId, undefined, commentCursor);
-          if (commentsResult.error || !commentsResult.data?.items) {
-            logger.warn(`Failed to fetch comments for post ${post.id}`, { error: commentsResult.error });
-            break;
+          if (postId.startsWith('urn:li:')) {
+            postUrl = `https://www.linkedin.com/feed/update/${postId}`;
+          } else if (postId.includes('-') && postId.length > 30) {
+            // UUID format — skip, can't scrape without a real LinkedIn URL
+            logger.warn(`Skipping post ${post.id}: linkedin_post_id is UUID format, not a LinkedIn URN`);
+            continue;
+          } else {
+            // Assume it's an activity ID
+            postUrl = `https://www.linkedin.com/feed/update/urn:li:activity:${postId}`;
           }
 
-          const comments = commentsResult.data.items;
-          if (comments.length === 0) break;
-
-          const commentRows = comments.map(c => {
-            const { firstName, lastName } = splitName(c.author.name);
-            return {
-              user_id: post.user_id,
-              post_id: post.id,
-              provider_id: c.author.provider_id,
-              engagement_type: 'comment' as const,
-              comment_text: c.text,
-              first_name: firstName,
-              last_name: lastName,
-              engaged_at: c.created_at,
-              heyreach_campaign_id: post.heyreach_campaign_id,
-            };
+          const result = await scrapeAndStoreEngagers({
+            postUrl,
+            userId: post.user_id,
+            postId: post.id,
+            source: 'own_post',
+            heyreachCampaignId: post.heyreach_campaign_id || undefined,
           });
 
-          const { error: upsertErr } = await supabase
-            .from('cp_post_engagements')
-            .upsert(commentRows, { onConflict: 'post_id,provider_id,engagement_type', ignoreDuplicates: true });
-
-          if (upsertErr) {
-            logger.warn(`Comment upsert error for post ${post.id}`, { error: upsertErr.message });
-          }
-
-          commentCount += comments.length;
-          commentCursor = commentsResult.data.cursor;
-          commentPages++;
-        } while (commentCursor && commentPages < MAX_PAGES);
-
-        // ==========================================
-        // STEP 3: Scrape reactions (paginated)
-        // ==========================================
-        let reactionCursor: string | undefined;
-        let reactionCount = 0;
-        let reactionPages = 0;
-        do {
-          const reactionsResult = await unipileClient.getPostReactions(postId, undefined, reactionCursor);
-          if (reactionsResult.error || !reactionsResult.data?.items) {
-            logger.warn(`Failed to fetch reactions for post ${post.id}`, { error: reactionsResult.error });
-            break;
-          }
-
-          const reactions = reactionsResult.data.items;
-          if (reactions.length === 0) break;
-
-          const reactionRows = reactions.map(r => {
-            const { firstName, lastName } = splitName(r.author.name);
-            return {
-              user_id: post.user_id,
-              post_id: post.id,
-              provider_id: r.author.provider_id,
-              engagement_type: 'reaction' as const,
-              reaction_type: r.type,
-              first_name: firstName,
-              last_name: lastName,
-              heyreach_campaign_id: post.heyreach_campaign_id,
-            };
+          logger.info(`Own post ${post.id}: ${result.comments} comments, ${result.likers} likers`, {
+            errors: result.errors,
           });
 
-          const { error: upsertErr } = await supabase
-            .from('cp_post_engagements')
-            .upsert(reactionRows, { onConflict: 'post_id,provider_id,engagement_type', ignoreDuplicates: true });
+          // Update scrape metadata
+          await supabase
+            .from('cp_pipeline_posts')
+            .update({
+              last_engagement_scrape_at: new Date().toISOString(),
+              engagement_scrape_count: (post.engagement_scrape_count || 0) + 1,
+            })
+            .eq('id', post.id);
 
-          if (upsertErr) {
-            logger.warn(`Reaction upsert error for post ${post.id}`, { error: upsertErr.message });
-          }
-
-          reactionCount += reactions.length;
-          reactionCursor = reactionsResult.data.cursor;
-          reactionPages++;
-        } while (reactionCursor && reactionPages < MAX_PAGES);
-
-        logger.info(`Post ${post.id}: ${commentCount} comments, ${reactionCount} reactions scraped`);
-
-        // ==========================================
-        // STEP 4: Resolve unresolved profiles (max 20 per post per cycle)
-        // ==========================================
-        const { data: unresolvedEngagements } = await supabase
-          .from('cp_post_engagements')
-          .select('id, provider_id')
-          .eq('post_id', post.id)
-          .eq('user_id', post.user_id)
-          .is('linkedin_url', null)
-          .limit(20);
-
-        if (unresolvedEngagements && unresolvedEngagements.length > 0) {
-          let resolved = 0;
-
-          for (const engagement of unresolvedEngagements) {
-            // Check cache first
-            const { data: cached } = await supabase
-              .from('cp_linkedin_profiles')
-              .select('linkedin_url, first_name, last_name')
-              .eq('provider_id', engagement.provider_id)
-              .single();
-
-            if (cached) {
-              // Update engagement from cache
-              await supabase
-                .from('cp_post_engagements')
-                .update({
-                  linkedin_url: cached.linkedin_url,
-                  first_name: cached.first_name,
-                  last_name: cached.last_name,
-                })
-                .eq('id', engagement.id);
-              resolved++;
-              continue;
-            }
-
-            // Resolve via Unipile API
-            await delay(500); // Rate limit protection
-            const profileResult = await unipileClient.getUserProfile(engagement.provider_id);
-
-            if (profileResult.error || !profileResult.data) {
-              logger.warn(`Failed to resolve profile ${engagement.provider_id}`, { error: profileResult.error });
-              continue;
-            }
-
-            const profile = profileResult.data;
-            const linkedinUrl = profile.public_identifier
-              ? `https://www.linkedin.com/in/${profile.public_identifier}/`
-              : null;
-
-            if (!linkedinUrl) {
-              logger.warn(`No public_identifier for provider ${engagement.provider_id}`);
-              continue;
-            }
-
-            const nameParts = splitName(profile.name || '');
-            const firstName = profile.first_name || nameParts.firstName;
-            const lastName = profile.last_name || nameParts.lastName;
-
-            // Cache the resolved profile
-            await supabase
-              .from('cp_linkedin_profiles')
-              .upsert({
-                provider_id: engagement.provider_id,
-                first_name: firstName,
-                last_name: lastName,
-                linkedin_url: linkedinUrl,
-                headline: profile.headline || null,
-                resolved_at: new Date().toISOString(),
-              }, { onConflict: 'provider_id' });
-
-            // Update the engagement record
-            await supabase
-              .from('cp_post_engagements')
-              .update({
-                linkedin_url: linkedinUrl,
-                first_name: firstName,
-                last_name: lastName,
-              })
-              .eq('id', engagement.id);
-
-            resolved++;
-          }
-
-          logger.info(`Post ${post.id}: resolved ${resolved}/${unresolvedEngagements.length} profiles`);
+          totalScraped++;
+          allErrors.push(...result.errors);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          logger.error(`Failed to scrape own post ${post.id}`, { error: msg });
+          allErrors.push(`own:${post.id}: ${msg}`);
         }
-
-        // ==========================================
-        // STEP 5: Push resolved+unpushed leads to HeyReach
-        // ==========================================
-        if (post.heyreach_campaign_id) {
-          const { data: unpushedLeads } = await supabase
-            .from('cp_post_engagements')
-            .select('id, linkedin_url, first_name, last_name')
-            .eq('post_id', post.id)
-            .eq('user_id', post.user_id)
-            .not('linkedin_url', 'is', null)
-            .is('heyreach_pushed_at', null)
-            .is('heyreach_error', null)
-            .eq('heyreach_campaign_id', post.heyreach_campaign_id)
-            .limit(100);
-
-          if (unpushedLeads && unpushedLeads.length > 0) {
-            const result = await pushLeadsToHeyReach(
-              post.heyreach_campaign_id,
-              unpushedLeads.map(l => ({
-                profileUrl: l.linkedin_url!,
-                firstName: l.first_name || undefined,
-                lastName: l.last_name || undefined,
-              }))
-            );
-
-            const now = new Date().toISOString();
-            if (result.success) {
-              // Mark all as pushed
-              const ids = unpushedLeads.map(l => l.id);
-              await supabase
-                .from('cp_post_engagements')
-                .update({ heyreach_pushed_at: now })
-                .in('id', ids);
-
-              logger.info(`Post ${post.id}: pushed ${result.added} leads to HeyReach campaign ${post.heyreach_campaign_id}`);
-            } else {
-              // Mark error on all
-              const ids = unpushedLeads.map(l => l.id);
-              await supabase
-                .from('cp_post_engagements')
-                .update({ heyreach_error: result.error || 'Unknown error' })
-                .in('id', ids);
-
-              logger.error(`Post ${post.id}: HeyReach push failed`, { error: result.error });
-            }
-          }
-        }
-
-        // ==========================================
-        // STEP 6: Update scrape metadata
-        // ==========================================
-        await supabase
-          .from('cp_pipeline_posts')
-          .update({
-            last_engagement_scrape_at: new Date().toISOString(),
-            engagement_scrape_count: (post.engagement_scrape_count || 0) + 1,
-          })
-          .eq('id', post.id);
-
-        totalScraped++;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        logger.error(`Failed to scrape post ${post.id}`, { error: message });
-        errors.push(`Post ${post.id}: ${message}`);
       }
     }
 
-    logger.info(`Engagement scrape complete: ${totalScraped} posts scraped, ${errors.length} errors`);
-    return { scraped: totalScraped, errors };
+    // ==========================================
+    // STEP 2: Scrape COMPETITOR posts
+    // ==========================================
+    const { data: competitors } = await supabase
+      .from('cp_monitored_competitors')
+      .select('id, user_id, linkedin_profile_url, heyreach_campaign_id, last_scraped_at')
+      .eq('is_active', true)
+      .limit(20);
+
+    if (competitors) {
+      const eligible = competitors.filter(c => shouldScrapeCompetitor(c.last_scraped_at));
+
+      logger.info(`Competitors: ${eligible.length} eligible of ${competitors.length} total`);
+
+      for (const comp of eligible) {
+        try {
+          // Get competitor's recent posts
+          const postsResult = await scrapeProfilePosts(comp.linkedin_profile_url, 10);
+
+          if (postsResult.error) {
+            logger.warn(`Failed to get posts for competitor ${comp.id}`, { error: postsResult.error });
+            allErrors.push(`competitor:${comp.id}: ${postsResult.error}`);
+            continue;
+          }
+
+          // Filter to posts from last 7 days
+          const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+          const recentPosts = postsResult.data.filter(p =>
+            p.postedAtTimestamp > sevenDaysAgoMs
+          );
+
+          logger.info(`Competitor ${comp.id}: ${recentPosts.length} recent posts (of ${postsResult.data.length} total)`);
+
+          // Update competitor name/headline from first post if available
+          if (postsResult.data.length > 0) {
+            const firstPost = postsResult.data[0];
+            await supabase
+              .from('cp_monitored_competitors')
+              .update({
+                name: firstPost.author?.firstName && firstPost.author?.lastName
+                  ? `${firstPost.author.firstName} ${firstPost.author.lastName}`
+                  : firstPost.authorName || undefined,
+                headline: firstPost.author?.occupation || undefined,
+              })
+              .eq('id', comp.id);
+          }
+
+          for (const post of recentPosts) {
+            const postUrl = post.url;
+            if (!postUrl) continue;
+
+            const result = await scrapeAndStoreEngagers({
+              postUrl,
+              userId: comp.user_id,
+              competitorId: comp.id,
+              source: 'competitor',
+              heyreachCampaignId: comp.heyreach_campaign_id || undefined,
+            });
+
+            logger.info(`Competitor post: ${result.comments} comments, ${result.likers} likers`, {
+              competitorId: comp.id,
+              postUrl: postUrl.substring(0, 80),
+              errors: result.errors,
+            });
+
+            totalScraped++;
+            allErrors.push(...result.errors);
+          }
+
+          // Update last_scraped_at
+          await supabase
+            .from('cp_monitored_competitors')
+            .update({ last_scraped_at: new Date().toISOString() })
+            .eq('id', comp.id);
+
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          logger.error(`Failed to scrape competitor ${comp.id}`, { error: msg });
+          allErrors.push(`competitor:${comp.id}: ${msg}`);
+        }
+      }
+    }
+
+    logger.info(`Engagement scrape complete: ${totalScraped} targets scraped, ${allErrors.length} errors`);
+    return { scraped: totalScraped, errors: allErrors };
   },
 });
