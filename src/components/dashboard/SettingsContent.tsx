@@ -9,6 +9,7 @@ import { ResendSettings } from '@/components/settings/ResendSettings';
 import { ConductorSettings } from '@/components/settings/ConductorSettings';
 import { FathomSettings } from '@/components/settings/FathomSettings';
 import { LinkedInSettings } from '@/components/settings/LinkedInSettings';
+import { CompetitorMonitoring } from '@/components/settings/CompetitorMonitoring';
 import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettings';
 import { WebhookSettings } from '@/components/settings/WebhookSettings';
 import { TeamMembersSettings } from '@/components/settings/TeamMembersSettings';
@@ -313,6 +314,9 @@ export function SettingsContent({
             isConnected={unipileIntegration?.is_active ?? false}
             accountName={(unipileIntegration?.metadata as { unipile_account_name?: string } | undefined)?.unipile_account_name ?? null}
           />
+
+          {/* Competitor Monitoring */}
+          <CompetitorMonitoring />
 
           {/* Resend */}
           <ResendSettings
