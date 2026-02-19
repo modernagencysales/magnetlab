@@ -565,6 +565,8 @@ export interface LinkedInAutomation {
   follow_up_delay_minutes: number;
   status: AutomationStatus;
   unipile_account_id: string | null;
+  heyreach_campaign_id: string | null;
+  resource_url: string | null;
   leads_captured: number;
   created_at: string;
   updated_at: string;
