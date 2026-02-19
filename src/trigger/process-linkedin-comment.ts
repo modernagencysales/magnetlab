@@ -51,34 +51,6 @@ export const processLinkedInComment = task({
           actions: result.actions,
           errors: result.errors,
         });
-
-        // If follow-up was scheduled, trigger the delayed task
-        if (
-          result.actions.includes('follow_up_scheduled') &&
-          automation.enable_follow_up &&
-          automation.follow_up_template
-        ) {
-          // Import and trigger inline to avoid circular deps at module level
-          const { sendFollowUpDm } = await import('./send-follow-up-dm');
-          await sendFollowUpDm.trigger(
-            {
-              automationId: automation.id,
-              commenterProviderId,
-              commenterName,
-              commenterLinkedinUrl: payload.commenterLinkedinUrl,
-              followUpTemplate: automation.follow_up_template,
-              accountId: automation.unipile_account_id || '',
-            },
-            {
-              delay: `${automation.follow_up_delay_minutes}m`,
-            }
-          );
-
-          logger.info(`Follow-up DM scheduled for ${automation.follow_up_delay_minutes}m`, {
-            automationId: automation.id,
-            commenterProviderId,
-          });
-        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
         logger.error(`Automation ${automation.id} failed`, { error: msg });
