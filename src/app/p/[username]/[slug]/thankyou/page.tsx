@@ -91,7 +91,9 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       team_id,
       redirect_trigger,
       redirect_url,
-      redirect_fail_url
+      redirect_fail_url,
+      homepage_url,
+      homepage_label
     `)
     .eq('user_id', user.id)
     .eq('slug', slug)
@@ -103,6 +105,25 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
   }
 
   const whitelabel = await getWhitelabelConfig(funnel.team_id);
+
+  // Fetch brand kit website_url for homepage link fallback
+  let brandWebsiteUrl: string | null = null;
+  if (funnel.team_id) {
+    const { data: brandKit } = await supabase
+      .from('brand_kits')
+      .select('website_url')
+      .eq('team_id', funnel.team_id)
+      .maybeSingle();
+    brandWebsiteUrl = brandKit?.website_url || null;
+  }
+  if (!brandWebsiteUrl) {
+    const { data: brandKit } = await supabase
+      .from('brand_kits')
+      .select('website_url')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    brandWebsiteUrl = brandKit?.website_url || null;
+  }
 
   // A/B experiment bucketing
   let activeFunnel = funnel;
@@ -254,6 +275,8 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       redirectUrl={funnel.redirect_url}
       redirectFailUrl={funnel.redirect_fail_url}
       email={leadEmail}
+      homepageUrl={funnel.homepage_url || brandWebsiteUrl}
+      homepageLabel={funnel.homepage_label}
     />
   );
 }

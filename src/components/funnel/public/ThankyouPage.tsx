@@ -49,6 +49,8 @@ interface ThankyouPageProps {
   redirectUrl?: string | null;
   redirectFailUrl?: string | null;
   email?: string | null;
+  homepageUrl?: string | null;
+  homepageLabel?: string | null;
 }
 
 export function ThankyouPage({
@@ -74,6 +76,8 @@ export function ThankyouPage({
   redirectUrl,
   redirectFailUrl,
   email,
+  homepageUrl,
+  homepageLabel,
 }: ThankyouPageProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -516,6 +520,24 @@ export function ThankyouPage({
             <p className={`font-medium ${isQualified ? 'text-green-500' : 'text-red-400'}`}>
               {isQualified ? passMessage : failMessage}
             </p>
+          </div>
+        )}
+
+        {/* Homepage link */}
+        {homepageUrl && (
+          <div className="text-center">
+            <a
+              href={homepageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ color: 'var(--ds-primary)' }}
+            >
+              {homepageLabel || 'Visit our website'}
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+              </svg>
+            </a>
           </div>
         )}
 
