@@ -67,6 +67,7 @@ export function ThankyouPage({
   primaryColor = '#8b5cf6',
   backgroundStyle = 'solid',
   logoUrl,
+  contentPageUrl,
   sections = [],
   pixelConfig,
   funnelPageId,
