@@ -51,6 +51,7 @@ interface ThankyouPageProps {
   email?: string | null;
   homepageUrl?: string | null;
   homepageLabel?: string | null;
+  showResourceOnPage?: boolean;
 }
 
 export function ThankyouPage({
@@ -78,6 +79,7 @@ export function ThankyouPage({
   email,
   homepageUrl,
   homepageLabel,
+  showResourceOnPage,
 }: ThankyouPageProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -246,9 +248,24 @@ export function ThankyouPage({
         >
           <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
           <p className="text-sm" style={{ color: 'var(--ds-muted)' }}>
-            You&apos;re in! Check your inbox for your resource.
+            {showResourceOnPage
+              ? "You're in! Your resource is ready below."
+              : "You're in! Check your inbox for your resource."}
           </p>
         </div>
+
+        {/* Resource access button (when email is off) */}
+        {showResourceOnPage && contentPageUrl && (
+          <div className="text-center">
+            <a
+              href={contentPageUrl}
+              className="inline-flex items-center gap-2 rounded-lg px-8 py-3 text-base font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ background: 'var(--ds-primary)' }}
+            >
+              View Your Resource &rarr;
+            </a>
+          </div>
+        )}
 
         {/* 2. Logo */}
         {logoUrl && (
