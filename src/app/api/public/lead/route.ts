@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { deliverWebhook } from '@/lib/webhooks/sender';
-import { triggerEmailSequenceIfActive, getSenderInfo, getUserResendConfig } from '@/lib/services/email-sequence-trigger';
+import { triggerEmailSequenceIfActive, triggerEmailFlowIfActive, upsertSubscriberFromLead, getSenderInfo, getUserResendConfig } from '@/lib/services/email-sequence-trigger';
 import { sendResourceEmail } from '@/trigger/send-resource-email';
 import { leadCaptureSchema, leadQualificationSchema, validateBody } from '@/lib/validations/api';
 import { logApiError } from '@/lib/api/errors';
@@ -207,40 +207,60 @@ export async function POST(request: Request) {
       createdAt: lead.created_at,
     }).catch((err) => logApiError('public/lead/conductor-webhook', err, { leadId: lead.id }));
 
-    // Trigger email sequence if active (async, don't wait)
-    // Falls back to default resource email if no sequence is active and toggle is ON
-    triggerEmailSequenceIfActive({
-      leadId: lead.id,
+    // ALWAYS upsert subscriber for the team (non-blocking)
+    if (funnel.team_id) {
+      upsertSubscriberFromLead({
+        teamId: funnel.team_id,
+        email: lead.email,
+        name: lead.name,
+        leadMagnetId: funnel.lead_magnet_id,
+      }).catch(() => {}); // fire and forget
+    }
+
+    // Try new email flow system first, then fall back to old sequences, then resource email
+    triggerEmailFlowIfActive({
+      teamId: funnel.team_id,
       userId: funnel.user_id,
       email: lead.email,
       name: lead.name,
       leadMagnetId: funnel.lead_magnet_id,
-      leadMagnetTitle: leadMagnet?.title || '',
-    }).then(async (result) => {
-      if (result.triggered) return;
+    }).then(async (flowResult) => {
+      if (flowResult.triggered) return;
 
-      // No active sequence — check if default resource email is enabled
-      if (!funnel.send_resource_email || !resourceUrl) return;
+      // Fall back to old email sequence system
+      return triggerEmailSequenceIfActive({
+        leadId: lead.id,
+        userId: funnel.user_id,
+        email: lead.email,
+        name: lead.name,
+        leadMagnetId: funnel.lead_magnet_id,
+        leadMagnetTitle: leadMagnet?.title || '',
+      }).then(async (seqResult) => {
+        if (seqResult.triggered) return;
 
-      try {
-        const [senderInfo, resendConfig] = await Promise.all([
-          getSenderInfo(funnel.user_id),
-          getUserResendConfig(funnel.user_id),
-        ]);
+        // No active flow or sequence — check if default resource email is enabled
+        if (!funnel.send_resource_email || !resourceUrl) return;
 
-        await sendResourceEmail.trigger({
-          leadEmail: lead.email,
-          leadName: lead.name,
-          leadMagnetTitle: leadMagnet?.title || '',
-          resourceUrl,
-          senderName: resendConfig?.fromName || senderInfo.senderName,
-          senderEmail: resendConfig?.fromEmail || senderInfo.senderEmail,
-          resendConfig,
-        });
-      } catch (err) {
-        logApiError('public/lead/resource-email', err, { leadId: lead.id });
-      }
-    }).catch((err) => logApiError('public/lead/email-sequence', err, { leadId: lead.id }));
+        try {
+          const [senderInfo, resendConfig] = await Promise.all([
+            getSenderInfo(funnel.user_id),
+            getUserResendConfig(funnel.user_id),
+          ]);
+
+          await sendResourceEmail.trigger({
+            leadEmail: lead.email,
+            leadName: lead.name,
+            leadMagnetTitle: leadMagnet?.title || '',
+            resourceUrl,
+            senderName: resendConfig?.fromName || senderInfo.senderName,
+            senderEmail: resendConfig?.fromEmail || senderInfo.senderEmail,
+            resendConfig,
+          });
+        } catch (err) {
+          logApiError('public/lead/resource-email', err, { leadId: lead.id });
+        }
+      });
+    }).catch((err) => logApiError('public/lead/email', err, { leadId: lead.id }));
 
     // Fire tracking pixel events (Meta CAPI, LinkedIn CAPI) — async, non-blocking
     fireTrackingPixelLeadEvent({

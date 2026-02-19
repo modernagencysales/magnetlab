@@ -164,3 +164,125 @@ export async function triggerEmailSequenceIfActive(
     return { triggered: false, error: errorMessage };
   }
 }
+
+/**
+ * Check for an active email flow linked to a lead magnet and trigger it.
+ * Also upserts the subscriber and creates a flow contact.
+ */
+export async function triggerEmailFlowIfActive(input: {
+  teamId: string;
+  userId: string;
+  email: string;
+  name: string | null;
+  leadMagnetId: string;
+}): Promise<{ triggered: boolean; error?: string }> {
+  try {
+    const supabase = createSupabaseAdminClient();
+
+    // Check for active flow linked to this lead magnet
+    const { data: flow } = await supabase
+      .from('email_flows')
+      .select('id, team_id, user_id')
+      .eq('trigger_type', 'lead_magnet')
+      .eq('trigger_lead_magnet_id', input.leadMagnetId)
+      .eq('status', 'active')
+      .single();
+
+    if (!flow) return { triggered: false };
+
+    // Upsert subscriber (dedup on team_id + email)
+    const firstName = input.name?.split(' ')[0] || null;
+    const lastName = input.name?.split(' ').slice(1).join(' ') || null;
+
+    const { data: subscriber, error: subError } = await supabase
+      .from('email_subscribers')
+      .upsert({
+        team_id: flow.team_id,
+        email: input.email.toLowerCase().trim(),
+        first_name: firstName,
+        last_name: lastName,
+        source: 'lead_magnet',
+        source_id: input.leadMagnetId,
+        status: 'active',
+      }, { onConflict: 'team_id,email' })
+      .select('id, first_name')
+      .single();
+
+    if (subError || !subscriber) {
+      return { triggered: false, error: subError?.message || 'Failed to create subscriber' };
+    }
+
+    // Create flow contact
+    const { data: contact, error: contactError } = await supabase
+      .from('email_flow_contacts')
+      .upsert({
+        team_id: flow.team_id,
+        flow_id: flow.id,
+        subscriber_id: subscriber.id,
+        status: 'active',
+        current_step: 0,
+      }, { onConflict: 'flow_id,subscriber_id' })
+      .select('id')
+      .single();
+
+    if (contactError || !contact) {
+      return { triggered: false, error: contactError?.message || 'Failed to create flow contact' };
+    }
+
+    // Trigger the flow execution task
+    const { executeEmailFlow } = await import('@/trigger/email-flow');
+    const handle = await executeEmailFlow.trigger({
+      team_id: flow.team_id,
+      flow_id: flow.id,
+      contact_id: contact.id,
+      subscriber_id: subscriber.id,
+      subscriber_email: input.email,
+      subscriber_first_name: subscriber.first_name,
+      user_id: flow.user_id,
+    });
+
+    // Store task ID on contact
+    await supabase
+      .from('email_flow_contacts')
+      .update({ trigger_task_id: handle.id })
+      .eq('id', contact.id);
+
+    return { triggered: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logError('email-flow/trigger', error, { email: input.email });
+    return { triggered: false, error: errorMessage };
+  }
+}
+
+/**
+ * Upsert a subscriber from a lead capture event.
+ * Runs on every lead capture regardless of whether a flow is active.
+ * Non-critical — failures are silently swallowed.
+ */
+export async function upsertSubscriberFromLead(input: {
+  teamId: string;
+  email: string;
+  name: string | null;
+  leadMagnetId: string;
+}): Promise<void> {
+  try {
+    const supabase = createSupabaseAdminClient();
+    const firstName = input.name?.split(' ')[0] || null;
+    const lastName = input.name?.split(' ').slice(1).join(' ') || null;
+
+    await supabase
+      .from('email_subscribers')
+      .upsert({
+        team_id: input.teamId,
+        email: input.email.toLowerCase().trim(),
+        first_name: firstName,
+        last_name: lastName,
+        source: 'lead_magnet',
+        source_id: input.leadMagnetId,
+        status: 'active',
+      }, { onConflict: 'team_id,email', ignoreDuplicates: true });
+  } catch {
+    // Non-critical — don't fail lead capture
+  }
+}
