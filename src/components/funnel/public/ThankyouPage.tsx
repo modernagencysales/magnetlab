@@ -278,18 +278,6 @@ export function ThankyouPage({
           </div>
         )}
 
-        {/* 5. Survey bridge copy + incentive */}
-        {hasQuestions && !qualificationComplete && (
-          <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold" style={{ color: 'var(--ds-text)' }}>
-              One quick step to personalize your experience
-            </h2>
-            <p className="text-sm" style={{ color: 'var(--ds-muted)' }}>
-              Answer {questions.length} quick {questions.length === 1 ? 'question' : 'questions'} so we can tailor everything to your situation.
-              {calendlyUrl && ' Complete the survey to book a strategy call.'}
-            </p>
-          </div>
-        )}
 
         {/* 6. Survey card - visually prominent (BEFORE video for higher completion) */}
         {hasQuestions && !qualificationComplete && (
