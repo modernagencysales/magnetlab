@@ -265,6 +265,40 @@ Both URLs get `?leadId=xxx&email=yyy` appended automatically.
 - `src/app/p/[username]/[slug]/page.tsx` — passes redirect config to OptinPage
 - `src/app/p/[username]/[slug]/thankyou/page.tsx` — passes redirect config + lead email to ThankyouPage
 
+## Default Resource Delivery Email
+
+Auto-sends a "here is your resource" email on opt-in, with a per-funnel toggle (default ON).
+
+### Priority Rules
+
+| Active sequence? | Toggle ON | Result |
+|---|---|---|
+| Yes | Any | Sequence handles delivery (default email skipped) |
+| No | ON | System sends fixed-template resource email |
+| No | OFF | Resource shown directly on thank-you page |
+
+### Data Model
+
+- `funnel_pages.send_resource_email` BOOLEAN NOT NULL DEFAULT true — per-funnel toggle
+- Fixed system template (no customization) — subject: "Your [Title] is ready"
+
+### How It Works
+
+1. Lead opts in → `POST /api/public/lead` creates lead, fires webhooks
+2. Calls `triggerEmailSequenceIfActive()` — if sequence handles it, done
+3. If no sequence: checks `send_resource_email` toggle
+4. Toggle ON + content exists → triggers `send-resource-email` Trigger.dev task
+5. Toggle OFF → thank-you page shows resource link/button directly
+
+### Key Files
+
+- `src/trigger/send-resource-email.ts` — Trigger.dev task (fixed HTML template via Resend)
+- `src/app/api/public/lead/route.ts` — conditional trigger (sequence > resource email > nothing)
+- `src/lib/services/email-sequence-trigger.ts` — exported `getSenderInfo()` + `getUserResendConfig()`
+- `src/components/funnel/ThankyouPageEditor.tsx` — toggle UI (Resource Delivery section)
+- `src/components/funnel/public/ThankyouPage.tsx` — conditional banner + resource button
+- `src/app/p/[username]/[slug]/thankyou/page.tsx` — computes `showResourceOnPage` from toggle + sequence state
+
 ## Custom Domains & White-Label
 
 Team-level custom domain and white-label support. One domain per team via CNAME → Vercel. Pro+ plan only.
