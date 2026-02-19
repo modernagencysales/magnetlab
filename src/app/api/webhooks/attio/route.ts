@@ -8,6 +8,8 @@ import {
   assembleTranscript,
   calcDurationMinutes,
   extractParticipants,
+  extractSpeakerNames,
+  buildSpeakerMap,
   type AttioCallRecordingCreatedEvent,
 } from '@/lib/integrations/attio';
 import { logError, logInfo, logWarn } from '@/lib/utils/logger';
@@ -100,6 +102,12 @@ export async function POST(request: NextRequest) {
     const durationMinutes = meeting ? calcDurationMinutes(meeting.start, meeting.end) : null;
     const participants = meeting ? extractParticipants(meeting) : [];
 
+    // Build speaker_map from meeting participants + transcript speakers
+    const speakerNames = extractSpeakerNames(segmentsRes.data);
+    const speakerMap = meeting
+      ? buildSpeakerMap(meeting.participants, speakerNames)
+      : null;
+
     // Insert
     const { data: saved, error: insertError } = await supabase
       .from('cp_call_transcripts')
@@ -112,6 +120,7 @@ export async function POST(request: NextRequest) {
         duration_minutes: durationMinutes,
         participants: participants.length > 0 ? participants : null,
         raw_transcript: rawTranscript,
+        speaker_map: speakerMap,
       })
       .select()
       .single();

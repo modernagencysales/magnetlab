@@ -18,7 +18,7 @@ interface TranscriptDetail {
   transcript_type: string | null;
   speaker_profile_id: string | null;
   speaker_name: string | null;
-  speaker_map: Record<string, { role: string; company: string }> | null;
+  speaker_map: SpeakerMap | null;
   knowledge_extracted_at: string | null;
   ideas_extracted_at: string | null;
   knowledge_count: number;
@@ -135,7 +135,7 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
     if (!transcript?.raw_transcript) return [];
     const paragraphs = transcript.raw_transcript.split('\n\n').filter(Boolean);
     return paragraphs.map((para, idx) => {
-      const match = para.match(/^([^:]+?):\s(.+)/s);
+      const match = para.match(/^([^:]+?):\s([\s\S]+)/);
       if (match && match[1].length < 50) {
         const speaker = match[1].trim();
         const text = match[2];

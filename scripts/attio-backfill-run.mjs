@@ -46,7 +46,15 @@ async function supabaseSelect(table, query) {
   return res.json();
 }
 
-// Fetch all paginated transcript segments and assemble into readable text
+// Known host emails — these people are from the MAS / Keen Digital team
+const HOST_EMAILS = new Set([
+  'tim@keen.digital',
+  'tim@modernagencysales.com',
+  'vlad@modernagencysales.com',
+]);
+const HOST_COMPANY = 'Modern Agency Sales / Keen Digital';
+
+// Fetch all paginated transcript segments and assemble into readable text + speaker names
 async function getFullTranscript(meetingId, recordingId) {
   const allSegments = [];
   let cursor = null;
@@ -59,7 +67,10 @@ async function getFullTranscript(meetingId, recordingId) {
     cursor = (body.pagination && body.pagination.next_cursor) || null;
   } while (cursor);
 
-  if (allSegments.length === 0) return '';
+  if (allSegments.length === 0) return { text: '', speakerNames: [] };
+
+  // Collect unique speaker names from segments
+  const speakerNamesSet = new Set();
 
   // Group consecutive words by speaker
   let transcript = '';
@@ -68,6 +79,7 @@ async function getFullTranscript(meetingId, recordingId) {
 
   for (const seg of allSegments) {
     const speaker = (seg.speaker && seg.speaker.name) || 'Unknown';
+    speakerNamesSet.add(speaker);
     if (speaker !== currentSpeaker) {
       if (currentLine) {
         transcript += currentSpeaker + ': ' + currentLine.trim() + '\n\n';
@@ -82,7 +94,48 @@ async function getFullTranscript(meetingId, recordingId) {
     transcript += currentSpeaker + ': ' + currentLine.trim() + '\n\n';
   }
 
-  return transcript.trim();
+  return { text: transcript.trim(), speakerNames: [...speakerNamesSet] };
+}
+
+// Build speaker_map from meeting participants + transcript speaker names
+function buildSpeakerMap(meeting, speakerNames) {
+  const participants = meeting.participants || [];
+  const speakerMap = {};
+
+  for (const name of speakerNames) {
+    if (name === 'Unknown') continue;
+
+    const nameLower = name.toLowerCase();
+    const nameParts = nameLower.split(/\s+/).filter(p => p.length > 0);
+    const isKnownHost = nameLower === 'tim keen' || nameLower === 'vlad timinski';
+
+    // Match speaker name to participant email (strict matching)
+    const matchedParticipant = participants.find(p => {
+      if (!p.email_address) return false;
+      const emailLocal = p.email_address.split('@')[0].toLowerCase().replace(/[._-]/g, '');
+      const firstName = nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : null;
+      if (firstName.length > 2 && emailLocal.startsWith(firstName)) return true;
+      if (lastName && lastName.length >= 4 && emailLocal.includes(lastName)) return true;
+      return false;
+    });
+
+    const email = matchedParticipant?.email_address || null;
+    const isHost = isKnownHost || (email ? HOST_EMAILS.has(email) : false);
+
+    let role = 'unknown';
+    if (isHost) role = 'host';
+    else if (email) role = 'client';
+    else role = 'guest';
+
+    speakerMap[name] = {
+      role,
+      company: isHost ? HOST_COMPANY : null,
+      email: email || null,
+    };
+  }
+
+  return Object.keys(speakerMap).length > 0 ? speakerMap : null;
 }
 
 async function main() {
@@ -142,21 +195,26 @@ async function main() {
         continue;
       }
 
-      // Fetch full paginated transcript
-      let rawTranscript;
+      // Fetch full paginated transcript + speaker names
+      let transcriptResult;
       try {
-        rawTranscript = await getFullTranscript(meetingId, recId);
+        transcriptResult = await getFullTranscript(meetingId, recId);
       } catch (e) {
         console.error('  ERROR transcript:', meeting.title, e.message);
         errors++;
         continue;
       }
 
+      const { text: rawTranscript, speakerNames } = transcriptResult;
+
       if (!rawTranscript || rawTranscript.length === 0) {
         skipped++;
         console.log('  SKIP (empty):', meeting.title);
         continue;
       }
+
+      // Build speaker_map from Attio participants + transcript speakers
+      const speakerMap = buildSpeakerMap(meeting, speakerNames);
 
       const dur = (meeting.start && meeting.start.datetime && meeting.end && meeting.end.datetime)
         ? Math.round((new Date(meeting.end.datetime).getTime() - new Date(meeting.start.datetime).getTime()) / 60000)
@@ -167,6 +225,7 @@ async function main() {
 
       if (DRY_RUN) {
         console.log('  DRY: Would insert "' + meeting.title + '" (' + dur + 'min, ' + rawTranscript.length + ' chars)');
+        if (speakerMap) console.log('    speaker_map:', JSON.stringify(speakerMap));
         inserted++;
         continue;
       }
@@ -181,9 +240,11 @@ async function main() {
           duration_minutes: dur,
           participants: participants.length > 0 ? participants : null,
           raw_transcript: rawTranscript,
+          speaker_map: speakerMap,
         });
         inserted++;
         console.log('  INSERTED:', meeting.title, '(' + dur + 'min, ' + rawTranscript.length + ' chars)');
+        if (speakerMap) console.log('    speaker_map:', Object.keys(speakerMap).join(', '));
       } catch (e) {
         console.error('  ERROR insert:', meeting.title, e.message);
         errors++;

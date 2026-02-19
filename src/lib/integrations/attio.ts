@@ -198,6 +198,82 @@ export function extractParticipants(meeting: AttioMeeting): string[] {
     .map((p) => p.email_address);
 }
 
+/** Extract unique speaker names from transcript segments */
+export function extractSpeakerNames(segments: AttioTranscriptSegment[]): string[] {
+  const names = new Set<string>();
+  for (const seg of segments) {
+    const name = seg.speaker?.name;
+    if (name && name !== 'Unknown') names.add(name);
+  }
+  return [...names];
+}
+
+// Known host emails — MAS / Keen Digital team
+const HOST_EMAILS = new Set([
+  'tim@keen.digital',
+  'tim@modernagencysales.com',
+  'vlad@modernagencysales.com',
+]);
+const HOST_COMPANY = 'Modern Agency Sales / Keen Digital';
+
+/**
+ * Build a speaker_map from meeting participants + transcript speaker names.
+ * Maps each speaker to a role (host/client/guest) and company where possible.
+ */
+export function buildSpeakerMap(
+  participants: AttioMeetingParticipant[],
+  speakerNames: string[]
+): Record<string, { role: string; company: string | null; email: string | null }> | null {
+  if (speakerNames.length === 0) return null;
+
+  const speakerMap: Record<string, { role: string; company: string | null; email: string | null }> = {};
+
+  for (const name of speakerNames) {
+    const nameLower = name.toLowerCase();
+    const nameParts = nameLower.split(/\s+/).filter((p) => p.length > 0);
+
+    // First check if this is a known host by name
+    const isKnownHost = nameLower === 'tim keen' || nameLower === 'vlad timinski';
+
+    // Try to match speaker name to a participant email
+    // Use first name + last name matching against email local part
+    // Require the first name to match at the START of the email local part,
+    // or match the full last name anywhere in the email
+    const matchedParticipant = participants.find((p) => {
+      if (!p.email_address) return false;
+      const emailLocal = p.email_address.split('@')[0].toLowerCase().replace(/[._-]/g, '');
+      const firstName = nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : null;
+
+      // Strong match: first name starts the email local part
+      if (firstName.length > 2 && emailLocal.startsWith(firstName)) return true;
+      // Strong match: last name (4+ chars) appears in email
+      if (lastName && lastName.length >= 4 && emailLocal.includes(lastName)) return true;
+      return false;
+    });
+
+    const email = matchedParticipant?.email_address || null;
+    const isHost = isKnownHost || (email ? HOST_EMAILS.has(email) : false);
+
+    let role = 'unknown';
+    if (isHost) {
+      role = 'host';
+    } else if (email) {
+      role = 'client';
+    } else {
+      role = 'guest';
+    }
+
+    speakerMap[name] = {
+      role,
+      company: isHost ? HOST_COMPANY : null,
+      email,
+    };
+  }
+
+  return Object.keys(speakerMap).length > 0 ? speakerMap : null;
+}
+
 /** Create a singleton Attio client using env var */
 export function createAttioClient(): AttioClient {
   const apiKey = process.env.ATTIO_API_KEY;
