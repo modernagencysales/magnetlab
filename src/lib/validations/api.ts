@@ -224,6 +224,7 @@ export const updateFunnelSchema = z.object({
   redirectFailUrl: z.string().url().max(2000).nullable().optional(),
   homepageUrl: z.string().url().max(2000).nullable().optional(),
   homepageLabel: z.string().max(200).nullable().optional(),
+  sendResourceEmail: z.boolean().optional(),
 });
 
 export type UpdateFunnelInput = z.infer<typeof updateFunnelSchema>;
