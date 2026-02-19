@@ -243,13 +243,15 @@ describe('Funnel API Routes', () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
 
       mockSupabaseClient.single
-        // Lead magnet exists
+        // 1. Lead magnet exists
         .mockResolvedValueOnce({ data: { id: validUUID, title: 'My Lead Magnet' }, error: null })
-        // No existing funnel
+        // 2. No existing funnel
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
-        // User profile (no theme defaults set)
+        // 3. User profile (no theme defaults set)
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
-        // Created funnel (after slug check via .or() which returns via the or mock)
+        // 4. Brand kit lookup (no brand kit)
+        .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
+        // 5. Created funnel (after slug check via .or() which returns via the or mock)
         .mockResolvedValueOnce({
           data: {
             id: 'new-funnel-123',
@@ -308,11 +310,15 @@ describe('Funnel API Routes', () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
 
       mockSupabaseClient.single
+        // 1. Lead magnet exists
         .mockResolvedValueOnce({ data: { id: validUUID, title: 'My Lead Magnet' }, error: null })
+        // 2. No existing funnel
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
-        // User profile (no theme defaults set)
+        // 3. User profile (no theme defaults set)
         .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
-        // Created funnel with slug test-1
+        // 4. Brand kit lookup (no brand kit)
+        .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
+        // 5. Created funnel with slug test-1
         .mockResolvedValueOnce({
           data: {
             id: 'new-funnel',

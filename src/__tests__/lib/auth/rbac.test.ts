@@ -86,14 +86,15 @@ describe('RBAC utilities', () => {
       expect(role).toBeNull();
     });
 
-    it('returns "owner" for member with owner role in team_members', async () => {
+    it('returns "member" for member with owner role in team_members (V1 ignores role column)', async () => {
       // teams table: user is not the direct owner
       mockSingle.mockResolvedValueOnce({ data: { owner_id: 'other-user' }, error: null });
-      // team_members: role is 'owner'
-      mockSingle.mockResolvedValueOnce({ data: { role: 'owner', status: 'active' }, error: null });
+      // team_members V1: only checks existence + active status, does not use role column
+      mockSingle.mockResolvedValueOnce({ data: { id: 'tm-1', status: 'active' }, error: null });
 
       const role = await checkTeamRole('user-1', 'team-1');
-      expect(role).toBe('owner');
+      // V1 team_members always returns 'member' — owner promotion only via teams.owner_id or team_profiles V2
+      expect(role).toBe('member');
     });
   });
 

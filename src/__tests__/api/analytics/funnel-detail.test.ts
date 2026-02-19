@@ -169,10 +169,13 @@ describe('GET /api/analytics/funnel/[id]', () => {
     expect(data.leads).toEqual([]);
     expect(data.totals).toEqual({
       views: 0,
+      thankyouViews: 0,
       leads: 0,
       qualified: 0,
+      responded: 0,
       conversionRate: 0,
       qualificationRate: 0,
+      responseRate: 0,
     });
   });
 
@@ -332,10 +335,13 @@ describe('GET /api/analytics/funnel/[id]', () => {
     expect(data.leads).toEqual([]);
     expect(data.totals).toEqual({
       views: 0,
+      thankyouViews: 0,
       leads: 0,
       qualified: 0,
+      responded: 0,
       conversionRate: 0,
       qualificationRate: 0,
+      responseRate: 0,
     });
 
     // All days should have zero values
