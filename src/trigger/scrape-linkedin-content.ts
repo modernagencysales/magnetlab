@@ -7,6 +7,7 @@ import {
   filterWinners,
   type LinkedInPost,
 } from '@/lib/integrations/bright-data-linkedin';
+import { hasLeadMagnetCTA } from '@/lib/utils/lead-magnet-detection';
 
 /**
  * How many creators to scrape per daily run.
@@ -109,6 +110,7 @@ export const scrapeLinkedinContent = schedules.task({
           creator_id: creator.id,
           source_search_id: null,
           is_winner: winnerUrls.has(post.url),
+          is_lead_magnet: hasLeadMagnetCTA(post.content),
         }));
 
         // Upsert — dupes (same bright_data_id) get updated with latest engagement

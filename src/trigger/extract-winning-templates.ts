@@ -141,6 +141,7 @@ export const extractWinningTemplates = task({
               .update({
                 template_extracted: true,
                 extracted_template_id: template.id,
+                topics: extracted.topics,
               })
               .eq('id', post.id);
 
@@ -172,7 +173,7 @@ export const extractWinningTemplates = task({
             // Mark as processed to avoid infinite retries on consistently failing posts
             await supabase
               .from('cp_viral_posts')
-              .update({ template_extracted: true })
+              .update({ template_extracted: true, topics: [] })
               .eq('id', post.id);
 
             throw error;

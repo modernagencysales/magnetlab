@@ -24,6 +24,7 @@ import {
   ArrowUpDown,
   ExternalLink,
 } from 'lucide-react';
+import { VIRAL_POST_TOPICS } from '@/lib/ai/content-pipeline/template-extractor';
 
 interface SwipePost {
   id: string;
@@ -71,6 +72,8 @@ interface DiscoveredPost {
   engagement_score: number;
   template_extracted: boolean;
   extracted_template_id: string | null;
+  is_lead_magnet: boolean;
+  topics: string[];
   created_at: string;
 }
 
@@ -105,17 +108,6 @@ const NICHES = [
   { value: 'other', label: 'Other' },
 ];
 
-/**
- * Detect if a post contains a "comment X to get Y" lead magnet CTA.
- * Matches patterns like: "comment GUIDE", "comment below", "drop a YES",
- * "DM me", "type SEND below", etc.
- */
-const LEAD_MAGNET_CTA_PATTERN = /\b(comment\s+["']?\w+["']?|comment\s+below|drop\s+(a\s+)?["']?\w+["']?\s*(below|in\s+the\s+comments)?|DM\s+me\s+["']?\w+["']?|type\s+["']?\w+["']?\s*(below|in\s+the\s+comments)|send\s+me\s+["']?\w+["']?)\b/i;
-
-function hasLeadMagnetCTA(content: string): boolean {
-  return LEAD_MAGNET_CTA_PATTERN.test(content);
-}
-
 const PAGE_SIZE = 50;
 
 export function SwipeFileContent() {
@@ -137,6 +129,7 @@ export function SwipeFileContent() {
   // Discovered tab state
   const [discoveredSort, setDiscoveredSort] = useState<'engagement' | 'recent'>('engagement');
   const [creatorFilter, setCreatorFilter] = useState('');
+  const [topicFilter, setTopicFilter] = useState('');
   const [expandedPostIds, setExpandedPostIds] = useState<Set<string>>(new Set());
   const [trackedCreatorUrls, setTrackedCreatorUrls] = useState<Set<string>>(new Set());
   const [trackingInProgress, setTrackingInProgress] = useState<string | null>(null);
@@ -149,7 +142,7 @@ export function SwipeFileContent() {
     const cta: DiscoveredPost[] = [];
     const discovered: DiscoveredPost[] = [];
     for (const post of allWinningPosts) {
-      if (hasLeadMagnetCTA(post.content)) {
+      if (post.is_lead_magnet) {
         cta.push(post);
       } else {
         discovered.push(post);
@@ -172,26 +165,35 @@ export function SwipeFileContent() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [ctaPosts, discoveredPosts, activeTab]);
 
-  // Filter discovered/CTA posts by creator
+  // Static topic list from the canonical enum (always shows all options)
+  const topicOptions = VIRAL_POST_TOPICS;
+
+  // Filter discovered/CTA posts by creator and topic
   const filteredDiscovered = useMemo(() => {
     let posts = discoveredPosts;
     if (creatorFilter) {
       posts = posts.filter((p) => p.author_url === creatorFilter);
+    }
+    if (topicFilter) {
+      posts = posts.filter((p) => p.topics?.includes(topicFilter));
     }
     const orderKey = discoveredSort === 'engagement' ? 'engagement_score' : 'created_at';
     return [...posts].sort((a, b) => {
       if (orderKey === 'engagement_score') return b.engagement_score - a.engagement_score;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [discoveredPosts, creatorFilter, discoveredSort]);
+  }, [discoveredPosts, creatorFilter, topicFilter, discoveredSort]);
 
   const filteredCtaPosts = useMemo(() => {
     let posts = ctaPosts;
     if (creatorFilter) {
       posts = posts.filter((p) => p.author_url === creatorFilter);
     }
+    if (topicFilter) {
+      posts = posts.filter((p) => p.topics?.includes(topicFilter));
+    }
     return [...posts].sort((a, b) => b.engagement_score - a.engagement_score);
-  }, [ctaPosts, creatorFilter]);
+  }, [ctaPosts, creatorFilter, topicFilter]);
 
   const fetchWinningPosts = useCallback(async (reset: boolean) => {
     if (reset) {
@@ -205,11 +207,17 @@ export function SwipeFileContent() {
 
       const orderCol = discoveredSort === 'engagement' ? 'engagement_score' : 'created_at';
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('cp_viral_posts')
-        .select('id, author_name, author_headline, author_url, content, likes, comments, shares, engagement_score, template_extracted, extracted_template_id, created_at')
+        .select('id, author_name, author_headline, author_url, content, likes, comments, shares, engagement_score, template_extracted, extracted_template_id, is_lead_magnet, topics, created_at')
         .eq('is_winner', true)
-        .is('user_id', null)
+        .is('user_id', null);
+
+      if (topicFilter) {
+        query = query.contains('topics', [topicFilter]);
+      }
+
+      const { data, error } = await query
         .order(orderCol, { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1);
 
@@ -231,7 +239,7 @@ export function SwipeFileContent() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [allWinningPosts.length, discoveredSort]);
+  }, [allWinningPosts.length, discoveredSort, topicFilter]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -275,17 +283,18 @@ export function SwipeFileContent() {
     fetchData();
   }, [fetchData]);
 
-  // Reset and re-fetch when sort changes
+  // Reset and re-fetch when sort or topic filter changes
   useEffect(() => {
     if (allWinningPosts.length > 0) {
       fetchWinningPosts(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [discoveredSort]);
+  }, [discoveredSort, topicFilter]);
 
-  // Reset creator filter when switching tabs
+  // Reset creator and topic filters when switching tabs
   useEffect(() => {
     setCreatorFilter('');
+    setTopicFilter('');
   }, [activeTab]);
 
   const handleCopy = async (text: string, id: string) => {
@@ -373,6 +382,11 @@ export function SwipeFileContent() {
             )}
           </div>
           <div className="ml-2 flex items-center gap-1.5 shrink-0">
+            {dPost.topics?.slice(0, 2).map((t) => (
+              <span key={t} className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                {t}
+              </span>
+            ))}
             {dPost.template_extracted && (
               <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
                 Template
@@ -617,6 +631,25 @@ export function SwipeFileContent() {
             </>
           )}
 
+          {/* Topic filter */}
+          {topicOptions.length > 0 && (
+            <div className="relative">
+              <select
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              >
+                <option value="">All Topics</option>
+                {topicOptions.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            </div>
+          )}
+
           {/* Also show format filters for submitted lead magnets */}
           <div className="relative">
             <select
@@ -693,6 +726,28 @@ export function SwipeFileContent() {
                   {creatorOptions.map((c) => (
                     <option key={c.url} value={c.url}>
                       {c.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              </div>
+            </>
+          )}
+
+          {/* Topic filter */}
+          {topicOptions.length > 0 && (
+            <>
+              <div className="mx-1 h-5 w-px bg-border" />
+              <div className="relative">
+                <select
+                  value={topicFilter}
+                  onChange={(e) => setTopicFilter(e.target.value)}
+                  className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                >
+                  <option value="">All Topics</option>
+                  {topicOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
                     </option>
                   ))}
                 </select>
