@@ -1,0 +1,201 @@
+// Attio Call Recording Backfill — fetches all completed recordings and inserts into MagnetLab
+//
+// Usage:
+//   ATTIO_API_KEY=... ATTIO_DEFAULT_USER_ID=... NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/attio-backfill-run.mjs
+//   Add DRY_RUN=1 to preview without writing.
+
+const ATTIO_KEY = process.env.ATTIO_API_KEY;
+const USER_ID = process.env.ATTIO_DEFAULT_USER_ID;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const DRY_RUN = process.env.DRY_RUN === '1';
+
+if (!ATTIO_KEY || !USER_ID || !SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Missing required env vars. Need: ATTIO_API_KEY, ATTIO_DEFAULT_USER_ID, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
+
+async function attioGet(path) {
+  const res = await fetch('https://api.attio.com/v2' + path, {
+    headers: { Authorization: 'Bearer ' + ATTIO_KEY }
+  });
+  if (res.status >= 400) throw new Error('Attio ' + res.status + ': ' + (await res.text()));
+  return res.json();
+}
+
+async function supabaseInsert(table, data) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation'
+    },
+    body: JSON.stringify(data)
+  });
+  const body = await res.json();
+  if (res.status >= 400) throw new Error(JSON.stringify(body));
+  return body;
+}
+
+async function supabaseSelect(table, query) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, {
+    headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+  });
+  return res.json();
+}
+
+// Fetch all paginated transcript segments and assemble into readable text
+async function getFullTranscript(meetingId, recordingId) {
+  const allSegments = [];
+  let cursor = null;
+
+  do {
+    const params = cursor ? '?cursor=' + cursor : '';
+    const body = await attioGet('/meetings/' + meetingId + '/call_recordings/' + recordingId + '/transcript' + params);
+    const segments = (body.data && body.data.transcript) || [];
+    allSegments.push(...segments);
+    cursor = (body.pagination && body.pagination.next_cursor) || null;
+  } while (cursor);
+
+  if (allSegments.length === 0) return '';
+
+  // Group consecutive words by speaker
+  let transcript = '';
+  let currentSpeaker = null;
+  let currentLine = '';
+
+  for (const seg of allSegments) {
+    const speaker = (seg.speaker && seg.speaker.name) || 'Unknown';
+    if (speaker !== currentSpeaker) {
+      if (currentLine) {
+        transcript += currentSpeaker + ': ' + currentLine.trim() + '\n\n';
+      }
+      currentSpeaker = speaker;
+      currentLine = seg.speech + ' ';
+    } else {
+      currentLine += seg.speech + ' ';
+    }
+  }
+  if (currentLine) {
+    transcript += currentSpeaker + ': ' + currentLine.trim() + '\n\n';
+  }
+
+  return transcript.trim();
+}
+
+async function main() {
+  console.log('Starting Attio backfill...');
+  if (DRY_RUN) console.log('DRY RUN — no data will be written');
+
+  // Fetch all meetings (paginated, date-filtered)
+  let allMeetings = [];
+  let cursor = null;
+
+  do {
+    const params = new URLSearchParams({
+      limit: '200',
+      sort: 'start_desc',
+      ends_from: '2025-01-01T00:00:00Z',
+      starts_before: '2026-12-31T00:00:00Z'
+    });
+    if (cursor) params.set('cursor', cursor);
+    const page = await attioGet('/meetings?' + params);
+    allMeetings = allMeetings.concat(page.data);
+    cursor = (page.pagination && page.pagination.next_cursor) || null;
+    console.log('  Fetched', allMeetings.length, 'meetings...');
+  } while (cursor);
+
+  console.log('Total meetings:', allMeetings.length);
+
+  let inserted = 0, duplicates = 0, skipped = 0, errors = 0;
+
+  for (const meeting of allMeetings) {
+    const meetingId = meeting.id.meeting_id;
+    let recordings;
+    try {
+      const recRes = await attioGet('/meetings/' + meetingId + '/call_recordings');
+      recordings = recRes.data || [];
+    } catch {
+      continue;
+    }
+    if (recordings.length === 0) continue;
+
+    for (const rec of recordings) {
+      const recId = rec.id.call_recording_id;
+      if (rec.status !== 'completed') {
+        skipped++;
+        continue;
+      }
+
+      const externalId = 'attio:' + recId;
+
+      // Check for duplicate
+      const existing = await supabaseSelect(
+        'cp_call_transcripts',
+        'external_id=eq.' + externalId + '&user_id=eq.' + USER_ID + '&select=id'
+      );
+      if (existing.length > 0) {
+        duplicates++;
+        console.log('  SKIP (dup):', meeting.title);
+        continue;
+      }
+
+      // Fetch full paginated transcript
+      let rawTranscript;
+      try {
+        rawTranscript = await getFullTranscript(meetingId, recId);
+      } catch (e) {
+        console.error('  ERROR transcript:', meeting.title, e.message);
+        errors++;
+        continue;
+      }
+
+      if (!rawTranscript || rawTranscript.length === 0) {
+        skipped++;
+        console.log('  SKIP (empty):', meeting.title);
+        continue;
+      }
+
+      const dur = (meeting.start && meeting.start.datetime && meeting.end && meeting.end.datetime)
+        ? Math.round((new Date(meeting.end.datetime).getTime() - new Date(meeting.start.datetime).getTime()) / 60000)
+        : null;
+      const participants = (meeting.participants || [])
+        .filter(p => p.email_address)
+        .map(p => p.email_address);
+
+      if (DRY_RUN) {
+        console.log('  DRY: Would insert "' + meeting.title + '" (' + dur + 'min, ' + rawTranscript.length + ' chars)');
+        inserted++;
+        continue;
+      }
+
+      try {
+        await supabaseInsert('cp_call_transcripts', {
+          user_id: USER_ID,
+          source: 'attio',
+          external_id: externalId,
+          title: meeting.title || null,
+          call_date: (meeting.start && meeting.start.datetime) || null,
+          duration_minutes: dur,
+          participants: participants.length > 0 ? participants : null,
+          raw_transcript: rawTranscript,
+        });
+        inserted++;
+        console.log('  INSERTED:', meeting.title, '(' + dur + 'min, ' + rawTranscript.length + ' chars)');
+      } catch (e) {
+        console.error('  ERROR insert:', meeting.title, e.message);
+        errors++;
+      }
+    }
+  }
+
+  console.log('\n--- Backfill complete ---');
+  console.log('  Inserted:', inserted);
+  console.log('  Duplicates:', duplicates);
+  console.log('  Skipped (processing/empty):', skipped);
+  console.log('  Errors:', errors);
+}
+
+main().catch(e => { console.error('FATAL:', e); process.exit(1); });

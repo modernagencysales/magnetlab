@@ -5,6 +5,7 @@ import type { processTranscript } from '@/trigger/process-transcript';
 import { verifyAttioWebhook } from '@/lib/webhooks/verify';
 import {
   createAttioClient,
+  assembleTranscript,
   calcDurationMinutes,
   extractParticipants,
   type AttioCallRecordingCreatedEvent,
@@ -68,34 +69,28 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Fetch meeting details + transcript from Attio API
+    // Fetch meeting details + full paginated transcript from Attio API
     const attio = createAttioClient();
 
-    const [meetingRes, transcriptRes] = await Promise.all([
+    const [meetingRes, segmentsRes] = await Promise.all([
       attio.getMeeting(meeting_id),
-      attio.getCallTranscript(meeting_id, call_recording_id),
+      attio.getFullTranscript(meeting_id, call_recording_id),
     ]);
 
-    if (!transcriptRes.data) {
-      logError('webhooks/attio', new Error('Failed to fetch transcript from Attio'), {
+    if (!segmentsRes.data || segmentsRes.data.length === 0) {
+      logWarn('webhooks/attio', 'Empty transcript received', {
         meeting_id,
         call_recording_id,
-        error: transcriptRes.error,
+        error: segmentsRes.error,
       });
-      return NextResponse.json(
-        { error: 'Failed to fetch transcript from Attio' },
-        { status: 502 }
-      );
+      return NextResponse.json({ success: true, skipped: true, reason: 'empty_transcript' });
     }
 
     const meeting = meetingRes.data;
-    const transcript = transcriptRes.data;
+    const rawTranscript = assembleTranscript(segmentsRes.data);
 
-    // Use the raw_transcript string from Attio (pre-formatted with timestamps + speaker names)
-    const rawTranscript = transcript.raw_transcript;
-
-    if (!rawTranscript || rawTranscript.trim().length === 0) {
-      logWarn('webhooks/attio', 'Empty transcript received', { meeting_id, call_recording_id });
+    if (rawTranscript.length === 0) {
+      logWarn('webhooks/attio', 'Assembled transcript is empty', { meeting_id, call_recording_id });
       return NextResponse.json({ success: true, skipped: true, reason: 'empty_transcript' });
     }
 
@@ -132,6 +127,7 @@ export async function POST(request: NextRequest) {
       transcript_id: saved.id,
       title,
       duration_minutes: durationMinutes,
+      transcript_length: rawTranscript.length,
     });
 
     // Trigger AI processing pipeline

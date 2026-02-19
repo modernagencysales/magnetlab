@@ -28,15 +28,18 @@ interface AttioTranscriptSegment {
   speaker: { name: string };
 }
 
-interface AttioTranscriptResponse {
+interface AttioTranscriptPageData {
   id: {
     workspace_id: string;
     meeting_id: string;
     call_recording_id: string;
   };
   transcript: AttioTranscriptSegment[];
-  raw_transcript: string;
-  web_url: string;
+}
+
+interface AttioTranscriptPage {
+  data: AttioTranscriptPageData;
+  pagination: { next_cursor: string | null };
 }
 
 interface AttioCallRecording {
@@ -52,7 +55,7 @@ interface AttioCallRecording {
 
 interface AttioPaginatedResponse<T> {
   data: T[];
-  next_cursor: string | null;
+  pagination: { next_cursor: string | null };
 }
 
 // --- Webhook event types ---
@@ -115,17 +118,68 @@ export class AttioClient extends BaseApiClient {
     );
   }
 
-  async getCallTranscript(
+  /**
+   * Fetch the full call transcript (paginated word-level segments).
+   * Returns all segments concatenated across all pages.
+   */
+  async getFullTranscript(
     meetingId: string,
     callRecordingId: string
-  ): Promise<ApiResponse<AttioTranscriptResponse>> {
-    return this.get<AttioTranscriptResponse>(
-      `/meetings/${meetingId}/call_recordings/${callRecordingId}/transcript`
-    );
+  ): Promise<ApiResponse<AttioTranscriptSegment[]>> {
+    const allSegments: AttioTranscriptSegment[] = [];
+    let cursor: string | null = null;
+
+    do {
+      const params = cursor ? `?cursor=${cursor}` : '';
+      const res = await this.get<AttioTranscriptPage>(
+        `/meetings/${meetingId}/call_recordings/${callRecordingId}/transcript${params}`
+      );
+
+      if (res.error || !res.data) {
+        return { data: null, error: res.error, status: res.status };
+      }
+
+      const page = res.data as unknown as AttioTranscriptPage;
+      const segments = page.data?.transcript || [];
+      allSegments.push(...segments);
+      cursor = page.pagination?.next_cursor || null;
+    } while (cursor);
+
+    return { data: allSegments, error: null, status: 200 };
   }
 }
 
 // --- Helpers ---
+
+/**
+ * Assemble word-level transcript segments into a readable transcript string.
+ * Groups consecutive words by speaker into paragraphs.
+ */
+export function assembleTranscript(segments: AttioTranscriptSegment[]): string {
+  if (segments.length === 0) return '';
+
+  let transcript = '';
+  let currentSpeaker: string | null = null;
+  let currentLine = '';
+
+  for (const seg of segments) {
+    const speaker = seg.speaker?.name || 'Unknown';
+    if (speaker !== currentSpeaker) {
+      if (currentLine) {
+        transcript += `${currentSpeaker}: ${currentLine.trim()}\n\n`;
+      }
+      currentSpeaker = speaker;
+      currentLine = seg.speech + ' ';
+    } else {
+      currentLine += seg.speech + ' ';
+    }
+  }
+  if (currentLine) {
+    transcript += `${currentSpeaker}: ${currentLine.trim()}\n\n`;
+  }
+
+  return transcript.trim();
+}
 
 /** Calculate duration in minutes from meeting start/end */
 export function calcDurationMinutes(

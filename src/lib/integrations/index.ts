@@ -13,6 +13,7 @@ export {
 export {
   AttioClient,
   createAttioClient,
+  assembleTranscript,
   calcDurationMinutes,
   extractParticipants,
   type AttioCallRecordingCreatedEvent,
