@@ -5,7 +5,6 @@ import {
   getUnipileClient,
   getUserPostingAccountId,
   isUnipileConfigured,
-  getMonitorAccountId,
 } from './unipile';
 import type { EngagementStats } from '@/lib/types/content-pipeline';
 
@@ -47,9 +46,7 @@ export async function getUserLinkedInPublisher(
 
         async getPostStats(postId: string): Promise<EngagementStats | null> {
           try {
-            const monitorId = getMonitorAccountId();
-            if (!monitorId) return null;
-            const result = await client.getPost(postId, monitorId);
+            const result = await client.getPost(postId, accountId);
             if (result.error || !result.data) return null;
             return {
               views: result.data.views_count || 0,

@@ -1,7 +1,8 @@
 // Unipile API Client
 // Docs: https://{DSN}/api/v1/
 // Auth: X-API-KEY header
-// Used for LinkedIn post publishing (Phase 1)
+// Used for: LinkedIn post publishing, like/reply on comments (low-risk actions only)
+// NOT used for: scraping (Apify), DMs/connections (HeyReach)
 
 import { BaseApiClient, ApiResponse } from './base-client';
 import { getUserIntegration } from '@/lib/utils/encrypted-storage';
@@ -38,7 +39,7 @@ export class UnipileClient extends BaseApiClient {
     return this.post('/hosted/accounts/link', {
       type: 'create',
       providers: ['LINKEDIN'],
-      api_url: `https://${this.dsn}/api/v1`,
+      api_url: `https://${this.dsn}`,
       expiresOn: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       notify_url: params.notifyUrl,
       name: params.userId,
@@ -58,86 +59,12 @@ export class UnipileClient extends BaseApiClient {
     });
   }
 
-  async getPost(postId: string, accountId?: string): Promise<ApiResponse<UnipilePostStats>> {
-    const monitorId = accountId || getMonitorAccountId();
-    if (!monitorId) {
-      return { data: null, error: 'No monitor account configured', status: 0 };
-    }
-    return this.get<UnipilePostStats>(`/posts/${postId}?account_id=${monitorId}`);
-  }
-
-  async getPostComments(postId: string, accountId?: string, cursor?: string): Promise<ApiResponse<{
-    items: Array<{
-      id: string;
-      text: string;
-      author: { name: string; provider_id: string };
-      created_at: string;
-    }>;
-    cursor?: string;
-  }>> {
-    const monitorId = accountId || getMonitorAccountId();
-    if (!monitorId) {
-      return { data: null, error: 'No monitor account configured', status: 0 };
-    }
-    const params = new URLSearchParams({ account_id: monitorId });
-    if (cursor) params.set('cursor', cursor);
-    return this.get(`/posts/${postId}/comments?${params}`);
-  }
-
-  async getPostReactions(postId: string, accountId?: string, cursor?: string): Promise<ApiResponse<{
-    items: Array<{
-      type: string;
-      author: { name: string; provider_id: string };
-    }>;
-    cursor?: string;
-  }>> {
-    const monitorId = accountId || getMonitorAccountId();
-    if (!monitorId) {
-      return { data: null, error: 'No monitor account configured', status: 0 };
-    }
-    const params = new URLSearchParams({ account_id: monitorId });
-    if (cursor) params.set('cursor', cursor);
-    return this.get(`/posts/${postId}/reactions?${params}`);
-  }
-
-  async getUserProfile(providerId: string, accountId?: string): Promise<ApiResponse<{
-    id: string;
-    provider_id: string;
-    name: string;
-    first_name?: string;
-    last_name?: string;
-    public_identifier?: string;
-    headline?: string;
-  }>> {
-    const monitorId = accountId || getMonitorAccountId();
-    if (!monitorId) {
-      return { data: null, error: 'No monitor account configured', status: 0 };
-    }
-    return this.get(`/users/${providerId}?account_id=${monitorId}`);
+  async getPost(postId: string, accountId: string): Promise<ApiResponse<UnipilePostStats>> {
+    return this.get<UnipilePostStats>(`/posts/${postId}?account_id=${accountId}`);
   }
 
   // ============================================
-  // MESSAGING
-  // ============================================
-
-  async startChat(accountId: string, attendeeProviderId: string, text: string): Promise<ApiResponse<{
-    chat_id: string;
-  }>> {
-    return this.post('/chats', {
-      account_id: accountId,
-      attendees_ids: [attendeeProviderId],
-      text,
-    });
-  }
-
-  async sendMessage(chatId: string, text: string): Promise<ApiResponse<{
-    id: string;
-  }>> {
-    return this.post(`/chats/${chatId}/messages`, { text });
-  }
-
-  // ============================================
-  // INTERACTIONS
+  // INTERACTIONS (low-risk actions)
   // ============================================
 
   async addComment(postSocialId: string, accountId: string, text: string): Promise<ApiResponse<{
@@ -157,19 +84,6 @@ export class UnipileClient extends BaseApiClient {
   }
 
   // ============================================
-  // CONNECTIONS
-  // ============================================
-
-  async sendInvitation(providerId: string, accountId: string, message?: string): Promise<ApiResponse<void>> {
-    const body: Record<string, unknown> = {
-      account_id: accountId,
-      provider_id: providerId,
-    };
-    if (message) body.message = message;
-    return this.post(`/users/${providerId}/invite`, body);
-  }
-
-  // ============================================
   // ACCOUNTS
   // ============================================
 
@@ -184,23 +98,6 @@ export class UnipileClient extends BaseApiClient {
   async deleteAccount(accountId: string): Promise<ApiResponse<void>> {
     return this.delete(`/accounts/${accountId}`);
   }
-}
-
-// ============================================
-// HELPERS
-// ============================================
-
-/**
- * Pick a random monitor account ID from the comma-separated env var.
- * Monitor accounts are alt LinkedIn accounts used for reading engagement
- * stats, protecting the main posting account from detection.
- */
-export function getMonitorAccountId(): string | null {
-  const ids = process.env.UNIPILE_MONITOR_ACCOUNT_IDS;
-  if (!ids) return null;
-  const list = ids.split(',').map(s => s.trim()).filter(Boolean);
-  if (list.length === 0) return null;
-  return list[Math.floor(Math.random() * list.length)];
 }
 
 // ============================================
