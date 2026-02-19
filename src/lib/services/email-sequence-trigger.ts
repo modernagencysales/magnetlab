@@ -46,7 +46,7 @@ async function shouldTriggerSequence(
 /**
  * Get sender info from brand kit + team email domain
  */
-async function getSenderInfo(userId: string): Promise<{ senderName: string; senderEmail?: string }> {
+export async function getSenderInfo(userId: string): Promise<{ senderName: string; senderEmail?: string }> {
   const supabase = createSupabaseAdminClient();
 
   // Run brand kit and team lookups in parallel
@@ -93,7 +93,7 @@ async function getSenderInfo(userId: string): Promise<{ senderName: string; send
 /**
  * Get user's Resend configuration if they have connected their own account
  */
-async function getUserResendConfig(userId: string): Promise<ResendConfig | undefined> {
+export async function getUserResendConfig(userId: string): Promise<ResendConfig | undefined> {
   try {
     const integration = await getUserIntegration(userId, 'resend');
 
