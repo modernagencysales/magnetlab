@@ -11,6 +11,14 @@ export {
 } from './fathom';
 
 export {
+  AttioClient,
+  createAttioClient,
+  calcDurationMinutes,
+  extractParticipants,
+  type AttioCallRecordingCreatedEvent,
+} from './attio';
+
+export {
   createCustomer,
   getCustomer,
   getOrCreateCustomer,
