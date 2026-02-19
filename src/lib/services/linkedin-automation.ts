@@ -3,6 +3,7 @@
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getUnipileClient, getUserPostingAccountId } from '@/lib/integrations/unipile';
+import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach';
 import { logError } from '@/lib/utils/logger';
 import type { LinkedInAutomation, AutomationEventType } from '@/lib/types/content-pipeline';
 
@@ -77,22 +78,14 @@ export async function processComment(
 
   await logEvent(automation.id, 'keyword_matched', comment);
 
-  // Determine which account to use for actions
+  // Determine which account to use for Unipile actions (like/reply)
   const accountId = automation.unipile_account_id
     || await getUserPostingAccountId(automation.user_id);
 
-  if (!accountId) {
-    const err = 'No Unipile account configured for automation actions';
-    errors.push(err);
-    await logEvent(automation.id, 'dm_failed', comment, undefined, err);
-    return { automationId: automation.id, actions, errors };
-  }
-
-  const client = getUnipileClient();
-
-  // 1. Auto-like the comment
-  if (automation.auto_like && automation.post_social_id) {
+  // 1. Auto-like the comment (via Unipile — low risk)
+  if (automation.auto_like && automation.post_social_id && accountId) {
     try {
+      const client = getUnipileClient();
       await client.addReaction(automation.post_social_id, accountId, 'LIKE');
       actions.push('like_sent');
       await logEvent(automation.id, 'like_sent', comment);
@@ -103,57 +96,44 @@ export async function processComment(
     }
   }
 
-  // 2. Send DM if template exists
-  if (automation.dm_template) {
+  // 2. Enroll in HeyReach campaign (replaces Unipile DM + connect)
+  if (automation.heyreach_campaign_id && comment.commenterLinkedinUrl) {
     try {
-      const dmText = interpolateTemplate(automation.dm_template, {
-        name: comment.commenterName.split(' ')[0] || 'there',
-        full_name: comment.commenterName,
-        comment: comment.commentText,
-      });
-
-      const chatResult = await client.startChat(accountId, comment.commenterProviderId, dmText);
-
-      if (chatResult.error) {
-        throw new Error(chatResult.error);
+      const customVars: Record<string, string> = {};
+      if (automation.resource_url) {
+        customVars.resource_url = automation.resource_url;
       }
 
-      actions.push('dm_sent');
-      await logEvent(automation.id, 'dm_sent', comment, dmText);
+      const result = await pushLeadsToHeyReach(
+        automation.heyreach_campaign_id,
+        [{
+          profileUrl: comment.commenterLinkedinUrl,
+          firstName: comment.commenterName.split(' ')[0] || undefined,
+          lastName: comment.commenterName.split(' ').slice(1).join(' ') || undefined,
+          customVariables: Object.keys(customVars).length > 0 ? customVars : undefined,
+        }]
+      );
+
+      if (!result.success) throw new Error(result.error || 'HeyReach push failed');
+      actions.push('heyreach_enrolled');
+      await logEvent(automation.id, 'dm_sent', comment, `HeyReach campaign ${automation.heyreach_campaign_id}`);
 
       // Increment leads_captured
       await supabase
         .from('linkedin_automations')
         .update({ leads_captured: (automation.leads_captured || 0) + 1 })
         .eq('id', automation.id);
-
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      errors.push(`dm: ${msg}`);
+      errors.push(`heyreach: ${msg}`);
       await logEvent(automation.id, 'dm_failed', comment, undefined, msg);
     }
   }
 
-  // 3. Auto-connect (send invitation)
-  if (automation.auto_connect) {
+  // 3. Reply to comment (via Unipile — low risk)
+  if (automation.comment_reply_template && automation.post_social_id && accountId) {
     try {
-      const result = await client.sendInvitation(comment.commenterProviderId, accountId);
-      if (result.error) {
-        throw new Error(result.error);
-      }
-      actions.push('connection_sent');
-      await logEvent(automation.id, 'connection_sent', comment);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      // Connection failures are common (already connected, etc.) — log but don't treat as critical
-      errors.push(`connect: ${msg}`);
-      await logEvent(automation.id, 'connection_failed', comment, undefined, msg);
-    }
-  }
-
-  // 4. Reply to comment
-  if (automation.comment_reply_template && automation.post_social_id) {
-    try {
+      const client = getUnipileClient();
       const replyText = interpolateTemplate(automation.comment_reply_template, {
         name: comment.commenterName.split(' ')[0] || 'there',
         full_name: comment.commenterName,
@@ -171,12 +151,6 @@ export async function processComment(
       errors.push(`reply: ${msg}`);
       await logEvent(automation.id, 'reply_failed', comment, undefined, msg);
     }
-  }
-
-  // 5. Schedule follow-up DM
-  if (automation.enable_follow_up && automation.follow_up_template) {
-    actions.push('follow_up_scheduled');
-    await logEvent(automation.id, 'follow_up_scheduled', comment);
   }
 
   return { automationId: automation.id, actions, errors };
