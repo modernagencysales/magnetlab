@@ -1,6 +1,6 @@
 'use client';
 
-import { Video, Calendar, MessageCircle, ExternalLink } from 'lucide-react';
+import { Video, Calendar, MessageCircle, ExternalLink, Home } from 'lucide-react';
 
 interface ThankyouPageEditorProps {
   headline: string;
@@ -21,6 +21,10 @@ interface ThankyouPageEditorProps {
   setRedirectUrl: (value: string) => void;
   redirectFailUrl: string;
   setRedirectFailUrl: (value: string) => void;
+  homepageUrl: string;
+  setHomepageUrl: (value: string) => void;
+  homepageLabel: string;
+  setHomepageLabel: (value: string) => void;
 }
 
 export function ThankyouPageEditor({
@@ -42,6 +46,10 @@ export function ThankyouPageEditor({
   setRedirectUrl,
   redirectFailUrl,
   setRedirectFailUrl,
+  homepageUrl,
+  setHomepageUrl,
+  homepageLabel,
+  setHomepageLabel,
 }: ThankyouPageEditorProps) {
   return (
     <div className="space-y-6">
@@ -234,6 +242,46 @@ export function ThankyouPageEditor({
               <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
                 Shown when they don&apos;t match your ideal customer criteria
               </p>
+            </div>
+          </div>
+
+          {/* Homepage Link */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Home className="h-4 w-4 text-orange-500" />
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Homepage Link (Optional)
+              </h3>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                URL
+              </label>
+              <input
+                type="url"
+                value={homepageUrl}
+                onChange={(e) => setHomepageUrl(e.target.value)}
+                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                placeholder="https://yourwebsite.com"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Shows a link on the thank-you page. Overrides the team default if set.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                Link Text
+                <span className="ml-1 text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={homepageLabel}
+                onChange={(e) => setHomepageLabel(e.target.value)}
+                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                placeholder="Visit our website"
+              />
             </div>
           </div>
         </>

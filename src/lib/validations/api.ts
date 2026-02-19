@@ -222,6 +222,8 @@ export const updateFunnelSchema = z.object({
   redirectTrigger: z.enum(['none', 'immediate', 'after_qualification']).optional(),
   redirectUrl: z.string().url().max(2000).nullable().optional(),
   redirectFailUrl: z.string().url().max(2000).nullable().optional(),
+  homepageUrl: z.string().url().max(2000).nullable().optional(),
+  homepageLabel: z.string().max(200).nullable().optional(),
 });
 
 export type UpdateFunnelInput = z.infer<typeof updateFunnelSchema>;

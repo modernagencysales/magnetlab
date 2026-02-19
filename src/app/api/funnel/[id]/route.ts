@@ -93,6 +93,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (validated.redirectTrigger !== undefined) updateData.redirect_trigger = validated.redirectTrigger;
     if (validated.redirectUrl !== undefined) updateData.redirect_url = validated.redirectUrl;
     if (validated.redirectFailUrl !== undefined) updateData.redirect_fail_url = validated.redirectFailUrl;
+    if (validated.homepageUrl !== undefined) updateData.homepage_url = validated.homepageUrl;
+    if (validated.homepageLabel !== undefined) updateData.homepage_label = validated.homepageLabel;
 
     // Verify ownership of qualificationFormId if provided
     if (validated.qualificationFormId) {

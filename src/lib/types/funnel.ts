@@ -39,6 +39,10 @@ export interface FunnelPage {
   redirectUrl: string | null;
   redirectFailUrl: string | null;
 
+  // Homepage link
+  homepageUrl: string | null;
+  homepageLabel: string | null;
+
   // Theme configuration
   theme: FunnelTheme;
   primaryColor: string;
@@ -383,6 +387,8 @@ export interface FunnelPageRow {
   redirect_trigger: string;
   redirect_url: string | null;
   redirect_fail_url: string | null;
+  homepage_url: string | null;
+  homepage_label: string | null;
   theme: string;
   primary_color: string;
   background_style: string;
@@ -460,6 +466,8 @@ export function funnelPageFromRow(row: FunnelPageRow): FunnelPage {
     redirectTrigger: (row.redirect_trigger || 'none') as RedirectTrigger,
     redirectUrl: row.redirect_url || null,
     redirectFailUrl: row.redirect_fail_url || null,
+    homepageUrl: row.homepage_url || null,
+    homepageLabel: row.homepage_label || null,
     qualificationFormId: row.qualification_form_id || null,
     theme: (row.theme || 'dark') as FunnelTheme,
     primaryColor: row.primary_color || '#8b5cf6',

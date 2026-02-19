@@ -71,6 +71,8 @@ export function FunnelBuilder({
   const [redirectTrigger, setRedirectTrigger] = useState<RedirectTrigger>(existingFunnel?.redirectTrigger || 'none');
   const [redirectUrl, setRedirectUrl] = useState(existingFunnel?.redirectUrl || '');
   const [redirectFailUrl, setRedirectFailUrl] = useState(existingFunnel?.redirectFailUrl || '');
+  const [homepageUrl, setHomepageUrl] = useState(existingFunnel?.homepageUrl || '');
+  const [homepageLabel, setHomepageLabel] = useState(existingFunnel?.homepageLabel || '');
 
   // Form state for theme
   const [theme, setTheme] = useState<FunnelTheme>(existingFunnel?.theme || 'dark');
@@ -160,6 +162,8 @@ export function FunnelBuilder({
         redirectTrigger,
         redirectUrl: redirectTrigger !== 'none' ? (redirectUrl || null) : null,
         redirectFailUrl: redirectTrigger === 'after_qualification' ? (redirectFailUrl || null) : null,
+        homepageUrl: homepageUrl || null,
+        homepageLabel: homepageLabel || null,
         theme,
         primaryColor,
         backgroundStyle,
@@ -319,6 +323,10 @@ export function FunnelBuilder({
                 setRedirectUrl={setRedirectUrl}
                 redirectFailUrl={redirectFailUrl}
                 setRedirectFailUrl={setRedirectFailUrl}
+                homepageUrl={homepageUrl}
+                setHomepageUrl={setHomepageUrl}
+                homepageLabel={homepageLabel}
+                setHomepageLabel={setHomepageLabel}
               />
               {funnel && <ABTestPanel funnelPageId={funnel.id} />}
             </div>
