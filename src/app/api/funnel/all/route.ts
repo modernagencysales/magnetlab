@@ -42,7 +42,8 @@ export async function GET() {
             title,
             icon
           )
-        `),
+        `)
+        .eq('is_variant', false),
       scope
     ).order('created_at', { ascending: false });
 
