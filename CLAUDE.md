@@ -420,6 +420,59 @@ npx playwright test e2e/wizard.spec.ts   # Single file
 - Don't test Supabase/Stripe internals — mock them and test your logic
 - Don't duplicate what `tsc --noEmit` already catches
 
+## Engagement Intelligence
+
+Scrapes LinkedIn post engagement (commenters + likers) via Apify, stores in DB, pushes leads to HeyReach campaigns. Supports own posts and competitor profile monitoring.
+
+### Tool Responsibility Split
+
+| Tool | Does | Doesn't |
+|------|------|---------|
+| Unipile | Publish posts, like comments, reply to comments | Scrape, DM, connect |
+| Apify | Scrape all engagement (own + competitor posts) | Any actions |
+| HeyReach | DMs, connection requests (via campaign enrollment) | Scraping |
+
+### Apify Actors
+
+- **`scraping_solutions/linkedin-posts-engagers`** ($30/mo) — takes post URL + type (`commenters` or `likers`), returns ~50 engagers
+- **`supreme_coder/linkedin-post`** (already rented) — takes profile URL, returns recent posts with engagement counts
+- Both called via `run-sync-get-dataset-items` endpoint (blocks until complete)
+- API token: `APIFY_API_TOKEN` env var
+
+### Database Tables
+
+- `cp_monitored_competitors` — up to 10 competitor LinkedIn profiles per user (user_id scoped, RLS)
+- `cp_post_engagements` — extended with `source` (`own_post`/`competitor`), `source_post_url`, `competitor_id`, `subtitle`; `post_id` now nullable
+- `linkedin_automations` — extended with `heyreach_campaign_id`, `resource_url`
+
+### Cron: `scrape-engagement` (every 10 min)
+
+1. Auto-disable expired posts (7+ days)
+2. Scrape own posts (Apify engagers actor, adaptive schedule)
+3. Scrape competitor posts (profile posts actor → engagers per post, every 60 min)
+4. Push new leads to HeyReach campaigns
+
+### Comment Automation Flow
+
+Unipile webhook → keyword match → HeyReach campaign enrollment (DM/connect) + Unipile like/reply (low-risk actions). No more Unipile DMs or follow-up scheduling.
+
+### Key Files
+
+- `src/lib/integrations/apify-engagers.ts` — Apify client (`scrapeEngagers`, `scrapeProfilePosts`)
+- `src/lib/integrations/heyreach.ts` — HeyReach push with custom variables
+- `src/lib/integrations/unipile.ts` — Stripped to publishing + like/reply only
+- `src/trigger/scrape-engagement.ts` — Unified cron (own + competitor scraping)
+- `src/lib/services/linkedin-automation.ts` — Comment automation (HeyReach for DM, Unipile for like/reply)
+- `src/app/api/competitors/` — Competitor monitoring CRUD
+- `src/components/settings/CompetitorMonitoring.tsx` — Settings UI
+
+### Env Vars
+
+| Var | Where | Purpose |
+|-----|-------|---------|
+| `APIFY_API_TOKEN` | `.env.local` + Vercel + Trigger.dev | Apify API calls |
+| `HEYREACH_API_KEY` | Trigger.dev | HeyReach campaign enrollment |
+
 ## Deployment
 
 - **Vercel**: Auto-deploy is broken for private org repos (needs Vercel Pro). Deploy manually:
