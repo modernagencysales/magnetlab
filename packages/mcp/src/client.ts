@@ -15,7 +15,7 @@ import type {
   ExtractContentType,
 } from './constants.js'
 
-const DEFAULT_BASE_URL = 'https://magnetlab.app/api'
+const DEFAULT_BASE_URL = 'https://www.magnetlab.app/api'
 
 export interface MagnetLabClientOptions {
   baseUrl?: string
@@ -37,11 +37,25 @@ export class MagnetLabClient {
       'Content-Type': 'application/json',
     }
 
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      redirect: 'manual',
     })
+
+    // Follow redirects manually to preserve the Authorization header
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location')
+      if (location) {
+        response = await fetch(location, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+          redirect: 'manual',
+        })
+      }
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -74,7 +88,7 @@ export class MagnetLabClient {
   }
 
   async getLeadMagnet(id: string) {
-    return this.request<unknown>('GET', `/external/lead-magnets/${id}`)
+    return this.request<unknown>('GET', `/lead-magnet/${id}`)
   }
 
   async createLeadMagnet(params: {
@@ -114,7 +128,7 @@ export class MagnetLabClient {
     concept: unknown
     answers: Record<string, string>
   }) {
-    return this.request<unknown>('POST', `/external/lead-magnets/${leadMagnetId}/extract`, params)
+    return this.request<unknown>('POST', `/lead-magnet/extract`, params)
   }
 
   async generateContent(leadMagnetId: string, params: {
@@ -122,7 +136,7 @@ export class MagnetLabClient {
     concept: unknown
     answers: Record<string, string>
   }) {
-    return this.request<unknown>('POST', `/external/lead-magnets/${leadMagnetId}/generate`, params)
+    return this.request<unknown>('POST', `/lead-magnet/generate`, params)
   }
 
   async writeLinkedInPosts(leadMagnetId: string, params: {
@@ -130,7 +144,7 @@ export class MagnetLabClient {
     contents: string
     problemSolved: string
   }) {
-    return this.request<unknown>('POST', `/external/lead-magnets/${leadMagnetId}/write-posts`, params)
+    return this.request<unknown>('POST', `/lead-magnet/write-post`, params)
   }
 
   async polishLeadMagnetContent(leadMagnetId: string) {
