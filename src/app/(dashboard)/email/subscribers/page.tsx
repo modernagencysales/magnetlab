@@ -1,11 +1,18 @@
 import { SubscriberTable } from '@/components/email/SubscriberTable';
 
-export default function SubscribersPage() {
+export const metadata = {
+  title: 'Email Subscribers | MagnetLab',
+  description: 'Manage your email subscriber list',
+};
+
+export default function EmailSubscribersPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Subscribers</h1>
-        <p className="text-muted-foreground">Manage your email subscriber list.</p>
+    <div>
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold">Subscribers</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage your subscriber list, add contacts manually, or import via CSV.
+        </p>
       </div>
       <SubscriberTable />
     </div>

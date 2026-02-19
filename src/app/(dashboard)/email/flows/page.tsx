@@ -1,13 +1,18 @@
 import { FlowList } from '@/components/email/FlowList';
 
-export default function FlowsPage() {
+export const metadata = {
+  title: 'Email Flows | MagnetLab',
+  description: 'Create and manage automated email flows',
+};
+
+export default function EmailFlowsPage() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Email Flows</h1>
-          <p className="text-muted-foreground">Automated email sequences for your subscribers.</p>
-        </div>
+    <div>
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold">Flows</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Automated email sequences triggered by events like lead magnet opt-ins.
+        </p>
       </div>
       <FlowList />
     </div>
