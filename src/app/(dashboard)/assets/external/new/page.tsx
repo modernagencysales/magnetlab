@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { BackLink, FormError, IconPicker, RESOURCE_ICONS } from '@/components/assets';
@@ -17,6 +17,8 @@ function isValidUrl(urlString: string): boolean {
 
 export default function NewExternalResourcePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const createPage = searchParams.get('createPage') === 'true';
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [icon, setIcon] = useState('🔗');
@@ -58,7 +60,14 @@ export default function NewExternalResourcePage() {
         throw new Error(data.error || 'Failed to create external resource');
       }
 
-      router.push('/pages');
+      const data = await response.json();
+
+      if (createPage && data.resource?.id) {
+        // Redirect to funnel builder for this resource
+        router.push(`/assets/external/${data.resource.id}/funnel`);
+      } else {
+        router.push('/pages');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create external resource');
       setIsSubmitting(false);
@@ -69,9 +78,13 @@ export default function NewExternalResourcePage() {
     <div className="max-w-2xl mx-auto py-8 px-4">
       <BackLink />
 
-      <h1 className="text-2xl font-bold mb-6">Add External Resource</h1>
+      <h1 className="text-2xl font-bold mb-6">
+        {createPage ? 'Create Landing Page for External Resource' : 'Add External Resource'}
+      </h1>
       <p className="text-muted-foreground mb-6">
-        Link to external content like YouTube videos, podcasts, tools, or any web resource.
+        {createPage
+          ? 'First, tell us about your external resource. Then we\'ll set up your opt-in page.'
+          : 'Link to external content like YouTube videos, podcasts, tools, or any web resource.'}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -127,7 +140,7 @@ export default function NewExternalResourcePage() {
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-            Add Resource
+            {createPage ? 'Continue to Page Builder' : 'Add Resource'}
           </button>
         </div>
       </form>

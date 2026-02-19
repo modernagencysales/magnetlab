@@ -83,6 +83,9 @@ function getEditLink(page: FunnelPage): string {
   if (page.target_type === 'library' && page.library_id) {
     return `/assets/libraries/${page.library_id}`;
   }
+  if (page.target_type === 'external_resource' && page.external_resource_id) {
+    return `/assets/external/${page.external_resource_id}/funnel`;
+  }
   if (page.lead_magnet_id) {
     return `/magnets/${page.lead_magnet_id}?tab=funnel`;
   }
