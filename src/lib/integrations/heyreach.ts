@@ -6,7 +6,12 @@ const HEYREACH_BASE_URL = 'https://api.heyreach.io/api/public';
 
 export async function pushLeadsToHeyReach(
   campaignId: string,
-  leads: Array<{ profileUrl: string; firstName?: string; lastName?: string }>
+  leads: Array<{
+    profileUrl: string;
+    firstName?: string;
+    lastName?: string;
+    customVariables?: Record<string, string>;
+  }>
 ): Promise<{ success: boolean; added: number; error?: string }> {
   const apiKey = process.env.HEYREACH_API_KEY;
   if (!apiKey) {
@@ -22,6 +27,7 @@ export async function pushLeadsToHeyReach(
     profileUrl: lead.profileUrl.endsWith('/') ? lead.profileUrl : `${lead.profileUrl}/`,
     firstName: lead.firstName || '',
     lastName: lead.lastName || '',
+    customVariables: lead.customVariables,
   }));
 
   try {
@@ -39,6 +45,7 @@ export async function pushLeadsToHeyReach(
             profileUrl: lead.profileUrl,
             firstName: lead.firstName,
             lastName: lead.lastName,
+            ...lead.customVariables,
           },
         })),
       }),
