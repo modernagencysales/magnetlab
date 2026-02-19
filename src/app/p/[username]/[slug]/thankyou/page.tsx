@@ -93,7 +93,8 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       redirect_url,
       redirect_fail_url,
       homepage_url,
-      homepage_label
+      homepage_label,
+      send_resource_email
     `)
     .eq('user_id', user.id)
     .eq('slug', slug)
@@ -183,6 +184,21 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       .single();
     leadEmail = lead?.email || null;
   }
+
+  // Check if an active email sequence exists for this lead magnet
+  const { data: activeSequence } = await supabase
+    .from('email_sequences')
+    .select('id')
+    .eq('lead_magnet_id', funnel.lead_magnet_id)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .limit(1)
+    .maybeSingle();
+
+  const hasActiveSequence = !!activeSequence;
+
+  // Show resource on page when: no email being sent (toggle off AND no sequence)
+  const showResourceOnPage = !funnel.send_resource_email && !hasActiveSequence;
 
   const hasContent = !!(leadMagnet?.polished_content || leadMagnet?.extracted_content);
   const contentPageUrl = hasContent ? `/p/${username}/${slug}/content` : null;
@@ -277,6 +293,7 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       email={leadEmail}
       homepageUrl={funnel.homepage_url || brandWebsiteUrl}
       homepageLabel={funnel.homepage_label}
+      showResourceOnPage={showResourceOnPage}
     />
   );
 }
