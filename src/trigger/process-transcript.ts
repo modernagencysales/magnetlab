@@ -22,10 +22,10 @@ export const processTranscript = task({
 
     logger.info('Processing transcript', { userId, transcriptId });
 
-    // Fetch transcript
+    // Fetch transcript (including speaker_map for attribution)
     const { data: transcript, error: fetchError } = await supabase
       .from('cp_call_transcripts')
-      .select('id, user_id, source, external_id, title, call_date, duration_minutes, participants, raw_transcript, summary, extracted_topics, transcript_type, ideas_extracted_at, knowledge_extracted_at, created_at')
+      .select('id, user_id, source, external_id, title, call_date, duration_minutes, participants, raw_transcript, summary, extracted_topics, transcript_type, ideas_extracted_at, knowledge_extracted_at, speaker_map, created_at')
       .eq('id', transcriptId)
       .eq('user_id', userId)
       .single();
@@ -67,6 +67,7 @@ export const processTranscript = task({
         callTitle: transcript.title,
         participants: transcript.participants,
         callDate: transcript.call_date,
+        speakerMap: transcript.speaker_map,
       }
     );
 
@@ -91,10 +92,28 @@ export const processTranscript = task({
       }
     }
 
+    // Derive speaker_company from speaker_map
+    const speakerMap = transcript.speaker_map as Record<string, { role: string; company: string }> | null;
+    const hostCompany = speakerMap
+      ? Object.values(speakerMap).find(v => v.role === 'host')?.company || null
+      : null;
+    const participantCompanies = speakerMap
+      ? Object.values(speakerMap).filter(v => v.role !== 'host' && v.company).map(v => v.company)
+      : [];
+
     const knowledgeInserts = knowledgeResult.entries.map((entry, idx) => {
       for (const tag of entry.tags) {
         tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
       }
+
+      // Determine speaker_company based on speaker role
+      let speakerCompany: string | null = null;
+      if (entry.speaker === 'host' && hostCompany) {
+        speakerCompany = hostCompany;
+      } else if (entry.speaker === 'participant' && participantCompanies.length > 0) {
+        speakerCompany = participantCompanies[0]; // Use first participant company as default
+      }
+
       return {
         user_id: userId,
         transcript_id: transcriptId,
@@ -107,6 +126,7 @@ export const processTranscript = task({
         embedding: embeddings[idx] ? JSON.stringify(embeddings[idx]) : null,
         team_id: teamId || null,
         source_profile_id: speakerProfileId || null,
+        speaker_company: speakerCompany,
       };
     });
 
@@ -149,6 +169,7 @@ export const processTranscript = task({
         callTitle: transcript.title,
         participants: transcript.participants,
         callDate: transcript.call_date,
+        speakerMap: transcript.speaker_map,
       }
     );
 

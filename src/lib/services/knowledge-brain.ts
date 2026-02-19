@@ -85,6 +85,67 @@ export async function getRelevantContext(
   });
 }
 
+export async function getFilteredKnowledge(
+  userId: string,
+  filters: {
+    category?: KnowledgeCategory;
+    speaker?: 'host' | 'participant' | 'unknown';
+    tag?: string;
+    limit?: number;
+    offset?: number;
+  }
+): Promise<KnowledgeEntry[]> {
+  const { category, speaker, tag, limit = 30, offset = 0 } = filters;
+  const supabase = createSupabaseAdminClient();
+
+  let query = supabase
+    .from('cp_knowledge_entries')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, created_at, updated_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (category) {
+    query = query.eq('category', category);
+  }
+  if (speaker) {
+    query = query.eq('speaker', speaker);
+  }
+  if (tag) {
+    query = query.contains('tags', [tag]);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    logError('services/knowledge-brain', new Error('Failed to fetch filtered knowledge'), { detail: error.message });
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getAllRecentKnowledge(
+  userId: string,
+  limit: number = 30
+): Promise<KnowledgeEntry[]> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from('cp_knowledge_entries')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, created_at, updated_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    logError('services/knowledge-brain', new Error('Failed to fetch recent knowledge'), { detail: error.message });
+    return [];
+  }
+
+  return data || [];
+}
+
 export async function getKnowledgeByCategory(
   userId: string,
   category: KnowledgeCategory,

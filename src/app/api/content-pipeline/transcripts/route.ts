@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { transcript, title, speakerProfileId } = body;
+    const { transcript, title, speakerProfileId, source } = body;
 
     if (!transcript || typeof transcript !== 'string' || transcript.trim().length < 100) {
       return NextResponse.json(
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       .from('cp_call_transcripts')
       .insert({
         user_id: session.user.id,
-        source: 'paste',
+        source: source || 'paste',
         title: title || 'Pasted Transcript',
         raw_transcript: transcript.trim(),
         team_id: teamId,

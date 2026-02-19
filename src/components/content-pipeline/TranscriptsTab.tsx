@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Mic, Radio, Clipboard, Upload, Video, Loader2, Plus, Trash2, Link2 } from 'lucide-react';
+import { Mic, Radio, Clipboard, Upload, Video, BookOpen, Loader2, Plus, Trash2, Link2, RotateCcw } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { TranscriptPasteModal } from './TranscriptPasteModal';
 import { ConnectRecorderGuide } from './ConnectRecorderGuide';
+import { TranscriptViewerModal } from './TranscriptViewerModal';
 import type { CallTranscript } from '@/lib/types/content-pipeline';
 
 const SOURCE_ICONS: Record<string, typeof Mic> = {
@@ -14,6 +15,8 @@ const SOURCE_ICONS: Record<string, typeof Mic> = {
   fathom: Video,
   paste: Clipboard,
   upload: Upload,
+  manual: BookOpen,
+  attio: Mic,
 };
 
 interface TranscriptsTabProps {
@@ -26,6 +29,8 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showConnectGuide, setShowConnectGuide] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reprocessingId, setReprocessingId] = useState<string | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchTranscripts = useCallback(async () => {
@@ -67,6 +72,23 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
       }
     };
   }, [transcripts, fetchTranscripts]);
+
+  const handleReprocess = async (id: string) => {
+    if (!confirm('This will delete existing knowledge entries and ideas for this transcript and re-process it. Continue?')) return;
+    setReprocessingId(id);
+    try {
+      const response = await fetch(`/api/content-pipeline/transcripts/${id}/reprocess`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        fetchTranscripts();
+      }
+    } catch {
+      // Silent failure
+    } finally {
+      setReprocessingId(null);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -183,7 +205,12 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
                 return (
                   <tr key={t.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-sm font-medium">
-                      {t.title || 'Untitled'}
+                      <button
+                        onClick={() => setViewingId(t.id)}
+                        className="text-left hover:text-primary hover:underline transition-colors"
+                      >
+                        {t.title || 'Untitled'}
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       {(t as CallTranscript & { speaker_name?: string | null }).speaker_name ? (
@@ -228,18 +255,32 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleDelete(t.id)}
-                        disabled={deletingId === t.id}
-                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400 disabled:opacity-50 transition-colors"
-                        title="Delete transcript"
-                      >
-                        {deletingId === t.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleReprocess(t.id)}
+                          disabled={reprocessingId === t.id || getProcessingStatus(t) === 'processing'}
+                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-950 dark:hover:text-blue-400 disabled:opacity-50 transition-colors"
+                          title="Re-process transcript"
+                        >
+                          {reprocessingId === t.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(t.id)}
+                          disabled={deletingId === t.id}
+                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400 disabled:opacity-50 transition-colors"
+                          title="Delete transcript"
+                        >
+                          {deletingId === t.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -259,6 +300,14 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
       {showConnectGuide && (
         <ConnectRecorderGuide
           onClose={() => setShowConnectGuide(false)}
+        />
+      )}
+
+      {viewingId && (
+        <TranscriptViewerModal
+          transcriptId={viewingId}
+          onClose={() => setViewingId(null)}
+          onUpdated={fetchTranscripts}
         />
       )}
     </div>

@@ -19,20 +19,57 @@ export interface ExtractionResult {
   post_ready_count: number;
 }
 
+interface SpeakerMapEntry {
+  role: 'host' | 'client' | 'guest' | 'unknown';
+  company: string;
+}
+
 export async function extractIdeasFromTranscript(
   transcript: string,
   context?: {
     participants?: string[];
     callDate?: string;
     callTitle?: string;
+    speakerMap?: Record<string, SpeakerMapEntry> | null;
   }
 ): Promise<ExtractionResult> {
+  // Build speaker context for content attribution
+  let speakerContext = '';
+  if (context?.speakerMap && Object.keys(context.speakerMap).length > 0) {
+    const hostEntry = Object.entries(context.speakerMap).find(([, info]) => info.role === 'host');
+    const hostName = hostEntry ? hostEntry[0] : null;
+    const hostCompany = hostEntry?.[1]?.company || null;
+
+    const lines = Object.entries(context.speakerMap)
+      .filter(([, info]) => info.company || info.role !== 'unknown')
+      .map(([name, info]) => {
+        const parts = [`"${name}"`];
+        if (info.role === 'host') parts.push('is the HOST');
+        else if (info.role === 'client') parts.push('is a CLIENT');
+        else if (info.role === 'guest') parts.push('is a GUEST');
+        if (info.company) parts.push(`from ${info.company}`);
+        return `- ${parts.join(' ')}`;
+      });
+
+    if (lines.length > 0) {
+      speakerContext = `
+Speaker Context:
+${lines.join('\n')}
+
+IMPORTANT: Content ideas should be written from ${hostName ? `${hostName}'s` : "the host's"} perspective${hostCompany ? ` (${hostCompany})` : ''}.
+- Do NOT write posts as if the host is the client's company.
+- When a client shares their experience, frame it as "a client told me..." or "I was talking to a [role] who..."
+- The host's insights, frameworks, and expertise are the foundation for content.`;
+    }
+  }
+
   const prompt = `Role: You are a content strategist extracting post-worthy ideas from video transcripts. Your job is to identify every distinct idea that contains enough substance to write a standalone LinkedIn post with real value. You extract aggressively—capture everything needed to write the post, or skip the idea entirely.
 
 Input:
 ${context?.callTitle ? `Title: ${context.callTitle}` : ''}
 ${context?.participants?.length ? `Participants: ${context.participants.join(', ')}` : ''}
 ${context?.callDate ? `Date: ${context.callDate}` : ''}
+${speakerContext}
 
 Task: Extract every idea from this transcript that could become a high-quality LinkedIn post. For each idea, provide:
 

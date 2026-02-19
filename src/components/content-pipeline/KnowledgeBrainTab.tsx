@@ -1,16 +1,24 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Brain, Search, Loader2, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { Brain, Search, Loader2, ChevronDown, ChevronRight, Sparkles, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
-import type { KnowledgeCategory } from '@/lib/types/content-pipeline';
+import { ManualKnowledgeModal } from './ManualKnowledgeModal';
+import type { KnowledgeCategory, KnowledgeSpeaker } from '@/lib/types/content-pipeline';
 
 const CATEGORIES: { value: KnowledgeCategory | ''; label: string }[] = [
   { value: '', label: 'All' },
   { value: 'insight', label: 'Insights' },
   { value: 'question', label: 'Questions' },
   { value: 'product_intel', label: 'Product Intel' },
+];
+
+const SPEAKERS: { value: KnowledgeSpeaker | ''; label: string }[] = [
+  { value: '', label: 'All Speakers' },
+  { value: 'host', label: 'Host' },
+  { value: 'participant', label: 'Participant' },
+  { value: 'unknown', label: 'Unknown' },
 ];
 
 interface KnowledgeEntryResult {
@@ -32,6 +40,8 @@ interface TagCluster {
 export function KnowledgeBrainTab() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<KnowledgeCategory | ''>('');
+  const [speaker, setSpeaker] = useState<KnowledgeSpeaker | ''>('');
+  const [activeTag, setActiveTag] = useState('');
   const [entries, setEntries] = useState<KnowledgeEntryResult[]>([]);
   const [tags, setTags] = useState<{ tag_name: string; usage_count: number }[]>([]);
   const [clusters, setClusters] = useState<TagCluster[]>([]);
@@ -39,6 +49,7 @@ export function KnowledgeBrainTab() {
   const [loading, setLoading] = useState(true);
   const [clustering, setClustering] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
+  const [showManualEntry, setShowManualEntry] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup debounce timer on unmount
@@ -48,12 +59,14 @@ export function KnowledgeBrainTab() {
     };
   }, []);
 
-  const fetchEntries = useCallback(async (searchQuery: string, cat: string) => {
+  const fetchEntries = useCallback(async (searchQuery: string, cat: string, spk: string = '', tag: string = '') => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.append('q', searchQuery);
       if (cat) params.append('category', cat);
+      if (spk) params.append('speaker', spk);
+      if (tag) params.append('tag', tag);
 
       const response = await fetch(`/api/content-pipeline/knowledge?${params}`);
       const data = await response.json();
@@ -94,15 +107,32 @@ export function KnowledgeBrainTab() {
 
   const handleSearchChange = (value: string) => {
     setQuery(value);
+    setActiveTag(''); // Clear tag filter when typing
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => {
-      fetchEntries(value, category);
+      fetchEntries(value, category, speaker, '');
     }, 400);
   };
 
   const handleCategoryChange = (cat: KnowledgeCategory | '') => {
     setCategory(cat);
-    fetchEntries(query, cat);
+    fetchEntries(query, cat, speaker, activeTag);
+  };
+
+  const handleSpeakerChange = (spk: KnowledgeSpeaker | '') => {
+    setSpeaker(spk);
+    fetchEntries(query, category, spk, activeTag);
+  };
+
+  const handleTagClick = (tagName: string) => {
+    if (activeTag === tagName) {
+      setActiveTag('');
+      fetchEntries(query, category, speaker, '');
+    } else {
+      setActiveTag(tagName);
+      setQuery(''); // Clear text search when clicking a tag
+      fetchEntries('', category, speaker, tagName);
+    }
   };
 
   const handleOrganizeTags = async () => {
@@ -163,8 +193,8 @@ export function KnowledgeBrainTab() {
         </div>
       </div>
 
-      {/* Category Filters */}
-      <div className="mb-6 flex gap-2">
+      {/* Filters */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
         {CATEGORIES.map((cat) => (
           <button
             key={cat.value}
@@ -179,6 +209,35 @@ export function KnowledgeBrainTab() {
             {cat.label}
           </button>
         ))}
+
+        <span className="mx-1 text-muted-foreground/30">|</span>
+
+        {SPEAKERS.map((spk) => (
+          <button
+            key={spk.value}
+            onClick={() => handleSpeakerChange(spk.value)}
+            className={cn(
+              'rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
+              speaker === spk.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary hover:bg-secondary/80'
+            )}
+          >
+            {spk.label}
+          </button>
+        ))}
+
+        {activeTag && (
+          <>
+            <span className="mx-1 text-muted-foreground/30">|</span>
+            <button
+              onClick={() => handleTagClick(activeTag)}
+              className="flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+            >
+              {activeTag} &times;
+            </button>
+          </>
+        )}
       </div>
 
       {/* Content */}
@@ -203,18 +262,27 @@ export function KnowledgeBrainTab() {
             <div className="mb-6">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold uppercase text-muted-foreground">Knowledge Topics</h3>
-                <button
-                  onClick={handleOrganizeTags}
-                  disabled={clustering || tags.length < 4}
-                  className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
-                >
-                  {clustering ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3 w-3" />
-                  )}
-                  {clustering ? 'Organizing...' : 'Organize Tags'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowManualEntry(true)}
+                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add Knowledge
+                  </button>
+                  <button
+                    onClick={handleOrganizeTags}
+                    disabled={clustering || tags.length < 4}
+                    className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
+                  >
+                    {clustering ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    {clustering ? 'Organizing...' : 'Organize Tags'}
+                  </button>
+                </div>
               </div>
 
               {/* Cluster Groups */}
@@ -248,7 +316,7 @@ export function KnowledgeBrainTab() {
                           {cluster.tags.map((tag) => (
                             <button
                               key={tag.tag_name}
-                              onClick={() => handleSearchChange(tag.tag_name)}
+                              onClick={() => handleTagClick(tag.tag_name)}
                               className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
                             >
                               {tag.tag_name}
@@ -266,7 +334,7 @@ export function KnowledgeBrainTab() {
                       {unclusteredTags.slice(0, 15).map((tag) => (
                         <button
                           key={tag.tag_name}
-                          onClick={() => handleSearchChange(tag.tag_name)}
+                          onClick={() => handleTagClick(tag.tag_name)}
                           className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
                         >
                           {tag.tag_name}
@@ -282,7 +350,7 @@ export function KnowledgeBrainTab() {
                   {tags.slice(0, 20).map((tag) => (
                     <button
                       key={tag.tag_name}
-                      onClick={() => handleSearchChange(tag.tag_name)}
+                      onClick={() => handleTagClick(tag.tag_name)}
                       className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
                     >
                       {tag.tag_name}
@@ -306,10 +374,34 @@ export function KnowledgeBrainTab() {
           {/* Results */}
           <div className="space-y-3">
             {entries.map((entry) => (
-              <KnowledgeEntryCard key={entry.id} entry={entry} />
+              <KnowledgeEntryCard
+                key={entry.id}
+                entry={entry}
+                onUpdate={(id, updated) => {
+                  setEntries((prev) =>
+                    prev.map((e) => (e.id === id ? { ...e, ...updated } : e))
+                  );
+                  fetchTags();
+                }}
+                onDelete={(id) => {
+                  setEntries((prev) => prev.filter((e) => e.id !== id));
+                  setTotalCount((c) => Math.max(0, c - 1));
+                  fetchTags();
+                }}
+              />
             ))}
           </div>
         </div>
+      )}
+
+      {showManualEntry && (
+        <ManualKnowledgeModal
+          onClose={() => setShowManualEntry(false)}
+          onSuccess={() => {
+            fetchEntries(query, category);
+            fetchTags();
+          }}
+        />
       )}
     </div>
   );

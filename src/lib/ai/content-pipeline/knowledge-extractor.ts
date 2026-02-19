@@ -9,11 +9,17 @@ export interface ExtractedKnowledgeEntry {
   content: string;
   context: string;
   tags: string[];
+  speaker_company?: string;
 }
 
 export interface KnowledgeExtractionResult {
   entries: ExtractedKnowledgeEntry[];
   total_count: number;
+}
+
+export interface SpeakerMapEntry {
+  role: 'host' | 'client' | 'guest' | 'unknown';
+  company: string;
 }
 
 export async function extractKnowledgeFromTranscript(
@@ -23,6 +29,7 @@ export async function extractKnowledgeFromTranscript(
     participants?: string[];
     callDate?: string;
     callTitle?: string;
+    speakerMap?: Record<string, SpeakerMapEntry> | null;
   }
 ): Promise<KnowledgeExtractionResult> {
   const typeGuidance = transcriptType === 'coaching'
@@ -35,6 +42,33 @@ export async function extractKnowledgeFromTranscript(
 - Product Intel: feature requests, gaps mentioned, competitor comparisons, what resonated, what didn't land
 - Insights: anything the sales rep explains well about the approach, methodology, or value proposition`;
 
+  // Build speaker context section if speaker_map is provided
+  let speakerContext = '';
+  if (context?.speakerMap && Object.keys(context.speakerMap).length > 0) {
+    const lines = Object.entries(context.speakerMap)
+      .filter(([, info]) => info.company || info.role !== 'unknown')
+      .map(([name, info]) => {
+        const parts = [`"${name}"`];
+        if (info.role === 'host') parts.push('is the HOST');
+        else if (info.role === 'client') parts.push('is a CLIENT');
+        else if (info.role === 'guest') parts.push('is a GUEST');
+        if (info.company) parts.push(`from ${info.company}`);
+        return `- ${parts.join(' ')}`;
+      });
+
+    if (lines.length > 0) {
+      speakerContext = `
+Speaker Context:
+${lines.join('\n')}
+
+IMPORTANT: When extracting knowledge, attribute insights to the correct person and company.
+- The HOST speaks for their own company. Content from the host should be attributed to the host.
+- CLIENTs and GUESTs speak for their own companies. Do NOT attribute their words to the host's company.
+- When setting the "speaker" field, use "host" for the host's statements and "participant" for clients/guests.
+- When a participant shares a pain point, question, or insight, it reflects THEIR perspective, not the host's.`;
+    }
+  }
+
   const prompt = `Role: You are a knowledge extraction specialist. Your job is to mine transcripts for business-valuable information and organize it into a structured knowledge base.
 
 Input:
@@ -42,6 +76,7 @@ ${context?.callTitle ? `Title: ${context.callTitle}` : ''}
 ${context?.participants?.length ? `Participants: ${context.participants.join(', ')}` : ''}
 ${context?.callDate ? `Date: ${context.callDate}` : ''}
 Transcript Type: ${transcriptType}
+${speakerContext}
 
 ${typeGuidance}
 
