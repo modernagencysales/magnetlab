@@ -282,8 +282,7 @@ export function ThankyouPage({
           </div>
         )}
 
-
-        {/* 6. Survey card - visually prominent (BEFORE video for higher completion) */}
+        {/* 5. Survey card - visually prominent (BEFORE video for higher completion) */}
         {hasQuestions && !qualificationComplete && (
           <div className="relative">
             {/* Background glow */}

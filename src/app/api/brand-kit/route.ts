@@ -81,7 +81,13 @@ export async function POST(request: Request) {
       ...(body.logoUrl !== undefined && { logo_url: body.logoUrl }),
       ...(body.fontFamily !== undefined && { font_family: body.fontFamily }),
       ...(body.fontUrl !== undefined && { font_url: body.fontUrl }),
-      ...(body.websiteUrl !== undefined && { website_url: body.websiteUrl }),
+      ...(body.websiteUrl !== undefined && {
+        website_url: (() => {
+          if (!body.websiteUrl) return null;
+          try { const u = new URL(body.websiteUrl); return ['http:', 'https:'].includes(u.protocol) ? body.websiteUrl : null; }
+          catch { return null; }
+        })(),
+      }),
     };
 
     // In team mode, upsert by team_id; in personal mode, upsert by user_id
