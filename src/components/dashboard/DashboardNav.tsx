@@ -9,7 +9,7 @@ import posthog from 'posthog-js';
 import {
   Magnet, Settings, Plus, LogOut, Globe, Users, UsersRound,
   ChevronDown, PenTool, Menu, X, Sun, Moon,
-  ArrowLeftRight, Home, Brain, Bot, BookOpen,
+  ArrowLeftRight, Home, Brain, Bot, BookOpen, Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +41,7 @@ const mainNav = [
   { href: '/posts', label: 'Posts', icon: PenTool },
   { href: '/automations', label: 'Automations', icon: Bot },
   { href: '/leads', label: 'Leads', icon: Users },
+  { href: '/email/flows', label: 'Email', icon: Mail, activePrefix: '/email' },
   { href: '/team', label: 'Team', icon: UsersRound },
 ];
 
@@ -158,16 +159,18 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
 
 // ─── Nav link ────────────────────────────────────────────
 
-function NavLink({ href, label, icon: Icon, onNavigate }: {
+function NavLink({ href, label, icon: Icon, activePrefix, onNavigate }: {
   href: string;
   label: string;
   icon: typeof Home;
+  activePrefix?: string;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const matchPath = activePrefix || href;
   const isActive = href === '/'
     ? pathname === '/'
-    : pathname === href || pathname.startsWith(href + '/');
+    : pathname === matchPath || pathname.startsWith(matchPath + '/');
 
   // data-tour attribute for product tour targeting
   const tourId = href === '/' ? 'home' : href.slice(1);
