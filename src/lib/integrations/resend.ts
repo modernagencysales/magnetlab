@@ -1,6 +1,7 @@
 // Resend Email Client
 // Used for sending transactional emails including welcome sequences
 
+import crypto from 'crypto';
 import { Resend } from 'resend';
 import { logError } from '@/lib/utils/logger';
 
@@ -150,4 +151,37 @@ export function personalizeEmail(body: string, data: { firstName?: string; email
   }
 
   return personalized;
+}
+
+/**
+ * Generate an HMAC token for unsubscribe link verification
+ */
+export function generateUnsubscribeToken(subscriberId: string): string {
+  return crypto
+    .createHmac('sha256', process.env.NEXTAUTH_SECRET || 'fallback')
+    .update(subscriberId)
+    .digest('hex')
+    .slice(0, 32);
+}
+
+/**
+ * Generate a full unsubscribe URL with HMAC token
+ */
+export function generateUnsubscribeUrl(subscriberId: string): string {
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://magnetlab.app';
+  const token = generateUnsubscribeToken(subscriberId);
+  return `${baseUrl}/api/email/unsubscribe?sid=${subscriberId}&token=${token}`;
+}
+
+/**
+ * Build an HTML footer with unsubscribe link for emails
+ */
+export function buildEmailFooterHtml(subscriberId: string): string {
+  const unsubscribeUrl = generateUnsubscribeUrl(subscriberId);
+  return `
+    <div style="font-size: 12px; color: #999; text-align: center; padding: 20px 0;">
+      <hr style="border: none; border-top: 1px solid #eee; margin: 0 0 16px 0;" />
+      <p style="margin: 0 0 8px 0;">You're receiving this because you subscribed to our emails.</p>
+      <p style="margin: 0;"><a href="${unsubscribeUrl}" style="color: #999; text-decoration: underline;">Unsubscribe</a></p>
+    </div>`;
 }
