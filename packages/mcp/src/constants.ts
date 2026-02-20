@@ -88,16 +88,11 @@ export const CONTENT_TYPES = [
 ] as const
 export type ContentType = (typeof CONTENT_TYPES)[number]
 
-// Knowledge entry categories
+// Knowledge entry categories (must match KnowledgeCategory in content-pipeline.ts)
 export const KNOWLEDGE_CATEGORIES = [
   'insight',
   'question',
-  'pain_point',
-  'success_story',
-  'objection',
-  'framework',
-  'quote',
-  'market_intel',
+  'product_intel',
 ] as const
 export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[number]
 

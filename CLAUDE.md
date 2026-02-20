@@ -9,7 +9,7 @@ MagnetLab is a SaaS platform for creating AI-powered LinkedIn lead magnets -- us
 ## Tech Stack
 
 - **Framework**: Next.js 15 (App Router), React 18.3, TypeScript 5.6+
-- **Database**: Supabase (PostgreSQL), 14 migrations
+- **Database**: Supabase (PostgreSQL), 66 migrations
 - **Auth**: NextAuth v5 beta -- Google OAuth
 - **UI**: Tailwind CSS 3.4 + shadcn/ui + Framer Motion + Recharts
 - **AI**: @anthropic-ai/sdk (Claude) for content generation, style extraction, email sequences + OpenAI (embeddings)
@@ -34,7 +34,7 @@ src/
 │   └── p/[username]/[slug]/ # Public opt-in, thankyou, content pages
 ├── components/            # wizard/, funnel/, content/, dashboard/, ds/, settings/, leads/, ui/
 ├── lib/                   # ai/, integrations/, auth/, types/, utils/, services/, validations/, webhooks/, constants/, api/
-├── trigger/               # Background jobs: create-lead-magnet.ts, email-sequence.ts, process-transcript.ts, autopilot-batch.ts, run-autopilot.ts
+├── trigger/               # Background jobs: create-lead-magnet.ts, email-sequence.ts, process-transcript.ts, autopilot-batch.ts, run-autopilot.ts, backfill-knowledge-types.ts
 ├── middleware.ts          # Auth guard for dashboard routes
 └── __tests__/             # 16 test files: api/, components/, lib/
 ```
@@ -101,27 +101,93 @@ Supabase PostgreSQL, 14 migrations. Tables:
 ### Content Pipeline Tables (cp_ prefix)
 
 - `cp_call_transcripts` -- raw transcripts from Grain, Fireflies, or paste
-- `cp_knowledge_entries` -- extracted insights/questions/intel with vector embeddings
+- `cp_knowledge_entries` -- extracted insights/questions/intel with vector embeddings + knowledge_type, quality_score, topics, specificity, actionability, source_date
 - `cp_knowledge_tags` -- tag usage tracking per user
+- `cp_knowledge_topics` -- auto-discovered topic taxonomy per user (slug, display_name, description, entry_count, avg_quality)
+- `cp_knowledge_corroborations` -- links between entries that corroborate each other (entry_id, corroborated_by, unique constraint)
 - `cp_content_ideas` -- post-worthy ideas extracted from transcripts
 - `cp_pipeline_posts` -- posts in the autopilot pipeline (draft → review → schedule → publish)
 - `cp_posting_slots` -- user's publishing schedule (time slots per day)
 - `cp_post_templates` -- reusable post templates with embeddings
 - `cp_writing_styles` -- user style profiles
 
-RPCs: `cp_match_knowledge_entries()` (pgvector cosine similarity), `cp_decrement_buffer_positions()` (buffer reordering)
+RPCs: `cp_match_knowledge_entries()` (pgvector cosine similarity), `cp_decrement_buffer_positions()` (buffer reordering), `cp_update_topic_stats()` (recalculate topic entry_count + avg_quality), `cp_find_near_duplicates()` (cosine similarity dedup candidates)
 
 ### Content Pipeline API Routes
 
 - `api/webhooks/grain/` -- Grain transcript webhook
 - `api/webhooks/fireflies/` -- Fireflies transcript webhook
 - `api/content-pipeline/transcripts/` -- paste/upload + list transcripts
-- `api/content-pipeline/knowledge/` -- search/browse AI Brain knowledge base
+- `api/content-pipeline/knowledge/` -- search/browse AI Brain knowledge base (supports V2 filters: type, topic, min_quality, since)
+- `api/content-pipeline/knowledge/topics/` -- list auto-discovered topics
+- `api/content-pipeline/knowledge/topics/[slug]/` -- topic detail with entries
+- `api/content-pipeline/knowledge/gaps/` -- gap analysis + readiness assessment
+- `api/content-pipeline/knowledge/recent/` -- recent knowledge digest (last N days)
+- `api/content-pipeline/knowledge/ask/` -- AI Q&A over knowledge base
+- `api/content-pipeline/knowledge/readiness/` -- content readiness assessment (topic + goal)
+- `api/content-pipeline/knowledge/export/` -- export knowledge by topic (structured or markdown)
 - `api/content-pipeline/ideas/` -- list, update, delete ideas; write post from idea
 - `api/content-pipeline/posts/` -- CRUD + polish posts
 - `api/content-pipeline/schedule/slots/` -- posting slots CRUD
 - `api/content-pipeline/schedule/autopilot/` -- trigger autopilot + status
 - `api/content-pipeline/schedule/buffer/` -- approve/reject buffer posts
+
+### Knowledge Data Lake
+
+Extends the AI Brain from 3 basic categories to a rich taxonomy with quality scoring, topic auto-discovery, gap analysis, and readiness assessment.
+
+#### Knowledge Types (8 types)
+
+`how_to`, `insight`, `story`, `question`, `objection`, `mistake`, `decision`, `market_intel`
+
+Each knowledge entry also has: `quality_score` (1-5), `specificity` (boolean), `actionability` (immediately_actionable / contextual / theoretical), `topics` (array of topic slugs), `source_date`.
+
+#### Topic Auto-Discovery
+
+AI normalizes free-form topic suggestions into a canonical taxonomy per user. Topics stored in `cp_knowledge_topics` with auto-computed stats (entry_count, avg_quality).
+
+#### Data Flow
+
+```
+Transcript → process-transcript task
+  → classifyTranscript() → transcript_type
+  → extractKnowledge() → entries with knowledge_type, quality_score, topics, specificity, actionability
+  → normalizeTopics() → canonical topic slugs
+  → upsertTopics() → cp_knowledge_topics
+  → generateEmbedding() → pgvector embeddings
+  → insert cp_knowledge_entries
+  → extractIdeas() → cp_content_ideas
+```
+
+#### Gap Analysis + Readiness
+
+- `analyzeTopicGaps()` identifies coverage gaps across knowledge types per topic
+- `assessContentReadiness()` scores how ready the knowledge base is for content generation
+- Both exposed via `GET /api/content-pipeline/knowledge/gaps`
+
+#### Deduplication
+
+- `findNearDuplicates()` uses `cp_find_near_duplicates()` RPC (cosine similarity > 0.92)
+- `consolidateEntries()` merges duplicates, logs to `cp_knowledge_dedup_log`
+- `runWeeklyConsolidation()` processes all entries older than 24h
+
+#### Backfill
+
+- `backfill-knowledge-types` Trigger.dev task — classifies existing entries without knowledge_type using Claude Haiku
+- Processes in batches of 10, normalizes topics, updates quality scores
+
+#### Key Files
+
+- `src/lib/ai/content-pipeline/topic-normalizer.ts` — AI topic normalization + upsert
+- `src/lib/ai/content-pipeline/knowledge-gap-analyzer.ts` — gap analysis + readiness scoring
+- `src/lib/services/knowledge-brain.ts` — searchKnowledgeV2, topic listing, dedup, gap/readiness
+- `src/lib/types/content-pipeline.ts` — KnowledgeType, TopicEntry, GapAnalysis types
+- `src/trigger/process-transcript.ts` — updated with topic normalization + new fields
+- `src/trigger/backfill-knowledge-types.ts` — backfill task for existing entries
+
+#### MCP Tools (7 new, in @magnetlab/mcp v0.2.0)
+
+`search_knowledge_v2`, `list_knowledge_topics`, `get_topic_detail`, `analyze_knowledge_gaps`, `assess_content_readiness`, `get_recent_knowledge_digest`, `ask_knowledge`
 
 ## System Context
 

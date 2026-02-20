@@ -1,16 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { listKnowledgeTopics, getTopicDetail } from '@/lib/services/knowledge-brain';
 import { analyzeTopicGaps } from '@/lib/ai/content-pipeline/knowledge-gap-analyzer';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const topics = await listKnowledgeTopics(session.user.id, { limit: 50 });
+    const { searchParams } = request.nextUrl;
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
+
+    const topics = await listKnowledgeTopics(session.user.id, { limit });
 
     const gaps = await Promise.all(
       topics.map(async (topic) => {

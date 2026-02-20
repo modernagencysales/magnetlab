@@ -49,6 +49,7 @@ export async function checkForDuplicate(
  * Old entry gets superseded_by pointer to new entry.
  */
 export async function supersedeEntry(
+  userId: string,
   oldEntryId: string,
   newEntryId: string
 ): Promise<void> {
@@ -56,7 +57,8 @@ export async function supersedeEntry(
   const { error } = await supabase
     .from('cp_knowledge_entries')
     .update({ superseded_by: newEntryId })
-    .eq('id', oldEntryId);
+    .eq('id', oldEntryId)
+    .eq('user_id', userId);
 
   if (error) {
     logError('services/knowledge-dedup', new Error('Failed to supersede'), { oldEntryId, newEntryId });
@@ -67,10 +69,22 @@ export async function supersedeEntry(
  * Record a corroboration link between two entries.
  */
 export async function recordCorroboration(
+  userId: string,
   entryId: string,
   corroboratedById: string
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
+
+  // Verify entry belongs to user before recording corroboration
+  const { data: entry } = await supabase
+    .from('cp_knowledge_entries')
+    .select('id')
+    .eq('id', entryId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!entry) return;
+
   const { error } = await supabase
     .from('cp_knowledge_corroborations')
     .upsert(
