@@ -261,7 +261,7 @@ describe('Email Subscribers API', () => {
         { method: 'GET' },
       );
       const response = await GET(request);
-      const json = await response.json();
+      await response.json();
 
       expect(response.status).toBe(200);
 
@@ -367,7 +367,7 @@ describe('Email Subscribers API', () => {
       // second for upsert.
 
       let callCount = 0;
-      mock.client.from.mockImplementation((table: string) => {
+      mock.client.from.mockImplementation((_table: string) => {
         callCount++;
         const existingCheckResult = { data: null, error: null };
         const upsertResult = { data: createdSubscriber, error: null };
@@ -503,7 +503,7 @@ describe('Email Subscribers API', () => {
         headers: { 'Content-Type': 'application/json' },
       });
       const response = await POST(request);
-      const json = await response.json();
+      await response.json();
 
       expect(response.status).toBe(201);
       // The upsert should have received the lowercased email

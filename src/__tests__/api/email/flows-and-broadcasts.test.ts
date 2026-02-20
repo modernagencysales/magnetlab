@@ -4,8 +4,6 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { NextResponse } from 'next/server';
-
 // --- Top-level mocks ---
 
 jest.mock('@/lib/auth', () => ({
