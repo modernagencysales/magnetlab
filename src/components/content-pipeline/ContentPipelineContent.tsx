@@ -8,7 +8,7 @@ import { ProfileSwitcher, useProfileSelection } from './ProfileSwitcher';
 
 // Dynamic imports for code splitting — each tab loads only when selected
 const TranscriptsTab = dynamic(() => import('./TranscriptsTab').then((m) => ({ default: m.TranscriptsTab })), { ssr: false });
-const KnowledgeBrainTab = dynamic(() => import('./KnowledgeBrainTab').then((m) => ({ default: m.KnowledgeBrainTab })), { ssr: false });
+const KnowledgeDashboard = dynamic(() => import('./KnowledgeDashboard').then((m) => ({ default: m.KnowledgeDashboard })), { ssr: false });
 const IdeasTab = dynamic(() => import('./IdeasTab').then((m) => ({ default: m.IdeasTab })), { ssr: false });
 const PostsTab = dynamic(() => import('./PostsTab').then((m) => ({ default: m.PostsTab })), { ssr: false });
 const AutopilotTab = dynamic(() => import('./AutopilotTab').then((m) => ({ default: m.AutopilotTab })), { ssr: false });
@@ -20,7 +20,7 @@ type Tab = 'transcripts' | 'brain' | 'ideas' | 'posts' | 'pipeline' | 'templates
 
 const TABS: { id: Tab; label: string; icon: typeof Mic }[] = [
   { id: 'transcripts', label: 'Transcripts', icon: Mic },
-  { id: 'brain', label: 'AI Brain', icon: Brain },
+  { id: 'brain', label: 'Knowledge', icon: Brain },
   { id: 'ideas', label: 'Ideas', icon: Lightbulb },
   { id: 'posts', label: 'Posts', icon: FileText },
   { id: 'pipeline', label: 'Pipeline', icon: LayoutGrid },
@@ -79,7 +79,7 @@ export function ContentPipelineContent() {
       {/* Tab Content */}
       <Suspense fallback={<TabLoader />}>
         {activeTab === 'transcripts' && <TranscriptsTab profileId={selectedProfileId} />}
-        {activeTab === 'brain' && <KnowledgeBrainTab />}
+        {activeTab === 'brain' && <KnowledgeDashboard />}
         {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
         {activeTab === 'posts' && <PostsTab profileId={selectedProfileId} />}
         {activeTab === 'pipeline' && <PipelineTab />}
