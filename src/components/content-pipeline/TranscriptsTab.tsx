@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Mic, Radio, Clipboard, Upload, Video, BookOpen, Loader2, Plus, Trash2, Link2, RotateCcw } from 'lucide-react';
+import { Mic, Radio, Clipboard, Upload, Video, BookOpen, Loader2, Plus, Trash2, Link2, RotateCcw, Pencil } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { TranscriptPasteModal } from './TranscriptPasteModal';
@@ -265,6 +265,13 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setViewingId(t.id)}
+                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-violet-100 hover:text-violet-600 dark:hover:bg-violet-950 dark:hover:text-violet-400 transition-colors"
+                          title="Edit transcript"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => handleReprocess(t.id)}
                           disabled={reprocessingId === t.id || getProcessingStatus(t) === 'processing'}
