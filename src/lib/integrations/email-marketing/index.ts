@@ -12,10 +12,10 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
 export { type EmailMarketingProvider, type EmailMarketingProviderName } from './types';
 
-const PROVIDERS = ['kit', 'mailerlite', 'mailchimp', 'activecampaign'] as const;
+export const EMAIL_MARKETING_PROVIDERS = ['kit', 'mailerlite', 'mailchimp', 'activecampaign'] as const;
 
 export function isEmailMarketingProvider(s: string): s is EmailMarketingProviderName {
-  return (PROVIDERS as readonly string[]).includes(s);
+  return (EMAIL_MARKETING_PROVIDERS as readonly string[]).includes(s);
 }
 
 export function getEmailMarketingProvider(

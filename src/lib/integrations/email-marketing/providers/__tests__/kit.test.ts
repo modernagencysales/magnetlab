@@ -85,7 +85,7 @@ describe('KitProvider', () => {
       expect(lists).toHaveLength(2);
       expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(mockFetch).toHaveBeenLastCalledWith(
-        'https://api.kit.com/v4/forms?after=cursor-abc',
+        'https://api.kit.com/v4/forms?per_page=100&after=cursor-abc',
         expect.anything()
       );
     });

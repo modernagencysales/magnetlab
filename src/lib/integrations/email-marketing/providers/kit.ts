@@ -41,8 +41,8 @@ export class KitProvider implements EmailMarketingProvider {
 
     do {
       const url = cursor
-        ? `${BASE_URL}/forms?after=${cursor}`
-        : `${BASE_URL}/forms`;
+        ? `${BASE_URL}/forms?per_page=100&after=${cursor}`
+        : `${BASE_URL}/forms?per_page=100`;
 
       const res = await fetch(url, { headers: this.headers() });
       if (!res.ok) {
@@ -66,8 +66,8 @@ export class KitProvider implements EmailMarketingProvider {
 
     do {
       const url = cursor
-        ? `${BASE_URL}/tags?after=${cursor}`
-        : `${BASE_URL}/tags`;
+        ? `${BASE_URL}/tags?per_page=100&after=${cursor}`
+        : `${BASE_URL}/tags?per_page=100`;
 
       const res = await fetch(url, { headers: this.headers() });
       if (!res.ok) {

@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { upsertUserIntegration } from '@/lib/utils/encrypted-storage';
 import { cookies } from 'next/headers';
-import { logError } from '@/lib/utils/logger';
+import { logApiError } from '@/lib/api/errors';
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
-      logError('api/integrations/mailchimp', new Error(errorText), {
+      logApiError('api/integrations/mailchimp', new Error(errorText), {
         step: 'token_exchange',
       });
       return NextResponse.redirect(
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     if (!metadataResponse.ok) {
       const errorText = await metadataResponse.text();
-      logError('api/integrations/mailchimp', new Error(errorText), {
+      logApiError('api/integrations/mailchimp', new Error(errorText), {
         step: 'metadata_fetch',
       });
       return NextResponse.redirect(
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
       new URL('/settings?mailchimp=connected', request.url)
     );
   } catch (error) {
-    logError('api/integrations/mailchimp', error, {
+    logApiError('api/integrations/mailchimp', error, {
       step: 'oauth_callback_error',
     });
     return NextResponse.redirect(

@@ -6,8 +6,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-
-const EMAIL_MARKETING_SERVICES = ['kit', 'mailerlite', 'mailchimp', 'activecampaign'];
+import { EMAIL_MARKETING_PROVIDERS } from '@/lib/integrations/email-marketing';
 
 export async function GET() {
   try {
@@ -23,7 +22,7 @@ export async function GET() {
       .select('service')
       .eq('user_id', session.user.id)
       .eq('is_active', true)
-      .in('service', EMAIL_MARKETING_SERVICES);
+      .in('service', [...EMAIL_MARKETING_PROVIDERS]);
 
     if (error) {
       logApiError('email-marketing/connected', error);

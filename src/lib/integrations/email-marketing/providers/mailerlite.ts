@@ -66,6 +66,8 @@ export class MailerLiteProvider implements EmailMarketingProvider {
   }
 
   async subscribe(params: SubscribeParams): Promise<SubscribeResult> {
+    // MailerLite doesn't support per-subscriber tags via API.
+    // tagId is intentionally ignored. The UI hides tag selection for this provider.
     try {
       const body: Record<string, unknown> = {
         email: params.email,
