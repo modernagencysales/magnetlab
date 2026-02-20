@@ -145,12 +145,12 @@ async function resolveTeamForApiKey(userId: string): Promise<DataScope | null> {
 /**
  * Apply the current data scope to a Supabase query builder.
  * - Team mode: filter by team_id
- * - Personal mode: filter by user_id where team_id is null
+ * - Personal mode: filter by user_id (includes team-owned resources)
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function applyScope(query: any, scope: DataScope): any {
   if (scope.type === 'team' && scope.teamId) {
     return query.eq('team_id', scope.teamId);
   }
-  return query.eq('user_id', scope.userId).is('team_id', null);
+  return query.eq('user_id', scope.userId);
 }
