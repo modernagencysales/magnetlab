@@ -48,7 +48,7 @@ export class KitProvider implements EmailMarketingProvider {
         break;
       }
 
-      const url = cursor
+      const url: string = cursor
         ? `${BASE_URL}/forms?per_page=100&after=${cursor}`
         : `${BASE_URL}/forms?per_page=100`;
 
@@ -79,7 +79,7 @@ export class KitProvider implements EmailMarketingProvider {
         break;
       }
 
-      const url = cursor
+      const url: string = cursor
         ? `${BASE_URL}/tags?per_page=100&after=${cursor}`
         : `${BASE_URL}/tags?per_page=100`;
 
