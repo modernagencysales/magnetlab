@@ -25,7 +25,7 @@ export async function generateTopicSummary(
   const sections: string[] = [];
   for (const [type, entries] of Object.entries(entriesByType)) {
     if (entries.length === 0) continue;
-    const sorted = [...entries].sort((a, b) => (b.quality_score || 3) - (a.quality_score || 3));
+    const sorted = [...entries].sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0));
     const label = type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     sections.push(`## ${label} (${entries.length})`);
     for (const entry of sorted.slice(0, 10)) {

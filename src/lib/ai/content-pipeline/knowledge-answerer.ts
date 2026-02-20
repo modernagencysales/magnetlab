@@ -14,13 +14,15 @@ interface KnowledgeAnswer {
  */
 export async function answerKnowledgeQuestion(
   userId: string,
-  question: string
+  question: string,
+  teamId?: string
 ): Promise<KnowledgeAnswer> {
   const result = await searchKnowledgeV2(userId, {
     query: question,
     limit: 15,
     threshold: 0.5,
     minQuality: 2,
+    teamId,
   });
 
   if (result.entries.length === 0) {

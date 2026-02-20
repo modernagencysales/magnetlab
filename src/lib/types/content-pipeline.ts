@@ -80,16 +80,16 @@ export type KnowledgeType =
   | 'decision'
   | 'market_intel';
 
-export const KNOWLEDGE_TYPE_LABELS: Record<KnowledgeType, string> = {
+export const KNOWLEDGE_TYPE_LABELS: Record<string, string> = {
   how_to: 'How-To',
-  insight: 'Insight',
-  story: 'Story',
-  question: 'Question',
-  objection: 'Objection',
-  mistake: 'Mistake',
-  decision: 'Decision',
+  insight: 'Insights',
+  story: 'Stories',
+  question: 'Questions',
+  objection: 'Objections',
+  mistake: 'Mistakes',
+  decision: 'Decisions',
   market_intel: 'Market Intel',
-};
+} satisfies Record<KnowledgeType, string>;
 
 export type Actionability = 'immediately_actionable' | 'contextual' | 'theoretical';
 

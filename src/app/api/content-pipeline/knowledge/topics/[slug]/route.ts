@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getTopicDetail } from '@/lib/services/knowledge-brain';
+import { getTopicDetail, verifyTeamMembership } from '@/lib/services/knowledge-brain';
 
 export async function GET(
   request: NextRequest,
@@ -14,9 +14,13 @@ export async function GET(
 
     const { slug } = await params;
     const teamId = request.nextUrl.searchParams.get('team_id') || undefined;
-    // TODO: pass teamId to getTopicDetail once team-aware version is implemented
-    void teamId;
-    const detail = await getTopicDetail(session.user.id, slug);
+
+    if (teamId) {
+      const isMember = await verifyTeamMembership(session.user.id, teamId);
+      if (!isMember) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const detail = await getTopicDetail(session.user.id, slug, teamId);
 
     if (!detail.topic) {
       return NextResponse.json({ error: 'Topic not found' }, { status: 404 });

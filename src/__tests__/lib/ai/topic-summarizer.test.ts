@@ -112,7 +112,7 @@ describe('generateTopicSummary', () => {
     expect(medIdx).toBeLessThan(lowIdx);
   });
 
-  it('treats null/undefined quality_score as 3 for sorting', async () => {
+  it('treats null/undefined quality_score as 0 for sorting (bottom)', async () => {
     mockMessagesCreate.mockResolvedValue({
       content: [{ type: 'text', text: 'Summary text' }],
     });
@@ -131,9 +131,9 @@ describe('generateTopicSummary', () => {
     const nullIdx = prompt.indexOf('Null quality');
     const lowIdx = prompt.indexOf('Low quality');
 
-    // 5 > 3 (null default) > 1
-    expect(highIdx).toBeLessThan(nullIdx);
-    expect(nullIdx).toBeLessThan(lowIdx);
+    // 5 > 1 > 0 (null default) — entries without scores go to bottom
+    expect(highIdx).toBeLessThan(lowIdx);
+    expect(lowIdx).toBeLessThan(nullIdx);
   });
 
   it('limits to 10 entries per type in the prompt', async () => {

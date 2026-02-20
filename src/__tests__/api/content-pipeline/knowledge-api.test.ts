@@ -27,6 +27,7 @@ const mockGetTopicDetail = jest.fn();
 const mockGenerateAndCacheTopicSummary = jest.fn();
 const mockGetRecentKnowledgeDigest = jest.fn();
 const mockExportTopicKnowledge = jest.fn();
+const mockVerifyTeamMembership = jest.fn();
 
 jest.mock('@/lib/services/knowledge-brain', () => ({
   listKnowledgeTopics: (...args: unknown[]) => mockListKnowledgeTopics(...args),
@@ -35,6 +36,7 @@ jest.mock('@/lib/services/knowledge-brain', () => ({
   getRecentKnowledgeDigest: (...args: unknown[]) => mockGetRecentKnowledgeDigest(...args),
   exportTopicKnowledge: (...args: unknown[]) => mockExportTopicKnowledge(...args),
   searchKnowledgeV2: jest.fn(),
+  verifyTeamMembership: (...args: unknown[]) => mockVerifyTeamMembership(...args),
 }));
 
 // Mock knowledge-readiness
@@ -61,6 +63,7 @@ function makeRequest(url: string, options?: RequestInit) {
 
 function mockAuthenticated(userId = 'user-123') {
   (auth as jest.Mock).mockResolvedValue({ user: { id: userId } });
+  mockVerifyTeamMembership.mockResolvedValue(true);
 }
 
 function mockUnauthenticated() {
@@ -182,7 +185,7 @@ describe('Knowledge API — Topic detail', () => {
     const data = await res.json();
     expect(data.topic.slug).toBe('sales');
     expect(data.type_breakdown).toEqual({ how_to: 5, insight: 3 });
-    expect(mockGetTopicDetail).toHaveBeenCalledWith('user-123', 'sales');
+    expect(mockGetTopicDetail).toHaveBeenCalledWith('user-123', 'sales', undefined);
   });
 
   it('returns 404 when topic not found', async () => {
@@ -242,7 +245,7 @@ describe('Knowledge API — Topic summary', () => {
     const data = await res.json();
     expect(data.summary).toBe('Sales is about closing deals.');
     expect(data.cached).toBe(false);
-    expect(mockGenerateAndCacheTopicSummary).toHaveBeenCalledWith('user-123', 'sales', false);
+    expect(mockGenerateAndCacheTopicSummary).toHaveBeenCalledWith('user-123', 'sales', false, undefined);
   });
 
   it('passes force=true when query param set', async () => {
@@ -255,7 +258,7 @@ describe('Knowledge API — Topic summary', () => {
     const res = await callPOST('sales', '?force=true');
     expect(res.status).toBe(200);
 
-    expect(mockGenerateAndCacheTopicSummary).toHaveBeenCalledWith('user-123', 'sales', true);
+    expect(mockGenerateAndCacheTopicSummary).toHaveBeenCalledWith('user-123', 'sales', true, undefined);
   });
 
   it('returns 404 when topic not found', async () => {
@@ -308,7 +311,7 @@ describe('Knowledge API — Recent digest', () => {
     expect(data.new_topics).toEqual(['AI Agents']);
 
     // Default 7 days, clamped to min(7, 90) = 7
-    expect(mockGetRecentKnowledgeDigest).toHaveBeenCalledWith('user-123', 7);
+    expect(mockGetRecentKnowledgeDigest).toHaveBeenCalledWith('user-123', 7, undefined);
   });
 
   it('respects custom days param clamped to 90', async () => {
@@ -324,7 +327,7 @@ describe('Knowledge API — Recent digest', () => {
     expect(res.status).toBe(200);
 
     // 120 clamped to 90
-    expect(mockGetRecentKnowledgeDigest).toHaveBeenCalledWith('user-123', 90);
+    expect(mockGetRecentKnowledgeDigest).toHaveBeenCalledWith('user-123', 90, undefined);
   });
 });
 
@@ -393,7 +396,7 @@ describe('Knowledge API — Readiness', () => {
     expect(data.readiness.ready).toBe(true);
     expect(data.readiness.score).toBe(82);
 
-    expect(mockAssessReadiness).toHaveBeenCalledWith('user-123', 'sales', 'lead_magnet');
+    expect(mockAssessReadiness).toHaveBeenCalledWith('user-123', 'sales', 'lead_magnet', undefined);
   });
 
   it('accepts all valid goal values', async () => {

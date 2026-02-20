@@ -23,16 +23,19 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [topicCount, setTopicCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams();
       if (teamId) params.append('team_id', teamId);
 
       const [digestRes, topicsRes] = await Promise.all([
         fetch(`/api/content-pipeline/knowledge/recent?days=7&${params}`),
-        fetch(`/api/content-pipeline/knowledge/topics?limit=1000&${params}`),
+        // We fetch topics to get total count — limit is generous but bounded
+        fetch(`/api/content-pipeline/knowledge/topics?limit=200&${params}`),
       ]);
 
       const digest = await digestRes.json();
@@ -41,7 +44,7 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
       setStats(digest);
       setTopicCount(topics.topics?.length || 0);
     } catch {
-      // Silent failure
+      setError('Failed to load data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -53,6 +56,15 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+        <p className="text-sm text-destructive">{error}</p>
+        <button onClick={() => fetchData()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Retry</button>
       </div>
     );
   }

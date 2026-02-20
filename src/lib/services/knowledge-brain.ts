@@ -11,6 +11,17 @@ import type {
   KnowledgeTopic,
 } from '@/lib/types/content-pipeline';
 
+export async function verifyTeamMembership(userId: string, teamId: string): Promise<boolean> {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('team_members')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('team_id', teamId)
+    .limit(1);
+  return (data !== null && data.length > 0);
+}
+
 export interface SearchKnowledgeResult {
   entries: KnowledgeEntryWithSimilarity[];
   error?: string;
@@ -222,7 +233,8 @@ export async function listKnowledgeTopics(
 
 export async function getTopicDetail(
   userId: string,
-  topicSlug: string
+  topicSlug: string,
+  teamId?: string
 ): Promise<{
   topic: KnowledgeTopic | null;
   type_breakdown: Record<string, number>;
@@ -231,10 +243,13 @@ export async function getTopicDetail(
 }> {
   const supabase = createSupabaseAdminClient();
 
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
+
   const { data: topic } = await supabase
     .from('cp_knowledge_topics')
     .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .eq('slug', topicSlug)
     .single();
 
@@ -243,7 +258,7 @@ export async function getTopicDetail(
   const { data: entries } = await supabase
     .from('cp_knowledge_entries')
     .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .contains('topics', [topicSlug])
     .is('superseded_by', null)
     .order('quality_score', { ascending: false })
@@ -276,7 +291,8 @@ export async function getTopicDetail(
 
 export async function getRecentKnowledgeDigest(
   userId: string,
-  days: number = 7
+  days: number = 7,
+  teamId?: string
 ): Promise<{
   entries_added: number;
   new_topics: string[];
@@ -285,26 +301,28 @@ export async function getRecentKnowledgeDigest(
 }> {
   const supabase = createSupabaseAdminClient();
   const since = new Date(Date.now() - days * 86400000).toISOString();
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
 
   // Count entries added
   const { count: entriesAdded } = await supabase
     .from('cp_knowledge_entries')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .gte('created_at', since);
 
   // New topics
   const { data: newTopics } = await supabase
     .from('cp_knowledge_topics')
     .select('slug, display_name')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .gte('created_at', since);
 
   // Quality 4+ highlights
   const { data: highlights } = await supabase
     .from('cp_knowledge_entries')
     .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, created_at, updated_at')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .gte('created_at', since)
     .gte('quality_score', 4)
     .is('superseded_by', null)
@@ -315,7 +333,7 @@ export async function getRecentKnowledgeDigest(
   const { data: recentEntries } = await supabase
     .from('cp_knowledge_entries')
     .select('topics')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .gte('created_at', since)
     .not('topics', 'eq', '{}');
 
@@ -336,7 +354,7 @@ export async function getRecentKnowledgeDigest(
     const { data: topicNames } = await supabase
       .from('cp_knowledge_topics')
       .select('slug, display_name')
-      .eq('user_id', userId)
+      .eq(scopeFilter, scopeValue)
       .in('slug', topicSlugs.map(t => t[0]));
 
     const nameMap = new Map((topicNames || []).map(t => [t.slug, t.display_name]));
@@ -355,18 +373,21 @@ export async function getRecentKnowledgeDigest(
 
 export async function exportTopicKnowledge(
   userId: string,
-  topicSlug: string
+  topicSlug: string,
+  teamId?: string
 ): Promise<{
   topic: KnowledgeTopic | null;
   entries_by_type: Record<string, KnowledgeEntry[]>;
   total_count: number;
 }> {
   const supabase = createSupabaseAdminClient();
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
 
   const { data: topic } = await supabase
     .from('cp_knowledge_topics')
     .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .eq('slug', topicSlug)
     .single();
 
@@ -375,7 +396,7 @@ export async function exportTopicKnowledge(
   const { data: entries } = await supabase
     .from('cp_knowledge_entries')
     .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, created_at, updated_at')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .contains('topics', [topicSlug])
     .is('superseded_by', null)
     .order('quality_score', { ascending: false });
@@ -395,15 +416,18 @@ export async function exportTopicKnowledge(
 export async function generateAndCacheTopicSummary(
   userId: string,
   topicSlug: string,
-  force: boolean = false
+  force: boolean = false,
+  teamId?: string
 ): Promise<{ summary: string; cached: boolean }> {
   const supabase = createSupabaseAdminClient();
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
 
   // Fetch topic with current summary state
   const { data: topic } = await supabase
     .from('cp_knowledge_topics')
     .select('id, slug, display_name, summary, summary_generated_at, last_seen')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .eq('slug', topicSlug)
     .single();
 
@@ -422,7 +446,7 @@ export async function generateAndCacheTopicSummary(
   const { data: entries } = await supabase
     .from('cp_knowledge_entries')
     .select('content, knowledge_type, quality_score')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .contains('topics', [topicSlug])
     .is('superseded_by', null)
     .order('quality_score', { ascending: false });

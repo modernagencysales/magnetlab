@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { listKnowledgeTopics, getTopicDetail } from '@/lib/services/knowledge-brain';
+import { listKnowledgeTopics, getTopicDetail, verifyTeamMembership } from '@/lib/services/knowledge-brain';
 import { analyzeTopicGaps } from '@/lib/ai/content-pipeline/knowledge-gap-analyzer';
 
 export async function GET(request: NextRequest) {
@@ -14,11 +14,16 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
     const teamId = searchParams.get('team_id') || undefined;
 
+    if (teamId) {
+      const isMember = await verifyTeamMembership(session.user.id, teamId);
+      if (!isMember) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const topics = await listKnowledgeTopics(session.user.id, { teamId, limit });
 
     const gaps = await Promise.all(
       topics.map(async (topic) => {
-        const detail = await getTopicDetail(session.user.id, topic.slug);
+        const detail = await getTopicDetail(session.user.id, topic.slug, teamId);
         return analyzeTopicGaps(
           topic.slug,
           topic.display_name,

@@ -78,6 +78,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
   const [topics, setTopics] = useState<TopicOption[]>([]);
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [clustering, setClustering] = useState(false);
   const [, setTotalCount] = useState(0);
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -93,13 +94,14 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
     searchQuery: string, cat: string, spk: string = '', tag: string = ''
   ) => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.append('q', searchQuery);
       if (cat) params.append('category', cat);
       if (spk) params.append('speaker', spk);
       if (tag) params.append('tag', tag);
-      if (knowledgeType) params.append('knowledge_type', knowledgeType);
+      if (knowledgeType) params.append('type', knowledgeType);
       if (topicSlug) params.append('topic', topicSlug);
       if (minQuality) params.append('min_quality', minQuality);
       if (sinceDate) params.append('since', sinceDate);
@@ -110,7 +112,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
       setEntries(data.entries || []);
       setTotalCount(data.total_count || 0);
     } catch {
-      // Silent
+      setError('Failed to load data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -187,9 +189,15 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
     }
   };
 
-  const handleAdvancedFilterChange = () => {
-    fetchEntries(query, category, speaker, activeTag);
-  };
+  // Trigger re-fetch when V2 advanced filters change
+  const advancedFilterKey = `${knowledgeType}|${topicSlug}|${minQuality}|${sinceDate}`;
+  const prevAdvancedKey = useRef(advancedFilterKey);
+  useEffect(() => {
+    if (prevAdvancedKey.current !== advancedFilterKey) {
+      prevAdvancedKey.current = advancedFilterKey;
+      fetchEntries(query, category, speaker, activeTag);
+    }
+  }, [advancedFilterKey, fetchEntries, query, category, speaker, activeTag]);
 
   const handleOrganizeTags = async () => {
     setClustering(true);
@@ -296,7 +304,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Knowledge Type</label>
               <select
                 value={knowledgeType}
-                onChange={(e) => { setKnowledgeType(e.target.value); handleAdvancedFilterChange(); }}
+                onChange={(e) => { setKnowledgeType(e.target.value); }}
                 className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
               >
                 {KNOWLEDGE_TYPES.map((kt) => (
@@ -308,7 +316,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Topic</label>
               <select
                 value={topicSlug}
-                onChange={(e) => { setTopicSlug(e.target.value); handleAdvancedFilterChange(); }}
+                onChange={(e) => { setTopicSlug(e.target.value); }}
                 className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
               >
                 <option value="">All Topics</option>
@@ -321,7 +329,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Min Quality</label>
               <select
                 value={minQuality}
-                onChange={(e) => { setMinQuality(e.target.value); handleAdvancedFilterChange(); }}
+                onChange={(e) => { setMinQuality(e.target.value); }}
                 className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
               >
                 <option value="">Any</option>
@@ -336,7 +344,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
               <input
                 type="date"
                 value={sinceDate}
-                onChange={(e) => { setSinceDate(e.target.value); handleAdvancedFilterChange(); }}
+                onChange={(e) => { setSinceDate(e.target.value); }}
                 className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
               />
             </div>
@@ -345,7 +353,12 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
       )}
 
       {/* Content */}
-      {loading ? (
+      {error ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+          <p className="text-sm text-destructive">{error}</p>
+          <button onClick={() => fetchEntries(query, category, speaker, activeTag)} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Retry</button>
+        </div>
+      ) : loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>

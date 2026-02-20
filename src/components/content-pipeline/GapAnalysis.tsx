@@ -3,17 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, AlertTriangle, CheckCircle2, XCircle, BarChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const KNOWLEDGE_TYPE_LABELS: Record<string, string> = {
-  how_to: 'How-To',
-  insight: 'Insights',
-  story: 'Stories',
-  question: 'Questions',
-  objection: 'Objections',
-  mistake: 'Mistakes',
-  decision: 'Decisions',
-  market_intel: 'Market Intel',
-};
+import { KNOWLEDGE_TYPE_LABELS } from '@/lib/types/content-pipeline';
 
 const GOALS = [
   { value: 'lead_magnet', label: 'Lead Magnet' },
@@ -43,6 +33,7 @@ interface ReadinessResult {
 export function GapAnalysis({ teamId }: { teamId?: string }) {
   const [gaps, setGaps] = useState<GapData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Readiness state
   const [selectedTopic, setSelectedTopic] = useState('');
@@ -52,6 +43,7 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
 
   const fetchGaps = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ limit: '20' });
       if (teamId) params.append('team_id', teamId);
@@ -59,7 +51,7 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
       const data = await res.json();
       setGaps(data.gaps || []);
     } catch {
-      // Silent
+      setError('Failed to load data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -87,6 +79,15 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+        <p className="text-sm text-destructive">{error}</p>
+        <button onClick={() => fetchGaps()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Retry</button>
       </div>
     );
   }

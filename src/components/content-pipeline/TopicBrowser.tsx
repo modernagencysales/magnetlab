@@ -18,10 +18,12 @@ interface Topic {
 export function TopicBrowser({ teamId }: { teamId?: string }) {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
 
   const fetchTopics = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ limit: '100' });
       if (teamId) params.append('team_id', teamId);
@@ -29,7 +31,7 @@ export function TopicBrowser({ teamId }: { teamId?: string }) {
       const data = await res.json();
       setTopics(data.topics || []);
     } catch {
-      // Silent
+      setError('Failed to load data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -41,6 +43,15 @@ export function TopicBrowser({ teamId }: { teamId?: string }) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+        <p className="text-sm text-destructive">{error}</p>
+        <button onClick={() => fetchTopics()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Retry</button>
       </div>
     );
   }

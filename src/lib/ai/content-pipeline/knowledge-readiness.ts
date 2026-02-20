@@ -20,13 +20,15 @@ const GOAL_THRESHOLDS: Record<ReadinessGoal, { minEntries: number; minTypes: num
 export async function assessReadiness(
   userId: string,
   topic: string,
-  goal: ReadinessGoal
+  goal: ReadinessGoal,
+  teamId?: string
 ): Promise<KnowledgeReadiness> {
   const result = await searchKnowledgeV2(userId, {
     query: topic,
     limit: 50,
     threshold: 0.5,
     minQuality: 2,
+    teamId,
   });
 
   const entries = result.entries;
