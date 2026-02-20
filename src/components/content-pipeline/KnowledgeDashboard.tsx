@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { KnowledgeOverview } from './KnowledgeOverview';
 import { TopicBrowser } from './TopicBrowser';
 import { GapAnalysis } from './GapAnalysis';
+import { KnowledgeSearch } from './KnowledgeSearch';
 
 const SUBTABS = [
   { id: 'overview', label: 'Overview', icon: Brain },
@@ -62,7 +63,7 @@ export function KnowledgeDashboard() {
       {activeTab === 'overview' && <KnowledgeOverview teamId={teamId} />}
       {activeTab === 'topics' && <TopicBrowser teamId={teamId} />}
       {activeTab === 'gaps' && <GapAnalysis teamId={teamId} />}
-      {activeTab === 'search' && <div className="text-muted-foreground text-sm p-8 text-center">Search — coming soon</div>}
+      {activeTab === 'search' && <KnowledgeSearch teamId={teamId} />}
     </div>
   );
 }
