@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Brain, Layers, AlertTriangle, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KnowledgeOverview } from './KnowledgeOverview';
+import { TopicBrowser } from './TopicBrowser';
 
 const SUBTABS = [
   { id: 'overview', label: 'Overview', icon: Brain },
@@ -58,7 +59,7 @@ export function KnowledgeDashboard() {
 
       {/* Content */}
       {activeTab === 'overview' && <KnowledgeOverview teamId={teamId} />}
-      {activeTab === 'topics' && <div className="text-muted-foreground text-sm p-8 text-center">Topics browser — coming soon</div>}
+      {activeTab === 'topics' && <TopicBrowser teamId={teamId} />}
       {activeTab === 'gaps' && <div className="text-muted-foreground text-sm p-8 text-center">Gap analysis — coming soon</div>}
       {activeTab === 'search' && <div className="text-muted-foreground text-sm p-8 text-center">Search — coming soon</div>}
     </div>
