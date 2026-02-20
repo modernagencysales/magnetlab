@@ -213,13 +213,22 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      {(t as CallTranscript & { speaker_name?: string | null }).speaker_name ? (
-                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
-                          {(t as CallTranscript & { speaker_name?: string | null }).speaker_name}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">&mdash;</span>
-                      )}
+                      {(() => {
+                        const ext = t as CallTranscript & { speaker_name?: string | null; speaker_map?: Record<string, { role: string; company?: string | null }> | null };
+                        const speakerName = ext.speaker_name;
+                        // Fall back to host name from speaker_map
+                        const hostFromMap = !speakerName && ext.speaker_map
+                          ? Object.entries(ext.speaker_map).find(([, v]) => v.role === 'host')?.[0]
+                          : null;
+                        const displayName = speakerName || hostFromMap;
+                        return displayName ? (
+                          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                            {displayName}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">&mdash;</span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <span className="flex items-center gap-1.5 text-sm text-muted-foreground">

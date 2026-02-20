@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('cp_call_transcripts')
-      .select('id, source, title, call_date, duration_minutes, transcript_type, ideas_extracted_at, knowledge_extracted_at, team_id, speaker_profile_id, created_at')
+      .select('id, source, title, call_date, duration_minutes, transcript_type, ideas_extracted_at, knowledge_extracted_at, team_id, speaker_profile_id, speaker_map, created_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
