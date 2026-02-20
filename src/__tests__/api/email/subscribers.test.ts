@@ -367,6 +367,7 @@ describe('Email Subscribers API', () => {
       // second for upsert.
 
       let callCount = 0;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       mock.client.from.mockImplementation((_table: string) => {
         callCount++;
         const existingCheckResult = { data: null, error: null };
