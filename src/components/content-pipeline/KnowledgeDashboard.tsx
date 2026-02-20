@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Brain, Layers, AlertTriangle, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KnowledgeOverview } from './KnowledgeOverview';
@@ -20,6 +20,19 @@ type SubtabId = typeof SUBTABS[number]['id'];
 export function KnowledgeDashboard() {
   const [activeTab, setActiveTab] = useState<SubtabId>('overview');
   const [teamId, setTeamId] = useState<string | undefined>();
+  const [userTeamId, setUserTeamId] = useState<string | undefined>();
+
+  useEffect(() => {
+    fetch('/api/teams')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        const firstTeam =
+          data.owned?.[0]?.team_id ?? data.member?.[0]?.team_id ?? undefined;
+        setUserTeamId(firstTeam);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div>
@@ -34,7 +47,28 @@ export function KnowledgeDashboard() {
             <p className="text-sm text-muted-foreground">Your AI-powered knowledge base</p>
           </div>
         </div>
-        {/* Team toggle placeholder — wired in Task 10 */}
+        {userTeamId && (
+          <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-1">
+            <button
+              onClick={() => setTeamId(undefined)}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                !teamId ? 'bg-background shadow-sm' : 'text-muted-foreground'
+              )}
+            >
+              Personal
+            </button>
+            <button
+              onClick={() => setTeamId(userTeamId)}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                teamId ? 'bg-background shadow-sm' : 'text-muted-foreground'
+              )}
+            >
+              Team
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Subtab navigation */}
