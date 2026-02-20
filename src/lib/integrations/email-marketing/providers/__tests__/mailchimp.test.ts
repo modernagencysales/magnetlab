@@ -1,12 +1,10 @@
-/**
- * @jest-environment node
- */
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createHash } from 'crypto';
 import { MailchimpProvider } from '../mailchimp';
 import type { ProviderCredentials } from '../../types';
 
-const mockFetch = global.fetch as jest.Mock;
+global.fetch = vi.fn();
+const mockFetch = global.fetch as ReturnType<typeof vi.fn>;
 
 const credentials: ProviderCredentials = {
   apiKey: 'test-mailchimp-key',

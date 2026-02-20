@@ -1,11 +1,9 @@
-/**
- * @jest-environment node
- */
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MailerLiteProvider } from '../mailerlite';
 import type { ProviderCredentials } from '../../types';
 
-const mockFetch = global.fetch as jest.Mock;
+global.fetch = vi.fn();
+const mockFetch = global.fetch as ReturnType<typeof vi.fn>;
 
 const credentials: ProviderCredentials = {
   apiKey: 'test-mailerlite-api-key',
