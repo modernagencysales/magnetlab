@@ -44,18 +44,25 @@ export const contentPipelineTools: Tool[] = [
   {
     name: 'magnetlab_search_knowledge',
     description:
-      'Semantic search across the AI Brain knowledge base. Uses pgvector embeddings for similarity matching. Filter by category: insight, question, pain_point, success_story, objection, framework, quote, market_intel.',
+      'Search the AI Brain knowledge base. Supports semantic search via query, plus filtering by category, type, topic, quality, and date. All parameters are optional — omit query to browse/filter only.',
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Natural language search query' },
+        query: { type: 'string', description: 'Natural language search query (optional — omit to browse/filter)' },
         category: {
           type: 'string',
           enum: ['insight', 'question', 'pain_point', 'success_story', 'objection', 'framework', 'quote', 'market_intel'],
           description: 'Filter by knowledge category',
         },
+        type: {
+          type: 'string',
+          enum: ['how_to', 'insight', 'story', 'question', 'objection', 'mistake', 'decision', 'market_intel'],
+          description: 'Filter by knowledge type',
+        },
+        topic: { type: 'string', description: 'Filter by topic slug' },
+        min_quality: { type: 'number', description: 'Minimum quality score (1-5)' },
+        since: { type: 'string', description: 'Only entries after this ISO date' },
       },
-      required: ['query'],
     },
   },
   {
@@ -89,6 +96,95 @@ export const contentPipelineTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'magnetlab_ask_knowledge',
+    description:
+      'Ask a natural language question and get an AI-synthesized answer from the knowledge base. Uses RAG to retrieve relevant entries and generate a comprehensive answer.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: 'Natural language question about the knowledge base' },
+      },
+      required: ['question'],
+    },
+  },
+  {
+    name: 'magnetlab_knowledge_gaps',
+    description:
+      'Analyze knowledge gaps across all topics. Returns coverage scores, missing knowledge types, and gap patterns like "asked but not answered" or "theory without proof".',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'magnetlab_knowledge_readiness',
+    description:
+      'Assess whether there is enough knowledge on a topic for a specific goal (lead magnet, blog post, course, SOP, or content week).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'The topic to assess readiness for' },
+        goal: {
+          type: 'string',
+          enum: ['lead_magnet', 'blog_post', 'course', 'sop', 'content_week'],
+          description: 'What the knowledge will be used for',
+        },
+      },
+      required: ['topic', 'goal'],
+    },
+  },
+  {
+    name: 'magnetlab_recent_knowledge',
+    description:
+      'Get a digest of recently extracted knowledge. Shows entries added, new topics, most active topics, and quality 4+ highlights.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        days: { type: 'number', description: 'Number of days to look back (default: 7, max: 90)' },
+      },
+    },
+  },
+  {
+    name: 'magnetlab_export_knowledge',
+    description:
+      'Export knowledge for a topic organized by type (how-to processes, insights, stories, FAQs, objection handling, lessons, decisions, market context).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'Topic slug to export' },
+        format: {
+          type: 'string',
+          enum: ['structured', 'markdown', 'json'],
+          description: 'Export format (default: structured)',
+        },
+      },
+      required: ['topic'],
+    },
+  },
+  {
+    name: 'magnetlab_list_topics',
+    description:
+      'List all knowledge topics with entry counts, average quality, and freshness. Shows what subjects the knowledge base covers.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Max topics to return (default: 50)' },
+      },
+    },
+  },
+  {
+    name: 'magnetlab_topic_detail',
+    description:
+      'Get detailed coverage for a specific topic: type breakdown (how many how-tos, insights, stories, etc.), top entries per type, and corroboration count.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        slug: { type: 'string', description: 'Topic slug' },
+      },
+      required: ['slug'],
     },
   },
 

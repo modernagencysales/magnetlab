@@ -4,6 +4,8 @@ import {
   IDEA_STATUS,
   PIPELINE_POST_STATUS,
   KNOWLEDGE_CATEGORIES,
+  KNOWLEDGE_TYPES,
+  READINESS_GOALS,
   CONTENT_PILLARS,
   CONTENT_TYPES,
   EXTRACT_CONTENT_TYPES,
@@ -14,6 +16,8 @@ const archetypeValues = [...ARCHETYPES] as [string, ...string[]]
 const ideaStatusValues = [...IDEA_STATUS] as [string, ...string[]]
 const postStatusValues = [...PIPELINE_POST_STATUS] as [string, ...string[]]
 const knowledgeCategoryValues = [...KNOWLEDGE_CATEGORIES] as [string, ...string[]]
+const knowledgeTypeValues = [...KNOWLEDGE_TYPES] as [string, ...string[]]
+const readinessGoalValues = [...READINESS_GOALS] as [string, ...string[]]
 const pillarValues = [...CONTENT_PILLARS] as [string, ...string[]]
 const contentTypeValues = [...CONTENT_TYPES] as [string, ...string[]]
 const extractContentTypeValues = [...EXTRACT_CONTENT_TYPES] as [string, ...string[]]
@@ -118,7 +122,28 @@ export const toolSchemas = {
     id: z.string().min(1, 'id is required'),
   }),
   magnetlab_search_knowledge: z.object({
-    query: z.string().min(1, 'query is required'),
+    query: z.string().min(1).optional(),
+    category: z.enum(knowledgeCategoryValues).optional(),
+    type: z.enum(knowledgeTypeValues).optional(),
+    topic: z.string().optional(),
+    min_quality: z.number().int().min(1).max(5).optional(),
+    since: z.string().optional(),
+  }),
+  magnetlab_ask_knowledge: z.object({
+    question: z.string().min(3, 'question must be at least 3 characters'),
+  }),
+  magnetlab_knowledge_readiness: z.object({
+    topic: z.string().min(1, 'topic is required'),
+    goal: z.enum(readinessGoalValues, {
+      message: `goal must be one of: ${READINESS_GOALS.join(', ')}`,
+    }),
+  }),
+  magnetlab_export_knowledge: z.object({
+    topic: z.string().min(1, 'topic is required'),
+    format: z.enum(['structured', 'markdown', 'json'] as [string, ...string[]]).optional(),
+  }),
+  magnetlab_topic_detail: z.object({
+    slug: z.string().min(1, 'slug is required'),
   }),
   magnetlab_get_idea: z.object({
     id: z.string().min(1, 'id is required'),

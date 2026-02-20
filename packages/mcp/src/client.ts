@@ -10,6 +10,8 @@ import type {
   ContentPillar,
   ContentType,
   KnowledgeCategory,
+  KnowledgeType,
+  ReadinessGoal,
   PipelinePostStatus,
   AnalyticsPeriod,
   ExtractContentType,
@@ -489,11 +491,19 @@ export class MagnetLabClient {
     query?: string
     category?: KnowledgeCategory
     view?: 'tags'
+    type?: KnowledgeType
+    topic?: string
+    min_quality?: number
+    since?: string
   }) {
     const searchParams = new URLSearchParams()
     if (params.query) searchParams.set('q', params.query)
     if (params.category) searchParams.set('category', params.category)
     if (params.view) searchParams.set('view', params.view)
+    if (params.type) searchParams.set('type', params.type)
+    if (params.topic) searchParams.set('topic', params.topic)
+    if (params.min_quality) searchParams.set('min_quality', String(params.min_quality))
+    if (params.since) searchParams.set('since', params.since)
     return this.request<{ entries?: unknown[]; tags?: unknown[]; total_count?: number }>(
       'GET',
       `/content-pipeline/knowledge?${searchParams}`
@@ -502,6 +512,58 @@ export class MagnetLabClient {
 
   async getKnowledgeClusters() {
     return this.request<{ clusters: unknown[] }>('GET', `/content-pipeline/knowledge/clusters`)
+  }
+
+  async askKnowledge(params: { question: string }) {
+    return this.request<{ answer: string; sources: unknown[] }>(
+      'POST',
+      `/content-pipeline/knowledge/ask`,
+      params
+    )
+  }
+
+  async getKnowledgeGaps() {
+    return this.request<{ gaps: unknown[] }>('GET', `/content-pipeline/knowledge/gaps`)
+  }
+
+  async getKnowledgeReadiness(params: { topic: string; goal: ReadinessGoal }) {
+    const searchParams = new URLSearchParams({ topic: params.topic, goal: params.goal })
+    return this.request<{ readiness: unknown }>(
+      'GET',
+      `/content-pipeline/knowledge/readiness?${searchParams}`
+    )
+  }
+
+  async getRecentKnowledge(params: { days?: number }) {
+    const searchParams = params.days ? `?days=${params.days}` : ''
+    return this.request<{ digest: unknown }>(
+      'GET',
+      `/content-pipeline/knowledge/recent${searchParams}`
+    )
+  }
+
+  async exportKnowledge(params: { topic: string; format?: string }) {
+    const searchParams = new URLSearchParams({ topic: params.topic })
+    if (params.format) searchParams.set('format', params.format)
+    return this.request<{ export: unknown }>(
+      'GET',
+      `/content-pipeline/knowledge/export?${searchParams}`
+    )
+  }
+
+  async listKnowledgeTopics(params?: { limit?: number }) {
+    const searchParams = params?.limit ? `?limit=${params.limit}` : ''
+    return this.request<{ topics: unknown[] }>(
+      'GET',
+      `/content-pipeline/knowledge/topics${searchParams}`
+    )
+  }
+
+  async getTopicDetail(slug: string) {
+    return this.request<{ topic: unknown }>(
+      'GET',
+      `/content-pipeline/knowledge/topics/${slug}`
+    )
   }
 
   // ============================================================

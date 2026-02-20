@@ -4,6 +4,8 @@ import type {
   ContentPillar,
   ContentType,
   KnowledgeCategory,
+  KnowledgeType,
+  ReadinessGoal,
   PipelinePostStatus,
 } from '../constants.js'
 
@@ -32,8 +34,12 @@ export async function handleContentPipelineTools(
     // Knowledge base
     case 'magnetlab_search_knowledge':
       return client.searchKnowledge({
-        query: args.query as string,
+        query: args.query as string | undefined,
         category: args.category as KnowledgeCategory | undefined,
+        type: args.type as KnowledgeType | undefined,
+        topic: args.topic as string | undefined,
+        min_quality: args.min_quality as number | undefined,
+        since: args.since as string | undefined,
       })
 
     case 'magnetlab_browse_knowledge':
@@ -46,6 +52,37 @@ export async function handleContentPipelineTools(
 
     case 'magnetlab_get_knowledge_clusters':
       return client.getKnowledgeClusters()
+
+    case 'magnetlab_ask_knowledge':
+      return client.askKnowledge({ question: args.question as string })
+
+    case 'magnetlab_knowledge_gaps':
+      return client.getKnowledgeGaps()
+
+    case 'magnetlab_knowledge_readiness':
+      return client.getKnowledgeReadiness({
+        topic: args.topic as string,
+        goal: args.goal as ReadinessGoal,
+      })
+
+    case 'magnetlab_recent_knowledge':
+      return client.getRecentKnowledge({
+        days: args.days as number | undefined,
+      })
+
+    case 'magnetlab_export_knowledge':
+      return client.exportKnowledge({
+        topic: args.topic as string,
+        format: args.format as string | undefined,
+      })
+
+    case 'magnetlab_list_topics':
+      return client.listKnowledgeTopics({
+        limit: args.limit as number | undefined,
+      })
+
+    case 'magnetlab_topic_detail':
+      return client.getTopicDetail(args.slug as string)
 
     // Ideas
     case 'magnetlab_list_ideas':

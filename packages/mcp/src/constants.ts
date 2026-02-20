@@ -101,6 +101,27 @@ export const KNOWLEDGE_CATEGORIES = [
 ] as const
 export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[number]
 
+// Knowledge entry types (Data Lake)
+export const KNOWLEDGE_TYPES = [
+  'how_to',
+  'insight',
+  'story',
+  'question',
+  'objection',
+  'mistake',
+  'decision',
+  'market_intel',
+] as const
+export type KnowledgeType = (typeof KNOWLEDGE_TYPES)[number]
+
+// Knowledge actionability levels
+export const ACTIONABILITY_LEVELS = ['immediately_actionable', 'contextual', 'theoretical'] as const
+export type Actionability = (typeof ACTIONABILITY_LEVELS)[number]
+
+// Knowledge readiness goals
+export const READINESS_GOALS = ['lead_magnet', 'blog_post', 'course', 'sop', 'content_week'] as const
+export type ReadinessGoal = (typeof READINESS_GOALS)[number]
+
 // Transcript sources
 export const TRANSCRIPT_SOURCES = ['paste', 'grain', 'fireflies', 'upload'] as const
 export type TranscriptSource = (typeof TRANSCRIPT_SOURCES)[number]
