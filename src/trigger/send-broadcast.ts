@@ -4,7 +4,7 @@ import {
   personalizeEmail,
   emailBodyToHtml,
   buildEmailFooterHtml,
-  type ResendConfig,
+
 } from "@/lib/integrations/resend";
 import { getSenderInfo, getUserResendConfig } from "@/lib/services/email-sequence-trigger";
 import { createSupabaseAdminClient } from "@/lib/utils/supabase-server";
