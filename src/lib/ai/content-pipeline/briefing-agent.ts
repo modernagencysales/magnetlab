@@ -1,8 +1,19 @@
-import { searchKnowledge } from '@/lib/services/knowledge-brain';
+import { searchKnowledgeV2 } from '@/lib/services/knowledge-brain';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
-import type { ContentBrief, KnowledgeEntryWithSimilarity } from '@/lib/types/content-pipeline';
+import type { ContentBrief, KnowledgeEntryWithSimilarity, KnowledgeType } from '@/lib/types/content-pipeline';
 import { logWarn } from '@/lib/utils/logger';
+
+const KNOWLEDGE_TYPE_LABELS: Record<string, string> = {
+  how_to: 'STEP-BY-STEP PROCESSES',
+  insight: 'KEY INSIGHTS',
+  story: 'REAL STORIES FROM YOUR EXPERIENCE',
+  question: 'QUESTIONS YOUR AUDIENCE ASKS',
+  objection: 'OBJECTIONS YOUR AUDIENCE HAS',
+  mistake: 'MISTAKES TO WARN ABOUT',
+  decision: 'DECISIONS & FRAMEWORKS',
+  market_intel: 'MARKET INTELLIGENCE',
+};
 
 export async function buildContentBrief(
   userId: string,
@@ -14,12 +25,14 @@ export async function buildContentBrief(
     profileId?: string;
   } = {}
 ): Promise<ContentBrief> {
-  const { maxEntries = 15, includeCategories = ['insight', 'question', 'product_intel'], teamId, profileId } = options;
+  const { maxEntries = 15, teamId, profileId } = options;
 
-  // Search knowledge base for relevant entries
-  const searchResult = await searchKnowledge(userId, topic, {
+  // Search knowledge base using V2 with quality filtering
+  const searchResult = await searchKnowledgeV2(userId, {
+    query: topic,
     limit: maxEntries,
-    threshold: 0.6,
+    threshold: 0.5,
+    minQuality: 2,
     teamId,
     profileId,
   });
@@ -28,15 +41,37 @@ export async function buildContentBrief(
     logWarn('ai/briefing', 'Knowledge search error', { error: searchResult.error });
   }
 
-  const allEntries = searchResult.entries;
+  // Sort all entries by quality_score descending
+  const allEntries = [...searchResult.entries].sort(
+    (a, b) => (b.quality_score || 0) - (a.quality_score || 0)
+  );
 
-  // Categorize entries
-  const insights = allEntries.filter((e) => e.category === 'insight' && includeCategories.includes('insight'));
-  const questions = allEntries.filter((e) => e.category === 'question' && includeCategories.includes('question'));
-  const productIntel = allEntries.filter((e) => e.category === 'product_intel' && includeCategories.includes('product_intel'));
+  // Backward-compatible categorization by old category field
+  const insights = allEntries.filter((e) => e.category === 'insight');
+  const questions = allEntries.filter((e) => e.category === 'question');
+  const productIntel = allEntries.filter((e) => e.category === 'product_intel');
 
-  // Compile context string for AI prompts
-  const compiledContext = compileContext(insights, questions, productIntel);
+  // Compile context using V2 grouping by knowledge_type
+  const compiledContext = compileContextV2(allEntries);
+
+  // Compute topic readiness score
+  const uniqueTypes = new Set(
+    allEntries.map((e) => e.knowledge_type || e.category).filter(Boolean)
+  );
+  const avgQuality =
+    allEntries.length > 0
+      ? allEntries.reduce((sum, e) => sum + (e.quality_score || 0), 0) / allEntries.length
+      : 0;
+  const topicReadiness = Math.min(
+    1,
+    (allEntries.length / 15) * 0.5 + (uniqueTypes.size / 5) * 0.3 + (avgQuality / 5) * 0.2
+  );
+
+  // Track top knowledge types from entries
+  const topKnowledgeTypes = [...uniqueTypes].filter(
+    (t): t is KnowledgeType =>
+      ['how_to', 'insight', 'story', 'question', 'objection', 'mistake', 'decision', 'market_intel'].includes(t)
+  );
 
   // Generate suggested angles if we have enough context
   let suggestedAngles: string[] = [];
@@ -51,35 +86,28 @@ export async function buildContentBrief(
     relevantProductIntel: productIntel,
     compiledContext,
     suggestedAngles,
+    topicReadiness,
+    topKnowledgeTypes,
   };
 }
 
-function compileContext(
-  insights: KnowledgeEntryWithSimilarity[],
-  questions: KnowledgeEntryWithSimilarity[],
-  productIntel: KnowledgeEntryWithSimilarity[]
-): string {
+function compileContextV2(entries: KnowledgeEntryWithSimilarity[]): string {
+  const grouped: Record<string, KnowledgeEntryWithSimilarity[]> = {};
+  for (const entry of entries) {
+    const kt = entry.knowledge_type || entry.category;
+    if (!grouped[kt]) grouped[kt] = [];
+    grouped[kt].push(entry);
+  }
+
   const sections: string[] = [];
-
-  if (insights.length > 0) {
-    sections.push('VALIDATED INSIGHTS FROM YOUR CALLS:');
-    for (const entry of insights.slice(0, 8)) {
-      sections.push(`- ${entry.content}${entry.context ? ` (Context: ${entry.context})` : ''}`);
+  for (const [type, typeEntries] of Object.entries(grouped)) {
+    const label = KNOWLEDGE_TYPE_LABELS[type] || type.toUpperCase();
+    sections.push(label + ':');
+    for (const entry of typeEntries.slice(0, 8)) {
+      const qualityTag = (entry.quality_score || 0) >= 4 ? ' [HIGH QUALITY]' : '';
+      sections.push(`- ${entry.content}${entry.context ? ` (Context: ${entry.context})` : ''}${qualityTag}`);
     }
-  }
-
-  if (questions.length > 0) {
-    sections.push('\nQUESTIONS YOUR AUDIENCE ACTUALLY ASKS:');
-    for (const entry of questions.slice(0, 5)) {
-      sections.push(`- ${entry.content}`);
-    }
-  }
-
-  if (productIntel.length > 0) {
-    sections.push('\nPRODUCT/SERVICE INTEL:');
-    for (const entry of productIntel.slice(0, 5)) {
-      sections.push(`- ${entry.content}`);
-    }
+    sections.push('');
   }
 
   return sections.join('\n');

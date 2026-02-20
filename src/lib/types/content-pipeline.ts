@@ -439,6 +439,8 @@ export interface ContentBrief {
   relevantProductIntel: KnowledgeEntryWithSimilarity[];
   compiledContext: string;
   suggestedAngles: string[];
+  topicReadiness?: number;
+  topKnowledgeTypes?: KnowledgeType[];
 }
 
 // ============================================
