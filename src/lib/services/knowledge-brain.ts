@@ -171,7 +171,7 @@ export async function listKnowledgeTopics(
 
   const { data, error } = await supabase
     .from('cp_knowledge_topics')
-    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, created_at')
+    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at')
     .eq('user_id', userId)
     .order('entry_count', { ascending: false })
     .limit(limit);
@@ -197,7 +197,7 @@ export async function getTopicDetail(
 
   const { data: topic } = await supabase
     .from('cp_knowledge_topics')
-    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, created_at')
+    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at')
     .eq('user_id', userId)
     .eq('slug', topicSlug)
     .single();
@@ -329,7 +329,7 @@ export async function exportTopicKnowledge(
 
   const { data: topic } = await supabase
     .from('cp_knowledge_topics')
-    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, created_at')
+    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at')
     .eq('user_id', userId)
     .eq('slug', topicSlug)
     .single();

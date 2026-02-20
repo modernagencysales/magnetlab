@@ -214,6 +214,8 @@ export interface KnowledgeTopic {
   first_seen: string;
   last_seen: string;
   parent_id: string | null;
+  summary?: string | null;
+  summary_generated_at?: string | null;
   created_at: string;
 }
 
