@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { searchKnowledge, getAllRecentKnowledge, getFilteredKnowledge, getKnowledgeTags, searchKnowledgeV2, listKnowledgeTopics, getTopicDetail, getRecentKnowledgeDigest } from '@/lib/services/knowledge-brain';
+import { getAllRecentKnowledge, getFilteredKnowledge, getKnowledgeTags, searchKnowledgeV2 } from '@/lib/services/knowledge-brain';
 import type { KnowledgeCategory, KnowledgeSpeaker, KnowledgeType } from '@/lib/types/content-pipeline';
 
 import { logError } from '@/lib/utils/logger';

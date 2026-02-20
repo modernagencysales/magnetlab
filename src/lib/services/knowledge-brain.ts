@@ -104,8 +104,6 @@ export async function searchKnowledgeV2(
     tags,
     limit = 20,
     threshold = 0.6,
-    teamId,
-    profileId,
   } = options;
 
   const supabase = createSupabaseAdminClient();

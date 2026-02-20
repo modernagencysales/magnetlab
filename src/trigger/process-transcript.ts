@@ -117,7 +117,7 @@ export const processTranscript = task({
         Array.from(allSuggestedTopics),
         knowledgeResult.entries.map(e => e.content).join('\n').slice(0, 2000)
       );
-      const slugs = await upsertTopics(userId, normalized);
+      await upsertTopics(userId, normalized);
       for (const n of normalized) {
         topicSlugsMap.set(n.display_name.toLowerCase(), n.slug);
         topicSlugsMap.set(n.slug, n.slug);

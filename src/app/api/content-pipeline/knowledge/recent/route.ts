@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const digest = await getRecentKnowledgeDigest(session.user.id, Math.min(days, 90));
     return NextResponse.json(digest);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

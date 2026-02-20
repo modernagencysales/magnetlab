@@ -88,7 +88,7 @@ Return JSON array:
 
           processed++;
         }
-      } catch (parseError) {
+      } catch {
         logger.error('Failed to parse backfill response', { batchStart: i });
       }
 
