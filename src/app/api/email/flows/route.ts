@@ -5,7 +5,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getDataScope } from '@/lib/utils/team-context';
+import { requireTeamScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { createFlowSchema } from '@/lib/types/email-system';
 
@@ -21,9 +21,8 @@ export async function GET() {
     }
 
     const supabase = createSupabaseAdminClient();
-    const scope = await getDataScope(session.user.id);
-
-    if (scope.type !== 'team' || !scope.teamId) {
+    const scope = await requireTeamScope(session.user.id);
+    if (!scope?.teamId) {
       return ApiErrors.validationError('No team found for this user');
     }
 
@@ -103,9 +102,8 @@ export async function POST(request: Request) {
     const { name, description, trigger_type, trigger_lead_magnet_id } = parsed.data;
 
     const supabase = createSupabaseAdminClient();
-    const scope = await getDataScope(session.user.id);
-
-    if (scope.type !== 'team' || !scope.teamId) {
+    const scope = await requireTeamScope(session.user.id);
+    if (!scope?.teamId) {
       return ApiErrors.validationError('No team found for this user');
     }
 

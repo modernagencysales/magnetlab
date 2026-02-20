@@ -14,13 +14,13 @@ jest.mock('@/lib/utils/supabase-server', () => ({
 
 // Mock team context
 jest.mock('@/lib/utils/team-context', () => ({
-  getDataScope: jest.fn(),
+  requireTeamScope: jest.fn(),
 }));
 
 import { GET, POST } from '@/app/api/email/subscribers/route';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getDataScope } from '@/lib/utils/team-context';
+import { requireTeamScope } from '@/lib/utils/team-context';
 
 // ---------------------------------------------------------------------------
 // Mock Supabase builder
@@ -156,7 +156,7 @@ describe('Email Subscribers API', () => {
 
     it('returns subscribers list with pagination metadata', async () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
-      (getDataScope as jest.Mock).mockResolvedValue(teamScope());
+      (requireTeamScope as jest.Mock).mockResolvedValue(teamScope());
 
       const subscribers = [
         {
@@ -213,7 +213,7 @@ describe('Email Subscribers API', () => {
 
     it('applies search filter correctly', async () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
-      (getDataScope as jest.Mock).mockResolvedValue(teamScope());
+      (requireTeamScope as jest.Mock).mockResolvedValue(teamScope());
 
       mock.setResult('email_subscribers', {
         data: [],
@@ -248,7 +248,7 @@ describe('Email Subscribers API', () => {
 
     it('applies status filter correctly', async () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
-      (getDataScope as jest.Mock).mockResolvedValue(teamScope());
+      (requireTeamScope as jest.Mock).mockResolvedValue(teamScope());
 
       mock.setResult('email_subscribers', {
         data: [],
@@ -281,7 +281,7 @@ describe('Email Subscribers API', () => {
 
     it('rejects invalid status filter values', async () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
-      (getDataScope as jest.Mock).mockResolvedValue(teamScope());
+      (requireTeamScope as jest.Mock).mockResolvedValue(teamScope());
 
       const request = new Request(
         'http://localhost:3000/api/email/subscribers?status=deleted&page=1&limit=50',
@@ -297,7 +297,7 @@ describe('Email Subscribers API', () => {
 
     it('returns validation error when user has no team', async () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
-      (getDataScope as jest.Mock).mockResolvedValue(noTeamScope());
+      (requireTeamScope as jest.Mock).mockResolvedValue(noTeamScope());
 
       const request = new Request(
         'http://localhost:3000/api/email/subscribers?page=1&limit=10',
@@ -334,7 +334,7 @@ describe('Email Subscribers API', () => {
 
     it('creates a new subscriber with valid data (returns 201)', async () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
-      (getDataScope as jest.Mock).mockResolvedValue(teamScope());
+      (requireTeamScope as jest.Mock).mockResolvedValue(teamScope());
 
       const createdSubscriber = {
         id: 'sub-new',
@@ -411,7 +411,7 @@ describe('Email Subscribers API', () => {
 
     it('rejects invalid email format (returns 400)', async () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
-      (getDataScope as jest.Mock).mockResolvedValue(teamScope());
+      (requireTeamScope as jest.Mock).mockResolvedValue(teamScope());
 
       const request = new Request('http://localhost:3000/api/email/subscribers', {
         method: 'POST',
@@ -428,7 +428,7 @@ describe('Email Subscribers API', () => {
 
     it('rejects missing email (returns 400)', async () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
-      (getDataScope as jest.Mock).mockResolvedValue(teamScope());
+      (requireTeamScope as jest.Mock).mockResolvedValue(teamScope());
 
       const request = new Request('http://localhost:3000/api/email/subscribers', {
         method: 'POST',
@@ -446,7 +446,7 @@ describe('Email Subscribers API', () => {
 
     it('email is lowercased and trimmed by the Zod schema', async () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
-      (getDataScope as jest.Mock).mockResolvedValue(teamScope());
+      (requireTeamScope as jest.Mock).mockResolvedValue(teamScope());
 
       const createdSubscriber = {
         id: 'sub-trimmed',
@@ -514,7 +514,7 @@ describe('Email Subscribers API', () => {
 
     it('returns validation error when user has no team', async () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
-      (getDataScope as jest.Mock).mockResolvedValue(noTeamScope());
+      (requireTeamScope as jest.Mock).mockResolvedValue(noTeamScope());
 
       const request = new Request('http://localhost:3000/api/email/subscribers', {
         method: 'POST',

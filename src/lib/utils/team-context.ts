@@ -62,6 +62,22 @@ export async function getDataScope(userId: string): Promise<DataScope> {
 }
 
 /**
+ * Get team scope, falling back to team ownership/membership lookup if no
+ * team context cookie is set. Use this for features that require a team
+ * (e.g. email system) — it ensures users who own or belong to a team
+ * always resolve to team mode, even without the ml-team-context cookie.
+ * Returns null if the user truly has no team.
+ */
+export async function requireTeamScope(userId: string): Promise<DataScope | null> {
+  const scope = await getDataScope(userId);
+  if (scope.type === 'team' && scope.teamId) return scope;
+
+  // Cookie didn't resolve — try membership lookup (same logic as API key path)
+  const resolved = await resolveTeamForApiKey(userId);
+  return resolved;
+}
+
+/**
  * Resolve team context for an API key user by checking membership tables.
  * Priority: owned team → V2 team_profiles → V1 team_members.
  * Returns null if user has no team membership.

@@ -4,7 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getDataScope } from '@/lib/utils/team-context';
+import { requireTeamScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 
 interface RouteParams {
@@ -26,9 +26,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     }
 
     const supabase = createSupabaseAdminClient();
-    const scope = await getDataScope(session.user.id);
-
-    if (scope.type !== 'team' || !scope.teamId) {
+    const scope = await requireTeamScope(session.user.id);
+    if (!scope?.teamId) {
       return ApiErrors.validationError('No team found for this user');
     }
 

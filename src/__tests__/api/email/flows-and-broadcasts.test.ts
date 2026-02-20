@@ -15,7 +15,7 @@ jest.mock('@/lib/utils/supabase-server', () => ({
 }));
 
 jest.mock('@/lib/utils/team-context', () => ({
-  getDataScope: jest.fn(),
+  requireTeamScope: jest.fn(),
 }));
 
 jest.mock('@trigger.dev/sdk/v3', () => ({
@@ -37,13 +37,13 @@ import { POST as sendBroadcast } from '@/app/api/email/broadcasts/[id]/send/rout
 
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getDataScope } from '@/lib/utils/team-context';
+import { requireTeamScope } from '@/lib/utils/team-context';
 import { tasks } from '@trigger.dev/sdk/v3';
 
 // --- Mock helpers ---
 
 const mockAuth = auth as jest.MockedFunction<typeof auth>;
-const mockGetDataScope = getDataScope as jest.MockedFunction<typeof getDataScope>;
+const mockGetDataScope = requireTeamScope as jest.MockedFunction<typeof requireTeamScope>;
 const mockCreateSupabaseAdminClient = createSupabaseAdminClient as jest.MockedFunction<
   typeof createSupabaseAdminClient
 >;
