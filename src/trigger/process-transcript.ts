@@ -5,6 +5,7 @@ import { extractKnowledgeFromTranscript } from '@/lib/ai/content-pipeline/knowle
 import { extractIdeasFromTranscript } from '@/lib/ai/content-pipeline/content-extractor';
 import { generateEmbedding } from '@/lib/ai/embeddings';
 import { normalizeTopics, upsertTopics } from '@/lib/ai/content-pipeline/topic-normalizer';
+import { checkForDuplicate, supersedeEntry, recordCorroboration } from '@/lib/services/knowledge-dedup';
 
 interface ProcessTranscriptPayload {
   userId: string;
@@ -164,15 +165,73 @@ export const processTranscript = task({
       };
     });
 
-    if (knowledgeInserts.length > 0) {
-      const { error: knowledgeError } = await supabase
-        .from('cp_knowledge_entries')
-        .insert(knowledgeInserts);
+    // Insert entries with dedup checks
+    let supersededCount = 0;
+    let corroboratedCount = 0;
 
-      if (knowledgeError) {
-        logger.error('Failed to insert knowledge entries', {
-          error: knowledgeError.message,
-        });
+    if (knowledgeInserts.length > 0) {
+      const toInsert: typeof knowledgeInserts = [];
+
+      for (const insert of knowledgeInserts) {
+        if (!insert.embedding) {
+          // No embedding = can't dedup, just insert
+          toInsert.push(insert);
+          continue;
+        }
+
+        try {
+          const dedupResult = await checkForDuplicate(
+            userId,
+            JSON.parse(insert.embedding),
+            insert.speaker
+          );
+
+          if (dedupResult.action === 'supersede' && dedupResult.existingEntryId) {
+            // Insert new entry, then supersede old one
+            const { data: inserted } = await supabase
+              .from('cp_knowledge_entries')
+              .insert(insert)
+              .select('id')
+              .single();
+            if (inserted) {
+              await supersedeEntry(userId, dedupResult.existingEntryId, inserted.id);
+              supersededCount++;
+            }
+          } else if (dedupResult.action === 'corroborate' && dedupResult.existingEntryId) {
+            // Insert new entry, then link as corroboration
+            const { data: inserted } = await supabase
+              .from('cp_knowledge_entries')
+              .insert(insert)
+              .select('id')
+              .single();
+            if (inserted) {
+              await recordCorroboration(userId, dedupResult.existingEntryId, inserted.id);
+              corroboratedCount++;
+            }
+          } else {
+            toInsert.push(insert);
+          }
+        } catch {
+          // Dedup check failed — safe to insert anyway
+          toInsert.push(insert);
+        }
+      }
+
+      // Bulk insert remaining non-duplicate entries
+      if (toInsert.length > 0) {
+        const { error: knowledgeError } = await supabase
+          .from('cp_knowledge_entries')
+          .insert(toInsert);
+
+        if (knowledgeError) {
+          logger.error('Failed to insert knowledge entries', {
+            error: knowledgeError.message,
+          });
+        }
+      }
+
+      if (supersededCount > 0 || corroboratedCount > 0) {
+        logger.info('Dedup results', { supersededCount, corroboratedCount, newInserts: toInsert.length });
       }
     }
 

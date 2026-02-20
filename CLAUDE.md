@@ -111,7 +111,7 @@ Supabase PostgreSQL, 14 migrations. Tables:
 - `cp_post_templates` -- reusable post templates with embeddings
 - `cp_writing_styles` -- user style profiles
 
-RPCs: `cp_match_knowledge_entries()` (pgvector cosine similarity), `cp_decrement_buffer_positions()` (buffer reordering), `cp_update_topic_stats()` (recalculate topic entry_count + avg_quality), `cp_find_near_duplicates()` (cosine similarity dedup candidates)
+RPCs: `cp_match_knowledge_entries()` (pgvector cosine similarity), `cp_match_knowledge_entries_v2()` (v2 with type/topic/quality/since filters), `cp_decrement_buffer_positions()` (buffer reordering), `cp_update_topic_stats()` (recalculate topic entry_count + avg_quality)
 
 ### Content Pipeline API Routes
 

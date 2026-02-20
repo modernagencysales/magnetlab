@@ -67,26 +67,41 @@ Return JSON array:
           suggested_topics: string[];
         }>>(text);
 
+        const VALID_TYPES = ['how_to', 'insight', 'story', 'question', 'objection', 'mistake', 'decision', 'market_intel'];
+        const VALID_ACTIONABILITY = ['immediately_actionable', 'contextual', 'theoretical'];
+
         for (const cls of classifications) {
           const entry = batch[cls.index];
           if (!entry) continue;
 
+          // Validate AI output against DB constraints
+          if (!VALID_TYPES.includes(cls.knowledge_type)) {
+            logger.warn('Invalid knowledge_type from AI, skipping', { index: cls.index, type: cls.knowledge_type });
+            continue;
+          }
+          const qualityScore = Math.min(5, Math.max(1, Math.round(cls.quality_score || 3)));
+          const actionability = VALID_ACTIONABILITY.includes(cls.actionability) ? cls.actionability : 'contextual';
+
           // Normalize and upsert topics
-          const normalized = await normalizeTopics(userId, cls.suggested_topics, entry.content);
+          const normalized = await normalizeTopics(userId, cls.suggested_topics || [], entry.content);
           const slugs = await upsertTopics(userId, normalized);
 
-          await supabase
+          const { error: updateError } = await supabase
             .from('cp_knowledge_entries')
             .update({
               knowledge_type: cls.knowledge_type,
-              quality_score: cls.quality_score,
-              specificity: cls.specificity,
-              actionability: cls.actionability,
+              quality_score: qualityScore,
+              specificity: cls.specificity ?? false,
+              actionability,
               topics: slugs,
             })
             .eq('id', entry.id);
 
-          processed++;
+          if (updateError) {
+            logger.warn('Failed to update entry', { entryId: entry.id, error: updateError.message });
+          } else {
+            processed++;
+          }
         }
       } catch {
         logger.error('Failed to parse backfill response', { batchStart: i });

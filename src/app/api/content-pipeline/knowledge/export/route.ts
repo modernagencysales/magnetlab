@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getTopicDetail } from '@/lib/services/knowledge-brain';
+import { exportTopicKnowledge } from '@/lib/services/knowledge-brain';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,28 +17,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'topic parameter is required' }, { status: 400 });
     }
 
-    const detail = await getTopicDetail(session.user.id, topic);
+    const detail = await exportTopicKnowledge(session.user.id, topic);
+
+    if (!detail.topic) {
+      return NextResponse.json({ error: 'Topic not found' }, { status: 404 });
+    }
 
     if (format === 'markdown') {
-      const lines: string[] = [`# ${detail.topic?.display_name || topic}\n`];
-      for (const [type, entries] of Object.entries(detail.top_entries)) {
+      const lines: string[] = [`# ${detail.topic.display_name}\n`];
+      for (const [type, entries] of Object.entries(detail.entries_by_type)) {
         if (entries.length === 0) continue;
-        lines.push(`## ${type} (${detail.type_breakdown[type] || entries.length})\n`);
+        lines.push(`## ${type} (${entries.length})\n`);
         for (const entry of entries) {
           lines.push(`- ${entry.content}\n`);
         }
       }
-      return NextResponse.json({ export: lines.join('\n'), format: 'markdown' });
+      return NextResponse.json({ export: lines.join('\n'), format: 'markdown', total_count: detail.total_count });
     }
-
-    const totalEntries = Object.values(detail.type_breakdown).reduce((s, n) => s + n, 0);
 
     return NextResponse.json({
       export: {
         topic: detail.topic,
-        type_breakdown: detail.type_breakdown,
-        top_entries: detail.top_entries,
-        entry_count: totalEntries,
+        entries_by_type: detail.entries_by_type,
+        total_count: detail.total_count,
       },
       format: 'structured',
     });

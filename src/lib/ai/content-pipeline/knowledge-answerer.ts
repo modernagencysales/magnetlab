@@ -1,5 +1,5 @@
 import { getAnthropicClient } from './anthropic-client';
-import { CLAUDE_SONNET_MODEL } from './model-config';
+import { CLAUDE_HAIKU_MODEL } from './model-config';
 import { searchKnowledgeV2 } from '@/lib/services/knowledge-brain';
 import { logError } from '@/lib/utils/logger';
 
@@ -37,7 +37,7 @@ export async function answerKnowledgeQuestion(
   try {
     const client = getAnthropicClient();
     const response = await client.messages.create({
-      model: CLAUDE_SONNET_MODEL,
+      model: CLAUDE_HAIKU_MODEL,
       max_tokens: 1500,
       messages: [{
         role: 'user',

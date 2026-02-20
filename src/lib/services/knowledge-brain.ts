@@ -157,7 +157,9 @@ export async function searchKnowledgeV2(
     return { entries: [], error: error.message };
   }
 
-  return { entries: (data || []) as KnowledgeEntryWithSimilarity[] };
+  // Browse path has no similarity score — add default 0
+  const entries = (data || []).map(e => ({ ...e, similarity: 0 })) as KnowledgeEntryWithSimilarity[];
+  return { entries };
 }
 
 export async function listKnowledgeTopics(
@@ -315,6 +317,45 @@ export async function getRecentKnowledgeDigest(
   };
 }
 
+export async function exportTopicKnowledge(
+  userId: string,
+  topicSlug: string
+): Promise<{
+  topic: KnowledgeTopic | null;
+  entries_by_type: Record<string, KnowledgeEntry[]>;
+  total_count: number;
+}> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data: topic } = await supabase
+    .from('cp_knowledge_topics')
+    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, created_at')
+    .eq('user_id', userId)
+    .eq('slug', topicSlug)
+    .single();
+
+  if (!topic) return { topic: null, entries_by_type: {}, total_count: 0 };
+
+  const { data: entries } = await supabase
+    .from('cp_knowledge_entries')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, created_at, updated_at')
+    .eq('user_id', userId)
+    .contains('topics', [topicSlug])
+    .is('superseded_by', null)
+    .order('quality_score', { ascending: false });
+
+  const allEntries = (entries || []) as KnowledgeEntry[];
+  const entries_by_type: Record<string, KnowledgeEntry[]> = {};
+
+  for (const entry of allEntries) {
+    const kt = entry.knowledge_type || 'unknown';
+    if (!entries_by_type[kt]) entries_by_type[kt] = [];
+    entries_by_type[kt].push(entry);
+  }
+
+  return { topic: topic as KnowledgeTopic, entries_by_type, total_count: allEntries.length };
+}
+
 export async function getRelevantContext(
   userId: string,
   topic: string,
@@ -341,8 +382,9 @@ export async function getFilteredKnowledge(
 
   let query = supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, created_at, updated_at')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, created_at, updated_at')
     .eq('user_id', userId)
+    .is('superseded_by', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -374,8 +416,9 @@ export async function getAllRecentKnowledge(
 
   const { data, error } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, created_at, updated_at')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, created_at, updated_at')
     .eq('user_id', userId)
+    .is('superseded_by', null)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -396,9 +439,10 @@ export async function getKnowledgeByCategory(
 
   const { data, error } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, created_at, updated_at')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, created_at, updated_at')
     .eq('user_id', userId)
     .eq('category', category)
+    .is('superseded_by', null)
     .order('created_at', { ascending: false })
     .limit(limit);
 
