@@ -8,6 +8,7 @@ import type {
 } from '../types';
 
 const BASE_URL = 'https://connect.mailerlite.com/api';
+const MAX_PAGES = 50;
 
 export class MailerLiteProvider implements EmailMarketingProvider {
   private apiKey: string;
@@ -28,6 +29,7 @@ export class MailerLiteProvider implements EmailMarketingProvider {
     try {
       const res = await fetch(`${BASE_URL}/groups?limit=1`, {
         headers: this.headers(),
+        signal: AbortSignal.timeout(10_000),
       });
       return res.ok;
     } catch {
@@ -39,10 +41,17 @@ export class MailerLiteProvider implements EmailMarketingProvider {
     const lists: EmailMarketingList[] = [];
     let page = 1;
     let lastPage = 1;
+    let pages = 0;
 
     do {
+      if (++pages > MAX_PAGES) {
+        console.warn('[mailerlite] getLists pagination exceeded max pages');
+        break;
+      }
+
       const res = await fetch(`${BASE_URL}/groups?limit=50&page=${page}`, {
         headers: this.headers(),
+        signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) {
         throw new Error(`MailerLite API error: ${res.status} ${res.statusText}`);
@@ -82,6 +91,7 @@ export class MailerLiteProvider implements EmailMarketingProvider {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(10_000),
       });
 
       if (!res.ok) {

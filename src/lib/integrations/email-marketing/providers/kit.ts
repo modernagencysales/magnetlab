@@ -8,6 +8,7 @@ import type {
 } from '../types';
 
 const BASE_URL = 'https://api.kit.com/v4';
+const MAX_PAGES = 50;
 
 export class KitProvider implements EmailMarketingProvider {
   private apiKey: string;
@@ -28,6 +29,7 @@ export class KitProvider implements EmailMarketingProvider {
     try {
       const res = await fetch(`${BASE_URL}/forms?per_page=1`, {
         headers: this.headers(),
+        signal: AbortSignal.timeout(10_000),
       });
       return res.ok;
     } catch {
@@ -38,13 +40,19 @@ export class KitProvider implements EmailMarketingProvider {
   async getLists(): Promise<EmailMarketingList[]> {
     const lists: EmailMarketingList[] = [];
     let cursor: string | null = null;
+    let pages = 0;
 
     do {
+      if (++pages > MAX_PAGES) {
+        console.warn('[kit] getLists pagination exceeded max pages');
+        break;
+      }
+
       const url = cursor
         ? `${BASE_URL}/forms?per_page=100&after=${cursor}`
         : `${BASE_URL}/forms?per_page=100`;
 
-      const res = await fetch(url, { headers: this.headers() });
+      const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(10_000) });
       if (!res.ok) {
         throw new Error(`Kit API error: ${res.status} ${res.statusText}`);
       }
@@ -63,13 +71,19 @@ export class KitProvider implements EmailMarketingProvider {
   async getTags(): Promise<EmailMarketingTag[]> {
     const tags: EmailMarketingTag[] = [];
     let cursor: string | null = null;
+    let pages = 0;
 
     do {
+      if (++pages > MAX_PAGES) {
+        console.warn('[kit] getTags pagination exceeded max pages');
+        break;
+      }
+
       const url = cursor
         ? `${BASE_URL}/tags?per_page=100&after=${cursor}`
         : `${BASE_URL}/tags?per_page=100`;
 
-      const res = await fetch(url, { headers: this.headers() });
+      const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(10_000) });
       if (!res.ok) {
         throw new Error(`Kit API error: ${res.status} ${res.statusText}`);
       }
@@ -97,6 +111,7 @@ export class KitProvider implements EmailMarketingProvider {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(10_000),
       });
 
       if (!res.ok) {
@@ -113,6 +128,7 @@ export class KitProvider implements EmailMarketingProvider {
           method: 'POST',
           headers: this.headers(),
           body: JSON.stringify({ email_address: params.email }),
+          signal: AbortSignal.timeout(10_000),
         });
 
         if (!tagRes.ok) {

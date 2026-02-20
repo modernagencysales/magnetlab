@@ -125,8 +125,8 @@ describe('MailchimpProvider', () => {
 
       const tags = await provider().getTags('list-abc');
       expect(tags).toEqual([
-        { id: '1', name: 'VIP' },
-        { id: '2', name: 'Lead' },
+        { id: 'VIP', name: 'VIP' },
+        { id: 'Lead', name: 'Lead' },
       ]);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://us21.api.mailchimp.com/3.0/lists/list-abc/tag-search',

@@ -8,6 +8,8 @@ import type {
   SubscribeResult,
 } from '../types';
 
+const MAX_PAGES = 50;
+
 export class MailchimpProvider implements EmailMarketingProvider {
   private apiKey: string;
   private serverPrefix: string;
@@ -16,6 +18,9 @@ export class MailchimpProvider implements EmailMarketingProvider {
   constructor(credentials: ProviderCredentials) {
     this.apiKey = credentials.apiKey;
     this.serverPrefix = credentials.metadata?.server_prefix ?? '';
+    if (this.serverPrefix && !/^[a-z]{2}\d+$/.test(this.serverPrefix)) {
+      throw new Error('Invalid Mailchimp server prefix');
+    }
     this.baseUrl = `https://${this.serverPrefix}.api.mailchimp.com/3.0`;
   }
 
@@ -35,6 +40,7 @@ export class MailchimpProvider implements EmailMarketingProvider {
     try {
       const res = await fetch(`${this.baseUrl}/lists?count=1`, {
         headers: this.headers(),
+        signal: AbortSignal.timeout(10_000),
       });
       return res.ok;
     } catch {
@@ -46,10 +52,17 @@ export class MailchimpProvider implements EmailMarketingProvider {
     const lists: EmailMarketingList[] = [];
     let offset = 0;
     let totalItems = 0;
+    let pages = 0;
 
     do {
+      if (++pages > MAX_PAGES) {
+        console.warn('[mailchimp] getLists pagination exceeded max pages');
+        break;
+      }
+
       const res = await fetch(`${this.baseUrl}/lists?count=100&offset=${offset}`, {
         headers: this.headers(),
+        signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) {
         throw new Error(`Mailchimp API error: ${res.status} ${res.statusText}`);
@@ -75,6 +88,7 @@ export class MailchimpProvider implements EmailMarketingProvider {
 
     const res = await fetch(`${this.baseUrl}/lists/${listId}/tag-search`, {
       headers: this.headers(),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       throw new Error(`Mailchimp API error: ${res.status} ${res.statusText}`);
@@ -82,7 +96,7 @@ export class MailchimpProvider implements EmailMarketingProvider {
 
     const data = await res.json();
     return (data.tags ?? []).map((tag: { id: number; name: string }) => ({
-      id: String(tag.id),
+      id: tag.name,  // Mailchimp tag API uses names, not numeric IDs
       name: tag.name,
     }));
   }
@@ -105,6 +119,7 @@ export class MailchimpProvider implements EmailMarketingProvider {
         method: 'PUT',
         headers: this.headers(),
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(10_000),
       });
 
       if (!res.ok) {
@@ -125,6 +140,7 @@ export class MailchimpProvider implements EmailMarketingProvider {
             body: JSON.stringify({
               tags: [{ name: params.tagId, status: 'active' }],
             }),
+            signal: AbortSignal.timeout(10_000),
           }
         );
 

@@ -7,6 +7,8 @@ import type {
   SubscribeResult,
 } from '../types';
 
+const MAX_PAGES = 50;
+
 export class ActiveCampaignProvider implements EmailMarketingProvider {
   private apiKey: string;
   private baseUrl: string;
@@ -14,6 +16,9 @@ export class ActiveCampaignProvider implements EmailMarketingProvider {
   constructor(credentials: ProviderCredentials) {
     this.apiKey = credentials.apiKey;
     const rawBaseUrl = credentials.metadata?.base_url ?? '';
+    if (rawBaseUrl && !/^https:\/\/[\w-]+\.api-us1\.com\/?$/i.test(rawBaseUrl)) {
+      throw new Error('Invalid ActiveCampaign API URL. Expected format: https://<account>.api-us1.com');
+    }
     // Ensure base URL doesn't have trailing slash
     this.baseUrl = `${rawBaseUrl.replace(/\/$/, '')}/api/3`;
   }
@@ -30,6 +35,7 @@ export class ActiveCampaignProvider implements EmailMarketingProvider {
     try {
       const res = await fetch(`${this.baseUrl}/lists?limit=1`, {
         headers: this.headers(),
+        signal: AbortSignal.timeout(10_000),
       });
       return res.ok;
     } catch {
@@ -41,10 +47,17 @@ export class ActiveCampaignProvider implements EmailMarketingProvider {
     const lists: EmailMarketingList[] = [];
     let offset = 0;
     let total = 0;
+    let pages = 0;
 
     do {
+      if (++pages > MAX_PAGES) {
+        console.warn('[activecampaign] getLists pagination exceeded max pages');
+        break;
+      }
+
       const res = await fetch(`${this.baseUrl}/lists?limit=100&offset=${offset}`, {
         headers: this.headers(),
+        signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) {
         throw new Error(`ActiveCampaign API error: ${res.status} ${res.statusText}`);
@@ -67,10 +80,17 @@ export class ActiveCampaignProvider implements EmailMarketingProvider {
     const tags: EmailMarketingTag[] = [];
     let offset = 0;
     let total = 0;
+    let pages = 0;
 
     do {
+      if (++pages > MAX_PAGES) {
+        console.warn('[activecampaign] getTags pagination exceeded max pages');
+        break;
+      }
+
       const res = await fetch(`${this.baseUrl}/tags?limit=100&offset=${offset}`, {
         headers: this.headers(),
+        signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) {
         throw new Error(`ActiveCampaign API error: ${res.status} ${res.statusText}`);
@@ -106,13 +126,14 @@ export class ActiveCampaignProvider implements EmailMarketingProvider {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify(contactBody),
+        signal: AbortSignal.timeout(10_000),
       });
 
       if (createRes.status === 422) {
         // Duplicate contact — search for existing
         const searchRes = await fetch(
           `${this.baseUrl}/contacts?email=${encodeURIComponent(params.email)}`,
-          { headers: this.headers() }
+          { headers: this.headers(), signal: AbortSignal.timeout(10_000) }
         );
 
         if (!searchRes.ok) {
@@ -154,6 +175,7 @@ export class ActiveCampaignProvider implements EmailMarketingProvider {
             status: 1,
           },
         }),
+        signal: AbortSignal.timeout(10_000),
       });
 
       if (!listRes.ok) {
@@ -175,6 +197,7 @@ export class ActiveCampaignProvider implements EmailMarketingProvider {
               tag: params.tagId,
             },
           }),
+          signal: AbortSignal.timeout(10_000),
         });
 
         if (!tagRes.ok) {

@@ -30,6 +30,17 @@ export async function POST(request: NextRequest) {
       return ApiErrors.validationError('API key is required');
     }
 
+    // Validate ActiveCampaign base_url before instantiating provider
+    if (provider === 'activecampaign') {
+      const baseUrl = metadata?.base_url;
+      if (!baseUrl || !/^https:\/\/[\w-]+\.api-us1\.com\/?$/i.test(baseUrl)) {
+        return NextResponse.json(
+          { error: 'Invalid API URL. Expected format: https://<account>.api-us1.com' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Validate credentials against the provider before saving
     const providerInstance = getEmailMarketingProvider(provider, {
       apiKey: api_key,

@@ -44,6 +44,8 @@ export async function syncLeadToEmailProviders(
   funnelPageId: string,
   lead: { email: string; name?: string | null }
 ): Promise<void> {
+  // Admin client required: this runs in public lead capture context (no auth session).
+  // RLS on funnel_integrations ensures only the funnel owner can create/modify rows.
   const supabase = createSupabaseAdminClient();
 
   const { data: mappings } = await supabase

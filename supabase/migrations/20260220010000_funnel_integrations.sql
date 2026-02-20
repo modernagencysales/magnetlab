@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS funnel_integrations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   funnel_page_id UUID NOT NULL REFERENCES funnel_pages(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   provider TEXT NOT NULL CHECK (provider IN ('kit', 'mailerlite', 'mailchimp', 'activecampaign')),
   list_id TEXT NOT NULL,
   list_name TEXT,
