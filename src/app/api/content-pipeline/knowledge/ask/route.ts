@@ -11,12 +11,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { question } = body;
+    const { question, team_id: teamId } = body;
 
     if (!question || typeof question !== 'string' || question.length < 3) {
       return NextResponse.json({ error: 'Question must be at least 3 characters' }, { status: 400 });
     }
 
+    // TODO: pass teamId to answerKnowledgeQuestion once team-aware version is implemented
+    void teamId;
     const result = await answerKnowledgeQuestion(session.user.id, question);
     return NextResponse.json(result);
   } catch (error) {

@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const topic = searchParams.get('topic');
     const format = searchParams.get('format') || 'structured';
+    const teamId = searchParams.get('team_id') || undefined;
+    // TODO: pass teamId to exportTopicKnowledge once team-aware version is implemented
+    void teamId;
 
     if (!topic) {
       return NextResponse.json({ error: 'topic parameter is required' }, { status: 400 });

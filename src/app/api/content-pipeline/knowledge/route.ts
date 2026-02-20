@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     const topicSlug = searchParams.get('topic');
     const minQuality = searchParams.get('min_quality') ? parseInt(searchParams.get('min_quality')!, 10) : undefined;
     const since = searchParams.get('since');
+    const teamId = searchParams.get('team_id') || undefined;
 
     // Tags endpoint
     if (view === 'tags') {
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
         tags: tag ? [tag] : undefined,
         limit,
         threshold: 0.6,
+        teamId,
       });
       if (result.error) {
         return NextResponse.json({ error: result.error }, { status: 500 });

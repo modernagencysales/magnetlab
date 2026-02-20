@@ -105,6 +105,8 @@ export async function searchKnowledgeV2(
     tags,
     limit = 20,
     threshold = 0.6,
+    teamId,
+    profileId,
   } = options;
 
   const supabase = createSupabaseAdminClient();
@@ -112,16 +114,31 @@ export async function searchKnowledgeV2(
   // Semantic search path
   if (query) {
     const queryEmbedding = await generateEmbedding(query);
-    const { data, error } = await supabase.rpc('cp_match_knowledge_entries_v2', {
-      query_embedding: JSON.stringify(queryEmbedding),
-      p_user_id: userId,
-      threshold,
-      match_count: limit,
-      p_knowledge_type: knowledgeType || null,
-      p_topic_slug: topicSlug || null,
-      p_min_quality: minQuality || null,
-      p_since: since || null,
-    });
+    let data;
+    let error;
+
+    if (teamId) {
+      // Team-wide semantic search (filters applied client-side)
+      ({ data, error } = await supabase.rpc('cp_match_team_knowledge_entries', {
+        query_embedding: JSON.stringify(queryEmbedding),
+        p_team_id: teamId,
+        p_profile_id: profileId || null,
+        threshold,
+        match_count: limit * 2,
+      }));
+    } else {
+      // Standard user-scoped V2 search
+      ({ data, error } = await supabase.rpc('cp_match_knowledge_entries_v2', {
+        query_embedding: JSON.stringify(queryEmbedding),
+        p_user_id: userId,
+        threshold,
+        match_count: limit,
+        p_knowledge_type: knowledgeType || null,
+        p_topic_slug: topicSlug || null,
+        p_min_quality: minQuality || null,
+        p_since: since || null,
+      }));
+    }
 
     if (error) {
       logError('services/knowledge-brain', new Error('Enhanced search failed'), { detail: error.message });
@@ -130,6 +147,15 @@ export async function searchKnowledgeV2(
 
     let results = (data || []) as KnowledgeEntryWithSimilarity[];
 
+    // Client-side filtering for team results (team RPC lacks type/quality/since filters)
+    if (teamId) {
+      if (knowledgeType) results = results.filter(e => e.knowledge_type === knowledgeType);
+      if (topicSlug) results = results.filter(e => (e.topics || []).includes(topicSlug));
+      if (minQuality) results = results.filter(e => (e.quality_score || 0) >= minQuality);
+      if (since) results = results.filter(e => e.source_date && e.source_date >= since);
+      results = results.slice(0, limit);
+    }
+
     if (category) results = results.filter(e => e.category === category);
     if (tags?.length) results = results.filter(e => tags.some(t => e.tags?.includes(t)));
 
@@ -137,10 +163,12 @@ export async function searchKnowledgeV2(
   }
 
   // Non-search browse path with new filters
+  const userFilter = teamId ? 'team_id' : 'user_id';
+  const userValue = teamId || userId;
   let dbQuery = supabase
     .from('cp_knowledge_entries')
     .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
-    .eq('user_id', userId)
+    .eq(userFilter, userValue)
     .is('superseded_by', null)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -167,15 +195,22 @@ export async function listKnowledgeTopics(
   userId: string,
   options: { teamId?: string; limit?: number } = {}
 ): Promise<KnowledgeTopic[]> {
-  const { limit = 50 } = options;
+  const { teamId, limit = 50 } = options;
   const supabase = createSupabaseAdminClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('cp_knowledge_topics')
     .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at')
-    .eq('user_id', userId)
     .order('entry_count', { ascending: false })
     .limit(limit);
+
+  if (teamId) {
+    query = query.eq('team_id', teamId);
+  } else {
+    query = query.eq('user_id', userId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     logError('services/knowledge-brain', new Error('Failed to list topics'), { detail: error.message });

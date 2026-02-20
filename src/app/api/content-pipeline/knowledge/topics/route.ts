@@ -11,8 +11,9 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = request.nextUrl;
     const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const teamId = searchParams.get('team_id') || undefined;
 
-    const topics = await listKnowledgeTopics(session.user.id, { limit });
+    const topics = await listKnowledgeTopics(session.user.id, { teamId, limit });
     return NextResponse.json({ topics });
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

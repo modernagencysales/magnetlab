@@ -13,6 +13,9 @@ export async function GET(
     }
 
     const { slug } = await params;
+    const teamId = request.nextUrl.searchParams.get('team_id') || undefined;
+    // TODO: pass teamId to getTopicDetail once team-aware version is implemented
+    void teamId;
     const detail = await getTopicDetail(session.user.id, slug);
 
     if (!detail.topic) {

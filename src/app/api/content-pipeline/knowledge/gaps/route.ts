@@ -12,8 +12,9 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = request.nextUrl;
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
+    const teamId = searchParams.get('team_id') || undefined;
 
-    const topics = await listKnowledgeTopics(session.user.id, { limit });
+    const topics = await listKnowledgeTopics(session.user.id, { teamId, limit });
 
     const gaps = await Promise.all(
       topics.map(async (topic) => {

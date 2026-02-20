@@ -11,6 +11,9 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = request.nextUrl;
     const days = parseInt(searchParams.get('days') || '7', 10);
+    const teamId = searchParams.get('team_id') || undefined;
+    // TODO: pass teamId to getRecentKnowledgeDigest once team-aware version is implemented
+    void teamId;
 
     const digest = await getRecentKnowledgeDigest(session.user.id, Math.min(days, 90));
     return NextResponse.json(digest);
