@@ -101,7 +101,9 @@ jest.mock('@/lib/webhooks/sender', () => ({
 }));
 
 jest.mock('@/lib/services/email-sequence-trigger', () => ({
-  triggerEmailSequenceIfActive: jest.fn(() => Promise.resolve()),
+  triggerEmailSequenceIfActive: jest.fn(() => Promise.resolve({ triggered: false })),
+  triggerEmailFlowIfActive: jest.fn(() => Promise.resolve({ triggered: false })),
+  upsertSubscriberFromLead: jest.fn(() => Promise.resolve()),
 }));
 
 describe('Public Lead Capture API', () => {

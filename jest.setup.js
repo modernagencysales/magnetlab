@@ -57,7 +57,11 @@ jest.mock('@trigger.dev/sdk', () => ({
 // Mock the email sequence trigger service
 jest.mock('@/lib/services/email-sequence-trigger', () => ({
   triggerWelcomeSequence: jest.fn().mockResolvedValue(undefined),
-  triggerEmailSequenceIfActive: jest.fn().mockResolvedValue(undefined),
+  triggerEmailSequenceIfActive: jest.fn().mockResolvedValue({ triggered: false }),
+  triggerEmailFlowIfActive: jest.fn().mockResolvedValue({ triggered: false }),
+  upsertSubscriberFromLead: jest.fn().mockResolvedValue(undefined),
+  getSenderInfo: jest.fn().mockResolvedValue({ senderName: 'Test', senderEmail: 'test@example.com' }),
+  getUserResendConfig: jest.fn().mockResolvedValue(null),
 }));
 
 // Reset mocks between tests
