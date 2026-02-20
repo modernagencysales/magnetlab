@@ -10,6 +10,7 @@ import { contentPipelineTools } from './content-pipeline.js'
 import { swipeFileTools } from './swipe-file.js'
 import { libraryTools } from './libraries.js'
 import { qualificationFormTools } from './qualification-forms.js'
+import { emailSystemTools } from './email-system.js'
 
 export const tools: Tool[] = [
   ...leadMagnetTools,
@@ -19,6 +20,7 @@ export const tools: Tool[] = [
   ...analyticsTools,
   ...brandKitTools,
   ...emailSequenceTools,
+  ...emailSystemTools,
   ...contentPipelineTools,
   ...swipeFileTools,
   ...libraryTools,
@@ -33,6 +35,7 @@ export { leadTools } from './leads.js'
 export { analyticsTools } from './analytics.js'
 export { brandKitTools } from './brand-kit.js'
 export { emailSequenceTools } from './email-sequences.js'
+export { emailSystemTools } from './email-system.js'
 export { contentPipelineTools } from './content-pipeline.js'
 export { swipeFileTools } from './swipe-file.js'
 export { libraryTools } from './libraries.js'
@@ -54,4 +57,5 @@ export const toolCategories = {
   swipeFile: swipeFileTools.map((t) => t.name),
   libraries: libraryTools.map((t) => t.name),
   qualificationForms: qualificationFormTools.map((t) => t.name),
+  emailSystem: emailSystemTools.map((t) => t.name),
 }

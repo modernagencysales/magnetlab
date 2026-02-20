@@ -10,6 +10,7 @@ import { handleContentPipelineTools } from './content-pipeline.js'
 import { handleSwipeFileTools } from './swipe-file.js'
 import { handleLibraryTools } from './libraries.js'
 import { handleQualificationFormTools } from './qualification-forms.js'
+import { handleEmailSystemTools } from './email-system.js'
 import { toolCategories } from '../tools/index.js'
 import { validateToolArgs } from '../validation.js'
 
@@ -66,6 +67,8 @@ export async function handleToolCall(
       result = await handleLibraryTools(name, args, client)
     } else if (toolCategories.qualificationForms.includes(name)) {
       result = await handleQualificationFormTools(name, args, client)
+    } else if (toolCategories.emailSystem.includes(name)) {
+      result = await handleEmailSystemTools(name, args, client)
     } else {
       throw new Error(`Unknown tool: ${name}`)
     }
@@ -104,3 +107,4 @@ export { handleContentPipelineTools } from './content-pipeline.js'
 export { handleSwipeFileTools } from './swipe-file.js'
 export { handleLibraryTools } from './libraries.js'
 export { handleQualificationFormTools } from './qualification-forms.js'
+export { handleEmailSystemTools } from './email-system.js'

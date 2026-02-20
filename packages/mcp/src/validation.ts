@@ -184,6 +184,50 @@ export const toolSchemas = {
     idea_id: z.string().min(1, 'idea_id is required'),
   }),
 
+  // Email system tools — Flows
+  magnetlab_get_email_flow: z.object({
+    id: z.string().min(1, 'id is required'),
+  }),
+  magnetlab_create_email_flow: z.object({
+    name: z.string().min(1, 'name is required').max(200),
+    trigger_type: z.enum(['lead_magnet', 'manual']),
+  }),
+  magnetlab_update_email_flow: z.object({
+    id: z.string().min(1, 'id is required'),
+  }),
+  magnetlab_delete_email_flow: z.object({
+    id: z.string().min(1, 'id is required'),
+  }),
+  magnetlab_add_flow_step: z.object({
+    flow_id: z.string().min(1, 'flow_id is required'),
+    step_number: z.number().int().min(0),
+    subject: z.string().min(1, 'subject is required').max(500),
+    body: z.string().min(1, 'body is required'),
+    delay_days: z.number().int().min(0).max(365),
+  }),
+  magnetlab_generate_flow_emails: z.object({
+    flow_id: z.string().min(1, 'flow_id is required'),
+  }),
+
+  // Email system tools — Broadcasts
+  magnetlab_get_broadcast: z.object({
+    id: z.string().min(1, 'id is required'),
+  }),
+  magnetlab_update_broadcast: z.object({
+    id: z.string().min(1, 'id is required'),
+  }),
+  magnetlab_send_broadcast: z.object({
+    id: z.string().min(1, 'id is required'),
+  }),
+
+  // Email system tools — Subscribers
+  magnetlab_add_subscriber: z.object({
+    email: z.string().email('email must be a valid email address'),
+  }),
+  magnetlab_unsubscribe: z.object({
+    id: z.string().min(1, 'id is required'),
+  }),
+
   // Brand kit tools
   magnetlab_extract_business_context: z.object({
     content: z.string().min(50, 'content must be at least 50 characters'),

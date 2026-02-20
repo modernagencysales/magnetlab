@@ -359,6 +359,113 @@ export class MagnetLabClient {
   }
 
   // ============================================================
+  // Email System — Flows
+  // ============================================================
+
+  async listEmailFlows() {
+    return this.request<{ flows: unknown[] }>('GET', '/email/flows')
+  }
+
+  async getEmailFlow(id: string) {
+    return this.request<{ flow: unknown }>('GET', `/email/flows/${id}`)
+  }
+
+  async createEmailFlow(params: {
+    name: string
+    trigger_type: 'lead_magnet' | 'manual'
+    description?: string
+    trigger_lead_magnet_id?: string
+  }) {
+    return this.request<{ flow: unknown }>('POST', '/email/flows', params)
+  }
+
+  async updateEmailFlow(id: string, params: {
+    name?: string
+    description?: string | null
+    status?: 'draft' | 'active' | 'paused'
+    trigger_type?: 'lead_magnet' | 'manual'
+    trigger_lead_magnet_id?: string | null
+  }) {
+    return this.request<{ flow: unknown }>('PUT', `/email/flows/${id}`, params)
+  }
+
+  async deleteEmailFlow(id: string) {
+    return this.request<void>('DELETE', `/email/flows/${id}`)
+  }
+
+  async addFlowStep(flowId: string, params: {
+    step_number: number
+    subject: string
+    body: string
+    delay_days: number
+  }) {
+    return this.request<{ step: unknown }>('POST', `/email/flows/${flowId}/steps`, params)
+  }
+
+  async generateFlowEmails(flowId: string, stepCount?: number) {
+    return this.request<unknown>('POST', `/email/flows/${flowId}/generate`, stepCount ? { stepCount } : {})
+  }
+
+  // ============================================================
+  // Email System — Broadcasts
+  // ============================================================
+
+  async listBroadcasts() {
+    return this.request<{ broadcasts: unknown[] }>('GET', '/email/broadcasts')
+  }
+
+  async getBroadcast(id: string) {
+    return this.request<{ broadcast: unknown }>('GET', `/email/broadcasts/${id}`)
+  }
+
+  async createBroadcast(params?: { subject?: string; body?: string }) {
+    return this.request<{ broadcast: unknown }>('POST', '/email/broadcasts', params || {})
+  }
+
+  async updateBroadcast(id: string, params: {
+    subject?: string
+    body?: string
+    audience_filter?: { engagement?: string; source?: string } | null
+  }) {
+    return this.request<{ broadcast: unknown }>('PUT', `/email/broadcasts/${id}`, params)
+  }
+
+  async sendBroadcast(id: string) {
+    return this.request<{ message: string; recipientCount: number }>('POST', `/email/broadcasts/${id}/send`, {})
+  }
+
+  // ============================================================
+  // Email System — Subscribers
+  // ============================================================
+
+  async listSubscribers(params?: {
+    search?: string
+    status?: string
+    source?: string
+    page?: number
+    limit?: number
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.search) searchParams.set('search', params.search)
+    if (params?.status) searchParams.set('status', params.status)
+    if (params?.source) searchParams.set('source', params.source)
+    if (params?.page) searchParams.set('page', String(params.page))
+    if (params?.limit) searchParams.set('limit', String(params.limit))
+    return this.request<{ subscribers: unknown[]; total: number; page: number; limit: number }>(
+      'GET',
+      `/email/subscribers?${searchParams}`
+    )
+  }
+
+  async addSubscriber(params: { email: string; first_name?: string; last_name?: string }) {
+    return this.request<{ subscriber: unknown }>('POST', '/email/subscribers', params)
+  }
+
+  async unsubscribeSubscriber(id: string) {
+    return this.request<{ message: string }>('DELETE', `/email/subscribers/${id}`)
+  }
+
+  // ============================================================
   // Content Pipeline - Transcripts
   // ============================================================
 
