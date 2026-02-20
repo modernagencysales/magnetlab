@@ -29,8 +29,8 @@ export default async function MagnetDetailPage({ params }: PageProps) {
   const { id } = await params;
   const adminClient = createSupabaseAdminClient();
 
-  // Fetch lead magnet, funnel page, username, and leads count in parallel
-  const [leadMagnetResult, funnelResult, userResult] = await Promise.all([
+  // Fetch lead magnet, funnel page, username, and connected email providers in parallel
+  const [leadMagnetResult, funnelResult, userResult, emailProvidersResult] = await Promise.all([
     adminClient
       .from('lead_magnets')
       .select('id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, screenshot_urls, status, published_at, created_at, updated_at')
@@ -49,11 +49,20 @@ export default async function MagnetDetailPage({ params }: PageProps) {
       .select('username')
       .eq('id', session.user.id)
       .single(),
+    adminClient
+      .from('user_integrations')
+      .select('service')
+      .eq('user_id', session.user.id)
+      .eq('is_active', true)
+      .in('service', ['kit', 'mailerlite', 'mailchimp', 'activecampaign']),
   ]);
 
   const { data: leadMagnetData, error } = leadMagnetResult;
   const { data: funnelData } = funnelResult;
   const { data: userData } = userResult;
+  const { data: emailProvidersData } = emailProvidersResult;
+
+  const connectedEmailProviders = (emailProvidersData || []).map((r: { service: string }) => r.service);
 
   if (error || !leadMagnetData) {
     notFound();
@@ -124,6 +133,7 @@ export default async function MagnetDetailPage({ params }: PageProps) {
       existingQuestions={existingQuestions}
       username={username}
       archetypeName={archetypeName}
+      connectedEmailProviders={connectedEmailProviders}
     />
   );
 }

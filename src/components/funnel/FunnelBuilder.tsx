@@ -14,6 +14,7 @@ import { FunnelPreview } from './FunnelPreview';
 import { PublishControls } from './PublishControls';
 import { LeadDeliveryInfo } from './LeadDeliveryInfo';
 import { ABTestPanel } from './ABTestPanel';
+import { FunnelIntegrationsTab } from './FunnelIntegrationsTab';
 import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle, RedirectTrigger } from '@/lib/types/funnel';
 import type { LeadMagnet, PolishedContent } from '@/lib/types/lead-magnet';
 import type { Library } from '@/lib/types/library';
@@ -25,9 +26,10 @@ interface FunnelBuilderProps {
   existingFunnel: FunnelPage | null;
   existingQuestions: QualificationQuestion[];
   username: string | null;
+  connectedEmailProviders?: string[];
 }
 
-type TabType = 'optin' | 'thankyou' | 'questions' | 'theme' | 'sections' | 'content' | 'email';
+type TabType = 'optin' | 'thankyou' | 'questions' | 'theme' | 'sections' | 'content' | 'email' | 'integrations';
 
 export function FunnelBuilder({
   leadMagnet,
@@ -36,6 +38,7 @@ export function FunnelBuilder({
   existingFunnel,
   existingQuestions,
   username,
+  connectedEmailProviders = [],
 }: FunnelBuilderProps) {
   // Derive target info
   const targetType: FunnelTargetType = library ? 'library' : externalResource ? 'external_resource' : 'lead_magnet';
@@ -240,6 +243,7 @@ export function FunnelBuilder({
     // Content tab only for lead magnets
     ...(isLeadMagnetTarget ? [{ id: 'content' as const, label: 'Content' }] : []),
     { id: 'email', label: 'Email' },
+    { id: 'integrations', label: 'Integrations' },
   ];
 
   return (
@@ -396,6 +400,21 @@ export function FunnelBuilder({
             <div className="rounded-lg border border-dashed p-8 text-center">
               <p className="text-sm text-muted-foreground">
                 Email sequences are only available for lead magnet funnels.
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'integrations' && funnel && (
+            <FunnelIntegrationsTab
+              funnelPageId={funnel.id}
+              connectedProviders={connectedEmailProviders}
+            />
+          )}
+
+          {activeTab === 'integrations' && !funnel && (
+            <div className="rounded-lg border border-dashed p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                Save your funnel first to configure email marketing integrations.
               </p>
             </div>
           )}

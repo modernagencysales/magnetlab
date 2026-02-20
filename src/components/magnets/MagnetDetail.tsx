@@ -35,6 +35,7 @@ interface MagnetDetailProps {
   existingQuestions: QualificationQuestion[];
   username: string | null;
   archetypeName: string;
+  connectedEmailProviders?: string[];
 }
 
 function formatDate(dateStr: string) {
@@ -51,6 +52,7 @@ export function MagnetDetail({
   existingQuestions,
   username,
   archetypeName,
+  connectedEmailProviders = [],
 }: MagnetDetailProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -157,6 +159,7 @@ export function MagnetDetail({
           existingFunnel={existingFunnel}
           existingQuestions={existingQuestions}
           username={username}
+          connectedEmailProviders={connectedEmailProviders}
         />
       )}
       {activeTab === 'post' && (

@@ -16,16 +16,18 @@ export default function LibraryFunnelPage() {
   const [funnel, setFunnel] = useState<FunnelPage | null>(null);
   const [questions, setQuestions] = useState<QualificationQuestion[]>([]);
   const [username, setUsername] = useState<string | null>(null);
+  const [connectedEmailProviders, setConnectedEmailProviders] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch library, user, and check for existing funnel
-        const [libraryRes, userRes, funnelsRes] = await Promise.all([
+        // Fetch library, user, existing funnel, and connected email providers
+        const [libraryRes, userRes, funnelsRes, emailProvidersRes] = await Promise.all([
           fetch(`/api/libraries/${libraryId}`),
           fetch('/api/user/username'),
           fetch('/api/funnel/all'),
+          fetch('/api/integrations/email-marketing/connected'),
         ]);
 
         if (!libraryRes.ok) {
@@ -67,6 +69,11 @@ export default function LibraryFunnelPage() {
             }
           }
         }
+
+        if (emailProvidersRes.ok) {
+          const emailData = await emailProvidersRes.json();
+          setConnectedEmailProviders(emailData.providers || []);
+        }
       } catch {
         // ignore
       } finally {
@@ -105,6 +112,7 @@ export default function LibraryFunnelPage() {
         existingFunnel={funnel}
         existingQuestions={questions}
         username={username}
+        connectedEmailProviders={connectedEmailProviders}
       />
     </div>
   );

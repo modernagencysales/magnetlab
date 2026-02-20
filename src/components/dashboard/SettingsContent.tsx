@@ -16,6 +16,7 @@ import { TeamMembersSettings } from '@/components/settings/TeamMembersSettings';
 import { FunnelTemplateSettings } from '@/components/settings/FunnelTemplateSettings';
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { WhiteLabelSettings } from '@/components/settings/WhiteLabelSettings';
+import { EmailMarketingSettings } from '@/components/settings/EmailMarketingSettings';
 
 import { logError } from '@/lib/utils/logger';
 
@@ -337,6 +338,9 @@ export function SettingsContent({
             isConnected={fathomIntegration?.is_active ?? false}
             lastSyncedAt={(fathomIntegration?.metadata as { last_synced_at?: string } | undefined)?.last_synced_at ?? null}
           />
+
+          {/* Email Marketing */}
+          <EmailMarketingSettings integrations={integrations} />
 
           {/* Tracking Pixels */}
           <div className="mt-6 pt-6 border-t">

@@ -22,15 +22,17 @@ export default function ExternalResourceFunnelPage() {
   const [funnel, setFunnel] = useState<FunnelPage | null>(null);
   const [questions, setQuestions] = useState<QualificationQuestion[]>([]);
   const [username, setUsername] = useState<string | null>(null);
+  const [connectedEmailProviders, setConnectedEmailProviders] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [resourceRes, userRes, funnelRes] = await Promise.all([
+        const [resourceRes, userRes, funnelRes, emailProvidersRes] = await Promise.all([
           fetch(`/api/external-resources/${resourceId}`),
           fetch('/api/user/username'),
           fetch(`/api/funnel?externalResourceId=${resourceId}`),
+          fetch('/api/integrations/email-marketing/connected'),
         ]);
 
         if (!resourceRes.ok) {
@@ -58,6 +60,11 @@ export default function ExternalResourceFunnelPage() {
               setQuestions(questionsData.questions || []);
             }
           }
+        }
+
+        if (emailProvidersRes.ok) {
+          const emailData = await emailProvidersRes.json();
+          setConnectedEmailProviders(emailData.providers || []);
         }
       } catch {
         // ignore
@@ -97,6 +104,7 @@ export default function ExternalResourceFunnelPage() {
         existingFunnel={funnel}
         existingQuestions={questions}
         username={username}
+        connectedEmailProviders={connectedEmailProviders}
       />
     </div>
   );
