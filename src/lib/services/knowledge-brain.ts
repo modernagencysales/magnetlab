@@ -6,6 +6,8 @@ import type {
   KnowledgeEntry,
   KnowledgeEntryWithSimilarity,
   KnowledgeCategory,
+  KnowledgeType,
+  KnowledgeTopic,
 } from '@/lib/types/content-pipeline';
 
 export interface SearchKnowledgeResult {
@@ -72,6 +74,247 @@ export async function searchKnowledge(
   }
 
   return { entries: results };
+}
+
+export interface EnhancedSearchOptions {
+  query?: string;
+  knowledgeType?: KnowledgeType;
+  topicSlug?: string;
+  minQuality?: number;
+  since?: string;
+  category?: KnowledgeCategory;
+  tags?: string[];
+  limit?: number;
+  threshold?: number;
+  teamId?: string;
+  profileId?: string;
+}
+
+export async function searchKnowledgeV2(
+  userId: string,
+  options: EnhancedSearchOptions = {}
+): Promise<SearchKnowledgeResult> {
+  const {
+    query,
+    knowledgeType,
+    topicSlug,
+    minQuality,
+    since,
+    category,
+    tags,
+    limit = 20,
+    threshold = 0.6,
+    teamId,
+    profileId,
+  } = options;
+
+  const supabase = createSupabaseAdminClient();
+
+  // Semantic search path
+  if (query) {
+    const queryEmbedding = await generateEmbedding(query);
+    const { data, error } = await supabase.rpc('cp_match_knowledge_entries_v2', {
+      query_embedding: JSON.stringify(queryEmbedding),
+      p_user_id: userId,
+      threshold,
+      match_count: limit,
+      p_knowledge_type: knowledgeType || null,
+      p_topic_slug: topicSlug || null,
+      p_min_quality: minQuality || null,
+      p_since: since || null,
+    });
+
+    if (error) {
+      logError('services/knowledge-brain', new Error('Enhanced search failed'), { detail: error.message });
+      return { entries: [], error: error.message };
+    }
+
+    let results = (data || []) as KnowledgeEntryWithSimilarity[];
+
+    if (category) results = results.filter(e => e.category === category);
+    if (tags?.length) results = results.filter(e => tags.some(t => e.tags?.includes(t)));
+
+    return { entries: results };
+  }
+
+  // Non-search browse path with new filters
+  let dbQuery = supabase
+    .from('cp_knowledge_entries')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
+    .eq('user_id', userId)
+    .is('superseded_by', null)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (knowledgeType) dbQuery = dbQuery.eq('knowledge_type', knowledgeType);
+  if (topicSlug) dbQuery = dbQuery.contains('topics', [topicSlug]);
+  if (minQuality) dbQuery = dbQuery.gte('quality_score', minQuality);
+  if (since) dbQuery = dbQuery.gte('source_date', since);
+  if (category) dbQuery = dbQuery.eq('category', category);
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    logError('services/knowledge-brain', new Error('Browse failed'), { detail: error.message });
+    return { entries: [], error: error.message };
+  }
+
+  return { entries: (data || []) as KnowledgeEntryWithSimilarity[] };
+}
+
+export async function listKnowledgeTopics(
+  userId: string,
+  options: { teamId?: string; limit?: number } = {}
+): Promise<KnowledgeTopic[]> {
+  const { limit = 50 } = options;
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from('cp_knowledge_topics')
+    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, created_at')
+    .eq('user_id', userId)
+    .order('entry_count', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    logError('services/knowledge-brain', new Error('Failed to list topics'), { detail: error.message });
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getTopicDetail(
+  userId: string,
+  topicSlug: string
+): Promise<{
+  topic: KnowledgeTopic | null;
+  type_breakdown: Record<string, number>;
+  top_entries: Record<string, KnowledgeEntry[]>;
+  corroboration_count: number;
+}> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data: topic } = await supabase
+    .from('cp_knowledge_topics')
+    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, created_at')
+    .eq('user_id', userId)
+    .eq('slug', topicSlug)
+    .single();
+
+  if (!topic) return { topic: null, type_breakdown: {}, top_entries: {}, corroboration_count: 0 };
+
+  const { data: entries } = await supabase
+    .from('cp_knowledge_entries')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
+    .eq('user_id', userId)
+    .contains('topics', [topicSlug])
+    .is('superseded_by', null)
+    .order('quality_score', { ascending: false })
+    .limit(100);
+
+  const allEntries = (entries || []) as KnowledgeEntry[];
+
+  const type_breakdown: Record<string, number> = {};
+  const top_entries: Record<string, KnowledgeEntry[]> = {};
+
+  for (const entry of allEntries) {
+    const kt = entry.knowledge_type || 'unknown';
+    type_breakdown[kt] = (type_breakdown[kt] || 0) + 1;
+    if (!top_entries[kt]) top_entries[kt] = [];
+    if (top_entries[kt].length < 3) top_entries[kt].push(entry);
+  }
+
+  const entryIds = allEntries.map(e => e.id);
+  let corroboration_count = 0;
+  if (entryIds.length > 0) {
+    const { count } = await supabase
+      .from('cp_knowledge_corroborations')
+      .select('*', { count: 'exact', head: true })
+      .in('entry_id', entryIds);
+    corroboration_count = count || 0;
+  }
+
+  return { topic: topic as KnowledgeTopic, type_breakdown, top_entries, corroboration_count };
+}
+
+export async function getRecentKnowledgeDigest(
+  userId: string,
+  days: number = 7
+): Promise<{
+  entries_added: number;
+  new_topics: string[];
+  most_active_topics: Array<{ slug: string; display_name: string; count: number }>;
+  highlights: KnowledgeEntry[];
+}> {
+  const supabase = createSupabaseAdminClient();
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+
+  // Count entries added
+  const { count: entriesAdded } = await supabase
+    .from('cp_knowledge_entries')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', since);
+
+  // New topics
+  const { data: newTopics } = await supabase
+    .from('cp_knowledge_topics')
+    .select('slug, display_name')
+    .eq('user_id', userId)
+    .gte('created_at', since);
+
+  // Quality 4+ highlights
+  const { data: highlights } = await supabase
+    .from('cp_knowledge_entries')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, created_at, updated_at')
+    .eq('user_id', userId)
+    .gte('created_at', since)
+    .gte('quality_score', 4)
+    .is('superseded_by', null)
+    .order('quality_score', { ascending: false })
+    .limit(10);
+
+  // Most active topics — get all recent entries with topics, count per slug
+  const { data: recentEntries } = await supabase
+    .from('cp_knowledge_entries')
+    .select('topics')
+    .eq('user_id', userId)
+    .gte('created_at', since)
+    .not('topics', 'eq', '{}');
+
+  const topicCounts = new Map<string, number>();
+  for (const entry of recentEntries || []) {
+    for (const slug of (entry.topics as string[]) || []) {
+      topicCounts.set(slug, (topicCounts.get(slug) || 0) + 1);
+    }
+  }
+
+  const topicSlugs = Array.from(topicCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  // Resolve display names
+  const mostActiveTopics: Array<{ slug: string; display_name: string; count: number }> = [];
+  if (topicSlugs.length > 0) {
+    const { data: topicNames } = await supabase
+      .from('cp_knowledge_topics')
+      .select('slug, display_name')
+      .eq('user_id', userId)
+      .in('slug', topicSlugs.map(t => t[0]));
+
+    const nameMap = new Map((topicNames || []).map(t => [t.slug, t.display_name]));
+    for (const [slug, count] of topicSlugs) {
+      mostActiveTopics.push({ slug, display_name: nameMap.get(slug) || slug, count });
+    }
+  }
+
+  return {
+    entries_added: entriesAdded || 0,
+    new_topics: (newTopics || []).map(t => t.display_name),
+    most_active_topics: mostActiveTopics,
+    highlights: (highlights || []) as KnowledgeEntry[],
+  };
 }
 
 export async function getRelevantContext(
