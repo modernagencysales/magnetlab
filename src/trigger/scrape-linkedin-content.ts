@@ -8,6 +8,7 @@ import {
   type LinkedInPost,
 } from '@/lib/integrations/bright-data-linkedin';
 import { hasLeadMagnetCTA } from '@/lib/utils/lead-magnet-detection';
+import { formatPostText } from '@/lib/utils/format-post-text';
 
 /**
  * How many creators to scrape per daily run.
@@ -102,7 +103,7 @@ export const scrapeLinkedinContent = schedules.task({
           author_name: post.author.name,
           author_headline: post.author.headline,
           author_url: post.author.profile_url,
-          content: post.content,
+          content: formatPostText(post.content),
           likes: post.engagement.likes,
           comments: post.engagement.comments,
           shares: post.engagement.shares,
