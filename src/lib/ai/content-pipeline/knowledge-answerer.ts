@@ -31,7 +31,7 @@ export async function answerKnowledgeQuestion(
   }
 
   const context = result.entries
-    .map((e, i) => `[${i + 1}] (${(e as Record<string, unknown>).knowledge_type || e.category}) ${e.content}`)
+    .map((e, i) => `[${i + 1}] (${e.knowledge_type || e.category}) ${e.content}`)
     .join('\n\n');
 
   try {
@@ -59,7 +59,7 @@ Answer concisely but thoroughly. If the knowledge is incomplete, say what's miss
       sources: result.entries.slice(0, 5).map(e => ({
         id: e.id,
         content: e.content.slice(0, 200),
-        type: ((e as Record<string, unknown>).knowledge_type as string) || e.category,
+        type: e.knowledge_type || e.category,
       })),
     };
   } catch (error) {

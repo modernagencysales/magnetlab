@@ -32,17 +32,17 @@ export async function assessReadiness(
   const entries = result.entries;
   const typeCount: Record<string, number> = {};
   for (const e of entries) {
-    const kt = (e as Record<string, unknown>).knowledge_type as string || e.category;
+    const kt = e.knowledge_type || e.category;
     typeCount[kt] = (typeCount[kt] || 0) + 1;
   }
 
   const totalEntries = entries.length;
   const avgQuality = entries.reduce((sum, e) => {
-    const qs = (e as Record<string, unknown>).quality_score as number | null;
+    const qs = e.quality_score;
     return sum + (qs || 3);
   }, 0) / Math.max(totalEntries, 1);
   const highQualityCount = entries.filter(e => {
-    const qs = (e as Record<string, unknown>).quality_score as number | null;
+    const qs = e.quality_score;
     return (qs || 3) >= 4;
   }).length;
 
@@ -63,7 +63,7 @@ Stats: ${totalEntries} entries, ${typesPresent} types, avg quality ${avgQuality.
 Type breakdown: ${JSON.stringify(typeCount)}
 
 Sample high-quality entries:
-${entries.slice(0, 5).map(e => `- [${(e as Record<string, unknown>).knowledge_type || e.category}] ${e.content.slice(0, 150)}`).join('\n')}
+${entries.slice(0, 5).map(e => `- [${e.knowledge_type || e.category}] ${e.content.slice(0, 150)}`).join('\n')}
 
 Return JSON: {"ready": bool, "confidence": 0-1, "reasoning": "1-2 sentences", "gaps_that_would_improve": ["..."], "suggested_archetypes": ["..."]}`,
       }],

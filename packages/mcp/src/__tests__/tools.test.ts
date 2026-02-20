@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { tools, toolsByName, toolCategories } from '../tools/index.js'
 
 describe('Tool Registration', () => {
-  it('exports exactly 99 tools', () => {
-    expect(tools).toHaveLength(99)
+  it('exports exactly 106 tools', () => {
+    expect(tools).toHaveLength(106)
   })
 
   it('all tools have unique names', () => {
@@ -69,7 +69,7 @@ describe('Tool Registration', () => {
       analytics: 1,
       brandKit: 3,
       emailSequences: 4,
-      contentPipeline: 37,
+      contentPipeline: 44,
       swipeFile: 3,
       libraries: 7,
       qualificationForms: 5,
