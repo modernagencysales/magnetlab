@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmbedding } from '@/lib/ai/embeddings';
 import { clusterTags } from '@/lib/ai/content-pipeline/tag-clusterer';
+import { generateTopicSummary } from '@/lib/ai/content-pipeline/topic-summarizer';
 import { logError } from '@/lib/utils/logger';
 import type {
   KnowledgeEntry,
@@ -354,6 +355,59 @@ export async function exportTopicKnowledge(
   }
 
   return { topic: topic as KnowledgeTopic, entries_by_type, total_count: allEntries.length };
+}
+
+export async function generateAndCacheTopicSummary(
+  userId: string,
+  topicSlug: string,
+  force: boolean = false
+): Promise<{ summary: string; cached: boolean }> {
+  const supabase = createSupabaseAdminClient();
+
+  // Fetch topic with current summary state
+  const { data: topic } = await supabase
+    .from('cp_knowledge_topics')
+    .select('id, slug, display_name, summary, summary_generated_at, last_seen')
+    .eq('user_id', userId)
+    .eq('slug', topicSlug)
+    .single();
+
+  if (!topic) throw new Error(`Topic not found: ${topicSlug}`);
+
+  // Check if cached summary is still fresh
+  if (!force && topic.summary && topic.summary_generated_at) {
+    const summaryDate = new Date(topic.summary_generated_at);
+    const lastSeen = new Date(topic.last_seen);
+    if (summaryDate >= lastSeen) {
+      return { summary: topic.summary, cached: true };
+    }
+  }
+
+  // Fetch all entries for this topic, grouped by type
+  const { data: entries } = await supabase
+    .from('cp_knowledge_entries')
+    .select('content, knowledge_type, quality_score')
+    .eq('user_id', userId)
+    .contains('topics', [topicSlug])
+    .is('superseded_by', null)
+    .order('quality_score', { ascending: false });
+
+  const entriesByType: Record<string, Array<{ content: string; quality_score?: number | null }>> = {};
+  for (const entry of entries || []) {
+    const kt = entry.knowledge_type || 'unknown';
+    if (!entriesByType[kt]) entriesByType[kt] = [];
+    entriesByType[kt].push({ content: entry.content, quality_score: entry.quality_score });
+  }
+
+  const summary = await generateTopicSummary(topic.display_name, entriesByType);
+
+  // Cache the summary
+  await supabase
+    .from('cp_knowledge_topics')
+    .update({ summary, summary_generated_at: new Date().toISOString() })
+    .eq('id', topic.id);
+
+  return { summary, cached: false };
 }
 
 export async function getRelevantContext(
