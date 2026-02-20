@@ -81,7 +81,7 @@ export function AudienceFilterBuilder({
     }
 
     // If all filters cleared, set to null
-    const hasAnyFilter = newFilter.engagement || newFilter.source || newFilter.subscribed_after || newFilter.subscribed_before;
+    const hasAnyFilter = newFilter.engagement || newFilter.source;
     onChange(hasAnyFilter ? newFilter : null);
   };
 
@@ -94,7 +94,7 @@ export function AudienceFilterBuilder({
     }
 
     // If all filters cleared, set to null
-    const hasAnyFilter = newFilter.engagement || newFilter.source || newFilter.subscribed_after || newFilter.subscribed_before;
+    const hasAnyFilter = newFilter.engagement || newFilter.source;
     onChange(hasAnyFilter ? newFilter : null);
   };
 

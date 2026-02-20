@@ -69,7 +69,7 @@ export const sendBroadcast = task({
       "get_filtered_subscribers",
       {
         p_team_id: team_id,
-        p_filter: broadcast.audience_filter,
+        p_filter: broadcast.audience_filter || {},
       }
     ) as { data: FilteredSubscriber[] | null; error: { message: string } | null };
 
@@ -148,7 +148,7 @@ export const sendBroadcast = task({
           const fullHtml = htmlBody.replace("</body>", `${footer}</body>`);
 
           // Send
-          return sendEmail({
+          const result = await sendEmail({
             to: subscriber.email,
             subject: personalizedSubject,
             html: fullHtml,
@@ -157,6 +157,23 @@ export const sendBroadcast = task({
             replyTo: fromEmail || senderEmail,
             resendConfig,
           });
+
+          // Track email event for engagement filtering
+          if (result.success) {
+            await supabase.from("email_events").insert({
+              email_id: result.id || `broadcast-${broadcast_id}-${subscriber.subscriber_id}`,
+              user_id,
+              event_type: "sent",
+              recipient_email: subscriber.email,
+              subject: personalizedSubject,
+              metadata: {
+                broadcast_id,
+                team_id,
+              },
+            });
+          }
+
+          return result;
         })
       );
 
