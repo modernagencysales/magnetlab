@@ -69,6 +69,36 @@ export const KNOWLEDGE_CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
   product_intel: 'Product Intel',
 };
 
+// Knowledge Data Lake types (8 universal knowledge types)
+export type KnowledgeType =
+  | 'how_to'
+  | 'insight'
+  | 'story'
+  | 'question'
+  | 'objection'
+  | 'mistake'
+  | 'decision'
+  | 'market_intel';
+
+export const KNOWLEDGE_TYPE_LABELS: Record<KnowledgeType, string> = {
+  how_to: 'How-To',
+  insight: 'Insight',
+  story: 'Story',
+  question: 'Question',
+  objection: 'Objection',
+  mistake: 'Mistake',
+  decision: 'Decision',
+  market_intel: 'Market Intel',
+};
+
+export type Actionability = 'immediately_actionable' | 'contextual' | 'theoretical';
+
+export const ACTIONABILITY_LABELS: Record<Actionability, string> = {
+  immediately_actionable: 'Immediately Actionable',
+  contextual: 'Contextual',
+  theoretical: 'Theoretical',
+};
+
 export type PolishStatus = 'pending' | 'polished' | 'flagged' | 'skipped';
 
 // ============================================
@@ -155,12 +185,64 @@ export interface KnowledgeEntry {
   transcript_type: TranscriptType | null;
   team_id?: string | null;
   source_profile_id?: string | null;
+  speaker_company?: string | null;
+  // Knowledge Data Lake fields
+  knowledge_type?: KnowledgeType | null;
+  topics?: string[];
+  quality_score?: number | null;
+  specificity?: boolean;
+  actionability?: Actionability | null;
+  superseded_by?: string | null;
+  source_date?: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface KnowledgeEntryWithSimilarity extends KnowledgeEntry {
   similarity: number;
+}
+
+export interface KnowledgeTopic {
+  id: string;
+  user_id: string;
+  team_id: string | null;
+  slug: string;
+  display_name: string;
+  description: string | null;
+  entry_count: number;
+  avg_quality: number | null;
+  first_seen: string;
+  last_seen: string;
+  parent_id: string | null;
+  created_at: string;
+}
+
+export interface KnowledgeCorroboration {
+  id: string;
+  entry_id: string;
+  corroborated_by: string;
+  created_at: string;
+}
+
+export interface KnowledgeGap {
+  topic_slug: string;
+  topic_name: string;
+  coverage_score: number;
+  type_breakdown: Record<KnowledgeType, number>;
+  missing_types: KnowledgeType[];
+  gap_patterns: string[];
+  entry_count: number;
+  avg_quality: number | null;
+  last_entry_date: string | null;
+}
+
+export interface KnowledgeReadiness {
+  ready: boolean;
+  confidence: number;
+  reasoning: string;
+  gaps_that_would_improve: string[];
+  suggested_archetypes: string[];
+  topic_coverage: Record<string, number>;
 }
 
 export interface KnowledgeTag {
