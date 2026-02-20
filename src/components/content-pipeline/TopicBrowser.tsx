@@ -4,17 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Star, BookOpen } from 'lucide-react';
 import { TopicDetail } from './TopicDetail';
 
-const KNOWLEDGE_TYPE_COLORS: Record<string, string> = {
-  how_to: 'bg-blue-500',
-  insight: 'bg-purple-500',
-  story: 'bg-green-500',
-  question: 'bg-yellow-500',
-  objection: 'bg-red-500',
-  mistake: 'bg-orange-500',
-  decision: 'bg-indigo-500',
-  market_intel: 'bg-teal-500',
-};
-
 interface Topic {
   id: string;
   slug: string;
