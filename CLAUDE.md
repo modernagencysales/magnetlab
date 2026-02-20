@@ -134,7 +134,7 @@ RPCs: `cp_match_knowledge_entries()` (pgvector cosine similarity), `cp_match_kno
 
 ### Knowledge Data Lake
 
-Extends the AI Brain from 3 basic categories to a rich taxonomy with quality scoring, topic auto-discovery, gap analysis, and readiness assessment.
+Extends the AI Brain from 3 basic categories to a rich taxonomy with quality scoring, topic auto-discovery, gap analysis, readiness assessment, topic summaries, and a full Knowledge Dashboard UI.
 
 #### Knowledge Types (8 types)
 
@@ -144,7 +144,32 @@ Each knowledge entry also has: `quality_score` (1-5), `specificity` (boolean), `
 
 #### Topic Auto-Discovery
 
-AI normalizes free-form topic suggestions into a canonical taxonomy per user. Topics stored in `cp_knowledge_topics` with auto-computed stats (entry_count, avg_quality).
+AI normalizes free-form topic suggestions into a canonical taxonomy per user. Topics stored in `cp_knowledge_topics` with auto-computed stats (entry_count, avg_quality, summary, summary_generated_at).
+
+#### Topic Summaries (v2)
+
+On-demand AI-generated summaries cached in `cp_knowledge_topics.summary`. Stale detection: regenerate when `last_seen > summary_generated_at`. API: `POST /api/content-pipeline/knowledge/topics/[slug]/summary?force=true`. AI module: `topic-summarizer.ts` (Claude Haiku, 200-400 word briefings organized by theme).
+
+#### Knowledge Dashboard (v2)
+
+Replaced `KnowledgeBrainTab` with `KnowledgeDashboard` containing 4 subtabs:
+
+| Subtab | Component | Content |
+|--------|-----------|---------|
+| **Overview** | `KnowledgeOverview` | Stats cards (entries, topics, new topics, highlights), most active topics, high-quality highlights |
+| **Topics** | `TopicBrowser` + `TopicDetail` | Card grid with quality stars + type breakdown. Detail view with summary generation, type bar, entries by type |
+| **Gaps** | `GapAnalysis` | Coverage bars, missing types, gap patterns. Readiness assessment panel (pick topic + goal) |
+| **Search** | `KnowledgeSearch` | Enhanced search with V2 filters: knowledge type, topic, min quality, since date. Plus existing tag/category/speaker filters |
+
+Team/Personal toggle in header when user belongs to a team. `teamId` flows to all child components.
+
+#### Briefing Agent V2 (v2)
+
+`buildContentBrief()` uses `searchKnowledgeV2()` with quality-aware retrieval. Groups context by 8 knowledge types with labels. Quality sorting (highest first), `[HIGH QUALITY]` tags for entries >= 4. Computes `topicReadiness` heuristic and `topKnowledgeTypes`. Backward-compatible `relevantInsights/Questions/ProductIntel` fields retained.
+
+#### Team Knowledge Sharing (v2)
+
+All knowledge API routes accept `team_id` query param. `searchKnowledgeV2()` uses `cp_match_team_knowledge_entries` RPC for team-wide semantic search with client-side V2 filters. `listKnowledgeTopics()` queries by team_id when provided.
 
 #### Data Flow
 
@@ -155,6 +180,7 @@ Transcript → process-transcript task
   → normalizeTopics() → canonical topic slugs
   → upsertTopics() → cp_knowledge_topics
   → generateEmbedding() → pgvector embeddings
+  → checkForDuplicate() → insert/supersede/corroborate
   → insert cp_knowledge_entries
   → extractIdeas() → cp_content_ideas
 ```
@@ -163,13 +189,14 @@ Transcript → process-transcript task
 
 - `analyzeTopicGaps()` identifies coverage gaps across knowledge types per topic
 - `assessContentReadiness()` scores how ready the knowledge base is for content generation
-- Both exposed via `GET /api/content-pipeline/knowledge/gaps`
+- Both exposed via `GET /api/content-pipeline/knowledge/gaps` and `GET /api/content-pipeline/knowledge/readiness`
 
 #### Deduplication
 
-- `findNearDuplicates()` uses `cp_find_near_duplicates()` RPC (cosine similarity > 0.92)
-- `consolidateEntries()` merges duplicates, logs to `cp_knowledge_dedup_log`
-- `runWeeklyConsolidation()` processes all entries older than 24h
+- `checkForDuplicate()` uses `cp_match_knowledge_entries` RPC (cosine similarity > 0.90 = supersede/corroborate, 0.85-0.90 = insert)
+- `supersedeEntry()` marks old entry with `superseded_by` pointer
+- `recordCorroboration()` links entries in `cp_knowledge_corroborations`
+- Weekly consolidation via `consolidate-knowledge` Trigger.dev task (Sundays 3 AM UTC)
 
 #### Backfill
 
@@ -178,12 +205,23 @@ Transcript → process-transcript task
 
 #### Key Files
 
+- `src/lib/ai/content-pipeline/topic-summarizer.ts` — AI topic summary generation (Claude Haiku)
+- `src/lib/ai/content-pipeline/briefing-agent.ts` — V2 briefing with 8 knowledge types + quality scoring
 - `src/lib/ai/content-pipeline/topic-normalizer.ts` — AI topic normalization + upsert
 - `src/lib/ai/content-pipeline/knowledge-gap-analyzer.ts` — gap analysis + readiness scoring
-- `src/lib/services/knowledge-brain.ts` — searchKnowledgeV2, topic listing, dedup, gap/readiness
-- `src/lib/types/content-pipeline.ts` — KnowledgeType, TopicEntry, GapAnalysis types
-- `src/trigger/process-transcript.ts` — updated with topic normalization + new fields
+- `src/lib/services/knowledge-brain.ts` — searchKnowledgeV2, topic listing, summary caching, dedup, gap/readiness
+- `src/lib/services/knowledge-dedup.ts` — checkForDuplicate, supersedeEntry, recordCorroboration
+- `src/lib/types/content-pipeline.ts` — KnowledgeType, TopicEntry, GapAnalysis, ContentBrief types
+- `src/components/content-pipeline/KnowledgeDashboard.tsx` — 4-subtab dashboard container with team toggle
+- `src/components/content-pipeline/KnowledgeOverview.tsx` — Overview stats + highlights
+- `src/components/content-pipeline/TopicBrowser.tsx` — Topic card grid
+- `src/components/content-pipeline/TopicDetail.tsx` — Topic detail with summary generation
+- `src/components/content-pipeline/GapAnalysis.tsx` — Gap cards + readiness assessment
+- `src/components/content-pipeline/KnowledgeSearch.tsx` — Enhanced search with V2 filters
+- `src/trigger/process-transcript.ts` — updated with topic normalization + dedup
+- `src/trigger/consolidate-knowledge.ts` — weekly dedup + topic stats
 - `src/trigger/backfill-knowledge-types.ts` — backfill task for existing entries
+- `supabase/migrations/20260220400000_knowledge_topic_summaries.sql` — summary columns migration
 
 #### MCP Tools (7 new, in @magnetlab/mcp v0.2.0)
 

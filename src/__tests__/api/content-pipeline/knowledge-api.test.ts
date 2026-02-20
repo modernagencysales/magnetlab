@@ -56,7 +56,7 @@ import { auth } from '@/lib/auth';
 // ---------------------------------------------------------------------------
 
 function makeRequest(url: string, options?: RequestInit) {
-  return new NextRequest(new URL(url, 'http://localhost:3000'), options);
+  return new NextRequest(new URL(url, 'http://localhost:3000'), options as never);
 }
 
 function mockAuthenticated(userId = 'user-123') {
