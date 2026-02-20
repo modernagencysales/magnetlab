@@ -271,17 +271,20 @@ export async function upsertSubscriberFromLead(input: {
     const firstName = input.name?.split(' ')[0] || null;
     const lastName = input.name?.split(' ').slice(1).join(' ') || null;
 
+    const upsertData: Record<string, unknown> = {
+      team_id: input.teamId,
+      email: input.email.toLowerCase().trim(),
+      source: 'lead_magnet',
+      source_id: input.leadMagnetId,
+      status: 'active',
+    };
+    // Only set names when provided (preserve existing non-empty names)
+    if (firstName) upsertData.first_name = firstName;
+    if (lastName) upsertData.last_name = lastName;
+
     await supabase
       .from('email_subscribers')
-      .upsert({
-        team_id: input.teamId,
-        email: input.email.toLowerCase().trim(),
-        first_name: firstName,
-        last_name: lastName,
-        source: 'lead_magnet',
-        source_id: input.leadMagnetId,
-        status: 'active',
-      }, { onConflict: 'team_id,email', ignoreDuplicates: true });
+      .upsert(upsertData, { onConflict: 'team_id,email' });
   } catch {
     // Non-critical — don't fail lead capture
   }

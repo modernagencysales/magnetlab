@@ -75,8 +75,6 @@ export interface EmailFlowContact {
 export interface AudienceFilter {
   engagement?: 'opened_30d' | 'opened_60d' | 'opened_90d' | 'clicked_30d' | 'clicked_60d' | 'clicked_90d' | 'never_opened';
   source?: string;
-  subscribed_after?: string;
-  subscribed_before?: string;
 }
 
 export interface EmailBroadcast {
@@ -157,8 +155,6 @@ export const audienceFilterSchema = z.object({
     'never_opened',
   ]).optional(),
   source: z.string().optional(),
-  subscribed_after: z.string().datetime('Invalid datetime format').optional(),
-  subscribed_before: z.string().datetime('Invalid datetime format').optional(),
 }).optional();
 
 export type AudienceFilterInput = z.infer<typeof audienceFilterSchema>;

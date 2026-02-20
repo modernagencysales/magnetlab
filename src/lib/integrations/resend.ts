@@ -157,8 +157,10 @@ export function personalizeEmail(body: string, data: { firstName?: string; email
  * Generate an HMAC token for unsubscribe link verification
  */
 export function generateUnsubscribeToken(subscriberId: string): string {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) throw new Error('NEXTAUTH_SECRET is required for unsubscribe token generation');
   return crypto
-    .createHmac('sha256', process.env.NEXTAUTH_SECRET || 'fallback')
+    .createHmac('sha256', secret)
     .update(subscriberId)
     .digest('hex')
     .slice(0, 32);

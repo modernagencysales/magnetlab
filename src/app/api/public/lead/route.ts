@@ -219,7 +219,7 @@ export async function POST(request: Request) {
 
     // Try new email flow system first, then fall back to old sequences, then resource email
     triggerEmailFlowIfActive({
-      teamId: funnel.team_id,
+      teamId: funnel.team_id || '',
       userId: funnel.user_id,
       email: lead.email,
       name: lead.name,
