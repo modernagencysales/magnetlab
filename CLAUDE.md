@@ -532,6 +532,7 @@ Unipile webhook → keyword match → HeyReach campaign enrollment (DM/connect) 
 
 After completing any new feature:
 
-1. **Code review** -- trigger `superpowers:requesting-code-review` to catch security issues, missing scoping, and spec compliance
-2. **Resolve issues** -- fix all critical and important findings from the review
-3. **Update docs** -- add feature documentation to this CLAUDE.md (architecture, key files, data flow)
+1. **Write tests** -- every new feature MUST include tests before it is considered complete. At minimum: Zod schema tests for any new/changed schemas, API route tests for every new endpoint, and utility function tests for any new helpers. No exceptions.
+2. **Code review** -- trigger `superpowers:requesting-code-review` to catch security issues, missing scoping, and spec compliance
+3. **Resolve issues** -- fix all critical and important findings from the review
+4. **Update docs** -- add feature documentation to this CLAUDE.md (architecture, key files, data flow)
