@@ -1,14 +1,19 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
-import type { KnowledgeCategory, KnowledgeSpeaker, TranscriptType } from '@/lib/types/content-pipeline';
+import type { KnowledgeCategory, KnowledgeSpeaker, KnowledgeType, TranscriptType } from '@/lib/types/content-pipeline';
 import { logError } from '@/lib/utils/logger';
 
 export interface ExtractedKnowledgeEntry {
   category: KnowledgeCategory;
+  knowledge_type: KnowledgeType;
   speaker: KnowledgeSpeaker;
   content: string;
   context: string;
   tags: string[];
+  suggested_topics: string[];
+  quality_score: number;
+  specificity: boolean;
+  actionability: 'immediately_actionable' | 'contextual' | 'theoretical';
   speaker_company?: string;
 }
 
@@ -82,21 +87,47 @@ ${typeGuidance}
 
 Task: Extract every piece of valuable knowledge from this transcript. For each entry, provide:
 
-1. **category**: One of:
-   - "insight" — anything the host teaches, believes, recommends, or explains. Frameworks, principles, tips, stories with lessons, mental models, tactical advice, strategies.
-   - "question" — what participants/prospects ask, push back on, or express confusion about. Include the question AND the host's answer if one was given.
-   - "product_intel" — mentions of the product or service: feature requests, gaps, praise, complaints, comparisons to competitors, what resonated with prospects.
+1. **knowledge_type**: One of:
+   - "how_to" — Process, method, steps, or technique someone can follow
+   - "insight" — Strategic observation, principle, framework, or mental model
+   - "story" — Specific example with outcome — client result, case study, anecdote with lesson
+   - "question" — Something someone asked plus the answer if given
+   - "objection" — Pushback, resistance, or concern raised — plus how it was handled
+   - "mistake" — Something that went wrong, a failed approach, or a lesson from failure
+   - "decision" — A choice made between alternatives, with the reasoning
+   - "market_intel" — Information about competitors, market trends, pricing, or industry shifts
 
-2. **speaker**: Who originated this content:
+2. **category**: Legacy mapping from knowledge_type:
+   - how_to, insight, story, mistake, decision → "insight"
+   - question, objection → "question"
+   - market_intel → "product_intel"
+
+3. **speaker**: Who originated this content:
    - "host" — the teacher/sales rep (the authority)
    - "participant" — coaching attendee or prospect
    - "unknown" — when the transcript doesn't make the speaker clear
 
-3. **content**: The actual knowledge, written to be standalone and useful without the original transcript.
+4. **content**: The actual knowledge, written to be standalone and useful without the original transcript.
 
-4. **context**: 1-2 sentences explaining what prompted this
+5. **context**: 1-2 sentences explaining what prompted this.
 
-5. **tags**: 2-5 lowercase freeform tags describing the topics. Be specific ("cold email subject lines") not generic ("marketing").
+6. **tags**: 2-5 lowercase freeform tags describing specifics (e.g., "cold email subject lines", not "marketing").
+
+7. **suggested_topics**: 1-3 broad topic labels for this entry (e.g., "Cold Email", "LinkedIn Outreach", "Sales Objections"). These get normalized later — just suggest natural labels.
+
+8. **quality_score**: Rate 1-5:
+   - 5: Specific + actionable + concrete details (numbers, names, timeframes) + novel
+   - 4: Specific and actionable, somewhat expected but well-articulated
+   - 3: Useful context, not immediately actionable but good to know
+   - 2: General observation, nothing surprising
+   - 1: Filler, obvious, too vague, or incomplete
+
+9. **specificity**: true if contains concrete details (numbers, names, timeframes, specific examples), false otherwise.
+
+10. **actionability**: One of:
+    - "immediately_actionable" — someone could do this right now
+    - "contextual" — useful background, informs decisions
+    - "theoretical" — abstract principle or observation
 
 Rules:
 - Extract the RICHEST version if the same point comes up multiple times.
@@ -114,11 +145,16 @@ Return your response as valid JSON in this exact format:
 {
   "entries": [
     {
+      "knowledge_type": "how_to|insight|story|question|objection|mistake|decision|market_intel",
       "category": "insight|question|product_intel",
       "speaker": "host|participant|unknown",
       "content": "The full extracted knowledge, standalone and useful",
       "context": "1-2 sentences of what prompted this",
-      "tags": ["specific", "lowercase", "tags"]
+      "tags": ["specific", "lowercase", "tags"],
+      "suggested_topics": ["Cold Email", "Outbound Strategy"],
+      "quality_score": 4,
+      "specificity": true,
+      "actionability": "immediately_actionable|contextual|theoretical"
     }
   ],
   "total_count": number

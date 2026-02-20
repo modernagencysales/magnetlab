@@ -4,6 +4,7 @@ import { classifyTranscript } from '@/lib/ai/content-pipeline/transcript-classif
 import { extractKnowledgeFromTranscript } from '@/lib/ai/content-pipeline/knowledge-extractor';
 import { extractIdeasFromTranscript } from '@/lib/ai/content-pipeline/content-extractor';
 import { generateEmbedding } from '@/lib/ai/embeddings';
+import { normalizeTopics, upsertTopics } from '@/lib/ai/content-pipeline/topic-normalizer';
 
 interface ProcessTranscriptPayload {
   userId: string;
@@ -101,6 +102,28 @@ export const processTranscript = task({
       ? Object.values(speakerMap).filter(v => v.role !== 'host' && v.company).map(v => v.company)
       : [];
 
+    // Normalize topics for all entries
+    const allSuggestedTopics = new Set<string>();
+    for (const entry of knowledgeResult.entries) {
+      for (const topic of entry.suggested_topics || []) {
+        allSuggestedTopics.add(topic);
+      }
+    }
+
+    const topicSlugsMap = new Map<string, string>();
+    if (allSuggestedTopics.size > 0) {
+      const normalized = await normalizeTopics(
+        userId,
+        Array.from(allSuggestedTopics),
+        knowledgeResult.entries.map(e => e.content).join('\n').slice(0, 2000)
+      );
+      const slugs = await upsertTopics(userId, normalized);
+      for (const n of normalized) {
+        topicSlugsMap.set(n.display_name.toLowerCase(), n.slug);
+        topicSlugsMap.set(n.slug, n.slug);
+      }
+    }
+
     const knowledgeInserts = knowledgeResult.entries.map((entry, idx) => {
       for (const tag of entry.tags) {
         tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
@@ -113,6 +136,10 @@ export const processTranscript = task({
       } else if (entry.speaker === 'participant' && participantCompanies.length > 0) {
         speakerCompany = participantCompanies[0]; // Use first participant company as default
       }
+
+      const entryTopics = (entry.suggested_topics || [])
+        .map(t => topicSlugsMap.get(t.toLowerCase()) || topicSlugsMap.get(t))
+        .filter((s): s is string => !!s);
 
       return {
         user_id: userId,
@@ -127,6 +154,13 @@ export const processTranscript = task({
         team_id: teamId || null,
         source_profile_id: speakerProfileId || null,
         speaker_company: speakerCompany,
+        // New data lake fields
+        knowledge_type: entry.knowledge_type || null,
+        topics: entryTopics,
+        quality_score: entry.quality_score || null,
+        specificity: entry.specificity ?? false,
+        actionability: entry.actionability || null,
+        source_date: transcript.call_date ? transcript.call_date.split('T')[0] : null,
       };
     });
 
@@ -140,6 +174,21 @@ export const processTranscript = task({
           error: knowledgeError.message,
         });
       }
+    }
+
+    // Update topic stats for all topics
+    const topicSlugsToUpdate = new Set<string>();
+    for (const insert of knowledgeInserts) {
+      for (const slug of insert.topics || []) {
+        topicSlugsToUpdate.add(slug);
+      }
+    }
+    if (topicSlugsToUpdate.size > 0) {
+      await Promise.allSettled(
+        Array.from(topicSlugsToUpdate).map((slug) =>
+          supabase.rpc('cp_update_topic_stats', { p_user_id: userId, p_topic_slug: slug })
+        )
+      );
     }
 
     // Increment tag counts atomically via RPC (parallel)
