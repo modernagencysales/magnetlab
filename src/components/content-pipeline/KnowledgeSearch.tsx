@@ -79,7 +79,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [clustering, setClustering] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
+  const [_totalCount, setTotalCount] = useState(0);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
