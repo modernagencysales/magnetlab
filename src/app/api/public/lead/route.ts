@@ -15,6 +15,7 @@ import { deliverConductorWebhook } from '@/lib/webhooks/conductor';
 import { resolveFullQuestionsForFunnel } from '@/lib/services/qualification';
 import { fireTrackingPixelLeadEvent, fireTrackingPixelQualifiedEvent } from '@/lib/services/tracking-pixels';
 import { getPostHogServerClient } from '@/lib/posthog';
+import { syncLeadToEmailProviders } from '@/lib/integrations/email-marketing';
 
 /**
  * Scan qualification answers for a LinkedIn profile URL.
@@ -206,6 +207,11 @@ export async function POST(request: Request) {
       utmCampaign: lead.utm_campaign,
       createdAt: lead.created_at,
     }).catch((err) => logApiError('public/lead/conductor-webhook', err, { leadId: lead.id }));
+
+    // Sync to email marketing providers (fire-and-forget)
+    syncLeadToEmailProviders(funnelPageId, { email, name }).catch((err) =>
+      console.error('[lead-capture] Email marketing sync error:', err)
+    );
 
     // ALWAYS upsert subscriber for the team (non-blocking)
     if (funnel.team_id) {
