@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
           .insert({
             user_id: payload.userId,
             title: `DFY Lead Magnet — ${ctx.company || 'Client'}`,
-            archetype: 'framework',
+            archetype: 'focused-toolkit',
             status: 'draft',
             metadata: {
               source: 'dfy_automation',
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
             userId: payload.userId,
             userName: null,
             username: null,
-            archetype: 'framework',
+            archetype: 'focused-toolkit',
             businessContext: {
               businessDescription: ctx.businessDescription || `${ctx.company || 'Business'} in ${ctx.industry || 'their industry'}`,
               credibilityMarkers: ctx.credibilityMarkers || [],
