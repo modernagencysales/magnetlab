@@ -36,6 +36,32 @@ export const runAutopilot = task({
       errors: result.errors.length,
     });
 
+    // Notify gtm-system when DFY content is ready for review
+    if (result.postsCreated > 0 && !autoPublish) {
+      const gtmUrl = process.env.GTM_SYSTEM_WEBHOOK_URL;
+      const gtmSecret = process.env.GTM_SYSTEM_WEBHOOK_SECRET;
+      if (gtmUrl && gtmSecret) {
+        try {
+          await fetch(`${gtmUrl}/api/dfy/notifications/content-ready`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-webhook-secret': gtmSecret,
+            },
+            body: JSON.stringify({
+              tenant_id: userId,
+              posts_created: result.postsCreated,
+              review_link: `https://magnetlab.app/content-pipeline`,
+            }),
+          });
+        } catch (err) {
+          logger.warn('Failed to notify gtm-system of content ready', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    }
+
     return result;
   },
 });

@@ -5,10 +5,12 @@ import { tasks } from '@trigger.dev/sdk/v3';
 import { logError, logWarn, logInfo } from '@/lib/utils/logger';
 import type { runAutopilot } from '@/trigger/run-autopilot';
 import type { createLeadMagnetPipeline } from '@/trigger/create-lead-magnet';
+import type { LeadMagnetArchetype } from '@/lib/types/lead-magnet';
 
 interface DfyWebhookPayload {
   action: 'create_lead_magnet' | 'trigger_autopilot';
   userId: string;
+  archetype?: string;
   businessContext?: {
     industry?: string;
     company?: string;
@@ -44,6 +46,7 @@ export async function POST(request: NextRequest) {
       case 'create_lead_magnet': {
         const supabase = createSupabaseAdminClient();
         const ctx = payload.businessContext || {};
+        const archetype = (payload.archetype || 'focused-toolkit') as LeadMagnetArchetype;
 
         // Create a lead magnet record for the pipeline
         const { data: magnet, error: magnetError } = await supabase
@@ -51,7 +54,7 @@ export async function POST(request: NextRequest) {
           .insert({
             user_id: payload.userId,
             title: `DFY Lead Magnet — ${ctx.company || 'Client'}`,
-            archetype: 'focused-toolkit',
+            archetype,
             status: 'draft',
             metadata: {
               source: 'dfy_automation',
@@ -75,7 +78,7 @@ export async function POST(request: NextRequest) {
             userId: payload.userId,
             userName: null,
             username: null,
-            archetype: 'focused-toolkit',
+            archetype,
             businessContext: {
               businessDescription: ctx.businessDescription || `${ctx.company || 'Business'} in ${ctx.industry || 'their industry'}`,
               credibilityMarkers: ctx.credibilityMarkers || [],
@@ -85,7 +88,7 @@ export async function POST(request: NextRequest) {
               results: ctx.results || [],
               frequentQuestions: ctx.frequentQuestions || [],
             },
-            autoPublishFunnel: true,
+            autoPublishFunnel: false,
             autoSchedulePost: false,
             leadMagnetId: magnet.id,
           },
