@@ -52,8 +52,8 @@ jest.mock('@/lib/utils/supabase-server', () => ({
 
 // Mock Trigger.dev logger
 jest.mock('@trigger.dev/sdk/v3', () => ({
-  task: (config: { run: Function }) => ({ ...config, trigger: jest.fn() }),
-  schedules: { task: (config: { run: Function }) => config },
+  task: (config: { run: (...args: unknown[]) => unknown }) => ({ ...config, trigger: jest.fn() }),
+  schedules: { task: (config: { run: (...args: unknown[]) => unknown }) => config },
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
