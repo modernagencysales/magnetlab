@@ -506,6 +506,15 @@ export function FunnelIntegrationsTab({
         />
       )}
 
+      {/* Reminder when no integrations are mapped yet */}
+      {integrations.length === 0 && unmappedProviders.length > 0 && !addingProvider && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            Leads from this funnel are <strong>not being synced</strong> to your email provider yet. Add a list below to start syncing.
+          </p>
+        </div>
+      )}
+
       {/* Add buttons for unmapped providers */}
       {unmappedProviders.length > 0 && !addingProvider && (
         <div className="space-y-2">
