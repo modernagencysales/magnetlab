@@ -56,12 +56,12 @@ export const leadMagnetArchetypes = LEAD_MAGNET_ARCHETYPES;
 const conceptSchema = z.object({
   archetype: z.string().optional(),
   archetypeName: z.string().optional(),
-  title: z.string(),
-  painSolved: z.string(),
+  title: z.string().default(''),
+  painSolved: z.string().default(''),
   whyNowHook: z.string().optional(),
   linkedinPost: z.string().optional(),
   contents: z.string().optional(),
-  deliveryFormat: z.string(),
+  deliveryFormat: z.string().default(''),
   viralCheck: z.object({
     highValue: z.boolean(),
     urgentPain: z.boolean(),
@@ -76,17 +76,17 @@ const conceptSchema = z.object({
 }).passthrough();
 
 const extractedContentSchema = z.object({
-  title: z.string(),
-  format: z.string(),
+  title: z.string().default(''),
+  format: z.string().default(''),
   structure: z.array(z.object({
     sectionName: z.string(),
     contents: z.array(z.string()),
   })).optional(),
-  nonObviousInsight: z.string(),
+  nonObviousInsight: z.string().default(''),
   personalExperience: z.string().optional(),
   proof: z.string().optional(),
   commonMistakes: z.array(z.string()).optional(),
-  differentiation: z.string(),
+  differentiation: z.string().default(''),
 }).passthrough();
 
 // ============================================
@@ -177,9 +177,9 @@ export const createLeadMagnetSchema = z.object({
   interactiveConfig: interactiveConfigSchema.nullable().optional(),
   linkedinPost: z.string().nullable().optional(),
   postVariations: z.array(z.object({
-    hookType: z.string(),
-    post: z.string(),
-    whyThisAngle: z.string(),
+    hookType: z.string().default(''),
+    post: z.string().default(''),
+    whyThisAngle: z.string().default(''),
     evaluation: z.record(z.unknown()).nullable().optional(),
   })).optional(),
   dmTemplate: z.string().optional(),
@@ -187,6 +187,21 @@ export const createLeadMagnetSchema = z.object({
 });
 
 export type CreateLeadMagnetInput = z.infer<typeof createLeadMagnetSchema>;
+
+// ============================================
+// SPREADSHEET IMPORT SCHEMAS
+// ============================================
+
+export const spreadsheetImportSchema = z.object({
+  spreadsheetData: z.string()
+    .min(10, 'Spreadsheet data is too short')
+    .max(100_000, 'Spreadsheet data is too large (max 100KB)'),
+  importType: z.literal('spreadsheet'),
+  title: z.string().max(200).optional(),
+  description: z.string().max(1000).optional(),
+});
+
+export type SpreadsheetImportInput = z.infer<typeof spreadsheetImportSchema>;
 
 // ============================================
 // FUNNEL SCHEMAS

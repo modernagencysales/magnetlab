@@ -30,8 +30,8 @@ export function useBackgroundJob<TResult = unknown>(
 ): UseBackgroundJobReturn<TResult> {
   const {
     pollInterval = 2000,
-    // 6 minutes - provides 2-minute buffer after Anthropic SDK 4-minute timeout (MOD-68)
-    timeout = 360000,
+    // 12 minutes - provides 4-minute buffer after Anthropic SDK 8-minute timeout (MOD-76)
+    timeout = 720000,
     onComplete,
     onError,
   } = options;

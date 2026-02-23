@@ -17,6 +17,10 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
           maskInputOptions: {
             password: true,
           },
+          // Prevent SecurityError when rrweb tries to observe cross-origin iframes
+          // (YouTube, Vimeo, Loom, Calendly, Cal.com embeds)
+          recordCrossOriginIframes: false,
+          blockSelector: 'iframe[src*="youtube.com"], iframe[src*="youtu.be"], iframe[src*="vimeo.com"], iframe[src*="loom.com"], iframe[src*="calendly.com"], iframe[src*="cal.com"]',
         },
       });
     }

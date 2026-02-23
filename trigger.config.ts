@@ -4,7 +4,7 @@ export default defineConfig({
   project: "proj_jdjofdqazqwitpinxady",
   runtime: "node",
   logLevel: "log",
-  maxDuration: 300, // 5 minutes max per task
+  maxDuration: 600, // 10 minutes max per task (MOD-76: doubled for heavy AI calls)
   retries: {
     enabledInDev: true,
     default: {

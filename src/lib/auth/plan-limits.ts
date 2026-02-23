@@ -17,10 +17,10 @@ export interface PlanLimits {
 
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
   free: {
-    maxLeadMagnets: 3,
-    maxFunnelPages: 3,
-    maxEmailSequences: 1,
-    features: { customDomain: false, teamMembers: false, apiAccess: false },
+    maxLeadMagnets: Infinity,
+    maxFunnelPages: Infinity,
+    maxEmailSequences: Infinity,
+    features: { customDomain: true, teamMembers: true, apiAccess: true },
   },
   pro: {
     maxLeadMagnets: 25,

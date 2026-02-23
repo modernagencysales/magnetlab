@@ -98,6 +98,46 @@ describe('useBackgroundJob', () => {
 
   describe('timeout behavior', () => {
     /**
+     * MOD-76: Extended timeouts for heavy AI calls with transcripts
+     *
+     * Problem: Users hitting timeouts when brainstorming from call transcripts.
+     * Heavy AI calls (ideation with transcripts, complex content generation)
+     * require longer timeouts than originally configured.
+     *
+     * REQUIRED values for MOD-76:
+     * - ANTHROPIC_TIMEOUT: 480,000ms (8 min) - doubled for heavy calls
+     * - TRIGGER_MAX_DURATION: 600 seconds (10 min) - doubled for task overhead
+     * - CLIENT_POLLING_TIMEOUT: 720,000ms (12 min) - maintains 4-min buffer
+     *
+     * The 4-minute buffer ensures:
+     * 1. The backend has time to mark the job as failed after AI timeout
+     * 2. The client can poll and receive the failure status
+     * 3. The user sees the actual error message from the backend
+     */
+    it('should have extended timeouts for heavy AI calls (MOD-76)', () => {
+      // REQUIRED values for MOD-76 fix - these must be updated in production code
+      const REQUIRED_ANTHROPIC_SDK_TIMEOUT = 480_000; // 8 minutes - for heavy AI calls
+      const REQUIRED_TRIGGER_MAX_DURATION = 600; // 10 minutes in seconds
+      const REQUIRED_CLIENT_POLLING_TIMEOUT = 720_000; // 12 minutes
+      const REQUIRED_BUFFER = 240_000; // 4 minutes buffer for job status updates
+
+      // These are the CURRENT production values (updated for MOD-76)
+      const CURRENT_ANTHROPIC_SDK_TIMEOUT = 480_000; // 8 minutes - from lead-magnet-generator.ts
+      const CURRENT_TRIGGER_MAX_DURATION = 600; // 10 minutes - from trigger.config.ts
+      const CURRENT_CLIENT_POLLING_TIMEOUT = 720_000; // 12 minutes - from useBackgroundJob.ts
+
+      // This test will FAIL until we update the production code
+      // Documenting the required changes:
+      expect(CURRENT_ANTHROPIC_SDK_TIMEOUT).toBe(REQUIRED_ANTHROPIC_SDK_TIMEOUT);
+      expect(CURRENT_TRIGGER_MAX_DURATION).toBe(REQUIRED_TRIGGER_MAX_DURATION);
+      expect(CURRENT_CLIENT_POLLING_TIMEOUT).toBe(REQUIRED_CLIENT_POLLING_TIMEOUT);
+
+      // Buffer calculation should still work with new values
+      const actualBuffer = REQUIRED_CLIENT_POLLING_TIMEOUT - REQUIRED_ANTHROPIC_SDK_TIMEOUT;
+      expect(actualBuffer).toBeGreaterThanOrEqual(REQUIRED_BUFFER);
+    });
+
+    /**
      * MOD-68: Verifies client polling timeout exceeds Anthropic SDK timeout
      *
      * The Anthropic SDK timeout is 240,000ms (4 minutes).

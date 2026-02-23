@@ -33,7 +33,7 @@ export function PublishControls({
   const [stats, setStats] = useState<FunnelStats | null>(null);
   const [origin, setOrigin] = useState('');
 
-  // Set origin after mount to avoid hydration mismatch
+  // Set origin client-side to avoid SSR window access
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);

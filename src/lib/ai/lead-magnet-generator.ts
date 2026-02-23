@@ -22,8 +22,8 @@ function getAnthropicClient(): Anthropic {
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY is not set in environment variables');
   }
-  // Increased timeout for background jobs (4 minutes for complex AI generation like ideation)
-  return new Anthropic({ apiKey, timeout: 240_000 });
+  // Increased timeout for background jobs (8 minutes for heavy AI calls with transcripts - MOD-76)
+  return new Anthropic({ apiKey, timeout: 480_000 });
 }
 
 /**

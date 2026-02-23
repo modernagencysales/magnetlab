@@ -229,7 +229,7 @@ function ProviderCard({
       {isConnected ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Your {provider.name} account is connected. New leads from linked funnels will be synced automatically.
+            Your {provider.name} account is connected. To start syncing leads, go to each funnel&apos;s <strong>Integrations</strong> tab and select a list.
           </p>
 
           {integration?.last_verified_at && (
