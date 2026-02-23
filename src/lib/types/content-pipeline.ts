@@ -117,7 +117,17 @@ export interface Team {
   updated_at: string;
 }
 
+export interface EditPattern {
+  pattern: string;
+  description: string;
+  confidence: number;
+  count: number;
+  first_seen: string;
+  last_seen: string;
+}
+
 export interface TeamVoiceProfile {
+  // Existing fields (backward compatible)
   first_person_context?: string;
   perspective_notes?: string;
   tone?: string;
@@ -126,6 +136,31 @@ export interface TeamVoiceProfile {
   industry_jargon?: string[];
   storytelling_style?: string;
   hook_patterns?: string[];
+
+  // Style learning fields
+  vocabulary_preferences?: {
+    avoid: string[];
+    prefer: string[];
+  };
+  structure_patterns?: {
+    linkedin: string[];
+    email: string[];
+  };
+  cta_style?: string;
+  content_length?: {
+    linkedin: string;
+    email: string;
+  };
+  topics_to_emphasize?: string[];
+  topics_to_avoid?: string[];
+  edit_patterns?: EditPattern[];
+  positive_examples?: Array<{
+    content_id: string;
+    type: string;
+    note: string;
+  }>;
+  last_evolved?: string;
+  evolution_version?: number;
 }
 
 export interface TeamProfile {
