@@ -27,8 +27,8 @@ export function PostsTab({ profileId }: PostsTabProps) {
   const [polishingId, setPolishingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const fetchPosts = useCallback(async () => {
-    setLoading(true);
+  const fetchPosts = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.append('status', statusFilter);
@@ -56,7 +56,7 @@ export function PostsTab({ profileId }: PostsTabProps) {
         method: 'POST',
       });
       if (response.ok) {
-        await fetchPosts();
+        await fetchPosts(true);
         // Refresh the selected post if it's the one we polished
         if (selectedPost?.id === postId) {
           const detailRes = await fetch(`/api/content-pipeline/posts/${postId}`);
@@ -72,15 +72,17 @@ export function PostsTab({ profileId }: PostsTabProps) {
   };
 
   const handleDelete = async (postId: string) => {
+    // Optimistically remove from list
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
     try {
       const response = await fetch(`/api/content-pipeline/posts/${postId}`, {
         method: 'DELETE',
       });
-      if (response.ok) {
-        await fetchPosts();
+      if (!response.ok) {
+        await fetchPosts(true);
       }
     } catch {
-      // Silent failure
+      await fetchPosts(true);
     }
   };
 

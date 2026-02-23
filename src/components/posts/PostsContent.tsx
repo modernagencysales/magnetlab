@@ -63,6 +63,7 @@ export function PostsContent() {
     tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'ideas'
   );
   const [showQuickWrite, setShowQuickWrite] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { selectedProfileId, onProfileChange } = useProfileSelection();
 
   useEffect(() => {
@@ -121,7 +122,7 @@ export function PostsContent() {
       {/* Tab Content */}
       <Suspense fallback={<TabLoader />}>
         {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
-        {activeTab === 'drafts' && <PostsTab profileId={selectedProfileId} />}
+        {activeTab === 'drafts' && <PostsTab key={refreshKey} profileId={selectedProfileId} />}
         {activeTab === 'schedule' && (
           <div className="space-y-8">
             <PipelineTab />
@@ -143,7 +144,11 @@ export function PostsContent() {
       {showQuickWrite && (
         <QuickWriteModal
           onClose={() => setShowQuickWrite(false)}
-          onPostCreated={() => {}}
+          onPostCreated={() => {
+            // Switch to drafts tab and refresh it
+            handleTabChange('drafts');
+            setRefreshKey((k) => k + 1);
+          }}
           profileId={selectedProfileId}
         />
       )}

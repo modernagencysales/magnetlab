@@ -54,8 +54,8 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
   const [writingId, setWritingId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
 
-  const fetchIdeas = useCallback(async () => {
-    setLoading(true);
+  const fetchIdeas = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.append('status', statusFilter);
@@ -79,17 +79,25 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
 
   const handleWritePost = async (ideaId: string) => {
     setWritingId(ideaId);
+    // Optimistically update the idea status to 'writing'
+    setIdeas((prev) => prev.map((idea) =>
+      idea.id === ideaId ? { ...idea, status: 'writing' as IdeaStatus } : idea
+    ));
     try {
       const response = await fetch(`/api/content-pipeline/ideas/${ideaId}/write`, {
         method: 'POST',
       });
 
       if (response.ok) {
-        await fetchIdeas();
+        // Silent refetch — no full-page loader
+        await fetchIdeas(true);
         setSelectedIdea(null);
+      } else {
+        // Revert on failure
+        await fetchIdeas(true);
       }
     } catch {
-      // Silent failure
+      await fetchIdeas(true);
     } finally {
       setWritingId(null);
     }
@@ -97,18 +105,20 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
 
   const handleArchive = async (ideaId: string) => {
     setArchivingId(ideaId);
+    // Optimistically remove the idea from the list
+    setIdeas((prev) => prev.filter((idea) => idea.id !== ideaId));
+    setSelectedIdea(null);
     try {
       const response = await fetch('/api/content-pipeline/ideas', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ideaId, status: 'archived' }),
       });
-      if (response.ok) {
-        await fetchIdeas();
-        setSelectedIdea(null);
+      if (!response.ok) {
+        await fetchIdeas(true);
       }
     } catch {
-      // Silent failure
+      await fetchIdeas(true);
     } finally {
       setArchivingId(null);
     }
