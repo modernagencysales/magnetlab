@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { logError, logWarn } from '@/lib/utils/logger';
+import { logError } from '@/lib/utils/logger';
 
 // ---------------------------------------------------------------------------
 // Types

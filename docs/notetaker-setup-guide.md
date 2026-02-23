@@ -13,6 +13,7 @@
 | **Fathom** | Fathom > Settings > API Access > Webhooks | Per-user secret (generated in MagnetLab) | Client's Fathom login |
 | **Grain** | Grain > Settings > Integrations/API > Webhooks | Shared secret (`GRAIN_WEBHOOK_SECRET` env var) | Client's Grain login + their MagnetLab user ID |
 | **Fireflies** | Fireflies > Settings > Developer settings | Shared secret (`FIREFLIES_WEBHOOK_SECRET` env var) | Client's Fireflies login + their MagnetLab user ID + possibly Zapier/Make |
+| **Any other** (Otter, Read AI, Granola, tl;dv, etc.) | n8n / Make.com / Zapier intermediary | Shared secret (`TRANSCRIPT_WEBHOOK_SECRET` env var) | Client's notetaker login + their MagnetLab user ID + automation tool account |
 
 ---
 
@@ -220,6 +221,108 @@ If Fireflies only sends the `meetingId` in the webhook (this is the common case)
 
 ---
 
+## Any Other Notetaker (Otter, Read AI, Granola, tl;dv, etc.)
+
+MagnetLab has a **universal transcript webhook** that works with any call recorder -- even ones we have never heard of. The catch: the notetaker almost certainly will not send the transcript directly to MagnetLab in the right format. You will need an automation tool (n8n, Make.com, or Zapier) sitting in between.
+
+**Use this approach for any notetaker that is NOT Fathom, Grain, or Fireflies.**
+
+### How It Works
+
+```
+Notetaker → n8n / Make.com / Zapier → MagnetLab universal webhook
+```
+
+The automation tool receives the notetaker's native webhook, fetches the full transcript if needed, reformats the payload, and POSTs it to MagnetLab.
+
+### Step 1: Get the Client's MagnetLab User ID
+
+Same as the Grain setup -- see [Step 2 in the Grain section](#step-2-get-the-clients-magnetlab-user-id) above.
+
+### Step 2: Construct the Universal Webhook URL
+
+The URL format is:
+
+```
+https://magnetlab.app/api/webhooks/transcript?secret=<TRANSCRIPT_WEBHOOK_SECRET>&user_id=<userId>
+```
+
+- `TRANSCRIPT_WEBHOOK_SECRET` is set as an environment variable in MagnetLab's Vercel deployment. Ask the team lead for the current value.
+- `<userId>` is the client's MagnetLab user ID from Step 1.
+
+### Step 3: Build the Automation
+
+Create a scenario/workflow in whichever automation tool the client prefers (or whichever you are most comfortable with). The flow is always the same three modules:
+
+1. **Trigger**: Receive the notetaker's webhook (or poll for new recordings)
+2. **Fetch transcript**: If the notetaker only sends a notification (no transcript text), use an HTTP/API module to fetch the full transcript from the notetaker's API
+3. **POST to MagnetLab**: Send the formatted payload to the universal webhook URL
+
+The final HTTP request must be:
+
+- **Method**: POST
+- **URL**: The universal webhook URL from Step 2
+- **Content-Type**: `application/json`
+- **Body**:
+
+```json
+{
+  "source": "otter",
+  "recording_id": "unique-id-from-the-notetaker",
+  "transcript": "The full transcript text goes here...",
+  "title": "Meeting title (optional)",
+  "date": "2026-02-23T10:00:00Z (optional, ISO 8601)",
+  "duration_minutes": 45,
+  "participants": ["Alice", "Bob"]
+}
+```
+
+#### Required Fields
+
+| Field | Required? | Notes |
+|-------|-----------|-------|
+| `recording_id` | **Required** | A unique ID for the recording from the notetaker. Used for deduplication. |
+| `transcript` | **Required** | The full transcript text. Not a URL, not a summary -- the actual text. |
+| `source` | Recommended | Name of the notetaker (e.g., `otter`, `read_ai`, `granola`, `tldv`). Defaults to `other` if omitted. Shows up as a tag in MagnetLab. |
+| `title` | Optional | Meeting title |
+| `date` | Optional | Meeting date/time in ISO 8601 format |
+| `duration_minutes` | Optional | Meeting length in minutes |
+| `participants` | Optional | Array of participant names or emails |
+
+### Example: Otter.ai via n8n
+
+1. **Webhook node** (trigger): Receive Otter's webhook notification
+2. **HTTP Request node**: Call Otter's API to fetch the full transcript for the meeting ID
+3. **HTTP Request node** (POST): Send to `https://magnetlab.app/api/webhooks/transcript?secret=<SECRET>&user_id=<USER_ID>` with the JSON body above
+
+### Example: tl;dv via Make.com
+
+1. **Webhooks > Custom webhook** (trigger): Receive tl;dv's event
+2. **HTTP > Make a request** (GET): Fetch transcript from tl;dv's API using the meeting ID
+3. **HTTP > Make a request** (POST): Forward to MagnetLab's universal webhook URL with formatted body
+
+### Step 4: Test the Connection
+
+1. Record a short test meeting with the notetaker active
+2. Wait for the notetaker to process + the automation to run
+3. Check the automation tool's execution log to confirm the POST succeeded (look for HTTP 200)
+4. In MagnetLab, go to the **Knowledge** page
+5. The transcript should appear with the source tag you specified (e.g., "otter")
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| 401 Unauthorized | The `?secret=` value does not match the `TRANSCRIPT_WEBHOOK_SECRET` environment variable. Double-check the value. |
+| 400 "Missing required query param: user_id" | The `?user_id=` parameter is missing from the URL. Add it. |
+| 400 "Missing required fields: recording_id, transcript" | The JSON body is missing `recording_id` or `transcript`. Check the HTTP module's body configuration. |
+| Automation runs but transcript is empty or a URL | The notetaker sent a link to the transcript, not the text itself. You need a second module to fetch the actual transcript content before forwarding to MagnetLab. |
+| 200 response with `"duplicate": true` | MagnetLab already has this transcript (same `source:recording_id`). Not an error -- deduplication is working correctly. |
+| Transcript appears under wrong user | The `user_id` in the URL is wrong. Update it to the client's correct MagnetLab user ID. |
+| Transcript shows as source "other" | You did not include the `source` field in the JSON body. Add it (e.g., `"source": "otter"`). |
+
+---
+
 ## General Troubleshooting
 
 ### Where to Check When Things Are Not Working
@@ -251,5 +354,6 @@ These are set on the MagnetLab Vercel deployment. You should not need to change 
 |----------|---------|---------|
 | `GRAIN_WEBHOOK_SECRET` | Grain webhook route | Shared secret for authenticating Grain webhooks |
 | `FIREFLIES_WEBHOOK_SECRET` | Fireflies webhook route | Shared secret for authenticating Fireflies webhooks |
+| `TRANSCRIPT_WEBHOOK_SECRET` | Universal transcript webhook route | Shared secret for authenticating any notetaker via automation intermediary |
 
 Fathom does not use an environment variable -- each user's webhook secret is stored in the `user_integrations` database table and generated through the MagnetLab UI.
