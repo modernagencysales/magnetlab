@@ -100,7 +100,7 @@ Supabase PostgreSQL, 14 migrations. Tables:
 
 ### Content Pipeline Tables (cp_ prefix)
 
-- `cp_call_transcripts` -- raw transcripts from Grain, Fireflies, or paste
+- `cp_call_transcripts` -- raw transcripts from Grain, Fireflies, Fathom, or paste (source: `'grain' | 'fireflies' | 'fathom' | 'paste'`). All three notetaker integrations are webhook-based (Fathom migrated from OAuth polling to per-user webhook auth in Feb 2026).
 - `cp_knowledge_entries` -- extracted insights/questions/intel with vector embeddings + knowledge_type, quality_score, topics, specificity, actionability, source_date
 - `cp_knowledge_tags` -- tag usage tracking per user
 - `cp_knowledge_topics` -- auto-discovered topic taxonomy per user (slug, display_name, description, entry_count, avg_quality)
@@ -117,6 +117,8 @@ RPCs: `cp_match_knowledge_entries()` (pgvector cosine similarity), `cp_match_kno
 
 - `api/webhooks/grain/` -- Grain transcript webhook
 - `api/webhooks/fireflies/` -- Fireflies transcript webhook
+- `api/webhooks/fathom/[userId]/` -- Fathom transcript webhook (per-user secret auth)
+- `api/integrations/fathom/webhook-url/` -- Fathom webhook URL generation (GET/POST/DELETE)
 - `api/content-pipeline/transcripts/` -- paste/upload + list transcripts
 - `api/content-pipeline/knowledge/` -- search/browse AI Brain knowledge base (supports V2 filters: type, topic, min_quality, since)
 - `api/content-pipeline/knowledge/topics/` -- list auto-discovered topics
@@ -469,6 +471,7 @@ Key files:
 
 - **GTM webhooks**: Fires `lead.created`, `lead.qualified`, `lead_magnet.deployed` to gtm-system via `lib/webhooks/gtm-system.ts` (fire-and-forget, 5s timeout, `x-webhook-secret` auth). **Scoped to GTM system owner only** (`GTM_SYSTEM_USER_ID` env var) — other magnetlab users' leads are NOT sent to gtm-system.
 - **User webhooks**: Users configure their own endpoints for lead capture events (`lib/webhooks/sender.ts`, signature verify in `lib/webhooks/verify.ts`)
+- **Notetaker integrations (Grain, Fireflies, Fathom)**: All three use inbound webhooks — no OAuth polling. Grain and Fireflies use shared secrets (`GRAIN_WEBHOOK_SECRET`, `FIREFLIES_WEBHOOK_SECRET`). Fathom uses per-user webhook URLs with unique secrets (generated via `/api/integrations/fathom/webhook-url/`). Fathom was migrated from OAuth to webhook-based in Feb 2026.
 - **Stripe**: Checkout/subscriptions/webhooks at `/api/stripe/`, state in `subscriptions` table, limits via `usage_tracking`
 - **Email Marketing (Kit, MailerLite, Mailchimp, ActiveCampaign)**: Native ESP integrations that auto-subscribe funnel leads to user's email lists with optional tags. See "Email Marketing Integrations" section below.
 
