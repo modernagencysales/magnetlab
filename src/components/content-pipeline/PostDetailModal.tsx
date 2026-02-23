@@ -5,6 +5,7 @@ import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin, Users, Zap
 import { cn } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostPreview } from './PostPreview';
+import { StyleFeedbackToast } from './StyleFeedbackToast';
 import type { PipelinePost, PostVariation, LinkedInAutomation, AutomationStatus } from '@/lib/types/content-pipeline';
 
 interface PostDetailModalProps {
@@ -27,6 +28,7 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [feedbackEditId, setFeedbackEditId] = useState<string | null>(null);
 
   // Engagement scraping state
   const [engagementStats, setEngagementStats] = useState<{ comments: number; reactions: number; resolved: number; pushed: number } | null>(null);
@@ -243,8 +245,13 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
       });
 
       if (response.ok) {
+        const data = await response.json();
         setEditing(false);
         onUpdate();
+        // Show feedback toast if an edit was captured
+        if (data.editId) {
+          setFeedbackEditId(data.editId);
+        }
       }
     } catch {
       // Silent failure
@@ -709,6 +716,14 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
           </div>
         )}
       </div>
+
+      {/* Style Feedback Toast */}
+      {feedbackEditId && (
+        <StyleFeedbackToast
+          editId={feedbackEditId}
+          onDismiss={() => setFeedbackEditId(null)}
+        />
+      )}
     </div>
   );
 }

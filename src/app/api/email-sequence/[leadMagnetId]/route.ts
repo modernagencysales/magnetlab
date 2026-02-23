@@ -8,7 +8,7 @@ import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { emailSequenceFromRow } from '@/lib/types/email';
 import type { EmailSequenceRow } from '@/lib/types/email';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-import { captureEdit } from '@/lib/services/edit-capture';
+import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 
 interface RouteParams {
   params: Promise<{ leadMagnetId: string }>;
@@ -153,7 +153,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       return ApiErrors.databaseError('Failed to update email sequence');
     }
 
-    // Capture edits fire-and-forget (never blocks the response)
+    // Capture edits with async classification (never blocks the response)
     if (emails && scope.teamId && existingSequence.emails && Array.isArray(existingSequence.emails)) {
       try {
         const oldEmails = existingSequence.emails as Array<{ day: number; subject: string; body: string }>;
@@ -165,7 +165,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
           const newEmail = newEmails[i];
           if (oldEmail && newEmail) {
             if (oldEmail.subject !== newEmail.subject) {
-              captureEdit(supabase, {
+              captureAndClassifyEdit(supabase, {
                 teamId: scope.teamId,
                 profileId: null,
                 contentType: 'sequence',
@@ -176,7 +176,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
               }).catch(() => {});
             }
             if (oldEmail.body !== newEmail.body) {
-              captureEdit(supabase, {
+              captureAndClassifyEdit(supabase, {
                 teamId: scope.teamId,
                 profileId: null,
                 contentType: 'sequence',

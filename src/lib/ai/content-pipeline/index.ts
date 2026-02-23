@@ -20,3 +20,5 @@ export { searchTopPerformingPosts, searchTopLeadMagnets, searchCreatorContent, s
 export type { InspirationContent, InspirationAnalysis, TrendSummary } from './inspiration-researcher';
 export { matchTemplates, findBestTemplate, buildTemplateGuidance } from './template-matcher';
 export type { MatchedTemplate, MatchTemplateOptions } from './template-matcher';
+export { classifyEditPatterns } from './edit-classifier';
+export type { ClassifyInput, EditPattern, ClassifyResult } from './edit-classifier';

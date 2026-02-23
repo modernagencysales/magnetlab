@@ -9,7 +9,7 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { requireTeamScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { updateBroadcastSchema } from '@/lib/types/email-system';
-import { captureEdit } from '@/lib/services/edit-capture';
+import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 
 const BROADCAST_COLUMNS =
   'id, team_id, user_id, subject, body, status, audience_filter, recipient_count, sent_at, created_at, updated_at';
@@ -135,10 +135,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
       return ApiErrors.databaseError('Failed to update broadcast');
     }
 
-    // Capture edits fire-and-forget (never blocks the response)
+    // Capture edits with async classification (never blocks the response)
     try {
       if (parsed.data.subject && existing.subject) {
-        captureEdit(supabase, {
+        captureAndClassifyEdit(supabase, {
           teamId,
           profileId: null,
           contentType: 'email',
@@ -150,7 +150,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       }
 
       if (parsed.data.body && existing.body) {
-        captureEdit(supabase, {
+        captureAndClassifyEdit(supabase, {
           teamId,
           profileId: null,
           contentType: 'email',

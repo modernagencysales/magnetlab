@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { captureEdit } from '@/lib/services/edit-capture';
+import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 import { requireTeamScope } from '@/lib/utils/team-context';
 
 import { logError } from '@/lib/utils/logger';
@@ -97,7 +97,8 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Capture edits fire-and-forget (never blocks the response)
+    // Capture edits with async classification (never blocks the response)
+    let editId: string | null = null;
     if (currentPost && hasTextChanges) {
       try {
         const scope = await requireTeamScope(session.user.id);
@@ -105,20 +106,8 @@ export async function PATCH(
           const teamId = scope.teamId;
           const profileId = currentPost.team_profile_id || null;
 
-          if (updates.draft_content && currentPost.draft_content) {
-            captureEdit(supabase, {
-              teamId,
-              profileId,
-              contentType: 'post',
-              contentId: id,
-              fieldName: 'draft_content',
-              originalText: currentPost.draft_content,
-              editedText: updates.draft_content as string,
-            }).catch(() => {});
-          }
-
           if (updates.final_content && currentPost.final_content) {
-            captureEdit(supabase, {
+            editId = await captureAndClassifyEdit(supabase, {
               teamId,
               profileId,
               contentType: 'post',
@@ -126,7 +115,17 @@ export async function PATCH(
               fieldName: 'final_content',
               originalText: currentPost.final_content,
               editedText: updates.final_content as string,
-            }).catch(() => {});
+            });
+          } else if (updates.draft_content && currentPost.draft_content) {
+            editId = await captureAndClassifyEdit(supabase, {
+              teamId,
+              profileId,
+              contentType: 'post',
+              contentId: id,
+              fieldName: 'draft_content',
+              originalText: currentPost.draft_content,
+              editedText: updates.draft_content as string,
+            });
           }
         }
       } catch {
@@ -134,7 +133,7 @@ export async function PATCH(
       }
     }
 
-    return NextResponse.json({ post: data });
+    return NextResponse.json({ post: data, editId });
   } catch (error) {
     logError('cp/posts', error, { step: 'post_update_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

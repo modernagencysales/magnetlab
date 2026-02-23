@@ -8,7 +8,7 @@ import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { validateBody, updateContentBodySchema } from '@/lib/validations/api';
 import type { PolishedContent, PolishedSection } from '@/lib/types/lead-magnet';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
-import { captureEdit } from '@/lib/services/edit-capture';
+import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -85,7 +85,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
         // Compare heroSummary
         if (oldContent.heroSummary && polishedContent.heroSummary) {
-          captureEdit(supabase, {
+          captureAndClassifyEdit(supabase, {
             teamId,
             profileId: null,
             contentType: 'lead_magnet',
@@ -105,7 +105,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
           if (!oldSection) continue;
 
           if (oldSection.introduction && newSection.introduction) {
-            captureEdit(supabase, {
+            captureAndClassifyEdit(supabase, {
               teamId,
               profileId: null,
               contentType: 'lead_magnet',
@@ -117,7 +117,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
           }
 
           if (oldSection.keyTakeaway && newSection.keyTakeaway) {
-            captureEdit(supabase, {
+            captureAndClassifyEdit(supabase, {
               teamId,
               profileId: null,
               contentType: 'lead_magnet',
@@ -135,7 +135,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
             const oldBlock = oldBlocks[j];
             const newBlock = newBlocks[j];
             if (oldBlock?.content && newBlock?.content) {
-              captureEdit(supabase, {
+              captureAndClassifyEdit(supabase, {
                 teamId,
                 profileId: null,
                 contentType: 'lead_magnet',

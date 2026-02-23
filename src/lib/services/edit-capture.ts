@@ -1,6 +1,8 @@
 // Edit capture service for style learning
 // Captures every meaningful content edit across posts, emails, lead magnets, sequences
 
+import { classifyEditPatterns } from '@/lib/ai/content-pipeline/edit-classifier';
+
 export interface EditDiff {
   added: string[];
   removed: string[];
@@ -126,4 +128,51 @@ export async function captureEdit(
   if (error) {
     console.error('[edit-capture] Failed to save edit:', error);
   }
+}
+
+/**
+ * Insert edit record AND kick off async AI classification.
+ * Returns the inserted record's ID (or null if edit was insignificant / insert failed).
+ * Classification runs fire-and-forget — never blocks the caller.
+ */
+export async function captureAndClassifyEdit(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (table: string) => any },
+  input: EditRecordInput
+): Promise<string | null> {
+  const record = buildEditRecord(input);
+  if (!record) return null;
+
+  const { data, error } = await supabase
+    .from('cp_edit_history')
+    .insert(record as unknown as Record<string, unknown>)
+    .select('id')
+    .single();
+
+  if (error || !data) {
+    console.error('[edit-capture] Failed to save edit:', error);
+    return null;
+  }
+
+  // Async classification (fire-and-forget)
+  classifyEditPatterns({
+    originalText: input.originalText,
+    editedText: input.editedText,
+    contentType: input.contentType,
+    fieldName: input.fieldName,
+  }).then(result => {
+    if (result.patterns.length > 0) {
+      supabase
+        .from('cp_edit_history')
+        .update({ auto_classified_changes: result })
+        .eq('id', data.id)
+        .then(({ error: updateError }: { error: { message: string } | null }) => {
+          if (updateError) console.error('[edit-capture] Classification save failed:', updateError);
+        });
+    }
+  }).catch((err: unknown) => {
+    console.error('[edit-capture] Classification failed:', err);
+  });
+
+  return data.id;
 }

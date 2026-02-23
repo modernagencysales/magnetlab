@@ -2,13 +2,23 @@
  * @jest-environment node
  */
 
+// Mock the classifier — must come before imports
+jest.mock('@/lib/ai/content-pipeline/edit-classifier', () => ({
+  classifyEditPatterns: jest.fn(),
+}));
+
 import {
   isSignificantEdit,
   computeEditDiff,
   buildEditRecord,
   captureEdit,
+  captureAndClassifyEdit,
   type EditRecordInput,
 } from '@/lib/services/edit-capture';
+
+import { classifyEditPatterns } from '@/lib/ai/content-pipeline/edit-classifier';
+
+const mockClassify = classifyEditPatterns as jest.Mock;
 
 describe('edit-capture', () => {
   // ----------------------------------------------------------------
@@ -285,6 +295,124 @@ describe('edit-capture', () => {
         '[edit-capture] Failed to save edit:',
         expect.objectContaining({ message: 'insert failed' })
       );
+      consoleSpy.mockRestore();
+    });
+  });
+
+  // ----------------------------------------------------------------
+  // captureAndClassifyEdit
+  // ----------------------------------------------------------------
+  describe('captureAndClassifyEdit', () => {
+    const mockSelect = jest.fn();
+    const mockSingle = jest.fn();
+    const mockInsert2 = jest.fn();
+    const mockUpdate = jest.fn();
+    const mockEq = jest.fn();
+    const mockUpdateThen = jest.fn();
+
+    const mockSupabase2 = {
+      from: jest.fn(),
+    };
+
+    const significantInput: EditRecordInput = {
+      teamId: 'team-123',
+      profileId: 'profile-456',
+      contentType: 'post',
+      contentId: 'post-789',
+      fieldName: 'body',
+      originalText: 'Our product helps businesses grow.',
+      editedText: 'Our platform empowers agencies to scale through AI-driven outreach and automation.',
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+
+      // Chain: from('cp_edit_history').insert(record).select('id').single()
+      mockSingle.mockResolvedValue({ data: { id: 'edit-abc' }, error: null });
+      mockSelect.mockReturnValue({ single: mockSingle });
+      mockInsert2.mockReturnValue({ select: mockSelect });
+
+      // Chain for update: from('cp_edit_history').update({...}).eq('id', ...)
+      mockUpdateThen.mockResolvedValue({ error: null });
+      mockEq.mockReturnValue({ then: mockUpdateThen });
+      mockUpdate.mockReturnValue({ eq: mockEq });
+
+      mockSupabase2.from.mockImplementation(() => ({
+        insert: mockInsert2,
+        update: mockUpdate,
+      }));
+
+      mockClassify.mockResolvedValue({ patterns: [] });
+    });
+
+    it('returns the edit ID on successful insert', async () => {
+      const id = await captureAndClassifyEdit(mockSupabase2, significantInput);
+
+      expect(id).toBe('edit-abc');
+      expect(mockSupabase2.from).toHaveBeenCalledWith('cp_edit_history');
+    });
+
+    it('returns null for an insignificant edit', async () => {
+      const id = await captureAndClassifyEdit(mockSupabase2, {
+        ...significantInput,
+        originalText: 'Hello world',
+        editedText: 'Hello  world',
+      });
+
+      expect(id).toBeNull();
+      expect(mockSupabase2.from).not.toHaveBeenCalled();
+    });
+
+    it('returns null on insert failure', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      mockSingle.mockResolvedValue({ data: null, error: { message: 'insert failed' } });
+
+      const id = await captureAndClassifyEdit(mockSupabase2, significantInput);
+
+      expect(id).toBeNull();
+      consoleSpy.mockRestore();
+    });
+
+    it('calls classifyEditPatterns after insert', async () => {
+      mockClassify.mockResolvedValue({
+        patterns: [{ pattern: 'made_conversational', description: 'Changed tone' }],
+      });
+
+      await captureAndClassifyEdit(mockSupabase2, significantInput);
+
+      // Allow async fire-and-forget to settle
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockClassify).toHaveBeenCalledWith({
+        originalText: significantInput.originalText,
+        editedText: significantInput.editedText,
+        contentType: 'post',
+        fieldName: 'body',
+      });
+    });
+
+    it('does not update DB when classification returns no patterns', async () => {
+      mockClassify.mockResolvedValue({ patterns: [] });
+
+      await captureAndClassifyEdit(mockSupabase2, significantInput);
+
+      // Allow async fire-and-forget to settle
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // from() is called once for the insert; should not be called again for update
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('does not throw if classification fails', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      mockClassify.mockRejectedValue(new Error('Classification failed'));
+
+      const id = await captureAndClassifyEdit(mockSupabase2, significantInput);
+
+      // Allow async fire-and-forget to settle
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(id).toBe('edit-abc');
       consoleSpy.mockRestore();
     });
   });
