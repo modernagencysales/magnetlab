@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { requireTeamScope } from '@/lib/utils/team-context';
 import { logError } from '@/lib/utils/logger';
 
 export async function POST(request: Request) {
@@ -25,13 +26,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'note must be a string' }, { status: 400 });
     }
 
+    if (note && note.length > 500) {
+      return NextResponse.json({ error: 'Note must be 500 characters or less' }, { status: 400 });
+    }
+
+    // Get team scope to prevent IDOR -- user must belong to the team that owns the edit
+    const scope = await requireTeamScope(session.user.id);
+    if (!scope?.teamId) {
+      return NextResponse.json({ error: 'Team context required' }, { status: 403 });
+    }
+
     const supabase = createSupabaseAdminClient();
 
-    // Verify the edit record exists
+    // Verify the edit record exists AND belongs to user's team
     const { data: editRecord, error: fetchError } = await supabase
       .from('cp_edit_history')
       .select('id')
       .eq('id', editId)
+      .eq('team_id', scope.teamId)
       .maybeSingle();
 
     if (fetchError) {

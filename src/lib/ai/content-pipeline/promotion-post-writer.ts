@@ -59,5 +59,9 @@ Return ONLY valid JSON array of objects with: "content", "angle" (problem_aware|
   });
 
   const text = response.content[0].type === 'text' ? response.content[0].text : '';
-  return parseJsonResponse<PromotionPost[]>(text);
+  const posts = parseJsonResponse<PromotionPost[]>(text);
+  if (!Array.isArray(posts) || posts.length === 0) {
+    throw new Error('Promotion post writer returned empty or invalid response');
+  }
+  return posts;
 }

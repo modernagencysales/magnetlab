@@ -49,5 +49,9 @@ Return ONLY valid JSON with "subject" (compelling, 5-10 words) and "body" (markd
   });
 
   const text = response.content[0].type === 'text' ? response.content[0].text : '';
-  return parseJsonResponse<EmailResult>(text);
+  const result = parseJsonResponse<EmailResult>(text);
+  if (!result.subject || !result.body) {
+    throw new Error('Email writer returned incomplete response');
+  }
+  return result;
 }

@@ -105,12 +105,14 @@ Return ONLY the JSON object, no explanation.`,
       throw new Error(`Failed to save evolved profile: ${updateError.message}`);
     }
 
-    // 6. Mark edits as processed
+    // 6. Mark edits as processed (use specific IDs to avoid race condition
+    // where new edits inserted between fetch and update would be marked processed
+    // without being analyzed)
+    const editIds = edits.map((e: { id: string }) => e.id);
     const { error: markError } = await supabase
       .from('cp_edit_history')
       .update({ processed: true })
-      .eq('profile_id', payload.profileId)
-      .eq('processed', false);
+      .in('id', editIds);
 
     if (markError) {
       logger.warn('Failed to mark edits as processed', { error: markError.message });

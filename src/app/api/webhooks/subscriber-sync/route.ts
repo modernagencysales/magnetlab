@@ -7,6 +7,7 @@
 // Auth: x-webhook-secret header must match SUBSCRIBER_SYNC_WEBHOOK_SECRET env var.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError } from '@/lib/utils/logger';
 
@@ -51,9 +52,13 @@ const VALID_SOURCES = [
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Auth: verify webhook secret
+    // 1. Auth: verify webhook secret (timing-safe comparison)
     const secret = request.headers.get('x-webhook-secret');
-    if (!secret || secret !== process.env.SUBSCRIBER_SYNC_WEBHOOK_SECRET) {
+    const expected = process.env.SUBSCRIBER_SYNC_WEBHOOK_SECRET || '';
+    const isValid = secret && expected &&
+      secret.length === expected.length &&
+      timingSafeEqual(Buffer.from(secret), Buffer.from(expected));
+    if (!isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

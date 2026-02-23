@@ -12,6 +12,11 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(),
 }));
 
+// Mock team context
+jest.mock('@/lib/utils/team-context', () => ({
+  requireTeamScope: jest.fn(),
+}));
+
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
   logError: jest.fn(),
@@ -23,9 +28,11 @@ jest.mock('@/lib/utils/logger', () => ({
 import { POST } from '@/app/api/content-pipeline/edit-feedback/route';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { requireTeamScope } from '@/lib/utils/team-context';
 
 const mockAuth = auth as jest.Mock;
 const mockCreateSupabase = createSupabaseAdminClient as jest.Mock;
+const mockRequireTeamScope = requireTeamScope as jest.Mock;
 
 function createRequest(body: Record<string, unknown>) {
   return new Request('http://localhost:3000/api/content-pipeline/edit-feedback', {
@@ -46,10 +53,12 @@ describe('POST /api/content-pipeline/edit-feedback', () => {
     jest.clearAllMocks();
 
     mockAuth.mockResolvedValue({ user: { id: 'user-123' } });
+    mockRequireTeamScope.mockResolvedValue({ type: 'team', userId: 'user-123', teamId: 'team-456' });
 
-    // Build chainable mock
+    // Build chainable mock — select chain: .select('id').eq('id', ...).eq('team_id', ...).maybeSingle()
     mockMaybeSingle = jest.fn().mockResolvedValue({ data: { id: 'edit-abc' }, error: null });
-    mockSelectEq = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockSelectTeamEq = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    mockSelectEq = jest.fn().mockReturnValue({ eq: mockSelectTeamEq });
     mockSelect = jest.fn().mockReturnValue({ eq: mockSelectEq });
 
     mockUpdateEq = jest.fn().mockResolvedValue({ error: null });
@@ -85,6 +94,22 @@ describe('POST /api/content-pipeline/edit-feedback', () => {
   it('returns 400 when note is not a string', async () => {
     const res = await POST(createRequest({ editId: 'edit-abc', note: 123 }));
     expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when note exceeds 500 characters', async () => {
+    const longNote = 'a'.repeat(501);
+    const res = await POST(createRequest({ editId: 'edit-abc', note: longNote }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('500 characters');
+  });
+
+  it('returns 403 when user has no team context', async () => {
+    mockRequireTeamScope.mockResolvedValue(null);
+    const res = await POST(createRequest({ editId: 'edit-abc', tags: ['Too formal'] }));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toContain('Team context');
   });
 
   it('returns 404 when edit record not found', async () => {

@@ -175,7 +175,7 @@ WHERE user_id = '...' AND service = 'resend';
 
 **Verify:**
 ```sql
-SELECT content_type, field_name, edit_distance, classification, edit_tags
+SELECT content_type, field_name, edit_diff, auto_classified_changes, edit_tags
 FROM cp_edit_history
 WHERE profile_id = '...'
 ORDER BY created_at DESC

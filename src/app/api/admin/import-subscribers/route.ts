@@ -149,6 +149,11 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('CSV data is required for csv source');
     }
 
+    const MAX_CSV_SIZE = 5 * 1024 * 1024; // 5MB
+    if (data.length > MAX_CSV_SIZE) {
+      return ApiErrors.validationError('CSV data exceeds maximum size of 5MB');
+    }
+
     const rows = parseCsv(data);
     if (rows.length === 0) {
       return ApiErrors.validationError('CSV must contain a header row and at least one data row');
