@@ -199,7 +199,7 @@ describe('edit-capture', () => {
     });
 
     it('defaults edit_tags to empty array when not provided', () => {
-      const { editTags, ...inputWithoutTags } = baseInput;
+      const { editTags: _editTags, ...inputWithoutTags } = baseInput;
       const record = buildEditRecord(inputWithoutTags);
 
       expect(record).not.toBeNull();
@@ -207,7 +207,7 @@ describe('edit-capture', () => {
     });
 
     it('defaults ceo_note to null when not provided', () => {
-      const { ceoNote, ...inputWithoutNote } = baseInput;
+      const { ceoNote: _ceoNote, ...inputWithoutNote } = baseInput;
       const record = buildEditRecord(inputWithoutNote);
 
       expect(record).not.toBeNull();
