@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -15,7 +15,7 @@ function isValidUrl(urlString: string): boolean {
   }
 }
 
-export default function NewExternalResourcePage() {
+function NewExternalResourceForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const createPage = searchParams.get('createPage') === 'true';
@@ -145,5 +145,13 @@ export default function NewExternalResourcePage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function NewExternalResourcePage() {
+  return (
+    <Suspense>
+      <NewExternalResourceForm />
+    </Suspense>
   );
 }

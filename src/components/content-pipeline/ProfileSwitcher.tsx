@@ -71,10 +71,15 @@ export function ProfileSwitcher({ selectedProfileId, onProfileChange, profiles: 
  * Use this in parent components instead of plain useState.
  */
 export function useProfileSelection() {
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(STORAGE_KEY) || null;
-  });
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+
+  // Sync from localStorage after mount to avoid hydration mismatch
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      setSelectedProfileId(stored);
+    }
+  }, []);
 
   const onProfileChange = (profileId: string | null) => {
     setSelectedProfileId(profileId);

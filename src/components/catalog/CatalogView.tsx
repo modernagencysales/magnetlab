@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Magnet } from 'lucide-react';
 import { CatalogCard } from './CatalogCard';
 
@@ -26,8 +26,12 @@ interface CatalogViewProps {
 export function CatalogView({ catalog: initialCatalog, owner, isOwner }: CatalogViewProps) {
   const [catalog, setCatalog] = useState(initialCatalog);
   const [search, setSearch] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  // Set baseUrl after mount to avoid hydration mismatch
+  useEffect(() => {
+    setBaseUrl(window.location.origin);
+  }, []);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return catalog;

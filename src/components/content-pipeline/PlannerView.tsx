@@ -8,9 +8,14 @@ import { PillarDistributionSlider } from './PillarDistributionSlider';
 import { WeekGrid } from './WeekGrid';
 
 export function PlannerView() {
-  const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [currentWeek, setCurrentWeek] = useState<Date | null>(null);
   const [plan, setPlan] = useState<WeekPlan | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Initialize date after mount to avoid hydration mismatch
+  useEffect(() => {
+    setCurrentWeek(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  }, []);
   const [generating, setGenerating] = useState(false);
   const [approving, setApproving] = useState(false);
   const [postsPerWeek, setPostsPerWeek] = useState(5);
@@ -22,6 +27,7 @@ export function PlannerView() {
   });
 
   const fetchPlan = useCallback(async () => {
+    if (!currentWeek) return;
     setLoading(true);
     try {
       const weekDate = format(currentWeek, 'yyyy-MM-dd');
@@ -51,6 +57,7 @@ export function PlannerView() {
   }, [fetchPlan]);
 
   const handleGenerate = async () => {
+    if (!currentWeek) return;
     setGenerating(true);
     try {
       const response = await fetch('/api/content-pipeline/planner/generate', {
@@ -91,6 +98,16 @@ export function PlannerView() {
       setApproving(false);
     }
   };
+
+  if (!currentWeek) {
+    return (
+      <div className="rounded-xl border bg-card p-6">
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border bg-card p-6">

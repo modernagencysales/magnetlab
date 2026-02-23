@@ -31,6 +31,12 @@ export function PublishControls({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<FunnelStats | null>(null);
+  const [origin, setOrigin] = useState('');
+
+  // Set origin after mount to avoid hydration mismatch
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   // Fetch stats for this funnel
   useEffect(() => {
@@ -50,8 +56,8 @@ export function PublishControls({
     fetchStats();
   }, [funnel.id]);
 
-  const publicUrl = username
-    ? `${window.location.origin}/p/${username}/${funnel.slug}`
+  const publicUrl = username && origin
+    ? `${origin}/p/${username}/${funnel.slug}`
     : null;
 
   const handleTogglePublish = async () => {

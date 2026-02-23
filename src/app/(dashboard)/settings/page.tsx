@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
@@ -51,13 +52,15 @@ export default async function SettingsPage() {
     .single();
 
   return (
-    <SettingsContent
-      user={session?.user || null}
-      username={userData?.username || null}
-      subscription={subscription}
-      brandKit={brandKit}
-      usage={usage}
-      integrations={integrations || []}
-    />
+    <Suspense>
+      <SettingsContent
+        user={session?.user || null}
+        username={userData?.username || null}
+        subscription={subscription}
+        brandKit={brandKit}
+        usage={usage}
+        integrations={integrations || []}
+      />
+    </Suspense>
   );
 }

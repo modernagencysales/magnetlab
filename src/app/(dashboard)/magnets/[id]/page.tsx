@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect, notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
@@ -127,13 +128,15 @@ export default async function MagnetDetailPage({ params }: PageProps) {
   const archetypeName = ARCHETYPE_NAMES[leadMagnet.archetype as keyof typeof ARCHETYPE_NAMES] || leadMagnet.archetype;
 
   return (
-    <MagnetDetail
-      leadMagnet={leadMagnet}
-      existingFunnel={existingFunnel}
-      existingQuestions={existingQuestions}
-      username={username}
-      archetypeName={archetypeName}
-      connectedEmailProviders={connectedEmailProviders}
-    />
+    <Suspense>
+      <MagnetDetail
+        leadMagnet={leadMagnet}
+        existingFunnel={existingFunnel}
+        existingQuestions={existingQuestions}
+        username={username}
+        archetypeName={archetypeName}
+        connectedEmailProviders={connectedEmailProviders}
+      />
+    </Suspense>
   );
 }

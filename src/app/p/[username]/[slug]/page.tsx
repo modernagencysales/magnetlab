@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getWhitelabelConfig } from '@/lib/utils/whitelabel';
@@ -146,26 +147,28 @@ export default async function PublicOptinPage({ params }: PageProps) {
   }
 
   return (
-    <OptinPage
-      funnelId={funnel.id}
-      headline={funnel.optin_headline}
-      subline={funnel.optin_subline}
-      buttonText={funnel.optin_button_text}
-      socialProof={funnel.optin_social_proof}
-      username={user.username}
-      slug={funnel.slug}
-      theme={(funnel.theme as 'dark' | 'light') || 'dark'}
-      primaryColor={funnel.primary_color || '#8b5cf6'}
-      backgroundStyle={(funnel.background_style as 'solid' | 'gradient' | 'pattern') || 'solid'}
-      logoUrl={funnel.logo_url}
-      sections={sections}
-      pixelConfig={pixelConfig}
-      leadMagnetTitle={leadMagnet?.title || null}
-      fontFamily={funnel.font_family}
-      fontUrl={funnel.font_url}
-      hideBranding={whitelabel?.hideBranding || false}
-      redirectTrigger={(funnel.redirect_trigger as 'none' | 'immediate' | 'after_qualification') || 'none'}
-      redirectUrl={funnel.redirect_url}
-    />
+    <Suspense>
+      <OptinPage
+        funnelId={funnel.id}
+        headline={funnel.optin_headline}
+        subline={funnel.optin_subline}
+        buttonText={funnel.optin_button_text}
+        socialProof={funnel.optin_social_proof}
+        username={user.username}
+        slug={funnel.slug}
+        theme={(funnel.theme as 'dark' | 'light') || 'dark'}
+        primaryColor={funnel.primary_color || '#8b5cf6'}
+        backgroundStyle={(funnel.background_style as 'solid' | 'gradient' | 'pattern') || 'solid'}
+        logoUrl={funnel.logo_url}
+        sections={sections}
+        pixelConfig={pixelConfig}
+        leadMagnetTitle={leadMagnet?.title || null}
+        fontFamily={funnel.font_family}
+        fontUrl={funnel.font_url}
+        hideBranding={whitelabel?.hideBranding || false}
+        redirectTrigger={(funnel.redirect_trigger as 'none' | 'immediate' | 'after_qualification') || 'none'}
+        redirectUrl={funnel.redirect_url}
+      />
+    </Suspense>
   );
 }
