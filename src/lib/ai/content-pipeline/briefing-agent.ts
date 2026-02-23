@@ -1,7 +1,8 @@
 import { searchKnowledgeV2 } from '@/lib/services/knowledge-brain';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
-import type { ContentBrief, KnowledgeEntryWithSimilarity, KnowledgeType } from '@/lib/types/content-pipeline';
+import { buildVoicePromptSection } from './voice-prompt-builder';
+import type { ContentBrief, KnowledgeEntryWithSimilarity, KnowledgeType, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 import { logWarn } from '@/lib/utils/logger';
 
 const KNOWLEDGE_TYPE_LABELS: Record<string, string> = {
@@ -23,9 +24,10 @@ export async function buildContentBrief(
     includeCategories?: ('insight' | 'question' | 'product_intel')[];
     teamId?: string;
     profileId?: string;
+    voiceProfile?: TeamVoiceProfile;
   } = {}
 ): Promise<ContentBrief> {
-  const { maxEntries = 15, teamId, profileId } = options;
+  const { maxEntries = 15, teamId, profileId, voiceProfile } = options;
 
   // Search knowledge base using V2 with quality filtering
   const searchResult = await searchKnowledgeV2(userId, {
@@ -76,7 +78,7 @@ export async function buildContentBrief(
   // Generate suggested angles if we have enough context
   let suggestedAngles: string[] = [];
   if (allEntries.length >= 3) {
-    suggestedAngles = await generateSuggestedAngles(topic, compiledContext);
+    suggestedAngles = await generateSuggestedAngles(topic, compiledContext, voiceProfile);
   }
 
   return {
@@ -113,9 +115,14 @@ function compileContextV2(entries: KnowledgeEntryWithSimilarity[]): string {
   return sections.join('\n');
 }
 
-async function generateSuggestedAngles(topic: string, context: string): Promise<string[]> {
+async function generateSuggestedAngles(topic: string, context: string, voiceProfile?: TeamVoiceProfile): Promise<string[]> {
   try {
     const client = getAnthropicClient();
+
+    const styleSection = buildVoicePromptSection(voiceProfile, 'linkedin');
+    const styleInstruction = styleSection
+      ? `\nAUTHOR STYLE PREFERENCES:\n${styleSection}\n\nSuggest angles that align with this author's voice and preferences.\n`
+      : '';
 
     const response = await client.messages.create({
       model: CLAUDE_SONNET_MODEL,
@@ -129,7 +136,7 @@ TOPIC: ${topic}
 
 CONTEXT:
 ${context.slice(0, 3000)}
-
+${styleInstruction}
 Return ONLY a JSON array of strings, each being a one-sentence angle description.
 Example: ["Contrarian take on why X actually hurts more than it helps", "Step-by-step breakdown of the process that generated $Y"]`,
         },
@@ -146,7 +153,7 @@ Example: ["Contrarian take on why X actually hurts more than it helps", "Step-by
 export async function buildContentBriefForIdea(
   userId: string,
   idea: { title: string; core_insight: string | null; content_type: string | null },
-  options: { teamId?: string; profileId?: string } = {}
+  options: { teamId?: string; profileId?: string; voiceProfile?: TeamVoiceProfile } = {}
 ): Promise<ContentBrief> {
   const searchQuery = [
     idea.title,
@@ -156,5 +163,6 @@ export async function buildContentBriefForIdea(
   return buildContentBrief(userId, searchQuery, {
     teamId: options.teamId,
     profileId: options.profileId,
+    voiceProfile: options.voiceProfile,
   });
 }

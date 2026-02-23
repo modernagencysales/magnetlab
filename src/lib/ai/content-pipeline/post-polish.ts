@@ -1,5 +1,7 @@
 import { getAnthropicClient } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
+import { buildVoicePromptSection } from './voice-prompt-builder';
+import type { TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
 // ============================================
 // TYPES
@@ -22,6 +24,7 @@ export interface PolishOptions {
   rewriteAIPatterns?: boolean;
   strengthenHook?: boolean;
   formatOnly?: boolean;
+  voiceProfile?: TeamVoiceProfile;
 }
 
 // ============================================
@@ -261,7 +264,7 @@ export async function polishPost(
   content: string,
   options: PolishOptions = {}
 ): Promise<PolishResult> {
-  const { rewriteAIPatterns = true, strengthenHook = true, formatOnly = false } = options;
+  const { rewriteAIPatterns = true, strengthenHook = true, formatOnly = false, voiceProfile } = options;
 
   let polished = formatPost(content);
   const aiPatternsFound = detectAIPatterns(content);
@@ -279,7 +282,7 @@ export async function polishPost(
   }
 
   if ((rewriteAIPatterns && aiPatternsFound.length > 0) || (strengthenHook && hookScore.score < 6)) {
-    const prompt = buildPolishPrompt(polished, aiPatternsFound, hookScore);
+    const prompt = buildPolishPrompt(polished, aiPatternsFound, hookScore, voiceProfile);
     const client = getAnthropicClient();
 
     const response = await client.messages.create({
@@ -306,7 +309,7 @@ export async function polishPost(
   return { original: content, polished, aiPatternsFound, hookScore, changes };
 }
 
-function buildPolishPrompt(content: string, aiPatterns: string[], hookScore: HookScore): string {
+function buildPolishPrompt(content: string, aiPatterns: string[], hookScore: HookScore, voiceProfile?: TeamVoiceProfile): string {
   const issues: string[] = [];
 
   if (aiPatterns.length > 0) {
@@ -318,6 +321,11 @@ function buildPolishPrompt(content: string, aiPatterns: string[], hookScore: Hoo
       `Weak hook (score: ${hookScore.score}/10). Suggestions: ${hookScore.suggestions.join('; ')}`
     );
   }
+
+  const styleSection = buildVoicePromptSection(voiceProfile, 'linkedin');
+  const styleInstruction = styleSection
+    ? `\n${styleSection}\n\nPolish the post to match this author's writing style.\n`
+    : '';
 
   return `You are an expert LinkedIn content editor. Rewrite the following post to fix these issues:
 
@@ -331,7 +339,7 @@ RULES:
 5. Do NOT add emojis or hashtags
 6. Do NOT use em dashes
 7. Use short paragraphs for readability
-
+${styleInstruction}
 ORIGINAL POST:
 ${content}
 

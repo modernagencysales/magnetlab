@@ -1,6 +1,7 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import { findBestTemplate, buildTemplateGuidance } from './template-matcher';
+import { buildVoicePromptSection } from './voice-prompt-builder';
 import type { PostTemplate, StyleProfile, PostVariation, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 import { logError } from '@/lib/utils/logger';
 
@@ -125,11 +126,13 @@ Use specific quotes, real numbers, and validated insights from this context.\n`
     : '';
 
   const voiceSection = buildVoiceSection(input);
+  const styleSection = buildVoicePromptSection(input.voiceProfile, 'linkedin');
 
   const prompt = `You are writing a LinkedIn post. Write the post without any preamble. Your first word is the first word of the post.
 
 ${getBaseStyleGuidelines()}
 ${voiceSection}
+${styleSection}
 
 Audience: ${targetAudience || 'B2B professionals, agency owners, and marketers'}
 What this means for your writing:
@@ -199,12 +202,17 @@ ${knowledgeContext}
 Use specific quotes, real numbers, and validated insights from this context.\n`
     : '';
 
+  const voiceSection = buildVoiceSection(input);
+  const styleSection = buildVoicePromptSection(input.voiceProfile, 'linkedin');
+
   const prompt = `You are creating a LinkedIn post by combining a template with user-provided information.
 
 TEMPLATE:
 ${template.structure}
 
 ${template.example_posts?.length ? `EXAMPLE POSTS USING THIS TEMPLATE:\n${template.example_posts.slice(0, 2).join('\n\n---\n\n')}` : ''}
+${voiceSection}
+${styleSection}
 
 CONTEXT FOR THIS POST:
 Title: ${idea.title}
