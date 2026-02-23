@@ -336,7 +336,6 @@ export function SettingsContent({
           {/* Fathom */}
           <FathomSettings
             isConnected={fathomIntegration?.is_active ?? false}
-            lastSyncedAt={(fathomIntegration?.metadata as { last_synced_at?: string } | undefined)?.last_synced_at ?? null}
           />
 
           {/* Email Marketing */}

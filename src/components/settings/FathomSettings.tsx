@@ -1,57 +1,101 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Loader2, CheckCircle, XCircle, Video } from 'lucide-react';
-
-import { logError } from '@/lib/utils/logger';
+import { useState, useEffect, useCallback } from 'react';
+import { Video, Copy, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
 
 interface FathomSettingsProps {
   isConnected: boolean;
-  lastSyncedAt: string | null;
 }
 
-export function FathomSettings({ isConnected, lastSyncedAt }: FathomSettingsProps) {
+export function FathomSettings({ isConnected }: FathomSettingsProps) {
   const [loading, setLoading] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
+  const [configured, setConfigured] = useState(isConnected);
+  const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const searchParams = useSearchParams();
 
-  // Check URL params for OAuth callback feedback
+  const clearFeedback = useCallback(() => {
+    const timer = setTimeout(() => setFeedback(null), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
-    const fathomParam = searchParams.get('fathom');
-    if (fathomParam === 'connected') {
-      setFeedback({ type: 'success', message: 'Fathom connected successfully! Transcripts will sync every 30 minutes.' });
-    } else if (fathomParam === 'error') {
-      const reason = searchParams.get('reason') || 'Unknown error';
-      setFeedback({ type: 'error', message: `Failed to connect Fathom: ${reason}` });
+    if (feedback) {
+      const cleanup = clearFeedback();
+      return cleanup;
     }
-  }, [searchParams]);
+  }, [feedback, clearFeedback]);
 
-  const handleConnect = () => {
-    window.location.href = '/api/integrations/fathom/authorize';
+  // Fetch existing webhook URL on mount if connected
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const fetchUrl = async () => {
+      try {
+        const res = await fetch('/api/integrations/fathom/webhook-url');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.configured && data.webhook_url) {
+          setWebhookUrl(data.webhook_url);
+          setConfigured(true);
+        } else {
+          setConfigured(false);
+        }
+      } catch {
+        // Silently fail — user can generate a new URL
+      }
+    };
+
+    fetchUrl();
+  }, [isConnected]);
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const res = await fetch('/api/integrations/fathom/webhook-url', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to generate webhook URL');
+      const data = await res.json();
+      setWebhookUrl(data.webhook_url);
+      setConfigured(true);
+      setFeedback({ type: 'success', message: 'Webhook URL generated. Paste it into your Fathom settings.' });
+    } catch {
+      setFeedback({ type: 'error', message: 'Failed to generate webhook URL. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!confirm('Regenerate your webhook URL? The old URL will stop working immediately.')) return;
+    await handleGenerate();
   };
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect Fathom? Transcript syncing will stop.')) {
-      return;
-    }
-
+    if (!confirm('Disconnect Fathom? Your webhook URL will stop working.')) return;
     setLoading(true);
+    setFeedback(null);
     try {
-      const response = await fetch('/api/integrations/fathom/disconnect', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to disconnect');
-      }
-
-      window.location.reload();
-    } catch (error) {
-      logError('settings/fathom', error, { step: 'disconnect_error' });
-      setFeedback({ type: 'error', message: 'Failed to disconnect Fathom' });
+      const res = await fetch('/api/integrations/fathom/webhook-url', { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to disconnect');
+      setWebhookUrl(null);
+      setConfigured(false);
+      setFeedback({ type: 'success', message: 'Fathom disconnected.' });
+    } catch {
+      setFeedback({ type: 'error', message: 'Failed to disconnect Fathom.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!webhookUrl) return;
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setFeedback({ type: 'error', message: 'Failed to copy to clipboard.' });
     }
   };
 
@@ -69,7 +113,7 @@ export function FathomSettings({ isConnected, lastSyncedAt }: FathomSettingsProp
             </p>
           </div>
         </div>
-        {isConnected && (
+        {configured && (
           <span className="flex items-center gap-1 text-xs text-green-600">
             <CheckCircle className="h-3 w-3" />
             Connected
@@ -77,44 +121,79 @@ export function FathomSettings({ isConnected, lastSyncedAt }: FathomSettingsProp
         )}
       </div>
 
-      {isConnected ? (
+      {configured && webhookUrl ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Your Fathom account is connected. Transcripts sync automatically every 30 minutes.
+            Paste this webhook URL into your Fathom settings. Transcripts will sync automatically when meetings end.
           </p>
 
-          {lastSyncedAt && (
-            <p className="text-xs text-muted-foreground">
-              Last synced: {new Date(lastSyncedAt).toLocaleString()}
-            </p>
-          )}
+          {/* Webhook URL display */}
+          <div className="flex items-start gap-2">
+            <code className="flex-1 rounded bg-muted px-3 py-2 text-xs font-mono break-all select-all">
+              {webhookUrl}
+            </code>
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors shrink-0"
+              title="Copy webhook URL"
+            >
+              {copied ? (
+                <>
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Copy
+                </>
+              )}
+            </button>
+          </div>
 
-          <button
-            onClick={handleDisconnect}
-            disabled={loading}
-            className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
+          {/* Action buttons */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleRegenerate}
+              disabled={loading}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+            >
+              {loading ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Disconnecting...
-              </span>
-            ) : (
-              'Disconnect'
-            )}
-          </button>
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+              Regenerate URL
+            </button>
+            <button
+              onClick={handleDisconnect}
+              disabled={loading}
+              className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+            >
+              Disconnect
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Connect your Fathom account to automatically import meeting transcripts into your content pipeline. No Zapier needed.
+            Connect Fathom to automatically import meeting transcripts into your content pipeline.
+            We&apos;ll generate a webhook URL that you paste into your Fathom settings.
           </p>
 
           <button
-            onClick={handleConnect}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            onClick={handleGenerate}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            Connect Fathom
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              'Connect Fathom'
+            )}
           </button>
         </div>
       )}

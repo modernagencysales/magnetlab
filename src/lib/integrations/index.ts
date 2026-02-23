@@ -2,13 +2,7 @@
 
 export { BaseApiClient, type ApiClientConfig, type ApiResponse } from './base-client';
 
-export {
-  FathomClient,
-  getUserFathomClient,
-  getFathomAuthorizationUrl,
-  exchangeFathomCode,
-  refreshFathomToken,
-} from './fathom';
+export type { FathomWebhookPayload } from './fathom';
 
 export {
   AttioClient,

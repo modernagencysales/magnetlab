@@ -90,7 +90,7 @@ export async function getUserIntegration(
 
   const { data, error } = await supabase
     .from('user_integrations')
-    .select('id, user_id, service, api_key, is_active, last_verified_at, metadata, created_at, updated_at')
+    .select('id, user_id, service, api_key, webhook_secret, is_active, last_verified_at, metadata, created_at, updated_at')
     .eq('user_id', userId)
     .eq('service', service)
     .single();
