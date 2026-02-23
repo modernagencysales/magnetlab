@@ -112,11 +112,8 @@ export function buildEditRecord(input: EditRecordInput): EditRecord | null {
  * Silently logs errors -- never throws.
  */
 export async function captureEdit(
-  supabase: {
-    from: (table: string) => {
-      insert: (data: Record<string, unknown>) => Promise<{ error: unknown }>;
-    };
-  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (table: string) => any },
   input: EditRecordInput
 ): Promise<void> {
   const record = buildEditRecord(input);

@@ -8,6 +8,7 @@ import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { emailSequenceFromRow } from '@/lib/types/email';
 import type { EmailSequenceRow } from '@/lib/types/email';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { captureEdit } from '@/lib/services/edit-capture';
 
 interface RouteParams {
   params: Promise<{ leadMagnetId: string }>;
@@ -106,9 +107,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const scope = await getDataScope(session.user.id);
 
     // Verify the sequence belongs to the user/team
+    // Also fetch current emails for edit diff comparison
     let findQuery = supabase
       .from('email_sequences')
-      .select('id')
+      .select('id, emails')
       .eq('lead_magnet_id', leadMagnetId);
     findQuery = applyScope(findQuery, scope);
     const { data: existingSequence, error: findError } = await findQuery.maybeSingle();
@@ -149,6 +151,46 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (error) {
       logApiError('email-sequence/update', error, { leadMagnetId });
       return ApiErrors.databaseError('Failed to update email sequence');
+    }
+
+    // Capture edits fire-and-forget (never blocks the response)
+    if (emails && scope.teamId && existingSequence.emails && Array.isArray(existingSequence.emails)) {
+      try {
+        const oldEmails = existingSequence.emails as Array<{ day: number; subject: string; body: string }>;
+        const newEmails = emails as Array<{ day: number; subject: string; body: string }>;
+        const sequenceId = existingSequence.id;
+
+        for (let i = 0; i < newEmails.length; i++) {
+          const oldEmail = oldEmails[i];
+          const newEmail = newEmails[i];
+          if (oldEmail && newEmail) {
+            if (oldEmail.subject !== newEmail.subject) {
+              captureEdit(supabase, {
+                teamId: scope.teamId,
+                profileId: null,
+                contentType: 'sequence',
+                contentId: sequenceId,
+                fieldName: `email_${i}_subject`,
+                originalText: oldEmail.subject,
+                editedText: newEmail.subject,
+              }).catch(() => {});
+            }
+            if (oldEmail.body !== newEmail.body) {
+              captureEdit(supabase, {
+                teamId: scope.teamId,
+                profileId: null,
+                contentType: 'sequence',
+                contentId: sequenceId,
+                fieldName: `email_${i}_body`,
+                originalText: oldEmail.body,
+                editedText: newEmail.body,
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch {
+        // Edit capture must never affect the save flow
+      }
     }
 
     return NextResponse.json({

@@ -6,8 +6,9 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { validateBody, updateContentBodySchema } from '@/lib/validations/api';
-import type { PolishedContent } from '@/lib/types/lead-magnet';
+import type { PolishedContent, PolishedSection } from '@/lib/types/lead-magnet';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { captureEdit } from '@/lib/services/edit-capture';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -54,6 +55,15 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
+    // Fetch current content for edit diff comparison (before the update)
+    let fetchQuery = supabase
+      .from('lead_magnets')
+      .select('polished_content')
+      .eq('id', id);
+    fetchQuery = applyScope(fetchQuery, scope);
+    const { data: currentData } = await fetchQuery.single();
+    const oldContent = currentData?.polished_content as PolishedContent | null;
+
     let query = supabase
       .from('lead_magnets')
       .update({ polished_content: polishedContent })
@@ -66,6 +76,80 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (error) {
       logApiError('lead-magnet/content/update', error, { userId: session.user.id, leadMagnetId: id });
       return ApiErrors.databaseError('Failed to update content');
+    }
+
+    // Capture edits fire-and-forget (never blocks the response)
+    if (oldContent && scope.teamId) {
+      try {
+        const teamId = scope.teamId;
+
+        // Compare heroSummary
+        if (oldContent.heroSummary && polishedContent.heroSummary) {
+          captureEdit(supabase, {
+            teamId,
+            profileId: null,
+            contentType: 'lead_magnet',
+            contentId: id,
+            fieldName: 'heroSummary',
+            originalText: oldContent.heroSummary,
+            editedText: polishedContent.heroSummary,
+          }).catch(() => {});
+        }
+
+        // Compare section text fields
+        const oldSections = oldContent.sections || [];
+        const newSections = polishedContent.sections || [];
+        for (let i = 0; i < newSections.length; i++) {
+          const oldSection: PolishedSection | undefined = oldSections[i];
+          const newSection = newSections[i];
+          if (!oldSection) continue;
+
+          if (oldSection.introduction && newSection.introduction) {
+            captureEdit(supabase, {
+              teamId,
+              profileId: null,
+              contentType: 'lead_magnet',
+              contentId: id,
+              fieldName: `section_${i}_introduction`,
+              originalText: oldSection.introduction,
+              editedText: newSection.introduction,
+            }).catch(() => {});
+          }
+
+          if (oldSection.keyTakeaway && newSection.keyTakeaway) {
+            captureEdit(supabase, {
+              teamId,
+              profileId: null,
+              contentType: 'lead_magnet',
+              contentId: id,
+              fieldName: `section_${i}_keyTakeaway`,
+              originalText: oldSection.keyTakeaway,
+              editedText: newSection.keyTakeaway,
+            }).catch(() => {});
+          }
+
+          // Compare block content within each section
+          const oldBlocks = oldSection.blocks || [];
+          const newBlocks = newSection.blocks || [];
+          for (let j = 0; j < newBlocks.length; j++) {
+            const oldBlock = oldBlocks[j];
+            const newBlock = newBlocks[j];
+            if (oldBlock?.content && newBlock?.content) {
+              captureEdit(supabase, {
+                teamId,
+                profileId: null,
+                contentType: 'lead_magnet',
+                contentId: id,
+                fieldName: `section_${i}_block_${j}_content`,
+                originalText: oldBlock.content,
+                editedText: newBlock.content,
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch {
+        // Edit capture must never affect the save flow
+      }
     }
 
     return NextResponse.json({ success: true, polishedContent: data.polished_content });

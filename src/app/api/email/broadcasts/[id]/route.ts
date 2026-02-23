@@ -9,6 +9,7 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { requireTeamScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { updateBroadcastSchema } from '@/lib/types/email-system';
+import { captureEdit } from '@/lib/services/edit-capture';
 
 const BROADCAST_COLUMNS =
   'id, team_id, user_id, subject, body, status, audience_filter, recipient_count, sent_at, created_at, updated_at';
@@ -94,9 +95,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const teamId = scope.teamId;
 
     // Verify broadcast exists, belongs to team, and is a draft
+    // Also fetch subject/body for edit diff comparison
     const { data: existing, error: findError } = await supabase
       .from('email_broadcasts')
-      .select('id, status')
+      .select('id, status, subject, body')
       .eq('id', id)
       .eq('team_id', teamId)
       .maybeSingle();
@@ -131,6 +133,35 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (error) {
       logApiError('email/broadcasts/update', error, { id, teamId });
       return ApiErrors.databaseError('Failed to update broadcast');
+    }
+
+    // Capture edits fire-and-forget (never blocks the response)
+    try {
+      if (parsed.data.subject && existing.subject) {
+        captureEdit(supabase, {
+          teamId,
+          profileId: null,
+          contentType: 'email',
+          contentId: id,
+          fieldName: 'subject',
+          originalText: existing.subject,
+          editedText: parsed.data.subject,
+        }).catch(() => {});
+      }
+
+      if (parsed.data.body && existing.body) {
+        captureEdit(supabase, {
+          teamId,
+          profileId: null,
+          contentType: 'email',
+          contentId: id,
+          fieldName: 'body',
+          originalText: existing.body,
+          editedText: parsed.data.body,
+        }).catch(() => {});
+      }
+    } catch {
+      // Edit capture must never affect the save flow
     }
 
     return NextResponse.json({ broadcast });
