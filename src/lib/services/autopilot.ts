@@ -286,7 +286,7 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
         let knowledgeContext: string | undefined;
         if (isEmbeddingsConfigured()) {
           try {
-            const brief = await buildContentBriefForIdea(userId, idea, { teamId, profileId });
+            const brief = await buildContentBriefForIdea(userId, idea, { teamId, profileId, voiceProfile });
             if (brief.compiledContext) {
               knowledgeContext = brief.compiledContext;
             }
@@ -323,7 +323,7 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
         }, userId);
 
         // Polish post
-        const polishResult = await polishPost(writtenPost.content);
+        const polishResult = await polishPost(writtenPost.content, { voiceProfile });
 
         // Determine scheduling (use cached scheduled times)
         const isFirstPost = i === 0;

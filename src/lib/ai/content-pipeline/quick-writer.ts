@@ -86,7 +86,7 @@ export async function quickWrite(
   });
 
   // Step 4: Polish the result
-  const polish = await polishPost(post.content);
+  const polish = await polishPost(post.content, { voiceProfile: options.voiceProfile });
 
   return {
     post,

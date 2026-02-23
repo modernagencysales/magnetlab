@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { polishPost } from '@/lib/ai/content-pipeline/post-polish';
+import type { TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
 import { logError } from '@/lib/utils/logger';
 
@@ -20,7 +21,7 @@ export async function POST(
 
     const { data: post, error: fetchError } = await supabase
       .from('cp_pipeline_posts')
-      .select('draft_content, final_content')
+      .select('draft_content, final_content, team_profile_id')
       .eq('id', id)
       .eq('user_id', session.user.id)
       .single();
@@ -34,7 +35,20 @@ export async function POST(
       return NextResponse.json({ error: 'No content to polish' }, { status: 400 });
     }
 
-    const result = await polishPost(content);
+    // Fetch voice profile if the post is associated with a team profile
+    let voiceProfile: TeamVoiceProfile | undefined;
+    if (post.team_profile_id) {
+      const { data: profile } = await supabase
+        .from('team_profiles')
+        .select('voice_profile')
+        .eq('id', post.team_profile_id)
+        .single();
+      if (profile?.voice_profile) {
+        voiceProfile = profile.voice_profile as TeamVoiceProfile;
+      }
+    }
+
+    const result = await polishPost(content, { voiceProfile });
 
     const { data: updated, error: updateError } = await supabase
       .from('cp_pipeline_posts')

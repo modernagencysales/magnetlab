@@ -59,7 +59,7 @@ export const writePostFromIdea = task({
     if (isEmbeddingsConfigured()) {
       try {
         logger.info('Building content brief');
-        const brief = await buildContentBriefForIdea(userId, idea, { teamId, profileId: resolvedProfileId || undefined });
+        const brief = await buildContentBriefForIdea(userId, idea, { teamId, profileId: resolvedProfileId || undefined, voiceProfile });
         if (brief.compiledContext) {
           knowledgeContext = brief.compiledContext;
         }
@@ -87,7 +87,7 @@ export const writePostFromIdea = task({
 
     // Polish the post
     logger.info('Polishing post');
-    const polishResult = await polishPost(writtenPost.content);
+    const polishResult = await polishPost(writtenPost.content, { voiceProfile });
 
     // Save the pipeline post
     const { error: postError } = await supabase

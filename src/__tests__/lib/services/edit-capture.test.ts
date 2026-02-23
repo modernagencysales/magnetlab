@@ -199,7 +199,8 @@ describe('edit-capture', () => {
     });
 
     it('defaults edit_tags to empty array when not provided', () => {
-      const { editTags: _editTags, ...inputWithoutTags } = baseInput;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { editTags, ...inputWithoutTags } = baseInput;
       const record = buildEditRecord(inputWithoutTags);
 
       expect(record).not.toBeNull();
@@ -207,7 +208,8 @@ describe('edit-capture', () => {
     });
 
     it('defaults ceo_note to null when not provided', () => {
-      const { ceoNote: _ceoNote, ...inputWithoutNote } = baseInput;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { ceoNote, ...inputWithoutNote } = baseInput;
       const record = buildEditRecord(inputWithoutNote);
 
       expect(record).not.toBeNull();
