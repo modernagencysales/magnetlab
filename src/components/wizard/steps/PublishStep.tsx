@@ -103,7 +103,7 @@ export function PublishStep({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: trimmedTitle,
-          archetype: concept.archetype,
+          archetype: concept.archetype || 'single-breakdown',
           concept,
           extractedContent: content,
           interactiveConfig,
@@ -116,6 +116,11 @@ export function PublishStep({
 
       if (!response.ok) {
         const data = await response.json();
+        // Provide a user-friendly message instead of raw Zod errors like "Required"
+        if (data.code === 'VALIDATION_ERROR' && data.details?.length) {
+          const field = data.details[0]?.path?.join('.') || 'unknown';
+          throw new Error(`Save failed: missing data in "${field}". Please go back and try regenerating your content.`);
+        }
         throw new Error(data.error || 'Failed to save');
       }
 
