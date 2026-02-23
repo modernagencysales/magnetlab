@@ -15,7 +15,8 @@ export type ContentType =
   | 'case_study'
   | 'question'
   | 'listicle'
-  | 'contrarian';
+  | 'contrarian'
+  | 'lead_magnet';
 
 // Content Pillars - THEMATIC categories (what it's about)
 // Complements ContentType which is STRUCTURAL (how it's written)
