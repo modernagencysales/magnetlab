@@ -9,7 +9,7 @@ import posthog from 'posthog-js';
 import {
   Magnet, Settings, Plus, LogOut, Globe, Users, UsersRound,
   ChevronDown, PenTool, Menu, X, Sun, Moon,
-  ArrowLeftRight, Home, Brain, Bot, BookOpen, Mail,
+  ArrowLeftRight, Home, Brain, Bot, BookOpen, Mail, HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -47,6 +47,7 @@ const mainNav = [
 
 const bottomNav = [
   { href: '/docs', label: 'Docs', icon: BookOpen },
+  { href: '/help', label: 'Help', icon: HelpCircle },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
