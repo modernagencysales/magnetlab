@@ -227,9 +227,9 @@ export function PromptEditor({ prompt, versions }: Props) {
       </div>
 
       {/* Main content: editor + sidebar */}
-      <div className="flex gap-6">
-        {/* Left panel - Editor (~70%) */}
-        <div className="flex-[7] min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        {/* Left panel - Editor */}
+        <div className="min-w-0">
           {/* Tab bar */}
           <div className="flex border-b border-zinc-200 dark:border-zinc-700 mb-0">
             <button
@@ -337,8 +337,8 @@ export function PromptEditor({ prompt, versions }: Props) {
           </div>
         </div>
 
-        {/* Right sidebar (~30%) */}
-        <div className="flex-[3] space-y-6">
+        {/* Right sidebar */}
+        <div className="space-y-6">
           {/* Variables Reference */}
           {prompt.variables && prompt.variables.length > 0 && (
             <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
