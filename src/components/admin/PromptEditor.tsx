@@ -46,7 +46,6 @@ interface Version {
 interface Props {
   prompt: Prompt;
   versions: Version[];
-  currentUserEmail: string;
 }
 
 const MODEL_OPTIONS = [
@@ -55,7 +54,7 @@ const MODEL_OPTIONS = [
   'claude-opus-4-6',
 ];
 
-export function PromptEditor({ prompt, versions, currentUserEmail }: Props) {
+export function PromptEditor({ prompt, versions }: Props) {
   const router = useRouter();
 
   // Prompt editor state

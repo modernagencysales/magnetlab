@@ -28,6 +28,9 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   })),
 }));
 
+// Import after mocks are set up
+import { GET } from '@/app/api/admin/prompts/route';
+
 // --- Tests ---
 
 describe('Admin Prompts API', () => {
@@ -39,7 +42,6 @@ describe('Admin Prompts API', () => {
     it('returns 401 when not authenticated', async () => {
       mockAuth.mockResolvedValue(null);
 
-      const { GET } = require('@/app/api/admin/prompts/route');
       const response = await GET();
 
       expect(response.status).toBe(401);
@@ -50,7 +52,6 @@ describe('Admin Prompts API', () => {
     it('returns 401 when session has no user id', async () => {
       mockAuth.mockResolvedValue({ user: {} });
 
-      const { GET } = require('@/app/api/admin/prompts/route');
       const response = await GET();
 
       expect(response.status).toBe(401);
@@ -64,7 +65,6 @@ describe('Admin Prompts API', () => {
       });
       mockIsSuperAdmin.mockResolvedValue(false);
 
-      const { GET } = require('@/app/api/admin/prompts/route');
       const response = await GET();
 
       expect(response.status).toBe(403);
@@ -96,7 +96,6 @@ describe('Admin Prompts API', () => {
       const firstOrder = jest.fn(() => ({ order: secondOrder }));
       mockSelect.mockReturnValue({ order: firstOrder });
 
-      const { GET } = require('@/app/api/admin/prompts/route');
       const response = await GET();
 
       expect(response.status).toBe(200);
@@ -118,7 +117,6 @@ describe('Admin Prompts API', () => {
       const firstOrder = jest.fn(() => ({ order: secondOrder }));
       mockSelect.mockReturnValue({ order: firstOrder });
 
-      const { GET } = require('@/app/api/admin/prompts/route');
       const response = await GET();
 
       expect(response.status).toBe(500);

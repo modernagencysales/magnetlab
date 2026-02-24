@@ -35,7 +35,6 @@ export default async function PromptEditorPage({
       <PromptEditor
         prompt={prompt}
         versions={versions ?? []}
-        currentUserEmail={session?.user?.email ?? 'admin'}
       />
     </div>
   );
