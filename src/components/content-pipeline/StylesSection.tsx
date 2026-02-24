@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Trash2, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Trash2, ExternalLink, ChevronDown, ChevronUp, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { StyleMixer } from './StyleMixer';
 import type { WritingStyle, StyleProfile } from '@/lib/types/content-pipeline';
 
 const TONE_COLORS: Record<StyleProfile['tone'], string> = {
@@ -20,6 +21,7 @@ export function StylesSection() {
   const [url, setUrl] = useState('');
   const [authorName, setAuthorName] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [mixerStyleId, setMixerStyleId] = useState<string | null>(null);
 
   const fetchStyles = useCallback(async () => {
     try {
@@ -161,13 +163,22 @@ export function StylesSection() {
                       </a>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleDelete(style.id)}
-                    className="ml-2 rounded-lg p-1 text-muted-foreground hover:text-red-500 transition-colors"
-                    title="Delete style"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="ml-2 flex items-center gap-1">
+                    <button
+                      onClick={() => setMixerStyleId(style.id)}
+                      className="rounded-lg p-1 text-muted-foreground hover:text-primary transition-colors"
+                      title="Apply traits..."
+                    >
+                      <Wand2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(style.id)}
+                      className="rounded-lg p-1 text-muted-foreground hover:text-red-500 transition-colors"
+                      title="Delete style"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Badges */}
@@ -279,6 +290,14 @@ export function StylesSection() {
             );
           })}
         </div>
+      )}
+
+      {/* Style Mixer modal */}
+      {mixerStyleId && (
+        <StyleMixer
+          sourceStyle={styles.find(s => s.id === mixerStyleId)!}
+          onClose={() => setMixerStyleId(null)}
+        />
       )}
     </div>
   );
