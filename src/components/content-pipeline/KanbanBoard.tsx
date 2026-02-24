@@ -71,7 +71,10 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
   const getColumnItems = useCallback((columnId: ColumnId): CardItem[] => {
     switch (columnId) {
       case 'ideas':
-        return ideas.map((idea) => ({ type: 'idea' as const, data: idea }));
+        return ideas
+          .slice()
+          .sort((a, b) => (b.composite_score ?? 0) - (a.composite_score ?? 0))
+          .map((idea) => ({ type: 'idea' as const, data: idea }));
       case 'written':
         return posts
           .filter((p) => p.status === 'draft' || p.status === 'reviewing')

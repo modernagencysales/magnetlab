@@ -159,6 +159,16 @@ function IdeaRow({ idea }: { idea: ContentIdea }) {
               {CONTENT_TYPE_LABELS[idea.content_type] || idea.content_type}
             </span>
           )}
+          {idea.composite_score != null && (
+            <span className={cn(
+              'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+              idea.composite_score >= 7 ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
+              idea.composite_score >= 4 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
+              'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+            )}>
+              {idea.composite_score.toFixed(1)}
+            </span>
+          )}
         </div>
       </div>
       {idea.core_insight && (

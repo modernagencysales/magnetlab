@@ -3,7 +3,7 @@
 import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Lightbulb, FileText, LayoutGrid, Sparkles, Loader2, BookOpen } from 'lucide-react';
+import { Lightbulb, LayoutGrid, Sparkles, Loader2, BookOpen, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProfileSwitcher, useProfileSelection } from '@/components/content-pipeline/ProfileSwitcher';
 
@@ -11,24 +11,20 @@ const IdeasTab = dynamic(
   () => import('@/components/content-pipeline/IdeasTab').then((m) => ({ default: m.IdeasTab })),
   { ssr: false }
 );
-const PostsTab = dynamic(
-  () => import('@/components/content-pipeline/PostsTab').then((m) => ({ default: m.PostsTab })),
-  { ssr: false }
-);
-const PipelineTab = dynamic(
-  () => import('@/components/content-pipeline/PipelineTab').then((m) => ({ default: m.PipelineTab })),
-  { ssr: false }
-);
 const AutopilotTab = dynamic(
   () => import('@/components/content-pipeline/AutopilotTab').then((m) => ({ default: m.AutopilotTab })),
   { ssr: false }
 );
-const TemplatesTab = dynamic(
-  () => import('@/components/content-pipeline/TemplatesTab').then((m) => ({ default: m.TemplatesTab })),
+const PipelineView = dynamic(
+  () => import('@/components/content-pipeline/PipelineView').then((m) => ({ default: m.PipelineView })),
   { ssr: false }
 );
-const SwipeFileContent = dynamic(
-  () => import('@/components/swipe-file/SwipeFileContent').then((m) => ({ default: m.SwipeFileContent })),
+const CalendarView = dynamic(
+  () => import('@/components/content-pipeline/CalendarView').then((m) => ({ default: m.CalendarView })),
+  { ssr: false }
+);
+const LibraryTab = dynamic(
+  () => import('@/components/content-pipeline/LibraryTab').then((m) => ({ default: m.LibraryTab })),
   { ssr: false }
 );
 const QuickWriteModal = dynamic(
@@ -36,14 +32,14 @@ const QuickWriteModal = dynamic(
   { ssr: false }
 );
 
-type Tab = 'ideas' | 'drafts' | 'schedule' | 'templates' | 'inspiration';
+type Tab = 'pipeline' | 'calendar' | 'ideas' | 'library' | 'autopilot';
 
 const TABS: { id: Tab; label: string; icon: typeof Lightbulb }[] = [
+  { id: 'pipeline', label: 'Pipeline', icon: LayoutGrid },
+  { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'ideas', label: 'Ideas', icon: Lightbulb },
-  { id: 'drafts', label: 'Drafts', icon: FileText },
-  { id: 'schedule', label: 'Schedule', icon: LayoutGrid },
-  { id: 'templates', label: 'Templates', icon: Sparkles },
-  { id: 'inspiration', label: 'Inspiration', icon: BookOpen },
+  { id: 'library', label: 'Library', icon: BookOpen },
+  { id: 'autopilot', label: 'Autopilot', icon: Sparkles },
 ];
 
 function TabLoader() {
@@ -60,7 +56,7 @@ export function PostsContent() {
   const pathname = usePathname();
   const tabParam = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(
-    tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'ideas'
+    tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'pipeline'
   );
   const [showQuickWrite, setShowQuickWrite] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -75,7 +71,7 @@ export function PostsContent() {
   function handleTabChange(tab: Tab) {
     setActiveTab(tab);
     const params = new URLSearchParams(searchParams.toString());
-    if (tab === 'ideas') {
+    if (tab === 'pipeline') {
       params.delete('tab');
     } else {
       params.set('tab', tab);
@@ -121,16 +117,17 @@ export function PostsContent() {
 
       {/* Tab Content */}
       <Suspense fallback={<TabLoader />}>
-        {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
-        {activeTab === 'drafts' && <PostsTab key={refreshKey} profileId={selectedProfileId} />}
-        {activeTab === 'schedule' && (
-          <div className="space-y-8">
-            <PipelineTab />
-            <AutopilotTab profileId={selectedProfileId} />
-          </div>
+        {activeTab === 'pipeline' && (
+          <PipelineView
+            key={refreshKey}
+            profileId={selectedProfileId}
+            onRefresh={() => setRefreshKey((k) => k + 1)}
+          />
         )}
-        {activeTab === 'templates' && <TemplatesTab />}
-        {activeTab === 'inspiration' && <SwipeFileContent />}
+        {activeTab === 'calendar' && <CalendarView />}
+        {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
+        {activeTab === 'library' && <LibraryTab />}
+        {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}
       </Suspense>
 
       {/* Quick Write FAB */}
@@ -145,8 +142,8 @@ export function PostsContent() {
         <QuickWriteModal
           onClose={() => setShowQuickWrite(false)}
           onPostCreated={() => {
-            // Switch to drafts tab and refresh it
-            handleTabChange('drafts');
+            // Switch to pipeline tab and refresh it
+            handleTabChange('pipeline');
             setRefreshKey((k) => k + 1);
           }}
           profileId={selectedProfileId}
