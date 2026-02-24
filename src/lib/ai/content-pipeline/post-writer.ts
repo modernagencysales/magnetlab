@@ -2,6 +2,7 @@ import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import { findBestTemplate, buildTemplateGuidance } from './template-matcher';
 import { buildVoicePromptSection } from './voice-prompt-builder';
+import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
 import type { PostTemplate, StyleProfile, PostVariation, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 import { logError } from '@/lib/utils/logger';
 
@@ -128,56 +129,24 @@ Use specific quotes, real numbers, and validated insights from this context.\n`
   const voiceSection = buildVoiceSection(input);
   const styleSection = buildVoicePromptSection(input.voiceProfile, 'linkedin');
 
-  const prompt = `You are writing a LinkedIn post. Write the post without any preamble. Your first word is the first word of the post.
-
-${getBaseStyleGuidelines()}
-${voiceSection}
-${styleSection}
-
-Audience: ${targetAudience || 'B2B professionals, agency owners, and marketers'}
-What this means for your writing:
-- Match technical depth to their sophistication level
-- Reference their specific reality and daily frustrations
-- Don't write like you're introducing basic concepts
-- Use "you" to speak directly to them
-- If the post doesn't feel like it was written specifically for this person, rewrite it.
-
-CONTEXT FOR THIS POST:
-Title: ${idea.title}
-Core Insight: ${idea.core_insight}
-Full Context: ${idea.full_context}
-Why Post-Worthy: ${idea.why_post_worthy}
-Content Type: ${idea.content_type}
-${knowledgeSection}
-Using this context:
-- Pull exact numbers and metrics
-- Use the specific stories and examples provided. Do not generalize them.
-- Include step-by-step details when a process is described
-- Preserve memorable phrasing when it's strong
-
-Post structure by type:
-Story/Lesson: Hook with outcome > Setup situation > Mistake/turning point > Consequence > Takeaway
-Framework/Process: Hook with result > Why it matters > Numbered steps with specifics
-Contrarian/Reframe: Bold claim > What most people do wrong > Why it fails > What to do instead
-Trend/Observation: Hook with shift > How it used to work > What changed > What to do
-
-Length: Either SHORT (under 100 words, punchy, one idea) or LONG (300+ words, comprehensive). Pick based on how much substance the idea has.
-
-Now write the post. Return ONLY valid JSON:
-{
-  "content": "The complete LinkedIn post",
-  "variations": [
-    {"id": "v1", "content": "Alternative version with different hook", "hook_type": "question|bold_statement|story|statistic", "selected": false},
-    {"id": "v2", "content": "Second alternative version", "hook_type": "question|bold_statement|story|statistic", "selected": false}
-  ],
-  "dm_template": "Short DM (max 200 chars) using {first_name} and [LINK] placeholder",
-  "cta_word": "simple keyword like interested, send, link"
-}`;
+  const template = await getPrompt('post-writer-freeform');
+  const prompt = interpolatePrompt(template.user_prompt, {
+    style_guidelines: getBaseStyleGuidelines(),
+    voice_section: voiceSection,
+    voice_style_section: styleSection,
+    target_audience: targetAudience || 'B2B professionals, agency owners, and marketers',
+    idea_title: idea.title,
+    idea_core_insight: idea.core_insight || '',
+    idea_full_context: idea.full_context || '',
+    idea_why_post_worthy: idea.why_post_worthy || '',
+    idea_content_type: idea.content_type || '',
+    knowledge_section: knowledgeSection,
+  });
 
   const client = getAnthropicClient();
   const response = await client.messages.create({
-    model: CLAUDE_SONNET_MODEL,
-    max_tokens: 4000,
+    model: template.model,
+    max_tokens: template.max_tokens,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -190,9 +159,9 @@ Now write the post. Return ONLY valid JSON:
 }
 
 export async function writePostWithTemplate(input: WritePostInput): Promise<WrittenPost> {
-  const { idea, template, targetAudience, knowledgeContext } = input;
+  const { idea, template: postTemplate, targetAudience, knowledgeContext } = input;
 
-  if (!template) {
+  if (!postTemplate) {
     throw new Error('Template is required for writePostWithTemplate');
   }
 
@@ -205,48 +174,27 @@ Use specific quotes, real numbers, and validated insights from this context.\n`
   const voiceSection = buildVoiceSection(input);
   const styleSection = buildVoicePromptSection(input.voiceProfile, 'linkedin');
 
-  const prompt = `You are creating a LinkedIn post by combining a template with user-provided information.
-
-TEMPLATE:
-${template.structure}
-
-${template.example_posts?.length ? `EXAMPLE POSTS USING THIS TEMPLATE:\n${template.example_posts.slice(0, 2).join('\n\n---\n\n')}` : ''}
-${voiceSection}
-${styleSection}
-
-CONTEXT FOR THIS POST:
-Title: ${idea.title}
-Core Insight: ${idea.core_insight}
-Full Context: ${idea.full_context}
-Why Post-Worthy: ${idea.why_post_worthy}
-Content Type: ${idea.content_type}
-${knowledgeSection}
-Target Audience: ${targetAudience || 'B2B professionals, agency owners, and marketers'}
-
-GUIDELINES:
-- Start with a powerful, attention-grabbing hook
-- Direct, conversational tone that's authoritative but not arrogant
-- Include specific numbers and data points
-- Short paragraphs, strategic line breaks
-- Adhere strictly to the template format
-- No emojis, hashtags, or em dashes
-- Avoid cliches
-
-Return ONLY valid JSON:
-{
-  "content": "The complete LinkedIn post following the template",
-  "variations": [
-    {"id": "v1", "content": "Alternative version with different hook", "hook_type": "question|bold_statement|story|statistic", "selected": false},
-    {"id": "v2", "content": "Second alternative version", "hook_type": "question|bold_statement|story|statistic", "selected": false}
-  ],
-  "dm_template": "Short DM (max 200 chars) using {first_name} and [LINK] placeholder",
-  "cta_word": "simple keyword like interested, send, link"
-}`;
+  const promptTemplate = await getPrompt('post-writer-template');
+  const prompt = interpolatePrompt(promptTemplate.user_prompt, {
+    template_structure: postTemplate.structure,
+    template_examples: postTemplate.example_posts?.length
+      ? `EXAMPLE POSTS USING THIS TEMPLATE:\n${postTemplate.example_posts.slice(0, 2).join('\n\n---\n\n')}`
+      : '',
+    voice_section: voiceSection,
+    voice_style_section: styleSection,
+    idea_title: idea.title,
+    idea_core_insight: idea.core_insight || '',
+    idea_full_context: idea.full_context || '',
+    idea_why_post_worthy: idea.why_post_worthy || '',
+    idea_content_type: idea.content_type || '',
+    knowledge_section: knowledgeSection,
+    target_audience: targetAudience || 'B2B professionals, agency owners, and marketers',
+  });
 
   const client = getAnthropicClient();
   const response = await client.messages.create({
-    model: CLAUDE_SONNET_MODEL,
-    max_tokens: 4000,
+    model: promptTemplate.model,
+    max_tokens: promptTemplate.max_tokens,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -353,21 +301,18 @@ export async function rewriteSection(
     cta: 'Rewrite just the call-to-action at the end to be more engaging.',
   };
 
-  const prompt = `${sectionInstructions[section]}
-
-CURRENT POST:
-${post}
-
-${feedback ? `FEEDBACK: ${feedback}` : ''}
-
-${getBaseStyleGuidelines()}
-
-Return ONLY the complete rewritten post (not just the changed section).`;
+  const template = await getPrompt('post-rewrite-section');
+  const prompt = interpolatePrompt(template.user_prompt, {
+    section_instruction: sectionInstructions[section],
+    post_content: post,
+    feedback_section: feedback ? `FEEDBACK: ${feedback}` : '',
+    style_guidelines: getBaseStyleGuidelines(),
+  });
 
   const client = getAnthropicClient();
   const response = await client.messages.create({
-    model: CLAUDE_SONNET_MODEL,
-    max_tokens: 2000,
+    model: template.model,
+    max_tokens: template.max_tokens,
     messages: [{ role: 'user', content: prompt }],
   });
 
