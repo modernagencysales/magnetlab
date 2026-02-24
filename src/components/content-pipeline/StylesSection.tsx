@@ -143,8 +143,17 @@ export function StylesSection() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {styles.map((style) => {
-            const profile = style.style_profile as StyleProfile;
+            const profile = style.style_profile as StyleProfile | null;
             const isExpanded = expandedId === style.id;
+
+            if (!profile || !profile.formatting) {
+              return (
+                <div key={style.id} className="rounded-lg border bg-card p-4">
+                  <h4 className="text-sm font-semibold truncate">{style.name}</h4>
+                  <p className="mt-1 text-xs text-muted-foreground">Style data incomplete</p>
+                </div>
+              );
+            }
 
             return (
               <div key={style.id} className="rounded-lg border bg-card p-4">
