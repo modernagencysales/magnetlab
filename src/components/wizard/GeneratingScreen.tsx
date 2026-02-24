@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Sparkles, Brain, Lightbulb, Target, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const LOADING_MESSAGES = [
+const IDEATION_MESSAGES = [
   { icon: Brain, text: 'Analyzing your expertise...' },
   { icon: Target, text: 'Understanding your audience...' },
   { icon: Lightbulb, text: 'Brainstorming unique angles...' },
@@ -12,19 +12,40 @@ const LOADING_MESSAGES = [
   { icon: Sparkles, text: 'Crafting 10 lead magnet ideas...' },
 ];
 
-export function GeneratingScreen() {
+const EXTRACTION_MESSAGES = [
+  { icon: Brain, text: 'Structuring your content...' },
+  { icon: Target, text: 'Extracting key insights...' },
+  { icon: Lightbulb, text: 'Building your framework...' },
+  { icon: Sparkles, text: 'Polishing the deliverable...' },
+];
+
+const POSTS_MESSAGES = [
+  { icon: Zap, text: 'Crafting attention-grabbing hooks...' },
+  { icon: Target, text: 'Writing compelling angles...' },
+  { icon: Sparkles, text: 'Generating post variations...' },
+  { icon: Brain, text: 'Evaluating engagement potential...' },
+];
+
+interface GeneratingScreenProps {
+  message?: string;
+}
+
+export function GeneratingScreen({ message }: GeneratingScreenProps = {}) {
+  const messages = message?.includes('posts') ? POSTS_MESSAGES
+    : message?.includes('content') || message?.includes('Extract') ? EXTRACTION_MESSAGES
+    : IDEATION_MESSAGES;
   const [messageIndex, setMessageIndex] = useState(0);
   const [progressDone, setProgressDone] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+      setMessageIndex((prev) => (prev + 1) % messages.length);
     }, 3000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [messages]);
 
-  const currentMessage = LOADING_MESSAGES[messageIndex];
+  const currentMessage = messages[messageIndex];
   const Icon = currentMessage.icon;
 
   return (
@@ -110,8 +131,7 @@ export function GeneratingScreen() {
         </div>
 
         <p className="mt-6 max-w-md text-sm text-muted-foreground">
-          We&apos;re using AI to generate 10 unique lead magnet concepts based on your
-          specific expertise. Each one is designed to attract your ideal clients.
+          {message || 'We\'re using AI to generate 10 unique lead magnet concepts based on your specific expertise. Each one is designed to attract your ideal clients.'}
         </p>
       </motion.div>
     </div>

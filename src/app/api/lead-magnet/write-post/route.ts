@@ -1,11 +1,13 @@
-// API Route: Generate LinkedIn Post Variations
-// POST /api/lead-magnet/write-post
+// API Route: Generate LinkedIn Post Variations (Background Job)
+// POST /api/lead-magnet/write-post - Creates job, returns jobId
 
 import { NextResponse } from 'next/server';
+import { tasks } from '@trigger.dev/sdk/v3';
 import { auth } from '@/lib/auth';
-import { generatePostVariations } from '@/lib/ai/lead-magnet-generator';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import type { PostWriterInput } from '@/lib/types/lead-magnet';
+import type { CreateJobResponse } from '@/lib/types/background-jobs';
 
 export async function POST(request: Request) {
   try {
@@ -22,11 +24,46 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('Missing required fields: leadMagnetTitle, contents, problemSolved');
     }
 
-    const result = await generatePostVariations(input);
+    const supabase = createSupabaseAdminClient();
 
-    return NextResponse.json(result);
+    // Create job record
+    const { data: job, error: jobError } = await supabase
+      .from('background_jobs')
+      .insert({
+        user_id: session.user.id,
+        job_type: 'posts',
+        status: 'pending',
+        input,
+      })
+      .select('id')
+      .single();
+
+    if (jobError || !job) {
+      logApiError('lead-magnet/write-post/create-job', jobError, { userId: session.user.id });
+      return ApiErrors.databaseError('Failed to create job');
+    }
+
+    // Trigger background task
+    const handle = await tasks.trigger('write-posts', {
+      jobId: job.id,
+      userId: session.user.id,
+      input,
+    });
+
+    // Update job with trigger task ID
+    await supabase
+      .from('background_jobs')
+      .update({ trigger_task_id: handle.id })
+      .eq('id', job.id);
+
+    const response: CreateJobResponse = {
+      jobId: job.id,
+      status: 'pending',
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     logApiError('lead-magnet/write-post', error);
-    return ApiErrors.aiError('Failed to generate post variations');
+    return ApiErrors.internalError('Failed to start post generation');
   }
 }

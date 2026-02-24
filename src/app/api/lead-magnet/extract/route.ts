@@ -1,13 +1,15 @@
-// API Route: Get Extraction Questions / Process Extraction
+// API Route: Get Extraction Questions / Process Extraction (Background Job)
 // GET /api/lead-magnet/extract?archetype=single-system
-// GET /api/lead-magnet/extract?archetype=single-system&contextAware=true (+ body with concept + context)
-// POST /api/lead-magnet/extract - Process answers
+// POST /api/lead-magnet/extract - Creates job, returns jobId (or sync for contextual-questions)
 
 import { NextResponse } from 'next/server';
+import { tasks } from '@trigger.dev/sdk/v3';
 import { auth } from '@/lib/auth';
-import { getExtractionQuestions, getContextAwareExtractionQuestions, processContentExtraction } from '@/lib/ai/lead-magnet-generator';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getExtractionQuestions, getContextAwareExtractionQuestions } from '@/lib/ai/lead-magnet-generator';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-import type { LeadMagnetArchetype, LeadMagnetConcept, BusinessContext, CallTranscriptInsights, InteractiveConfig } from '@/lib/types/lead-magnet';
+import type { LeadMagnetArchetype } from '@/lib/types/lead-magnet';
+import type { CreateJobResponse } from '@/lib/types/background-jobs';
 
 // GET - Get extraction questions for an archetype (static, fast)
 export async function GET(request: Request) {
@@ -43,86 +45,71 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    // Context-aware questions mode: { action: 'contextual-questions', archetype, concept, businessContext }
+    // Context-aware questions mode stays synchronous (fast, no AI generation)
     if (body.action === 'contextual-questions') {
-      const { archetype, concept, businessContext } = body as {
-        action: string;
-        archetype: LeadMagnetArchetype;
-        concept: LeadMagnetConcept;
-        businessContext: BusinessContext;
-      };
-
+      const { archetype, concept, businessContext } = body;
       if (!archetype || !concept || !businessContext) {
         return ApiErrors.validationError('Missing required fields: archetype, concept, businessContext');
       }
-
       const questions = await getContextAwareExtractionQuestions(archetype, concept, businessContext);
       return NextResponse.json({ questions });
     }
 
-    // Interactive generation mode: { action: 'generate-interactive', archetype, concept, answers, businessContext, transcriptInsights }
-    if (body.action === 'generate-interactive') {
-      const { archetype, concept, answers, businessContext, transcriptInsights } = body as {
-        action: string;
-        archetype: LeadMagnetArchetype;
-        concept: LeadMagnetConcept;
-        answers: Record<string, string>;
-        businessContext?: BusinessContext;
-        transcriptInsights?: CallTranscriptInsights;
-      };
-
-      // Import helpers
-      const { isInteractiveArchetype, getInteractiveType } = await import('@/lib/types/lead-magnet');
-
-      if (!isInteractiveArchetype(archetype)) {
-        return ApiErrors.validationError('Archetype is not interactive');
-      }
-
-      const interactiveType = getInteractiveType(archetype);
-      const { generateCalculatorConfig, generateAssessmentConfig, generateGPTConfig } = await import('@/lib/ai/interactive-generators');
-
-      let config: InteractiveConfig;
-      switch (interactiveType) {
-        case 'calculator':
-          config = await generateCalculatorConfig(concept, answers, transcriptInsights);
-          break;
-        case 'assessment':
-          config = await generateAssessmentConfig(concept, answers, transcriptInsights);
-          break;
-        case 'gpt':
-          config = await generateGPTConfig(concept, answers, businessContext as unknown as Record<string, unknown>, transcriptInsights);
-          break;
-        default:
-          return ApiErrors.validationError('Unknown interactive type');
-      }
-
-      return NextResponse.json({ interactiveConfig: config });
-    }
-
-    // Default: process extraction answers
-    const { archetype, concept, answers, transcriptInsights } = body as {
-      archetype: LeadMagnetArchetype;
-      concept: LeadMagnetConcept;
-      answers: Record<string, string>;
-      transcriptInsights?: CallTranscriptInsights;
-    };
+    // For content generation (interactive or standard), use background job
+    const { archetype, concept, answers, transcriptInsights, businessContext } = body;
 
     if (!archetype || !concept || !answers) {
       return ApiErrors.validationError('Missing required fields: archetype, concept, answers');
     }
 
-    // Pass transcript insights and userId to enhance AI extraction with real customer data
-    const extractedContent = await processContentExtraction(
+    const supabase = createSupabaseAdminClient();
+
+    const jobInput = {
       archetype,
       concept,
       answers,
       transcriptInsights,
-      session.user.id
-    );
+      ...(body.action === 'generate-interactive' ? { action: 'generate-interactive' as const, businessContext } : {}),
+    };
 
-    return NextResponse.json(extractedContent);
+    // Create job record
+    const { data: job, error: jobError } = await supabase
+      .from('background_jobs')
+      .insert({
+        user_id: session.user.id,
+        job_type: 'extraction',
+        status: 'pending',
+        input: jobInput,
+      })
+      .select('id')
+      .single();
+
+    if (jobError || !job) {
+      logApiError('lead-magnet/extract/create-job', jobError, { userId: session.user.id });
+      return ApiErrors.databaseError('Failed to create job');
+    }
+
+    // Trigger background task
+    const handle = await tasks.trigger('extract-content', {
+      jobId: job.id,
+      userId: session.user.id,
+      input: jobInput,
+    });
+
+    // Update job with trigger task ID
+    await supabase
+      .from('background_jobs')
+      .update({ trigger_task_id: handle.id })
+      .eq('id', job.id);
+
+    const response: CreateJobResponse = {
+      jobId: job.id,
+      status: 'pending',
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     logApiError('lead-magnet/extract', error);
-    return ApiErrors.aiError('Failed to process extraction');
+    return ApiErrors.internalError('Failed to start extraction');
   }
 }

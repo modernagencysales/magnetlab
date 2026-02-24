@@ -45,6 +45,9 @@ export interface ExtractionJobInput {
   archetype: string;
   concept: unknown;
   answers: Record<string, string>;
+  transcriptInsights?: CallTranscriptInsights;
+  action?: 'generate-interactive';
+  businessContext?: unknown;
 }
 
 export interface PolishJobInput {

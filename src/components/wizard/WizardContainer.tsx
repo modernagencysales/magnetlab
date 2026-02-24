@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import posthog from 'posthog-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ContextStep } from './steps/ContextStep';
@@ -63,6 +63,10 @@ export function WizardContainer() {
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<WizardDraft[]>([]);
 
+  // Refs for pending state during background jobs
+  const pendingExtractionAnswersRef = useRef<Record<string, string>>({});
+  const isRegenerationRef = useRef(false);
+
   const { startPolling, isLoading: isJobLoading } = useBackgroundJob<IdeationResult>({
     pollInterval: 2000,
     timeout: 360000, // 6 minutes - provides buffer after AI timeout (MOD-68)
@@ -77,6 +81,65 @@ export function WizardContainer() {
     onError: (errorMessage) => {
       setError(errorMessage);
       setState((prev) => ({ ...prev, currentStep: 1 }));
+      setGenerating('idle');
+    },
+  });
+
+  // Extraction background job (content extraction + interactive config generation)
+  const { startPolling: startExtractionPolling, isLoading: isExtractionJobLoading } = useBackgroundJob<{ extractedContent?: ExtractedContent; interactiveConfig?: InteractiveConfig }>({
+    pollInterval: 2000,
+    timeout: 360000,
+    onComplete: (result) => {
+      try { posthog.capture('wizard_extraction_completed', { interactive: !!result.interactiveConfig }); } catch {}
+
+      if (isRegenerationRef.current) {
+        // Regeneration: just update config, stay on current step
+        if (result.interactiveConfig) {
+          try { posthog.capture('wizard_interactive_regenerated', { type: result.interactiveConfig.type }); } catch {}
+          setState((prev) => ({ ...prev, interactiveConfig: result.interactiveConfig! }));
+        }
+      } else if (result.interactiveConfig) {
+        setState((prev) => ({
+          ...prev,
+          extractionAnswers: pendingExtractionAnswersRef.current,
+          interactiveConfig: result.interactiveConfig!,
+          extractedContent: null,
+          currentStep: 4,
+        }));
+      } else if (result.extractedContent) {
+        setState((prev) => ({
+          ...prev,
+          extractionAnswers: pendingExtractionAnswersRef.current,
+          extractedContent: result.extractedContent!,
+          interactiveConfig: null,
+          currentStep: 4,
+        }));
+      }
+      isRegenerationRef.current = false;
+      setGenerating('idle');
+    },
+    onError: (errorMessage) => {
+      setError(errorMessage);
+      isRegenerationRef.current = false;
+      setGenerating('idle');
+    },
+  });
+
+  // Posts background job (LinkedIn post generation)
+  const { startPolling: startPostsPolling, isLoading: isPostsJobLoading } = useBackgroundJob<PostWriterResult>({
+    pollInterval: 2000,
+    timeout: 360000,
+    onComplete: (postResult) => {
+      try { posthog.capture('wizard_content_approved'); } catch {}
+      setState((prev) => ({
+        ...prev,
+        postResult,
+        currentStep: 5,
+      }));
+      setGenerating('idle');
+    },
+    onError: (errorMessage) => {
+      setError(errorMessage);
       setGenerating('idle');
     },
   });
@@ -304,92 +367,49 @@ export function WizardContainer() {
   ) => {
     setGenerating('extraction');
     setError(null);
+    pendingExtractionAnswersRef.current = answers;
+    isRegenerationRef.current = false;
 
     try {
-      // Include transcript insights if available to enhance AI content extraction
       const transcriptInsights = state.ideationSources?.callTranscript?.insights;
 
+      const requestBody: Record<string, unknown> = {
+        archetype,
+        concept,
+        answers,
+        transcriptInsights,
+      };
+
       if (isInteractiveArchetype(archetype)) {
-        // Interactive path: generate calculator/assessment/GPT config
-        const response = await fetch('/api/lead-magnet/extract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'generate-interactive',
-            archetype,
-            concept,
-            answers,
-            businessContext: state.brandKit,
-            transcriptInsights,
-          }),
-        });
-
-        if (!response.ok) {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            throw new Error(data.error || 'Failed to generate interactive config');
-          } else {
-            const text = await response.text();
-            logError('wizard/container', new Error(text), { step: 'non-json_error_response' });
-            throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
-          }
-        }
-
-        const { interactiveConfig } = await response.json() as { interactiveConfig: InteractiveConfig };
-        try { posthog.capture('wizard_extraction_completed', { archetype, interactive: true }); } catch {}
-
-        setState((prev) => ({
-          ...prev,
-          extractionAnswers: answers,
-          interactiveConfig,
-          extractedContent: null,  // No text content for interactive
-          currentStep: 4,
-        }));
-      } else {
-        // Standard text extraction path
-        const response = await fetch('/api/lead-magnet/extract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            archetype,
-            concept,
-            answers,
-            transcriptInsights, // Pass coaching call insights to enhance extraction
-          }),
-        });
-
-        if (!response.ok) {
-          // Handle both JSON and non-JSON error responses
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            throw new Error(data.error || 'Failed to process extraction');
-          } else {
-            const text = await response.text();
-            logError('wizard/container', new Error(text), { step: 'non-json_error_response' });
-            throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
-          }
-        }
-
-        const extractedContent: ExtractedContent = await response.json();
-        try { posthog.capture('wizard_extraction_completed', { archetype }); } catch {}
-
-        setState((prev) => ({
-          ...prev,
-          extractionAnswers: answers,
-          extractedContent,
-          interactiveConfig: null,
-          currentStep: 4,
-        }));
+        requestBody.action = 'generate-interactive';
+        requestBody.businessContext = state.brandKit;
       }
+
+      const response = await fetch('/api/lead-magnet/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to start extraction');
+        } else {
+          const text = await response.text();
+          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+        }
+      }
+
+      const { jobId } = await response.json();
+      startExtractionPolling(jobId);
     } catch (err) {
       logError('wizard/container', err, { step: 'extraction_error' });
       setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
       setGenerating('idle');
     }
-  }, [state.ideationSources, state.brandKit]);
+  }, [state.ideationSources, state.brandKit, startExtractionPolling]);
 
   const handleContentApprove = useCallback(async () => {
     // Support both AI-generated and custom concepts
@@ -407,7 +427,6 @@ export function WizardContainer() {
     setError(null);
 
     try {
-
       const response = await fetch('/api/lead-magnet/write-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -431,20 +450,13 @@ export function WizardContainer() {
         throw new Error(data.error || 'Failed to generate posts');
       }
 
-      const postResult: PostWriterResult = await response.json();
-      try { posthog.capture('wizard_content_approved'); } catch {}
-
-      setState((prev) => ({
-        ...prev,
-        postResult,
-        currentStep: 5,
-      }));
+      const { jobId } = await response.json();
+      startPostsPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
       setGenerating('idle');
     }
-  }, [state.extractedContent, state.ideationResult, state.selectedConceptIndex, state.brandKit, state.isCustomIdea, state.customConcept]);
+  }, [state.extractedContent, state.ideationResult, state.selectedConceptIndex, state.brandKit, state.isCustomIdea, state.customConcept, startPostsPolling]);
 
   const handleInteractiveConfigChange = useCallback((config: InteractiveConfig) => {
     setState((prev) => ({ ...prev, interactiveConfig: config }));
@@ -491,20 +503,14 @@ export function WizardContainer() {
         throw new Error(data.error || 'Failed to generate posts');
       }
 
-      const postResult: PostWriterResult = await response.json();
+      const { jobId } = await response.json();
       try { posthog.capture('wizard_interactive_approved', { type: state.interactiveConfig.type }); } catch {}
-
-      setState((prev) => ({
-        ...prev,
-        postResult,
-        currentStep: 5,
-      }));
+      startPostsPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
       setGenerating('idle');
     }
-  }, [state.interactiveConfig, state.brandKit, state.isCustomIdea, state.customConcept, state.ideationResult, state.selectedConceptIndex]);
+  }, [state.interactiveConfig, state.brandKit, state.isCustomIdea, state.customConcept, state.ideationResult, state.selectedConceptIndex, startPostsPolling]);
 
   const handleRegenerateInteractive = useCallback(async () => {
     const concept = state.isCustomIdea && state.customConcept
@@ -517,6 +523,7 @@ export function WizardContainer() {
 
     setGenerating('extraction');
     setError(null);
+    isRegenerationRef.current = true;
 
     try {
       const transcriptInsights = state.ideationSources?.callTranscript?.insights;
@@ -544,20 +551,15 @@ export function WizardContainer() {
         }
       }
 
-      const { interactiveConfig } = await response.json() as { interactiveConfig: InteractiveConfig };
-      try { posthog.capture('wizard_interactive_regenerated', { type: interactiveConfig.type }); } catch {}
-
-      setState((prev) => ({
-        ...prev,
-        interactiveConfig,
-      }));
+      const { jobId } = await response.json();
+      startExtractionPolling(jobId);
     } catch (err) {
       logError('wizard/container', err, { step: 'regenerate_interactive_error' });
       setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
+      isRegenerationRef.current = false;
       setGenerating('idle');
     }
-  }, [state.isCustomIdea, state.customConcept, state.ideationResult, state.selectedConceptIndex, state.extractionAnswers, state.ideationSources, state.brandKit]);
+  }, [state.isCustomIdea, state.customConcept, state.ideationResult, state.selectedConceptIndex, state.extractionAnswers, state.ideationSources, state.brandKit, startExtractionPolling]);
 
   const handlePostSelect = useCallback((index: number) => {
     try { posthog.capture('wizard_post_selected', { post_index: index }); } catch {}
@@ -618,6 +620,28 @@ export function WizardContainer() {
         <WizardProgress currentStep={1} />
         <div className="container mx-auto max-w-4xl px-4 py-8">
           <GeneratingScreen />
+        </div>
+      </div>
+    );
+  }
+
+  if ((generating === 'extraction' || isExtractionJobLoading) && !isRegenerationRef.current) {
+    return (
+      <div className="min-h-screen bg-background">
+        <WizardProgress currentStep={3} />
+        <div className="container mx-auto max-w-4xl px-4 py-8">
+          <GeneratingScreen message="Extracting your content..." />
+        </div>
+      </div>
+    );
+  }
+
+  if (generating === 'posts' || isPostsJobLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <WizardProgress currentStep={4} />
+        <div className="container mx-auto max-w-4xl px-4 py-8">
+          <GeneratingScreen message="Writing your LinkedIn posts..." />
         </div>
       </div>
     );
@@ -709,8 +733,8 @@ export function WizardContainer() {
                 onApprove={handleInteractiveApprove}
                 onBack={() => goToStep(3)}
                 onRegenerate={handleRegenerateInteractive}
-                loading={generating === 'posts'}
-                regenerating={generating === 'extraction'}
+                loading={generating !== 'idle'}
+                regenerating={isExtractionJobLoading}
               />
             )}
 
@@ -722,7 +746,7 @@ export function WizardContainer() {
                   setState((prev) => ({ ...prev, extractedContent: updated }))
                 }
                 onBack={() => goToStep(3)}
-                loading={generating === 'posts'}
+                loading={generating !== 'idle'}
               />
             )}
 
