@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { KnowledgeContent } from '@/components/knowledge/KnowledgeContent';
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function KnowledgePage() {
-  return <KnowledgeContent />;
+  return (
+    <Suspense>
+      <KnowledgeContent />
+    </Suspense>
+  );
 }

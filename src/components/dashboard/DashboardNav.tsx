@@ -54,14 +54,17 @@ const bottomNav = [
 // ─── Theme toggle (inline, matching bootcamp style) ──────
 
 function InlineThemeToggle() {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark');
-    }
-    return true;
-  });
+  const [isDark, setIsDark] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  // Sync with DOM after mount to avoid hydration mismatch
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'));
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
+    if (!mounted) return;
     if (isDark) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
@@ -69,7 +72,7 @@ function InlineThemeToggle() {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');
     }
-  }, [isDark]);
+  }, [isDark, mounted]);
 
   return (
     <button

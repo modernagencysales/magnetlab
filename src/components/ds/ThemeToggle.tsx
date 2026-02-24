@@ -11,18 +11,20 @@ interface ThemeToggleProps {
 }
 
 const ThemeToggle: React.FC<ThemeToggleProps> = ({ isDark: controlledIsDark, onToggle }) => {
-  const [internalIsDark, setInternalIsDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark');
-    }
-    return true;
-  });
+  const [internalIsDark, setInternalIsDark] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const isDark = controlledIsDark ?? internalIsDark;
 
+  // Sync with DOM after mount to avoid hydration mismatch
   useEffect(() => {
-    // Only manage document class when uncontrolled
-    if (controlledIsDark !== undefined) return;
+    setInternalIsDark(document.documentElement.classList.contains('dark'));
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // Only manage document class when uncontrolled and after mount
+    if (controlledIsDark !== undefined || !mounted) return;
 
     if (internalIsDark) {
       document.documentElement.classList.add('dark');
@@ -31,7 +33,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ isDark: controlledIsDark, onT
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');
     }
-  }, [internalIsDark, controlledIsDark]);
+  }, [internalIsDark, controlledIsDark, mounted]);
 
   const handleClick = () => {
     if (onToggle) {

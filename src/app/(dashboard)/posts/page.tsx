@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { PostsContent } from '@/components/posts/PostsContent';
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function PostsPage() {
-  return <PostsContent />;
+  return (
+    <Suspense>
+      <PostsContent />
+    </Suspense>
+  );
 }

@@ -19,12 +19,21 @@ import type { PipelinePost } from '@/lib/types/content-pipeline';
 import { DayPostsModal } from './DayPostsModal';
 
 export function CalendarView() {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
   const [posts, setPosts] = useState<PipelinePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [today, setToday] = useState<Date | null>(null);
+
+  // Initialize date-dependent state after mount to avoid hydration mismatch
+  useEffect(() => {
+    const now = new Date();
+    setCurrentMonth(now);
+    setToday(now);
+  }, []);
 
   const fetchPosts = useCallback(async () => {
+    if (!currentMonth) return;
     const start = startOfWeek(startOfMonth(currentMonth)).toISOString();
     const end = endOfWeek(endOfMonth(currentMonth)).toISOString();
 
@@ -40,18 +49,27 @@ export function CalendarView() {
   }, [currentMonth]);
 
   useEffect(() => {
+    if (!currentMonth) return;
     setLoading(true);
     fetchPosts();
-  }, [fetchPosts]);
+  }, [fetchPosts, currentMonth]);
 
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const calendarStart = startOfWeek(monthStart);
-  const calendarEnd = endOfWeek(monthEnd);
-  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  const monthStart = currentMonth ? startOfMonth(currentMonth) : null;
+  const monthEnd = currentMonth ? endOfMonth(currentMonth) : null;
+  const calendarStart = monthStart ? startOfWeek(monthStart) : null;
+  const calendarEnd = monthEnd ? endOfWeek(monthEnd) : null;
+  const days = calendarStart && calendarEnd ? eachDayOfInterval({ start: calendarStart, end: calendarEnd }) : [];
 
   const getPostsForDay = (day: Date) =>
     posts.filter((p) => p.scheduled_time && isSameDay(new Date(p.scheduled_time), day));
+
+  if (!currentMonth) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -66,7 +84,7 @@ export function CalendarView() {
         <h3 className="text-base font-semibold">{format(currentMonth, 'MMMM yyyy')}</h3>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setCurrentMonth(new Date())}
+            onClick={() => { setCurrentMonth(new Date()); setToday(new Date()); }}
             className="rounded-lg border border-border px-3 py-1 text-xs font-medium hover:bg-muted transition-colors"
           >
             Today
@@ -99,7 +117,7 @@ export function CalendarView() {
           <div className="grid grid-cols-7 gap-px rounded-lg border overflow-hidden">
             {days.map((day) => {
               const dayPosts = getPostsForDay(day);
-              const isToday = isSameDay(day, new Date());
+              const isToday = today ? isSameDay(day, today) : false;
               const isCurrentMonth = isSameMonth(day, currentMonth);
 
               return (
