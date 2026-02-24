@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, Upload, Wand2, X, Globe, User } from 'lucide-react';
+import { Plus, Loader2, Upload, Wand2, X, Globe, User, Check } from 'lucide-react';
 import type { PostTemplate } from '@/lib/types/content-pipeline';
 import { CSVTemplateImporter } from './CSVTemplateImporter';
 import { ViralPostsSection } from './ViralPostsSection';
@@ -18,6 +18,7 @@ export function TemplatesTab() {
   const [seeding, setSeeding] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<PostTemplate | null>(null);
   const [activeSection, setActiveSection] = useState<'global' | 'mine'>('global');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Create/edit form state
   const [formName, setFormName] = useState('');
@@ -220,6 +221,21 @@ export function TemplatesTab() {
                       )}
                     </div>
                     <div className="flex gap-1">
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await navigator.clipboard.writeText(template.structure);
+                          setCopiedId(template.id);
+                          setTimeout(() => setCopiedId(null), 2000);
+                        }}
+                        className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
+                        {copiedId === template.id ? (
+                          <><Check className="h-3 w-3" /> Copied</>
+                        ) : (
+                          'Use This'
+                        )}
+                      </button>
                       <button
                         onClick={() => openEdit(template)}
                         className="rounded-lg p-1 text-muted-foreground hover:text-foreground transition-colors"

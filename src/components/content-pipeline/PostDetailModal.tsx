@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin, Users, Zap, MessageSquare } from 'lucide-react';
+import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin, Users, Zap, MessageSquare, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostPreview } from './PostPreview';
@@ -49,6 +49,11 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const [autoFollowUp, setAutoFollowUp] = useState(false);
   const [autoFollowUpTemplate, setAutoFollowUpTemplate] = useState('');
   const [automationEventCount, setAutomationEventCount] = useState(0);
+
+  // Template picker state
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [templates, setTemplates] = useState<{ id: string; name: string; structure: string; category: string | null }[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
 
   const isPublishedWithLinkedIn = post.status === 'published' && !!post.linkedin_post_id;
 
@@ -124,6 +129,20 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   useEffect(() => {
     fetchAutomation();
   }, [fetchAutomation]);
+
+  const fetchTemplates = useCallback(async () => {
+    if (templates.length > 0) return;
+    setTemplatesLoading(true);
+    try {
+      const res = await fetch('/api/content-pipeline/templates?scope=mine');
+      const data = await res.json();
+      setTemplates(data.templates || []);
+    } catch {
+      // Silent
+    } finally {
+      setTemplatesLoading(false);
+    }
+  }, [templates.length]);
 
   const handleCreateAutomation = async () => {
     setAutomationSaving(true);
@@ -621,6 +640,22 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              fetchTemplates();
+              setShowTemplatePicker(!showTemplatePicker);
+            }}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+              showTemplatePicker
+                ? "bg-primary text-primary-foreground"
+                : "border border-border hover:bg-muted"
+            )}
+            title="Insert template"
+          >
+            <FileText className="h-4 w-4" />
+            Templates
+          </button>
           {!editing && (
             <button
               onClick={() => setEditing(true)}
@@ -662,6 +697,38 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
             </button>
           )}
         </div>
+
+        {/* Template Picker */}
+        {showTemplatePicker && (
+          <div className="mt-3 rounded-lg border bg-card p-3 space-y-2 max-h-48 overflow-y-auto">
+            {templatesLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : templates.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2 text-center">
+                No templates yet. Create some in the Library tab.
+              </p>
+            ) : (
+              templates.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setEditContent(t.structure);
+                    setEditing(true);
+                    setShowTemplatePicker(false);
+                  }}
+                  className="w-full text-left rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors"
+                >
+                  <span className="font-medium">{t.name}</span>
+                  {t.category && (
+                    <span className="ml-2 text-xs text-muted-foreground">{t.category}</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Publish Error */}
         {publishError && (
