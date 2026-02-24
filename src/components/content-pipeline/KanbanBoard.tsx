@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, CheckSquare, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { PipelinePost, ContentIdea } from '@/lib/types/content-pipeline';
+import type { PipelinePost, ContentIdea, PostStatus } from '@/lib/types/content-pipeline';
 import type { CardItem } from './KanbanCard';
 import { FocusedCard } from './KanbanCard';
 import { COLUMN_STYLES, type ColumnId } from './KanbanColumn';
@@ -33,12 +33,13 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
   const [modalPost, setModalPost] = useState<PipelinePost | null>(null);
   const [polishing, setPolishing] = useState(false);
 
-  // Processing
-  const [isProcessing, setIsProcessing] = useState(false);
+  // Processing (kept for BulkSelectionBar prop — always false with optimistic updates)
+  const [isProcessing] = useState(false);
 
   // ─── Data fetching ────────────────────────────────────────
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [ideasRes, postsRes] = await Promise.all([
         fetch('/api/content-pipeline/ideas?status=extracted&limit=200'),
@@ -58,11 +59,11 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    fetchData(false);
   }, [fetchData]);
 
   const refresh = useCallback(() => {
-    fetchData();
+    fetchData(true);
     onRefresh?.();
   }, [fetchData, onRefresh]);
 
@@ -177,133 +178,233 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
   const handleCardAction = useCallback(async (item: CardItem, action: string) => {
     try {
       if (item.type === 'idea') {
+        const idea = item.data as ContentIdea;
         if (action === 'write') {
           // Optimistic: remove idea from list immediately
-          setIdeas((prev) => prev.filter((i) => i.id !== item.data.id));
-          if (previewItem?.item.data.id === item.data.id) setPreviewItem(null);
-          fetch(`/api/content-pipeline/ideas/${item.data.id}/write`, { method: 'POST' })
+          setIdeas((prev) => prev.filter((i) => i.id !== idea.id));
+          if (previewItem?.item.data.id === idea.id) setPreviewItem(null);
+          fetch(`/api/content-pipeline/ideas/${idea.id}/write`, { method: 'POST' })
+            .then((res) => {
+              if (res.ok) fetchData(true); // Silent refetch to pick up the new post
+            })
             .catch(() => {
-              // Revert on failure
-              setIdeas((prev) => [...prev, item.data as ContentIdea]);
+              setIdeas((prev) => [...prev, idea]);
             });
           return;
         } else if (action === 'archive') {
-          await fetch(`/api/content-pipeline/ideas/${item.data.id}`, {
+          // Optimistic: remove idea from list immediately
+          setIdeas((prev) => prev.filter((i) => i.id !== idea.id));
+          if (previewItem?.item.data.id === idea.id) setPreviewItem(null);
+          fetch(`/api/content-pipeline/ideas/${idea.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'archived' }),
+          }).then((res) => {
+            if (!res.ok) {
+              setIdeas((prev) => [...prev, idea]);
+            }
+          }).catch(() => {
+            setIdeas((prev) => [...prev, idea]);
           });
-          refresh();
+          return;
         } else if (action === 'delete') {
-          await fetch(`/api/content-pipeline/ideas/${item.data.id}`, { method: 'DELETE' });
-          refresh();
+          // Optimistic: remove idea from list immediately
+          setIdeas((prev) => prev.filter((i) => i.id !== idea.id));
+          if (previewItem?.item.data.id === idea.id) setPreviewItem(null);
+          fetch(`/api/content-pipeline/ideas/${idea.id}`, { method: 'DELETE' })
+            .then((res) => {
+              if (!res.ok) {
+                setIdeas((prev) => [...prev, idea]);
+              }
+            })
+            .catch(() => {
+              setIdeas((prev) => [...prev, idea]);
+            });
+          return;
         }
       } else {
+        const post = item.data as PipelinePost;
         if (action === 'edit') {
-          setModalPost(item.data);
+          setModalPost(post);
         } else if (action === 'publish') {
-          const res = await fetch(`/api/content-pipeline/posts/${item.data.id}/publish`, { method: 'POST' });
-          const data = await res.json();
-          if (!res.ok && data.error?.includes('Settings')) {
-            alert(data.error);
-          }
-          refresh();
+          // Optimistic: update status to published immediately
+          const oldStatus = post.status;
+          setPosts((prev) => prev.map((p) =>
+            p.id === post.id ? { ...p, status: 'published' as PostStatus } : p
+          ));
+          fetch(`/api/content-pipeline/posts/${post.id}/publish`, { method: 'POST' })
+            .then(async (res) => {
+              if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                if (data.error?.includes('Settings')) {
+                  alert(data.error);
+                }
+                // Revert on failure
+                setPosts((prev) => prev.map((p) =>
+                  p.id === post.id ? { ...p, status: oldStatus } : p
+                ));
+              }
+            })
+            .catch(() => {
+              setPosts((prev) => prev.map((p) =>
+                p.id === post.id ? { ...p, status: oldStatus } : p
+              ));
+            });
+          return;
         } else if (action === 'delete') {
-          await fetch(`/api/content-pipeline/posts/${item.data.id}`, { method: 'DELETE' });
-          if (previewItem?.item.data.id === item.data.id) setPreviewItem(null);
-          refresh();
+          // Optimistic: remove post from list immediately
+          setPosts((prev) => prev.filter((p) => p.id !== post.id));
+          if (previewItem?.item.data.id === post.id) setPreviewItem(null);
+          fetch(`/api/content-pipeline/posts/${post.id}`, { method: 'DELETE' })
+            .then((res) => {
+              if (!res.ok) {
+                setPosts((prev) => [...prev, post]);
+              }
+            })
+            .catch(() => {
+              setPosts((prev) => [...prev, post]);
+            });
+          return;
         }
       }
     } catch {
       // Silent
     }
-  }, [refresh, previewItem]);
+  }, [fetchData, previewItem]);
 
   // ─── Bulk actions ─────────────────────────────────────────
 
-  const handleBulkPrimary = useCallback(async () => {
+  const handleBulkPrimary = useCallback(() => {
     if (selectedIds.size === 0) return;
-    setIsProcessing(true);
 
-    try {
-      const ids = [...selectedIds];
-      if (focusedColumn === 'ideas') {
-        // Optimistic: remove all selected ideas immediately
-        setIdeas((prev) => prev.filter((i) => !selectedIds.has(i.id)));
-        if (previewItem && selectedIds.has(previewItem.item.data.id)) setPreviewItem(null);
-        Promise.allSettled(ids.map((id) =>
-          fetch(`/api/content-pipeline/ideas/${id}/write`, { method: 'POST' })
-        )).catch(() => {
-          fetchData(); // Revert on failure
-        });
-      } else if (focusedColumn === 'written') {
-        await Promise.allSettled(ids.map((id) =>
-          fetch(`/api/content-pipeline/posts/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'approved' }),
-          })
-        ));
-      } else if (focusedColumn === 'review') {
-        await Promise.allSettled(ids.map((id) =>
-          fetch('/api/content-pipeline/posts/schedule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ post_id: id }),
-          })
-        ));
-      } else if (focusedColumn === 'scheduled') {
-        await Promise.allSettled(ids.map((id) =>
-          fetch(`/api/content-pipeline/posts/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'approved' }),
-          })
-        ));
+    const ids = [...selectedIds];
+
+    if (focusedColumn === 'ideas') {
+      // Optimistic: remove all selected ideas immediately
+      const removedIdeas = ideas.filter((i) => selectedIds.has(i.id));
+      setIdeas((prev) => prev.filter((i) => !selectedIds.has(i.id)));
+      if (previewItem && selectedIds.has(previewItem.item.data.id)) setPreviewItem(null);
+      setSelectedIds(new Set());
+
+      Promise.allSettled(ids.map((id) =>
+        fetch(`/api/content-pipeline/ideas/${id}/write`, { method: 'POST' })
+      )).then((results) => {
+        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
+          fetchData(true); // Revert via silent refetch on any failure
+        } else {
+          fetchData(true); // Silent refetch to pick up new posts
+        }
+      }).catch(() => {
+        setIdeas((prev) => [...prev, ...removedIdeas]);
+      });
+
+    } else if (focusedColumn === 'written') {
+      // Optimistic: update selected posts to approved immediately
+      setPosts((prev) => prev.map((p) =>
+        ids.includes(p.id) ? { ...p, status: 'approved' as PostStatus } : p
+      ));
+      setSelectedIds(new Set());
+
+      Promise.allSettled(ids.map((id) =>
+        fetch(`/api/content-pipeline/posts/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'approved' }),
+        })
+      )).then((results) => {
+        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
+          fetchData(true); // Revert via silent refetch on any failure
+        }
+      }).catch(() => fetchData(true));
+
+    } else if (focusedColumn === 'review') {
+      // Optimistic: update selected posts to scheduled immediately
+      setPosts((prev) => prev.map((p) =>
+        ids.includes(p.id) ? { ...p, status: 'scheduled' as PostStatus } : p
+      ));
+      setSelectedIds(new Set());
+
+      Promise.allSettled(ids.map((id) =>
+        fetch('/api/content-pipeline/posts/schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ post_id: id }),
+        })
+      )).then((results) => {
+        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
+          fetchData(true); // Revert via silent refetch on any failure
+        }
+      }).catch(() => fetchData(true));
+
+    } else if (focusedColumn === 'scheduled') {
+      // Optimistic: update selected posts to approved immediately
+      setPosts((prev) => prev.map((p) =>
+        ids.includes(p.id) ? { ...p, status: 'approved' as PostStatus } : p
+      ));
+      setSelectedIds(new Set());
+
+      Promise.allSettled(ids.map((id) =>
+        fetch(`/api/content-pipeline/posts/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'approved' }),
+        })
+      )).then((results) => {
+        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
+          fetchData(true); // Revert via silent refetch on any failure
+        }
+      }).catch(() => fetchData(true));
+    }
+  }, [focusedColumn, selectedIds, ideas, previewItem, fetchData]);
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.size === 0) return;
+
+    const ids = [...selectedIds];
+    const ideaIds = new Set(ideas.map((i) => i.id));
+
+    // Optimistic: remove all selected items from local state immediately
+    const removedIdeas = ideas.filter((i) => selectedIds.has(i.id));
+    const removedPosts = posts.filter((p) => selectedIds.has(p.id));
+    setIdeas((prev) => prev.filter((i) => !selectedIds.has(i.id)));
+    setPosts((prev) => prev.filter((p) => !selectedIds.has(p.id)));
+    if (previewItem && selectedIds.has(previewItem.item.data.id)) setPreviewItem(null);
+    setSelectedIds(new Set());
+
+    Promise.allSettled(ids.map((id) => {
+      const endpoint = ideaIds.has(id)
+        ? `/api/content-pipeline/ideas/${id}`
+        : `/api/content-pipeline/posts/${id}`;
+      return fetch(endpoint, { method: 'DELETE' });
+    })).then((results) => {
+      if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
+        // Revert via silent refetch on any failure
+        fetchData(true);
       }
-    } catch {
-      // Silent
-    } finally {
-      clearSelection();
-      setIsProcessing(false);
-      refresh();
-    }
-  }, [focusedColumn, selectedIds, clearSelection, refresh]);
-
-  const handleBulkDelete = useCallback(async () => {
-    if (selectedIds.size === 0) return;
-    setIsProcessing(true);
-
-    try {
-      const ids = [...selectedIds];
-      const ideaIds = new Set(ideas.map((i) => i.id));
-      await Promise.allSettled(ids.map((id) => {
-        const endpoint = ideaIds.has(id)
-          ? `/api/content-pipeline/ideas/${id}`
-          : `/api/content-pipeline/posts/${id}`;
-        return fetch(endpoint, { method: 'DELETE' });
-      }));
-    } catch {
-      // Silent
-    } finally {
-      clearSelection();
-      setIsProcessing(false);
-      refresh();
-    }
-  }, [selectedIds, ideas, clearSelection, refresh]);
+    }).catch(() => {
+      // Full revert: add removed items back
+      setIdeas((prev) => [...prev, ...removedIdeas]);
+      setPosts((prev) => [...prev, ...removedPosts]);
+    });
+  }, [selectedIds, ideas, posts, previewItem, fetchData]);
 
   // ─── Detail pane callbacks ────────────────────────────────
 
   const handleWritePost = useCallback(async (ideaId: string) => {
     // Optimistic: remove idea from list immediately
+    const removedIdea = ideas.find((i) => i.id === ideaId);
     setIdeas((prev) => prev.filter((i) => i.id !== ideaId));
     setPreviewItem(null);
     fetch(`/api/content-pipeline/ideas/${ideaId}/write`, { method: 'POST' })
+      .then((res) => {
+        if (res.ok) fetchData(true); // Silent refetch to pick up the new post
+        else if (removedIdea) setIdeas((prev) => [...prev, removedIdea]);
+      })
       .catch(() => {
-        // Revert on failure — re-fetch to get the idea back
-        fetchData();
+        // Revert on failure — add idea back
+        if (removedIdea) setIdeas((prev) => [...prev, removedIdea]);
       });
-  }, [fetchData]);
+  }, [fetchData, ideas]);
 
   const handleContentUpdate = useCallback((postId: string, content: string) => {
     setPosts((prev) =>
