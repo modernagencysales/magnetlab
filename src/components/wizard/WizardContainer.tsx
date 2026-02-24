@@ -22,6 +22,7 @@ import { isInteractiveArchetype } from '@/lib/types/lead-magnet';
 import type {
   WizardState,
   WizardDraft,
+  WizardPendingJob,
   BusinessContext,
   IdeationResult,
   ExtractedContent,
@@ -67,7 +68,12 @@ export function WizardContainer() {
   const pendingExtractionAnswersRef = useRef<Record<string, string>>({});
   const isRegenerationRef = useRef(false);
 
-  const { startPolling, isLoading: isJobLoading } = useBackgroundJob<IdeationResult>({
+  // Helper: clear pendingJob from state
+  const clearPendingJob = useCallback(() => {
+    setState((prev) => prev.pendingJob ? { ...prev, pendingJob: null } : prev);
+  }, []);
+
+  const { startPolling, isLoading: isJobLoading, checkJob: checkIdeationJob } = useBackgroundJob<IdeationResult>({
     pollInterval: 2000,
     timeout: 360000, // 6 minutes - provides buffer after AI timeout (MOD-68)
     onComplete: (ideationResult) => {
@@ -75,18 +81,19 @@ export function WizardContainer() {
         ...prev,
         ideationResult,
         currentStep: 2,
+        pendingJob: null,
       }));
       setGenerating('idle');
     },
     onError: (errorMessage) => {
       setError(errorMessage);
-      setState((prev) => ({ ...prev, currentStep: 1 }));
+      setState((prev) => ({ ...prev, currentStep: 1, pendingJob: null }));
       setGenerating('idle');
     },
   });
 
   // Extraction background job (content extraction + interactive config generation)
-  const { startPolling: startExtractionPolling, isLoading: isExtractionJobLoading } = useBackgroundJob<{ extractedContent?: ExtractedContent; interactiveConfig?: InteractiveConfig }>({
+  const { startPolling: startExtractionPolling, isLoading: isExtractionJobLoading, checkJob: checkExtractionJob } = useBackgroundJob<{ extractedContent?: ExtractedContent; interactiveConfig?: InteractiveConfig }>({
     pollInterval: 2000,
     timeout: 360000,
     onComplete: (result) => {
@@ -96,7 +103,9 @@ export function WizardContainer() {
         // Regeneration: just update config, stay on current step
         if (result.interactiveConfig) {
           try { posthog.capture('wizard_interactive_regenerated', { type: result.interactiveConfig.type }); } catch {}
-          setState((prev) => ({ ...prev, interactiveConfig: result.interactiveConfig! }));
+          setState((prev) => ({ ...prev, interactiveConfig: result.interactiveConfig!, pendingJob: null }));
+        } else {
+          clearPendingJob();
         }
       } else if (result.interactiveConfig) {
         setState((prev) => ({
@@ -105,6 +114,7 @@ export function WizardContainer() {
           interactiveConfig: result.interactiveConfig!,
           extractedContent: null,
           currentStep: 4,
+          pendingJob: null,
         }));
       } else if (result.extractedContent) {
         setState((prev) => ({
@@ -113,7 +123,10 @@ export function WizardContainer() {
           extractedContent: result.extractedContent!,
           interactiveConfig: null,
           currentStep: 4,
+          pendingJob: null,
         }));
+      } else {
+        clearPendingJob();
       }
       isRegenerationRef.current = false;
       setGenerating('idle');
@@ -121,12 +134,13 @@ export function WizardContainer() {
     onError: (errorMessage) => {
       setError(errorMessage);
       isRegenerationRef.current = false;
+      clearPendingJob();
       setGenerating('idle');
     },
   });
 
   // Posts background job (LinkedIn post generation)
-  const { startPolling: startPostsPolling, isLoading: isPostsJobLoading } = useBackgroundJob<PostWriterResult>({
+  const { startPolling: startPostsPolling, isLoading: isPostsJobLoading, checkJob: checkPostsJob } = useBackgroundJob<PostWriterResult>({
     pollInterval: 2000,
     timeout: 360000,
     onComplete: (postResult) => {
@@ -135,11 +149,13 @@ export function WizardContainer() {
         ...prev,
         postResult,
         currentStep: 5,
+        pendingJob: null,
       }));
       setGenerating('idle');
     },
     onError: (errorMessage) => {
       setError(errorMessage);
+      clearPendingJob();
       setGenerating('idle');
     },
   });
@@ -221,11 +237,37 @@ export function WizardContainer() {
     loadInitialData();
   }, []);
 
+  // Check for a pending background job and resume it (one-shot check, then poll if still running)
+  const resumePendingJob = useCallback(async (pendingJob: WizardPendingJob) => {
+    const { jobId, jobType } = pendingJob;
+    const checkFn = jobType === 'ideation' ? checkIdeationJob
+      : jobType === 'extraction' ? checkExtractionJob
+      : checkPostsJob;
+    const pollFn = jobType === 'ideation' ? startPolling
+      : jobType === 'extraction' ? startExtractionPolling
+      : startPostsPolling;
+    const genState: GeneratingState = jobType === 'ideation' ? 'ideas'
+      : jobType === 'extraction' ? 'extraction'
+      : 'posts';
+
+    // One-shot: if already done, callbacks fire immediately and clear pendingJob
+    const stillRunning = await checkFn(jobId);
+    if (stillRunning) {
+      // Job is still processing — show generating screen and poll until done
+      setGenerating(genState);
+      pollFn(jobId);
+    }
+  }, [checkIdeationJob, checkExtractionJob, checkPostsJob, startPolling, startExtractionPolling, startPostsPolling]);
+
   const handleDraftSelect = useCallback((draft: WizardDraft) => {
     setState(draft.wizard_state);
     setActiveDraftId(draft.id);
     setShowDraftPicker(false);
-  }, []);
+    // If draft had a pending job, check/resume it
+    if (draft.wizard_state.pendingJob) {
+      resumePendingJob(draft.wizard_state.pendingJob);
+    }
+  }, [resumePendingJob]);
 
   const handleDraftDelete = useCallback((id: string) => {
     setDrafts((prev) => {
@@ -289,10 +331,11 @@ export function WizardContainer() {
 
       const { jobId } = await response.json();
 
-      // Update state with context (even though ideas aren't ready yet)
+      // Update state with context + pending job (auto-saves to draft)
       setState((prev) => ({
         ...prev,
         brandKit: context,
+        pendingJob: { jobId, jobType: 'ideation', startedAt: new Date().toISOString() },
       }));
 
       // Start polling for results
@@ -403,6 +446,7 @@ export function WizardContainer() {
       }
 
       const { jobId } = await response.json();
+      setState((prev) => ({ ...prev, pendingJob: { jobId, jobType: 'extraction', startedAt: new Date().toISOString() } }));
       startExtractionPolling(jobId);
     } catch (err) {
       logError('wizard/container', err, { step: 'extraction_error' });
@@ -451,6 +495,7 @@ export function WizardContainer() {
       }
 
       const { jobId } = await response.json();
+      setState((prev) => ({ ...prev, pendingJob: { jobId, jobType: 'posts', startedAt: new Date().toISOString() } }));
       startPostsPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -505,6 +550,7 @@ export function WizardContainer() {
 
       const { jobId } = await response.json();
       try { posthog.capture('wizard_interactive_approved', { type: state.interactiveConfig.type }); } catch {}
+      setState((prev) => ({ ...prev, pendingJob: { jobId, jobType: 'posts', startedAt: new Date().toISOString() } }));
       startPostsPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -552,6 +598,7 @@ export function WizardContainer() {
       }
 
       const { jobId } = await response.json();
+      setState((prev) => ({ ...prev, pendingJob: { jobId, jobType: 'extraction', startedAt: new Date().toISOString() } }));
       startExtractionPolling(jobId);
     } catch (err) {
       logError('wizard/container', err, { step: 'regenerate_interactive_error' });

@@ -488,6 +488,12 @@ export interface IdeationSources {
 // WIZARD STATE
 // ============================================
 
+export interface WizardPendingJob {
+  jobId: string;
+  jobType: 'ideation' | 'extraction' | 'posts';
+  startedAt: string;
+}
+
 export interface WizardState {
   currentStep: number;
   brandKit: Partial<BusinessContext>;
@@ -502,6 +508,7 @@ export interface WizardState {
   interactiveConfig: InteractiveConfig | null;
   isCustomIdea: boolean;
   customConcept: LeadMagnetConcept | null;
+  pendingJob?: WizardPendingJob | null;
 }
 
 export interface WizardDraft {

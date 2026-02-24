@@ -23,6 +23,8 @@ interface UseBackgroundJobReturn<TResult> {
   isPolling: boolean;
   startPolling: (jobId: string) => void;
   stopPolling: () => void;
+  /** One-shot check: fetch job status once, fire callbacks if done, return true if still running */
+  checkJob: (jobId: string) => Promise<boolean>;
 }
 
 export function useBackgroundJob<TResult = unknown>(
@@ -116,6 +118,31 @@ export function useBackgroundJob<TResult = unknown>(
     pollStatus(id);
   }, [pollInterval, timeout, pollStatus, stopPolling]);
 
+  // One-shot check: returns true if job is still running (caller should start polling)
+  const checkJob = useCallback(async (jobId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`);
+      if (!response.ok) return false;
+
+      const data: JobStatusResponse<TResult> = await response.json();
+      setStatus(data.status);
+
+      if (data.status === 'completed' && data.result) {
+        setResult(data.result);
+        onCompleteRef.current?.(data.result);
+        return false;
+      } else if (data.status === 'failed') {
+        setError(data.error || 'Job failed');
+        onErrorRef.current?.(data.error || 'Job failed');
+        return false;
+      }
+      // Still pending/processing
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -131,5 +158,6 @@ export function useBackgroundJob<TResult = unknown>(
     isPolling,
     startPolling,
     stopPolling,
+    checkJob,
   };
 }
