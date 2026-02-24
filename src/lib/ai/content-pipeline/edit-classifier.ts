@@ -1,5 +1,5 @@
 import { getAnthropicClient } from './anthropic-client';
-import { CLAUDE_HAIKU_MODEL } from './model-config';
+import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
 
 export interface ClassifyInput {
   originalText: string;
@@ -26,27 +26,20 @@ export async function classifyEditPatterns(input: ClassifyInput): Promise<Classi
   try {
     const client = getAnthropicClient();
 
+    const template = await getPrompt('edit-classifier');
+    const prompt = interpolatePrompt(template.user_prompt, {
+      content_type: input.contentType,
+      field_name: input.fieldName,
+      original_text: input.originalText,
+      edited_text: input.editedText,
+    });
+
     const response = await client.messages.create({
-      model: CLAUDE_HAIKU_MODEL,
-      max_tokens: 500,
+      model: template.model,
+      max_tokens: template.max_tokens,
       messages: [{
         role: 'user',
-        content: `Analyze what changed between the original and edited text. Identify specific writing style patterns.
-
-Content type: ${input.contentType} (field: ${input.fieldName})
-
-ORIGINAL:
-${input.originalText}
-
-EDITED:
-${input.editedText}
-
-Return JSON with "patterns" array. Each pattern has:
-- "pattern": short snake_case label (e.g. "shortened_hook", "removed_jargon", "added_story", "softened_cta", "made_conversational", "added_specifics", "reduced_length")
-- "description": one sentence explaining the change
-
-Only include patterns that represent deliberate style choices, not typo fixes.
-Return {"patterns": []} if no meaningful style changes detected.`,
+        content: prompt,
       }],
     });
 

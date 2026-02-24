@@ -1,5 +1,6 @@
 import { getAnthropicClient } from './anthropic-client';
 import { CLAUDE_HAIKU_MODEL } from './model-config';
+import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
 import { logError } from '@/lib/utils/logger';
 
 interface SummaryEntry {
@@ -35,23 +36,18 @@ export async function generateTopicSummary(
 
   try {
     const client = getAnthropicClient();
+    const template = await getPrompt('topic-summarizer');
+    const prompt = interpolatePrompt(template.user_prompt, {
+      topic_name: topicName,
+      knowledge_sections: sections.join('\n'),
+    });
+
     const response = await client.messages.create({
-      model: CLAUDE_HAIKU_MODEL,
-      max_tokens: 1500,
+      model: template.model,
+      max_tokens: template.max_tokens,
       messages: [{
         role: 'user',
-        content: `Synthesize these knowledge entries about "${topicName}" into a concise briefing (200-400 words).
-
-Organize by THEME (not by knowledge type). Include:
-- Key insights and patterns
-- Actionable takeaways
-- Open questions or gaps
-- Notable stories or examples
-
-Do NOT use headers or bullet points — write flowing paragraphs. Reference specific knowledge when possible.
-
-KNOWLEDGE ENTRIES:
-${sections.join('\n')}`,
+        content: prompt,
       }],
     });
 

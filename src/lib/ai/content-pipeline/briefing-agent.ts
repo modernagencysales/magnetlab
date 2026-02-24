@@ -1,7 +1,7 @@
 import { searchKnowledgeV2 } from '@/lib/services/knowledge-brain';
-import { CLAUDE_SONNET_MODEL } from './model-config';
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { buildVoicePromptSection } from './voice-prompt-builder';
+import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
 import type { ContentBrief, KnowledgeEntryWithSimilarity, KnowledgeType, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 import { logWarn } from '@/lib/utils/logger';
 
@@ -124,21 +124,20 @@ async function generateSuggestedAngles(topic: string, context: string, voiceProf
       ? `\nAUTHOR STYLE PREFERENCES:\n${styleSection}\n\nSuggest angles that align with this author's voice and preferences.\n`
       : '';
 
+    const template = await getPrompt('content-brief-angles');
+    const prompt = interpolatePrompt(template.user_prompt, {
+      topic,
+      compiled_context: context.slice(0, 3000),
+      voice_style_section: styleInstruction,
+    });
+
     const response = await client.messages.create({
-      model: CLAUDE_SONNET_MODEL,
-      max_tokens: 500,
+      model: template.model,
+      max_tokens: template.max_tokens,
       messages: [
         {
           role: 'user',
-          content: `Given this topic and knowledge base context, suggest 3-5 unique angles for a LinkedIn post.
-
-TOPIC: ${topic}
-
-CONTEXT:
-${context.slice(0, 3000)}
-${styleInstruction}
-Return ONLY a JSON array of strings, each being a one-sentence angle description.
-Example: ["Contrarian take on why X actually hurts more than it helps", "Step-by-step breakdown of the process that generated $Y"]`,
+          content: prompt,
         },
       ],
     });

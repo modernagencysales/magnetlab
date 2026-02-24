@@ -1,6 +1,7 @@
 import { task, schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getAnthropicClient, parseJsonResponse } from '@/lib/ai/content-pipeline/anthropic-client';
+import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
 import { aggregateEditPatterns } from '@/lib/services/style-evolution';
 
 export const evolveWritingStyle = task({
@@ -51,37 +52,27 @@ export const evolveWritingStyle = task({
     const anthropic = getAnthropicClient();
     const currentProfile = (profile.voice_profile as Record<string, unknown>) || {};
 
+    const promptTemplate = await getPrompt('style-evolution');
+    const promptText = interpolatePrompt(promptTemplate.user_prompt, {
+      current_profile_json: JSON.stringify(currentProfile, null, 2),
+      edit_count: String(edits.length),
+      aggregated_patterns: aggregatedPatterns.map((p) => `- ${p.pattern} (${p.count}x): ${p.description}`).join('\n'),
+      sample_edits: edits
+        .slice(-5)
+        .map(
+          (e) =>
+            `Original: "${(e.original_text || '').slice(0, 200)}"\nEdited: "${(e.edited_text || '').slice(0, 200)}"\nCEO note: ${e.ceo_note || 'none'}\nTags: ${(e.edit_tags || []).join(', ') || 'none'}`
+        )
+        .join('\n---\n'),
+    });
+
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250514',
-      max_tokens: 2000,
+      model: promptTemplate.model,
+      max_tokens: promptTemplate.max_tokens,
       messages: [
         {
           role: 'user',
-          content: `You are a writing style analyst. Given a current voice profile and recent edit patterns, produce an updated voice profile.
-
-CURRENT VOICE PROFILE:
-${JSON.stringify(currentProfile, null, 2)}
-
-RECENT EDIT PATTERNS (${edits.length} edits analyzed):
-${aggregatedPatterns.map((p) => `- ${p.pattern} (${p.count}x): ${p.description}`).join('\n')}
-
-SAMPLE EDITS (most recent 5):
-${edits
-  .slice(-5)
-  .map(
-    (e) =>
-      `Original: "${(e.original_text || '').slice(0, 200)}"\nEdited: "${(e.edited_text || '').slice(0, 200)}"\nCEO note: ${e.ceo_note || 'none'}\nTags: ${(e.edit_tags || []).join(', ') || 'none'}`
-  )
-  .join('\n---\n')}
-
-Return a JSON voice profile that:
-1. Preserves existing preferences that weren't contradicted
-2. Updates preferences based on consistent patterns (3+ occurrences)
-3. Adds new patterns with confidence scores
-4. Separates linkedin vs email structure patterns
-5. Includes vocabulary_preferences (avoid/prefer lists) based on actual word replacements
-
-Return ONLY the JSON object, no explanation.`,
+          content: promptText,
         },
       ],
     });

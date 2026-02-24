@@ -1,6 +1,7 @@
 import { getAnthropicClient } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import { buildVoicePromptSection } from './voice-prompt-builder';
+import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
 import type { TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
 // ============================================
@@ -282,12 +283,12 @@ export async function polishPost(
   }
 
   if ((rewriteAIPatterns && aiPatternsFound.length > 0) || (strengthenHook && hookScore.score < 6)) {
-    const prompt = buildPolishPrompt(polished, aiPatternsFound, hookScore, voiceProfile);
+    const { prompt, template } = await buildPolishPrompt(polished, aiPatternsFound, hookScore, voiceProfile);
     const client = getAnthropicClient();
 
     const response = await client.messages.create({
-      model: CLAUDE_SONNET_MODEL,
-      max_tokens: 2000,
+      model: template.model,
+      max_tokens: template.max_tokens,
       messages: [{ role: 'user', content: prompt }],
     });
 
@@ -309,7 +310,12 @@ export async function polishPost(
   return { original: content, polished, aiPatternsFound, hookScore, changes };
 }
 
-function buildPolishPrompt(content: string, aiPatterns: string[], hookScore: HookScore, voiceProfile?: TeamVoiceProfile): string {
+async function buildPolishPrompt(
+  content: string,
+  aiPatterns: string[],
+  hookScore: HookScore,
+  voiceProfile?: TeamVoiceProfile
+): Promise<{ prompt: string; template: import('@/lib/services/prompt-registry').PromptTemplate }> {
   const issues: string[] = [];
 
   if (aiPatterns.length > 0) {
@@ -327,23 +333,14 @@ function buildPolishPrompt(content: string, aiPatterns: string[], hookScore: Hoo
     ? `\n${styleSection}\n\nPolish the post to match this author's writing style.\n`
     : '';
 
-  return `You are an expert LinkedIn content editor. Rewrite the following post to fix these issues:
+  const template = await getPrompt('post-polish-rewrite');
+  const prompt = interpolatePrompt(template.user_prompt, {
+    issues_list: issues.join('\n'),
+    voice_style_section: styleInstruction,
+    post_content: content,
+  });
 
-${issues.join('\n')}
-
-RULES:
-1. Keep the same core message and structure
-2. Replace AI-sounding phrases with natural, conversational language
-3. Make the hook more specific, personal, and attention-grabbing
-4. Keep the same length (within 10% variance)
-5. Do NOT add emojis or hashtags
-6. Do NOT use em dashes
-7. Use short paragraphs for readability
-${styleInstruction}
-ORIGINAL POST:
-${content}
-
-Return ONLY the rewritten post, no explanations or comments.`;
+  return { prompt, template };
 }
 
 function extractRewrittenPost(response: string): string | null {
