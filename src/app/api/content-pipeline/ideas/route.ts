@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('cp_content_ideas')
-      .select('id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, status, team_profile_id, created_at, updated_at')
+      .select('id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, composite_score, hook, key_points, source_quote, target_audience, status, team_profile_id, created_at, updated_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(limit);

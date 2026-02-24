@@ -28,7 +28,7 @@ export function PipelineView({ profileId, onRefresh }: PipelineViewProps) {
 
   const fetchStats = useCallback(async () => {
     try {
-      const profileParam = profileId ? `&profile_id=${profileId}` : '';
+      const profileParam = profileId ? `&team_profile_id=${profileId}` : '';
       const [ideasRes, postsRes] = await Promise.all([
         fetch(`/api/content-pipeline/ideas?status=extracted&limit=200${profileParam}`),
         fetch(`/api/content-pipeline/posts?limit=200${profileParam}`),
@@ -130,7 +130,7 @@ export function PipelineView({ profileId, onRefresh }: PipelineViewProps) {
       </div>
 
       {/* Kanban board */}
-      <KanbanBoard onRefresh={handleRefresh} />
+      <KanbanBoard onRefresh={handleRefresh} profileId={profileId} />
     </div>
   );
 }

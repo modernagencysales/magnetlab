@@ -714,6 +714,8 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
                 <button
                   key={t.id}
                   onClick={() => {
+                    const current = editContent.trim();
+                    if (current && !confirm('Replace current content with this template?')) return;
                     setEditContent(t.structure);
                     setEditing(true);
                     setShowTemplatePicker(false);

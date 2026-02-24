@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 import { Loader2, CheckSquare, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PipelinePost, ContentIdea, PostStatus } from '@/lib/types/content-pipeline';
@@ -13,7 +14,7 @@ import { PostDetailModal } from './PostDetailModal';
 
 // ─── Component ────────────────────────────────────────────
 
-export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
+export function KanbanBoard({ onRefresh, profileId }: { onRefresh?: () => void; profileId?: string | null }) {
   // Data
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
   const [posts, setPosts] = useState<PipelinePost[]>([]);
@@ -41,9 +42,10 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
+      const profileParam = profileId ? `&team_profile_id=${profileId}` : '';
       const [ideasRes, postsRes] = await Promise.all([
-        fetch('/api/content-pipeline/ideas?status=extracted&limit=200'),
-        fetch('/api/content-pipeline/posts?limit=200'),
+        fetch(`/api/content-pipeline/ideas?status=extracted&limit=200${profileParam}`),
+        fetch(`/api/content-pipeline/posts?limit=200${profileParam}`),
       ]);
       const [ideasData, postsData] = await Promise.all([
         ideasRes.json(),
@@ -56,7 +58,7 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [profileId]);
 
   useEffect(() => {
     fetchData(false);
@@ -185,10 +187,12 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
           if (previewItem?.item.data.id === idea.id) setPreviewItem(null);
           fetch(`/api/content-pipeline/ideas/${idea.id}/write`, { method: 'POST' })
             .then((res) => {
-              if (res.ok) fetchData(true); // Silent refetch to pick up the new post
+              if (res.ok) fetchData(true);
+              else { setIdeas((prev) => [...prev, idea]); toast.error('Failed to write post'); }
             })
             .catch(() => {
               setIdeas((prev) => [...prev, idea]);
+              toast.error('Failed to write post');
             });
           return;
         } else if (action === 'archive') {
@@ -202,9 +206,11 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
           }).then((res) => {
             if (!res.ok) {
               setIdeas((prev) => [...prev, idea]);
+              toast.error('Failed to archive idea');
             }
           }).catch(() => {
             setIdeas((prev) => [...prev, idea]);
+            toast.error('Failed to archive idea');
           });
           return;
         } else if (action === 'delete') {
@@ -215,10 +221,12 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
             .then((res) => {
               if (!res.ok) {
                 setIdeas((prev) => [...prev, idea]);
+                toast.error('Failed to delete idea');
               }
             })
             .catch(() => {
               setIdeas((prev) => [...prev, idea]);
+              toast.error('Failed to delete idea');
             });
           return;
         }
@@ -236,19 +244,17 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
             .then(async (res) => {
               if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                if (data.error?.includes('Settings')) {
-                  alert(data.error);
-                }
-                // Revert on failure
                 setPosts((prev) => prev.map((p) =>
                   p.id === post.id ? { ...p, status: oldStatus } : p
                 ));
+                toast.error(data.error?.includes('Settings') ? data.error : 'Failed to publish');
               }
             })
             .catch(() => {
               setPosts((prev) => prev.map((p) =>
                 p.id === post.id ? { ...p, status: oldStatus } : p
               ));
+              toast.error('Failed to publish');
             });
           return;
         } else if (action === 'delete') {
@@ -259,10 +265,12 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
             .then((res) => {
               if (!res.ok) {
                 setPosts((prev) => [...prev, post]);
+                toast.error('Failed to delete post');
               }
             })
             .catch(() => {
               setPosts((prev) => [...prev, post]);
+              toast.error('Failed to delete post');
             });
           return;
         }
@@ -289,13 +297,14 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
       Promise.allSettled(ids.map((id) =>
         fetch(`/api/content-pipeline/ideas/${id}/write`, { method: 'POST' })
       )).then((results) => {
-        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
-          fetchData(true); // Revert via silent refetch on any failure
-        } else {
-          fetchData(true); // Silent refetch to pick up new posts
+        const failed = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok));
+        if (failed.length > 0) {
+          toast.error(`Failed to write ${failed.length} post(s)`);
         }
+        fetchData(true);
       }).catch(() => {
         setIdeas((prev) => [...prev, ...removedIdeas]);
+        toast.error('Failed to write posts');
       });
 
     } else if (focusedColumn === 'written') {
@@ -313,9 +322,10 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
         })
       )).then((results) => {
         if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
-          fetchData(true); // Revert via silent refetch on any failure
+          fetchData(true);
+          toast.error('Some posts failed to approve');
         }
-      }).catch(() => fetchData(true));
+      }).catch(() => { fetchData(true); toast.error('Failed to approve posts'); });
 
     } else if (focusedColumn === 'review') {
       // Optimistic: update selected posts to scheduled immediately
@@ -332,9 +342,10 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
         })
       )).then((results) => {
         if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
-          fetchData(true); // Revert via silent refetch on any failure
+          fetchData(true);
+          toast.error('Some posts failed to schedule');
         }
-      }).catch(() => fetchData(true));
+      }).catch(() => { fetchData(true); toast.error('Failed to schedule posts'); });
 
     } else if (focusedColumn === 'scheduled') {
       // Optimistic: update selected posts to approved immediately
@@ -351,9 +362,10 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
         })
       )).then((results) => {
         if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
-          fetchData(true); // Revert via silent refetch on any failure
+          fetchData(true);
+          toast.error('Some posts failed to move');
         }
-      }).catch(() => fetchData(true));
+      }).catch(() => { fetchData(true); toast.error('Failed to move posts'); });
     }
   }, [focusedColumn, selectedIds, ideas, previewItem, fetchData]);
 
@@ -378,13 +390,13 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
       return fetch(endpoint, { method: 'DELETE' });
     })).then((results) => {
       if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
-        // Revert via silent refetch on any failure
         fetchData(true);
+        toast.error('Some items failed to delete');
       }
     }).catch(() => {
-      // Full revert: add removed items back
       setIdeas((prev) => [...prev, ...removedIdeas]);
       setPosts((prev) => [...prev, ...removedPosts]);
+      toast.error('Failed to delete items');
     });
   }, [selectedIds, ideas, posts, previewItem, fetchData]);
 
@@ -397,12 +409,15 @@ export function KanbanBoard({ onRefresh }: { onRefresh?: () => void }) {
     setPreviewItem(null);
     fetch(`/api/content-pipeline/ideas/${ideaId}/write`, { method: 'POST' })
       .then((res) => {
-        if (res.ok) fetchData(true); // Silent refetch to pick up the new post
-        else if (removedIdea) setIdeas((prev) => [...prev, removedIdea]);
+        if (res.ok) fetchData(true);
+        else {
+          if (removedIdea) setIdeas((prev) => [...prev, removedIdea]);
+          toast.error('Failed to write post');
+        }
       })
       .catch(() => {
-        // Revert on failure — add idea back
         if (removedIdea) setIdeas((prev) => [...prev, removedIdea]);
+        toast.error('Failed to write post');
       });
   }, [fetchData, ideas]);
 
