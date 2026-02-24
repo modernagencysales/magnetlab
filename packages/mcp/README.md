@@ -6,21 +6,11 @@ MCP server for [MagnetLab](https://magnetlab.app) -- control your lead magnets, 
 
 ### Claude Code
 
-Add to your project's `.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "magnetlab": {
-      "command": "npx",
-      "args": ["-y", "--package", "@magnetlab/mcp", "magnetlab-mcp", "serve"],
-      "env": {
-        "MAGNETLAB_API_KEY": "ml_live_your_key_here"
-      }
-    }
-  }
-}
+```bash
+claude mcp add magnetlab -e MAGNETLAB_API_KEY=ml_live_your_key_here -- npx -y --package @magnetlab/mcp magnetlab-mcp serve
 ```
+
+Then restart Claude Code.
 
 ### Claude Desktop
 

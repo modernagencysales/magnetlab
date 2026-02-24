@@ -23,7 +23,8 @@ export async function handleEmailSequenceTools(
         day: number
         subject: string
         body: string
-        reply_trigger: string
+        reply_trigger?: string
+        replyTrigger?: string
       }> | undefined
 
       return client.updateEmailSequence(args.lead_magnet_id as string, {
@@ -31,7 +32,7 @@ export async function handleEmailSequenceTools(
           day: e.day,
           subject: e.subject,
           body: e.body,
-          replyTrigger: e.reply_trigger,
+          replyTrigger: e.reply_trigger || e.replyTrigger || '',
         })),
         status: args.status as 'draft' | 'synced' | 'active' | undefined,
       })

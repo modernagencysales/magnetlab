@@ -5,35 +5,152 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { Command } from 'commander'
 import { MagnetLabClient } from './client.js'
-import { tools } from './tools/index.js'
+import { toolsByName, discoveryCategories } from './tools/index.js'
 import { handleToolCall } from './handlers/index.js'
+import {
+  categoryTools,
+  executeGatewayTool,
+  toolHelpTool,
+  categoryToolToKey,
+  getCategoryLabel,
+  getCategoryToolCount,
+} from './tools/category-tools.js'
+
+const VERSION = '0.4.0'
 
 // Re-export constants and types for consumers
 export * from './constants.js'
 export { MagnetLabClient } from './client.js'
 
+/**
+ * Format a tool as a slim one-liner: "- tool_name: First sentence of description"
+ */
+function slimToolLine(tool: { name: string; description?: string }): string {
+  const firstSentence = (tool.description || '').split('.')[0]
+  return `- ${tool.name}: ${firstSentence}`
+}
+
+/**
+ * Format full schema for a single tool (used by tool_help).
+ */
+function fullToolSchema(tool: { name: string; description?: string; inputSchema: unknown }): string {
+  const schema = tool.inputSchema as { properties?: Record<string, unknown>; required?: string[] }
+  const props = schema.properties || {}
+  const required = new Set(schema.required || [])
+
+  const params = Object.entries(props)
+    .map(([name, def]) => {
+      const d = def as { type?: string; description?: string; enum?: string[]; default?: unknown }
+      const req = required.has(name) ? ' REQUIRED' : ''
+      const enumStr = d.enum ? ` [${d.enum.join(' | ')}]` : ''
+      const defaultStr = d.default !== undefined ? ` (default: ${d.default})` : ''
+      const desc = d.description ? ` — ${d.description}` : ''
+      return `  ${name}: ${d.type || 'any'}${req}${enumStr}${defaultStr}${desc}`
+    })
+    .join('\n')
+
+  return [
+    tool.name,
+    tool.description || '',
+    '',
+    params ? `Parameters:\n${params}` : 'Parameters: none',
+    '',
+    `Example: magnetlab_execute({tool: "${tool.name}"${Object.keys(props).length > 0 ? ', arguments: {...}' : ''}})`,
+  ].join('\n')
+}
+
 async function startServer(apiKey: string, baseUrl: string | undefined) {
-  // Create the MagnetLab client
   const client = new MagnetLabClient(apiKey, { baseUrl })
 
-  // Create the MCP server
   const server = new Server(
-    { name: 'magnetlab', version: '0.1.0' },
+    { name: 'magnetlab', version: VERSION },
     { capabilities: { tools: {} } }
   )
 
-  // Register the tools list handler
+  // Only 14 tools registered: 11 categories + execute + tool_help
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools,
+    tools: [...categoryTools, executeGatewayTool, toolHelpTool],
   }))
 
-  // Register the tool call handler
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params
-    return handleToolCall(name, (args as Record<string, unknown>) || {}, client)
+
+    // Handle category discovery — return slim tool list
+    const categoryKey = categoryToolToKey.get(name)
+    if (categoryKey) {
+      const toolNames = discoveryCategories[categoryKey]
+      const slimList = toolNames
+        .map((n) => toolsByName.get(n))
+        .filter(Boolean)
+        .map((t) => slimToolLine(t!))
+        .join('\n')
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `${getCategoryLabel(categoryKey)} — ${getCategoryToolCount(categoryKey)} tools:\n\n${slimList}\n\nUse magnetlab_tool_help({tool: "tool_name"}) to see parameters, then magnetlab_execute({tool: "tool_name", arguments: {...}}) to call it.`,
+          },
+        ],
+      }
+    }
+
+    // Handle tool_help — return full schema for one tool
+    if (name === 'magnetlab_tool_help') {
+      const toolName = (args as Record<string, unknown>)?.tool as string
+      if (!toolName) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: 'Missing required parameter: tool' }) }],
+        }
+      }
+
+      const tool = toolsByName.get(toolName)
+      if (!tool) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ error: `Unknown tool: ${toolName}. Call a category tool first to see available tools.` }),
+            },
+          ],
+        }
+      }
+
+      return {
+        content: [{ type: 'text', text: fullToolSchema(tool) }],
+      }
+    }
+
+    // Handle execute gateway
+    if (name === 'magnetlab_execute') {
+      const toolName = (args as Record<string, unknown>)?.tool as string
+      const toolArgs = ((args as Record<string, unknown>)?.arguments as Record<string, unknown>) || {}
+
+      if (!toolName) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: 'Missing required parameter: tool' }) }],
+        }
+      }
+
+      if (!toolsByName.has(toolName)) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ error: `Unknown tool: ${toolName}. Call a category tool first to see available tools.` }),
+            },
+          ],
+        }
+      }
+
+      return handleToolCall(toolName, toolArgs, client)
+    }
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ error: `Unknown tool: ${name}` }) }],
+    }
   })
 
-  // Connect via stdio transport
   const transport = new StdioServerTransport()
   await server.connect(transport)
 }
@@ -50,7 +167,7 @@ function resolveOptions(options: { apiKey?: string; baseUrl?: string }) {
 
 const program = new Command()
 
-program.name('magnetlab-mcp').description('MCP server for MagnetLab').version('0.1.0')
+program.name('magnetlab-mcp').description('MCP server for MagnetLab').version(VERSION)
 
 program
   .command('serve')
@@ -62,7 +179,6 @@ program
     await startServer(apiKey, baseUrl)
   })
 
-// Default command (no subcommand) also starts the server for simplicity
 program
   .option('--api-key <key>', 'MagnetLab API key')
   .option('--base-url <url>', 'MagnetLab API base URL')

@@ -23,6 +23,11 @@ export interface MagnetLabClientOptions {
   baseUrl?: string
 }
 
+// Default timeout for regular API calls (15 seconds)
+const DEFAULT_TIMEOUT_MS = 15_000
+// Extended timeout for AI generation calls (120 seconds)
+const AI_TIMEOUT_MS = 120_000
+
 export class MagnetLabClient {
   private apiKey: string
   private baseUrl: string
@@ -32,45 +37,65 @@ export class MagnetLabClient {
     this.baseUrl = options.baseUrl || DEFAULT_BASE_URL
   }
 
-  async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async request<T>(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<T> {
     const url = `${this.baseUrl}${path}`
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
       'Content-Type': 'application/json',
     }
 
-    let response = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-      redirect: 'manual',
-    })
+    const controller = new AbortController()
+    const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-    // Follow redirects manually to preserve the Authorization header
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get('location')
-      if (location) {
-        response = await fetch(location, {
-          method,
-          headers,
-          body: body ? JSON.stringify(body) : undefined,
-          redirect: 'manual',
-        })
+    try {
+      let response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        redirect: 'manual',
+        signal: controller.signal,
+      })
+
+      // Follow redirects manually to preserve the Authorization header
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get('location')
+        if (location) {
+          response = await fetch(location, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : undefined,
+            redirect: 'manual',
+            signal: controller.signal,
+          })
+        }
       }
-    }
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-      throw new Error(error.error || `Request failed: ${response.status}`)
-    }
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(error.error || `Request failed: ${response.status}`)
+      }
 
-    // Handle CSV responses (exports)
-    const contentType = response.headers.get('content-type')
-    if (contentType?.includes('text/csv')) {
-      return { csv: await response.text() } as T
-    }
+      // Handle CSV responses (exports)
+      const contentType = response.headers.get('content-type')
+      if (contentType?.includes('text/csv')) {
+        return { csv: await response.text() } as T
+      }
 
-    return response.json()
+      return response.json()
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new Error(`Request timed out after ${Math.round(timeout / 1000)}s — try again or use a simpler operation`)
+      }
+      throw err
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
+
+  /** Make a request with extended timeout for AI generation operations */
+  async aiRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+    return this.request<T>(method, path, body, AI_TIMEOUT_MS)
   }
 
   // ============================================================
@@ -122,7 +147,7 @@ export class MagnetLabClient {
     results?: string[]
     successExample?: string
   }) {
-    return this.request<{ jobId: string; status: string }>('POST', `/lead-magnet/ideate`, params)
+    return this.aiRequest<{ jobId: string; status: string }>('POST', `/lead-magnet/ideate`, params)
   }
 
   async extractContent(leadMagnetId: string, params: {
@@ -130,7 +155,7 @@ export class MagnetLabClient {
     concept: unknown
     answers: Record<string, string>
   }) {
-    return this.request<unknown>('POST', `/lead-magnet/extract`, params)
+    return this.aiRequest<unknown>('POST', `/lead-magnet/extract`, params)
   }
 
   async generateContent(leadMagnetId: string, params: {
@@ -138,7 +163,7 @@ export class MagnetLabClient {
     concept: unknown
     answers: Record<string, string>
   }) {
-    return this.request<unknown>('POST', `/lead-magnet/generate`, params)
+    return this.aiRequest<unknown>('POST', `/lead-magnet/generate`, params)
   }
 
   async writeLinkedInPosts(leadMagnetId: string, params: {
@@ -146,11 +171,11 @@ export class MagnetLabClient {
     contents: string
     problemSolved: string
   }) {
-    return this.request<unknown>('POST', `/lead-magnet/write-post`, params)
+    return this.aiRequest<unknown>('POST', `/lead-magnet/write-post`, params)
   }
 
   async polishLeadMagnetContent(leadMagnetId: string) {
-    return this.request<unknown>('POST', `/lead-magnet/${leadMagnetId}/polish`, {})
+    return this.aiRequest<unknown>('POST', `/lead-magnet/${leadMagnetId}/polish`, {})
   }
 
   async getLeadMagnetStats(leadMagnetId: string) {
@@ -165,11 +190,11 @@ export class MagnetLabClient {
   }
 
   async analyzeCompetitor(params: { url: string }) {
-    return this.request<unknown>('POST', `/lead-magnet/analyze-competitor`, params)
+    return this.aiRequest<unknown>('POST', `/lead-magnet/analyze-competitor`, params)
   }
 
   async analyzeTranscript(params: { transcript: string }) {
-    return this.request<unknown>('POST', `/lead-magnet/analyze-transcript`, params)
+    return this.aiRequest<unknown>('POST', `/lead-magnet/analyze-transcript`, params)
   }
 
   // ============================================================
@@ -255,7 +280,7 @@ export class MagnetLabClient {
   }
 
   async generateFunnelContent(params: { leadMagnetId: string }) {
-    return this.request<unknown>('POST', `/funnel/generate-content`, params)
+    return this.aiRequest<unknown>('POST', `/funnel/generate-content`, params)
   }
 
   // ============================================================
@@ -326,7 +351,7 @@ export class MagnetLabClient {
     content: string
     contentType?: ExtractContentType
   }) {
-    return this.request<unknown>('POST', `/brand-kit/extract`, params)
+    return this.aiRequest<unknown>('POST', `/brand-kit/extract`, params)
   }
 
   // ============================================================
@@ -341,7 +366,7 @@ export class MagnetLabClient {
     leadMagnetId: string
     useAI?: boolean
   }) {
-    return this.request<{ emailSequence: unknown; generated: boolean }>('POST', `/email-sequence/generate`, params)
+    return this.aiRequest<{ emailSequence: unknown; generated: boolean }>('POST', `/email-sequence/generate`, params)
   }
 
   async updateEmailSequence(leadMagnetId: string, params: {
@@ -405,7 +430,7 @@ export class MagnetLabClient {
   }
 
   async generateFlowEmails(flowId: string, stepCount?: number) {
-    return this.request<unknown>('POST', `/email/flows/${flowId}/generate`, stepCount ? { stepCount } : {})
+    return this.aiRequest<unknown>('POST', `/email/flows/${flowId}/generate`, stepCount ? { stepCount } : {})
   }
 
   // ============================================================
@@ -515,7 +540,7 @@ export class MagnetLabClient {
   }
 
   async askKnowledge(params: { question: string }) {
-    return this.request<{ answer: string; sources: unknown[] }>(
+    return this.aiRequest<{ answer: string; sources: unknown[] }>(
       'POST',
       `/content-pipeline/knowledge/ask`,
       params
@@ -597,7 +622,7 @@ export class MagnetLabClient {
   }
 
   async writePostFromIdea(ideaId: string) {
-    return this.request<unknown>('POST', `/content-pipeline/ideas/${ideaId}/write`, {})
+    return this.aiRequest<unknown>('POST', `/content-pipeline/ideas/${ideaId}/write`, {})
   }
 
   // ============================================================
@@ -629,7 +654,7 @@ export class MagnetLabClient {
   }
 
   async polishPost(id: string) {
-    return this.request<{ success: boolean; polishResult: unknown }>('POST', `/content-pipeline/posts/${id}/polish`, {})
+    return this.aiRequest<{ success: boolean; polishResult: unknown }>('POST', `/content-pipeline/posts/${id}/polish`, {})
   }
 
   async publishPost(id: string) {
@@ -648,7 +673,7 @@ export class MagnetLabClient {
   }
 
   async quickWritePost(params: { topic: string; style?: string; template?: string }) {
-    return this.request<unknown>('POST', `/content-pipeline/quick-write`, params)
+    return this.aiRequest<unknown>('POST', `/content-pipeline/quick-write`, params)
   }
 
   // ============================================================
@@ -700,7 +725,7 @@ export class MagnetLabClient {
   }
 
   async extractWritingStyle(params: { linkedinUrl: string }) {
-    return this.request<unknown>('POST', `/content-pipeline/styles/extract`, params)
+    return this.aiRequest<unknown>('POST', `/content-pipeline/styles/extract`, params)
   }
 
   async getWritingStyle(id: string) {
@@ -730,7 +755,7 @@ export class MagnetLabClient {
   }
 
   async generatePlan(params?: { weekCount?: number }) {
-    return this.request<unknown>('POST', `/content-pipeline/planner/generate`, params || {})
+    return this.aiRequest<unknown>('POST', `/content-pipeline/planner/generate`, params || {})
   }
 
   async approvePlan(params: { planId: string }) {
