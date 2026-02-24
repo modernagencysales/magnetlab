@@ -9,7 +9,7 @@ import posthog from 'posthog-js';
 import {
   Magnet, Settings, Plus, LogOut, Globe, Users, UsersRound,
   ChevronDown, PenTool, Menu, X, Sun, Moon,
-  ArrowLeftRight, Home, Brain, Bot, BookOpen, Mail, HelpCircle,
+  ArrowLeftRight, Home, Brain, Bot, BookOpen, Mail, HelpCircle, Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +29,7 @@ interface TeamContext {
 interface DashboardNavProps {
   user: User;
   teamContext?: TeamContext | null;
+  isSuperAdmin?: boolean;
 }
 
 // ─── Nav config ──────────────────────────────────────────
@@ -202,9 +203,10 @@ function NavLink({ href, label, icon: Icon, activePrefix, onNavigate }: {
 
 // ─── Sidebar content (shared between desktop + mobile) ──
 
-function SidebarContent({ user, teamContext, onNavigate }: {
+function SidebarContent({ user, teamContext, isSuperAdmin, onNavigate }: {
   user: User;
   teamContext?: TeamContext | null;
+  isSuperAdmin?: boolean;
   onNavigate?: () => void;
 }) {
   const displayLabel = user.name || user.email?.split('@')[0] || 'User';
@@ -259,6 +261,13 @@ function SidebarContent({ user, teamContext, onNavigate }: {
         {bottomNav.map((item) => (
           <NavLink key={item.href} {...item} onNavigate={onNavigate} />
         ))}
+
+        {isSuperAdmin && (
+          <>
+            <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-3" />
+            <NavLink href="/admin" label="Admin" icon={Shield} onNavigate={onNavigate} />
+          </>
+        )}
       </div>
 
       {/* ── Footer ── */}
@@ -305,7 +314,7 @@ function SidebarContent({ user, teamContext, onNavigate }: {
 
 // ─── Main component ──────────────────────────────────────
 
-export function DashboardNav({ user, teamContext }: DashboardNavProps) {
+export function DashboardNav({ user, teamContext, isSuperAdmin }: DashboardNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
@@ -354,7 +363,7 @@ export function DashboardNav({ user, teamContext }: DashboardNavProps) {
             <SidebarContent
               user={user}
               teamContext={teamContext}
-
+              isSuperAdmin={isSuperAdmin}
               onNavigate={() => setMobileOpen(false)}
             />
           </aside>
@@ -363,7 +372,7 @@ export function DashboardNav({ user, teamContext }: DashboardNavProps) {
 
       {/* ── Desktop sidebar ── */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex-col lg:flex" role="navigation" aria-label="Main navigation">
-        <SidebarContent user={user} teamContext={teamContext} />
+        <SidebarContent user={user} teamContext={teamContext} isSuperAdmin={isSuperAdmin} />
       </aside>
     </>
   );
