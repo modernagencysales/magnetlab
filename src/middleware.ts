@@ -20,7 +20,7 @@ function isAppHostname(hostname: string): boolean {
 // Routes that require authentication
 const protectedRoutes = [
   '/create', '/magnets', '/pages', '/knowledge', '/posts',
-  '/leads', '/settings', '/automations',
+  '/leads', '/settings', '/automations', '/admin',
   // Legacy routes (redirects handled in route files)
   '/library', '/content', '/assets', '/analytics',
   '/swipe-file', '/docs',
