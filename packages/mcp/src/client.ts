@@ -155,7 +155,7 @@ export class MagnetLabClient {
     concept: unknown
     answers: Record<string, string>
   }) {
-    return this.aiRequest<unknown>('POST', `/lead-magnet/extract`, params)
+    return this.aiRequest<unknown>('POST', `/lead-magnet/extract`, { ...params, leadMagnetId })
   }
 
   async generateContent(leadMagnetId: string, params: {
@@ -163,7 +163,7 @@ export class MagnetLabClient {
     concept: unknown
     answers: Record<string, string>
   }) {
-    return this.aiRequest<unknown>('POST', `/lead-magnet/generate`, params)
+    return this.aiRequest<unknown>('POST', `/lead-magnet/generate`, { ...params, leadMagnetId })
   }
 
   async writeLinkedInPosts(leadMagnetId: string, params: {
@@ -171,7 +171,7 @@ export class MagnetLabClient {
     contents: string
     problemSolved: string
   }) {
-    return this.aiRequest<unknown>('POST', `/lead-magnet/write-post`, params)
+    return this.aiRequest<unknown>('POST', `/lead-magnet/write-post`, { ...params, leadMagnetId })
   }
 
   async polishLeadMagnetContent(leadMagnetId: string) {
@@ -259,6 +259,14 @@ export class MagnetLabClient {
     backgroundStyle?: BackgroundStyle
     logoUrl?: string
     qualificationFormId?: string | null
+    qualificationPassMessage?: string
+    qualificationFailMessage?: string
+    redirectTrigger?: string
+    redirectUrl?: string | null
+    redirectFailUrl?: string | null
+    homepageUrl?: string | null
+    homepageLabel?: string | null
+    sendResourceEmail?: boolean
   }) {
     return this.request<{ funnel: unknown }>('PUT', `/funnel/${id}`, params)
   }

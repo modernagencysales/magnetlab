@@ -7,6 +7,7 @@ import type { LeadMagnetArchetype, LeadMagnetConcept, BusinessContext, CallTrans
 export interface ExtractContentPayload {
   jobId: string;
   userId: string;
+  leadMagnetId?: string | null;
   input: {
     archetype: string;
     concept: unknown;
@@ -91,6 +92,31 @@ export const extractContent = task({
           completed_at: new Date().toISOString(),
         })
         .eq("id", jobId);
+
+      // Persist content to lead_magnets table if leadMagnetId provided
+      if (payload.leadMagnetId) {
+        const updateData: Record<string, unknown> = {
+          updated_at: new Date().toISOString(),
+        };
+
+        if (input.action === 'generate-interactive') {
+          updateData.interactive_config = (result as { interactiveConfig: unknown }).interactiveConfig;
+        } else {
+          updateData.extracted_content = (result as { extractedContent: unknown }).extractedContent;
+        }
+
+        const { error: updateError } = await supabase
+          .from("lead_magnets")
+          .update(updateData)
+          .eq("id", payload.leadMagnetId)
+          .eq("user_id", userId);
+
+        if (updateError) {
+          logApiError("extract-content/persist-lead-magnet", updateError, {
+            userId, leadMagnetId: payload.leadMagnetId,
+          });
+        }
+      }
 
       return { success: true, jobId };
     } catch (error) {

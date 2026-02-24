@@ -61,6 +61,14 @@ export async function handleFunnelTools(
         backgroundStyle: args.background_style as BackgroundStyle | undefined,
         logoUrl: args.logo_url as string | undefined,
         qualificationFormId: args.qualification_form_id as string | null | undefined,
+        qualificationPassMessage: args.qualification_pass_message as string | undefined,
+        qualificationFailMessage: args.qualification_fail_message as string | undefined,
+        redirectTrigger: args.redirect_trigger as string | undefined,
+        redirectUrl: args.redirect_url as string | null | undefined,
+        redirectFailUrl: args.redirect_fail_url as string | null | undefined,
+        homepageUrl: args.homepage_url as string | null | undefined,
+        homepageLabel: args.homepage_label as string | null | undefined,
+        sendResourceEmail: args.send_resource_email as boolean | undefined,
       })
 
     case 'magnetlab_delete_funnel':

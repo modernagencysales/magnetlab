@@ -44,26 +44,14 @@ export default function McpSetup() {
 
       <h3 className="text-lg font-medium mt-6 mb-3">Claude Code</h3>
       <p className="text-sm mb-2">
-        Add to your project&apos;s{' '}
-        <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">.mcp.json</code> (or{' '}
-        <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-          ~/.claude/.mcp.json
-        </code>{' '}
-        for global):
+        Run this command in your terminal:
       </p>
       <pre className="rounded-lg bg-muted p-4 text-xs font-mono overflow-x-auto my-4">
-{`{
-  "mcpServers": {
-    "magnetlab": {
-      "command": "npx",
-      "args": ["-y", "--package", "@magnetlab/mcp", "magnetlab-mcp", "serve"],
-      "env": {
-        "MAGNETLAB_API_KEY": "ml_live_your_key_here"
-      }
-    }
-  }
-}`}
+{`claude mcp add magnetlab -e MAGNETLAB_API_KEY=ml_live_your_key_here -- npx -y --package @magnetlab/mcp magnetlab-mcp serve`}
       </pre>
+      <p className="text-sm text-muted-foreground">
+        Then restart Claude Code.
+      </p>
 
       <h3 className="text-lg font-medium mt-6 mb-3">Claude Desktop</h3>
       <p className="text-sm mb-2">

@@ -56,13 +56,26 @@ export async function POST(request: Request) {
     }
 
     // For content generation (interactive or standard), use background job
-    const { archetype, concept, answers, transcriptInsights, businessContext } = body;
+    const { archetype, concept, answers, transcriptInsights, businessContext, leadMagnetId } = body;
 
     if (!archetype || !concept || !answers) {
       return ApiErrors.validationError('Missing required fields: archetype, concept, answers');
     }
 
     const supabase = createSupabaseAdminClient();
+
+    // Validate ownership if leadMagnetId provided
+    if (leadMagnetId) {
+      const { data: lm } = await supabase
+        .from('lead_magnets')
+        .select('id')
+        .eq('id', leadMagnetId)
+        .eq('user_id', session.user.id)
+        .single();
+      if (!lm) {
+        return ApiErrors.notFound('Lead magnet');
+      }
+    }
 
     const jobInput = {
       archetype,
@@ -93,6 +106,7 @@ export async function POST(request: Request) {
     const handle = await tasks.trigger('extract-content', {
       jobId: job.id,
       userId: session.user.id,
+      leadMagnetId: leadMagnetId || null,
       input: jobInput,
     });
 

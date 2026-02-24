@@ -17,7 +17,8 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const input = body as PostWriterInput;
+    const { leadMagnetId, ...rest } = body;
+    const input = rest as PostWriterInput;
 
     // Validate required fields
     if (!input.leadMagnetTitle || !input.contents || !input.problemSolved) {
@@ -25,6 +26,19 @@ export async function POST(request: Request) {
     }
 
     const supabase = createSupabaseAdminClient();
+
+    // Validate ownership if leadMagnetId provided
+    if (leadMagnetId) {
+      const { data: lm } = await supabase
+        .from('lead_magnets')
+        .select('id')
+        .eq('id', leadMagnetId)
+        .eq('user_id', session.user.id)
+        .single();
+      if (!lm) {
+        return ApiErrors.notFound('Lead magnet');
+      }
+    }
 
     // Create job record
     const { data: job, error: jobError } = await supabase
@@ -47,6 +61,7 @@ export async function POST(request: Request) {
     const handle = await tasks.trigger('write-posts', {
       jobId: job.id,
       userId: session.user.id,
+      leadMagnetId: leadMagnetId || null,
       input,
     });
 

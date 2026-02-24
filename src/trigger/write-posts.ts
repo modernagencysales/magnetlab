@@ -7,6 +7,7 @@ import type { PostWriterInput } from "@/lib/types/lead-magnet";
 export interface WritePostsPayload {
   jobId: string;
   userId: string;
+  leadMagnetId?: string | null;
   input: PostWriterInput;
 }
 
@@ -41,6 +42,27 @@ export const writePosts = task({
           completed_at: new Date().toISOString(),
         })
         .eq("id", jobId);
+
+      // Persist post data to lead_magnets table if leadMagnetId provided
+      if (payload.leadMagnetId) {
+        const { error: updateError } = await supabase
+          .from("lead_magnets")
+          .update({
+            post_variations: result.variations,
+            linkedin_post: result.variations[0]?.post || null,
+            dm_template: result.dmTemplate,
+            cta_word: result.ctaWord,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", payload.leadMagnetId)
+          .eq("user_id", userId);
+
+        if (updateError) {
+          logApiError("write-posts/persist-lead-magnet", updateError, {
+            userId, leadMagnetId: payload.leadMagnetId,
+          });
+        }
+      }
 
       return { success: true, jobId, variationCount: result.variations.length };
     } catch (error) {
