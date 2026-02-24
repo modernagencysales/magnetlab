@@ -1,5 +1,4 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
-import { CLAUDE_SONNET_MODEL } from './model-config';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
 import type { KnowledgeCategory, KnowledgeSpeaker, KnowledgeType, TranscriptType } from '@/lib/types/content-pipeline';
 import { logError } from '@/lib/utils/logger';

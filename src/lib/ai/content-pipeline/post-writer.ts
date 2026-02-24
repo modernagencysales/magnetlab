@@ -1,5 +1,4 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
-import { CLAUDE_SONNET_MODEL } from './model-config';
 import { findBestTemplate, buildTemplateGuidance } from './template-matcher';
 import { buildVoicePromptSection } from './voice-prompt-builder';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';

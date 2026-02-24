@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { PROMPT_DEFAULTS, type PromptDefault } from '@/lib/ai/content-pipeline/prompt-defaults';
+import { PROMPT_DEFAULTS } from '@/lib/ai/content-pipeline/prompt-defaults';
 
 export interface PromptTemplate {
   slug: string;

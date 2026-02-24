@@ -1,5 +1,4 @@
 import { getAnthropicClient } from './anthropic-client';
-import { CLAUDE_HAIKU_MODEL } from './model-config';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
 import { logError } from '@/lib/utils/logger';
 

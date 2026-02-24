@@ -1,5 +1,4 @@
 import { getAnthropicClient } from './anthropic-client';
-import { CLAUDE_SONNET_MODEL } from './model-config';
 import { buildVoicePromptSection } from './voice-prompt-builder';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
 import type { TeamVoiceProfile } from '@/lib/types/content-pipeline';
