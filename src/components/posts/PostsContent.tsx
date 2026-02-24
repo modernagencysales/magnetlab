@@ -61,6 +61,17 @@ export function PostsContent() {
   const [showQuickWrite, setShowQuickWrite] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const { selectedProfileId, onProfileChange } = useProfileSelection();
+  const [bufferLow, setBufferLow] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/content-pipeline/schedule/buffer')
+      .then((r) => r.json())
+      .then((data) => {
+        const count = data.buffer?.length ?? 0;
+        setBufferLow(count < 3);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam)) {
@@ -111,6 +122,9 @@ export function PostsContent() {
           >
             <tab.icon className="h-4 w-4" />
             {tab.label}
+            {tab.id === 'autopilot' && bufferLow && (
+              <span className="ml-1 h-2 w-2 rounded-full bg-yellow-500" />
+            )}
           </button>
         ))}
       </div>
