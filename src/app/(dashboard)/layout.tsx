@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { checkTeamRole } from '@/lib/auth/rbac';
+import { isSuperAdmin } from '@/lib/auth/super-admin';
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
@@ -45,6 +46,8 @@ export default async function DashboardLayout({
     }
   }
 
+  const isAdmin = await isSuperAdmin(session.user.id!);
+
   return (
     <div className="min-h-screen bg-background">
       <a
@@ -61,6 +64,7 @@ export default async function DashboardLayout({
       <DashboardNav
         user={session.user}
         teamContext={teamContext}
+        isSuperAdmin={isAdmin}
       />
       <main id="main-content" className="lg:pl-64"><ErrorBoundary>{children}</ErrorBoundary></main>
       <FeedbackWidget
