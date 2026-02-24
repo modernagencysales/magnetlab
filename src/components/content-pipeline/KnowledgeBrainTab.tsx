@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Brain, Search, Loader2, ChevronDown, ChevronRight, Sparkles, Plus } from 'lucide-react';
+import { Brain, Search, Loader2, ChevronDown, ChevronRight, Sparkles, Plus, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
 import { ManualKnowledgeModal } from './ManualKnowledgeModal';
@@ -12,6 +12,14 @@ const CATEGORIES: { value: KnowledgeCategory | ''; label: string }[] = [
   { value: 'insight', label: 'Insights' },
   { value: 'question', label: 'Questions' },
   { value: 'product_intel', label: 'Product Intel' },
+];
+
+type SortOption = 'newest' | 'oldest' | 'quality';
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'quality', label: 'Highest quality' },
 ];
 
 const SPEAKERS: { value: KnowledgeSpeaker | ''; label: string }[] = [
@@ -41,6 +49,7 @@ export function KnowledgeBrainTab() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<KnowledgeCategory | ''>('');
   const [speaker, setSpeaker] = useState<KnowledgeSpeaker | ''>('');
+  const [sort, setSort] = useState<SortOption>('newest');
   const [activeTag, setActiveTag] = useState('');
   const [entries, setEntries] = useState<KnowledgeEntryResult[]>([]);
   const [tags, setTags] = useState<{ tag_name: string; usage_count: number }[]>([]);
@@ -59,7 +68,7 @@ export function KnowledgeBrainTab() {
     };
   }, []);
 
-  const fetchEntries = useCallback(async (searchQuery: string, cat: string, spk: string = '', tag: string = '') => {
+  const fetchEntries = useCallback(async (searchQuery: string, cat: string, spk: string = '', tag: string = '', sortBy: SortOption = 'newest') => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -67,6 +76,7 @@ export function KnowledgeBrainTab() {
       if (cat) params.append('category', cat);
       if (spk) params.append('speaker', spk);
       if (tag) params.append('tag', tag);
+      if (sortBy !== 'newest') params.append('sort', sortBy);
 
       const response = await fetch(`/api/content-pipeline/knowledge?${params}`);
       const data = await response.json();
@@ -100,38 +110,44 @@ export function KnowledgeBrainTab() {
   }, []);
 
   useEffect(() => {
-    fetchEntries('', '');
+    fetchEntries('', '', '', '', 'newest');
     fetchTags();
     fetchClusters();
-  }, [fetchEntries, fetchTags, fetchClusters]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchTags, fetchClusters]);
 
   const handleSearchChange = (value: string) => {
     setQuery(value);
     setActiveTag(''); // Clear tag filter when typing
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => {
-      fetchEntries(value, category, speaker, '');
+      fetchEntries(value, category, speaker, '', sort);
     }, 400);
   };
 
   const handleCategoryChange = (cat: KnowledgeCategory | '') => {
     setCategory(cat);
-    fetchEntries(query, cat, speaker, activeTag);
+    fetchEntries(query, cat, speaker, activeTag, sort);
   };
 
   const handleSpeakerChange = (spk: KnowledgeSpeaker | '') => {
     setSpeaker(spk);
-    fetchEntries(query, category, spk, activeTag);
+    fetchEntries(query, category, spk, activeTag, sort);
+  };
+
+  const handleSortChange = (newSort: SortOption) => {
+    setSort(newSort);
+    fetchEntries(query, category, speaker, activeTag, newSort);
   };
 
   const handleTagClick = (tagName: string) => {
     if (activeTag === tagName) {
       setActiveTag('');
-      fetchEntries(query, category, speaker, '');
+      fetchEntries(query, category, speaker, '', sort);
     } else {
       setActiveTag(tagName);
       setQuery(''); // Clear text search when clicking a tag
-      fetchEntries('', category, speaker, tagName);
+      fetchEntries('', category, speaker, tagName, sort);
     }
   };
 
@@ -180,16 +196,30 @@ export function KnowledgeBrainTab() {
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background py-3 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-primary"
-            placeholder="Search your knowledge base..."
-          />
+        {/* Search + Sort */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background py-3 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Search your knowledge base..."
+            />
+          </div>
+          <div className="relative">
+            <ArrowUpDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <select
+              value={sort}
+              onChange={(e) => handleSortChange(e.target.value as SortOption)}
+              className="h-full appearance-none rounded-lg border border-border bg-background py-3 pl-10 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -398,7 +428,7 @@ export function KnowledgeBrainTab() {
         <ManualKnowledgeModal
           onClose={() => setShowManualEntry(false)}
           onSuccess={() => {
-            fetchEntries(query, category);
+            fetchEntries(query, category, speaker, activeTag, sort);
             fetchTags();
           }}
         />

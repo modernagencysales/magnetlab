@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getAllRecentKnowledge, getFilteredKnowledge, getKnowledgeTags, searchKnowledgeV2, verifyTeamMembership } from '@/lib/services/knowledge-brain';
+import type { KnowledgeSortOption } from '@/lib/services/knowledge-brain';
 import type { KnowledgeCategory, KnowledgeSpeaker, KnowledgeType } from '@/lib/types/content-pipeline';
 
 import { logError } from '@/lib/utils/logger';
@@ -27,6 +28,10 @@ export async function GET(request: NextRequest) {
     const minQuality = searchParams.get('min_quality') ? parseInt(searchParams.get('min_quality')!, 10) : undefined;
     const since = searchParams.get('since');
     const teamId = searchParams.get('team_id') || undefined;
+    const sortParam = searchParams.get('sort');
+    const sort: KnowledgeSortOption = sortParam && ['newest', 'oldest', 'quality'].includes(sortParam)
+      ? (sortParam as KnowledgeSortOption)
+      : 'newest';
 
     if (teamId) {
       const isMember = await verifyTeamMembership(session.user.id, teamId);
@@ -53,6 +58,7 @@ export async function GET(request: NextRequest) {
         limit,
         threshold: 0.6,
         teamId,
+        sort: query ? undefined : sort,
       });
       if (result.error) {
         return NextResponse.json({ error: result.error }, { status: 500 });
@@ -73,12 +79,13 @@ export async function GET(request: NextRequest) {
         tag: tag || undefined,
         limit,
         offset,
+        sort,
       });
       return NextResponse.json({ entries, total_count: entries.length });
     }
 
     // Default: return recent entries across all categories
-    const entries = await getAllRecentKnowledge(session.user.id, limit);
+    const entries = await getAllRecentKnowledge(session.user.id, limit, sort);
     return NextResponse.json({ entries, total_count: entries.length });
   } catch (error) {
     logError('cp/knowledge', error, { step: 'knowledge_api_error' });

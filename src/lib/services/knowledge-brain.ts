@@ -100,6 +100,7 @@ export interface EnhancedSearchOptions {
   threshold?: number;
   teamId?: string;
   profileId?: string;
+  sort?: KnowledgeSortOption;
 }
 
 export async function searchKnowledgeV2(
@@ -118,6 +119,7 @@ export async function searchKnowledgeV2(
     threshold = 0.6,
     teamId,
     profileId,
+    sort = 'newest',
   } = options;
 
   const supabase = createSupabaseAdminClient();
@@ -176,12 +178,14 @@ export async function searchKnowledgeV2(
   // Non-search browse path with new filters
   const userFilter = teamId ? 'team_id' : 'user_id';
   const userValue = teamId || userId;
+  const orderColumn = sort === 'quality' ? 'quality_score' : 'created_at';
+  const ascending = sort === 'oldest';
   let dbQuery = supabase
     .from('cp_knowledge_entries')
     .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
     .eq(userFilter, userValue)
     .is('superseded_by', null)
-    .order('created_at', { ascending: false })
+    .order(orderColumn, { ascending })
     .limit(limit);
 
   if (knowledgeType) dbQuery = dbQuery.eq('knowledge_type', knowledgeType);
@@ -321,7 +325,7 @@ export async function getRecentKnowledgeDigest(
   // Quality 4+ highlights
   const { data: highlights } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, created_at, updated_at')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
     .eq(scopeFilter, scopeValue)
     .gte('created_at', since)
     .gte('quality_score', 4)
@@ -395,7 +399,7 @@ export async function exportTopicKnowledge(
 
   const { data: entries } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, created_at, updated_at')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
     .eq(scopeFilter, scopeValue)
     .contains('topics', [topicSlug])
     .is('superseded_by', null)
@@ -480,6 +484,8 @@ export async function getRelevantContext(
   });
 }
 
+export type KnowledgeSortOption = 'newest' | 'oldest' | 'quality';
+
 export async function getFilteredKnowledge(
   userId: string,
   filters: {
@@ -488,17 +494,21 @@ export async function getFilteredKnowledge(
     tag?: string;
     limit?: number;
     offset?: number;
+    sort?: KnowledgeSortOption;
   }
 ): Promise<KnowledgeEntry[]> {
-  const { category, speaker, tag, limit = 30, offset = 0 } = filters;
+  const { category, speaker, tag, limit = 30, offset = 0, sort = 'newest' } = filters;
   const supabase = createSupabaseAdminClient();
+
+  const orderColumn = sort === 'quality' ? 'quality_score' : 'created_at';
+  const ascending = sort === 'oldest';
 
   let query = supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, created_at, updated_at')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
     .eq('user_id', userId)
     .is('superseded_by', null)
-    .order('created_at', { ascending: false })
+    .order(orderColumn, { ascending })
     .range(offset, offset + limit - 1);
 
   if (category) {
@@ -523,16 +533,20 @@ export async function getFilteredKnowledge(
 
 export async function getAllRecentKnowledge(
   userId: string,
-  limit: number = 30
+  limit: number = 30,
+  sort: KnowledgeSortOption = 'newest'
 ): Promise<KnowledgeEntry[]> {
   const supabase = createSupabaseAdminClient();
 
+  const orderColumn = sort === 'quality' ? 'quality_score' : 'created_at';
+  const ascending = sort === 'oldest';
+
   const { data, error } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, created_at, updated_at')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
     .eq('user_id', userId)
     .is('superseded_by', null)
-    .order('created_at', { ascending: false })
+    .order(orderColumn, { ascending })
     .limit(limit);
 
   if (error) {
@@ -552,7 +566,7 @@ export async function getKnowledgeByCategory(
 
   const { data, error } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, created_at, updated_at')
+    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
     .eq('user_id', userId)
     .eq('category', category)
     .is('superseded_by', null)
@@ -616,10 +630,132 @@ export async function getTagClusters(userId: string): Promise<TagCluster[]> {
   }));
 }
 
-export async function runTagClustering(userId: string): Promise<{ clustersCreated: number }> {
+export async function consolidateOrphanTags(userId: string): Promise<{ merged: number; kept: number }> {
   const supabase = createSupabaseAdminClient();
 
-  // Get all tags for this user
+  // Fetch orphan tags (usage_count <= 2)
+  const { data: orphanTags } = await supabase
+    .from('cp_knowledge_tags')
+    .select('id, tag_name, usage_count')
+    .eq('user_id', userId)
+    .lte('usage_count', 2)
+    .order('usage_count', { ascending: true });
+
+  // Fetch established tags (usage_count >= 3)
+  const { data: establishedTags } = await supabase
+    .from('cp_knowledge_tags')
+    .select('id, tag_name, usage_count')
+    .eq('user_id', userId)
+    .gte('usage_count', 3)
+    .order('usage_count', { ascending: false });
+
+  if (!orphanTags?.length || !establishedTags?.length) {
+    return { merged: 0, kept: orphanTags?.length || 0 };
+  }
+
+  // Use Claude Haiku to map orphans → established tags
+  const { getAnthropicClient, parseJsonResponse } = await import('@/lib/ai/content-pipeline/anthropic-client');
+  const { CLAUDE_HAIKU_MODEL } = await import('@/lib/ai/content-pipeline/model-config');
+  const client = getAnthropicClient();
+
+  const orphanList = orphanTags.map(t => `"${t.tag_name}" (${t.usage_count}x)`).join(', ');
+  const establishedList = establishedTags.map(t => `"${t.tag_name}" (${t.usage_count}x)`).join(', ');
+
+  const response = await client.messages.create({
+    model: CLAUDE_HAIKU_MODEL,
+    max_tokens: 2000,
+    messages: [{
+      role: 'user',
+      content: `Map each orphan tag to the closest established tag, or "keep" if it's truly unique.
+
+ORPHAN TAGS (low usage): ${orphanList}
+
+ESTABLISHED TAGS (high usage): ${establishedList}
+
+Rules:
+- Only merge if the orphan is clearly a variant/synonym of an established tag (e.g. "sales calls" → "sales", "client objection" → "objections")
+- If no good match, output "keep"
+- Be conservative — only merge obvious matches
+
+Respond with ONLY valid JSON:
+{"mappings": {"orphan_tag_name": "established_tag_name_or_keep", ...}}`,
+    }],
+  });
+
+  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  const result = parseJsonResponse<{ mappings: Record<string, string> }>(text);
+
+  if (!result?.mappings || typeof result.mappings !== 'object') {
+    return { merged: 0, kept: orphanTags.length };
+  }
+
+  let merged = 0;
+  let kept = 0;
+
+  for (const orphan of orphanTags) {
+    const target = result.mappings[orphan.tag_name];
+    if (!target || target === 'keep') {
+      kept++;
+      continue;
+    }
+
+    // Verify target is an actual established tag
+    const targetTag = establishedTags.find(t => t.tag_name === target);
+    if (!targetTag) {
+      kept++;
+      continue;
+    }
+
+    // Update knowledge entries: replace orphan tag with target tag in tags array
+    const { data: entries } = await supabase
+      .from('cp_knowledge_entries')
+      .select('id, tags')
+      .eq('user_id', userId)
+      .contains('tags', [orphan.tag_name]);
+
+    for (const entry of entries || []) {
+      const updatedTags = (entry.tags as string[])
+        .map(t => t === orphan.tag_name ? target : t)
+        .filter((t, i, arr) => arr.indexOf(t) === i); // dedupe
+
+      await supabase
+        .from('cp_knowledge_entries')
+        .update({ tags: updatedTags })
+        .eq('id', entry.id);
+    }
+
+    // Update usage counts (mutate in-memory count to handle multiple orphans → same target)
+    targetTag.usage_count += orphan.usage_count;
+    await supabase
+      .from('cp_knowledge_tags')
+      .update({ usage_count: targetTag.usage_count })
+      .eq('id', targetTag.id);
+
+    // Delete orphan tag row
+    await supabase
+      .from('cp_knowledge_tags')
+      .delete()
+      .eq('id', orphan.id);
+
+    merged++;
+  }
+
+  return { merged, kept };
+}
+
+export async function runTagClustering(userId: string): Promise<{ clustersCreated: number; orphansMerged?: number }> {
+  const supabase = createSupabaseAdminClient();
+
+  // Step 1: Consolidate orphan tags before clustering
+  let orphansMerged = 0;
+  try {
+    const consolidation = await consolidateOrphanTags(userId);
+    orphansMerged = consolidation.merged;
+  } catch (err) {
+    logError('services/knowledge-brain', err instanceof Error ? err : new Error('Orphan consolidation failed'), { userId });
+  }
+
+  // Step 2: Get all remaining tags for clustering
   const { data: tags } = await supabase
     .from('cp_knowledge_tags')
     .select('id, tag_name, usage_count')
@@ -627,7 +763,7 @@ export async function runTagClustering(userId: string): Promise<{ clustersCreate
     .order('usage_count', { ascending: false })
     .limit(200);
 
-  if (!tags?.length) return { clustersCreated: 0 };
+  if (!tags?.length) return { clustersCreated: 0, orphansMerged };
 
   // Run AI clustering
   const result = await clusterTags(tags);
@@ -665,5 +801,5 @@ export async function runTagClustering(userId: string): Promise<{ clustersCreate
     }
   }
 
-  return { clustersCreated: result.clusters.length };
+  return { clustersCreated: result.clusters.length, orphansMerged };
 }

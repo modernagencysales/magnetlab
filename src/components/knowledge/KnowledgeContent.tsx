@@ -19,8 +19,8 @@ const KnowledgeBrainTab = dynamic(
 type Tab = 'transcripts' | 'brain';
 
 const TABS: { id: Tab; label: string; icon: typeof Mic }[] = [
-  { id: 'transcripts', label: 'Transcripts', icon: Mic },
   { id: 'brain', label: 'AI Brain', icon: Brain },
+  { id: 'transcripts', label: 'Transcripts', icon: Mic },
 ];
 
 function TabLoader() {
@@ -37,7 +37,7 @@ export function KnowledgeContent() {
   const pathname = usePathname();
   const tabParam = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(
-    tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'transcripts'
+    tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'brain'
   );
   const { selectedProfileId, onProfileChange } = useProfileSelection();
 
@@ -50,7 +50,7 @@ export function KnowledgeContent() {
   function handleTabChange(tab: Tab) {
     setActiveTab(tab);
     const params = new URLSearchParams(searchParams.toString());
-    if (tab === 'transcripts') {
+    if (tab === 'brain') {
       params.delete('tab');
     } else {
       params.set('tab', tab);
