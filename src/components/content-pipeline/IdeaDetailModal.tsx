@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Loader2, Archive } from 'lucide-react';
+import { X, Loader2, Archive, Sparkles } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { PillarBadge } from './PillarBadge';
 import type { ContentIdea } from '@/lib/types/content-pipeline';
@@ -106,31 +106,34 @@ export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing
         </div>
 
         {/* Actions */}
-        <div className="mt-6 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-border py-2 text-sm font-medium hover:bg-muted transition-colors"
-          >
-            Close
-          </button>
-          {idea.status !== 'archived' && (
-            <button
-              onClick={() => onArchive(idea.id)}
-              disabled={archiving}
-              className="flex items-center justify-center gap-2 rounded-lg border border-border py-2 px-4 text-sm font-medium hover:bg-muted disabled:opacity-50 transition-colors"
-            >
-              {archiving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Archive className="h-4 w-4" /> Archive</>}
-            </button>
-          )}
+        <div className="mt-6 space-y-3">
           {(idea.status === 'extracted' || idea.status === 'selected') && (
             <button
               onClick={() => onWritePost(idea.id)}
               disabled={writing}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              {writing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Write Post'}
+              {writing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {writing ? 'Writing...' : 'Write Post from This Idea'}
             </button>
           )}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-lg border border-border py-2 text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Close
+            </button>
+            {idea.status !== 'archived' && (
+              <button
+                onClick={() => onArchive(idea.id)}
+                disabled={archiving}
+                className="flex items-center justify-center gap-2 rounded-lg border border-border py-2 px-4 text-sm font-medium hover:bg-muted disabled:opacity-50 transition-colors"
+              >
+                {archiving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Archive className="h-4 w-4" /> Archive</>}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

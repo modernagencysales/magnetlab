@@ -50,6 +50,7 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
   const [pillarFilter, setPillarFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState<'score' | 'newest' | 'type'>('score');
   const [selectedIdea, setSelectedIdea] = useState<ContentIdea | null>(null);
   const [writingId, setWritingId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
@@ -124,12 +125,24 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
     }
   };
 
-  const filteredIdeas = searchQuery
+  const filteredIdeas = (searchQuery
     ? ideas.filter((idea) =>
         idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         idea.core_insight?.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : ideas;
+    : ideas
+  ).slice().sort((a, b) => {
+    switch (sortBy) {
+      case 'score':
+        return (b.composite_score ?? 0) - (a.composite_score ?? 0);
+      case 'newest':
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      case 'type':
+        return (a.content_type ?? '').localeCompare(b.content_type ?? '');
+      default:
+        return 0;
+    }
+  });
 
   if (loading) {
     return (
@@ -153,6 +166,18 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
               className="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Search ideas..."
             />
+          </div>
+          <div className="relative">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'score' | 'newest' | 'type')}
+              className="appearance-none rounded-lg border bg-background px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="score">Highest Score</option>
+              <option value="newest">Newest</option>
+              <option value="type">Content Type</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -223,6 +248,16 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
               <div className="mb-2 flex items-center gap-2 flex-wrap">
                 <PillarBadge pillar={idea.content_pillar} />
                 <StatusBadge status={idea.status} />
+                {idea.composite_score != null && (
+                  <span className={cn(
+                    'rounded-full px-2 py-0.5 text-xs font-semibold',
+                    idea.composite_score >= 7 ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
+                    idea.composite_score >= 4 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
+                    'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                  )}>
+                    {idea.composite_score.toFixed(1)}
+                  </span>
+                )}
                 {(idea as ContentIdea & { profile_name?: string | null }).profile_name && (
                   <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
                     {(idea as ContentIdea & { profile_name?: string | null }).profile_name}
