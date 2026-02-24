@@ -117,6 +117,13 @@ describe('POST /api/content-pipeline/styles/extract-from-url', () => {
     expect(body.error).toContain('linkedin_url');
   });
 
+  it('returns 400 if URL is not a LinkedIn domain', async () => {
+    const res = await POST(makeRequest({ linkedin_url: 'https://evil.com/in/janedoe' }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('LinkedIn');
+  });
+
   it('returns 502 if Apify scrape returns error', async () => {
     (scrapeProfilePosts as jest.Mock).mockResolvedValueOnce({
       data: [],

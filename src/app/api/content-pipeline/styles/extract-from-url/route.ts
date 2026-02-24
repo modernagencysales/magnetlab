@@ -44,6 +44,16 @@ export async function POST(request: NextRequest) {
 
     const normalizedUrl = normalizeLinkedInUrl(linkedin_url);
 
+    // Validate the normalized URL is actually a LinkedIn URL (SSRF prevention)
+    try {
+      const parsed = new URL(normalizedUrl);
+      if (!['www.linkedin.com', 'linkedin.com'].includes(parsed.hostname)) {
+        return NextResponse.json({ error: 'URL must be a LinkedIn profile' }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 });
+    }
+
     // Scrape recent posts from the profile
     const { data: posts, error: scrapeError } = await scrapeProfilePosts(normalizedUrl, 10);
 

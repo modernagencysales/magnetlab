@@ -71,6 +71,7 @@ export function StylesSection() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm('Delete this writing style? This cannot be undone.')) return;
     const prev = styles;
     setStyles((s) => s.filter((style) => style.id !== id));
 
@@ -293,7 +294,7 @@ export function StylesSection() {
       )}
 
       {/* Style Mixer modal */}
-      {mixerStyleId && (
+      {mixerStyleId && styles.find(s => s.id === mixerStyleId) && (
         <StyleMixer
           sourceStyle={styles.find(s => s.id === mixerStyleId)!}
           onClose={() => setMixerStyleId(null)}

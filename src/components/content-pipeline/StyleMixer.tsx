@@ -118,7 +118,11 @@ function buildTraitRows(profile: StyleProfile): TraitRow[] {
 
 function buildFormattingEntries(f: StyleProfile['formatting']): string[] {
   const entries: string[] = [];
-  if (f.uses_emojis) entries.push('Use emojis sparingly');
+  if (f.uses_emojis) {
+    entries.push('Use emojis sparingly');
+  } else {
+    entries.push('Avoid using emojis');
+  }
   if (f.uses_lists) entries.push('Use lists when appropriate');
   if (f.avg_paragraphs > 0) entries.push(`Target ~${f.avg_paragraphs} paragraphs per post`);
   if (f.uses_bold) entries.push('Use bold for emphasis');
@@ -152,10 +156,13 @@ function mergeTraits(
   }
 
   if (selectedTraits.has('cta_patterns')) {
-    merged.cta_style = unionArrays(
-      merged.cta_style ? merged.cta_style.split(', ').map(s => s.trim()).filter(Boolean) : [],
-      source.cta_patterns
-    ).join(', ');
+    // cta_style is a free-text string; append new patterns as newline-separated entries
+    // to avoid comma-splitting which breaks patterns containing commas
+    const existingPatterns = merged.cta_style
+      ? merged.cta_style.split('\n').map(s => s.trim()).filter(Boolean)
+      : [];
+    const merged_patterns = unionArrays(existingPatterns, source.cta_patterns);
+    merged.cta_style = merged_patterns.join('\n');
   }
 
   if (selectedTraits.has('signature_phrases')) {
