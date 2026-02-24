@@ -46,7 +46,12 @@ export default async function DashboardLayout({
     }
   }
 
-  const isAdmin = await isSuperAdmin(session.user.id!);
+  let isAdmin = false;
+  try {
+    isAdmin = await isSuperAdmin(session.user.id!);
+  } catch {
+    // Non-critical — don't crash the layout if admin check fails
+  }
 
   return (
     <div className="min-h-screen bg-background">
