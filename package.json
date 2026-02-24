@@ -45,6 +45,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "diff": "^8.0.3",
     "driver.js": "^1.4.0",
     "expr-eval": "^2.0.2",
     "framer-motion": "^11.3.31",
