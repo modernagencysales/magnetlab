@@ -112,7 +112,7 @@ export async function POST(request: Request) {
         user_id: input.userId,
         title: `${archetype} lead magnet`,
         archetype,
-        status: 'processing',
+        status: 'draft',
       })
       .select('id')
       .single();
