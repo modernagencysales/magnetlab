@@ -118,6 +118,10 @@ export class AttioClient extends BaseApiClient {
     );
   }
 
+  async getWebhookStatus(webhookId: string): Promise<ApiResponse<{ data: { status: string } }>> {
+    return this.get<{ data: { status: string } }>(`/webhooks/${webhookId}`);
+  }
+
   /**
    * Fetch the full call transcript (paginated word-level segments).
    * Returns all segments concatenated across all pages.
