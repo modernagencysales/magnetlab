@@ -79,17 +79,29 @@ const conceptSchema = z.object({
   isQuickCreate: z.boolean().optional(),
 }).passthrough();
 
+// AI may return contents as strings OR objects with headline/summary/detail.
+// Accept both and normalize objects to strings at validation time.
+const contentItemSchema = z.union([
+  z.string(),
+  z.record(z.unknown()).transform((obj) => {
+    const values = Object.values(obj).filter((v): v is string => typeof v === 'string' && v.length > 0);
+    if (values.length >= 2) return `${values[0]}: ${values[1]}`;
+    if (values.length === 1) return values[0];
+    return JSON.stringify(obj);
+  }),
+]);
+
 const extractedContentSchema = z.object({
   title: z.string().default(''),
   format: z.string().default(''),
   structure: z.array(z.object({
     sectionName: z.string(),
-    contents: z.array(z.string()),
-  })).optional(),
+    contents: z.array(contentItemSchema),
+  }).passthrough()).optional(),
   nonObviousInsight: z.string().default(''),
   personalExperience: z.string().optional(),
   proof: z.string().optional(),
-  commonMistakes: z.array(z.string()).optional(),
+  commonMistakes: z.array(contentItemSchema).optional(),
   differentiation: z.string().default(''),
 }).passthrough();
 
