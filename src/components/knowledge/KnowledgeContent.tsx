@@ -31,6 +31,12 @@ function TabLoader() {
   );
 }
 
+function getTeamFromCookie(): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.match(/(?:^|;\s*)ml-team-context=([^;]*)/);
+  return match?.[1] || undefined;
+}
+
 export function KnowledgeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -40,6 +46,11 @@ export function KnowledgeContent() {
     tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'brain'
   );
   const { selectedProfileId, onProfileChange } = useProfileSelection();
+  const [teamId, setTeamId] = useState<string | undefined>();
+
+  useEffect(() => {
+    setTeamId(getTeamFromCookie());
+  }, []);
 
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam) && tabParam !== activeTab) {
@@ -98,7 +109,7 @@ export function KnowledgeContent() {
       {/* Tab Content */}
       <Suspense fallback={<TabLoader />}>
         {activeTab === 'transcripts' && <TranscriptsTab profileId={selectedProfileId} />}
-        {activeTab === 'brain' && <KnowledgeBrainTab />}
+        {activeTab === 'brain' && <KnowledgeBrainTab teamId={teamId} />}
       </Suspense>
     </div>
   );

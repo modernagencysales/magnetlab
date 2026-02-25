@@ -17,9 +17,10 @@ const STATUS_FILTERS: { value: PostStatus | ''; label: string }[] = [
 
 interface PostsTabProps {
   profileId?: string | null;
+  teamId?: string;
 }
 
-export function PostsTab({ profileId }: PostsTabProps) {
+export function PostsTab({ profileId, teamId }: PostsTabProps) {
   const [posts, setPosts] = useState<PipelinePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<PostStatus | ''>('');
@@ -34,6 +35,7 @@ export function PostsTab({ profileId }: PostsTabProps) {
       if (statusFilter) params.append('status', statusFilter);
       params.append('is_buffer', 'false');
       if (profileId) params.append('team_profile_id', profileId);
+      if (teamId) params.append('team_id', teamId);
 
       const response = await fetch(`/api/content-pipeline/posts?${params}`);
       const data = await response.json();
@@ -43,7 +45,7 @@ export function PostsTab({ profileId }: PostsTabProps) {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, profileId]);
+  }, [statusFilter, profileId, teamId]);
 
   useEffect(() => {
     fetchPosts();

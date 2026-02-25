@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { Mic, Brain, Lightbulb, FileText, Zap, Loader2, LayoutGrid, LayoutTemplate, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,10 +36,21 @@ function TabLoader() {
   );
 }
 
+function getTeamFromCookie(): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.match(/(?:^|;\s*)ml-team-context=([^;]*)/);
+  return match?.[1] || undefined;
+}
+
 export function ContentPipelineContent() {
   const [activeTab, setActiveTab] = useState<Tab>('transcripts');
   const [showQuickWrite, setShowQuickWrite] = useState(false);
   const { selectedProfileId, onProfileChange } = useProfileSelection();
+  const [teamId, setTeamId] = useState<string | undefined>();
+
+  useEffect(() => {
+    setTeamId(getTeamFromCookie());
+  }, []);
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -81,7 +92,7 @@ export function ContentPipelineContent() {
         {activeTab === 'transcripts' && <TranscriptsTab profileId={selectedProfileId} />}
         {activeTab === 'brain' && <KnowledgeDashboard />}
         {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
-        {activeTab === 'posts' && <PostsTab profileId={selectedProfileId} />}
+        {activeTab === 'posts' && <PostsTab profileId={selectedProfileId} teamId={teamId} />}
         {activeTab === 'pipeline' && <PipelineTab />}
         {activeTab === 'templates' && <TemplatesTab />}
         {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}

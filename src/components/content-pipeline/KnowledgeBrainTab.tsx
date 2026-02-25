@@ -45,7 +45,7 @@ interface TagCluster {
   tags: Array<{ tag_name: string; usage_count: number }>;
 }
 
-export function KnowledgeBrainTab() {
+export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<KnowledgeCategory | ''>('');
   const [speaker, setSpeaker] = useState<KnowledgeSpeaker | ''>('');
@@ -77,6 +77,7 @@ export function KnowledgeBrainTab() {
       if (spk) params.append('speaker', spk);
       if (tag) params.append('tag', tag);
       if (sortBy !== 'newest') params.append('sort', sortBy);
+      if (teamId) params.append('team_id', teamId);
 
       const response = await fetch(`/api/content-pipeline/knowledge?${params}`);
       const data = await response.json();
@@ -87,27 +88,31 @@ export function KnowledgeBrainTab() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [teamId]);
 
   const fetchTags = useCallback(async () => {
     try {
-      const response = await fetch('/api/content-pipeline/knowledge?view=tags');
+      const params = new URLSearchParams({ view: 'tags' });
+      if (teamId) params.append('team_id', teamId);
+      const response = await fetch(`/api/content-pipeline/knowledge?${params}`);
       const data = await response.json();
       setTags(data.tags || []);
     } catch {
       // Silent failure
     }
-  }, []);
+  }, [teamId]);
 
   const fetchClusters = useCallback(async () => {
     try {
-      const response = await fetch('/api/content-pipeline/knowledge/clusters');
+      const params = new URLSearchParams();
+      if (teamId) params.append('team_id', teamId);
+      const response = await fetch(`/api/content-pipeline/knowledge/clusters?${params}`);
       const data = await response.json();
       setClusters(data.clusters || []);
     } catch {
       // Silent failure
     }
-  }, []);
+  }, [teamId]);
 
   useEffect(() => {
     fetchEntries('', '', '', '', 'newest');

@@ -15,14 +15,28 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const isBuffer = searchParams.get('is_buffer');
     const teamProfileId = searchParams.get('team_profile_id');
+    const teamId = searchParams.get('team_id');
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
     const supabase = createSupabaseAdminClient();
 
+    // If team_id is provided, scope to all team members' posts
+    let userScope: string[] = [session.user.id];
+    if (teamId) {
+      const { data: members } = await supabase
+        .from('team_profiles')
+        .select('user_id')
+        .eq('team_id', teamId)
+        .eq('status', 'active');
+      if (members && members.length > 0) {
+        userScope = members.map(m => m.user_id);
+      }
+    }
+
     let query = supabase
       .from('cp_pipeline_posts')
       .select('id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, team_profile_id, created_at, updated_at')
-      .eq('user_id', session.user.id)
+      .in('user_id', userScope)
       .order('created_at', { ascending: false })
       .limit(limit);
 
