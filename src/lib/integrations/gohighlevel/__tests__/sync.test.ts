@@ -217,7 +217,7 @@ describe('syncLeadToGoHighLevel', () => {
         utm_source: 'linkedin',
         utm_medium: 'social',
         utm_campaign: 'spring2026',
-        qualified: 'true',
+        qualified: 'yes',
       })
     );
   });

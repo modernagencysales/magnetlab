@@ -48,7 +48,7 @@ export async function syncLeadToGoHighLevel(params: GHLSyncParams): Promise<void
     if (lead.utmSource) customField.utm_source = lead.utmSource;
     if (lead.utmMedium) customField.utm_medium = lead.utmMedium;
     if (lead.utmCampaign) customField.utm_campaign = lead.utmCampaign;
-    if (lead.isQualified != null) customField.qualified = String(lead.isQualified);
+    if (lead.isQualified != null) customField.qualified = lead.isQualified ? 'yes' : 'no';
     if (lead.qualificationAnswers) {
       for (const [key, value] of Object.entries(lead.qualificationAnswers)) {
         customField[`qa_${key}`] = value;

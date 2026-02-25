@@ -22,11 +22,9 @@ export interface CreateContactResult {
 
 export class GoHighLevelClient {
   private apiKey: string;
-  private baseUrl: string;
 
-  constructor(apiKey: string, baseUrl?: string) {
+  constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.baseUrl = baseUrl ?? GHL_BASE_URL;
   }
 
   /**
@@ -35,7 +33,7 @@ export class GoHighLevelClient {
    */
   async testConnection(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/contacts/?limit=1`, {
+      const response = await fetch(`${GHL_BASE_URL}/contacts/?limit=1`, {
         method: 'GET',
         headers: this.getHeaders(),
         signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -70,7 +68,7 @@ export class GoHighLevelClient {
       }
 
       try {
-        const response = await fetch(`${this.baseUrl}/contacts/`, {
+        const response = await fetch(`${GHL_BASE_URL}/contacts/`, {
           method: 'POST',
           headers: {
             ...this.getHeaders(),
