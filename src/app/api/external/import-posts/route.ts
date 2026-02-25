@@ -57,19 +57,12 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseAdminClient();
 
-    const rows = posts.map((post, idx) => ({
+    const rows = posts.map((post) => ({
       user_id,
       team_profile_id: team_profile_id || null,
-      status: 'reviewing', // Ready for human review
+      status: 'reviewing' as const,
       draft_content: post.content,
       final_content: post.content,
-      source: 'intro_offer',
-      source_ref: post.source_post_id || null,
-      metadata: {
-        title: post.title || `Post ${idx + 1}`,
-        funnel_stage: post.funnel_stage || null,
-        imported_at: new Date().toISOString(),
-      },
     }));
 
     const { data, error } = await supabase
