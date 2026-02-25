@@ -12,6 +12,13 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// All providers accepted in funnel_integrations (email marketing + CRM)
+const VALID_FUNNEL_PROVIDERS = ['kit', 'mailerlite', 'mailchimp', 'activecampaign', 'gohighlevel'] as const;
+
+function isValidFunnelProvider(s: string): boolean {
+  return (VALID_FUNNEL_PROVIDERS as readonly string[]).includes(s);
+}
+
 // GET - List all integrations for this funnel page
 export async function GET(
   request: NextRequest,
@@ -32,7 +39,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('funnel_integrations')
-      .select('id, provider, list_id, list_name, tag_id, tag_name, is_active, created_at, updated_at')
+      .select('id, provider, list_id, list_name, tag_id, tag_name, is_active, settings, created_at, updated_at')
       .eq('funnel_page_id', funnelPageId)
       .eq('user_id', session.user.id);
 
@@ -65,17 +72,18 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { provider, list_id, list_name, tag_id, tag_name, is_active } = body;
+    const { provider, list_id, list_name, tag_id, tag_name, is_active, settings } = body;
 
     if (!provider || typeof provider !== 'string') {
       return ApiErrors.validationError('Provider is required');
     }
 
-    if (!isEmailMarketingProvider(provider)) {
+    if (!isValidFunnelProvider(provider)) {
       return ApiErrors.validationError(`Invalid provider: ${provider}`);
     }
 
-    if (!list_id || typeof list_id !== 'string') {
+    // list_id is required for email marketing providers, optional for CRM providers
+    if (isEmailMarketingProvider(provider) && (!list_id || typeof list_id !== 'string')) {
       return ApiErrors.validationError('List ID is required');
     }
 
@@ -101,16 +109,17 @@ export async function POST(
           funnel_page_id: funnelPageId,
           user_id: session.user.id,
           provider,
-          list_id,
+          list_id: list_id || 'n/a',
           list_name: list_name ?? null,
           tag_id: tag_id ?? null,
           tag_name: tag_name ?? null,
           is_active: is_active ?? true,
+          settings: settings ?? null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'funnel_page_id,provider' }
       )
-      .select('id, provider, list_id, list_name, tag_id, tag_name, is_active, created_at, updated_at')
+      .select('id, provider, list_id, list_name, tag_id, tag_name, is_active, settings, created_at, updated_at')
       .single();
 
     if (error) {
