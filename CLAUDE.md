@@ -541,6 +541,51 @@ Lead opts in → POST /api/public/lead → syncLeadToEmailProviders() [fire-and-
 - `MAILCHIMP_CLIENT_SECRET` -- Mailchimp OAuth app client secret
 - OAuth redirect URI: `{NEXT_PUBLIC_APP_URL}/api/integrations/mailchimp/callback`
 
+## GoHighLevel CRM Integration
+
+Push leads to GoHighLevel as contacts on capture. Account-level API key auth, per-funnel toggle with custom tags.
+
+### Data Flow
+
+```
+User connects GHL in Settings → API key validated → stored in user_integrations (service: 'gohighlevel')
+User enables GHL per-funnel → toggle stored in funnel_integrations (provider: 'gohighlevel', settings: { custom_tags })
+Lead opts in → POST /api/public/lead → syncLeadToGoHighLevel() [fire-and-forget with retry]
+  → checks account + funnel toggles
+  → builds payload with auto-tags + custom tags + UTMs + qualification data
+  → POST /contacts/ to GHL API v1 (https://rest.gohighlevel.com/v1)
+  → 3 retries with exponential backoff, errors logged only (never blocks lead capture)
+```
+
+### API Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/integrations/gohighlevel/connect` | POST | Validate API key + save integration |
+| `/api/integrations/gohighlevel/verify` | POST | Re-validate stored API key |
+| `/api/integrations/gohighlevel/disconnect` | POST | Remove key + deactivate funnel toggles |
+| `/api/integrations/gohighlevel/status` | GET | Check if GHL is connected (used by funnel builder) |
+
+### Key Files
+
+- `src/lib/integrations/gohighlevel/client.ts` -- GHL API client (createContact with retry, testConnection)
+- `src/lib/integrations/gohighlevel/sync.ts` -- `syncLeadToGoHighLevel()` called from lead capture route
+- `src/lib/integrations/gohighlevel/types.ts` -- GHL API types (GHLContactPayload, GHLSyncParams)
+- `src/components/settings/GoHighLevelSettings.tsx` -- Settings UI (connect/verify/disconnect)
+- `src/components/funnel/FunnelIntegrationsTab.tsx` -- Per-funnel toggle (GHLFunnelToggle component)
+
+### Tags Strategy
+
+Auto-tags (always applied): lead magnet title, funnel slug, `"magnetlab"`
+Custom tags (optional): configured per-funnel via comma-separated input, stored in `funnel_integrations.settings.custom_tags`
+
+### Database
+
+No new tables. Uses existing:
+- `user_integrations` -- `service: 'gohighlevel'`, stores API key
+- `funnel_integrations` -- `provider: 'gohighlevel'`, `settings` JSONB for custom_tags, `is_active` toggle
+- Migration: `20260225100000_funnel_integrations_settings.sql` -- adds `settings` column + GHL provider to constraint
+
 ## Development
 
 ### Env Vars (`.env.local`)
