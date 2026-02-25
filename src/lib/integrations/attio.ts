@@ -130,16 +130,17 @@ export class AttioClient extends BaseApiClient {
     let cursor: string | null = null;
 
     do {
-      const params = cursor ? `?cursor=${cursor}` : '';
+      const params = new URLSearchParams({ limit: '500' });
+      if (cursor) params.set('cursor', cursor);
       const res = await this.get<AttioTranscriptPage>(
-        `/meetings/${meetingId}/call_recordings/${callRecordingId}/transcript${params}`
+        `/meetings/${meetingId}/call_recordings/${callRecordingId}/transcript?${params}`
       );
 
       if (res.error || !res.data) {
         return { data: null, error: res.error, status: res.status };
       }
 
-      const page = res.data as unknown as AttioTranscriptPage;
+      const page = res.data;
       const segments = page.data?.transcript || [];
       allSegments.push(...segments);
       cursor = page.pagination?.next_cursor || null;

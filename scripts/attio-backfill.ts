@@ -47,13 +47,78 @@ interface CallRecording {
   status: string;
 }
 
-interface Transcript {
-  raw_transcript: string;
+interface TranscriptSegment {
+  speech: string;
+  start_time: number;
+  end_time: number;
+  speaker: { name: string };
+}
+
+interface TranscriptPage {
+  data: {
+    transcript: TranscriptSegment[];
+  };
+  pagination: { next_cursor: string | null };
 }
 
 interface Paginated<T> {
   data: T[];
-  next_cursor: string | null;
+  pagination?: { next_cursor: string | null };
+  next_cursor?: string | null; // fallback
+}
+
+/**
+ * Fetch full paginated transcript and assemble into readable text.
+ * Groups consecutive words by speaker into paragraphs.
+ *
+ * NOTE: This duplicates logic from src/lib/integrations/attio.ts
+ * (getFullTranscript + assembleTranscript). Kept standalone because
+ * scripts run without path aliases.
+ */
+async function fetchAndAssembleTranscript(
+  meetingId: string,
+  recordingId: string,
+  apiKey: string
+): Promise<string> {
+  const allSegments: TranscriptSegment[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const params = new URLSearchParams({ limit: '500' });
+    if (cursor) params.set('cursor', cursor);
+
+    const page = await attioGet<TranscriptPage>(
+      `/meetings/${meetingId}/call_recordings/${recordingId}/transcript?${params}`,
+      apiKey
+    );
+    allSegments.push(...(page.data?.transcript || []));
+    cursor = page.pagination?.next_cursor || null;
+  } while (cursor);
+
+  if (allSegments.length === 0) return '';
+
+  // Group consecutive words by same speaker into paragraphs
+  const paragraphs: string[] = [];
+  let currentSpeaker = '';
+  let currentWords: string[] = [];
+
+  for (const seg of allSegments) {
+    const speaker = seg.speaker?.name || 'Unknown';
+    if (speaker !== currentSpeaker) {
+      if (currentWords.length > 0) {
+        paragraphs.push(`${currentSpeaker}: ${currentWords.join(' ')}`);
+      }
+      currentSpeaker = speaker;
+      currentWords = [seg.speech];
+    } else {
+      currentWords.push(seg.speech);
+    }
+  }
+  if (currentWords.length > 0) {
+    paragraphs.push(`${currentSpeaker}: ${currentWords.join(' ')}`);
+  }
+
+  return paragraphs.join('\n\n');
 }
 
 // --- Main ---
@@ -80,12 +145,12 @@ async function main() {
   let cursor: string | null = null;
 
   do {
-    const params = new URLSearchParams({ limit: '200', sort: 'start_desc' });
+    const params = new URLSearchParams({ limit: '200', sort: 'start_asc' });
     if (cursor) params.set('cursor', cursor);
 
     const page = await attioGet<Paginated<Meeting>>(`/meetings?${params}`, apiKey);
     allMeetings = allMeetings.concat(page.data);
-    cursor = page.next_cursor;
+    cursor = page.pagination?.next_cursor || page.next_cursor || null;
     console.log(`  Fetched ${allMeetings.length} meetings so far...`);
   } while (cursor);
 
@@ -113,7 +178,7 @@ async function main() {
           apiKey
         );
         recordings = recordings.concat(page.data);
-        recCursor = page.next_cursor;
+        recCursor = page.pagination?.next_cursor || page.next_cursor || null;
       } while (recCursor);
     } catch {
       // No recordings for this meeting — skip
@@ -146,20 +211,17 @@ async function main() {
         continue;
       }
 
-      // Fetch transcript
-      let transcript: Transcript;
+      // Fetch and assemble transcript from paginated word-level segments
+      let assembledTranscript: string;
       try {
-        transcript = await attioGet<Transcript>(
-          `/meetings/${meetingId}/call_recordings/${recordingId}/transcript`,
-          apiKey
-        );
+        assembledTranscript = await fetchAndAssembleTranscript(meetingId, recordingId, apiKey);
       } catch (err) {
         console.error(`  ERROR fetching transcript for ${meetingId}/${recordingId}:`, err);
         errors++;
         continue;
       }
 
-      if (!transcript.raw_transcript || transcript.raw_transcript.trim().length === 0) {
+      if (!assembledTranscript || assembledTranscript.trim().length === 0) {
         skipped++;
         console.log(`  SKIP (empty transcript) ${meeting.title || meetingId}`);
         continue;
@@ -186,7 +248,7 @@ async function main() {
         call_date: meeting.start?.datetime || null,
         duration_minutes: durationMinutes,
         participants: participants.length > 0 ? participants : null,
-        raw_transcript: transcript.raw_transcript,
+        raw_transcript: assembledTranscript,
       };
 
       if (dryRun) {
