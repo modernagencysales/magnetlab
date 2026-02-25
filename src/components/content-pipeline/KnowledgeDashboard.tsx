@@ -26,15 +26,12 @@ export function KnowledgeDashboard() {
   const [activeTab, setActiveTab] = useState<SubtabId>('overview');
   const [teamId, setTeamId] = useState<string | undefined>();
   const [userTeamId, setUserTeamId] = useState<string | undefined>();
-  const [isTeamMode, setIsTeamMode] = useState(false);
-
   useEffect(() => {
     // Read the active team from the cookie (set by team-select page)
     const cookieTeamId = getActiveTeamFromCookie();
     if (cookieTeamId) {
       setUserTeamId(cookieTeamId);
       setTeamId(cookieTeamId);
-      setIsTeamMode(true);
     } else {
       // Personal mode — check if user has any teams for the toggle
       fetch('/api/teams')
