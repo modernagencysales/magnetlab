@@ -33,8 +33,8 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
   const [viewingId, setViewingId] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchTranscripts = useCallback(async () => {
-    setLoading(true);
+  const fetchTranscripts = useCallback(async (showLoader = false) => {
+    if (showLoader) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (profileId) params.append('speaker_profile_id', profileId);
@@ -44,12 +44,12 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
     } catch {
       // Silent failure
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   }, [profileId]);
 
   useEffect(() => {
-    fetchTranscripts();
+    fetchTranscripts(true);
   }, [fetchTranscripts]);
 
   // Poll for processing updates when any transcripts are still processing

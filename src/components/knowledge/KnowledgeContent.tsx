@@ -42,9 +42,10 @@ export function KnowledgeContent() {
   const { selectedProfileId, onProfileChange } = useProfileSelection();
 
   useEffect(() => {
-    if (tabParam && TABS.some((t) => t.id === tabParam)) {
+    if (tabParam && TABS.some((t) => t.id === tabParam) && tabParam !== activeTab) {
       setActiveTab(tabParam);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabParam]);
 
   function handleTabChange(tab: Tab) {
