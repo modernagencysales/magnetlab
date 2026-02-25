@@ -57,7 +57,7 @@ function getAnthropicClient(): Anthropic {
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY is not set in environment variables");
   }
-  return new Anthropic({ apiKey, timeout: 30_000 });
+  return new Anthropic({ apiKey, timeout: 120_000 });
 }
 
 function slugify(text: string): string {
@@ -165,7 +165,7 @@ function selectBestConcept(
 export const createLeadMagnetPipeline = task({
   id: "create-lead-magnet-pipeline",
   retry: {
-    maxAttempts: 1,
+    maxAttempts: 2,
   },
   run: async (payload: CreateLeadMagnetPipelinePayload) => {
     const { userId, userName, username, archetype, businessContext, topic, leadMagnetId } = payload;
