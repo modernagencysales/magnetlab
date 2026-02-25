@@ -3,7 +3,7 @@
 // PATCH /api/public/lead - Submit qualification answers
 // No auth required
 
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { deliverWebhook } from '@/lib/webhooks/sender';
 import { triggerEmailSequenceIfActive, triggerEmailFlowIfActive, upsertSubscriberFromLead, getSenderInfo, getUserResendConfig } from '@/lib/services/email-sequence-trigger';
@@ -16,6 +16,7 @@ import { resolveFullQuestionsForFunnel } from '@/lib/services/qualification';
 import { fireTrackingPixelLeadEvent, fireTrackingPixelQualifiedEvent } from '@/lib/services/tracking-pixels';
 import { getPostHogServerClient } from '@/lib/posthog';
 import { syncLeadToEmailProviders } from '@/lib/integrations/email-marketing';
+import { syncLeadToGoHighLevel } from '@/lib/integrations/gohighlevel/sync';
 
 /**
  * Scan qualification answers for a LinkedIn profile URL.
@@ -164,128 +165,145 @@ export async function POST(request: Request) {
       resourceUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.magnetlab.app'}/p/${funnelOwner.username}/${funnel.slug}/content`;
     }
 
-    // Deliver webhook (async, don't wait)
-    deliverWebhook(funnel.user_id, 'lead.created', {
-      leadId: lead.id,
-      email: lead.email,
-      name: lead.name,
-      isQualified: null,
-      qualificationAnswers: null,
-      surveyAnswers: null,
-      leadMagnetTitle: leadMagnet?.title || '',
-      funnelPageSlug: funnel.slug,
-      utmSource: lead.utm_source,
-      utmMedium: lead.utm_medium,
-      utmCampaign: lead.utm_campaign,
-      createdAt: lead.created_at,
-    }).catch((err) => logApiError('public/lead/webhook', err, { leadId: lead.id }));
-
-    // Fire GTM system webhook (async, don't wait — only for GTM system owner's leads)
-    fireGtmLeadCreatedWebhook({
-      email: lead.email,
-      name: lead.name,
-      leadMagnetId: funnel.lead_magnet_id,
-      leadMagnetTitle: leadMagnet?.title || '',
-      funnelPageId: funnel.id,
-      funnelPageSlug: funnel.slug,
-      resourceUrl,
-      isQualified: false,
-      utmSource: lead.utm_source,
-      utmMedium: lead.utm_medium,
-      utmCampaign: lead.utm_campaign,
-      createdAt: lead.created_at,
-    }, funnel.user_id).catch((err) => logApiError('public/lead/gtm-webhook', err, { leadId: lead.id }));
-
-    // Deliver to user's Conductor instance (async, don't wait)
-    deliverConductorWebhook(funnel.user_id, 'lead.created', {
-      email: lead.email,
-      name: lead.name,
-      leadMagnetTitle: leadMagnet?.title || '',
-      funnelPageSlug: funnel.slug,
-      utmSource: lead.utm_source,
-      utmMedium: lead.utm_medium,
-      utmCampaign: lead.utm_campaign,
-      createdAt: lead.created_at,
-    }).catch((err) => logApiError('public/lead/conductor-webhook', err, { leadId: lead.id }));
-
-    // Sync to email marketing providers (fire-and-forget)
-    syncLeadToEmailProviders(funnelPageId, { email, name }).catch((err) =>
-      console.error('[lead-capture] Email marketing sync error:', err)
-    );
-
-    // ALWAYS upsert subscriber for the team (non-blocking)
-    if (funnel.team_id) {
-      upsertSubscriberFromLead({
-        teamId: funnel.team_id,
+    // Use after() to run post-response work — keeps serverless function alive
+    // Without this, Vercel kills fire-and-forget promises after response is sent
+    after(async () => {
+      // Deliver user-configured webhooks
+      await deliverWebhook(funnel.user_id, 'lead.created', {
+        leadId: lead.id,
         email: lead.email,
         name: lead.name,
-        leadMagnetId: funnel.lead_magnet_id,
-      }).catch(() => {}); // fire and forget
-    }
+        isQualified: null,
+        qualificationAnswers: null,
+        surveyAnswers: null,
+        leadMagnetTitle: leadMagnet?.title || '',
+        funnelPageSlug: funnel.slug,
+        utmSource: lead.utm_source,
+        utmMedium: lead.utm_medium,
+        utmCampaign: lead.utm_campaign,
+        createdAt: lead.created_at,
+      }).catch((err) => logApiError('public/lead/webhook', err, { leadId: lead.id }));
 
-    // Try new email flow system first, then fall back to old sequences, then resource email
-    triggerEmailFlowIfActive({
-      teamId: funnel.team_id || '',
-      userId: funnel.user_id,
-      email: lead.email,
-      name: lead.name,
-      leadMagnetId: funnel.lead_magnet_id,
-    }).then(async (flowResult) => {
-      if (flowResult.triggered) return;
-
-      // Fall back to old email sequence system
-      return triggerEmailSequenceIfActive({
-        leadId: lead.id,
-        userId: funnel.user_id,
+      // Fire GTM system webhook (only for GTM system owner's leads)
+      await fireGtmLeadCreatedWebhook({
         email: lead.email,
         name: lead.name,
         leadMagnetId: funnel.lead_magnet_id,
         leadMagnetTitle: leadMagnet?.title || '',
-      }).then(async (seqResult) => {
-        if (seqResult.triggered) return;
+        funnelPageId: funnel.id,
+        funnelPageSlug: funnel.slug,
+        resourceUrl,
+        isQualified: false,
+        utmSource: lead.utm_source,
+        utmMedium: lead.utm_medium,
+        utmCampaign: lead.utm_campaign,
+        createdAt: lead.created_at,
+      }, funnel.user_id).catch((err) => logApiError('public/lead/gtm-webhook', err, { leadId: lead.id }));
 
-        // No active flow or sequence — check if default resource email is enabled
-        if (!funnel.send_resource_email || !resourceUrl) return;
+      // Deliver to user's Conductor instance
+      await deliverConductorWebhook(funnel.user_id, 'lead.created', {
+        email: lead.email,
+        name: lead.name,
+        leadMagnetTitle: leadMagnet?.title || '',
+        funnelPageSlug: funnel.slug,
+        utmSource: lead.utm_source,
+        utmMedium: lead.utm_medium,
+        utmCampaign: lead.utm_campaign,
+        createdAt: lead.created_at,
+      }).catch((err) => logApiError('public/lead/conductor-webhook', err, { leadId: lead.id }));
 
-        try {
-          const [senderInfo, resendConfig] = await Promise.all([
-            getSenderInfo(funnel.user_id),
-            getUserResendConfig(funnel.user_id),
-          ]);
+      // Sync to email marketing providers
+      await syncLeadToEmailProviders(funnelPageId, { email, name }).catch((err) =>
+        console.error('[lead-capture] Email marketing sync error:', err)
+      );
 
-          await sendResourceEmail.trigger({
-            leadEmail: lead.email,
-            leadName: lead.name,
+      // Upsert subscriber for the team
+      if (funnel.team_id) {
+        await upsertSubscriberFromLead({
+          teamId: funnel.team_id,
+          email: lead.email,
+          name: lead.name,
+          leadMagnetId: funnel.lead_magnet_id,
+        }).catch(() => {});
+      }
+
+      // Try new email flow system first, then fall back to old sequences, then resource email
+      try {
+        const flowResult = await triggerEmailFlowIfActive({
+          teamId: funnel.team_id || '',
+          userId: funnel.user_id,
+          email: lead.email,
+          name: lead.name,
+          leadMagnetId: funnel.lead_magnet_id,
+        });
+
+        if (!flowResult.triggered) {
+          const seqResult = await triggerEmailSequenceIfActive({
+            leadId: lead.id,
+            userId: funnel.user_id,
+            email: lead.email,
+            name: lead.name,
+            leadMagnetId: funnel.lead_magnet_id,
             leadMagnetTitle: leadMagnet?.title || '',
-            resourceUrl,
-            senderName: resendConfig?.fromName || senderInfo.senderName,
-            senderEmail: resendConfig?.fromEmail || senderInfo.senderEmail,
-            resendConfig,
           });
-        } catch (err) {
-          logApiError('public/lead/resource-email', err, { leadId: lead.id });
+
+          if (!seqResult.triggered && funnel.send_resource_email && resourceUrl) {
+            const [senderInfo, resendConfig] = await Promise.all([
+              getSenderInfo(funnel.user_id),
+              getUserResendConfig(funnel.user_id),
+            ]);
+
+            await sendResourceEmail.trigger({
+              leadEmail: lead.email,
+              leadName: lead.name,
+              leadMagnetTitle: leadMagnet?.title || '',
+              resourceUrl,
+              senderName: resendConfig?.fromName || senderInfo.senderName,
+              senderEmail: resendConfig?.fromEmail || senderInfo.senderEmail,
+              resendConfig,
+            });
+          }
         }
-      });
-    }).catch((err) => logApiError('public/lead/email', err, { leadId: lead.id }));
+      } catch (err) {
+        logApiError('public/lead/email', err, { leadId: lead.id });
+      }
 
-    // Fire tracking pixel events (Meta CAPI, LinkedIn CAPI) — async, non-blocking
-    fireTrackingPixelLeadEvent({
-      userId: funnel.user_id,
-      leadId: lead.id,
-      email: lead.email,
-      firstName: lead.name || null,
-      ipAddress: ip !== 'unknown' ? ip : null,
-      userAgent,
-      sourceUrl: request.headers.get('referer') || undefined,
-      fbc: fbc || null,
-      fbp: fbp || null,
-      utmSource: lead.utm_source,
-      utmMedium: lead.utm_medium,
-      utmCampaign: lead.utm_campaign,
-      leadMagnetTitle: leadMagnet?.title || null,
-    }).catch((err) => logApiError('public/lead/tracking-pixels', err, { leadId: lead.id }));
+      // Fire tracking pixel events (Meta CAPI, LinkedIn CAPI)
+      await fireTrackingPixelLeadEvent({
+        userId: funnel.user_id,
+        leadId: lead.id,
+        email: lead.email,
+        firstName: lead.name || null,
+        ipAddress: ip !== 'unknown' ? ip : null,
+        userAgent,
+        sourceUrl: request.headers.get('referer') || undefined,
+        fbc: fbc || null,
+        fbp: fbp || null,
+        utmSource: lead.utm_source,
+        utmMedium: lead.utm_medium,
+        utmCampaign: lead.utm_campaign,
+        leadMagnetTitle: leadMagnet?.title || null,
+      }).catch((err) => logApiError('public/lead/tracking-pixels', err, { leadId: lead.id }));
 
-    try { getPostHogServerClient()?.capture({ distinctId: funnel.user_id, event: 'lead_captured', properties: { funnel_page_id: funnelPageId, lead_magnet_title: leadMagnet?.title || '', utm_source: utmSource || null, utm_medium: utmMedium || null, utm_campaign: utmCampaign || null } }); } catch {}
+      // Sync to GoHighLevel CRM
+      await syncLeadToGoHighLevel({
+        userId: funnel.user_id,
+        funnelPageId: funnelPageId,
+        lead: {
+          email: lead.email,
+          name: lead.name,
+          utmSource: lead.utm_source,
+          utmMedium: lead.utm_medium,
+          utmCampaign: lead.utm_campaign,
+          isQualified: null,
+          qualificationAnswers: null,
+        },
+        leadMagnetTitle: leadMagnet?.title || '',
+        funnelSlug: funnel.slug,
+      }).catch((err) => logApiError('public/lead/gohighlevel', err, { leadId: lead.id }));
+
+      try { getPostHogServerClient()?.capture({ distinctId: funnel.user_id, event: 'lead_captured', properties: { funnel_page_id: funnelPageId, lead_magnet_title: leadMagnet?.title || '', utm_source: utmSource || null, utm_medium: utmMedium || null, utm_campaign: utmCampaign || null } }); } catch {}
+    });
 
     return NextResponse.json({
       leadId: lead.id,
@@ -453,68 +471,86 @@ export async function PATCH(request: Request) {
     // Deliver webhook with updated info
     const leadMagnets = funnel?.lead_magnets as { title: string } | { title: string }[] | null;
     const leadMagnetTitle = Array.isArray(leadMagnets) ? leadMagnets[0]?.title || '' : leadMagnets?.title || '';
-    deliverWebhook(lead.user_id, 'lead.created', {
-      leadId: lead.id,
-      email: lead.email,
-      name: lead.name,
-      isQualified,
-      qualificationAnswers: answers,
-      surveyAnswers,
-      leadMagnetTitle,
-      funnelPageSlug: funnel?.slug || '',
-      utmSource: updatedLead.utm_source,
-      utmMedium: updatedLead.utm_medium,
-      utmCampaign: updatedLead.utm_campaign,
-      createdAt: updatedLead.created_at,
-    }).catch((err) => logApiError('public/lead/webhook', err, { leadId: lead.id }));
 
-    // Fire tracking pixel qualified events (async, non-blocking)
-    fireTrackingPixelQualifiedEvent({
-      userId: lead.user_id,
-      leadId: lead.id,
-      email: lead.email,
-      firstName: lead.name || null,
-      ipAddress: patchIp !== 'unknown' ? patchIp : null,
-      userAgent: patchUserAgent,
-      sourceUrl: patchReferer,
-      utmSource: updatedLead.utm_source,
-      utmMedium: updatedLead.utm_medium,
-      utmCampaign: updatedLead.utm_campaign,
-      leadMagnetTitle: leadMagnetTitle || null,
-      isQualified,
-      qualificationAnswers: answers,
-    }).catch((err) => logApiError('public/lead/tracking-pixels-qualified', err, { leadId: lead.id }));
+    // Use after() to run post-response work — keeps serverless function alive
+    after(async () => {
+      await deliverWebhook(lead.user_id, 'lead.created', {
+        leadId: lead.id,
+        email: lead.email,
+        name: lead.name,
+        isQualified,
+        qualificationAnswers: answers,
+        surveyAnswers,
+        leadMagnetTitle,
+        funnelPageSlug: funnel?.slug || '',
+        utmSource: updatedLead.utm_source,
+        utmMedium: updatedLead.utm_medium,
+        utmCampaign: updatedLead.utm_campaign,
+        createdAt: updatedLead.created_at,
+      }).catch((err) => logApiError('public/lead/webhook', err, { leadId: lead.id }));
 
-    // Fire GTM system webhook for lead qualification (async, don't wait — only for GTM system owner's leads)
-    fireGtmLeadQualifiedWebhook({
-      email: lead.email,
-      name: lead.name,
-      leadMagnetTitle: leadMagnetTitle || null,
-      funnelPageSlug: funnel?.slug || null,
-      isQualified,
-      qualificationAnswers: answers,
-      utmSource: updatedLead.utm_source,
-      utmMedium: updatedLead.utm_medium,
-      utmCampaign: updatedLead.utm_campaign,
-    }, lead.user_id).catch((err) => logApiError('public/lead/gtm-webhook-qualified', err, { leadId: lead.id }));
+      await fireTrackingPixelQualifiedEvent({
+        userId: lead.user_id,
+        leadId: lead.id,
+        email: lead.email,
+        firstName: lead.name || null,
+        ipAddress: patchIp !== 'unknown' ? patchIp : null,
+        userAgent: patchUserAgent,
+        sourceUrl: patchReferer,
+        utmSource: updatedLead.utm_source,
+        utmMedium: updatedLead.utm_medium,
+        utmCampaign: updatedLead.utm_campaign,
+        leadMagnetTitle: leadMagnetTitle || null,
+        isQualified,
+        qualificationAnswers: answers,
+      }).catch((err) => logApiError('public/lead/tracking-pixels-qualified', err, { leadId: lead.id }));
 
-    // Deliver to user's Conductor instance (async, don't wait)
-    deliverConductorWebhook(lead.user_id, 'lead.qualified', {
-      email: lead.email,
-      name: lead.name,
-      funnelLeadId: lead.id,
-      leadMagnetTitle: leadMagnetTitle || null,
-      funnelPageSlug: funnel?.slug || null,
-      isQualified,
-      qualificationAnswers: answers,
-      surveyAnswers,
-      linkedinUrl: extractLinkedInUrl(answers),
-      utmSource: updatedLead.utm_source,
-      utmMedium: updatedLead.utm_medium,
-      utmCampaign: updatedLead.utm_campaign,
-    }).catch((err) => logApiError('public/lead/conductor-webhook-qualified', err, { leadId: lead.id }));
+      await fireGtmLeadQualifiedWebhook({
+        email: lead.email,
+        name: lead.name,
+        leadMagnetTitle: leadMagnetTitle || null,
+        funnelPageSlug: funnel?.slug || null,
+        isQualified,
+        qualificationAnswers: answers,
+        utmSource: updatedLead.utm_source,
+        utmMedium: updatedLead.utm_medium,
+        utmCampaign: updatedLead.utm_campaign,
+      }, lead.user_id).catch((err) => logApiError('public/lead/gtm-webhook-qualified', err, { leadId: lead.id }));
 
-    try { getPostHogServerClient()?.capture({ distinctId: lead.user_id, event: 'lead_qualified', properties: { is_qualified: isQualified, question_count: questions?.length || 0 } }); } catch {}
+      await deliverConductorWebhook(lead.user_id, 'lead.qualified', {
+        email: lead.email,
+        name: lead.name,
+        funnelLeadId: lead.id,
+        leadMagnetTitle: leadMagnetTitle || null,
+        funnelPageSlug: funnel?.slug || null,
+        isQualified,
+        qualificationAnswers: answers,
+        surveyAnswers,
+        linkedinUrl: extractLinkedInUrl(answers),
+        utmSource: updatedLead.utm_source,
+        utmMedium: updatedLead.utm_medium,
+        utmCampaign: updatedLead.utm_campaign,
+      }).catch((err) => logApiError('public/lead/conductor-webhook-qualified', err, { leadId: lead.id }));
+
+      // Sync updated lead to GoHighLevel CRM (with qualification data)
+      await syncLeadToGoHighLevel({
+        userId: lead.user_id,
+        funnelPageId: lead.funnel_page_id,
+        lead: {
+          email: lead.email,
+          name: lead.name,
+          utmSource: updatedLead.utm_source,
+          utmMedium: updatedLead.utm_medium,
+          utmCampaign: updatedLead.utm_campaign,
+          isQualified,
+          qualificationAnswers: answers,
+        },
+        leadMagnetTitle: leadMagnetTitle || '',
+        funnelSlug: funnel?.slug || '',
+      }).catch((err) => logApiError('public/lead/gohighlevel-qualified', err, { leadId: lead.id }));
+
+      try { getPostHogServerClient()?.capture({ distinctId: lead.user_id, event: 'lead_qualified', properties: { is_qualified: isQualified, question_count: questions?.length || 0 } }); } catch {}
+    });
 
     return NextResponse.json({
       leadId: lead.id,
