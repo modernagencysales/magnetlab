@@ -4,6 +4,37 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
 import { logError } from '@/lib/utils/logger';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const supabase = createSupabaseAdminClient();
+
+    const { data, error } = await supabase
+      .from('cp_content_ideas')
+      .select('id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, composite_score, hook, key_points, source_quote, target_audience, status, team_profile_id, created_at, updated_at')
+      .eq('id', id)
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: 'Idea not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ idea: data });
+  } catch (error) {
+    logError('cp/ideas', error, { step: 'idea_get_error' });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

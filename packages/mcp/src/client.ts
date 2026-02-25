@@ -751,7 +751,15 @@ export class MagnetLabClient {
   }
 
   async matchTemplate(params: { ideaId: string }) {
-    return this.request<{ matches: unknown[] }>('POST', `/content-pipeline/templates/match`, params)
+    // Fetch the idea first to get its topic text for semantic matching
+    const ideaResult = await this.request<{ idea: Record<string, unknown> }>('GET', `/content-pipeline/ideas/${params.ideaId}`)
+    const idea = ideaResult.idea
+    // Build topic text from idea fields (title + core_insight gives best semantic match)
+    const topic = [idea?.title, idea?.core_insight].filter(Boolean).join(' — ')
+    if (!topic) {
+      throw new Error('Could not extract topic text from idea — idea may not exist or has no title/insight')
+    }
+    return this.request<{ matches: unknown[] }>('POST', `/content-pipeline/templates/match`, { topic })
   }
 
   // ============================================================

@@ -129,6 +129,177 @@ export const toolHelpTool: Tool = {
 }
 
 /**
+ * Workflow guide tool — returns step-by-step recipes for common tasks.
+ * IMPORTANT: Call this FIRST before starting any multi-step task.
+ */
+export const guideTool: Tool = {
+  name: 'magnetlab_guide',
+  description:
+    'CALL THIS FIRST before any task. Returns the step-by-step workflow for common tasks like creating lead magnets, writing posts, or setting up funnels. Always check the guide before starting work to ensure you follow the correct sequence.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      task: {
+        type: 'string',
+        description: 'What you want to do',
+        enum: [
+          'create_lead_magnet',
+          'write_linkedin_post',
+          'setup_funnel',
+          'analyze_content_gaps',
+          'plan_content_week',
+          'list_tasks',
+        ],
+      },
+    },
+    required: ['task'],
+  },
+}
+
+/**
+ * Workflow recipes keyed by task name.
+ */
+export const workflowRecipes: Record<string, string> = {
+  create_lead_magnet: `# Creating a Lead Magnet — Workflow
+
+The AI Brain (knowledge base) contains the user's REAL expertise extracted from call transcripts.
+The brand kit is for VISUAL styling only (colors, fonts) — never use it for content substance.
+
+## Steps
+
+1. RESEARCH — Search the AI Brain for expertise on the topic
+   → magnetlab_execute({tool: "magnetlab_search_knowledge", arguments: {query: "<topic>"}})
+   → magnetlab_execute({tool: "magnetlab_ask_knowledge", arguments: {question: "What are the key insights about <topic>?"}})
+   → magnetlab_execute({tool: "magnetlab_list_topics", arguments: {}})
+
+2. ASSESS — Check if there's enough knowledge for this lead magnet
+   → magnetlab_execute({tool: "magnetlab_knowledge_readiness", arguments: {topic: "<topic>", goal: "lead_magnet"}})
+   If readiness is low, tell the user they may need to add more transcripts first.
+
+3. IDEATE — Present research findings to the user, discuss the angle
+   Share what you found in the AI Brain. Let the user confirm the direction.
+   Use specific insights, stories, and frameworks from step 1.
+
+4. CREATE — Build the lead magnet with research-informed input
+   → magnetlab_execute({tool: "magnetlab_create_lead_magnet", arguments: {
+       title: "...",
+       archetype: "...",  // e.g. single-breakdown, focused-toolkit, assessment
+       business_context: "..."  // Include specific insights from the AI Brain here
+     }})
+
+5. POLISH — Review and refine the content
+   → magnetlab_execute({tool: "magnetlab_get_lead_magnet", arguments: {id: "..."}})
+
+## Key principle
+The lead magnet should sound like the user — use their actual language, stories, and frameworks from the AI Brain. Never generate generic content when real expertise is available.`,
+
+  write_linkedin_post: `# Writing a LinkedIn Post — Workflow
+
+## Steps
+
+1. RESEARCH — Pull relevant knowledge
+   → magnetlab_execute({tool: "magnetlab_search_knowledge", arguments: {query: "<topic>"}})
+   → magnetlab_execute({tool: "magnetlab_ask_knowledge", arguments: {question: "..."}})
+
+2. CHECK IDEAS — See if there are existing content ideas on this topic
+   → magnetlab_execute({tool: "magnetlab_list_ideas", arguments: {status: "extracted"}})
+
+3a. WRITE FROM IDEA (if matching idea exists)
+   → magnetlab_execute({tool: "magnetlab_write_post_from_idea", arguments: {idea_id: "..."}})
+
+3b. QUICK WRITE (if no matching idea)
+   → magnetlab_execute({tool: "magnetlab_quick_write", arguments: {topic: "..."}})
+
+4. POLISH
+   → magnetlab_execute({tool: "magnetlab_polish_post", arguments: {id: "..."}})
+
+5. REVIEW with user, then schedule or publish
+   → magnetlab_execute({tool: "magnetlab_schedule_post", arguments: {post_id: "...", scheduled_time: "..."}})
+
+## Key principle
+Always ground posts in real insights from the AI Brain. The user's actual stories and frameworks make posts authentic.`,
+
+  setup_funnel: `# Setting Up a Funnel — Workflow
+
+## Steps
+
+1. Ensure a lead magnet exists (create one first if needed — use create_lead_magnet workflow)
+
+2. CREATE FUNNEL
+   → magnetlab_execute({tool: "magnetlab_create_funnel", arguments: {lead_magnet_id: "...", title: "..."}})
+
+3. CUSTOMIZE PAGES — Edit sections, apply theme
+   → magnetlab_execute({tool: "magnetlab_list_funnel_sections", arguments: {funnel_id: "..."}})
+   → magnetlab_execute({tool: "magnetlab_update_funnel_section", arguments: {id: "...", ...}})
+
+4. SET UP QUALIFICATION (optional)
+   → magnetlab_execute({tool: "magnetlab_create_qualification_form", arguments: {funnel_page_id: "...", questions: [...]}})
+
+5. SET UP EMAIL SEQUENCE (optional)
+   → magnetlab_execute({tool: "magnetlab_create_email_sequence", arguments: {funnel_page_id: "...", ...}})
+
+6. PUBLISH
+   → magnetlab_execute({tool: "magnetlab_publish_funnel", arguments: {funnel_id: "..."}})`,
+
+  analyze_content_gaps: `# Analyzing Content Gaps — Workflow
+
+## Steps
+
+1. LIST TOPICS — See what's in the knowledge base
+   → magnetlab_execute({tool: "magnetlab_list_topics", arguments: {}})
+
+2. CHECK GAPS — Find what's missing
+   → magnetlab_execute({tool: "magnetlab_knowledge_gaps", arguments: {}})
+
+3. ASSESS READINESS for specific goals
+   → magnetlab_execute({tool: "magnetlab_knowledge_readiness", arguments: {topic: "...", goal: "content_week"}})
+
+4. REVIEW RECENT — What's been added lately?
+   → magnetlab_execute({tool: "magnetlab_recent_knowledge", arguments: {days: 14}})
+
+5. Present findings to user with recommendations:
+   - Which topics are strong (ready for lead magnets/posts)
+   - Which topics have gaps (need more transcripts)
+   - Suggested next transcripts to upload`,
+
+  plan_content_week: `# Planning a Content Week — Workflow
+
+## Steps
+
+1. CHECK KNOWLEDGE — What topics have strong coverage?
+   → magnetlab_execute({tool: "magnetlab_list_topics", arguments: {}})
+   → magnetlab_execute({tool: "magnetlab_knowledge_gaps", arguments: {}})
+
+2. REVIEW IDEAS — What content ideas are ready?
+   → magnetlab_execute({tool: "magnetlab_list_ideas", arguments: {status: "extracted"}})
+
+3. CHECK CURRENT SCHEDULE
+   → magnetlab_execute({tool: "magnetlab_get_autopilot_status", arguments: {}})
+   → magnetlab_execute({tool: "magnetlab_list_posting_slots", arguments: {}})
+
+4. GENERATE PLAN
+   → magnetlab_execute({tool: "magnetlab_generate_plan", arguments: {week_count: 1}})
+
+5. REVIEW with user, then approve
+   → magnetlab_execute({tool: "magnetlab_approve_plan", arguments: {plan_id: "..."}})
+
+6. Optionally TRIGGER AUTOPILOT to write drafts
+   → magnetlab_execute({tool: "magnetlab_trigger_autopilot", arguments: {posts_per_batch: 5}})`,
+
+  list_tasks: `# Available Workflows
+
+Call magnetlab_guide with one of these tasks:
+
+- create_lead_magnet — Research expertise, then create a knowledge-grounded lead magnet
+- write_linkedin_post — Write an authentic post using AI Brain insights
+- setup_funnel — Build an opt-in funnel with pages, qualification, and email sequence
+- analyze_content_gaps — Find knowledge gaps and content opportunities
+- plan_content_week — Plan and schedule a week of content
+
+For any task: the AI Brain (magnetlab_knowledge category) contains the user's real expertise from call transcripts. ALWAYS search it before creating content.`,
+}
+
+/**
  * Maps category tool names back to their discovery category key.
  */
 export const categoryToolToKey = new Map<string, DiscoveryCategoryKey>(

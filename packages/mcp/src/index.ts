@@ -11,12 +11,14 @@ import {
   categoryTools,
   executeGatewayTool,
   toolHelpTool,
+  guideTool,
+  workflowRecipes,
   categoryToolToKey,
   getCategoryLabel,
   getCategoryToolCount,
 } from './tools/category-tools.js'
 
-const VERSION = '0.4.0'
+const VERSION = '0.4.4'
 
 // Re-export constants and types for consumers
 export * from './constants.js'
@@ -67,9 +69,9 @@ async function startServer(apiKey: string, baseUrl: string | undefined) {
     { capabilities: { tools: {} } }
   )
 
-  // Only 14 tools registered: 11 categories + execute + tool_help
+  // 15 tools registered: 12 categories + execute + tool_help + guide
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: [...categoryTools, executeGatewayTool, toolHelpTool],
+    tools: [guideTool, ...categoryTools, executeGatewayTool, toolHelpTool],
   }))
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -92,6 +94,32 @@ async function startServer(apiKey: string, baseUrl: string | undefined) {
             text: `${getCategoryLabel(categoryKey)} — ${getCategoryToolCount(categoryKey)} tools:\n\n${slimList}\n\nUse magnetlab_tool_help({tool: "tool_name"}) to see parameters, then magnetlab_execute({tool: "tool_name", arguments: {...}}) to call it.`,
           },
         ],
+      }
+    }
+
+    // Handle guide — return workflow recipe
+    if (name === 'magnetlab_guide') {
+      const task = (args as Record<string, unknown>)?.task as string
+      if (!task) {
+        return {
+          content: [{ type: 'text', text: workflowRecipes['list_tasks'] }],
+        }
+      }
+
+      const recipe = workflowRecipes[task]
+      if (!recipe) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Unknown task: "${task}". ${workflowRecipes['list_tasks']}`,
+            },
+          ],
+        }
+      }
+
+      return {
+        content: [{ type: 'text', text: recipe }],
       }
     }
 

@@ -4,6 +4,8 @@ import {
   categoryTools,
   executeGatewayTool,
   toolHelpTool,
+  guideTool,
+  workflowRecipes,
   categoryToolToKey,
   getCategoryLabel,
   getCategoryToolCount,
@@ -289,5 +291,51 @@ describe('Tool Help Tool', () => {
     expect(toolsByName.has('magnetlab_tool_help')).toBe(false)
     const categoryNames = new Set(categoryTools.map((t) => t.name))
     expect(categoryNames.has('magnetlab_tool_help')).toBe(false)
+  })
+})
+
+describe('Guide Tool', () => {
+  it('has the correct name', () => {
+    expect(guideTool.name).toBe('magnetlab_guide')
+  })
+
+  it('requires the "task" parameter', () => {
+    const schema = guideTool.inputSchema as { required?: string[] }
+    expect(schema.required).toContain('task')
+  })
+
+  it('has enum of available tasks', () => {
+    const schema = guideTool.inputSchema as { properties?: Record<string, { enum?: string[] }> }
+    expect(schema.properties?.task?.enum).toBeDefined()
+    expect(schema.properties!.task!.enum!.length).toBeGreaterThan(0)
+  })
+
+  it('every enum task has a workflow recipe', () => {
+    const schema = guideTool.inputSchema as { properties?: Record<string, { enum?: string[] }> }
+    const tasks = schema.properties!.task!.enum!
+    for (const task of tasks) {
+      expect(workflowRecipes[task], `missing recipe for task: ${task}`).toBeTruthy()
+    }
+  })
+
+  it('every recipe references magnetlab_execute', () => {
+    for (const [task, recipe] of Object.entries(workflowRecipes)) {
+      if (task === 'list_tasks') continue
+      expect(recipe, `recipe "${task}" should reference magnetlab_execute`).toContain(
+        'magnetlab_execute'
+      )
+    }
+  })
+
+  it('create_lead_magnet recipe references knowledge search', () => {
+    expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_search_knowledge')
+    expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_ask_knowledge')
+    expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_knowledge_readiness')
+  })
+
+  it('does not collide with any real or category tool name', () => {
+    expect(toolsByName.has('magnetlab_guide')).toBe(false)
+    const categoryNames = new Set(categoryTools.map((t) => t.name))
+    expect(categoryNames.has('magnetlab_guide')).toBe(false)
   })
 })
