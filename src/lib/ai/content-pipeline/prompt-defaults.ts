@@ -899,7 +899,7 @@ Return JSON with "patterns" array. Each pattern has:
 
 Only include patterns that represent deliberate style choices, not typo fixes.
 Return {"patterns": []} if no meaningful style changes detected.`,
-  model: 'claude-haiku-4-5-20250514',
+  model: 'claude-haiku-4-5-20251001',
   temperature: 1.0,
   max_tokens: 500,
   variables: [
@@ -953,7 +953,7 @@ Do NOT use headers or bullet points — write flowing paragraphs. Reference spec
 
 KNOWLEDGE ENTRIES:
 {{knowledge_sections}}`,
-  model: 'claude-haiku-4-5-20250514',
+  model: 'claude-haiku-4-5-20251001',
   temperature: 1.0,
   max_tokens: 1500,
   variables: [

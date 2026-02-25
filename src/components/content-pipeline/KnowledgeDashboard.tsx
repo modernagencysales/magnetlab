@@ -17,21 +17,36 @@ const SUBTABS = [
 
 type SubtabId = typeof SUBTABS[number]['id'];
 
+function getActiveTeamFromCookie(): string | undefined {
+  const match = document.cookie.match(/(?:^|;\s*)ml-team-context=([^;]*)/);
+  return match?.[1] || undefined;
+}
+
 export function KnowledgeDashboard() {
   const [activeTab, setActiveTab] = useState<SubtabId>('overview');
   const [teamId, setTeamId] = useState<string | undefined>();
   const [userTeamId, setUserTeamId] = useState<string | undefined>();
+  const [isTeamMode, setIsTeamMode] = useState(false);
 
   useEffect(() => {
-    fetch('/api/teams')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!data) return;
-        const firstTeam =
-          data.owned?.[0]?.team_id ?? data.member?.[0]?.team_id ?? undefined;
-        setUserTeamId(firstTeam);
-      })
-      .catch(() => {});
+    // Read the active team from the cookie (set by team-select page)
+    const cookieTeamId = getActiveTeamFromCookie();
+    if (cookieTeamId) {
+      setUserTeamId(cookieTeamId);
+      setTeamId(cookieTeamId);
+      setIsTeamMode(true);
+    } else {
+      // Personal mode — check if user has any teams for the toggle
+      fetch('/api/teams')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!data) return;
+          const firstTeam =
+            data.owned?.[0]?.team_id ?? data.member?.[0]?.team_id ?? undefined;
+          setUserTeamId(firstTeam);
+        })
+        .catch(() => {});
+    }
   }, []);
 
   return (

@@ -13,13 +13,25 @@ import type {
 
 export async function verifyTeamMembership(userId: string, teamId: string): Promise<boolean> {
   const supabase = createSupabaseAdminClient();
-  const { data } = await supabase
-    .from('team_members')
+
+  // Check V2 team_profiles first (has team_id + user_id columns)
+  const { data: v2 } = await supabase
+    .from('team_profiles')
     .select('id')
     .eq('user_id', userId)
     .eq('team_id', teamId)
+    .eq('status', 'active')
     .limit(1);
-  return (data !== null && data.length > 0);
+  if (v2 && v2.length > 0) return true;
+
+  // Fallback: check if user owns this team
+  const { data: owned } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('id', teamId)
+    .eq('owner_id', userId)
+    .limit(1);
+  return (owned !== null && owned.length > 0);
 }
 
 export interface SearchKnowledgeResult {

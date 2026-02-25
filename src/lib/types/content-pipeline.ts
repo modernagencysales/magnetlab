@@ -62,7 +62,7 @@ export type KnowledgeCategory = 'insight' | 'question' | 'product_intel';
 
 export type KnowledgeSpeaker = 'host' | 'participant' | 'unknown';
 
-export type TranscriptType = 'coaching' | 'sales';
+export type TranscriptType = 'coaching' | 'sales' | 'external' | 'blueprint_analysis' | 'dfy_content_call' | 'interview' | 'webinar' | 'other';
 
 export const KNOWLEDGE_CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
   insight: 'Insight',
