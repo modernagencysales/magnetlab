@@ -87,7 +87,7 @@ export function ContentPageClient({
 
   // Build TOC sections
   const tocSections = displayContent
-    ? displayContent.sections.map((s) => ({ id: s.id, name: s.sectionName }))
+    ? displayContent.sections.map((s) => ({ id: `section-${s.id}`, name: s.sectionName }))
     : extractedContent
       ? extractedContent.structure.map((s, i) => ({ id: `section-${i}`, name: s.sectionName }))
       : [];
