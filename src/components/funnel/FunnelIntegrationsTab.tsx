@@ -11,6 +11,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   mailerlite: 'MailerLite',
   mailchimp: 'Mailchimp',
   activecampaign: 'ActiveCampaign',
+  gohighlevel: 'GoHighLevel',
 };
 
 // MailerLite has groups (not tags per list), so we skip tag selection for it
@@ -24,6 +25,7 @@ interface FunnelIntegration {
   tag_id: string | null;
   tag_name: string | null;
   is_active: boolean;
+  settings?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +43,7 @@ interface TagItem {
 interface FunnelIntegrationsTabProps {
   funnelPageId: string;
   connectedProviders: string[];
+  ghlConnected?: boolean;
 }
 
 function IntegrationRow({
@@ -386,9 +389,202 @@ function AddIntegrationForm({
   );
 }
 
+// ---------- GHL Per-Funnel Toggle ----------
+
+function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
+  const [enabled, setEnabled] = useState(false);
+  const [customTags, setCustomTags] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load existing GHL integration for this funnel
+  useEffect(() => {
+    async function loadGHL() {
+      try {
+        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const ghl = (data.integrations || []).find(
+          (i: FunnelIntegration) => i.provider === 'gohighlevel'
+        );
+
+        if (ghl) {
+          setEnabled(ghl.is_active);
+          const tags = (ghl.settings as Record<string, unknown>)?.custom_tags;
+          if (Array.isArray(tags)) {
+            setCustomTags(tags.join(', '));
+          }
+        }
+      } catch (err) {
+        logError('ghl-funnel-toggle', err, { step: 'load_error' });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadGHL();
+  }, [funnelPageId]);
+
+  const saveGHL = async (isActive: boolean, tags?: string) => {
+    const tagsToSave = tags !== undefined ? tags : customTags;
+    const customTagsArray = tagsToSave
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: 'gohighlevel',
+        list_id: 'n/a',
+        list_name: null,
+        tag_id: null,
+        tag_name: null,
+        is_active: isActive,
+        settings: { custom_tags: customTagsArray },
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to save');
+    }
+  };
+
+  const handleToggle = async () => {
+    setToggling(true);
+    setError(null);
+    const newValue = !enabled;
+
+    try {
+      await saveGHL(newValue);
+      setEnabled(newValue);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to toggle');
+      logError('ghl-funnel-toggle', err, { step: 'toggle_error' });
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const handleSaveTags = async () => {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+
+    try {
+      await saveGHL(enabled, customTags);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save tags');
+      logError('ghl-funnel-toggle', err, { step: 'save_tags_error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Loading...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Toggle row */}
+      <div className="flex items-center justify-between rounded-lg border p-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
+            <Settings className="h-4 w-4 text-orange-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">GoHighLevel</p>
+            <p className="text-xs text-muted-foreground">
+              {enabled ? 'Leads pushed to GHL on opt-in' : 'Disabled for this funnel'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleToggle}
+          disabled={toggling}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+          }`}
+        >
+          {toggling ? (
+            <Loader2 className="h-3 w-3 animate-spin mx-auto text-white" />
+          ) : (
+            <span
+              className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                enabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          )}
+        </button>
+      </div>
+
+      {/* Custom tags input (shown when enabled) */}
+      {enabled && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <label className="text-xs font-medium">Custom Tags (comma-separated)</label>
+          <input
+            type="text"
+            value={customTags}
+            onChange={(e) => setCustomTags(e.target.value)}
+            placeholder="e.g. vip, webinar-attendee"
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <p className="text-xs text-muted-foreground">
+            Auto-tags (lead magnet title, funnel slug, &quot;magnetlab&quot;) are always included.
+          </p>
+          <button
+            onClick={handleSaveTags}
+            disabled={saving}
+            className="rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {saving ? (
+              <span className="flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Saving...
+              </span>
+            ) : saved ? (
+              <span className="flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Saved
+              </span>
+            ) : (
+              'Save Tags'
+            )}
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <p className="flex items-center gap-2 text-xs text-red-500">
+          <XCircle className="h-3 w-3" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---------- Main Component ----------
+
 export function FunnelIntegrationsTab({
   funnelPageId,
   connectedProviders,
+  ghlConnected,
 }: FunnelIntegrationsTabProps) {
   const [integrations, setIntegrations] = useState<FunnelIntegration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -441,7 +637,10 @@ export function FunnelIntegrationsTab({
   const mappedProviders = new Set(integrations.map((i) => i.provider));
   const unmappedProviders = connectedProviders.filter((p) => !mappedProviders.has(p));
 
-  if (connectedProviders.length === 0) {
+  const hasNoEmailProviders = connectedProviders.length === 0;
+  const hasNothingToShow = hasNoEmailProviders && !ghlConnected;
+
+  if (hasNothingToShow) {
     return (
       <div className="rounded-lg border border-dashed p-8 text-center">
         <div className="flex justify-center mb-3">
@@ -449,7 +648,7 @@ export function FunnelIntegrationsTab({
             <Mail className="h-6 w-6 text-muted-foreground" />
           </div>
         </div>
-        <h3 className="text-sm font-medium">No email marketing providers connected</h3>
+        <h3 className="text-sm font-medium">No integrations connected</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Connect a provider in Settings to sync leads from this funnel.
         </p>
@@ -474,69 +673,87 @@ export function FunnelIntegrationsTab({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-sm font-semibold">Email Marketing Integrations</h3>
-        <p className="text-xs text-muted-foreground">
-          When a lead opts in to this funnel, they will be automatically added to the lists you configure below.
-        </p>
-      </div>
+      {/* Email Marketing section (only if providers are connected) */}
+      {connectedProviders.length > 0 && (
+        <>
+          <div>
+            <h3 className="text-sm font-semibold">Email Marketing Integrations</h3>
+            <p className="text-xs text-muted-foreground">
+              When a lead opts in to this funnel, they will be automatically added to the lists you configure below.
+            </p>
+          </div>
 
-      {/* Existing integrations */}
-      {integrations.length > 0 && (
-        <div className="space-y-2">
-          {integrations.map((integration) => (
-            <IntegrationRow
-              key={integration.id}
-              integration={integration}
+          {/* Existing integrations */}
+          {integrations.filter((i) => i.provider !== 'gohighlevel').length > 0 && (
+            <div className="space-y-2">
+              {integrations
+                .filter((i) => i.provider !== 'gohighlevel')
+                .map((integration) => (
+                  <IntegrationRow
+                    key={integration.id}
+                    integration={integration}
+                    funnelPageId={funnelPageId}
+                    onRemoved={handleRemoved}
+                    onToggled={handleToggled}
+                  />
+                ))}
+            </div>
+          )}
+
+          {/* Add form */}
+          {addingProvider && (
+            <AddIntegrationForm
+              provider={addingProvider}
               funnelPageId={funnelPageId}
-              onRemoved={handleRemoved}
-              onToggled={handleToggled}
+              onAdded={handleAdded}
+              onCancel={() => setAddingProvider(null)}
             />
-          ))}
-        </div>
+          )}
+
+          {/* Reminder when no integrations are mapped yet */}
+          {integrations.filter((i) => i.provider !== 'gohighlevel').length === 0 && unmappedProviders.length > 0 && !addingProvider && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                Leads from this funnel are <strong>not being synced</strong> to your email provider yet. Add a list below to start syncing.
+              </p>
+            </div>
+          )}
+
+          {/* Add buttons for unmapped providers */}
+          {unmappedProviders.length > 0 && !addingProvider && (
+            <div className="space-y-2">
+              {unmappedProviders.map((provider) => (
+                <button
+                  key={provider}
+                  onClick={() => setAddingProvider(provider)}
+                  className="flex w-full items-center gap-3 rounded-lg border border-dashed p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add {PROVIDER_LABELS[provider] || provider}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* All connected providers are mapped */}
+          {integrations.filter((i) => i.provider !== 'gohighlevel').length > 0 && unmappedProviders.length === 0 && !addingProvider && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <CheckCircle className="h-3 w-3 text-green-500" />
+              All connected providers are configured for this funnel.
+            </p>
+          )}
+        </>
       )}
 
-      {/* Add form */}
-      {addingProvider && (
-        <AddIntegrationForm
-          provider={addingProvider}
-          funnelPageId={funnelPageId}
-          onAdded={handleAdded}
-          onCancel={() => setAddingProvider(null)}
-        />
-      )}
-
-      {/* Reminder when no integrations are mapped yet */}
-      {integrations.length === 0 && unmappedProviders.length > 0 && !addingProvider && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
-          <p className="text-sm text-amber-700 dark:text-amber-400">
-            Leads from this funnel are <strong>not being synced</strong> to your email provider yet. Add a list below to start syncing.
+      {/* CRM section */}
+      {ghlConnected && (
+        <div className="mt-6 pt-4 border-t">
+          <h3 className="text-sm font-semibold mb-1">CRM</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Push leads to your CRM when they opt in.
           </p>
+          <GHLFunnelToggle funnelPageId={funnelPageId} />
         </div>
-      )}
-
-      {/* Add buttons for unmapped providers */}
-      {unmappedProviders.length > 0 && !addingProvider && (
-        <div className="space-y-2">
-          {unmappedProviders.map((provider) => (
-            <button
-              key={provider}
-              onClick={() => setAddingProvider(provider)}
-              className="flex w-full items-center gap-3 rounded-lg border border-dashed p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              Add {PROVIDER_LABELS[provider] || provider}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* All connected providers are mapped */}
-      {integrations.length > 0 && unmappedProviders.length === 0 && !addingProvider && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <CheckCircle className="h-3 w-3 text-green-500" />
-          All connected providers are configured for this funnel.
-        </p>
       )}
     </div>
   );

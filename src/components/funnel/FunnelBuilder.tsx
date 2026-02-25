@@ -107,6 +107,24 @@ export function FunnelBuilder({
     fetchSections();
   }, [fetchSections]);
 
+  // GoHighLevel connection status
+  const [ghlConnected, setGhlConnected] = useState(false);
+
+  useEffect(() => {
+    async function checkGHL() {
+      try {
+        const res = await fetch('/api/integrations/gohighlevel/status');
+        if (res.ok) {
+          const data = await res.json();
+          setGhlConnected(data.connected === true);
+        }
+      } catch {
+        // ignore - GHL section simply won't show
+      }
+    }
+    checkGHL();
+  }, []);
+
   function generateSlug(title: string): string {
     return title
       .toLowerCase()
@@ -408,6 +426,7 @@ export function FunnelBuilder({
             <FunnelIntegrationsTab
               funnelPageId={funnel.id}
               connectedProviders={connectedEmailProviders}
+              ghlConnected={ghlConnected}
             />
           )}
 
