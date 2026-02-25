@@ -329,7 +329,8 @@ export const createLeadMagnetPipeline = task({
               leadMagnetId,
             });
           } else {
-            // Auto-polish content
+            // Auto-polish content — must succeed before funnel is published
+            let polishSucceeded = false;
             try {
               const polished = await polishLeadMagnetContent(extractedContent, selectedConcept);
               await supabase
@@ -339,16 +340,17 @@ export const createLeadMagnetPipeline = task({
                   polished_at: new Date().toISOString(),
                 })
                 .eq("id", leadMagnetId);
+              polishSucceeded = true;
             } catch (polishError) {
               logApiError("create-lead-magnet-pipeline/polish", polishError, {
                 userId,
                 leadMagnetId,
-                note: "Non-critical, continuing with publish",
+                note: "Polish failed — funnel will NOT be published",
               });
             }
 
-            // Publish if user has a username
-            if (username) {
+            // Only publish if polish succeeded and user has a username
+            if (polishSucceeded && username) {
               await supabase
                 .from("funnel_pages")
                 .update({

@@ -71,17 +71,27 @@ export async function POST(request: Request, { params }: RouteParams) {
       }
     }
 
-    // Auto-polish content on first publish if needed (only for lead_magnet funnels)
+    // Content guard + auto-polish on publish (only for lead_magnet funnels)
     if (publish && funnel.lead_magnets) {
-      try {
-        const { data: lm } = await supabase
-          .from('lead_magnets')
-          .select('id, extracted_content, polished_content, concept')
-          .eq('id', funnel.lead_magnets.id)
-          .eq('user_id', session.user.id)
-          .single();
+      const { data: lm } = await supabase
+        .from('lead_magnets')
+        .select('id, extracted_content, polished_content, concept')
+        .eq('id', funnel.lead_magnets.id)
+        .eq('user_id', session.user.id)
+        .single();
 
-        if (lm?.extracted_content && !lm.polished_content && lm.concept) {
+      // Block publishing if lead magnet has no substantive content
+      const polishedLen = lm?.polished_content ? JSON.stringify(lm.polished_content).length : 0;
+      const hasExtracted = !!lm?.extracted_content;
+      if (!hasExtracted && polishedLen < 3000) {
+        return ApiErrors.validationError(
+          'This lead magnet doesn\'t have enough content to publish. Generate content first, then try again.'
+        );
+      }
+
+      // Auto-polish on first publish if extracted exists but polished doesn't
+      if (lm?.extracted_content && !lm.polished_content && lm.concept) {
+        try {
           const polished = await polishLeadMagnetContent(
             lm.extracted_content as ExtractedContent,
             lm.concept as LeadMagnetConcept,
@@ -94,10 +104,11 @@ export async function POST(request: Request, { params }: RouteParams) {
               polished_at: new Date().toISOString(),
             })
             .eq('id', lm.id);
+        } catch {
+          return ApiErrors.validationError(
+            'Failed to prepare content for publishing. Please try again.'
+          );
         }
-      } catch (polishError) {
-        // Don't block publishing if polish fails
-        logApiError('funnel/publish/auto-polish', polishError, { userId: session.user.id, funnelId: id });
       }
     }
 

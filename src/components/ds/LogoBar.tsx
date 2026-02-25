@@ -11,7 +11,8 @@ interface LogoBarProps {
 }
 
 const LogoBar: React.FC<LogoBarProps> = ({ logos, className = '' }) => {
-  if (logos.length === 0) return null;
+  const validLogos = logos.filter((logo) => logo.imageUrl);
+  if (validLogos.length === 0) return null;
 
   return (
     <div className={`py-8 ${className}`}>
@@ -20,7 +21,7 @@ const LogoBar: React.FC<LogoBarProps> = ({ logos, className = '' }) => {
         Trusted by leaders at
       </p>
       <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-10">
-        {logos.map((logo, i) => (
+        {validLogos.map((logo, i) => (
           <div key={i} className="flex-shrink-0">
             <img
               src={logo.imageUrl}
