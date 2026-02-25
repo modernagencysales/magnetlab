@@ -70,7 +70,11 @@ const conceptSchema = z.object({
     authorityBoosting: z.boolean().default(false),
   }).nullable().optional(),
   creationTimeEstimate: z.string().optional(),
-  bundlePotential: z.array(z.string()).optional(),
+  bundlePotential: z.union([
+    z.array(z.string()),
+    z.string().transform((s) => s ? [s] : []),
+    z.null(),
+  ]).optional().transform((v) => v ?? []),
   isImported: z.boolean().optional(),
   isQuickCreate: z.boolean().optional(),
 }).passthrough();

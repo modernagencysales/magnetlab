@@ -405,7 +405,16 @@ Return ONLY valid JSON with this structure:
     const parsed = jsonMatch
       ? JSON.parse(jsonMatch[0])
       : JSON.parse(textContent.text);
-    return parsed.concepts as LeadMagnetConcept[];
+    // Normalize AI output — bundlePotential may be null, string, or missing
+    const concepts = (parsed.concepts || []).map((c: Record<string, unknown>) => ({
+      ...c,
+      bundlePotential: Array.isArray(c.bundlePotential)
+        ? c.bundlePotential
+        : typeof c.bundlePotential === 'string'
+          ? [c.bundlePotential]
+          : [],
+    }));
+    return concepts as LeadMagnetConcept[];
   } catch {
     throw new Error('Failed to parse concept batch response');
   }
@@ -640,10 +649,21 @@ Return ONLY valid JSON with this structure:
 
   try {
     const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as IdeationResult;
+    const parsed = jsonMatch
+      ? JSON.parse(jsonMatch[0])
+      : JSON.parse(textContent.text);
+    // Normalize AI output — bundlePotential may be null, string, or missing
+    if (parsed.concepts) {
+      parsed.concepts = parsed.concepts.map((c: Record<string, unknown>) => ({
+        ...c,
+        bundlePotential: Array.isArray(c.bundlePotential)
+          ? c.bundlePotential
+          : typeof c.bundlePotential === 'string'
+            ? [c.bundlePotential]
+            : [],
+      }));
     }
-    return JSON.parse(textContent.text) as IdeationResult;
+    return parsed as IdeationResult;
   } catch {
     throw new Error('Failed to parse ideation response');
   }
