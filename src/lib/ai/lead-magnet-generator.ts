@@ -1399,7 +1399,7 @@ Return ONLY valid JSON:
   } catch {
     try {
       return repairJson(jsonStr) as unknown as PolishedContent;
-    } catch (repairErr) {
+    } catch {
       const preview = jsonStr.slice(-200);
       throw new Error(
         `Failed to parse polished content (even after repair). Last 200 chars: ${preview}`
