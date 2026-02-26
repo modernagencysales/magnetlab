@@ -16,7 +16,7 @@ import { LeadDeliveryInfo } from './LeadDeliveryInfo';
 import { ABTestPanel } from './ABTestPanel';
 import { FunnelIntegrationsTab } from './FunnelIntegrationsTab';
 import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle, RedirectTrigger } from '@/lib/types/funnel';
-import type { LeadMagnet, PolishedContent } from '@/lib/types/lead-magnet';
+import type { LeadMagnet } from '@/lib/types/lead-magnet';
 import type { Library } from '@/lib/types/library';
 
 interface FunnelBuilderProps {
@@ -400,11 +400,12 @@ export function FunnelBuilder({
               leadMagnet={currentLeadMagnet}
               username={username}
               slug={slug}
-              onPolished={(polishedContent: PolishedContent, polishedAt: string) => {
+              onPolished={(polishedContent, polishedAt, extractedContent) => {
                 setCurrentLeadMagnet({
                   ...currentLeadMagnet,
                   polishedContent,
                   polishedAt,
+                  ...(extractedContent ? { extractedContent } : {}),
                 });
               }}
             />
