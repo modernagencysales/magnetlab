@@ -57,9 +57,24 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseAdminClient();
 
+    // Auto-resolve team_profile_id from user's owned team if not provided
+    let resolvedTeamProfileId = team_profile_id || null;
+    if (!resolvedTeamProfileId) {
+      const { data: ownerProfile } = await supabase
+        .from('team_profiles')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('role', 'owner')
+        .limit(1)
+        .single();
+      if (ownerProfile) {
+        resolvedTeamProfileId = ownerProfile.id;
+      }
+    }
+
     const rows = posts.map((post) => ({
       user_id,
-      team_profile_id: team_profile_id || null,
+      team_profile_id: resolvedTeamProfileId,
       status: 'reviewing' as const,
       draft_content: post.content,
       final_content: post.content,

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Lightbulb, Loader2, Search, Filter, ChevronDown, ChevronUp, Archive } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Lightbulb, Loader2, Search, Filter, ChevronDown, ChevronUp, Archive, Sparkles } from 'lucide-react';
 import { cn, truncate } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PillarBadge } from './PillarBadge';
@@ -40,9 +40,10 @@ const CONTENT_TYPES: { value: ContentType | ''; label: string }[] = [
 
 interface IdeasTabProps {
   profileId?: string | null;
+  teamId?: string;
 }
 
-export function IdeasTab({ profileId }: IdeasTabProps) {
+export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +55,9 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
   const [selectedIdea, setSelectedIdea] = useState<ContentIdea | null>(null);
   const [writingId, setWritingId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  // Track all ideas (unfiltered) so we always know about writing ideas
+  const [allIdeas, setAllIdeas] = useState<ContentIdea[]>([]);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchIdeas = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -63,27 +67,89 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
       if (pillarFilter) params.append('pillar', pillarFilter);
       if (typeFilter) params.append('content_type', typeFilter);
       if (profileId) params.append('team_profile_id', profileId);
+      if (teamId) params.append('team_id', teamId);
 
       const response = await fetch(`/api/content-pipeline/ideas?${params}`);
       const data = await response.json();
-      setIdeas(data.ideas || []);
+      const fetched = data.ideas || [];
+      setIdeas(fetched);
+
+      // If we have no status filter, use this as the source for allIdeas too
+      if (!statusFilter) {
+        setAllIdeas(fetched);
+      }
     } catch {
       // Silent failure
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, pillarFilter, typeFilter, profileId]);
+  }, [statusFilter, pillarFilter, typeFilter, profileId, teamId]);
+
+  // Separate fetch for writing ideas (always unfiltered by status)
+  const fetchWritingIdeas = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      params.append('status', 'writing');
+      if (profileId) params.append('team_profile_id', profileId);
+      if (teamId) params.append('team_id', teamId);
+      const response = await fetch(`/api/content-pipeline/ideas?${params}`);
+      const data = await response.json();
+      const writingOnes = data.ideas || [];
+      setAllIdeas(prev => {
+        // Merge writing ideas into allIdeas, replacing existing ones
+        const nonWriting = prev.filter(i => i.status !== 'writing');
+        return [...writingOnes, ...nonWriting];
+      });
+    } catch {
+      // Silent
+    }
+  }, [profileId, teamId]);
 
   useEffect(() => {
     fetchIdeas();
   }, [fetchIdeas]);
 
+  // Poll for writing ideas every 5 seconds while there are any in-progress
+  const writingIdeas = allIdeas.filter(i => i.status === 'writing');
+  useEffect(() => {
+    if (writingIdeas.length > 0) {
+      pollRef.current = setInterval(() => {
+        fetchWritingIdeas();
+        fetchIdeas(true);
+      }, 5000);
+    }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [writingIdeas.length, fetchWritingIdeas, fetchIdeas]);
+
+  // Keyboard shortcut: "w" to write selected idea
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Don't trigger if typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.key === 'w' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (selectedIdea && (selectedIdea.status === 'extracted' || selectedIdea.status === 'selected') && !writingId) {
+          e.preventDefault();
+          handleWritePost(selectedIdea.id);
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIdea, writingId]);
+
   const handleWritePost = async (ideaId: string) => {
     setWritingId(ideaId);
-    // Optimistically update the idea status to 'writing'
-    setIdeas((prev) => prev.map((idea) =>
+    // Optimistically update the idea status to 'writing' in both lists
+    const updateToWriting = (prev: ContentIdea[]) => prev.map((idea) =>
       idea.id === ideaId ? { ...idea, status: 'writing' as IdeaStatus } : idea
-    ));
+    );
+    setIdeas(updateToWriting);
+    setAllIdeas(updateToWriting);
     try {
       const response = await fetch(`/api/content-pipeline/ideas/${ideaId}/write`, {
         method: 'POST',
@@ -92,6 +158,7 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
       if (response.ok) {
         // Silent refetch — no full-page loader
         await fetchIdeas(true);
+        await fetchWritingIdeas();
         setSelectedIdea(null);
       } else {
         // Revert on failure
@@ -151,6 +218,9 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
       </div>
     );
   }
+
+  // Separate writing ideas from the filtered list for the top section
+  const filteredNonWriting = filteredIdeas.filter(i => i.status !== 'writing');
 
   return (
     <div>
@@ -228,8 +298,51 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
         )}
       </div>
 
+      {/* Currently Writing Section — always visible when ideas are being written */}
+      {writingIdeas.length > 0 && (
+        <div className="mb-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-yellow-500 animate-pulse" />
+            <h3 className="text-sm font-semibold">AI Writing ({writingIdeas.length})</h3>
+            <span className="text-xs text-muted-foreground">Posts will appear in Drafts when complete</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {writingIdeas.map((idea) => (
+              <div
+                key={idea.id}
+                className="relative rounded-lg border-2 border-yellow-400/50 bg-yellow-50/50 dark:bg-yellow-950/20 p-4 cursor-pointer overflow-hidden"
+                onClick={() => setSelectedIdea(idea)}
+              >
+                {/* Pulsing overlay */}
+                <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-yellow-200/10 to-transparent" />
+                <div className="relative">
+                  <div className="mb-2 flex items-center gap-2 flex-wrap">
+                    <PillarBadge pillar={idea.content_pillar} />
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-medium text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      AI Writing...
+                    </span>
+                    {(idea as ContentIdea & { profile_name?: string | null }).profile_name && (
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                        {(idea as ContentIdea & { profile_name?: string | null }).profile_name}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="mb-1 font-medium text-sm">{idea.title}</h3>
+                  {idea.core_insight && (
+                    <p className="text-xs text-muted-foreground line-clamp-1">
+                      {truncate(idea.core_insight, 100)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Ideas Grid */}
-      {filteredIdeas.length === 0 ? (
+      {filteredNonWriting.length === 0 && writingIdeas.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <Lightbulb className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-muted-foreground">No ideas found</p>
@@ -237,9 +350,9 @@ export function IdeasTab({ profileId }: IdeasTabProps) {
             {ideas.length === 0 ? 'Process transcripts to extract content ideas' : 'Try adjusting your filters'}
           </p>
         </div>
-      ) : (
+      ) : filteredNonWriting.length === 0 ? null : (
         <div className="grid gap-4 md:grid-cols-2">
-          {filteredIdeas.map((idea) => (
+          {filteredNonWriting.map((idea) => (
             <div
               key={idea.id}
               className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30 cursor-pointer"

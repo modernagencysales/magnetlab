@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { getAllRecentKnowledge, getFilteredKnowledge, getKnowledgeTags, searchKnowledgeV2, verifyTeamMembership } from '@/lib/services/knowledge-brain';
 import type { KnowledgeSortOption } from '@/lib/services/knowledge-brain';
@@ -27,7 +28,12 @@ export async function GET(request: NextRequest) {
     const topicSlug = searchParams.get('topic');
     const minQuality = searchParams.get('min_quality') ? parseInt(searchParams.get('min_quality')!, 10) : undefined;
     const since = searchParams.get('since');
-    const teamId = searchParams.get('team_id') || undefined;
+    // Read team_id from query param, fall back to server-side cookie
+    let teamId: string | undefined = searchParams.get('team_id') || undefined;
+    if (!teamId) {
+      const cookieStore = await cookies();
+      teamId = cookieStore.get('ml-team-context')?.value || undefined;
+    }
     const sortParam = searchParams.get('sort');
     const sort: KnowledgeSortOption = sortParam && ['newest', 'oldest', 'quality'].includes(sortParam)
       ? (sortParam as KnowledgeSortOption)
@@ -38,16 +44,33 @@ export async function GET(request: NextRequest) {
       if (!isMember) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Resolve effective user ID(s) for team-scoped queries
+    let effectiveUserId = session.user.id;
+    if (teamId) {
+      // For team context, use the team owner's user_id so knowledge entries are scoped to the team
+      const supabase = (await import('@/lib/utils/supabase-server')).createSupabaseAdminClient();
+      const { data: ownerProfile } = await supabase
+        .from('team_profiles')
+        .select('user_id')
+        .eq('team_id', teamId)
+        .eq('role', 'owner')
+        .limit(1)
+        .single();
+      if (ownerProfile) {
+        effectiveUserId = ownerProfile.user_id;
+      }
+    }
+
     // Tags endpoint
     if (view === 'tags') {
-      const tags = await getKnowledgeTags(session.user.id);
+      const tags = await getKnowledgeTags(effectiveUserId);
       return NextResponse.json({ tags });
     }
 
     // V2 enhanced search (when any new filter is present)
     const hasV2Filters = knowledgeType || topicSlug || minQuality || since;
     if (query || hasV2Filters) {
-      const result = await searchKnowledgeV2(session.user.id, {
+      const result = await searchKnowledgeV2(effectiveUserId, {
         query: query || undefined,
         knowledgeType: knowledgeType || undefined,
         topicSlug: topicSlug || undefined,
@@ -73,7 +96,7 @@ export async function GET(request: NextRequest) {
     // Filtered browse (any combination of category, speaker, tag)
     const hasFilters = category || speaker || tag;
     if (hasFilters) {
-      const entries = await getFilteredKnowledge(session.user.id, {
+      const entries = await getFilteredKnowledge(effectiveUserId, {
         category: category || undefined,
         speaker: speaker || undefined,
         tag: tag || undefined,
@@ -85,7 +108,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Default: return recent entries across all categories
-    const entries = await getAllRecentKnowledge(session.user.id, limit, sort);
+    const entries = await getAllRecentKnowledge(effectiveUserId, limit, sort);
     return NextResponse.json({ entries, total_count: entries.length });
   } catch (error) {
     logError('cp/knowledge', error, { step: 'knowledge_api_error' });

@@ -115,7 +115,16 @@ export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing
             >
               {writing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {writing ? 'Writing...' : 'Write Post from This Idea'}
+              {!writing && (
+                <kbd className="ml-1 rounded border border-primary-foreground/30 px-1.5 py-0.5 text-[10px] font-mono opacity-70">W</kbd>
+              )}
             </button>
+          )}
+          {idea.status === 'writing' && (
+            <div className="flex w-full items-center justify-center gap-2 rounded-lg bg-yellow-100 dark:bg-yellow-950/50 px-4 py-2.5 text-sm font-medium text-yellow-700 dark:text-yellow-300">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              AI is writing this post...
+            </div>
           )}
           <div className="flex gap-3">
             <button

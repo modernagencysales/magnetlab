@@ -1124,3 +1124,118 @@ PROMPT_DEFAULTS['voice-prompt-template'] = {
     },
   ],
 };
+
+// ============================================
+// content-review
+// Source: src/lib/ai/content-pipeline/content-reviewer.ts → reviewPosts()
+// ============================================
+
+PROMPT_DEFAULTS['content-review'] = {
+  slug: 'content-review',
+  name: 'DFY Content Review',
+  category: 'content_writing',
+  description: 'Reviews a batch of LinkedIn posts for quality, AI patterns, consistency, and provides actionable edit recommendations. Used by the DFY onboarding pipeline.',
+  system_prompt: `You are a senior LinkedIn content strategist reviewing posts for a client. You evaluate each post on quality, voice consistency, engagement potential, and flag any issues. You are direct and specific in your feedback — no vague suggestions.`,
+  user_prompt: `Review the following LinkedIn posts written for a client. For EACH post, provide:
+1. A quality score from 1-10
+2. A category: "excellent" (8-10, publish as-is), "good_with_edits" (5-7, needs minor fixes), "needs_rewrite" (3-4, salvageable but needs major work), or "delete" (1-2, AI refusal, off-topic, or unsalvageable)
+3. Specific edit recommendations (actionable, not vague)
+4. Any consistency flags (contradictions with other posts, name/gender inconsistencies, repeated hooks across posts)
+
+{{voice_profile}}
+
+{{icp_summary}}
+
+Here are the posts to review:
+
+{{posts_json}}
+
+IMPORTANT:
+- Flag any post where the AI clearly refused to write content (e.g., "I cannot generate content that...", "As an AI...", ethical disclaimers that replaced the actual post)
+- Flag posts that reuse the same hook pattern as another post in this batch
+- Flag name/gender/pronoun inconsistencies across all posts (e.g., "Charlie" referred to as both he/she)
+- Score hooks harshly: generic hooks like "Here's the thing about X" score low
+- Reward specificity: numbers, timeframes, first-person stories, contrast
+
+Return a JSON array:
+\`\`\`json
+[
+  {
+    "post_id": "uuid",
+    "review_score": 7.5,
+    "review_category": "good_with_edits",
+    "review_notes": ["Hook is too generic — add a specific number or timeframe", "Body is strong but CTA is weak"],
+    "consistency_flags": []
+  }
+]
+\`\`\``,
+  model: 'claude-sonnet-4-6',
+  temperature: 0.3,
+  max_tokens: 8000,
+  variables: [
+    { name: 'posts_json', description: 'JSON array of posts with id, draft_content, final_content, hook_score', example: '[{"id":"...","final_content":"..."}]' },
+    { name: 'voice_profile', description: 'Client voice profile section (tone, style, banned phrases)', example: 'Voice: Professional but conversational...' },
+    { name: 'icp_summary', description: 'Client ICP summary (industry, job titles, pain points)', example: 'ICP: C-suite executives in tech, pain points: scaling teams...' },
+  ],
+};
+
+// ============================================
+// quiz-generator
+// Source: src/lib/ai/content-pipeline/quiz-generator.ts → generateQuizQuestions()
+// ============================================
+
+PROMPT_DEFAULTS['quiz-generator'] = {
+  slug: 'quiz-generator',
+  name: 'DFY Quiz Generator',
+  category: 'content_writing',
+  description: 'Generates qualification form questions from ICP data, knowledge base insights, and brand kit context. Used by the DFY onboarding pipeline.',
+  system_prompt: `You are a conversion optimization expert designing a short qualification quiz for a lead magnet landing page. The quiz should feel valuable to the prospect (not like a gate) while identifying if they match the client's ideal customer profile.`,
+  user_prompt: `Generate 3-5 qualification questions for a lead magnet landing page based on the following data:
+
+**Client:** {{client_name}}
+
+**ICP Data:**
+{{icp_json}}
+
+**Knowledge Base Context (client's expertise and market intelligence):**
+{{knowledge_context}}
+
+**Brand Context (client's positioning and audience pain points):**
+{{brand_context}}
+
+RULES:
+- First question must be easy and non-threatening (e.g., role, company size, or industry)
+- Middle questions should be qualifying multiple-choice that reveal ICP fit
+- Last question MUST be open-ended text: "What's your biggest challenge with [relevant topic] right now?" — this gives the client a conversation starter for the sales call
+- Maximum 5 questions (completion rate drops sharply after 5)
+- Questions should feel like they're helping the prospect get a better result, not interrogating them
+- For qualifying multiple-choice: mark which answers qualify (match the ICP)
+
+Return a JSON array:
+\`\`\`json
+[
+  {
+    "question_text": "What best describes your role?",
+    "answer_type": "multiple_choice",
+    "options": ["C-Suite / VP", "Director / Manager", "Individual Contributor", "Consultant / Advisor"],
+    "qualifying_answer": ["C-Suite / VP", "Director / Manager"],
+    "is_qualifying": true,
+    "is_required": true
+  }
+]
+\`\`\`
+
+answer_type must be one of: "yes_no", "text", "textarea", "multiple_choice"
+For yes_no: qualifying_answer is "yes" or "no"
+For text/textarea: qualifying_answer is null, is_qualifying is false
+For multiple_choice: qualifying_answer is an array of qualifying option strings, options must have at least 2 items`,
+  model: 'claude-sonnet-4-6',
+  temperature: 0.5,
+  max_tokens: 3000,
+  variables: [
+    { name: 'client_name', description: 'Client company or person name', example: 'Rachel Pierre' },
+    { name: 'icp_json', description: 'Processed intake ICP data (industry, job_titles, pain_points, buying_triggers)', example: '{"industry":"tech","job_titles":["CTO","VP Eng"]}' },
+    { name: 'knowledge_context', description: 'Relevant knowledge base entries (market_intel, objection, question types)', example: 'Market Intel: Most CTOs struggle with...' },
+    { name: 'brand_context', description: 'Brand kit positioning data (urgent_pains, frequent_questions, credibility_markers)', example: 'Urgent pains: scaling engineering teams...' },
+  ],
+};

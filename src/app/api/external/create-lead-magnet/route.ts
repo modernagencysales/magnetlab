@@ -105,11 +105,25 @@ export async function POST(request: Request) {
       return ApiErrors.notFound('User');
     }
 
-    // Step 4: Create stub lead magnet record
+    // Step 4: Resolve user's team_id from team_profiles
+    let teamId: string | null = null;
+    const { data: ownerProfile } = await supabase
+      .from('team_profiles')
+      .select('team_id')
+      .eq('user_id', input.userId)
+      .eq('role', 'owner')
+      .limit(1)
+      .single();
+    if (ownerProfile) {
+      teamId = ownerProfile.team_id;
+    }
+
+    // Step 5: Create stub lead magnet record
     const { data: leadMagnet, error: createError } = await supabase
       .from('lead_magnets')
       .insert({
         user_id: input.userId,
+        team_id: teamId,
         title: `${archetype} lead magnet`,
         archetype,
         status: 'draft',
@@ -122,7 +136,7 @@ export async function POST(request: Request) {
       return ApiErrors.databaseError('Failed to create lead magnet record');
     }
 
-    // Step 5: Trigger the background pipeline
+    // Step 6: Trigger the background pipeline
     await createLeadMagnetPipeline.trigger({
       userId: input.userId,
       userName: user.name,
@@ -134,9 +148,10 @@ export async function POST(request: Request) {
       autoSchedulePost: input.autoSchedulePost,
       scheduledTime: input.scheduledTime,
       leadMagnetId: leadMagnet.id,
+      teamId,
     });
 
-    // Step 6: Return immediately
+    // Step 7: Return immediately
     return NextResponse.json(
       {
         success: true,

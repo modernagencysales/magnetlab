@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
@@ -25,13 +26,35 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = createSupabaseAdminClient();
 
-    const { data, error } = await supabase
+    // Read team context from cookie for team-scoped access
+    const cookieStore = await cookies();
+    const teamContextId = cookieStore.get('ml-team-context')?.value;
+
+    let teamProfileScope: string[] | null = null;
+    if (teamContextId) {
+      const { data: profiles } = await supabase
+        .from('team_profiles')
+        .select('id')
+        .eq('team_id', teamContextId)
+        .eq('status', 'active');
+      if (profiles && profiles.length > 0) {
+        teamProfileScope = profiles.map(p => p.id);
+      }
+    }
+
+    // Verify access then update
+    let updateQuery = supabase
       .from('cp_content_ideas')
       .update({ status })
-      .eq('id', ideaId)
-      .eq('user_id', session.user.id)
-      .select()
-      .single();
+      .eq('id', ideaId);
+
+    if (teamProfileScope) {
+      updateQuery = updateQuery.in('team_profile_id', teamProfileScope);
+    } else {
+      updateQuery = updateQuery.eq('user_id', session.user.id);
+    }
+
+    const { data, error } = await updateQuery.select().single();
 
     if (error || !data) {
       return NextResponse.json({ error: 'Idea not found' }, { status: 404 });
@@ -58,6 +81,13 @@ export async function GET(request: NextRequest) {
     const teamProfileId = searchParams.get('team_profile_id');
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
+    // Read team_id from query param, fall back to server-side cookie
+    let teamId = searchParams.get('team_id');
+    if (!teamId) {
+      const cookieStore = await cookies();
+      teamId = cookieStore.get('ml-team-context')?.value || null;
+    }
+
     const VALID_STATUSES = ['extracted', 'selected', 'writing', 'written', 'scheduled', 'published', 'archived'];
     const VALID_PILLARS = ['moments_that_matter', 'teaching_promotion', 'human_personal', 'collaboration_social_proof'];
     const VALID_CONTENT_TYPES = ['story', 'insight', 'tip', 'framework', 'case_study', 'question', 'listicle', 'contrarian'];
@@ -74,10 +104,30 @@ export async function GET(request: NextRequest) {
 
     const supabase = createSupabaseAdminClient();
 
+    // If team_id is provided, scope to ideas created for this team (by team_profile_id)
+    let teamProfileScope: string[] | null = null;
+    if (teamId) {
+      const { data: profiles } = await supabase
+        .from('team_profiles')
+        .select('id')
+        .eq('team_id', teamId)
+        .eq('status', 'active');
+      if (profiles && profiles.length > 0) {
+        teamProfileScope = profiles.map(p => p.id);
+      }
+    }
+
     let query = supabase
       .from('cp_content_ideas')
-      .select('id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, composite_score, hook, key_points, source_quote, target_audience, status, team_profile_id, created_at, updated_at')
-      .eq('user_id', session.user.id)
+      .select('id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, composite_score, hook, key_points, source_quote, target_audience, status, team_profile_id, created_at, updated_at');
+
+    if (teamProfileScope) {
+      query = query.in('team_profile_id', teamProfileScope);
+    } else {
+      query = query.eq('user_id', session.user.id);
+    }
+
+    query = query
       .order('created_at', { ascending: false })
       .limit(limit);
 

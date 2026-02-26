@@ -23,6 +23,20 @@ export const writePostFromIdea = task({
 
     logger.info('Writing post from idea', { userId, ideaId, profileId });
 
+    // Helper to revert idea status on failure
+    async function revertIdeaStatus() {
+      try {
+        await supabase
+          .from('cp_content_ideas')
+          .update({ status: 'extracted' })
+          .eq('id', ideaId);
+        logger.info('Reverted idea status to extracted', { ideaId });
+      } catch (e) {
+        logger.error('Failed to revert idea status', { ideaId, error: String(e) });
+      }
+    }
+
+    try {
     // Fetch the idea
     const { data: idea, error: ideaError } = await supabase
       .from('cp_content_ideas')
@@ -32,6 +46,7 @@ export const writePostFromIdea = task({
       .single();
 
     if (ideaError || !idea) {
+      await revertIdeaStatus();
       throw new Error(`Idea not found: ${ideaId}`);
     }
 
@@ -109,6 +124,7 @@ export const writePostFromIdea = task({
 
     if (postError) {
       logger.error('Failed to save pipeline post', { error: postError.message });
+      await revertIdeaStatus();
       throw new Error(`Failed to save post: ${postError.message}`);
     }
 
@@ -129,5 +145,9 @@ export const writePostFromIdea = task({
       hookScore: polishResult.hookScore.score,
       changes: polishResult.changes,
     };
+    } catch (error) {
+      await revertIdeaStatus();
+      throw error;
+    }
   },
 });

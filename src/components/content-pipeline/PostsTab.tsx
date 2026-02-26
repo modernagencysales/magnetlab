@@ -5,7 +5,7 @@ import { FileText, Loader2, Copy, Check, Sparkles, Trash2, Eye } from 'lucide-re
 import { cn, truncate, formatDateTime } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostDetailModal } from './PostDetailModal';
-import type { PipelinePost, PostStatus } from '@/lib/types/content-pipeline';
+import type { PipelinePost, PostStatus, ReviewData } from '@/lib/types/content-pipeline';
 
 const STATUS_FILTERS: { value: PostStatus | ''; label: string }[] = [
   { value: '', label: 'All' },
@@ -187,6 +187,9 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
                           {post.hook_score}/10
                         </span>
                       )}
+                      {post.review_data && (
+                        <ReviewBadge reviewData={post.review_data as ReviewData} />
+                      )}
                       {post.scheduled_time && (
                         <span className="text-xs text-muted-foreground">
                           {formatDateTime(post.scheduled_time)}
@@ -196,6 +199,7 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
                     <p className="text-sm text-muted-foreground line-clamp-2">
                       {truncate(content, 200)}
                     </p>
+                    <ReviewNotes reviewData={post.review_data as ReviewData | null} />
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
@@ -244,6 +248,67 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
           onUpdate={fetchPosts}
           polishing={polishingId === selectedPost.id}
         />
+      )}
+    </div>
+  );
+}
+
+// ─── Review Badge ─────────────────────────────────────────
+
+const REVIEW_BADGE_STYLES: Record<string, string> = {
+  excellent: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
+  good_with_edits: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
+  needs_rewrite: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+};
+
+const REVIEW_CATEGORY_LABELS: Record<string, string> = {
+  excellent: 'Excellent',
+  good_with_edits: 'Needs Edits',
+  needs_rewrite: 'Rewrite',
+};
+
+function ReviewBadge({ reviewData }: { reviewData: ReviewData }) {
+  const style = REVIEW_BADGE_STYLES[reviewData.category] || REVIEW_BADGE_STYLES.good_with_edits;
+  return (
+    <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', style)}>
+      {REVIEW_CATEGORY_LABELS[reviewData.category] || reviewData.category} {reviewData.score}/10
+    </span>
+  );
+}
+
+function ReviewNotes({ reviewData }: { reviewData: ReviewData | null }) {
+  if (!reviewData) return null;
+
+  const hasNotes = reviewData.notes && reviewData.notes.length > 0;
+  const hasFlags = reviewData.flags && reviewData.flags.length > 0;
+
+  if (!hasNotes && !hasFlags) return null;
+
+  return (
+    <div className="mt-1">
+      {hasNotes && (
+        <details>
+          <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+            {reviewData.notes.length} edit suggestion{reviewData.notes.length !== 1 ? 's' : ''}
+          </summary>
+          <ul className="mt-1 space-y-1 pl-4">
+            {reviewData.notes.map((note: string, i: number) => (
+              <li key={i} className="text-xs text-muted-foreground">&bull; {note}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {hasFlags && (
+        <details className={hasNotes ? 'mt-1' : ''}>
+          <summary className="cursor-pointer text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300">
+            {reviewData.flags.length} consistency flag{reviewData.flags.length !== 1 ? 's' : ''}
+          </summary>
+          <ul className="mt-1 space-y-1 pl-4">
+            {reviewData.flags.map((flag: string, i: number) => (
+              <li key={i} className="text-xs text-orange-600 dark:text-orange-400">&bull; {flag}</li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   );

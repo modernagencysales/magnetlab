@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { tasks } from '@trigger.dev/sdk/v3';
@@ -127,10 +128,24 @@ export async function GET(request: NextRequest) {
     const speakerProfileId = request.nextUrl.searchParams.get('speaker_profile_id');
     const supabase = createSupabaseAdminClient();
 
+    // Read team_id from query param, fall back to server-side cookie
+    let teamId = request.nextUrl.searchParams.get('team_id');
+    if (!teamId) {
+      const cookieStore = await cookies();
+      teamId = cookieStore.get('ml-team-context')?.value || null;
+    }
+
     let query = supabase
       .from('cp_call_transcripts')
-      .select('id, source, title, call_date, duration_minutes, transcript_type, ideas_extracted_at, knowledge_extracted_at, team_id, speaker_profile_id, speaker_map, created_at')
-      .eq('user_id', session.user.id)
+      .select('id, source, title, call_date, duration_minutes, transcript_type, ideas_extracted_at, knowledge_extracted_at, team_id, speaker_profile_id, speaker_map, created_at');
+
+    if (teamId) {
+      query = query.eq('team_id', teamId);
+    } else {
+      query = query.eq('user_id', session.user.id);
+    }
+
+    query = query
       .order('created_at', { ascending: false })
       .limit(50);
 

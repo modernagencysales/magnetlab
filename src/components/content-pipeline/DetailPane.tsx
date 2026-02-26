@@ -5,7 +5,7 @@ import { X, Loader2, Check, AlertCircle, Sparkles, Copy, Calendar, ExternalLink,
 import { cn } from '@/lib/utils';
 import { PillarBadge } from './PillarBadge';
 import { StatusBadge } from './StatusBadge';
-import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
+import type { ContentIdea, PipelinePost, ReviewData } from '@/lib/types/content-pipeline';
 
 type DetailItem =
   | { type: 'idea'; data: ContentIdea }
@@ -272,6 +272,21 @@ function PostDetail({
               Hook {post.hook_score}/10
             </span>
           )}
+          {post.review_data && (() => {
+            const rd = post.review_data as ReviewData;
+            const badgeStyle =
+              rd.category === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
+              rd.category === 'good_with_edits' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
+              'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300';
+            const label =
+              rd.category === 'excellent' ? 'Excellent' :
+              rd.category === 'good_with_edits' ? 'Needs Edits' : 'Rewrite';
+            return (
+              <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-semibold', badgeStyle)}>
+                {label} {rd.score}/10
+              </span>
+            );
+          })()}
           {/* Save indicator */}
           <SaveIndicator state={saveState} />
         </div>
@@ -290,6 +305,42 @@ function PostDetail({
           placeholder="Write your post content..."
         />
       </div>
+
+      {/* Review notes accordion */}
+      {post.review_data && (() => {
+        const rd = post.review_data as ReviewData;
+        const hasNotes = rd.notes && rd.notes.length > 0;
+        const hasFlags = rd.flags && rd.flags.length > 0;
+        if (!hasNotes && !hasFlags) return null;
+        return (
+          <div className="border-t px-4 py-2 space-y-1">
+            {hasNotes && (
+              <details>
+                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                  {rd.notes.length} edit suggestion{rd.notes.length !== 1 ? 's' : ''}
+                </summary>
+                <ul className="mt-1 space-y-1 pl-4">
+                  {rd.notes.map((note: string, i: number) => (
+                    <li key={i} className="text-xs text-muted-foreground">&bull; {note}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            {hasFlags && (
+              <details>
+                <summary className="cursor-pointer text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300">
+                  {rd.flags.length} consistency flag{rd.flags.length !== 1 ? 's' : ''}
+                </summary>
+                <ul className="mt-1 space-y-1 pl-4">
+                  {rd.flags.map((flag: string, i: number) => (
+                    <li key={i} className="text-xs text-orange-600 dark:text-orange-400">&bull; {flag}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Idea context accordion */}
       {idea && (

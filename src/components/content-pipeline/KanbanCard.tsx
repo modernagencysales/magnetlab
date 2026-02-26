@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { MoreVertical, PenLine, Archive, Trash2, Clock, Zap, Linkedin, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PillarBadge } from './PillarBadge';
-import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
+import type { ContentIdea, PipelinePost, ReviewData } from '@/lib/types/content-pipeline';
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -210,6 +210,18 @@ function PostRow({ post }: { post: PipelinePost }) {
           {post.style_id && (
             <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700 dark:bg-blue-950 dark:text-blue-300">S</span>
           )}
+          {post.review_data && (() => {
+            const rd = post.review_data as ReviewData;
+            const badgeStyle =
+              rd.category === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
+              rd.category === 'good_with_edits' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
+              'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300';
+            return (
+              <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-semibold', badgeStyle)}>
+                {rd.score}/10
+              </span>
+            );
+          })()}
         </div>
       </div>
       {content.split('\n').length > 1 && (

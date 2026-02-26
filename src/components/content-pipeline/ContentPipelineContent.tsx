@@ -47,9 +47,11 @@ export function ContentPipelineContent() {
   const [showQuickWrite, setShowQuickWrite] = useState(false);
   const { selectedProfileId, onProfileChange } = useProfileSelection();
   const [teamId, setTeamId] = useState<string | undefined>();
+  const [teamContextReady, setTeamContextReady] = useState(false);
 
   useEffect(() => {
     setTeamId(getTeamFromCookie());
+    setTeamContextReady(true);
   }, []);
 
   return (
@@ -89,13 +91,19 @@ export function ContentPipelineContent() {
 
       {/* Tab Content */}
       <Suspense fallback={<TabLoader />}>
-        {activeTab === 'transcripts' && <TranscriptsTab profileId={selectedProfileId} />}
-        {activeTab === 'brain' && <KnowledgeDashboard />}
-        {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
-        {activeTab === 'posts' && <PostsTab profileId={selectedProfileId} teamId={teamId} />}
-        {activeTab === 'pipeline' && <PipelineTab />}
-        {activeTab === 'templates' && <TemplatesTab />}
-        {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}
+        {!teamContextReady ? (
+          <TabLoader />
+        ) : (
+          <>
+            {activeTab === 'transcripts' && <TranscriptsTab profileId={selectedProfileId} />}
+            {activeTab === 'brain' && <KnowledgeDashboard />}
+            {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} teamId={teamId} />}
+            {activeTab === 'posts' && <PostsTab profileId={selectedProfileId} teamId={teamId} />}
+            {activeTab === 'pipeline' && <PipelineTab />}
+            {activeTab === 'templates' && <TemplatesTab />}
+            {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}
+          </>
+        )}
       </Suspense>
 
       {/* Quick Write FAB */}

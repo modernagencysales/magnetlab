@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { redirect, notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { MagnetDetail } from '@/components/magnets/MagnetDetail';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 import {
@@ -29,26 +30,32 @@ export default async function MagnetDetailPage({ params }: PageProps) {
 
   const { id } = await params;
   const adminClient = createSupabaseAdminClient();
+  const scope = await getDataScope(session.user.id);
+
+  // Resolve the username for public URLs — use team owner's username in team mode
+  const usernameUserId = scope.type === 'team' && scope.ownerId ? scope.ownerId : session.user.id;
 
   // Fetch lead magnet, funnel page, username, and connected email providers in parallel
+  let magnetQuery = adminClient
+    .from('lead_magnets')
+    .select('id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, screenshot_urls, status, published_at, created_at, updated_at')
+    .eq('id', id);
+  magnetQuery = applyScope(magnetQuery, scope);
+
+  let funnelQuery = adminClient
+    .from('funnel_pages')
+    .select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, homepage_url, homepage_label')
+    .eq('lead_magnet_id', id)
+    .eq('is_variant', false);
+  funnelQuery = applyScope(funnelQuery, scope);
+
   const [leadMagnetResult, funnelResult, userResult, emailProvidersResult] = await Promise.all([
-    adminClient
-      .from('lead_magnets')
-      .select('id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, screenshot_urls, status, published_at, created_at, updated_at')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single(),
-    adminClient
-      .from('funnel_pages')
-      .select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, homepage_url, homepage_label')
-      .eq('lead_magnet_id', id)
-      .eq('user_id', session.user.id)
-      .eq('is_variant', false)
-      .single(),
+    magnetQuery.single(),
+    funnelQuery.single(),
     adminClient
       .from('users')
       .select('username')
-      .eq('id', session.user.id)
+      .eq('id', usernameUserId)
       .single(),
     adminClient
       .from('user_integrations')

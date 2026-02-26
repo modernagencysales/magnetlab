@@ -47,9 +47,11 @@ export function KnowledgeContent() {
   );
   const { selectedProfileId, onProfileChange } = useProfileSelection();
   const [teamId, setTeamId] = useState<string | undefined>();
+  const [teamContextReady, setTeamContextReady] = useState(false);
 
   useEffect(() => {
     setTeamId(getTeamFromCookie());
+    setTeamContextReady(true);
   }, []);
 
   useEffect(() => {
@@ -108,8 +110,14 @@ export function KnowledgeContent() {
 
       {/* Tab Content */}
       <Suspense fallback={<TabLoader />}>
-        {activeTab === 'transcripts' && <TranscriptsTab profileId={selectedProfileId} />}
-        {activeTab === 'brain' && <KnowledgeBrainTab teamId={teamId} />}
+        {!teamContextReady ? (
+          <TabLoader />
+        ) : (
+          <>
+            {activeTab === 'transcripts' && <TranscriptsTab profileId={selectedProfileId} />}
+            {activeTab === 'brain' && <KnowledgeBrainTab teamId={teamId} />}
+          </>
+        )}
       </Suspense>
     </div>
   );

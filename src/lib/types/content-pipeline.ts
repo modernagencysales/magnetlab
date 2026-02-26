@@ -341,6 +341,7 @@ export interface PipelinePost {
   style_id: string | null;
   enable_automation: boolean;
   automation_config: Record<string, unknown> | null;
+  review_data: ReviewData | null;
   engagement_stats: EngagementStats | null;
   scrape_engagement: boolean;
   heyreach_campaign_id: string | null;
@@ -356,6 +357,14 @@ export interface PostVariation {
   content: string;
   hook_type: string;
   selected: boolean;
+}
+
+export interface ReviewData {
+  score: number;
+  category: 'excellent' | 'good_with_edits' | 'needs_rewrite' | 'delete';
+  notes: string[];
+  flags: string[];
+  reviewed_at: string;
 }
 
 export interface EngagementStats {
