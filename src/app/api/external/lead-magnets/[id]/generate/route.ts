@@ -61,7 +61,7 @@ async function handlePost(
       .from('lead_magnets')
       .update({
         extracted_content: extractedContent,
-        status: 'content_ready',
+        status: 'draft',
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

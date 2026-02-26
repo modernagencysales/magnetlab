@@ -223,15 +223,6 @@ export type SpreadsheetImportInput = z.infer<typeof spreadsheetImportSchema>;
 // FUNNEL SCHEMAS
 // ============================================
 
-export const createFunnelSchema = z.object({
-  leadMagnetId: uuidSchema,
-  optInHeadline: z.string().max(500).optional(),
-  optInSubheadline: z.string().max(1000).optional(),
-  thankYouHeadline: z.string().max(500).optional(),
-  thankYouMessage: z.string().max(2000).optional(),
-});
-
-export type CreateFunnelInput = z.infer<typeof createFunnelSchema>;
 
 export const updateFunnelSchema = z.object({
   slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens').max(100).optional(),
