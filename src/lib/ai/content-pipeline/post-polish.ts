@@ -283,7 +283,7 @@ export async function polishPost(
 
   if ((rewriteAIPatterns && aiPatternsFound.length > 0) || (strengthenHook && hookScore.score < 6)) {
     const { prompt, template } = await buildPolishPrompt(polished, aiPatternsFound, hookScore, voiceProfile);
-    const client = getAnthropicClient();
+    const client = getAnthropicClient('post-polish');
 
     const response = await client.messages.create({
       model: template.model,

@@ -117,7 +117,7 @@ function compileContextV2(entries: KnowledgeEntryWithSimilarity[]): string {
 
 async function generateSuggestedAngles(topic: string, context: string, voiceProfile?: TeamVoiceProfile): Promise<string[]> {
   try {
-    const client = getAnthropicClient();
+    const client = getAnthropicClient('briefing-agent');
 
     const styleSection = buildVoicePromptSection(voiceProfile, 'linkedin');
     const styleInstruction = styleSection

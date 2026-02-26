@@ -262,7 +262,7 @@ export async function searchHashtagContent(
 export async function analyzeInspiration(
   content: InspirationContent
 ): Promise<InspirationAnalysis> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('inspiration-researcher');
 
   const response = await client.messages.create({
     model: CLAUDE_SONNET_MODEL,
@@ -340,7 +340,7 @@ export async function extractTrends(
     };
   }
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('inspiration-researcher');
 
   const contentSummary = pulls
     .slice(0, 20) // Cap at 20 items for prompt size

@@ -162,7 +162,7 @@ function parseCSVRows(content: string): string[][] {
 // ── AI Enrichment ──────────────────────────────────────────────────────
 
 async function enrichTemplate(template: CSVTemplate): Promise<AIEnrichment> {
-  const anthropic = getAnthropicClient();
+  const anthropic = getAnthropicClient('seed-templates');
 
   const prompt = `Analyze this LinkedIn post template and return a JSON object with enrichment data.
 

@@ -30,7 +30,7 @@ export async function clusterTags(tags: TagInput[]): Promise<ClusterResult> {
     };
   }
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('tag-clusterer');
 
   const tagList = tags
     .map((t) => `- "${t.tag_name}" (used ${t.usage_count}x)`)

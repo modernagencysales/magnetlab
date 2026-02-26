@@ -56,7 +56,7 @@ export async function clusterOrphans(
 ): Promise<OrphanCluster[]> {
   if (entries.length < 3) return [];
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('sop-creator');
 
   const entriesText = entries
     .map((e, i) => `[${i}] ${e.category} | Tags: ${e.tags?.join(', ')} | ${e.content.slice(0, 200)}`)
@@ -115,7 +115,7 @@ export async function generateNewSop(
   existingSopIds: string[],
   nextNumber: number
 ): Promise<NewSop> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('sop-creator');
 
   const entriesText = cluster.entries
     .map((e) => `[${e.category}/${e.speaker}] ${e.content}\nContext: ${e.context || 'N/A'}`)

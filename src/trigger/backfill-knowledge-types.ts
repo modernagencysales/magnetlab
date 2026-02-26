@@ -33,7 +33,7 @@ export const backfillKnowledgeTypes = task({
 
     for (let i = 0; i < entries.length; i += BATCH) {
       const batch = entries.slice(i, i + BATCH);
-      const client = getAnthropicClient();
+      const client = getAnthropicClient('backfill-knowledge-types');
 
       const response = await client.messages.create({
         model: CLAUDE_HAIKU_MODEL,

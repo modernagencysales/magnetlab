@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const anthropicStream = getAnthropicClient().messages.stream({
+          const anthropicStream = getAnthropicClient('public-chat').messages.stream({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: config.maxTokens || 2048,
             system: config.systemPrompt,

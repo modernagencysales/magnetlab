@@ -37,7 +37,7 @@ export async function answerKnowledgeQuestion(
     .join('\n\n');
 
   try {
-    const client = getAnthropicClient();
+    const client = getAnthropicClient('knowledge-answerer');
     const response = await client.messages.create({
       model: CLAUDE_HAIKU_MODEL,
       max_tokens: 1500,

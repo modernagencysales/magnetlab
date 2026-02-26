@@ -230,7 +230,7 @@ export async function generatePerformanceInsights(userId: string): Promise<Perfo
     `${p.pattern_type}="${p.pattern_value}": engagement=${p.avg_engagement_rate}%, views=${p.avg_views}, likes=${p.avg_likes}, comments=${p.avg_comments} (n=${p.sample_count}, confidence=${p.confidence})`
   ).join('\n');
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('performance-analyzer');
   const response = await client.messages.create({
     model: CLAUDE_SONNET_MODEL,
     max_tokens: 1500,

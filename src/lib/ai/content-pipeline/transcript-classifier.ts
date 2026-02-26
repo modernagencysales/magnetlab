@@ -3,7 +3,7 @@ import { CLAUDE_SONNET_MODEL } from './model-config';
 import { getAnthropicClient } from './anthropic-client';
 
 export async function classifyTranscript(transcript: string): Promise<TranscriptType> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('transcript-classifier');
 
   const response = await client.messages.create({
     model: CLAUDE_SONNET_MODEL,

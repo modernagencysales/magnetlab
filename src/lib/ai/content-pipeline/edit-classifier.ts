@@ -24,7 +24,7 @@ export interface ClassifyResult {
  */
 export async function classifyEditPatterns(input: ClassifyInput): Promise<ClassifyResult> {
   try {
-    const client = getAnthropicClient();
+    const client = getAnthropicClient('edit-classifier');
 
     const template = await getPrompt('edit-classifier');
     const prompt = interpolatePrompt(template.user_prompt, {

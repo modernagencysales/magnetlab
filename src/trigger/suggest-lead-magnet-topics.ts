@@ -58,7 +58,7 @@ export const suggestLeadMagnetTopics = task({
     }
 
     // 4. Generate suggestions via Claude
-    const client = getAnthropicClient();
+    const client = getAnthropicClient('suggest-lead-magnet-topics');
     const response = await client.messages.create({
       model: CLAUDE_SONNET_MODEL,
       max_tokens: 2000,

@@ -15,7 +15,7 @@ export async function generateSopEdit(
   sopTitle: string,
   targetSection: string
 ): Promise<GeneratedEdit> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('playbook-edit-generator');
 
   const entriesText = entries
     .map(
@@ -83,7 +83,7 @@ IMPORTANT: The "insert_after" must be an EXACT substring of the SOP content that
 export async function formatReferenceEntries(
   entries: KnowledgeEntry[]
 ): Promise<string> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('playbook-edit-generator');
 
   const entriesText = entries
     .map(
@@ -128,7 +128,7 @@ Return ONLY the formatted markdown (no JSON wrapper, no frontmatter, no top-leve
 export async function formatFaqEntries(
   entries: KnowledgeEntry[]
 ): Promise<string> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('playbook-edit-generator');
 
   const entriesText = entries
     .map(

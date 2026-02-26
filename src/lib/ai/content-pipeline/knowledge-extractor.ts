@@ -85,7 +85,7 @@ IMPORTANT: When extracting knowledge, attribute insights to the correct person a
     transcript: `${transcript.slice(0, 25000)}${transcript.length > 25000 ? '\n... [truncated]' : ''}`,
   });
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('knowledge-extractor');
   const response = await client.messages.create({
     model: template.model,
     max_tokens: template.max_tokens,

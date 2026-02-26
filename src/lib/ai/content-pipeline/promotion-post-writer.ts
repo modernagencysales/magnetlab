@@ -24,7 +24,7 @@ export interface PromotionPost {
 export async function generatePromotionPosts(
   input: PromotionPostInput
 ): Promise<PromotionPost[]> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('promotion-post-writer');
   const voiceSection = buildVoicePromptSection(input.voiceProfile, 'linkedin');
 
   const prompt = `Generate 4 LinkedIn promotional posts for this lead magnet. Each uses a DIFFERENT angle.

@@ -49,7 +49,7 @@ export const evolveWritingStyle = task({
     const aggregatedPatterns = aggregateEditPatterns(edits);
 
     // 4. Ask Claude to evolve the voice profile
-    const anthropic = getAnthropicClient();
+    const anthropic = getAnthropicClient('evolve-writing-style');
     const currentProfile = (profile.voice_profile as Record<string, unknown>) || {};
 
     const promptTemplate = await getPrompt('style-evolution');

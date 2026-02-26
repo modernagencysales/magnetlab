@@ -668,7 +668,7 @@ export async function consolidateOrphanTags(userId: string): Promise<{ merged: n
   // Use Claude Haiku to map orphans → established tags
   const { getAnthropicClient, parseJsonResponse } = await import('@/lib/ai/content-pipeline/anthropic-client');
   const { CLAUDE_HAIKU_MODEL } = await import('@/lib/ai/content-pipeline/model-config');
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('knowledge-brain');
 
   const orphanList = orphanTags.map(t => `"${t.tag_name}" (${t.usage_count}x)`).join(', ');
   const establishedList = establishedTags.map(t => `"${t.tag_name}" (${t.usage_count}x)`).join(', ');

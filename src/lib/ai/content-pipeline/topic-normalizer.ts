@@ -38,7 +38,7 @@ export async function normalizeTopics(
     )
     .join('\n');
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('topic-normalizer');
   const response = await client.messages.create({
     model: CLAUDE_HAIKU_MODEL,
     max_tokens: 500,

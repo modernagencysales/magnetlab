@@ -142,7 +142,7 @@ Use specific quotes, real numbers, and validated insights from this context.\n`
     knowledge_section: knowledgeSection,
   });
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('post-writer');
   const response = await client.messages.create({
     model: template.model,
     max_tokens: template.max_tokens,
@@ -190,7 +190,7 @@ Use specific quotes, real numbers, and validated insights from this context.\n`
     target_audience: targetAudience || 'B2B professionals, agency owners, and marketers',
   });
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('post-writer');
   const response = await client.messages.create({
     model: promptTemplate.model,
     max_tokens: promptTemplate.max_tokens,
@@ -308,7 +308,7 @@ export async function rewriteSection(
     style_guidelines: getBaseStyleGuidelines(),
   });
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('post-writer');
   const response = await client.messages.create({
     model: template.model,
     max_tokens: template.max_tokens,

@@ -19,7 +19,7 @@ interface ExtractedTemplate {
 }
 
 export async function extractTemplateFromPost(content: string): Promise<ExtractedTemplate> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('template-extractor');
 
   const response = await client.messages.create({
     model: CLAUDE_SONNET_MODEL,

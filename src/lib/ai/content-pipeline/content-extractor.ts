@@ -132,7 +132,7 @@ Return your response as valid JSON in this exact format:
   "post_ready_count": number
 }`;
 
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('content-extractor');
   const response = await client.messages.create({
     model: CLAUDE_SONNET_MODEL,
     max_tokens: 8000,

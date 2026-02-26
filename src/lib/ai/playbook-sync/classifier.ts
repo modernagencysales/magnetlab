@@ -16,7 +16,7 @@ export async function classifyKnowledgeForSop(
   sopContent: string,
   sopTitle: string
 ): Promise<ClassificationResult> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('playbook-classifier');
 
   const prompt = `You are a knowledge curator for a GTM (go-to-market) playbook. Your job is to decide whether a piece of extracted knowledge belongs in a specific SOP (Standard Operating Procedure).
 

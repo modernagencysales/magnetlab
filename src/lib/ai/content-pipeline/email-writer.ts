@@ -17,7 +17,7 @@ export interface EmailResult {
 }
 
 export async function writeNewsletterEmail(input: WriteEmailInput): Promise<EmailResult> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('email-writer');
   const voiceSection = buildVoicePromptSection(input.voiceProfile, 'email');
 
   const template = await getPrompt('email-newsletter');

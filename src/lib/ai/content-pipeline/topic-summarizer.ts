@@ -34,7 +34,7 @@ export async function generateTopicSummary(
   }
 
   try {
-    const client = getAnthropicClient();
+    const client = getAnthropicClient('topic-summarizer');
     const template = await getPrompt('topic-summarizer');
     const prompt = interpolatePrompt(template.user_prompt, {
       topic_name: topicName,

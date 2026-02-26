@@ -24,7 +24,7 @@ interface QuickWriteResult {
 }
 
 async function expandToIdea(rawThought: string): Promise<IdeaContext> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient('quick-writer');
 
   const response = await client.messages.create({
     model: CLAUDE_SONNET_MODEL,
