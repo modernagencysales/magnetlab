@@ -1324,7 +1324,8 @@ CONTENT GUIDELINES:
 - Use callouts only for standout "Pro tip" or "Warning" moments — not for regular content.
 - Parse **bold** in paragraph and numbered-item content for emphasis.
 - Keep the voice professional but direct — respect the reader's time.
-- Do NOT use "image" or "embed" blocks — those are added manually by the user.
+- Do NOT use "image" blocks — those are added manually by the user.
+   - "embed": Use ONLY when the extracted content contains YouTube, Vimeo, Loom, or Airtable URLs. Include "url" (the full original URL) and "provider" (e.g. "youtube", "vimeo", "loom", "airtable"). Embed each video/resource URL found in the content — do not skip them.
 
 AUDIENCE PRESERVATION — CRITICAL:
 Do NOT change the target audience. If the lead magnet is for "ecommerce owners," keep all language directed at ecommerce owners. Do not generalize to "business owners" or swap in a different audience.
