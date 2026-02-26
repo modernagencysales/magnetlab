@@ -63,6 +63,53 @@ export function ExtractedContentRenderer({
         </section>
       ))}
 
+      {/* Additional content fields */}
+      {content.personalExperience && (
+        <div style={{ margin: '2rem 0' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: textColor, margin: '0 0 0.75rem 0' }}>
+            Personal Experience
+          </h3>
+          <p style={{ fontSize: '1.125rem', lineHeight: '1.875rem', color: bodyColor, margin: 0 }}>
+            {content.personalExperience}
+          </p>
+        </div>
+      )}
+
+      {content.proof && (
+        <div style={{ margin: '2rem 0' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: textColor, margin: '0 0 0.75rem 0' }}>
+            Proof
+          </h3>
+          <p style={{ fontSize: '1.125rem', lineHeight: '1.875rem', color: bodyColor, margin: 0 }}>
+            {content.proof}
+          </p>
+        </div>
+      )}
+
+      {content.commonMistakes && content.commonMistakes.length > 0 && (
+        <div style={{ margin: '2rem 0' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: textColor, margin: '0 0 0.75rem 0' }}>
+            Common Mistakes
+          </h3>
+          {content.commonMistakes.map((mistake: string, i: number) => (
+            <p key={i} style={{ fontSize: '1.125rem', lineHeight: '1.875rem', color: bodyColor, margin: '0 0 0.75rem 0' }}>
+              {mistake}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {content.differentiation && (
+        <div style={{ margin: '2rem 0' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: textColor, margin: '0 0 0.75rem 0' }}>
+            What Makes This Different
+          </h3>
+          <p style={{ fontSize: '1.125rem', lineHeight: '1.875rem', color: bodyColor, margin: 0 }}>
+            {content.differentiation}
+          </p>
+        </div>
+      )}
+
       {/* Non-obvious insight */}
       {content.nonObviousInsight && (
         <div

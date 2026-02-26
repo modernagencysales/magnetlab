@@ -15,6 +15,7 @@ import type {
 import { getRelevantContext } from '@/lib/services/knowledge-brain';
 import { buildContentBrief } from '@/lib/ai/content-pipeline/briefing-agent';
 import { logError, logWarn } from '@/lib/utils/logger';
+import { repairJson } from '@/lib/utils/repair-json';
 
 // Lazy initialization to ensure env vars are loaded
 // Increased timeout for background jobs (8 minutes for heavy AI calls with transcripts - MOD-76)
@@ -1339,7 +1340,8 @@ CONTENT GUIDELINES:
 - Use callouts only for standout "Pro tip" or "Warning" moments — not for regular content.
 - Parse **bold** in paragraph and numbered-item content for emphasis.
 - Keep the voice professional but direct — respect the reader's time.
-- Do NOT use "image" or "embed" blocks — those are added manually by the user.
+- Do NOT use "image" blocks — those are added manually by the user.
+   - "embed": Use ONLY when the extracted content contains YouTube, Vimeo, Loom, or Airtable URLs. Include "url" (the full original URL) and "provider" (e.g. "youtube", "vimeo", "loom", "airtable"). Embed each video/resource URL found in the content — do not skip them.
 
 AUDIENCE PRESERVATION — CRITICAL:
 Do NOT change the target audience. If the lead magnet is for "ecommerce owners," keep all language directed at ecommerce owners. Do not generalize to "business owners" or swap in a different audience.
@@ -1391,24 +1393,33 @@ Return ONLY valid JSON:
   }
 }`;
 
-  const response = await getAnthropicClient().messages.create({
+  // Use streaming to prevent HTTP timeout truncation (MOD-262)
+  const response = await getAnthropicClient().messages.stream({
     model: 'claude-opus-4-6',
-    max_tokens: 8000,
+    max_tokens: 16000,
     messages: [{ role: 'user', content: prompt }],
-  });
+  }).finalMessage();
 
   const textContent = response.content.find((block) => block.type === 'text');
   if (!textContent || textContent.type !== 'text') {
     throw new Error('No text response from Claude');
   }
 
+  const rawText = textContent.text;
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  const jsonStr = jsonMatch ? jsonMatch[0] : rawText;
+
+  // Try standard parse first, then repair truncated JSON (MOD-262)
   try {
-    const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as PolishedContent;
-    }
-    return JSON.parse(textContent.text) as PolishedContent;
+    return JSON.parse(jsonStr) as PolishedContent;
   } catch {
-    throw new Error('Failed to parse polished content response');
+    try {
+      return repairJson(jsonStr) as unknown as PolishedContent;
+    } catch {
+      const preview = jsonStr.slice(-200);
+      throw new Error(
+        `Failed to parse polished content (even after repair). Last 200 chars: ${preview}`
+      );
+    }
   }
 }
