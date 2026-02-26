@@ -3,14 +3,14 @@
 import { useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Loader2, Sparkles, ExternalLink, CheckCircle2, Clock, FileText, PenLine, Save, X } from 'lucide-react';
-import type { LeadMagnet, PolishedContent } from '@/lib/types/lead-magnet';
+import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
 import { EditablePolishedContentRenderer } from '@/components/content/EditablePolishedContentRenderer';
 
 interface ContentPageTabProps {
   leadMagnet: LeadMagnet;
   username: string | null;
   slug: string | null;
-  onPolished: (polishedContent: PolishedContent, polishedAt: string) => void;
+  onPolished: (polishedContent: PolishedContent, polishedAt: string, extractedContent?: ExtractedContent) => void;
 }
 
 function createBlankContent(title: string): PolishedContent {
@@ -33,6 +33,7 @@ function createBlankContent(title: string): PolishedContent {
 export function ContentPageTab({ leadMagnet, username, slug, onPolished }: ContentPageTabProps) {
   const { resolvedTheme } = useTheme();
   const [polishing, setPolishing] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState<PolishedContent | null>(null);
@@ -41,22 +42,10 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
   const isDark = resolvedTheme === 'dark';
   const hasExtracted = !!leadMagnet.extractedContent;
   const hasPolished = !!leadMagnet.polishedContent;
+  const hasConcept = !!leadMagnet.concept;
   const polished = leadMagnet.polishedContent as PolishedContent | null;
   const contentUrl = username && slug ? `/p/${username}/${slug}/content` : null;
-
-  if (!hasExtracted) {
-    return (
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Content Page</h3>
-        <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-          <p>No content yet.</p>
-          <p className="text-sm mt-2">
-            Complete the lead magnet wizard to generate content, or this will be auto-formatted when you publish.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const isAiLoading = polishing || generating;
 
   const handlePolish = async () => {
     setPolishing(true);
@@ -78,6 +67,29 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       setError(err instanceof Error ? err.message : 'Failed to polish content');
     } finally {
       setPolishing(false);
+    }
+  };
+
+  const handleGenerateAndPolish = async () => {
+    setGenerating(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/generate-content`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to generate content');
+      }
+
+      const { extractedContent, polishedContent, polishedAt } = await response.json();
+      onPolished(polishedContent, polishedAt, extractedContent);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate content');
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -192,11 +204,12 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={`grid gap-4 ${hasConcept ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
           {/* Card A: Write Your Own */}
           <button
             onClick={handleStartBlank}
-            className="group rounded-lg border border-dashed p-6 text-left hover:border-violet-500/50 hover:bg-violet-500/5 transition-colors"
+            disabled={isAiLoading}
+            className="group rounded-lg border border-dashed p-6 text-left hover:border-violet-500/50 hover:bg-violet-500/5 transition-colors disabled:opacity-50"
           >
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
               <PenLine className="h-5 w-5 text-violet-500" />
@@ -207,26 +220,30 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
             </p>
           </button>
 
-          {/* Card B: Generate with AI */}
-          <button
-            onClick={handlePolish}
-            disabled={polishing}
-            className="group rounded-lg border border-dashed p-6 text-left hover:border-violet-500/50 hover:bg-violet-500/5 transition-colors disabled:opacity-50"
-          >
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
-              {polishing ? (
-                <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
-              ) : (
-                <Sparkles className="h-5 w-5 text-violet-500" />
-              )}
-            </div>
-            <p className="font-medium">Generate with AI</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {polishing
-                ? 'Generating your content page...'
-                : 'Polish your extracted content into a beautiful reading experience.'}
-            </p>
-          </button>
+          {/* Card B: Generate with AI (only shown when concept exists) */}
+          {hasConcept && (
+            <button
+              onClick={hasExtracted ? handlePolish : handleGenerateAndPolish}
+              disabled={isAiLoading}
+              className="group rounded-lg border border-dashed p-6 text-left hover:border-violet-500/50 hover:bg-violet-500/5 transition-colors disabled:opacity-50"
+            >
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
+                {isAiLoading ? (
+                  <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
+                ) : (
+                  <Sparkles className="h-5 w-5 text-violet-500" />
+                )}
+              </div>
+              <p className="font-medium">Generate with AI</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {isAiLoading
+                  ? 'Generating your content page...'
+                  : hasExtracted
+                    ? 'Polish your extracted content into a beautiful reading experience.'
+                    : 'Generate a full content page from your lead magnet concept.'}
+              </p>
+            </button>
+          )}
         </div>
       </div>
     );
