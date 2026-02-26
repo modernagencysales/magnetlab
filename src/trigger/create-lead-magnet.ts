@@ -10,7 +10,7 @@ import {
 import { generateEmailSequence, generateDefaultEmailSequence } from "@/lib/ai/email-sequence-generator";
 import { logApiError } from "@/lib/api/errors";
 import { fireGtmLeadMagnetDeployedWebhook } from "@/lib/webhooks/gtm-system";
-import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropicClient } from "@/lib/ai/anthropic-client";
 import type {
   LeadMagnetArchetype,
   LeadMagnetConcept,
@@ -46,18 +46,15 @@ export interface CreateLeadMagnetPipelinePayload {
   autoSchedulePost: boolean;
   scheduledTime?: string;
   leadMagnetId: string;
+  teamId?: string | null;
 }
 
 // ============================================
 // HELPERS
 // ============================================
 
-function getAnthropicClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not set in environment variables");
-  }
-  return new Anthropic({ apiKey, timeout: 120_000 });
+function getAnthropicClient() {
+  return createAnthropicClient("create-lead-magnet", { timeout: 120_000 });
 }
 
 function slugify(text: string): string {
@@ -168,7 +165,7 @@ export const createLeadMagnetPipeline = task({
     maxAttempts: 2,
   },
   run: async (payload: CreateLeadMagnetPipelinePayload) => {
-    const { userId, userName, username, archetype, businessContext, topic, leadMagnetId } = payload;
+    const { userId, userName, username, archetype, businessContext, topic, leadMagnetId, teamId } = payload;
     const supabase = createSupabaseAdminClient();
 
     const updateStatus = async (status: string) => {
@@ -295,6 +292,7 @@ export const createLeadMagnetPipeline = task({
           const funnelInsertData = {
             lead_magnet_id: leadMagnetId,
             user_id: userId,
+            team_id: teamId || null,
             slug: finalSlug,
             optin_headline: selectedConcept.title,
             optin_subline: `Solve "${selectedConcept.painSolved}" with this free ${selectedConcept.deliveryFormat}.`,

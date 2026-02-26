@@ -1,16 +1,12 @@
 // AI Email Sequence Generator
 // Generates 5-email welcome sequences for lead magnets
 
-import Anthropic from '@anthropic-ai/sdk';
+import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 import type { Email, EmailGenerationContext } from '@/lib/types/email';
 
 // Lazy initialization to ensure env vars are loaded
-function getAnthropicClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not set in environment variables');
-  }
-  return new Anthropic({ apiKey, timeout: 30_000 });
+function getAnthropicClient() {
+  return createAnthropicClient('email-sequence-generator', { timeout: 30_000 });
 }
 
 const EMAIL_SEQUENCE_SYSTEM_PROMPT = `You are an expert email copywriter creating a 5-email welcome sequence for someone who just downloaded a lead magnet. Your emails:

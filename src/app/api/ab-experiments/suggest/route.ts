@@ -4,7 +4,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getAnthropicClient, parseJsonResponse } from '@/lib/ai/content-pipeline/anthropic-client';
+import { createAnthropicClient } from '@/lib/ai/anthropic-client';
+import { parseJsonResponse } from '@/lib/ai/content-pipeline/anthropic-client';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 
 const VALID_TEST_FIELDS = ['headline', 'subline', 'vsl_url', 'pass_message'] as const;
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
 
     const fieldLabel = fieldLabels[testField as TestField] || testField;
 
-    const anthropic = getAnthropicClient();
+    const anthropic = createAnthropicClient('ab-experiments-suggest');
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',

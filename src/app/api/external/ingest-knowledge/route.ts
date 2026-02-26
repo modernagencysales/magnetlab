@@ -33,7 +33,21 @@ function authenticateRequest(request: Request): boolean {
 
 // --- Embeddings ---
 
-const openai = new OpenAI();
+function getOpenAIClient(): OpenAI {
+  const heliconeKey = process.env.HELICONE_API_KEY;
+  const config: ConstructorParameters<typeof OpenAI>[0] = {};
+  if (heliconeKey) {
+    config.baseURL = 'https://oai.helicone.ai/v1';
+    config.defaultHeaders = {
+      'Helicone-Auth': `Bearer ${heliconeKey}`,
+      'Helicone-Property-Source': 'magnetlab',
+      'Helicone-Property-Caller': 'ingest-knowledge',
+    };
+  }
+  return new OpenAI(config);
+}
+
+const openai = getOpenAIClient();
 
 async function generateEmbedding(text: string): Promise<number[]> {
   const response = await openai.embeddings.create({

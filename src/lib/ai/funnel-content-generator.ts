@@ -1,17 +1,13 @@
 // AI Content Generator for Funnel Pages
 // Generates opt-in page copy from lead magnet data
 
-import Anthropic from '@anthropic-ai/sdk';
+import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 import type { LeadMagnetConcept, ExtractedContent } from '@/lib/types/lead-magnet';
 import type { GeneratedOptinContent } from '@/lib/types/funnel';
 
 // Lazy initialization to ensure env vars are loaded
-function getAnthropicClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not set in environment variables');
-  }
-  return new Anthropic({ apiKey, timeout: 30_000 });
+function getAnthropicClient() {
+  return createAnthropicClient('funnel-content-generator', { timeout: 30_000 });
 }
 
 const OPTIN_CONTENT_SYSTEM_PROMPT = `You are an expert copywriter specializing in high-converting opt-in pages for digital lead magnets. Your copy is:

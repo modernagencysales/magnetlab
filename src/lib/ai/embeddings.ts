@@ -7,9 +7,19 @@ function getOpenAIClient(): OpenAI {
     throw new Error('OPENAI_API_KEY is not configured');
   }
   if (!openaiClient) {
-    openaiClient = new OpenAI({
+    const heliconeKey = process.env.HELICONE_API_KEY;
+    const config: ConstructorParameters<typeof OpenAI>[0] = {
       apiKey: process.env.OPENAI_API_KEY,
-    });
+    };
+    if (heliconeKey) {
+      config.baseURL = 'https://oai.helicone.ai/v1';
+      config.defaultHeaders = {
+        'Helicone-Auth': `Bearer ${heliconeKey}`,
+        'Helicone-Property-Source': 'magnetlab',
+        'Helicone-Property-Caller': 'embeddings',
+      };
+    }
+    openaiClient = new OpenAI(config);
   }
   return openaiClient;
 }

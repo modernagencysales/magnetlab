@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 import type {
   BusinessContext,
   LeadMagnetArchetype,
@@ -17,13 +17,9 @@ import { buildContentBrief } from '@/lib/ai/content-pipeline/briefing-agent';
 import { logError, logWarn } from '@/lib/utils/logger';
 
 // Lazy initialization to ensure env vars are loaded
-function getAnthropicClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not set in environment variables');
-  }
-  // Increased timeout for background jobs (8 minutes for heavy AI calls with transcripts - MOD-76)
-  return new Anthropic({ apiKey, timeout: 480_000 });
+// Increased timeout for background jobs (8 minutes for heavy AI calls with transcripts - MOD-76)
+function getAnthropicClient() {
+  return createAnthropicClient('lead-magnet-generator', { timeout: 480_000 });
 }
 
 /**

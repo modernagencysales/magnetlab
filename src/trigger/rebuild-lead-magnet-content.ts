@@ -1,5 +1,5 @@
 import { task, logger } from '@trigger.dev/sdk/v3';
-import Anthropic from '@anthropic-ai/sdk';
+import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { polishLeadMagnetContent } from '@/lib/ai/lead-magnet-generator';
 import { getRelevantContext } from '@/lib/services/knowledge-brain';
@@ -10,10 +10,8 @@ interface RebuildPayload {
   userId: string;
 }
 
-function getAnthropicClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
-  return new Anthropic({ apiKey, timeout: 480_000 });
+function getAnthropicClient() {
+  return createAnthropicClient('rebuild-lead-magnet-content', { timeout: 480_000 });
 }
 
 /**

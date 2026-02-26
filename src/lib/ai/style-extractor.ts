@@ -1,8 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const anthropic = createAnthropicClient('style-extractor');
 
 export interface StyleProfile {
   tone: 'conversational' | 'professional' | 'provocative' | 'educational' | 'inspirational';

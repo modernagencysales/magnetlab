@@ -1,14 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 
-let anthropicClient: Anthropic | null = null;
-
-export function getAnthropicClient(): Anthropic {
-  if (!anthropicClient) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
-    anthropicClient = new Anthropic({ apiKey, timeout: 240_000 });
-  }
-  return anthropicClient;
+/**
+ * Get an Anthropic client for content-pipeline callers.
+ * Routes through Helicone when HELICONE_API_KEY is set.
+ *
+ * @param caller - Optional caller name for Helicone tracking (defaults to 'content-pipeline')
+ */
+export function getAnthropicClient(caller?: string): Anthropic {
+  return createAnthropicClient(caller || 'content-pipeline', { timeout: 240_000 });
 }
 
 export function parseJsonResponse<T>(text: string): T {

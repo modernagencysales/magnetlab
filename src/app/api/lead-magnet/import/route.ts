@@ -10,12 +10,10 @@ import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { spreadsheetImportSchema, validateBody } from '@/lib/validations/api';
 import { parseSpreadsheet } from '@/lib/utils/spreadsheet-parser';
 import { generateCalculatorFromSpreadsheet } from '@/lib/ai/interactive-generators';
-import Anthropic from '@anthropic-ai/sdk';
+import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 
 const getAnthropicClient = () => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
-  return new Anthropic({ apiKey, timeout: 30_000 });
+  return createAnthropicClient('lead-magnet-import', { timeout: 30_000 });
 };
 
 interface ImportedContent {
