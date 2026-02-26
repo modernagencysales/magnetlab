@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { normalizeImageUrl } from '@/lib/utils/normalize-image-url';
 
 // GET - Get brand kit
 export async function GET() {
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
       ...(body.defaultTheme !== undefined && { default_theme: body.defaultTheme }),
       ...(body.defaultPrimaryColor !== undefined && { default_primary_color: body.defaultPrimaryColor }),
       ...(body.defaultBackgroundStyle !== undefined && { default_background_style: body.defaultBackgroundStyle }),
-      ...(body.logoUrl !== undefined && { logo_url: body.logoUrl }),
+      ...(body.logoUrl !== undefined && { logo_url: body.logoUrl ? normalizeImageUrl(body.logoUrl) : body.logoUrl }),
       ...(body.fontFamily !== undefined && { font_family: body.fontFamily }),
       ...(body.fontUrl !== undefined && { font_url: body.fontUrl }),
       ...(body.websiteUrl !== undefined && {
