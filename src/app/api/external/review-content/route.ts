@@ -53,12 +53,18 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('Invalid JSON in request body');
     }
 
-    const { userId, teamProfileId, voiceProfile, icpSummary } = body as {
+    const { userId, teamProfileId, voiceProfile: rawVoiceProfile, icpSummary } = body as {
       userId?: string;
       teamProfileId?: string;
-      voiceProfile?: string;
+      voiceProfile?: string | Record<string, unknown>;
       icpSummary?: string;
     };
+
+    // voiceProfile may arrive as a JSON object from gtm-system — stringify for prompt interpolation
+    const voiceProfile =
+      rawVoiceProfile && typeof rawVoiceProfile === 'object'
+        ? JSON.stringify(rawVoiceProfile, null, 2)
+        : rawVoiceProfile || undefined;
 
     if (!userId || typeof userId !== 'string') {
       return ApiErrors.validationError('userId is required');
@@ -77,14 +83,14 @@ export async function POST(request: Request) {
     }
 
     // Step 4: Fetch draft posts
-    // If teamProfileId is provided, filter by source_profile_id; otherwise by user_id
+    // If teamProfileId is provided, filter by team_profile_id; otherwise by user_id
     let postsQuery = supabase
       .from('cp_pipeline_posts')
       .select('id, final_content, draft_content, hook_score')
       .eq('status', 'draft');
 
     if (teamProfileId && typeof teamProfileId === 'string') {
-      postsQuery = postsQuery.eq('source_profile_id', teamProfileId);
+      postsQuery = postsQuery.eq('team_profile_id', teamProfileId);
     } else {
       postsQuery = postsQuery.eq('user_id', userId);
     }
@@ -135,7 +141,8 @@ export async function POST(request: Request) {
         const { error: deleteError } = await supabase
           .from('cp_pipeline_posts')
           .delete()
-          .eq('id', post.id);
+          .eq('id', post.id)
+          .eq('user_id', userId);
 
         if (deleteError) {
           logApiError('external/review-content/delete-post', deleteError, { postId: post.id });
