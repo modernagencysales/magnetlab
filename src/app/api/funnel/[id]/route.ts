@@ -8,6 +8,7 @@ import { funnelPageFromRow, type FunnelPageRow } from '@/lib/types/funnel';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { validateBody, updateFunnelSchema } from '@/lib/validations/api';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { normalizeImageUrl } from '@/lib/utils/normalize-image-url';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -88,7 +89,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (validated.theme !== undefined) updateData.theme = validated.theme;
     if (validated.primaryColor !== undefined) updateData.primary_color = validated.primaryColor;
     if (validated.backgroundStyle !== undefined) updateData.background_style = validated.backgroundStyle;
-    if (validated.logoUrl !== undefined) updateData.logo_url = validated.logoUrl;
+    if (validated.logoUrl !== undefined) updateData.logo_url = validated.logoUrl ? normalizeImageUrl(validated.logoUrl) : validated.logoUrl;
     if (validated.qualificationFormId !== undefined) updateData.qualification_form_id = validated.qualificationFormId;
     if (validated.redirectTrigger !== undefined) updateData.redirect_trigger = validated.redirectTrigger;
     if (validated.redirectUrl !== undefined) updateData.redirect_url = validated.redirectUrl;

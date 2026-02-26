@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withExternalAuth, ExternalAuthContext } from '@/lib/middleware/external-auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { funnelPageFromRow, type FunnelPageRow } from '@/lib/types/funnel';
+import { normalizeImageUrl } from '@/lib/utils/normalize-image-url';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 
 // GET - Get funnel page for a lead magnet
@@ -144,7 +145,7 @@ async function handlePost(
       theme: (funnelData.theme as string) || profile?.default_theme || 'dark',
       primary_color: (funnelData.primaryColor as string) || profile?.default_primary_color || '#8b5cf6',
       background_style: (funnelData.backgroundStyle as string) || profile?.default_background_style || 'solid',
-      logo_url: (funnelData.logoUrl as string) || profile?.default_logo_url || null,
+      logo_url: normalizeImageUrl((funnelData.logoUrl as string) || profile?.default_logo_url || '') || null,
     };
 
     let { data, error } = await supabase

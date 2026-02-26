@@ -12,6 +12,7 @@ import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { checkResourceLimit } from '@/lib/auth/plan-limits';
 import { getTemplate, DEFAULT_TEMPLATE_ID } from '@/lib/constants/funnel-templates';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { normalizeImageUrl } from '@/lib/utils/normalize-image-url';
 
 // GET - Get funnel page for a target (lead magnet, library, or external resource)
 export async function GET(request: Request) {
@@ -262,7 +263,7 @@ export async function POST(request: Request) {
       theme: funnelData.theme || brandKit?.default_theme || profile?.default_theme || 'dark',
       primary_color: funnelData.primaryColor || brandKit?.default_primary_color || profile?.default_primary_color || '#8b5cf6',
       background_style: funnelData.backgroundStyle || brandKit?.default_background_style || profile?.default_background_style || 'solid',
-      logo_url: funnelData.logoUrl || brandKit?.logo_url || profile?.default_logo_url || null,
+      logo_url: normalizeImageUrl(funnelData.logoUrl || brandKit?.logo_url || profile?.default_logo_url || '') || null,
       font_family: brandKit?.font_family || null,
       font_url: brandKit?.font_url || null,
       qualification_form_id: qualificationFormId || null,

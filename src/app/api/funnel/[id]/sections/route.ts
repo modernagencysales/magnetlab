@@ -9,6 +9,7 @@ import {
   sectionConfigSchemas,
 } from '@/lib/validations/api';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { normalizeSectionConfigImageUrls } from '@/lib/utils/normalize-image-url';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -79,7 +80,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError(validation.error);
     }
 
-    const { sectionType, pageLocation, sortOrder, isVisible, config } = validation.data;
+    const { sectionType, pageLocation, sortOrder, isVisible, config: rawConfig } = validation.data;
+    const config = normalizeSectionConfigImageUrls(sectionType, rawConfig as Record<string, unknown>);
 
     // Validate config against type-specific schema
     const configSchema = sectionConfigSchemas[sectionType as keyof typeof sectionConfigSchemas];

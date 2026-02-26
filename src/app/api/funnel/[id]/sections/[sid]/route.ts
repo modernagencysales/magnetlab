@@ -5,6 +5,7 @@ import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { funnelPageSectionFromRow, type FunnelPageSectionRow } from '@/lib/types/funnel';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { validateBody, updateSectionSchema, sectionConfigSchemas } from '@/lib/validations/api';
+import { normalizeSectionConfigImageUrls } from '@/lib/utils/normalize-image-url';
 
 interface RouteParams {
   params: Promise<{ id: string; sid: string }>;
@@ -40,9 +41,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
       return ApiErrors.notFound('Funnel page');
     }
 
-    // If config is being updated, validate against the section's type
+    // Get existing section to know its type (needed for config validation and image URL normalization)
+    let existingSectionType = '';
     if (validation.data.config) {
-      // Get existing section to know its type
       const { data: existing } = await supabase
         .from('funnel_page_sections')
         .select('section_type')
@@ -51,6 +52,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         .single();
 
       if (existing) {
+        existingSectionType = existing.section_type;
         const configSchema = sectionConfigSchemas[existing.section_type as keyof typeof sectionConfigSchemas];
         if (configSchema) {
           const configValidation = configSchema.safeParse(validation.data.config);
@@ -68,7 +70,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (validation.data.sortOrder !== undefined) update.sort_order = validation.data.sortOrder;
     if (validation.data.isVisible !== undefined) update.is_visible = validation.data.isVisible;
     if (validation.data.pageLocation !== undefined) update.page_location = validation.data.pageLocation;
-    if (validation.data.config !== undefined) update.config = validation.data.config;
+    if (validation.data.config !== undefined) {
+      update.config = normalizeSectionConfigImageUrls(existingSectionType, validation.data.config as Record<string, unknown>);
+    }
 
     const { data, error } = await supabase
       .from('funnel_page_sections')
