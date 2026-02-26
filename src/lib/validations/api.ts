@@ -274,7 +274,7 @@ export type QualificationQuestionInput = z.infer<typeof qualificationQuestionSch
 const polishedBlockSchema = z.object({
   type: z.string(),
   content: z.string().optional(),
-  items: z.array(z.string()).optional(),
+  items: z.array(z.union([z.string(), z.record(z.unknown())])).optional(),
 }).passthrough();
 
 const polishedSectionSchema = z.object({
@@ -287,7 +287,7 @@ const polishedSectionSchema = z.object({
 export const polishedContentSchema = z.object({
   version: z.number().optional(),
   polishedAt: z.string().optional(),
-  title: z.string(),
+  title: z.string().optional().default(''),
   heroSummary: z.string().optional().default(''),
   sections: z.array(polishedSectionSchema).min(1),
   metadata: z.object({
