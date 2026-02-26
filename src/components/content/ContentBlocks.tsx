@@ -249,7 +249,7 @@ export function CodeBlock({ block, isDark }: { block: PolishedBlock; isDark: boo
     return (
       <pre className="rounded-lg border p-4 text-sm overflow-x-auto" style={{
         backgroundColor: isDark ? '#1a1a2e' : '#f5f5f5',
-        color: 'var(--ds-text-body)',
+        color: 'var(--ds-body)',
       }}>
         <code>{block.content}</code>
       </pre>
@@ -261,7 +261,7 @@ export function CodeBlock({ block, isDark }: { block: PolishedBlock; isDark: boo
       {block.language && (
         <div className="px-4 py-1.5 text-xs font-mono border-b" style={{
           backgroundColor: isDark ? '#1a1a2e' : '#f0f0f0',
-          color: 'var(--ds-text-muted)',
+          color: 'var(--ds-muted)',
         }}>
           {block.language}
         </div>
@@ -282,7 +282,7 @@ export function TableBlock({ block, isDark }: { block: PolishedBlock; isDark: bo
         <thead>
           <tr style={{ backgroundColor: isDark ? '#1a1a2e' : '#f5f5f5' }}>
             {block.headers.map((header, i) => (
-              <th key={i} className="px-4 py-3 text-left font-semibold" style={{ color: 'var(--ds-text-heading)' }}>
+              <th key={i} className="px-4 py-3 text-left font-semibold" style={{ color: 'var(--ds-text)' }}>
                 {header}
               </th>
             ))}
@@ -294,7 +294,7 @@ export function TableBlock({ block, isDark }: { block: PolishedBlock; isDark: bo
               backgroundColor: rowIdx % 2 === 1 ? (isDark ? '#0d0d1a' : '#fafafa') : 'transparent',
             }}>
               {row.map((cell, cellIdx) => (
-                <td key={cellIdx} className="px-4 py-3" style={{ color: 'var(--ds-text-body)' }}>
+                <td key={cellIdx} className="px-4 py-3" style={{ color: 'var(--ds-body)' }}>
                   {renderRichText(cell)}
                 </td>
               ))}
@@ -316,7 +316,7 @@ export function AccordionBlock({ block }: { block: PolishedBlock }) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex w-full items-center justify-between px-4 py-3 text-left font-medium"
-        style={{ color: 'var(--ds-text-heading)' }}
+        style={{ color: 'var(--ds-text)' }}
       >
         <span>{block.title || 'Details'}</span>
         <svg
@@ -327,7 +327,7 @@ export function AccordionBlock({ block }: { block: PolishedBlock }) {
         </svg>
       </button>
       {isOpen && (
-        <div className="border-t px-4 py-3" style={{ color: 'var(--ds-text-body)' }}>
+        <div className="border-t px-4 py-3" style={{ color: 'var(--ds-body)' }}>
           {renderRichText(block.content)}
         </div>
       )}
@@ -349,7 +349,7 @@ export function ImageBlock({ block }: { block: PolishedBlock }) {
         loading="lazy"
       />
       {block.caption && (
-        <figcaption className="mt-2 text-center text-sm" style={{ color: 'var(--ds-text-muted)' }}>
+        <figcaption className="mt-2 text-center text-sm" style={{ color: 'var(--ds-muted)' }}>
           {block.caption}
         </figcaption>
       )}
