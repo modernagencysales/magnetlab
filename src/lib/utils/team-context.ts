@@ -20,7 +20,7 @@ export async function getDataScope(userId: string): Promise<DataScope> {
   const cookieStore = await cookies();
   const contextTeamId = cookieStore.get('ml-team-context')?.value;
 
-  if (contextTeamId) {
+  if (contextTeamId && contextTeamId !== 'personal') {
     const supabase = createSupabaseAdminClient();
     const { data: team } = await supabase
       .from('teams')

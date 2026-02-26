@@ -25,7 +25,7 @@ export default async function DashboardLayout({
 
   let teamContext: { isTeamMode: boolean; teamId: string; teamName: string; isOwner: boolean } | null = null;
 
-  if (activeTeamId) {
+  if (activeTeamId && activeTeamId !== 'personal') {
     const supabase = createSupabaseAdminClient();
     const { data: team } = await supabase
       .from('teams')
@@ -43,6 +43,33 @@ export default async function DashboardLayout({
           isOwner: role === 'owner',
         };
       }
+    }
+  }
+
+  // Auto-redirect team members who haven't chosen a context yet
+  if (!activeTeamId) {
+    const supabase = createSupabaseAdminClient();
+
+    // Check V2 team_profiles first
+    const { data: profiles } = await supabase
+      .from('team_profiles')
+      .select('team_id')
+      .eq('user_id', session.user.id!)
+      .eq('status', 'active');
+
+    // Also check if user owns a team
+    const { data: ownedTeams } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('owner_id', session.user.id!);
+
+    const teamIds = new Set([
+      ...(profiles || []).map(p => p.team_id),
+      ...(ownedTeams || []).map(t => t.id),
+    ]);
+
+    if (teamIds.size > 0) {
+      redirect('/team-select');
     }
   }
 

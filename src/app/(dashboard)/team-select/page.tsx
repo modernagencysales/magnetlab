@@ -49,7 +49,7 @@ export default function TeamSelectPage() {
   };
 
   const selectPersonal = () => {
-    document.cookie = 'ml-team-context=; path=/; max-age=0';
+    document.cookie = `ml-team-context=personal; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
     router.push('/');
   };
 
