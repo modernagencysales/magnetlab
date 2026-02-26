@@ -15,6 +15,15 @@ const STATUS_FILTERS: { value: PostStatus | ''; label: string }[] = [
   { value: 'published', label: 'Published' },
 ];
 
+type ReviewCategory = 'excellent' | 'good_with_edits' | 'needs_rewrite' | '';
+
+const REVIEW_FILTERS: { value: ReviewCategory; label: string; className: string }[] = [
+  { value: '', label: 'All Reviews', className: '' },
+  { value: 'excellent', label: 'Excellent', className: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' },
+  { value: 'good_with_edits', label: 'Needs Edits', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' },
+  { value: 'needs_rewrite', label: 'Rewrite', className: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' },
+];
+
 interface PostsTabProps {
   profileId?: string | null;
   teamId?: string;
@@ -25,6 +34,7 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<PostStatus | ''>('');
   const [selectedPost, setSelectedPost] = useState<PipelinePost | null>(null);
+  const [reviewFilter, setReviewFilter] = useState<ReviewCategory>('');
   const [polishingId, setPolishingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -133,7 +143,7 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
       </div>
 
       {/* Status Filter */}
-      <div className="mb-6 flex gap-2">
+      <div className="mb-4 flex gap-2">
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
@@ -150,8 +160,33 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
         ))}
       </div>
 
+      {/* Review Category Filter */}
+      {posts.some((p) => p.review_data) && (
+        <div className="mb-6 flex items-center gap-2">
+          <span className="text-xs text-muted-foreground mr-1">Review:</span>
+          {REVIEW_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setReviewFilter(f.value)}
+              className={cn(
+                'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+                reviewFilter === f.value
+                  ? (f.className || 'bg-primary text-primary-foreground')
+                  : 'bg-secondary/60 hover:bg-secondary/80 text-muted-foreground'
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Posts List */}
-      {posts.length === 0 ? (
+      {(() => {
+        const filteredPosts = reviewFilter
+          ? posts.filter((p) => (p.review_data as ReviewData | null)?.category === reviewFilter)
+          : posts;
+        return filteredPosts.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-muted-foreground">No posts found</p>
@@ -161,7 +196,7 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
         </div>
       ) : (
         <div className="space-y-3">
-          {posts.map((post) => {
+          {filteredPosts.map((post) => {
             const content = post.final_content || post.draft_content || '';
             return (
               <div
@@ -238,7 +273,8 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
             );
           })}
         </div>
-      )}
+      );
+      })()}
 
       {selectedPost && (
         <PostDetailModal

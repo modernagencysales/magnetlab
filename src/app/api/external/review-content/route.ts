@@ -5,34 +5,10 @@
 // Deletes posts marked as 'delete', updates others with review_data.
 
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { authenticateExternalRequest } from '@/lib/api/external-auth';
 import { reviewPosts, type ReviewablePost } from '@/lib/ai/content-pipeline/content-reviewer';
-
-// ============================================
-// AUTHENTICATION
-// ============================================
-
-function authenticateRequest(request: Request): boolean {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return false;
-  }
-
-  const token = authHeader.slice(7);
-  const expectedKey = process.env.EXTERNAL_API_KEY;
-
-  if (!expectedKey) {
-    logApiError('external/review-content/auth', new Error('EXTERNAL_API_KEY env var is not set'));
-    return false;
-  }
-
-  const tokenBuf = Buffer.from(token);
-  const expectedBuf = Buffer.from(expectedKey);
-  if (tokenBuf.length !== expectedBuf.length) return false;
-  return timingSafeEqual(tokenBuf, expectedBuf);
-}
 
 // ============================================
 // MAIN HANDLER
@@ -41,7 +17,7 @@ function authenticateRequest(request: Request): boolean {
 export async function POST(request: Request) {
   try {
     // Step 1: Authenticate
-    if (!authenticateRequest(request)) {
+    if (!authenticateExternalRequest(request)) {
       return ApiErrors.unauthorized('Invalid or missing API key');
     }
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { Palette, Sun, Moon, X, Link as LinkIcon } from 'lucide-react';
+import { useState } from 'react';
+import { Palette, Sun, Moon, X, Link as LinkIcon, RefreshCw, Loader2 } from 'lucide-react';
 import type { FunnelTheme, BackgroundStyle } from '@/lib/types/funnel';
 
 interface ThemeEditorProps {
@@ -12,6 +13,8 @@ interface ThemeEditorProps {
   setBackgroundStyle: (style: BackgroundStyle) => void;
   logoUrl: string | null;
   setLogoUrl: (url: string | null) => void;
+  funnelId?: string | null;
+  onBrandApplied?: () => void;
 }
 
 const PRESET_COLORS = [
@@ -34,7 +37,46 @@ export function ThemeEditor({
   setBackgroundStyle,
   logoUrl,
   setLogoUrl,
+  funnelId,
+  onBrandApplied,
 }: ThemeEditorProps) {
+  const [applyingBrand, setApplyingBrand] = useState(false);
+  const [brandMessage, setBrandMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleReapplyBrandKit = async () => {
+    if (!funnelId) return;
+    setApplyingBrand(true);
+    setBrandMessage(null);
+
+    try {
+      const res = await fetch(`/api/funnel/${funnelId}/reapply-brand`, { method: 'POST' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setBrandMessage({ type: 'error', text: data.error || 'Failed to apply brand kit' });
+        return;
+      }
+
+      if (data.applied && data.applied.length > 0) {
+        // Update local state with the new brand values
+        if (data.values) {
+          if (data.values.theme) setTheme(data.values.theme);
+          if (data.values.primaryColor) setPrimaryColor(data.values.primaryColor);
+          if (data.values.backgroundStyle) setBackgroundStyle(data.values.backgroundStyle);
+          if (data.values.logoUrl !== undefined) setLogoUrl(data.values.logoUrl);
+        }
+        setBrandMessage({ type: 'success', text: `Applied: ${data.applied.join(', ')}` });
+        onBrandApplied?.();
+      } else {
+        setBrandMessage({ type: 'error', text: 'No brand kit found for your account' });
+      }
+    } catch {
+      setBrandMessage({ type: 'error', text: 'Failed to apply brand kit' });
+    } finally {
+      setApplyingBrand(false);
+      setTimeout(() => setBrandMessage(null), 5000);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -196,6 +238,36 @@ export function ThemeEditor({
           Enter a URL to an image hosted online (e.g., from Imgur, Google Drive, or your website)
         </p>
       </div>
+
+      {/* Re-apply brand kit */}
+      {funnelId && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium">Brand Kit</label>
+            <button
+              type="button"
+              onClick={handleReapplyBrandKit}
+              disabled={applyingBrand}
+              className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-secondary disabled:opacity-50"
+            >
+              {applyingBrand ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Re-apply brand kit
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Overwrite this funnel&apos;s theme, colors, fonts, and logo with your current brand kit settings.
+          </p>
+          {brandMessage && (
+            <p className={`text-xs ${brandMessage.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {brandMessage.text}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Preview hint */}
       <div className="rounded-lg bg-muted/50 p-4">

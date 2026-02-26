@@ -5,35 +5,12 @@
 // inserts questions, and links the form to the funnel page.
 
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { authenticateExternalRequest } from '@/lib/api/external-auth';
+import { resolveBrandKit } from '@/lib/api/resolve-brand-kit';
 import { generateQuizQuestions } from '@/lib/ai/content-pipeline/quiz-generator';
 import { searchKnowledgeV2 } from '@/lib/services/knowledge-brain';
-
-// ============================================
-// AUTHENTICATION
-// ============================================
-
-function authenticateRequest(request: Request): boolean {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return false;
-  }
-
-  const token = authHeader.slice(7);
-  const expectedKey = process.env.EXTERNAL_API_KEY;
-
-  if (!expectedKey) {
-    logApiError('external/generate-quiz/auth', new Error('EXTERNAL_API_KEY env var is not set'));
-    return false;
-  }
-
-  const tokenBuf = Buffer.from(token);
-  const expectedBuf = Buffer.from(expectedKey);
-  if (tokenBuf.length !== expectedBuf.length) return false;
-  return timingSafeEqual(tokenBuf, expectedBuf);
-}
 
 // ============================================
 // MAIN HANDLER
@@ -42,7 +19,7 @@ function authenticateRequest(request: Request): boolean {
 export async function POST(request: Request) {
   try {
     // Step 1: Authenticate
-    if (!authenticateRequest(request)) {
+    if (!authenticateExternalRequest(request)) {
       return ApiErrors.unauthorized('Invalid or missing API key');
     }
 
@@ -134,64 +111,18 @@ export async function POST(request: Request) {
     // Step 6: Gather brand context
     let brandContext = '';
     try {
-      // Try team-level first
-      let brandKit = null;
-
-      if (teamId) {
-        const { data } = await supabase
-          .from('brand_kits')
-          .select('urgent_pains, frequent_questions, credibility_markers')
-          .eq('team_id', teamId)
-          .limit(1)
-          .single();
-        if (data) brandKit = data;
-      }
-
-      // Fallback to user-level
-      if (!brandKit) {
-        const { data: ownerProfile } = await supabase
-          .from('team_profiles')
-          .select('team_id')
-          .eq('user_id', userId)
-          .eq('role', 'owner')
-          .limit(1)
-          .single();
-
-        if (ownerProfile?.team_id) {
-          const { data } = await supabase
-            .from('brand_kits')
-            .select('urgent_pains, frequent_questions, credibility_markers')
-            .eq('team_id', ownerProfile.team_id)
-            .limit(1)
-            .single();
-          if (data) brandKit = data;
-        }
-      }
-
-      if (!brandKit) {
-        const { data } = await supabase
-          .from('brand_kits')
-          .select('urgent_pains, frequent_questions, credibility_markers')
-          .eq('user_id', userId)
-          .limit(1)
-          .single();
-        if (data) brandKit = data;
-      }
+      const brandKit = await resolveBrandKit(supabase, userId, teamId);
 
       if (brandKit) {
         const parts: string[] = [];
-        const pains = brandKit.urgent_pains as string[] | null;
-        const questions = brandKit.frequent_questions as string[] | null;
-        const markers = brandKit.credibility_markers as string[] | null;
-
-        if (pains && pains.length > 0) {
-          parts.push(`Urgent pains: ${pains.join(', ')}`);
+        if (brandKit.urgent_pains && brandKit.urgent_pains.length > 0) {
+          parts.push(`Urgent pains: ${brandKit.urgent_pains.join(', ')}`);
         }
-        if (questions && questions.length > 0) {
-          parts.push(`Frequent questions: ${questions.join(', ')}`);
+        if (brandKit.frequent_questions && brandKit.frequent_questions.length > 0) {
+          parts.push(`Frequent questions: ${brandKit.frequent_questions.join(', ')}`);
         }
-        if (markers && markers.length > 0) {
-          parts.push(`Credibility markers: ${markers.join(', ')}`);
+        if (brandKit.credibility_markers && brandKit.credibility_markers.length > 0) {
+          parts.push(`Credibility markers: ${brandKit.credibility_markers.join(', ')}`);
         }
         if (parts.length > 0) {
           brandContext = parts.join('\n');

@@ -5,49 +5,10 @@
 // Uses provided brandKit or fetches from DB (team-level first, then user-level).
 
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-
-// ============================================
-// AUTHENTICATION
-// ============================================
-
-function authenticateRequest(request: Request): boolean {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return false;
-  }
-
-  const token = authHeader.slice(7);
-  const expectedKey = process.env.EXTERNAL_API_KEY;
-
-  if (!expectedKey) {
-    logApiError('external/apply-branding/auth', new Error('EXTERNAL_API_KEY env var is not set'));
-    return false;
-  }
-
-  const tokenBuf = Buffer.from(token);
-  const expectedBuf = Buffer.from(expectedKey);
-  if (tokenBuf.length !== expectedBuf.length) return false;
-  return timingSafeEqual(tokenBuf, expectedBuf);
-}
-
-// ============================================
-// TYPES
-// ============================================
-
-interface BrandKit {
-  default_theme?: string | null;
-  default_primary_color?: string | null;
-  default_background_style?: string | null;
-  logo_url?: string | null;
-  font_family?: string | null;
-  font_url?: string | null;
-  logos?: Array<{ name: string; imageUrl: string }> | null;
-  default_testimonial?: { quote: string; author?: string; role?: string } | null;
-  default_steps?: { steps: Array<{ icon?: string; title: string; description: string }> } | null;
-}
+import { authenticateExternalRequest } from '@/lib/api/external-auth';
+import { resolveBrandKit, type BrandKit } from '@/lib/api/resolve-brand-kit';
 
 // ============================================
 // MAIN HANDLER
@@ -56,7 +17,7 @@ interface BrandKit {
 export async function POST(request: Request) {
   try {
     // Step 1: Authenticate
-    if (!authenticateRequest(request)) {
+    if (!authenticateExternalRequest(request)) {
       return ApiErrors.unauthorized('Invalid or missing API key');
     }
 
@@ -110,43 +71,9 @@ export async function POST(request: Request) {
     let brandKit: BrandKit | null = null;
 
     if (providedBrandKit && typeof providedBrandKit === 'object') {
-      brandKit = providedBrandKit;
+      brandKit = providedBrandKit as BrandKit;
     } else {
-      // Try team-level first via team_profiles
-      const { data: teamProfile } = await supabase
-        .from('team_profiles')
-        .select('team_id')
-        .eq('user_id', userId)
-        .eq('role', 'owner')
-        .limit(1)
-        .single();
-
-      if (teamProfile?.team_id) {
-        const { data: teamBrandKit } = await supabase
-          .from('brand_kits')
-          .select('default_theme, default_primary_color, default_background_style, logo_url, font_family, font_url, logos, default_testimonial, default_steps')
-          .eq('team_id', teamProfile.team_id)
-          .limit(1)
-          .single();
-
-        if (teamBrandKit) {
-          brandKit = teamBrandKit as BrandKit;
-        }
-      }
-
-      // Fallback to user-level
-      if (!brandKit) {
-        const { data: userBrandKit } = await supabase
-          .from('brand_kits')
-          .select('default_theme, default_primary_color, default_background_style, logo_url, font_family, font_url, logos, default_testimonial, default_steps')
-          .eq('user_id', userId)
-          .limit(1)
-          .single();
-
-        if (userBrandKit) {
-          brandKit = userBrandKit as BrandKit;
-        }
-      }
+      brandKit = await resolveBrandKit(supabase, userId);
     }
 
     if (!brandKit) {

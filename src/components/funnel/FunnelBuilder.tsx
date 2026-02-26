@@ -382,6 +382,8 @@ export function FunnelBuilder({
               setBackgroundStyle={setBackgroundStyle}
               logoUrl={logoUrl}
               setLogoUrl={setLogoUrl}
+              funnelId={funnel?.id}
+              onBrandApplied={fetchSections}
             />
           )}
 
