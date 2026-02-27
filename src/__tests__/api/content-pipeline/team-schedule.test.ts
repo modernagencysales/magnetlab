@@ -41,8 +41,10 @@ const mockVerifyTeamMembership = verifyTeamMembership as jest.Mock;
 
 // Valid UUIDs for Zod validation
 const VALID_POST_ID = '11111111-1111-1111-1111-111111111111';
-const _VALID_PROFILE_ID = '22222222-2222-2222-2222-222222222222';
-const _VALID_TEAM_ID = '33333333-3333-3333-3333-333333333333';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const VALID_PROFILE_ID = '22222222-2222-2222-2222-222222222222';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const VALID_TEAM_ID = '33333333-3333-3333-3333-333333333333';
 
 /**
  * Creates a mock Supabase client that supports the chainable query pattern.
