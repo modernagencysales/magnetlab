@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Bot, Plus, Play, Pause, Pencil, Trash2, Loader2, Users } from 'lucide-react';
+import { Bot, Plus, Play, Pause, Pencil, Trash2, Loader2, Users, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { AutomationEditor } from './AutomationEditor';
+import { AutomationEventsDrawer } from './AutomationEventsDrawer';
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export function AutomationList() {
   const [deleteTarget, setDeleteTarget] = useState<Automation | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [activityTarget, setActivityTarget] = useState<Automation | null>(null);
 
   const fetchAutomations = useCallback(async () => {
     try {
@@ -292,6 +294,15 @@ export function AutomationList() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  onClick={() => setActivityTarget(automation)}
+                  className="h-8"
+                >
+                  <Activity className="h-3.5 w-3.5 mr-1" />
+                  Activity
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => handleEdit(automation)}
                   className="h-8"
                 >
@@ -319,6 +330,15 @@ export function AutomationList() {
         automation={editingAutomation}
         onClose={handleEditorClose}
         onSave={handleEditorSave}
+      />
+
+      {/* Activity drawer */}
+      <AutomationEventsDrawer
+        automationId={activityTarget?.id || null}
+        automationName={activityTarget?.name || ''}
+        optInUrl={activityTarget?.opt_in_url || null}
+        open={!!activityTarget}
+        onClose={() => setActivityTarget(null)}
       />
 
       {/* Delete confirmation dialog */}
