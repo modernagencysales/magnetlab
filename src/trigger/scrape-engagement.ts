@@ -1,6 +1,6 @@
 import { schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { scrapeEngagers, scrapeProfilePosts } from '@/lib/integrations/apify-engagers';
+import { getPostComments, getPostReactions } from '@/lib/integrations/harvest-api';
 import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach/client';
 
 // ============================================
@@ -25,11 +25,6 @@ function shouldScrapeNow(publishedAt: string, lastScrapeAt: string | null): bool
   return sinceScrapeMin >= 360;
 }
 
-function shouldScrapeCompetitor(lastScrapedAt: string | null): boolean {
-  if (!lastScrapedAt) return true;
-  const sinceScrapeMin = (Date.now() - new Date(lastScrapedAt).getTime()) / (1000 * 60);
-  return sinceScrapeMin >= 60; // competitors: every 60 min
-}
 
 function splitName(fullName: string): { firstName: string; lastName: string } {
   const parts = fullName.trim().split(/\s+/);
@@ -56,27 +51,27 @@ async function scrapeAndStoreEngagers(target: ScrapeTarget): Promise<{ comments:
   let commentCount = 0;
   let likerCount = 0;
 
-  // Scrape commenters
-  const commentersResult = await scrapeEngagers(target.postUrl, 'commenters');
+  // Scrape commenters via Harvest API
+  const commentersResult = await getPostComments(target.postUrl);
   if (commentersResult.error) {
     errors.push(`commenters: ${commentersResult.error}`);
   } else if (commentersResult.data.length > 0) {
     const rows = commentersResult.data.map(c => {
-      const { firstName, lastName } = splitName(c.name);
+      const { firstName, lastName } = splitName(c.actor.name);
       return {
         user_id: target.userId,
         post_id: target.postId || null,
         competitor_id: target.competitorId || null,
         source: target.source,
         source_post_url: target.postUrl,
-        provider_id: c.url_profile,
+        provider_id: c.actor.linkedinUrl,
         engagement_type: 'comment' as const,
-        comment_text: c.content || null,
+        comment_text: c.commentary || null,
         first_name: firstName,
         last_name: lastName,
-        linkedin_url: c.url_profile,
-        subtitle: c.subtitle || null,
-        engaged_at: c.datetime ? new Date(c.datetime).toISOString() : null,
+        linkedin_url: c.actor.linkedinUrl,
+        subtitle: c.actor.position || null,
+        engaged_at: c.createdAt || null,
         heyreach_campaign_id: target.heyreachCampaignId || null,
       };
     });
@@ -96,26 +91,26 @@ async function scrapeAndStoreEngagers(target: ScrapeTarget): Promise<{ comments:
     }
   }
 
-  // Scrape likers
-  const likersResult = await scrapeEngagers(target.postUrl, 'likers');
-  if (likersResult.error) {
-    errors.push(`likers: ${likersResult.error}`);
-  } else if (likersResult.data.length > 0) {
-    const rows = likersResult.data.map(l => {
-      const { firstName, lastName } = splitName(l.name);
+  // Scrape reactors via Harvest API
+  const reactionsResult = await getPostReactions(target.postUrl);
+  if (reactionsResult.error) {
+    errors.push(`reactions: ${reactionsResult.error}`);
+  } else if (reactionsResult.data.length > 0) {
+    const rows = reactionsResult.data.map(r => {
+      const { firstName, lastName } = splitName(r.actor.name);
       return {
         user_id: target.userId,
         post_id: target.postId || null,
         competitor_id: target.competitorId || null,
         source: target.source,
         source_post_url: target.postUrl,
-        provider_id: l.url_profile,
+        provider_id: r.actor.linkedinUrl,
         engagement_type: 'reaction' as const,
-        reaction_type: 'LIKE',
+        reaction_type: r.reactionType || 'LIKE',
         first_name: firstName,
         last_name: lastName,
-        linkedin_url: l.url_profile,
-        subtitle: l.subtitle || null,
+        linkedin_url: r.actor.linkedinUrl,
+        subtitle: r.actor.position || null,
         heyreach_campaign_id: target.heyreachCampaignId || null,
       };
     });
@@ -129,7 +124,7 @@ async function scrapeAndStoreEngagers(target: ScrapeTarget): Promise<{ comments:
       .upsert(rows, { onConflict, ignoreDuplicates: true });
 
     if (upsertErr) {
-      errors.push(`liker upsert: ${upsertErr.message}`);
+      errors.push(`reaction upsert: ${upsertErr.message}`);
     } else {
       likerCount = rows.length;
     }
@@ -194,7 +189,7 @@ export const scrapeEngagement = schedules.task({
   maxDuration: 300,
   run: async () => {
     const supabase = createSupabaseAdminClient();
-    logger.info('Starting engagement scrape cycle (Apify)');
+    logger.info('Starting engagement scrape cycle (Harvest API)');
 
     let totalScraped = 0;
     const allErrors: string[] = [];
@@ -281,98 +276,7 @@ export const scrapeEngagement = schedules.task({
       }
     }
 
-    // DEPRECATED: Competitor scraping migrated to signal-profile-scan.ts (Harvest API)
-    // Phase 2 code below is disabled. Remove after confirming signal-profile-scan is stable.
-    if (false) {
-    // ==========================================
-    // STEP 2: Scrape COMPETITOR posts
-    // ==========================================
-    const { data: competitors } = await supabase
-      .from('cp_monitored_competitors')
-      .select('id, user_id, linkedin_profile_url, heyreach_campaign_id, last_scraped_at')
-      .eq('is_active', true)
-      .limit(20);
-
-    if (competitors) {
-      const eligible = competitors.filter(c => shouldScrapeCompetitor(c.last_scraped_at));
-
-      logger.info(`Competitors: ${eligible.length} eligible of ${competitors.length} total`);
-
-      for (const comp of eligible) {
-        try {
-          // Get competitor's recent posts
-          const postsResult = await scrapeProfilePosts(comp.linkedin_profile_url, 10);
-
-          if (postsResult.error) {
-            logger.warn(`Failed to get posts for competitor ${comp.id}`, { error: postsResult.error });
-            allErrors.push(`competitor:${comp.id}: ${postsResult.error}`);
-            continue;
-          }
-
-          // Filter to posts from last 7 days
-          const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
-          const recentPosts = postsResult.data.filter(p =>
-            p.postedAtTimestamp > sevenDaysAgoMs
-          );
-
-          logger.info(`Competitor ${comp.id}: ${recentPosts.length} recent posts (of ${postsResult.data.length} total)`);
-
-          // Update competitor name/headline from first post if available
-          if (postsResult.data.length > 0) {
-            const firstPost = postsResult.data[0];
-            const updateFields: Record<string, string> = {};
-            if (firstPost.author?.firstName && firstPost.author?.lastName) {
-              updateFields.name = `${firstPost.author.firstName} ${firstPost.author.lastName}`;
-            } else if (firstPost.authorName) {
-              updateFields.name = firstPost.authorName;
-            }
-            if (firstPost.author?.occupation) {
-              updateFields.headline = firstPost.author.occupation;
-            }
-            if (Object.keys(updateFields).length > 0) {
-              await supabase
-                .from('cp_monitored_competitors')
-                .update(updateFields)
-                .eq('id', comp.id);
-            }
-          }
-
-          for (const post of recentPosts) {
-            const postUrl = post.url;
-            if (!postUrl) continue;
-
-            const result = await scrapeAndStoreEngagers({
-              postUrl,
-              userId: comp.user_id,
-              competitorId: comp.id,
-              source: 'competitor',
-              heyreachCampaignId: comp.heyreach_campaign_id || undefined,
-            });
-
-            logger.info(`Competitor post: ${result.comments} comments, ${result.likers} likers`, {
-              competitorId: comp.id,
-              postUrl: postUrl.substring(0, 80),
-              errors: result.errors,
-            });
-
-            totalScraped++;
-            allErrors.push(...result.errors);
-          }
-
-          // Update last_scraped_at
-          await supabase
-            .from('cp_monitored_competitors')
-            .update({ last_scraped_at: new Date().toISOString() })
-            .eq('id', comp.id);
-
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Unknown error';
-          logger.error(`Failed to scrape competitor ${comp.id}`, { error: msg });
-          allErrors.push(`competitor:${comp.id}: ${msg}`);
-        }
-      }
-    }
-    } // end disabled Phase 2
+    // Competitor scraping fully migrated to signal-profile-scan.ts (Harvest API)
 
     logger.info(`Engagement scrape complete: ${totalScraped} targets scraped, ${allErrors.length} errors`);
     return { scraped: totalScraped, errors: allErrors };

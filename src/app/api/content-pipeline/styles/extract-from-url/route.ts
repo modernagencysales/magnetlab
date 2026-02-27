@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { scrapeProfilePosts } from '@/lib/integrations/apify-engagers';
+import { getProfilePosts } from '@/lib/integrations/harvest-api';
 import { extractWritingStyle } from '@/lib/ai/style-extractor';
 import { generateEmbedding } from '@/lib/ai/embeddings';
 import { logError } from '@/lib/utils/logger';
@@ -54,15 +54,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 });
     }
 
-    // Scrape recent posts from the profile
-    const { data: posts, error: scrapeError } = await scrapeProfilePosts(normalizedUrl, 10);
+    // Scrape recent posts from the profile via Harvest API
+    const { data: posts, error: scrapeError } = await getProfilePosts({ profile: normalizedUrl });
 
     if (scrapeError) {
       return NextResponse.json({ error: `Failed to scrape profile: ${scrapeError}` }, { status: 502 });
     }
 
     // Filter to text posts with meaningful content
-    const textPosts = posts.filter((p) => p.text && p.text.trim().length > 50);
+    const textPosts = posts.filter((p) => p.content && p.content.trim().length > 50);
 
     if (textPosts.length < 3) {
       return NextResponse.json(
@@ -73,12 +73,12 @@ export async function POST(request: NextRequest) {
 
     // Get author info from first post if not provided
     const firstPost = textPosts[0];
-    const authorName = author_name || firstPost.authorName || `${firstPost.author.firstName} ${firstPost.author.lastName}`.trim();
-    const authorHeadline = firstPost.author.occupation || undefined;
+    const authorName = author_name || firstPost.name || '';
+    const authorHeadline = undefined;
 
     // Extract writing style using AI
     const extractedStyle = await extractWritingStyle({
-      posts: textPosts.map((p) => p.text),
+      posts: textPosts.map((p) => p.content),
       authorName: authorName || undefined,
       authorHeadline,
     });
