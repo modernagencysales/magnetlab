@@ -34,6 +34,7 @@ export const leadCaptureSchema = z.object({
   utmSource: z.string().max(100).optional(),
   utmMedium: z.string().max(100).optional(),
   utmCampaign: z.string().max(100).optional(),
+  linkedinUrl: z.string().url().max(500).optional(),
   fbc: z.string().max(500).optional(),  // Meta _fbc click cookie
   fbp: z.string().max(500).optional(),  // Meta _fbp browser cookie
 });

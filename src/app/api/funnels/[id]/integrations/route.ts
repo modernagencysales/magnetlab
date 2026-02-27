@@ -13,7 +13,7 @@ interface RouteParams {
 }
 
 // All providers accepted in funnel_integrations (email marketing + CRM)
-const VALID_FUNNEL_PROVIDERS = ['kit', 'mailerlite', 'mailchimp', 'activecampaign', 'gohighlevel'] as const;
+const VALID_FUNNEL_PROVIDERS = ['kit', 'mailerlite', 'mailchimp', 'activecampaign', 'gohighlevel', 'heyreach'] as const;
 
 function isValidFunnelProvider(s: string): boolean {
   return (VALID_FUNNEL_PROVIDERS as readonly string[]).includes(s);

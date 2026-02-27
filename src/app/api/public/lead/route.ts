@@ -17,6 +17,7 @@ import { fireTrackingPixelLeadEvent, fireTrackingPixelQualifiedEvent } from '@/l
 import { getPostHogServerClient } from '@/lib/posthog';
 import { syncLeadToEmailProviders } from '@/lib/integrations/email-marketing';
 import { syncLeadToGoHighLevel } from '@/lib/integrations/gohighlevel/sync';
+import { syncLeadToHeyReach } from '@/lib/integrations/heyreach/sync';
 
 /**
  * Scan qualification answers for a LinkedIn profile URL.
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { funnelPageId, email, name, utmSource, utmMedium, utmCampaign, fbc, fbp } = validation.data;
+    const { funnelPageId, email, name, utmSource, utmMedium, utmCampaign, linkedinUrl, fbc, fbp } = validation.data;
     const supabase = createSupabaseAdminClient();
 
     // Database-based rate limiting (serverless-compatible)
@@ -134,6 +135,7 @@ export async function POST(request: Request) {
         utm_source: utmSource || null,
         utm_medium: utmMedium || null,
         utm_campaign: utmCampaign || null,
+        linkedin_url: linkedinUrl || null,
         ip_address: ip !== 'unknown' ? ip : null,
         user_agent: userAgent,
       })
@@ -302,6 +304,25 @@ export async function POST(request: Request) {
         funnelSlug: funnel.slug,
       }).catch((err) => logApiError('public/lead/gohighlevel', err, { leadId: lead.id }));
 
+      // Sync to HeyReach delivery campaign
+      await syncLeadToHeyReach({
+        userId: funnel.user_id,
+        funnelPageId: funnelPageId,
+        lead: {
+          email: lead.email,
+          name: lead.name,
+          linkedinUrl: lead.linkedin_url || null,
+          utmSource: lead.utm_source,
+          utmMedium: lead.utm_medium,
+          utmCampaign: lead.utm_campaign,
+          isQualified: null,
+          qualificationAnswers: null,
+        },
+        leadMagnetTitle: leadMagnet?.title || '',
+        leadMagnetUrl: resourceUrl || '',
+        funnelSlug: funnel.slug,
+      }).catch((err) => logApiError('public/lead/heyreach', err, { leadId: lead.id }));
+
       try { getPostHogServerClient()?.capture({ distinctId: funnel.user_id, event: 'lead_captured', properties: { funnel_page_id: funnelPageId, lead_magnet_title: leadMagnet?.title || '', utm_source: utmSource || null, utm_medium: utmMedium || null, utm_campaign: utmCampaign || null } }); } catch {}
     });
 
@@ -338,7 +359,7 @@ export async function PATCH(request: Request) {
     // Get lead and funnel page
     const { data: lead, error: leadError } = await supabase
       .from('funnel_leads')
-      .select('id, funnel_page_id, user_id, email, name')
+      .select('id, funnel_page_id, user_id, email, name, linkedin_url')
       .eq('id', leadId)
       .single();
 
@@ -548,6 +569,25 @@ export async function PATCH(request: Request) {
         leadMagnetTitle: leadMagnetTitle || '',
         funnelSlug: funnel?.slug || '',
       }).catch((err) => logApiError('public/lead/gohighlevel-qualified', err, { leadId: lead.id }));
+
+      // Sync to HeyReach (with qualification data)
+      await syncLeadToHeyReach({
+        userId: lead.user_id,
+        funnelPageId: lead.funnel_page_id,
+        lead: {
+          email: lead.email,
+          name: lead.name,
+          linkedinUrl: updatedLead.linkedin_url || null,
+          utmSource: updatedLead.utm_source,
+          utmMedium: updatedLead.utm_medium,
+          utmCampaign: updatedLead.utm_campaign,
+          isQualified,
+          qualificationAnswers: answers,
+        },
+        leadMagnetTitle: leadMagnetTitle || '',
+        leadMagnetUrl: '',
+        funnelSlug: funnel?.slug || '',
+      }).catch((err) => logApiError('public/lead/heyreach-qualified', err, { leadId: lead.id }));
 
       try { getPostHogServerClient()?.capture({ distinctId: lead.user_id, event: 'lead_qualified', properties: { is_qualified: isQualified, question_count: questions?.length || 0 } }); } catch {}
     });

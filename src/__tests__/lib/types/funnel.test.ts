@@ -195,6 +195,8 @@ describe('Funnel Type Conversions', () => {
       utm_source: 'linkedin',
       utm_medium: 'social',
       utm_campaign: 'launch',
+      linkedin_url: null,
+      heyreach_delivery_status: null,
       created_at: '2025-01-26T00:00:00Z',
     };
 
@@ -213,6 +215,8 @@ describe('Funnel Type Conversions', () => {
         utmSource: 'linkedin',
         utmMedium: 'social',
         utmCampaign: 'launch',
+        linkedinUrl: null,
+        heyreachDeliveryStatus: null,
         createdAt: '2025-01-26T00:00:00Z',
       });
     });

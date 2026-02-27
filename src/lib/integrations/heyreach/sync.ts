@@ -15,7 +15,7 @@ import type { HeyReachSyncParams } from './types';
  */
 export async function syncLeadToHeyReach(params: HeyReachSyncParams): Promise<void> {
   try {
-    const { userId, funnelPageId, lead, leadMagnetTitle, leadMagnetUrl, funnelSlug } = params;
+    const { userId, funnelPageId, lead, leadMagnetTitle, leadMagnetUrl } = params;
 
     // 1. Check account-level connection
     const integration = await getUserIntegration(userId, 'heyreach');
@@ -72,12 +72,15 @@ export async function syncLeadToHeyReach(params: HeyReachSyncParams): Promise<vo
 
     // 7. Update delivery status on the lead (best-effort)
     const status = result.success ? 'sent' : 'failed';
-    await supabase
-      .from('funnel_leads')
-      .update({ heyreach_delivery_status: status })
-      .eq('funnel_page_id', funnelPageId)
-      .eq('email', lead.email)
-      .catch(() => {});
+    try {
+      await supabase
+        .from('funnel_leads')
+        .update({ heyreach_delivery_status: status })
+        .eq('funnel_page_id', funnelPageId)
+        .eq('email', lead.email);
+    } catch {
+      // best-effort, ignore errors
+    }
 
     if (!result.success) {
       console.error('[HeyReach sync] addContactsToCampaign failed:', result.error);

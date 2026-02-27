@@ -121,6 +121,8 @@ export interface FunnelLead {
   utmSource: string | null;
   utmMedium: string | null;
   utmCampaign: string | null;
+  linkedinUrl: string | null;
+  heyreachDeliveryStatus: string | null;
   createdAt: string;
 }
 
@@ -431,6 +433,8 @@ export interface FunnelLeadRow {
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
+  linkedin_url: string | null;
+  heyreach_delivery_status: string | null;
   created_at: string;
 }
 
@@ -535,6 +539,8 @@ export function funnelLeadFromRow(row: FunnelLeadRow): FunnelLead {
     utmSource: row.utm_source,
     utmMedium: row.utm_medium,
     utmCampaign: row.utm_campaign,
+    linkedinUrl: row.linkedin_url,
+    heyreachDeliveryStatus: row.heyreach_delivery_status,
     createdAt: row.created_at,
   };
 }
