@@ -8,6 +8,7 @@ import { WeeklyGrid } from './WeeklyGrid';
 import { PostDetailModal } from './PostDetailModal';
 import { TeamLinkedInConnect } from './TeamLinkedInConnect';
 import { BroadcastModal } from './BroadcastModal';
+import { GridContextMenu } from './GridContextMenu';
 import type { PipelinePost, PostingSlot, TeamProfileWithConnection } from '@/lib/types/content-pipeline';
 
 interface CollisionItem {
@@ -58,6 +59,9 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
 
   // Collision detection
   const [collisions, setCollisions] = useState<CollisionResult | null>(null);
+
+  // Context menu
+  const [contextMenu, setContextMenu] = useState<{ post: PipelinePost; x: number; y: number } | null>(null);
 
   // --- Fetch schedule data ---
   const fetchSchedule = useCallback(async () => {
@@ -322,6 +326,10 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
           weekStart={weekStart}
           onCellClick={handleCellClick}
           onPostClick={handlePostClick}
+          onPostContextMenu={(post, e) => {
+            e.preventDefault();
+            setContextMenu({ post, x: e.clientX, y: e.clientY });
+          }}
         />
       ) : (
         <div className="rounded-lg border border-dashed p-12 text-center text-sm text-muted-foreground">
@@ -420,6 +428,46 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
           onBroadcast={() => {
             setBroadcastPost(null);
             fetchSchedule();
+          }}
+        />
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <GridContextMenu
+          post={contextMenu.post}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          onViewDetails={() => {
+            setSelectedPost(contextMenu.post);
+            setContextMenu(null);
+          }}
+          onBroadcast={() => {
+            handleBroadcast(contextMenu.post);
+            setContextMenu(null);
+          }}
+          onReschedule={() => {
+            setSelectedPost(contextMenu.post);
+            setContextMenu(null);
+          }}
+          onRemoveFromSchedule={async () => {
+            const post = contextMenu.post;
+            setContextMenu(null);
+            try {
+              await fetch(`/api/content-pipeline/posts/${post.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  status: 'approved',
+                  scheduled_time: null,
+                  is_buffer: true,
+                }),
+              });
+              await fetchSchedule();
+            } catch {
+              // Silent
+            }
           }}
         />
       )}
