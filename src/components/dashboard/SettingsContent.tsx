@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { User, CreditCard, Loader2, Check, Link2, CheckCircle, XCircle, Key, Copy, Trash2, Plus, Video } from 'lucide-react';
+import { User, CreditCard, Loader2, Check, Link2, CheckCircle, XCircle, Key, Copy, Trash2, Plus, Video, Settings2 } from 'lucide-react';
 import { PRICING_PLANS } from '@/lib/types/integrations';
 import { UsernameSettings } from '@/components/settings/UsernameSettings';
 import { ResendSettings } from '@/components/settings/ResendSettings';
@@ -10,6 +10,9 @@ import { ConductorSettings } from '@/components/settings/ConductorSettings';
 import { FathomSettings } from '@/components/settings/FathomSettings';
 import { LinkedInSettings } from '@/components/settings/LinkedInSettings';
 import { CompetitorMonitoring } from '@/components/settings/CompetitorMonitoring';
+import { SignalConfig } from '@/components/settings/SignalConfig';
+import { KeywordMonitors } from '@/components/settings/KeywordMonitors';
+import { CompanyMonitors } from '@/components/settings/CompanyMonitors';
 import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettings';
 import { WebhookSettings } from '@/components/settings/WebhookSettings';
 import { TeamMembersSettings } from '@/components/settings/TeamMembersSettings';
@@ -368,6 +371,21 @@ export function SettingsContent({
           <div className="mt-6 pt-6 border-t">
             <WebhookSettings />
           </div>
+        </div>
+
+        {/* Signal Engine Section */}
+        <div className="rounded-lg border bg-card p-6 transition-colors">
+          <div className="mb-4 flex items-center gap-3">
+            <Settings2 className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Signal Engine</h2>
+          </div>
+          <p className="mb-2 text-sm text-muted-foreground">
+            Configure ICP targeting, keyword monitoring, and company page tracking for your signal engine.
+          </p>
+
+          <SignalConfig />
+          <KeywordMonitors />
+          <CompanyMonitors />
         </div>
 
         {/* Team Members Section */}
