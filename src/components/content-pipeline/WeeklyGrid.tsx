@@ -17,7 +17,7 @@ interface WeeklyGridProps {
 }
 
 /**
- * Find the slot for a given profile on a given day-of-week index (0=Mon..6=Sun).
+ * Find the slot for a given profile on a given day-of-week (JS convention: 0=Sun, 1=Mon..6=Sat).
  * Slots with day_of_week=null are "daily" and apply to every day.
  */
 function getSlotForDay(slots: PostingSlot[], profileId: string, dayOfWeek: number): PostingSlot | null {
@@ -136,9 +136,9 @@ export function WeeklyGrid({
             </div>
 
             {/* 7 day cells */}
-            {weekDays.map((day, dayIdx) => {
+            {weekDays.map((day) => {
               const post = getPostForCell(posts, profile.id, day);
-              const slot = getSlotForDay(slots, profile.id, dayIdx);
+              const slot = getSlotForDay(slots, profile.id, day.getDay());
               const today = dateFnsIsToday(day);
 
               return (
