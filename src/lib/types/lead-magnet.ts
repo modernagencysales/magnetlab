@@ -396,7 +396,7 @@ export interface ScreenshotUrl {
 // LEAD MAGNET DATABASE ENTITY
 // ============================================
 
-export type LeadMagnetStatus = 'draft' | 'published' | 'scheduled' | 'archived';
+export type LeadMagnetStatus = 'draft' | 'published' | 'scheduled' | 'archived' | 'processing';
 
 export interface LeadMagnet {
   id: string;

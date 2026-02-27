@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2, Sparkles, ExternalLink, CheckCircle2, Clock, FileText, PenLine } from 'lucide-react';
 import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
+
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_MS = 10 * 60 * 1000; // 10 minutes
 
 interface ContentPageTabProps {
   leadMagnet: LeadMagnet;
@@ -30,8 +33,10 @@ function createBlankContent(title: string): PolishedContent {
 
 export function ContentPageTab({ leadMagnet, username, slug, onPolished }: ContentPageTabProps) {
   const [polishing, setPolishing] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [generating, setGenerating] = useState(leadMagnet.status === 'processing');
   const [error, setError] = useState<string | null>(null);
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollStart = useRef<number>(0);
 
   const hasExtracted = !!leadMagnet.extractedContent;
   const hasPolished = !!leadMagnet.polishedContent;
@@ -39,6 +44,59 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
   const polished = leadMagnet.polishedContent as PolishedContent | null;
   const contentUrl = username && slug ? `/p/${username}/${slug}/content` : null;
   const isAiLoading = polishing || generating;
+
+  const stopPolling = useCallback(() => {
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current);
+      pollTimer.current = null;
+    }
+  }, []);
+
+  const pollForCompletion = useCallback(() => {
+    pollStart.current = Date.now();
+    pollTimer.current = setInterval(async () => {
+      // Timeout guard
+      if (Date.now() - pollStart.current > POLL_MAX_MS) {
+        stopPolling();
+        setGenerating(false);
+        setError('Content generation is taking longer than expected. Please refresh the page to check.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/lead-magnet/${leadMagnet.id}`);
+        if (!res.ok) return; // Retry on next tick
+
+        const data = await res.json();
+        const lm = data.leadMagnet ?? data;
+
+        if (lm.polished_content || lm.polishedContent) {
+          stopPolling();
+          setGenerating(false);
+          const pc = lm.polished_content || lm.polishedContent;
+          const pa = lm.polished_at || lm.polishedAt || new Date().toISOString();
+          const ec = lm.extracted_content || lm.extractedContent;
+          onPolished(pc, pa, ec);
+        } else if (lm.status !== 'processing') {
+          // Status changed but no polished content — task may have failed
+          stopPolling();
+          setGenerating(false);
+          setError('Content generation failed. Please try again.');
+        }
+      } catch {
+        // Network error — keep polling
+      }
+    }, POLL_INTERVAL_MS);
+  }, [leadMagnet.id, onPolished, stopPolling]);
+
+  // Resume polling if component mounts while already processing
+  useEffect(() => {
+    if (leadMagnet.status === 'processing' && !pollTimer.current) {
+      setGenerating(true);
+      pollForCompletion();
+    }
+    return () => stopPolling();
+  }, [leadMagnet.status, pollForCompletion, stopPolling]);
 
   const handlePolish = async () => {
     setPolishing(true);
@@ -50,8 +108,10 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to polish content');
+        const text = await response.text();
+        let message = 'Failed to polish content';
+        try { message = JSON.parse(text).error || message; } catch {}
+        throw new Error(message);
       }
 
       const { polishedContent, polishedAt } = await response.json();
@@ -73,16 +133,17 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to generate content');
+        const text = await response.text();
+        let message = 'Failed to generate content';
+        try { message = JSON.parse(text).error || message; } catch {}
+        throw new Error(message);
       }
 
-      const { extractedContent, polishedContent, polishedAt } = await response.json();
-      onPolished(polishedContent, polishedAt, extractedContent);
+      // API now returns { status: 'processing' } — start polling
+      pollForCompletion();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate content');
-    } finally {
       setGenerating(false);
+      setError(err instanceof Error ? err.message : 'Failed to generate content');
     }
   };
 
@@ -100,8 +161,10 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
           body: JSON.stringify({ polishedContent: contentToSave }),
         });
         if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to create content');
+          const text = await response.text();
+          let message = 'Failed to create content';
+          try { message = JSON.parse(text).error || message; } catch {}
+          throw new Error(message);
         }
         const { polishedContent: saved } = await response.json();
         onPolished(saved, now);
@@ -169,7 +232,7 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
               <p className="font-medium">Generate with AI</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {isAiLoading
-                  ? 'Generating your content page...'
+                  ? 'Generating your content page — this usually takes 2-4 minutes...'
                   : hasExtracted
                     ? 'Polish your extracted content into a beautiful reading experience.'
                     : 'Generate a full content page from your lead magnet concept.'}
