@@ -1,13 +1,9 @@
-import { chromium, type Browser, type Page } from 'playwright';
+/**
+ * Screenshot service using ScreenshotOne API.
+ * Simple HTTP calls — no browser dependencies, works on Vercel serverless.
+ */
 
-let browser: Browser | null = null;
-
-async function getBrowser(): Promise<Browser> {
-  if (!browser) {
-    browser = await chromium.launch({ headless: true });
-  }
-  return browser;
-}
+const SCREENSHOT_API_BASE = 'https://api.screenshotone.com/take';
 
 export interface ScreenshotResult {
   type: 'hero' | 'section';
@@ -20,72 +16,107 @@ export interface ScreenshotResult {
 export interface ScreenshotOptions {
   pageUrl: string;
   sectionCount: number;
+  sectionNames?: string[];
   waitTime?: number;
 }
 
 /**
- * Generate multiple screenshots of a content page at different scroll positions.
- * Returns hero shot + one per section.
+ * Capture a screenshot via ScreenshotOne API.
+ * Returns a PNG buffer of the specified dimensions.
+ */
+async function captureScreenshot(
+  pageUrl: string,
+  width: number,
+  height: number,
+  scrollY: number = 0,
+  delay: number = 3
+): Promise<Buffer> {
+  const accessKey = process.env.SCREENSHOTONE_ACCESS_KEY;
+  if (!accessKey) {
+    throw new Error('SCREENSHOTONE_ACCESS_KEY environment variable is not set');
+  }
+
+  const params = new URLSearchParams({
+    access_key: accessKey,
+    url: pageUrl,
+    viewport_width: '1200',
+    viewport_height: '800',
+    device_scale_factor: '2',
+    format: 'png',
+    image_width: String(width),
+    image_height: String(height),
+    delay: String(delay),
+    wait_until: 'networkidle0',
+  });
+
+  // For sections below the fold, use clip_y to scroll down
+  if (scrollY > 0) {
+    params.set('clip_x', '0');
+    params.set('clip_y', String(scrollY));
+    params.set('clip_width', '1200');
+    params.set('clip_height', String(Math.round(height * (800 / width))));
+  }
+
+  const response = await fetch(`${SCREENSHOT_API_BASE}?${params.toString()}`, {
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => 'Unknown error');
+    throw new Error(`ScreenshotOne API error (${response.status}): ${text}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
+ * Generate screenshots of a content page.
+ * Hero shot (top of page) + one per section.
  */
 export async function generateContentScreenshots(
   options: ScreenshotOptions
 ): Promise<ScreenshotResult[]> {
-  const { pageUrl, sectionCount, waitTime = 3000 } = options;
-  const b = await getBrowser();
+  const { pageUrl, sectionCount, sectionNames, waitTime } = options;
+  const delay = waitTime ? Math.ceil(waitTime / 1000) : 3;
   const results: ScreenshotResult[] = [];
 
-  const page = await b.newPage({
-    viewport: { width: 1200, height: 800 },
-    deviceScaleFactor: 2,
+  // Hero shot: top of page at both dimensions
+  const [hero1200, hero1080] = await Promise.all([
+    captureScreenshot(pageUrl, 1200, 627, 0, delay),
+    captureScreenshot(pageUrl, 1080, 1080, 0, delay),
+  ]);
+
+  results.push({
+    type: 'hero',
+    buffer1200x627: hero1200,
+    buffer1080x1080: hero1080,
   });
 
-  try {
-    await page.goto(pageUrl, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(waitTime);
+  // Section shots: estimate scroll position for each section
+  // Each section is roughly one viewport height (800px) apart
+  for (let i = 0; i < sectionCount; i++) {
+    const scrollY = (i + 1) * 800;
+    const sectionName = sectionNames?.[i] || `Section ${i + 1}`;
 
-    // Hero shot: top of page
+    const [sec1200, sec1080] = await Promise.all([
+      captureScreenshot(pageUrl, 1200, 627, scrollY, delay),
+      captureScreenshot(pageUrl, 1080, 1080, scrollY, delay),
+    ]);
+
     results.push({
-      type: 'hero',
-      buffer1200x627: await captureClip(page, 1200, 627),
-      buffer1080x1080: await captureClip(page, 1080, 1080),
+      type: 'section',
+      sectionIndex: i,
+      sectionName,
+      buffer1200x627: sec1200,
+      buffer1080x1080: sec1080,
     });
-
-    // Section shots: scroll to each section heading
-    for (let i = 0; i < sectionCount; i++) {
-      const sectionEl = await page.$(`[data-section-index="${i}"]`);
-
-      if (sectionEl) {
-        await sectionEl.scrollIntoViewIfNeeded();
-        await page.waitForTimeout(500);
-
-        const sectionName = await sectionEl.getAttribute('data-section-name') || `Section ${i + 1}`;
-
-        results.push({
-          type: 'section',
-          sectionIndex: i,
-          sectionName,
-          buffer1200x627: await captureClip(page, 1200, 627),
-          buffer1080x1080: await captureClip(page, 1080, 1080),
-        });
-      }
-    }
-  } finally {
-    await page.close();
   }
 
   return results;
 }
 
-async function captureClip(page: Page, width: number, height: number): Promise<Buffer> {
-  return await page.screenshot({
-    type: 'png',
-    clip: { x: 0, y: 0, width, height },
-  }) as Buffer;
-}
-
+/** No-op — no browser to close with API approach */
 export async function closeScreenshotBrowser(): Promise<void> {
-  if (browser) {
-    await browser.close();
-    browser = null;
-  }
+  // No browser to close when using ScreenshotOne API
 }

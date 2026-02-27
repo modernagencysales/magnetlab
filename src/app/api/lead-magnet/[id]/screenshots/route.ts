@@ -1,16 +1,16 @@
 // API Route: Generate Content Page Screenshots
 // POST /api/lead-magnet/[id]/screenshots
+// Uses ScreenshotOne API — fast HTTP calls, no browser dependencies
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-import {
-  generateContentScreenshots,
-  closeScreenshotBrowser,
-} from '@/lib/services/screenshot';
-import type { PolishedContent, ScreenshotUrl } from '@/lib/types/lead-magnet';
+import { generateContentScreenshots } from '@/lib/services/screenshot';
+import type { PolishedContent, PolishedSection, ScreenshotUrl } from '@/lib/types/lead-magnet';
+
+export const maxDuration = 60;
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -80,26 +80,31 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     // Build the public content page URL
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://magnetlab.ai';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://magnetlab.app';
     const pageUrl = `${appUrl}/p/${user.username}/${funnelPage.slug}/content`;
 
-    // Generate screenshots (section shots only for polished content)
+    // Section count and names for polished content
     const sectionCount = hasPolished ? polishedContent!.sections.length : 0;
+    const sectionNames = hasPolished
+      ? polishedContent!.sections.map((s: PolishedSection, i: number) => s.sectionName || `Section ${i + 1}`)
+      : undefined;
+
+    // Generate screenshots via ScreenshotOne API
     let screenshotResults;
     try {
       screenshotResults = await generateContentScreenshots({
         pageUrl,
         sectionCount,
+        sectionNames,
       });
     } catch (screenshotError) {
+      const errMsg = screenshotError instanceof Error ? screenshotError.message : String(screenshotError);
       logApiError('lead-magnet/screenshots/generate', screenshotError, {
         userId: session.user.id,
         leadMagnetId: id,
         pageUrl,
       });
-      return ApiErrors.internalError('Failed to generate screenshots');
-    } finally {
-      await closeScreenshotBrowser();
+      return ApiErrors.internalError(`Failed to generate screenshots: ${errMsg}`);
     }
 
     // Upload each screenshot to Supabase Storage and collect URLs
@@ -177,7 +182,8 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ screenshotUrls });
   } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     logApiError('lead-magnet/screenshots', error);
-    return ApiErrors.internalError('Failed to generate screenshots');
+    return ApiErrors.internalError(`Failed to generate screenshots: ${errMsg}`);
   }
 }
