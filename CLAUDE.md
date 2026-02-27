@@ -586,6 +586,60 @@ No new tables. Uses existing:
 - `funnel_integrations` -- `provider: 'gohighlevel'`, `settings` JSONB for custom_tags, `is_active` toggle
 - Migration: `20260225100000_funnel_integrations_settings.sql` -- adds `settings` column + GHL provider to constraint
 
+## HeyReach LinkedIn Delivery Integration
+
+Deliver lead magnets to opt-in leads via HeyReach LinkedIn DM campaigns. Account-level API key, per-funnel campaign selector, LinkedIn URL captured from `?li=` query param.
+
+### Data Flow
+
+```
+HeyReach campaign sends DM with link: magnetlab.app/p/user/slug?li={linkedinUrl}
+  → Prospect clicks → opt-in page reads ?li= param
+  → POST /api/public/lead (stores linkedin_url on funnel_leads)
+  → after() fires syncLeadToHeyReach() [fire-and-forget]
+    → checks user_integrations (api_key) + funnel_integrations (campaign_id, is_active)
+    → HeyReach addContactsToCampaign with customFields:
+        lead_magnet_title, lead_magnet_url, utm_source, utm_medium, utm_campaign
+    → updates funnel_leads.heyreach_delivery_status
+```
+
+### API Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/integrations/heyreach/connect` | POST | Validate API key + save integration |
+| `/api/integrations/heyreach/verify` | POST | Re-validate stored API key |
+| `/api/integrations/heyreach/disconnect` | POST | Remove key + deactivate funnel toggles |
+| `/api/integrations/heyreach/status` | GET | Check if HeyReach is connected |
+| `/api/integrations/heyreach/campaigns` | GET | Fetch campaigns for dropdown selector |
+| `/api/integrations/heyreach/accounts` | GET | Fetch LinkedIn accounts |
+
+### Key Files
+
+- `src/lib/integrations/heyreach/client.ts` -- HeyReach API client (addContactsToCampaign with retry, listCampaigns, listLinkedInAccounts, testConnection)
+- `src/lib/integrations/heyreach/sync.ts` -- `syncLeadToHeyReach()` fire-and-forget, called from lead capture route
+- `src/lib/integrations/heyreach/types.ts` -- HeyReach API types (HeyReachSyncParams, HeyReachContact, HeyReachCampaign)
+- `src/components/settings/HeyReachSettings.tsx` -- Settings UI (connect/verify/disconnect + variable reference)
+- `src/components/funnel/FunnelIntegrationsTab.tsx` -- Per-funnel toggle (HeyReachFunnelToggle with campaign dropdown)
+- `src/components/funnel/public/OptinPage.tsx` -- Reads `?li=` param, passes as `linkedinUrl` in form submission
+
+### Custom Variables (for HeyReach campaign templates)
+
+| Variable | Source |
+|----------|--------|
+| `{lead_magnet_title}` | Lead magnet title |
+| `{lead_magnet_url}` | Content delivery URL |
+| `{utm_source}` | UTM source param |
+| `{utm_medium}` | UTM medium param |
+| `{utm_campaign}` | UTM campaign param |
+
+### Database
+
+- `funnel_leads` -- added `linkedin_url TEXT` and `heyreach_delivery_status TEXT` columns
+- `user_integrations` -- `service: 'heyreach'`, stores API key
+- `funnel_integrations` -- `provider: 'heyreach'`, `settings: { campaign_id }` JSONB, `is_active` toggle
+- Migration: `20260227100000_heyreach_funnel_delivery.sql`
+
 ## Development
 
 ### Env Vars (`.env.local`)
