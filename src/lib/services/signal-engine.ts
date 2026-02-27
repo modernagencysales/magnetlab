@@ -169,19 +169,22 @@ export async function recordSignalEvent(event: {
 
   const { error } = await supabase
     .from('signal_events')
-    .insert({
-      user_id: event.user_id,
-      lead_id: event.lead_id,
-      signal_type: event.signal_type,
-      source_url: event.source_url || null,
-      source_monitor_id: event.source_monitor_id || null,
-      comment_text: event.comment_text || null,
-      sentiment: event.sentiment || null,
-      keyword_matched: event.keyword_matched || null,
-      engagement_type: event.engagement_type || null,
-      metadata: event.metadata || {},
-      detected_at: new Date().toISOString(),
-    });
+    .upsert(
+      {
+        user_id: event.user_id,
+        lead_id: event.lead_id,
+        signal_type: event.signal_type,
+        source_url: event.source_url || null,
+        source_monitor_id: event.source_monitor_id || null,
+        comment_text: event.comment_text || null,
+        sentiment: event.sentiment || null,
+        keyword_matched: event.keyword_matched || null,
+        engagement_type: event.engagement_type || null,
+        metadata: event.metadata || {},
+        detected_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,lead_id,signal_type,source_url', ignoreDuplicates: true }
+    );
 
   if (error) {
     logError('services/signal-engine', new Error('Failed to record signal event'), {

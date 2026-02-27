@@ -167,12 +167,27 @@ export const signalEnrichAndScore = schedules.task({
 
     logger.info('Phase 2: Scoring sentiment on unscored comments');
 
-    const { data: unscoredEvents, error: eventsError } = await supabase
+    // Only score events for users who have sentiment scoring enabled
+    const { data: sentimentEnabledUsers } = await supabase
+      .from('signal_configs')
+      .select('user_id')
+      .eq('sentiment_scoring_enabled', true);
+
+    const sentimentUserIds = (sentimentEnabledUsers || []).map((u) => u.user_id);
+
+    const unscoredQuery = supabase
       .from('signal_events')
       .select('id, comment_text')
       .is('sentiment', null)
       .not('comment_text', 'is', null)
       .limit(50);
+
+    // If we have explicit configs, only score those users' events
+    if (sentimentUserIds.length > 0) {
+      unscoredQuery.in('user_id', sentimentUserIds);
+    }
+
+    const { data: unscoredEvents, error: eventsError } = await unscoredQuery;
 
     if (eventsError) {
       logger.error('Failed to fetch unscored events', { error: eventsError.message });

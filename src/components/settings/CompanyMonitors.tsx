@@ -58,8 +58,8 @@ export function CompanyMonitors() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          linkedinCompanyUrl: newUrl.trim(),
-          heyreachCampaignId: newCampaignId.trim() || undefined,
+          linkedin_company_url: newUrl.trim(),
+          heyreach_campaign_id: newCampaignId.trim() || undefined,
         }),
       });
 

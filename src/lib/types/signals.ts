@@ -107,7 +107,7 @@ export interface SignalLead {
 export interface SignalEvent {
   id: string;
   user_id: string;
-  lead_id: string | null;
+  lead_id: string;
   signal_type: SignalType;
   source_url: string | null;
   source_monitor_id: string | null;

@@ -251,7 +251,17 @@ describe('signal-engine', () => {
   // recordSignalEvent
   // ----------------------------------------------------------------
   describe('recordSignalEvent', () => {
-    it('inserts into signal_events with correct params', async () => {
+    beforeEach(() => {
+      // recordSignalEvent uses upsert (not select chain), so override for these tests
+      mockUpsert.mockResolvedValue({ error: null });
+    });
+
+    afterEach(() => {
+      // Restore upsert chain for upsertSignalLead tests
+      wireChain();
+    });
+
+    it('upserts into signal_events with correct params', async () => {
       const result = await recordSignalEvent({
         user_id: 'user-1',
         lead_id: 'lead-1',
@@ -263,7 +273,7 @@ describe('signal-engine', () => {
 
       expect(result).toEqual({ error: null });
       expect(mockFrom).toHaveBeenCalledWith('signal_events');
-      expect(mockInsert).toHaveBeenCalledWith(
+      expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: 'user-1',
           lead_id: 'lead-1',
@@ -271,7 +281,8 @@ describe('signal-engine', () => {
           source_url: 'https://linkedin.com/post/123',
           comment_text: 'Great post!',
           engagement_type: 'comment',
-        })
+        }),
+        expect.objectContaining({ onConflict: 'user_id,lead_id,signal_type,source_url', ignoreDuplicates: true })
       );
     });
 
@@ -282,9 +293,9 @@ describe('signal-engine', () => {
         signal_type: 'job_change',
       });
 
-      const insertArg = mockInsert.mock.calls[0][0];
-      expect(insertArg.detected_at).toBeDefined();
-      expect(new Date(insertArg.detected_at).toISOString()).toBe(insertArg.detected_at);
+      const upsertArg = mockUpsert.mock.calls[0][0];
+      expect(upsertArg.detected_at).toBeDefined();
+      expect(new Date(upsertArg.detected_at).toISOString()).toBe(upsertArg.detected_at);
     });
 
     it('sets missing optional fields to null', async () => {
@@ -294,7 +305,7 @@ describe('signal-engine', () => {
         signal_type: 'job_change',
       });
 
-      expect(mockInsert).toHaveBeenCalledWith(
+      expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
           source_url: null,
           source_monitor_id: null,
@@ -303,12 +314,13 @@ describe('signal-engine', () => {
           keyword_matched: null,
           engagement_type: null,
           metadata: {},
-        })
+        }),
+        expect.any(Object)
       );
     });
 
-    it('returns error when insert fails', async () => {
-      mockInsert.mockResolvedValue({ error: { message: 'insert failed' } });
+    it('returns error when upsert fails', async () => {
+      mockUpsert.mockResolvedValue({ error: { message: 'upsert failed' } });
 
       const result = await recordSignalEvent({
         user_id: 'user-1',
@@ -316,11 +328,11 @@ describe('signal-engine', () => {
         signal_type: 'keyword_engagement',
       });
 
-      expect(result).toEqual({ error: 'insert failed' });
+      expect(result).toEqual({ error: 'upsert failed' });
       expect(logError).toHaveBeenCalledWith(
         'services/signal-engine',
         expect.any(Error),
-        expect.objectContaining({ detail: 'insert failed' })
+        expect.objectContaining({ detail: 'upsert failed' })
       );
     });
   });
@@ -503,13 +515,13 @@ describe('signal-engine', () => {
   // ----------------------------------------------------------------
   describe('processEngagers', () => {
     it('processes a batch of engagers successfully', async () => {
-      // Wire: upsert -> select -> single for lead, insert for event
-      // We need to handle two from() calls per engager: one for upsert, one for insert
+      // Wire: upsert -> select -> single for lead, upsert -> { error: null } for event
+      // We need to handle two from() calls per engager: one for lead upsert, one for event upsert
       let callIdx = 0;
       mockFrom.mockImplementation(() => {
         callIdx++;
         if (callIdx % 2 === 1) {
-          // Upsert call
+          // Lead upsert call
           return {
             upsert: jest.fn().mockReturnValue({
               select: jest.fn().mockReturnValue({
@@ -521,9 +533,9 @@ describe('signal-engine', () => {
             }),
           };
         }
-        // Insert call
+        // Event upsert call
         return {
-          insert: jest.fn().mockResolvedValue({ error: null }),
+          upsert: jest.fn().mockResolvedValue({ error: null }),
         };
       });
 
@@ -618,7 +630,7 @@ describe('signal-engine', () => {
           };
         }
         return {
-          insert: jest.fn().mockResolvedValue({ error: { message: 'event insert failed' } }),
+          upsert: jest.fn().mockResolvedValue({ error: { message: 'event insert failed' } }),
         };
       });
 
@@ -670,9 +682,9 @@ describe('signal-engine', () => {
             }),
           };
         }
-        // Second engager event insert succeeds
+        // Second engager event upsert succeeds
         return {
-          insert: jest.fn().mockResolvedValue({ error: null }),
+          upsert: jest.fn().mockResolvedValue({ error: null }),
         };
       });
 
@@ -715,7 +727,7 @@ describe('signal-engine', () => {
           };
         }
         return {
-          insert: jest.fn().mockResolvedValue({ error: null }),
+          upsert: jest.fn().mockResolvedValue({ error: null }),
         };
       });
 

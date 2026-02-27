@@ -10,7 +10,7 @@ interface SignalConfigData {
   default_heyreach_campaign_id: string;
   enrichment_enabled: boolean;
   sentiment_scoring_enabled: boolean;
-  auto_push_to_heyreach: boolean;
+  auto_push_enabled: boolean;
 }
 
 const DEFAULT_CONFIG: SignalConfigData = {
@@ -20,7 +20,7 @@ const DEFAULT_CONFIG: SignalConfigData = {
   default_heyreach_campaign_id: '',
   enrichment_enabled: false,
   sentiment_scoring_enabled: false,
-  auto_push_to_heyreach: false,
+  auto_push_enabled: false,
 };
 
 function TagInput({
@@ -149,15 +149,18 @@ export function SignalConfig() {
       const res = await fetch('/api/signals/config');
       if (!res.ok) throw new Error('Failed to load config');
       const data = await res.json();
-      setConfig({
-        target_countries: data.target_countries || [],
-        target_job_titles: data.target_job_titles || [],
-        exclude_job_titles: data.exclude_job_titles || [],
-        default_heyreach_campaign_id: data.default_heyreach_campaign_id || '',
-        enrichment_enabled: data.enrichment_enabled ?? false,
-        sentiment_scoring_enabled: data.sentiment_scoring_enabled ?? false,
-        auto_push_to_heyreach: data.auto_push_to_heyreach ?? false,
-      });
+      const c = data.config;
+      if (c) {
+        setConfig({
+          target_countries: c.target_countries || [],
+          target_job_titles: c.target_job_titles || [],
+          exclude_job_titles: c.exclude_job_titles || [],
+          default_heyreach_campaign_id: c.default_heyreach_campaign_id || '',
+          enrichment_enabled: c.enrichment_enabled ?? false,
+          sentiment_scoring_enabled: c.sentiment_scoring_enabled ?? false,
+          auto_push_enabled: c.auto_push_enabled ?? false,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
@@ -310,9 +313,9 @@ export function SignalConfig() {
             <ToggleSwitch
               label="Auto Push to HeyReach"
               description="Automatically push matching leads to HeyReach"
-              checked={config.auto_push_to_heyreach}
+              checked={config.auto_push_enabled}
               onChange={(checked) =>
-                setConfig((prev) => ({ ...prev, auto_push_to_heyreach: checked }))
+                setConfig((prev) => ({ ...prev, auto_push_enabled: checked }))
               }
             />
           </div>
