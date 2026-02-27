@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { startOfWeek, endOfWeek, parseISO } from 'date-fns';
+import { startOfWeek, endOfWeek, parseISO, format } from 'date-fns';
 import { logError } from '@/lib/utils/logger';
+import { detectContentCollisions } from '@/lib/ai/content-pipeline/collision-detector';
+import type { PostForCollision } from '@/lib/ai/content-pipeline/collision-detector';
 
 export async function GET(request: NextRequest) {
   try {
@@ -158,6 +160,36 @@ export async function GET(request: NextRequest) {
       linkedin_connected: integrationMap.has(p.id),
     }));
 
+    // Build profile name lookup for collision detection
+    const profileNameMap = new Map<string, string>();
+    for (const p of profiles) {
+      profileNameMap.set(p.id, p.full_name || 'Unknown');
+    }
+
+    // Collision detection (optional, triggered by check_collisions=true)
+    const checkCollisions = searchParams.get('check_collisions') === 'true';
+    let collisions = null;
+
+    if (checkCollisions && posts && posts.length >= 2) {
+      try {
+        const postsForCollision: PostForCollision[] = posts.map(p => ({
+          id: p.id,
+          profile_name: profileNameMap.get(p.team_profile_id) || 'Unknown',
+          content: (p.final_content || p.draft_content || '').slice(0, 500),
+          scheduled_date: p.scheduled_time
+            ? format(new Date(p.scheduled_time), 'yyyy-MM-dd')
+            : '',
+        })).filter(p => p.scheduled_date && p.content);
+
+        if (postsForCollision.length >= 2) {
+          collisions = await detectContentCollisions(postsForCollision);
+        }
+      } catch (err) {
+        logError('cp/team-schedule', err, { step: 'collision_detection_error' });
+        // collisions stays null on error
+      }
+    }
+
     return NextResponse.json({
       profiles: enrichedProfiles,
       posts: posts || [],
@@ -165,6 +197,7 @@ export async function GET(request: NextRequest) {
       buffer_posts: bufferPosts || [],
       week_start: weekStart.toISOString(),
       week_end: weekEnd.toISOString(),
+      collisions,
     });
   } catch (error) {
     logError('cp/team-schedule', error, { step: 'team_schedule_fetch_error' });

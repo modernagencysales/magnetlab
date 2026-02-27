@@ -10,6 +10,19 @@ import { TeamLinkedInConnect } from './TeamLinkedInConnect';
 import { BroadcastModal } from './BroadcastModal';
 import type { PipelinePost, PostingSlot, TeamProfileWithConnection } from '@/lib/types/content-pipeline';
 
+interface CollisionItem {
+  post_a_id: string;
+  post_b_id: string;
+  overlap_description: string;
+  severity: 'high' | 'medium' | 'low';
+  suggestion: string;
+}
+
+interface CollisionResult {
+  has_collision: boolean;
+  collisions: CollisionItem[];
+}
+
 interface TeamCommandCenterProps {
   teamId: string;
 }
@@ -43,6 +56,9 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
   // Broadcast modal
   const [broadcastPost, setBroadcastPost] = useState<PipelinePost | null>(null);
 
+  // Collision detection
+  const [collisions, setCollisions] = useState<CollisionResult | null>(null);
+
   // --- Fetch schedule data ---
   const fetchSchedule = useCallback(async () => {
     setLoading(true);
@@ -64,6 +80,40 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
   useEffect(() => {
     fetchSchedule();
   }, [fetchSchedule]);
+
+  // Async collision check after data loads
+  useEffect(() => {
+    if (!data || (data.posts.length ?? 0) < 2) {
+      setCollisions(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function checkCollisions() {
+      try {
+        const res = await fetch(
+          `/api/content-pipeline/team-schedule?team_id=${teamId}&week_start=${weekStart.toISOString()}&check_collisions=true`
+        );
+        if (res.ok && !cancelled) {
+          const json = await res.json();
+          if (json.collisions) {
+            setCollisions(json.collisions);
+          } else {
+            setCollisions(null);
+          }
+        }
+      } catch {
+        // Silent — collision check is non-critical
+      }
+    }
+
+    checkCollisions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data, teamId, weekStart]);
 
   // --- Navigation ---
   const goThisWeek = () => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -224,6 +274,39 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
       {/* LinkedIn Connection Banner */}
       {data && !loading && (
         <TeamLinkedInConnect profiles={data.profiles} onRefresh={fetchSchedule} />
+      )}
+
+      {/* Collision Warning Banner */}
+      {collisions?.has_collision && collisions.collisions.length > 0 && (
+        <div className="rounded-lg border border-orange-300 bg-orange-50 p-4 dark:border-orange-700 dark:bg-orange-950/40">
+          <h4 className="text-sm font-semibold text-orange-800 dark:text-orange-200">
+            Content overlap detected
+          </h4>
+          <div className="mt-2 space-y-2">
+            {collisions.collisions.map((c, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm">
+                <span
+                  className={cn(
+                    'mt-1 h-2 w-2 flex-shrink-0 rounded-full',
+                    c.severity === 'high' && 'bg-red-500',
+                    c.severity === 'medium' && 'bg-orange-500',
+                    c.severity === 'low' && 'bg-yellow-500'
+                  )}
+                />
+                <div>
+                  <span className="text-orange-800 dark:text-orange-200">
+                    {c.overlap_description}
+                  </span>
+                  {c.suggestion && (
+                    <span className="ml-1 text-orange-600 dark:text-orange-400">
+                      — {c.suggestion}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Grid */}
