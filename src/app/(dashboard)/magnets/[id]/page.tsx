@@ -2,7 +2,8 @@ import { Suspense } from 'react';
 import { redirect, notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { getDataScope } from '@/lib/utils/team-context';
+import { checkTeamRole } from '@/lib/auth/rbac';
 import { MagnetDetail } from '@/components/magnets/MagnetDetail';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 import {
@@ -32,26 +33,56 @@ export default async function MagnetDetailPage({ params }: PageProps) {
   const adminClient = createSupabaseAdminClient();
   const scope = await getDataScope(session.user.id);
 
-  // Resolve the username for public URLs — use team owner's username in team mode
-  const usernameUserId = scope.type === 'team' && scope.ownerId ? scope.ownerId : session.user.id;
-
-  // Fetch lead magnet, funnel page, username, and connected email providers in parallel
-  let magnetQuery = adminClient
+  // Fetch lead magnet by ID first, then verify access.
+  // This avoids 404s when the team-context cookie is stale or not set.
+  const { data: leadMagnetData, error } = await adminClient
     .from('lead_magnets')
-    .select('id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, screenshot_urls, status, published_at, created_at, updated_at')
-    .eq('id', id);
-  magnetQuery = applyScope(magnetQuery, scope);
+    .select('id, user_id, team_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, screenshot_urls, status, published_at, created_at, updated_at')
+    .eq('id', id)
+    .single();
 
-  let funnelQuery = adminClient
-    .from('funnel_pages')
-    .select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, homepage_url, homepage_label')
-    .eq('lead_magnet_id', id)
-    .eq('is_variant', false);
-  funnelQuery = applyScope(funnelQuery, scope);
+  if (error || !leadMagnetData) {
+    notFound();
+  }
 
-  const [leadMagnetResult, funnelResult, userResult, emailProvidersResult] = await Promise.all([
-    magnetQuery.single(),
-    funnelQuery.single(),
+  // Verify the user has access: owns it, or is in the same team
+  const isOwner = leadMagnetData.user_id === session.user.id;
+  const isScopeMatch = scope.type === 'team' && scope.teamId === leadMagnetData.team_id;
+  let isTeamMember = false;
+  if (!isOwner && !isScopeMatch && leadMagnetData.team_id) {
+    const role = await checkTeamRole(session.user.id, leadMagnetData.team_id);
+    isTeamMember = !!role;
+  }
+
+  if (!isOwner && !isScopeMatch && !isTeamMember) {
+    notFound();
+  }
+
+  // Resolve the team context for downstream queries
+  const effectiveTeamId = leadMagnetData.team_id;
+  const effectiveOwnerId = scope.type === 'team' ? scope.ownerId : null;
+
+  // Resolve the username for public URLs — use team owner if available
+  let usernameUserId = session.user.id;
+  if (effectiveTeamId) {
+    const { data: team } = await adminClient
+      .from('teams')
+      .select('owner_id')
+      .eq('id', effectiveTeamId)
+      .single();
+    if (team) usernameUserId = team.owner_id;
+  } else if (effectiveOwnerId) {
+    usernameUserId = effectiveOwnerId;
+  }
+
+  // Fetch funnel page, username, and connected email providers in parallel
+  const [funnelResult, userResult, emailProvidersResult] = await Promise.all([
+    adminClient
+      .from('funnel_pages')
+      .select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, homepage_url, homepage_label')
+      .eq('lead_magnet_id', id)
+      .eq('is_variant', false)
+      .maybeSingle(),
     adminClient
       .from('users')
       .select('username')
@@ -65,16 +96,11 @@ export default async function MagnetDetailPage({ params }: PageProps) {
       .in('service', ['kit', 'mailerlite', 'mailchimp', 'activecampaign']),
   ]);
 
-  const { data: leadMagnetData, error } = leadMagnetResult;
   const { data: funnelData } = funnelResult;
   const { data: userData } = userResult;
   const { data: emailProvidersData } = emailProvidersResult;
 
   const connectedEmailProviders = (emailProvidersData || []).map((r: { service: string }) => r.service);
-
-  if (error || !leadMagnetData) {
-    notFound();
-  }
 
   // Transform to camelCase
   const leadMagnet: LeadMagnet = {
