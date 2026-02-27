@@ -2,7 +2,6 @@
 
 import { Link2 } from 'lucide-react';
 import { LinkedInSettings } from '@/components/settings/LinkedInSettings';
-import { CompetitorMonitoring } from '@/components/settings/CompetitorMonitoring';
 import { ResendSettings } from '@/components/settings/ResendSettings';
 import { ConductorSettings } from '@/components/settings/ConductorSettings';
 import { FathomSettings } from '@/components/settings/FathomSettings';
@@ -10,7 +9,6 @@ import { EmailMarketingSettings } from '@/components/settings/EmailMarketingSett
 import { GoHighLevelSettings } from '@/components/settings/GoHighLevelSettings';
 import { HeyReachSettings } from '@/components/settings/HeyReachSettings';
 import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettings';
-import { WebhookSettings } from '@/components/settings/WebhookSettings';
 
 interface Integration {
   service: string;
@@ -43,8 +41,6 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
           isConnected={unipileIntegration?.is_active ?? false}
           accountName={(unipileIntegration?.metadata as { unipile_account_name?: string } | undefined)?.unipile_account_name ?? null}
         />
-
-        <CompetitorMonitoring />
 
         <div id="email" className="mt-6 pt-6 border-t">
           <ResendSettings
@@ -102,9 +98,6 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
           <TrackingPixelSettings integrations={integrations} />
         </div>
 
-        <div id="webhooks" className="mt-6 pt-6 border-t">
-          <WebhookSettings />
-        </div>
       </div>
     </div>
   );

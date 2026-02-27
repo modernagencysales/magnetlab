@@ -58,7 +58,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Analytics', href: '/settings/integrations#analytics', icon: BarChart3 },
       { label: 'Conductor', href: '/settings/integrations#conductor', icon: Radio },
       { label: 'Tracking Pixels', href: '/settings/integrations#pixels', icon: Target },
-      { label: 'Webhooks', href: '/settings/integrations#webhooks', icon: Webhook },
     ],
   },
   {

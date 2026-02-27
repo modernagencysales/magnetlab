@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
@@ -9,8 +10,11 @@ export const metadata = {
 
 export default async function BrandingRoute() {
   const session = await auth();
+  if (!session?.user?.id) {
+    redirect('/login');
+  }
   const adminClient = createSupabaseAdminClient();
-  const scope = await getDataScope(session?.user?.id || '');
+  const scope = await getDataScope(session.user.id);
 
   let brandKitQuery = adminClient
     .from('brand_kits')

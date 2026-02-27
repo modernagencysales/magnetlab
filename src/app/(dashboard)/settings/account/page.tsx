@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
@@ -9,6 +10,9 @@ export const metadata = {
 
 export default async function AccountPage() {
   const session = await auth();
+  if (!session?.user?.id) {
+    redirect('/login');
+  }
   const supabase = await createSupabaseServerClient();
 
   const { data: subscription } = await supabase

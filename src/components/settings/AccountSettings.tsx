@@ -105,7 +105,7 @@ export function AccountSettings({
         <div className="rounded-lg border bg-card p-6 transition-colors">
           <h2 className="mb-4 text-lg font-semibold">Brand Kit</h2>
           <p className="text-sm text-muted-foreground">
-            {brandKitDescription.slice(0, 200)}...
+            {brandKitDescription.length > 200 ? `${brandKitDescription.slice(0, 200)}...` : brandKitDescription}
           </p>
           <a
             href="/create"
