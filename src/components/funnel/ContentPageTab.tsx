@@ -1,14 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Loader2, Sparkles, ExternalLink, CheckCircle2, Clock, FileText, PenLine } from 'lucide-react';
 import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
+import { useBackgroundJob } from '@/lib/hooks/useBackgroundJob';
 
 interface ContentPageTabProps {
   leadMagnet: LeadMagnet;
   username: string | null;
   slug: string | null;
   onPolished: (polishedContent: PolishedContent, polishedAt: string, extractedContent?: ExtractedContent) => void;
+}
+
+interface ContentJobResult {
+  extractedContent?: ExtractedContent;
+  polishedContent: PolishedContent;
+  polishedAt: string;
 }
 
 function createBlankContent(title: string): PolishedContent {
@@ -29,19 +36,29 @@ function createBlankContent(title: string): PolishedContent {
 }
 
 export function ContentPageTab({ leadMagnet, username, slug, onPolished }: ContentPageTabProps) {
-  const [polishing, setPolishing] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const onComplete = useCallback((result: ContentJobResult) => {
+    onPolished(result.polishedContent, result.polishedAt, result.extractedContent);
+  }, [onPolished]);
+
+  const onError = useCallback((errorMsg: string) => {
+    setError(errorMsg);
+  }, []);
+
+  const { isLoading: isPolling, startPolling } = useBackgroundJob<ContentJobResult>({
+    onComplete,
+    onError,
+  });
 
   const hasExtracted = !!leadMagnet.extractedContent;
   const hasPolished = !!leadMagnet.polishedContent;
   const hasConcept = !!leadMagnet.concept;
   const polished = leadMagnet.polishedContent as PolishedContent | null;
   const contentUrl = username && slug ? `/p/${username}/${slug}/content` : null;
-  const isAiLoading = polishing || generating;
+  const isAiLoading = isPolling;
 
   const handlePolish = async () => {
-    setPolishing(true);
     setError(null);
 
     try {
@@ -50,21 +67,24 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to polish content');
+        let errorMsg = 'Failed to polish content';
+        try {
+          const data = await response.json();
+          errorMsg = data.error || errorMsg;
+        } catch {
+          // Non-JSON response (e.g. Vercel timeout)
+        }
+        throw new Error(errorMsg);
       }
 
-      const { polishedContent, polishedAt } = await response.json();
-      onPolished(polishedContent, polishedAt);
+      const { jobId } = await response.json();
+      startPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to polish content');
-    } finally {
-      setPolishing(false);
     }
   };
 
   const handleGenerateAndPolish = async () => {
-    setGenerating(true);
     setError(null);
 
     try {
@@ -73,16 +93,20 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to generate content');
+        let errorMsg = 'Failed to generate content';
+        try {
+          const data = await response.json();
+          errorMsg = data.error || errorMsg;
+        } catch {
+          // Non-JSON response (e.g. Vercel timeout)
+        }
+        throw new Error(errorMsg);
       }
 
-      const { extractedContent, polishedContent, polishedAt } = await response.json();
-      onPolished(polishedContent, polishedAt, extractedContent);
+      const { jobId } = await response.json();
+      startPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate content');
-    } finally {
-      setGenerating(false);
     }
   };
 
@@ -100,8 +124,14 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
           body: JSON.stringify({ polishedContent: contentToSave }),
         });
         if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to create content');
+          let errorMsg = 'Failed to create content';
+          try {
+            const data = await response.json();
+            errorMsg = data.error || errorMsg;
+          } catch {
+            // Non-JSON response (e.g. Vercel timeout)
+          }
+          throw new Error(errorMsg);
         }
         const { polishedContent: saved } = await response.json();
         onPolished(saved, now);
@@ -255,10 +285,10 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       {hasExtracted && (
         <button
           onClick={handlePolish}
-          disabled={polishing}
+          disabled={isAiLoading}
           className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/50 disabled:opacity-50"
         >
-          {polishing ? (
+          {isAiLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Sparkles className="h-4 w-4" />

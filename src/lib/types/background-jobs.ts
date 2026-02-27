@@ -2,7 +2,7 @@
 
 import type { CallTranscriptInsights, CompetitorAnalysis } from './lead-magnet';
 
-export type JobType = 'ideation' | 'extraction' | 'polish' | 'posts' | 'emails';
+export type JobType = 'ideation' | 'extraction' | 'polish' | 'posts' | 'emails' | 'content-generation' | 'content-polish';
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
