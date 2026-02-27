@@ -33,7 +33,7 @@ const COHORT_NAME = 'Lead Magnet';
 
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const EXTERNAL_API_KEY = process.env.EXTERNAL_API_KEY;
-const MAGNETLAB_URL = process.env.MAGNETLAB_URL || 'http://localhost:3000';
+const MAGNETLAB_URL = process.env.MAGNETLAB_URL || 'https://www.magnetlab.app';
 
 if (!SUPABASE_SERVICE_ROLE_KEY) {
   console.error('ERROR: SUPABASE_SERVICE_ROLE_KEY environment variable is required');
