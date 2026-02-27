@@ -3,7 +3,7 @@
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getUnipileClient, getUserPostingAccountId } from '@/lib/integrations/unipile';
-import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach';
+import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach/client';
 import { logError } from '@/lib/utils/logger';
 import type { LinkedInAutomation, AutomationEventType } from '@/lib/types/content-pipeline';
 

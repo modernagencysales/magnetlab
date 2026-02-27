@@ -1,7 +1,7 @@
 import { schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { scrapeEngagers, scrapeProfilePosts } from '@/lib/integrations/apify-engagers';
-import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach';
+import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach/client';
 
 // ============================================
 // SCRAPE SCHEDULE: taper off as post ages

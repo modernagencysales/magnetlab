@@ -1,6 +1,6 @@
 import { schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach';
+import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach/client';
 
 // ============================================
 // CRON TASK: every 30 minutes
