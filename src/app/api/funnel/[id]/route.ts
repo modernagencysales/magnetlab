@@ -7,11 +7,39 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { funnelPageFromRow, type FunnelPageRow } from '@/lib/types/funnel';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { validateBody, updateFunnelSchema } from '@/lib/validations/api';
-import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { checkTeamRole } from '@/lib/auth/rbac';
 import { normalizeImageUrl } from '@/lib/utils/normalize-image-url';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
+}
+
+/**
+ * Verify the current user can access a funnel page.
+ * Checks ownership directly, or team membership via the linked lead magnet.
+ */
+async function verifyFunnelAccess(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  funnelUserId: string,
+  leadMagnetId: string | null,
+  currentUserId: string,
+): Promise<boolean> {
+  if (funnelUserId === currentUserId) return true;
+  if (!leadMagnetId) return false;
+
+  const { data: lm } = await supabase
+    .from('lead_magnets')
+    .select('user_id, team_id')
+    .eq('id', leadMagnetId)
+    .single();
+
+  if (!lm) return false;
+  if (lm.user_id === currentUserId) return true;
+  if (lm.team_id) {
+    const role = await checkTeamRole(currentUserId, lm.team_id);
+    if (role) return true;
+  }
+  return false;
 }
 
 // GET - Get a single funnel page
@@ -27,18 +55,20 @@ export async function GET(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('Invalid funnel page ID');
     }
 
-    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
-    const { data, error } = await applyScope(
-      supabase
-        .from('funnel_pages')
-        .select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, homepage_url, homepage_label, send_resource_email')
-        .eq('id', id),
-      scope
-    ).single();
+    const { data, error } = await supabase
+      .from('funnel_pages')
+      .select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, homepage_url, homepage_label, send_resource_email')
+      .eq('id', id)
+      .single();
 
     if (error || !data) {
+      return ApiErrors.notFound('Funnel page');
+    }
+
+    const hasAccess = await verifyFunnelAccess(supabase, data.user_id, data.lead_magnet_id, session.user.id);
+    if (!hasAccess) {
       return ApiErrors.notFound('Funnel page');
     }
 
@@ -69,8 +99,23 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const validated = validation.data;
-    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
+
+    // Verify access: fetch funnel by ID, then check ownership/team membership
+    const { data: existingFunnel } = await supabase
+      .from('funnel_pages')
+      .select('id, user_id, lead_magnet_id')
+      .eq('id', id)
+      .single();
+
+    if (!existingFunnel) {
+      return ApiErrors.notFound('Funnel page');
+    }
+
+    const hasAccess = await verifyFunnelAccess(supabase, existingFunnel.user_id, existingFunnel.lead_magnet_id, session.user.id);
+    if (!hasAccess) {
+      return ApiErrors.notFound('Funnel page');
+    }
 
     // Build update object with snake_case keys
     const updateData: Record<string, unknown> = {};
@@ -100,13 +145,11 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     // Verify ownership of qualificationFormId if provided
     if (validated.qualificationFormId) {
-      const { data: qf } = await applyScope(
-        supabase
-          .from('qualification_forms')
-          .select('id')
-          .eq('id', validated.qualificationFormId),
-        scope
-      ).single();
+      const { data: qf } = await supabase
+        .from('qualification_forms')
+        .select('id')
+        .eq('id', validated.qualificationFormId)
+        .single();
 
       if (!qf) {
         return ApiErrors.notFound('Qualification form');
@@ -115,27 +158,25 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     // Check for slug collision if updating slug
     if (validated.slug) {
-      const { data: existing } = await applyScope(
-        supabase
-          .from('funnel_pages')
-          .select('id')
-          .eq('slug', validated.slug)
-          .neq('id', id),
-        scope
-      ).single();
+      const { data: existing } = await supabase
+        .from('funnel_pages')
+        .select('id')
+        .eq('slug', validated.slug)
+        .eq('user_id', existingFunnel.user_id)
+        .neq('id', id)
+        .maybeSingle();
 
       if (existing) {
         return ApiErrors.conflict('A funnel with this slug already exists');
       }
     }
 
-    const { data, error } = await applyScope(
-      supabase
-        .from('funnel_pages')
-        .update(updateData)
-        .eq('id', id),
-      scope
-    ).select().single();
+    const { data, error } = await supabase
+      .from('funnel_pages')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
 
     if (error) {
       logApiError('funnel/update', error, { userId: session.user.id, funnelId: id });
@@ -166,19 +207,21 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('Invalid funnel page ID');
     }
 
-    const scope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
-    // First verify ownership
-    const { data: funnel, error: findError } = await applyScope(
-      supabase
-        .from('funnel_pages')
-        .select('id')
-        .eq('id', id),
-      scope
-    ).single();
+    // Verify access: fetch funnel by ID, then check ownership/team membership
+    const { data: funnel, error: findError } = await supabase
+      .from('funnel_pages')
+      .select('id, user_id, lead_magnet_id')
+      .eq('id', id)
+      .single();
 
     if (findError || !funnel) {
+      return ApiErrors.notFound('Funnel page');
+    }
+
+    const hasAccess = await verifyFunnelAccess(supabase, funnel.user_id, funnel.lead_magnet_id, session.user.id);
+    if (!hasAccess) {
       return ApiErrors.notFound('Funnel page');
     }
 
@@ -190,13 +233,10 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     ]);
 
     // Delete the funnel page (after child records are cleared)
-    const { error } = await applyScope(
-      supabase
-        .from('funnel_pages')
-        .delete()
-        .eq('id', id),
-      scope
-    );
+    const { error } = await supabase
+      .from('funnel_pages')
+      .delete()
+      .eq('id', id);
 
     if (error) {
       logApiError('funnel/delete', error, { userId: session.user.id, funnelId: id });
