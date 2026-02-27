@@ -208,7 +208,7 @@ export class HeyReachClient {
 
     if (contact.firstName) lead.firstName = contact.firstName;
     if (contact.lastName) lead.lastName = contact.lastName;
-    if (contact.email) lead.email = contact.email;
+    if (contact.email) lead.emailAddress = contact.email;
     if (contact.company) lead.companyName = contact.company;
 
     if (contact.customFields && Object.keys(contact.customFields).length > 0) {
