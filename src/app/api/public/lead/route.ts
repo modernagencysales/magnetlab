@@ -570,24 +570,8 @@ export async function PATCH(request: Request) {
         funnelSlug: funnel?.slug || '',
       }).catch((err) => logApiError('public/lead/gohighlevel-qualified', err, { leadId: lead.id }));
 
-      // Sync to HeyReach (with qualification data)
-      await syncLeadToHeyReach({
-        userId: lead.user_id,
-        funnelPageId: lead.funnel_page_id,
-        lead: {
-          email: lead.email,
-          name: lead.name,
-          linkedinUrl: updatedLead.linkedin_url || null,
-          utmSource: updatedLead.utm_source,
-          utmMedium: updatedLead.utm_medium,
-          utmCampaign: updatedLead.utm_campaign,
-          isQualified,
-          qualificationAnswers: answers,
-        },
-        leadMagnetTitle: leadMagnetTitle || '',
-        leadMagnetUrl: '',
-        funnelSlug: funnel?.slug || '',
-      }).catch((err) => logApiError('public/lead/heyreach-qualified', err, { leadId: lead.id }));
+      // HeyReach sync skipped on PATCH — lead was already enrolled on POST.
+      // Re-syncing would send empty leadMagnetUrl, overwriting the correct value.
 
       try { getPostHogServerClient()?.capture({ distinctId: lead.user_id, event: 'lead_qualified', properties: { is_qualified: isQualified, question_count: questions?.length || 0 } }); } catch {}
     });
