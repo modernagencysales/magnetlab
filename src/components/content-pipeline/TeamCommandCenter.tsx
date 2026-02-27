@@ -6,6 +6,7 @@ import { startOfWeek, addWeeks, subWeeks, format, addDays, setHours, setMinutes 
 import { cn } from '@/lib/utils';
 import { WeeklyGrid } from './WeeklyGrid';
 import { PostDetailModal } from './PostDetailModal';
+import { TeamLinkedInConnect } from './TeamLinkedInConnect';
 import type { PipelinePost, PostingSlot, TeamProfileWithConnection } from '@/lib/types/content-pipeline';
 
 interface TeamCommandCenterProps {
@@ -209,6 +210,11 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
             {connectedCount}/{totalProfiles} connected
           </span>
         </div>
+      )}
+
+      {/* LinkedIn Connection Banner */}
+      {data && !loading && (
+        <TeamLinkedInConnect profiles={data.profiles} onRefresh={fetchSchedule} />
       )}
 
       {/* Grid */}

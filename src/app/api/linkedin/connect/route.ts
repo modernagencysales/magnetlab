@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getUnipileClient, isUnipileConfigured } from '@/lib/integrations/unipile';
 
 import { logError } from '@/lib/utils/logger';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,8 +21,14 @@ export async function GET() {
     const client = getUnipileClient();
     const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
+    // Encode team_profile_id into the userId callback metadata if provided
+    const teamProfileId = request.nextUrl.searchParams.get('team_profile_id');
+    const callbackUserId = teamProfileId
+      ? `${session.user.id}:${teamProfileId}`
+      : session.user.id;
+
     const result = await client.requestHostedAuthLink({
-      userId: session.user.id,
+      userId: callbackUserId,
       successRedirectUrl: `${appUrl}/settings?linkedin=connected`,
       failureRedirectUrl: `${appUrl}/settings?linkedin=error&reason=auth_failed`,
       notifyUrl: `${appUrl}/api/webhooks/unipile`,

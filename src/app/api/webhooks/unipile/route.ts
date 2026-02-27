@@ -14,13 +14,28 @@ export async function POST(request: NextRequest) {
     // Account connection callback
     // ==========================================
     if (body.status === 'CREATION_SUCCESS' && body.account_id && body.name) {
+      // Parse userId and optional teamProfileId from body.name
+      // Format: "userId" or "userId:teamProfileId"
+      const nameParts = body.name.split(':');
+      const userId = nameParts[0];
+      const teamProfileId = nameParts[1] || null;
+
+      // Store in user_integrations (backward compat)
       await upsertUserIntegration({
-        userId: body.name,
+        userId,
         service: 'unipile',
         isActive: true,
         metadata: { unipile_account_id: body.account_id },
       });
-      logInfo('webhooks/unipile', 'Integration saved for user', { userId: body.name });
+      logInfo('webhooks/unipile', 'Integration saved for user', { userId });
+
+      // If team_profile_id provided, also store in team_profile_integrations
+      if (teamProfileId) {
+        const { connectTeamProfileLinkedIn } = await import('@/lib/services/team-integrations');
+        await connectTeamProfileLinkedIn(teamProfileId, body.account_id, userId);
+        logInfo('webhooks/unipile', 'Team profile integration saved', { teamProfileId, userId });
+      }
+
       return NextResponse.json({ received: true });
     }
 
