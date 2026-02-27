@@ -719,3 +719,33 @@ export interface LinkedInAutomationEvent {
   error: string | null;
   created_at: string;
 }
+
+// ============================================
+// TEAM PROFILE INTEGRATIONS
+// ============================================
+
+export interface TeamProfileIntegration {
+  id: string;
+  team_profile_id: string;
+  service: string;
+  is_active: boolean;
+  metadata: Record<string, unknown>;
+  connected_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamProfileWithConnection extends TeamProfile {
+  linkedin_connected: boolean;
+  unipile_account_id: string | null;
+}
+
+export interface BroadcastGroup {
+  broadcast_group_id: string;
+  source_post_id: string;
+  variations: {
+    profile_id: string;
+    post_id: string;
+    scheduled_time: string | null;
+  }[];
+}
