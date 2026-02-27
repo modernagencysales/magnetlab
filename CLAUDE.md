@@ -328,7 +328,7 @@ Team-level branding settings that apply across all funnels. Configured in Settin
 
 ## A/B Testing (Thank-You Page)
 
-Self-serve A/B testing for thank-you pages to maximize survey completion rate. Tests one field at a time: headline, subline, video on/off, or pass message.
+Self-serve A/B testing for thank-you pages to maximize survey completion rate. Tests one field at a time: headline, subline, video on/off, pass message, or page layout.
 
 ### Data Model
 
@@ -364,6 +364,39 @@ Self-serve A/B testing for thank-you pages to maximize survey completion rate. T
 - Always filter funnel queries with `.eq('is_variant', false)` to hide variant rows from funnel lists
 - One experiment per funnel at a time (create API enforces this)
 - Experiment paused/completed/draft → serve control (or winner if completed)
+
+## Thank-You Page Layouts
+
+Three layout variants for thank-you pages, controlled by `thankyou_layout` column on `funnel_pages`. A/B testable via the experiment system.
+
+### Layout Variants
+
+| Layout | Slug | Behavior |
+|--------|------|----------|
+| Survey First | `survey_first` | Default. Banner → headline → survey → video (after completion) → result → booking |
+| Video First | `video_first` | Banner → headline → video (plays immediately) → survey → result → booking |
+| Side by Side | `side_by_side` | Banner → headline → 2-column grid (video left, survey right) → result. Falls back to single-column when no video. Mobile: stacks vertically. |
+
+### Data Model
+
+- `funnel_pages.thankyou_layout` TEXT NOT NULL DEFAULT `'survey_first'` — CHECK constraint: `survey_first`, `video_first`, `side_by_side`
+- Type: `ThankyouLayout` exported from `src/lib/types/funnel.ts`
+
+### Key Rendering Logic
+
+- `survey_first`: `aboveSections` render before survey (backward compat). Video gated behind `qualificationComplete`.
+- `video_first` / `side_by_side`: Video shows immediately (not gated). `aboveSections` skipped to keep content above fold.
+- `side_by_side`: Uses `grid grid-cols-1 md:grid-cols-2 gap-6`. Qualification result renders in-grid when video present, below grid otherwise.
+- Extracted helper components: `SurveyCard`, `QualificationResult` in `ThankyouPage.tsx`.
+
+### Key Files
+
+- `src/components/funnel/public/ThankyouPage.tsx` — Core layout rendering (3 branches)
+- `src/components/funnel/ThankyouPageEditor.tsx` — Layout selector radio cards
+- `src/components/funnel/FunnelBuilder.tsx` — Layout state management
+- `src/components/funnel/ABTestPanel.tsx` — Layout as testable field (`thankyou_layout`)
+- `src/app/p/[username]/[slug]/thankyou/page.tsx` — Passes layout + variant bucketing
+- `supabase/migrations/20260227200000_thankyou_layout.sql` — Migration
 
 ## External Thank-You Page Redirect
 
@@ -1089,6 +1122,79 @@ process_intake -> select_and_finish_posts -> review_and_polish_content -> [admin
 | `src/lib/ai/content-pipeline/quiz-generator.ts` | Quiz generator AI module |
 | `src/lib/ai/content-pipeline/prompt-defaults.ts` | Prompt defaults (content-review, quiz-generator slugs) |
 | `supabase/migrations/20260226100000_post_review_data.sql` | review_data column migration |
+
+## Engagement Cold Email Pipeline (Feb 2026)
+
+Auto-enrich and push leads who engage with lead magnet posts to PlusVibe cold email campaigns. Also provides manual comment reply with opt-in link.
+
+### Architecture
+
+```
+Comment detected on lead magnet post (Unipile scrape)
+  → process-linkedin-comment (existing task)
+  → Keyword match → parallel actions:
+    1. Auto-like (existing)
+    2. Reply to comment (existing)
+    3. Push to HeyReach DM (existing)
+    4. NEW: enrich-and-push-plusvibe Trigger.dev task
+      → Harvest API (profile data)
+      → Waterfall email find: LeadMagic → Prospeo → BlitzAPI
+      → ZeroBounce validation (+ BounceBan catch-all escalation)
+      → PlusVibe campaign push with opt_in_url variable
+```
+
+### Data Model
+
+- `linkedin_automations` — added `plusvibe_campaign_id` (text) and `opt_in_url` (text) columns
+- `engagement_enrichments` — tracks enrichment status per lead (pending → enriching → enriched → pushed | failed | no_email)
+  - Unique constraint: `(user_id, automation_id, linkedin_url)` prevents double-enriching
+  - RLS: user self-management + service role bypass
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/integrations/enrichment/types.ts` | Core interfaces (EmailFinderProvider, EmailValidatorProvider, WaterfallResult) |
+| `src/lib/integrations/enrichment/leadmagic.ts` | Primary email finder |
+| `src/lib/integrations/enrichment/prospeo.ts` | Fallback email finder |
+| `src/lib/integrations/enrichment/blitzapi.ts` | Last resort email finder |
+| `src/lib/integrations/enrichment/zerobounce.ts` | Primary email validator |
+| `src/lib/integrations/enrichment/bounceban.ts` | Catch-all escalation validator |
+| `src/lib/integrations/enrichment/waterfall.ts` | `waterfallEmailFind()` orchestrator |
+| `src/lib/integrations/enrichment/index.ts` | Factory functions (getConfiguredFinders, getValidator) |
+| `src/lib/integrations/plusvibe.ts` | `addLeadsToPlusVibeCampaign()` client |
+| `src/trigger/enrich-and-push-plusvibe.ts` | Trigger.dev task (120s max, 2 retries) |
+| `src/lib/services/linkedin-automation.ts` | Pipeline wiring (section 2b triggers enrichment) |
+| `src/app/api/linkedin/automations/[id]/reply/route.ts` | Manual comment reply API |
+| `src/components/automations/AutomationEventsDrawer.tsx` | Events timeline + "Reply with Link" button |
+| `src/components/automations/AutomationEditor.tsx` | PlusVibe Campaign ID + Opt-In URL fields |
+| `supabase/migrations/20260227300000_engagement_enrichment_plusvibe.sql` | Migration |
+
+### PlusVibe Integration Notes
+
+- **API base**: `https://api.plusvibe.ai/api/v1`, auth: `x-api-key` header
+- **Variables**: Send WITHOUT `custom_` prefix — PlusVibe auto-prefixes. Templates use `{{custom_opt_in_url}}`
+- Campaign ID is per-automation (different lead magnets → different email sequences)
+
+### Manual Comment Reply
+
+- "Reply with Link" button on `comment_detected`/`keyword_matched` events in AutomationEventsDrawer
+- Pre-filled text: `Thanks {{name}}! Here's the link: {{opt_in_url}}`
+- Sends via Unipile `addComment()`, logs `reply_sent` event
+- API: `POST /api/linkedin/automations/[id]/reply` — body: `{ commentSocialId, text, commenterName }`
+
+### Env Vars
+
+Required in BOTH Vercel and Trigger.dev:
+
+```
+LEADMAGIC_API_KEY
+PROSPEO_API_KEY
+BLITZ_API_KEY
+ZEROBOUNCE_API_KEY
+BOUNCEBAN_API_KEY
+PLUSVIBE_API_KEY
+```
 
 ## Deployment
 
