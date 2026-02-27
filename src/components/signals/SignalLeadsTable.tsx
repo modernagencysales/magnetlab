@@ -14,7 +14,6 @@ import { SignalLeadDetail } from './SignalLeadDetail';
 import type {
   SignalLead,
   SignalLeadStatus,
-  SignalType,
   SentimentScore,
   SignalEvent,
 } from '@/lib/types/signals';
