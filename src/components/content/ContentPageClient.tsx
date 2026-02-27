@@ -17,6 +17,7 @@ import { FontLoader, getFontStyle } from '@/components/funnel/public/FontLoader'
 import { CalculatorTool } from '@/components/interactive/public/CalculatorTool';
 import { AssessmentTool } from '@/components/interactive/public/AssessmentTool';
 import { GPTChatTool } from '@/components/interactive/public/GPTChatTool';
+import { IClosedWidget } from '@/components/funnel/public/IClosedWidget';
 import type { PolishedContent, ExtractedContent, LeadMagnetConcept, InteractiveConfig } from '@/lib/types/lead-magnet';
 import type { FunnelPageSection } from '@/lib/types/funnel';
 
@@ -43,6 +44,7 @@ interface ContentPageClientProps {
   sections?: FunnelPageSection[];
   hideBranding?: boolean;
   autoEdit?: boolean;
+  iClosedWidgetId?: string | null;
 }
 
 export function ContentPageClient({
@@ -66,6 +68,7 @@ export function ContentPageClient({
   sections = [],
   hideBranding,
   autoEdit = false,
+  iClosedWidgetId,
 }: ContentPageClientProps) {
   const [isDark, setIsDark] = useState(initialTheme === 'dark');
   const [isEditing, setIsEditing] = useState(autoEdit && isOwner);
@@ -150,6 +153,7 @@ export function ContentPageClient({
             <GPTChatTool config={interactiveConfig} leadMagnetId={leadMagnetId!} theme={theme} primaryColor={primaryColor} />
           )}
         </div>
+        {iClosedWidgetId && <IClosedWidget widgetId={iClosedWidgetId} />}
       </div>
     );
   }
@@ -369,6 +373,8 @@ export function ContentPageClient({
           primaryColor={primaryColor}
         />
       )}
+
+      {iClosedWidgetId && <IClosedWidget widgetId={iClosedWidgetId} />}
     </div>
   );
 }

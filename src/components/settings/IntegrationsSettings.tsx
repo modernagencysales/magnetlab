@@ -9,6 +9,7 @@ import { EmailMarketingSettings } from '@/components/settings/EmailMarketingSett
 import { GoHighLevelSettings } from '@/components/settings/GoHighLevelSettings';
 import { HeyReachSettings } from '@/components/settings/HeyReachSettings';
 import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettings';
+import { IClosedWidgetSettings } from '@/components/settings/IClosedWidgetSettings';
 
 interface Integration {
   service: string;
@@ -96,6 +97,18 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
             Add conversion tracking to your funnel pages. Events fire both client-side and server-side for maximum accuracy.
           </p>
           <TrackingPixelSettings integrations={integrations} />
+        </div>
+
+        <div id="widgets" className="mt-6 pt-6 border-t">
+          <h3 className="text-sm font-semibold mb-1">Widgets</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Add floating widgets to your content pages.
+          </p>
+          <div className="space-y-4 mt-4">
+            <IClosedWidgetSettings
+              integration={integrations.find((i) => i.service === 'iclosed_widget')}
+            />
+          </div>
         </div>
 
       </div>

@@ -191,6 +191,22 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
 
   const sections = (sectionRows as FunnelPageSectionRow[] || []).map(funnelPageSectionFromRow);
 
+  // Fetch iClosed widget integration for the page owner
+  let iClosedWidgetId: string | null = null;
+  const { data: iClosedIntegration } = await supabase
+    .from('user_integrations')
+    .select('metadata')
+    .eq('user_id', user.id)
+    .eq('service', 'iclosed_widget')
+    .eq('is_active', true)
+    .single();
+  if (iClosedIntegration?.metadata) {
+    const meta = iClosedIntegration.metadata as { widget_id?: string };
+    if (meta.widget_id) {
+      iClosedWidgetId = meta.widget_id;
+    }
+  }
+
   // Track page view (fire-and-forget, not for team members)
   if (!canEdit) {
     supabase
@@ -223,6 +239,7 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       sections={sections}
       hideBranding={whitelabel?.hideBranding || false}
       autoEdit={edit === 'true'}
+      iClosedWidgetId={iClosedWidgetId}
     />
   );
 }
