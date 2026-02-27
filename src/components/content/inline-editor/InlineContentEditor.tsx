@@ -197,65 +197,6 @@ function AddSectionDivider({ onAdd }: { onAdd: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// Section Header Controls (hover gutter for section move/delete)
-// ---------------------------------------------------------------------------
-
-interface SectionHeaderControlsProps {
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onDelete: () => void;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function SectionHeaderControls({
-  canMoveUp,
-  canMoveDown,
-  onMoveUp,
-  onMoveDown,
-  onDelete,
-}: SectionHeaderControlsProps) {
-  const [show, setShow] = useState(false);
-
-  return (
-    <div
-      className="absolute -left-10 top-0 flex flex-col gap-0.5 transition-opacity duration-150"
-      style={{ opacity: show ? 1 : 0, pointerEvents: show ? 'auto' : 'none' }}
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
-    >
-      <button
-        type="button"
-        disabled={!canMoveUp}
-        onClick={onMoveUp}
-        className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
-        aria-label="Move section up"
-      >
-        <ChevronUp size={14} />
-      </button>
-      <button
-        type="button"
-        disabled={!canMoveDown}
-        onClick={onMoveDown}
-        className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
-        aria-label="Move section down"
-      >
-        <ChevronDown size={14} />
-      </button>
-      <button
-        type="button"
-        onClick={onDelete}
-        className="flex h-5 w-5 items-center justify-center rounded text-red-500 hover:bg-red-500/10"
-        aria-label="Delete section"
-      >
-        <Trash2 size={12} />
-      </button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // InlineContentEditor
 // ---------------------------------------------------------------------------
 
@@ -319,10 +260,10 @@ export function InlineContentEditor({
 
   const deleteSection = useCallback(
     (sectionIdx: number) => {
-      replaceContent((c) => ({
-        ...c,
-        sections: c.sections.filter((_, i) => i !== sectionIdx),
-      }));
+      replaceContent((c) => {
+        if (c.sections.length <= 1) return c; // Keep at least one section
+        return { ...c, sections: c.sections.filter((_, i) => i !== sectionIdx) };
+      });
     },
     [replaceContent],
   );
@@ -384,11 +325,11 @@ export function InlineContentEditor({
     (sectionIdx: number, blockIdx: number) => {
       replaceContent((c) => ({
         ...c,
-        sections: c.sections.map((s, si) =>
-          si === sectionIdx
-            ? { ...s, blocks: s.blocks.filter((_, bi) => bi !== blockIdx) }
-            : s,
-        ),
+        sections: c.sections.map((s, si) => {
+          if (si !== sectionIdx) return s;
+          if (s.blocks.length <= 1) return s; // Keep at least one block
+          return { ...s, blocks: s.blocks.filter((_, bi) => bi !== blockIdx) };
+        }),
       }));
     },
     [replaceContent],
@@ -458,8 +399,12 @@ export function InlineContentEditor({
   );
 
   const handleSlashClose = useCallback(() => {
+    if (slashMenu) {
+      // Clear the "/" character when menu closes without selection
+      updateBlock(slashMenu.sectionIdx, slashMenu.blockIdx, { content: '' });
+    }
     setSlashMenu(null);
-  }, []);
+  }, [slashMenu, updateBlock]);
 
   // =========================================================================
   // Render helpers for individual blocks
@@ -761,6 +706,11 @@ export function InlineContentEditor({
                     sectionName: e.currentTarget.textContent || '',
                   })
                 }
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const text = e.clipboardData.getData('text/plain');
+                  document.execCommand('insertText', false, text);
+                }}
                 className="mb-3 text-2xl font-bold outline-none focus:ring-1 focus:ring-violet-500 focus:ring-offset-2 rounded px-1 -mx-1"
                 style={{ color: colors.text }}
               >

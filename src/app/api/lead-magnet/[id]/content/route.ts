@@ -7,7 +7,8 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { validateBody, updateContentBodySchema } from '@/lib/validations/api';
 import type { PolishedContent, PolishedSection } from '@/lib/types/lead-magnet';
-import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { getDataScope, applyScope, type DataScope } from '@/lib/utils/team-context';
+import { checkTeamRole } from '@/lib/auth/rbac';
 import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 
 interface RouteParams {
@@ -52,7 +53,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       readingTimeMinutes: Math.max(1, Math.round(wordCount / 200)),
     };
 
-    const scope = await getDataScope(session.user.id);
+    let scope: DataScope = await getDataScope(session.user.id);
     const supabase = createSupabaseAdminClient();
 
     // Fetch current content for edit diff comparison (before the update)
@@ -61,7 +62,39 @@ export async function PUT(request: Request, { params }: RouteParams) {
       .select('polished_content')
       .eq('id', id);
     fetchQuery = applyScope(fetchQuery, scope);
-    const { data: currentData } = await fetchQuery.single();
+    let currentData = (await fetchQuery.single()).data;
+
+    // Fallback: if user-scoped query found nothing, check team membership
+    // This handles team members editing via the content page without the
+    // ml-team-context cookie (e.g. direct link, shared URL)
+    if (!currentData && scope.type === 'user') {
+      const { data: lm } = await supabase
+        .from('lead_magnets')
+        .select('team_id')
+        .eq('id', id)
+        .single();
+
+      if (lm?.team_id) {
+        const role = await checkTeamRole(session.user.id, lm.team_id);
+        if (role) {
+          const { data: team } = await supabase
+            .from('teams')
+            .select('owner_id')
+            .eq('id', lm.team_id)
+            .single();
+          scope = { type: 'team', userId: session.user.id, teamId: lm.team_id, ownerId: team?.owner_id };
+          // Re-fetch with team scope
+          const { data: retryData } = await supabase
+            .from('lead_magnets')
+            .select('polished_content')
+            .eq('id', id)
+            .eq('team_id', lm.team_id)
+            .single();
+          currentData = retryData;
+        }
+      }
+    }
+
     const oldContent = currentData?.polished_content as PolishedContent | null;
 
     let query = supabase
