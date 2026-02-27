@@ -347,6 +347,7 @@ export interface PipelinePost {
   heyreach_campaign_id: string | null;
   last_engagement_scrape_at: string | null;
   engagement_scrape_count: number;
+  broadcast_group_id?: string | null;
   team_profile_id?: string | null;
   created_at: string;
   updated_at: string;
