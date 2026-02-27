@@ -2,7 +2,7 @@ import { task, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import Anthropic from '@anthropic-ai/sdk';
 import { buildVoicePromptSection } from '@/lib/ai/content-pipeline/voice-prompt-builder';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import type { TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
 interface BroadcastInput {
@@ -72,7 +72,7 @@ export const broadcastPostVariations = task({
     }
 
     // 3. Generate broadcast_group_id
-    const broadcastGroupId = uuidv4();
+    const broadcastGroupId = randomUUID();
 
     // 4. Mark source post with broadcast_group_id
     await supabase
