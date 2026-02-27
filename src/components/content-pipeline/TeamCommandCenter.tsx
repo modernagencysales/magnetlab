@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { WeeklyGrid } from './WeeklyGrid';
 import { PostDetailModal } from './PostDetailModal';
 import { TeamLinkedInConnect } from './TeamLinkedInConnect';
+import { BroadcastModal } from './BroadcastModal';
 import type { PipelinePost, PostingSlot, TeamProfileWithConnection } from '@/lib/types/content-pipeline';
 
 interface TeamCommandCenterProps {
@@ -38,6 +39,9 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
   const [showBufferDock, setShowBufferDock] = useState(false);
   const [assignTarget, setAssignTarget] = useState<{ profileId: string; date: Date } | null>(null);
   const [assigning, setAssigning] = useState<string | null>(null); // post id being assigned
+
+  // Broadcast modal
+  const [broadcastPost, setBroadcastPost] = useState<PipelinePost | null>(null);
 
   // --- Fetch schedule data ---
   const fetchSchedule = useCallback(async () => {
@@ -148,6 +152,11 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
     } finally {
       setPolishing(false);
     }
+  };
+
+  // --- Broadcast handler (opens BroadcastModal for a given post) ---
+  const handleBroadcast = (post: PipelinePost) => {
+    setBroadcastPost(post);
   };
 
   // --- Buffer posts for the selected profile ---
@@ -316,6 +325,19 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
             fetchSchedule();
           }}
           polishing={polishing}
+        />
+      )}
+
+      {/* Broadcast Modal */}
+      {broadcastPost && data && (
+        <BroadcastModal
+          post={broadcastPost}
+          profiles={data.profiles}
+          onClose={() => setBroadcastPost(null)}
+          onBroadcast={() => {
+            setBroadcastPost(null);
+            fetchSchedule();
+          }}
         />
       )}
     </div>
