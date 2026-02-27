@@ -75,6 +75,7 @@ export async function PATCH(
       'auto_connect', 'auto_like', 'comment_reply_template',
       'enable_follow_up', 'follow_up_template', 'follow_up_delay_minutes',
       'status', 'unipile_account_id', 'heyreach_campaign_id', 'resource_url',
+      'plusvibe_campaign_id', 'opt_in_url',
     ];
 
     const updates: Record<string, unknown> = {};

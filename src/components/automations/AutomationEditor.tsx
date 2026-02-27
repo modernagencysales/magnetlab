@@ -49,6 +49,8 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
   const [autoConnect, setAutoConnect] = useState(false);
   const [autoLike, setAutoLike] = useState(false);
   const [commentReplyTemplate, setCommentReplyTemplate] = useState('');
+  const [plusvibeCampaignId, setPlusvibeCampaignId] = useState('');
+  const [optInUrl, setOptInUrl] = useState('');
   const [enableFollowUp, setEnableFollowUp] = useState(false);
   const [followUpTemplate, setFollowUpTemplate] = useState('');
   const [followUpDelayHours, setFollowUpDelayHours] = useState(24);
@@ -92,6 +94,8 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
       setAutoConnect(automation.auto_connect);
       setAutoLike(automation.auto_like);
       setCommentReplyTemplate(automation.comment_reply_template || '');
+      setPlusvibeCampaignId((automation as any).plusvibe_campaign_id || '');
+      setOptInUrl((automation as any).opt_in_url || '');
       setEnableFollowUp(automation.enable_follow_up);
       setFollowUpTemplate(automation.follow_up_template || '');
       setFollowUpDelayHours(Math.round((automation.follow_up_delay_minutes || 1440) / 60));
@@ -106,6 +110,8 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
       setAutoConnect(false);
       setAutoLike(false);
       setCommentReplyTemplate('');
+      setPlusvibeCampaignId('');
+      setOptInUrl('');
       setEnableFollowUp(false);
       setFollowUpTemplate('');
       setFollowUpDelayHours(24);
@@ -175,6 +181,8 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
       autoConnect,
       autoLike,
       commentReplyTemplate: commentReplyTemplate.trim() || null,
+      plusvibeCampaignId: plusvibeCampaignId.trim() || null,
+      optInUrl: optInUrl.trim() || null,
       enableFollowUp,
       followUpTemplate: followUpTemplate.trim() || null,
       followUpDelayMinutes: followUpDelayHours * 60,
@@ -364,6 +372,34 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
             />
             <p className="text-xs text-muted-foreground">
               Publicly reply to the comment before sending the DM.
+            </p>
+          </div>
+
+          {/* PlusVibe Campaign */}
+          <div className="space-y-2">
+            <Label htmlFor="automation-plusvibe">PlusVibe Campaign ID (optional)</Label>
+            <Input
+              id="automation-plusvibe"
+              value={plusvibeCampaignId}
+              onChange={(e) => setPlusvibeCampaignId(e.target.value)}
+              placeholder="e.g. 6982b7fc8caf31656442c4d9"
+            />
+            <p className="text-xs text-muted-foreground">
+              Commenters will be enriched and added to this PlusVibe cold email campaign.
+            </p>
+          </div>
+
+          {/* Opt-In URL */}
+          <div className="space-y-2">
+            <Label htmlFor="automation-optin-url">Opt-In URL (optional)</Label>
+            <Input
+              id="automation-optin-url"
+              value={optInUrl}
+              onChange={(e) => setOptInUrl(e.target.value)}
+              placeholder="https://magnetlab.app/p/username/lead-magnet"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used as a PlusVibe email variable and for quick &quot;Reply with Link&quot; in the activity feed.
             </p>
           </div>
 

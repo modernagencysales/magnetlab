@@ -34,6 +34,8 @@ export interface Automation {
   status: 'draft' | 'running' | 'paused';
   unipile_account_id: string | null;
   leads_captured: number;
+  plusvibe_campaign_id: string | null;
+  opt_in_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -255,6 +257,9 @@ export function AutomationList() {
                 )}
                 {automation.auto_like && (
                   <Badge variant="outline" className="text-xs py-0">Auto-like</Badge>
+                )}
+                {automation.plusvibe_campaign_id && (
+                  <Badge variant="outline" className="text-xs py-0">PlusVibe</Badge>
                 )}
                 {automation.enable_follow_up && (
                   <Badge variant="outline" className="text-xs py-0">Follow-up</Badge>

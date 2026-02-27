@@ -57,6 +57,8 @@ export async function POST(request: Request) {
       unipileAccountId,
       heyreachCampaignId,
       resourceUrl,
+      plusvibeCampaignId,
+      optInUrl,
     } = body as {
       name: string;
       postId?: string;
@@ -72,6 +74,8 @@ export async function POST(request: Request) {
       unipileAccountId?: string;
       heyreachCampaignId?: string;
       resourceUrl?: string;
+      plusvibeCampaignId?: string;
+      optInUrl?: string;
     };
 
     if (!name?.trim()) {
@@ -98,6 +102,8 @@ export async function POST(request: Request) {
         unipile_account_id: unipileAccountId || null,
         heyreach_campaign_id: heyreachCampaignId || null,
         resource_url: resourceUrl || null,
+        plusvibe_campaign_id: plusvibeCampaignId || null,
+        opt_in_url: optInUrl || null,
       })
       .select()
       .single();
