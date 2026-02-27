@@ -162,8 +162,6 @@ describe('HeyReach Integration API Routes', () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe('POST /api/integrations/heyreach/verify', () => {
-    const url = 'http://localhost:3000/api/integrations/heyreach/verify';
-
     it('returns 401 for unauthenticated requests', async () => {
       mockAuth.mockResolvedValueOnce(null);
 
