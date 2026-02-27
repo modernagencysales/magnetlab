@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getTeamProfilesWithConnections } from '@/lib/services/team-integrations';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getTeamProfilesWithConnections, verifyTeamMembership } from '@/lib/services/team-integrations';
 import { logError } from '@/lib/utils/logger';
 
 export async function GET(request: NextRequest) {
@@ -15,6 +16,13 @@ export async function GET(request: NextRequest) {
 
     if (!teamId) {
       return NextResponse.json({ error: 'team_id is required' }, { status: 400 });
+    }
+
+    // Verify user is team owner or active member
+    const supabase = createSupabaseAdminClient();
+    const memberCheck = await verifyTeamMembership(supabase, teamId, session.user.id);
+    if (!memberCheck.authorized) {
+      return NextResponse.json({ error: memberCheck.error }, { status: memberCheck.status });
     }
 
     const profiles = await getTeamProfilesWithConnections(teamId);

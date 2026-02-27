@@ -14,6 +14,49 @@ import type {
 import type { UnipilePost, UnipilePostStats } from '@/lib/types/integrations';
 
 // ============================================
+// TEAM MEMBERSHIP VERIFICATION
+// ============================================
+
+/**
+ * Verifies that a user is either the team owner or an active team member.
+ * Returns { authorized: true, team } if authorized, or { authorized: false, error, status } if not.
+ */
+export async function verifyTeamMembership(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  teamId: string,
+  userId: string
+): Promise<
+  | { authorized: true; team: { id: string; owner_id: string } }
+  | { authorized: false; error: string; status: number }
+> {
+  const { data: team } = await supabase
+    .from('teams')
+    .select('id, owner_id')
+    .eq('id', teamId)
+    .single();
+
+  if (!team) {
+    return { authorized: false, error: 'Team not found', status: 404 };
+  }
+
+  if (team.owner_id !== userId) {
+    const { data: membership } = await supabase
+      .from('team_profiles')
+      .select('id')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
+
+    if (!membership) {
+      return { authorized: false, error: 'Not a team member', status: 403 };
+    }
+  }
+
+  return { authorized: true, team };
+}
+
+// ============================================
 // GET UNIPILE ACCOUNT ID
 // ============================================
 

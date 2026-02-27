@@ -35,6 +35,7 @@ interface ScheduleData {
   buffer_posts: PipelinePost[];
   week_start: string;
   week_end: string;
+  collisions?: CollisionResult | null;
 }
 
 export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
@@ -85,39 +86,14 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
     fetchSchedule();
   }, [fetchSchedule]);
 
-  // Async collision check after data loads
+  // Read collisions from the initial fetch response
   useEffect(() => {
-    if (!data || (data.posts.length ?? 0) < 2) {
+    if (data?.collisions) {
+      setCollisions(data.collisions);
+    } else {
       setCollisions(null);
-      return;
     }
-
-    let cancelled = false;
-
-    async function checkCollisions() {
-      try {
-        const res = await fetch(
-          `/api/content-pipeline/team-schedule?team_id=${teamId}&week_start=${weekStart.toISOString()}&check_collisions=true`
-        );
-        if (res.ok && !cancelled) {
-          const json = await res.json();
-          if (json.collisions) {
-            setCollisions(json.collisions);
-          } else {
-            setCollisions(null);
-          }
-        }
-      } catch {
-        // Silent — collision check is non-critical
-      }
-    }
-
-    checkCollisions();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [data, teamId, weekStart]);
+  }, [data]);
 
   // --- Navigation ---
   const goThisWeek = () => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -155,8 +131,8 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
 
     setAssigning(post.id);
     try {
-      // Find the slot time for this profile on this day
-      const dayOfWeek = (assignTarget.date.getDay() + 6) % 7; // Convert Sun=0 to Mon=0
+      // Find the slot time for this profile on this day (JS getDay: 0=Sun, 1=Mon..6=Sat)
+      const dayOfWeek = assignTarget.date.getDay();
       const slot = data?.slots.find(
         (s) =>
           s.team_profile_id === assignTarget.profileId &&

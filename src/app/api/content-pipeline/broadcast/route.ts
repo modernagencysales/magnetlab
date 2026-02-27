@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { auth } from '@/lib/auth';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { tasks } from '@trigger.dev/sdk/v3';
 import type { broadcastPostVariations } from '@/trigger/broadcast-post-variations';
 import { logError } from '@/lib/utils/logger';
+import { verifyTeamMembership } from '@/lib/services/team-integrations';
+
+const broadcastSchema = z.object({
+  source_post_id: z.string().uuid(),
+  target_profile_ids: z.array(z.string().uuid()).min(1),
+  stagger_days: z.number().int().min(1).max(5).optional().default(2),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,28 +21,40 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { source_post_id, target_profile_ids, stagger_days } = body;
+    const parsed = broadcastSchema.safeParse(body);
 
-    // Validate required fields
-    if (!source_post_id) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'source_post_id is required' },
+        { error: 'Validation failed', issues: parsed.error.issues },
         { status: 400 }
       );
     }
 
-    if (!target_profile_ids || !Array.isArray(target_profile_ids) || target_profile_ids.length === 0) {
-      return NextResponse.json(
-        { error: 'target_profile_ids must be a non-empty array' },
-        { status: 400 }
-      );
-    }
+    const { source_post_id, target_profile_ids, stagger_days: staggerDays } = parsed.data;
 
-    // Validate stagger_days if provided
-    const parsedStagger = stagger_days != null ? Number(stagger_days) : NaN;
-    const staggerDays = Number.isFinite(parsedStagger)
-      ? Math.max(1, Math.min(5, parsedStagger))
-      : 2;
+    const supabase = createSupabaseAdminClient();
+
+    // Derive team_id from source post's team_profile_id for auth check
+    const { data: sourcePost } = await supabase
+      .from('cp_pipeline_posts')
+      .select('team_profile_id')
+      .eq('id', source_post_id)
+      .single();
+
+    if (sourcePost?.team_profile_id) {
+      const { data: profile } = await supabase
+        .from('team_profiles')
+        .select('team_id')
+        .eq('id', sourcePost.team_profile_id)
+        .single();
+
+      if (profile?.team_id) {
+        const memberCheck = await verifyTeamMembership(supabase, profile.team_id, session.user.id);
+        if (!memberCheck.authorized) {
+          return NextResponse.json({ error: memberCheck.error }, { status: memberCheck.status });
+        }
+      }
+    }
 
     // Trigger the broadcast task
     const handle = await tasks.trigger<typeof broadcastPostVariations>(

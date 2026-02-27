@@ -23,6 +23,7 @@ jest.mock('@/lib/utils/logger', () => ({
 // Mock team-integrations service (for team-profile-integrations route)
 jest.mock('@/lib/services/team-integrations', () => ({
   getTeamProfilesWithConnections: jest.fn(),
+  verifyTeamMembership: jest.fn(),
 }));
 
 import { GET } from '@/app/api/content-pipeline/team-schedule/route';
@@ -30,12 +31,18 @@ import { POST } from '@/app/api/content-pipeline/team-schedule/assign/route';
 import { GET as GET_INTEGRATIONS } from '@/app/api/team-profile-integrations/route';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getTeamProfilesWithConnections } from '@/lib/services/team-integrations';
+import { getTeamProfilesWithConnections, verifyTeamMembership } from '@/lib/services/team-integrations';
 import { NextRequest } from 'next/server';
 
 const mockAuth = auth as jest.Mock;
 const mockCreateSupabase = createSupabaseAdminClient as jest.Mock;
 const mockGetTeamProfilesWithConnections = getTeamProfilesWithConnections as jest.Mock;
+const mockVerifyTeamMembership = verifyTeamMembership as jest.Mock;
+
+// Valid UUIDs for Zod validation
+const VALID_POST_ID = '11111111-1111-1111-1111-111111111111';
+const VALID_PROFILE_ID = '22222222-2222-2222-2222-222222222222';
+const VALID_TEAM_ID = '33333333-3333-3333-3333-333333333333';
 
 /**
  * Creates a mock Supabase client that supports the chainable query pattern.
@@ -103,6 +110,9 @@ describe('GET /api/content-pipeline/team-schedule', () => {
     jest.clearAllMocks();
     mock = createMockSupabase();
     mockCreateSupabase.mockReturnValue(mock.client);
+    // Default: verifyTeamMembership is imported from the real module but we
+    // call it via the service mock. However the GET route imports
+    // verifyTeamMembership directly — we mocked the whole module above.
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -129,7 +139,7 @@ describe('GET /api/content-pipeline/team-schedule', () => {
 
   it('returns 404 when team does not exist', async () => {
     mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-    mock.setTableResult('teams', { data: null, error: { message: 'Not found', code: 'PGRST116' } });
+    mockVerifyTeamMembership.mockResolvedValue({ authorized: false, error: 'Team not found', status: 404 });
 
     const request = new NextRequest('http://localhost:3000/api/content-pipeline/team-schedule?team_id=nonexistent');
     const response = await GET(request);
@@ -139,9 +149,21 @@ describe('GET /api/content-pipeline/team-schedule', () => {
     expect(data.error).toContain('Team not found');
   });
 
+  it('returns 403 when user is not a team member', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+    mockVerifyTeamMembership.mockResolvedValue({ authorized: false, error: 'Not a team member', status: 403 });
+
+    const request = new NextRequest('http://localhost:3000/api/content-pipeline/team-schedule?team_id=team-1');
+    const response = await GET(request);
+
+    expect(response.status).toBe(403);
+    const data = await response.json();
+    expect(data.error).toContain('Not a team member');
+  });
+
   it('returns empty arrays when team has no active profiles', async () => {
     mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-    mock.setTableResult('teams', { data: { id: 'team-1' }, error: null });
+    mockVerifyTeamMembership.mockResolvedValue({ authorized: true, team: { id: 'team-1', owner_id: 'user-1' } });
     mock.setTableResult('team_profiles', { data: [], error: null });
 
     const request = new NextRequest('http://localhost:3000/api/content-pipeline/team-schedule?team_id=team-1');
@@ -178,7 +200,7 @@ describe('POST /api/content-pipeline/team-schedule/assign', () => {
   it('returns 401 when unauthenticated', async () => {
     mockAuth.mockResolvedValue(null);
 
-    const request = createAssignRequest({ post_id: 'post-1', scheduled_time: '2026-02-26T09:00:00Z' });
+    const request = createAssignRequest({ post_id: VALID_POST_ID, scheduled_time: '2026-02-26T09:00:00Z' });
     const response = await POST(request);
 
     expect(response.status).toBe(401);
@@ -192,18 +214,34 @@ describe('POST /api/content-pipeline/team-schedule/assign', () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error).toContain('post_id');
+    expect(data.error).toBe('Validation failed');
+    expect(data.issues).toBeDefined();
   });
 
   it('returns 400 when scheduled_time is missing', async () => {
     mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
 
-    const request = createAssignRequest({ post_id: 'post-1' });
+    const request = createAssignRequest({ post_id: VALID_POST_ID });
     const response = await POST(request);
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error).toContain('scheduled_time');
+    expect(data.error).toBe('Validation failed');
+    expect(data.issues).toBeDefined();
+  });
+
+  it('returns 400 when post_id is not a valid UUID', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+
+    const request = createAssignRequest({
+      post_id: 'not-a-uuid',
+      scheduled_time: '2026-02-26T09:00:00Z',
+    });
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toBe('Validation failed');
   });
 
   it('returns 404 when post does not exist', async () => {
@@ -214,7 +252,7 @@ describe('POST /api/content-pipeline/team-schedule/assign', () => {
     });
 
     const request = createAssignRequest({
-      post_id: 'nonexistent',
+      post_id: VALID_POST_ID,
       scheduled_time: '2026-02-26T09:00:00Z',
     });
     const response = await POST(request);
@@ -232,6 +270,8 @@ describe('POST /api/content-pipeline/team-schedule/assign', () => {
 describe('GET /api/team-profile-integrations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mock = createMockSupabase();
+    mockCreateSupabase.mockReturnValue(mock.client);
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -254,8 +294,21 @@ describe('GET /api/team-profile-integrations', () => {
     expect(data.error).toContain('team_id');
   });
 
+  it('returns 403 when user is not a team member', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+    mockVerifyTeamMembership.mockResolvedValue({ authorized: false, error: 'Not a team member', status: 403 });
+
+    const request = new NextRequest('http://localhost:3000/api/team-profile-integrations?team_id=team-1');
+    const response = await GET_INTEGRATIONS(request);
+
+    expect(response.status).toBe(403);
+    const data = await response.json();
+    expect(data.error).toContain('Not a team member');
+  });
+
   it('returns profiles from getTeamProfilesWithConnections', async () => {
     mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+    mockVerifyTeamMembership.mockResolvedValue({ authorized: true, team: { id: 'team-1', owner_id: 'user-1' } });
     mockGetTeamProfilesWithConnections.mockResolvedValue([
       {
         id: 'profile-1',

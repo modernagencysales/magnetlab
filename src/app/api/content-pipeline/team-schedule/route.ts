@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { startOfWeek, endOfWeek, parseISO, format } from 'date-fns';
 import { logError } from '@/lib/utils/logger';
+import { verifyTeamMembership } from '@/lib/services/team-integrations';
 import { detectContentCollisions } from '@/lib/ai/content-pipeline/collision-detector';
 import type { PostForCollision } from '@/lib/ai/content-pipeline/collision-detector';
 
@@ -22,15 +23,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = createSupabaseAdminClient();
 
-    // Verify team exists
-    const { data: team, error: teamError } = await supabase
-      .from('teams')
-      .select('id')
-      .eq('id', teamId)
-      .single();
-
-    if (teamError || !team) {
-      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+    // Verify user is team owner or active member
+    const memberCheck = await verifyTeamMembership(supabase, teamId, session.user.id);
+    if (!memberCheck.authorized) {
+      return NextResponse.json({ error: memberCheck.error }, { status: memberCheck.status });
     }
 
     // Get active team profiles
@@ -166,11 +162,10 @@ export async function GET(request: NextRequest) {
       profileNameMap.set(p.id, p.full_name || 'Unknown');
     }
 
-    // Collision detection (optional, triggered by check_collisions=true)
-    const checkCollisions = searchParams.get('check_collisions') === 'true';
+    // Collision detection — always included when 2+ posts are present
     let collisions = null;
 
-    if (checkCollisions && posts && posts.length >= 2) {
+    if (posts && posts.length >= 2) {
       try {
         const postsForCollision: PostForCollision[] = posts.map(p => ({
           id: p.id,

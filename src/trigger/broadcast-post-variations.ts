@@ -63,12 +63,18 @@ export const broadcastPostVariations = task({
     // 2. Fetch target profiles with voice_profile
     const { data: profiles, error: profilesError } = await supabase
       .from('team_profiles')
-      .select('id, full_name, title, voice_profile')
+      .select('id, full_name, title, voice_profile, team_id')
       .in('id', targetProfileIds)
       .eq('status', 'active');
 
     if (profilesError || !profiles?.length) {
       throw new Error('No valid target profiles found');
+    }
+
+    // Verify all target profiles belong to the same team
+    const teamIds = new Set(profiles.map(p => p.team_id));
+    if (teamIds.size > 1) {
+      throw new Error('Cannot broadcast to profiles from different teams');
     }
 
     // 3. Generate broadcast_group_id
