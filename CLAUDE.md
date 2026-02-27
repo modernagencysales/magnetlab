@@ -61,8 +61,29 @@ src/
 | `/(dashboard)/leads` | Lead management table with filters |
 | `/(dashboard)/analytics` | Metrics dashboard (Recharts) |
 | `/(dashboard)/pages` | Funnel page management |
-| `/(dashboard)/settings` | Account settings, billing, integrations |
+| `/(dashboard)/settings` | Settings hub (redirects to /settings/account) |
 | `/(dashboard)/swipe-file` | Community post inspiration |
+
+### Settings Routes (Sidebar Navigation)
+
+The settings page uses a nested layout with vertical sidebar navigation and URL-based routing.
+
+| Route | Content |
+|-------|---------|
+| `/settings` | Redirects to `/settings/account` |
+| `/settings/account` | Profile, Username, Subscription, Team Members, Brand Kit summary |
+| `/settings/integrations` | LinkedIn, Resend, Email Marketing, CRM, HeyReach, Fathom, Conductor, Tracking Pixels, Webhooks |
+| `/settings/signals` | ICP Configuration, Keyword Monitors, Company Monitors, Competitor Monitoring |
+| `/settings/branding` | Branding (6-card accordion), Page Defaults (video, template), White Label (Pro+) |
+| `/settings/developer` | API Keys, Webhooks, Documentation |
+
+Key files:
+- `src/app/(dashboard)/settings/layout.tsx` — shared layout with `SettingsNav` sidebar
+- `src/components/settings/SettingsNav.tsx` — sidebar nav (client component, uses `usePathname()`)
+- `src/components/settings/AccountSettings.tsx` — account page wrapper
+- `src/components/settings/IntegrationsSettings.tsx` — integrations page wrapper
+- `src/components/settings/BrandingPage.tsx` — branding page wrapper
+- `src/components/settings/DeveloperSettings.tsx` — developer page wrapper (extracted API keys logic)
 
 ### Public Routes
 
