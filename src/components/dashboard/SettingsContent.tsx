@@ -21,6 +21,7 @@ import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { WhiteLabelSettings } from '@/components/settings/WhiteLabelSettings';
 import { EmailMarketingSettings } from '@/components/settings/EmailMarketingSettings';
 import { GoHighLevelSettings } from '@/components/settings/GoHighLevelSettings';
+import { HeyReachSettings } from '@/components/settings/HeyReachSettings';
 
 import { logError } from '@/lib/utils/logger';
 
@@ -106,6 +107,7 @@ export function SettingsContent({
   const fathomIntegration = integrations.find((i) => i.service === 'fathom');
   const unipileIntegration = integrations.find((i) => i.service === 'unipile');
   const gohighlevelIntegration = integrations.find((i) => i.service === 'gohighlevel');
+  const heyreachIntegration = integrations.find((i) => i.service === 'heyreach');
 
   // Fetch API keys and user defaults on mount
   useEffect(() => {
@@ -355,6 +357,18 @@ export function SettingsContent({
             <GoHighLevelSettings
               isConnected={gohighlevelIntegration?.is_active ?? false}
               lastVerifiedAt={gohighlevelIntegration?.last_verified_at ?? null}
+            />
+          </div>
+
+          {/* HeyReach LinkedIn Delivery */}
+          <div className="mt-6 pt-6 border-t">
+            <h3 className="text-sm font-semibold mb-1">LinkedIn Delivery</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Deliver lead magnets to leads via LinkedIn DM campaigns.
+            </p>
+            <HeyReachSettings
+              isConnected={heyreachIntegration?.is_active ?? false}
+              lastVerifiedAt={heyreachIntegration?.last_verified_at ?? null}
             />
           </div>
 

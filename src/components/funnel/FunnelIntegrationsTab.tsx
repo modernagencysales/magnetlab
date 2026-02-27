@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Loader2, Plus, Trash2, CheckCircle, XCircle, ChevronDown, Mail, Settings } from 'lucide-react';
+import { Loader2, Plus, Trash2, CheckCircle, XCircle, ChevronDown, Mail, Settings, MessageSquare, Copy, Check } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
 
@@ -12,6 +12,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   mailchimp: 'Mailchimp',
   activecampaign: 'ActiveCampaign',
   gohighlevel: 'GoHighLevel',
+  heyreach: 'HeyReach',
 };
 
 // MailerLite has groups (not tags per list), so we skip tag selection for it
@@ -40,10 +41,17 @@ interface TagItem {
   name: string;
 }
 
+interface HeyReachCampaign {
+  id: number;
+  name: string;
+}
+
 interface FunnelIntegrationsTabProps {
   funnelPageId: string;
   connectedProviders: string[];
   ghlConnected?: boolean;
+  heyreachConnected?: boolean;
+  funnelUrl?: string;
 }
 
 function IntegrationRow({
@@ -579,12 +587,288 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
   );
 }
 
+// ---------- HeyReach Per-Funnel Toggle ----------
+
+function HeyReachFunnelToggle({
+  funnelPageId,
+  funnelUrl,
+}: {
+  funnelPageId: string;
+  funnelUrl?: string;
+}) {
+  const [enabled, setEnabled] = useState(false);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
+  const [campaigns, setCampaigns] = useState<HeyReachCampaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load existing HeyReach integration for this funnel
+  useEffect(() => {
+    async function loadHeyReach() {
+      try {
+        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const hr = (data.integrations || []).find(
+          (i: FunnelIntegration) => i.provider === 'heyreach'
+        );
+
+        if (hr) {
+          setEnabled(hr.is_active);
+          const campaignId = (hr.settings as Record<string, unknown>)?.campaign_id;
+          if (typeof campaignId === 'number') {
+            setSelectedCampaignId(campaignId);
+          }
+        }
+      } catch (err) {
+        logError('heyreach-funnel-toggle', err, { step: 'load_error' });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadHeyReach();
+  }, [funnelPageId]);
+
+  // Fetch campaigns when connected
+  useEffect(() => {
+    async function fetchCampaigns() {
+      setLoadingCampaigns(true);
+      try {
+        const response = await fetch('/api/integrations/heyreach/campaigns');
+        if (response.ok) {
+          const data = await response.json();
+          setCampaigns(data.campaigns || []);
+        }
+      } catch (err) {
+        logError('heyreach-funnel-toggle', err, { step: 'fetch_campaigns_error' });
+      } finally {
+        setLoadingCampaigns(false);
+      }
+    }
+
+    fetchCampaigns();
+  }, []);
+
+  const saveHeyReach = async (isActive: boolean, campaignId?: number | null) => {
+    const idToSave = campaignId !== undefined ? campaignId : selectedCampaignId;
+
+    const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: 'heyreach',
+        list_id: 'n/a',
+        list_name: null,
+        tag_id: null,
+        tag_name: null,
+        is_active: isActive,
+        settings: { campaign_id: idToSave },
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to save');
+    }
+  };
+
+  const handleToggle = async () => {
+    setToggling(true);
+    setError(null);
+    const newValue = !enabled;
+
+    try {
+      await saveHeyReach(newValue);
+      setEnabled(newValue);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to toggle');
+      logError('heyreach-funnel-toggle', err, { step: 'toggle_error' });
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const handleSaveCampaign = async () => {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+
+    try {
+      await saveHeyReach(enabled, selectedCampaignId);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save campaign');
+      logError('heyreach-funnel-toggle', err, { step: 'save_campaign_error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    if (!funnelUrl) return;
+    const urlWithTracking = `${funnelUrl}?li={linkedinUrl}`;
+    await navigator.clipboard.writeText(urlWithTracking);
+    setUrlCopied(true);
+    setTimeout(() => setUrlCopied(false), 2000);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Loading...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Toggle row */}
+      <div className="flex items-center justify-between rounded-lg border p-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+            <MessageSquare className="h-4 w-4 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">HeyReach</p>
+            <p className="text-xs text-muted-foreground">
+              {enabled ? 'Leads delivered via LinkedIn DM' : 'Disabled for this funnel'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleToggle}
+          disabled={toggling}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+          }`}
+        >
+          {toggling ? (
+            <Loader2 className="h-3 w-3 animate-spin mx-auto text-white" />
+          ) : (
+            <span
+              className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                enabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          )}
+        </button>
+      </div>
+
+      {/* Campaign selector + Funnel URL (shown when enabled) */}
+      {enabled && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+          {/* Campaign selector */}
+          <div>
+            <label className="text-xs font-medium">Campaign</label>
+            {loadingCampaigns ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Loading campaigns...</span>
+              </div>
+            ) : (
+              <div className="relative mt-1">
+                <select
+                  value={selectedCampaignId ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedCampaignId(val ? Number(val) : null);
+                  }}
+                  className="w-full appearance-none rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary pr-8"
+                >
+                  <option value="">Select a campaign...</option>
+                  {campaigns.map((campaign) => (
+                    <option key={campaign.id} value={campaign.id}>
+                      {campaign.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              </div>
+            )}
+          </div>
+
+          {/* Save button */}
+          <button
+            onClick={handleSaveCampaign}
+            disabled={saving}
+            className="rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {saving ? (
+              <span className="flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Saving...
+              </span>
+            ) : saved ? (
+              <span className="flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Saved
+              </span>
+            ) : (
+              'Save Campaign'
+            )}
+          </button>
+
+          {/* Funnel URL with LinkedIn tracking */}
+          {funnelUrl && (
+            <div className="pt-2 border-t space-y-1">
+              <label className="text-xs font-medium">Funnel URL with LinkedIn Tracking</label>
+              <p className="text-xs text-muted-foreground">
+                Use this URL in your HeyReach campaign to track LinkedIn leads.
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded border bg-background px-2 py-1.5 text-xs font-mono break-all">
+                  {funnelUrl}?li={'{linkedinUrl}'}
+                </code>
+                <button
+                  onClick={handleCopyUrl}
+                  className="flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs hover:bg-muted transition-colors shrink-0"
+                >
+                  {urlCopied ? (
+                    <>
+                      <Check className="h-3 w-3 text-green-500" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <p className="flex items-center gap-2 text-xs text-red-500">
+          <XCircle className="h-3 w-3" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ---------- Main Component ----------
 
 export function FunnelIntegrationsTab({
   funnelPageId,
   connectedProviders,
   ghlConnected,
+  heyreachConnected,
+  funnelUrl,
 }: FunnelIntegrationsTabProps) {
   const [integrations, setIntegrations] = useState<FunnelIntegration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -638,7 +922,7 @@ export function FunnelIntegrationsTab({
   const unmappedProviders = connectedProviders.filter((p) => !mappedProviders.has(p));
 
   const hasNoEmailProviders = connectedProviders.length === 0;
-  const hasNothingToShow = hasNoEmailProviders && !ghlConnected;
+  const hasNothingToShow = hasNoEmailProviders && !ghlConnected && !heyreachConnected;
 
   if (hasNothingToShow) {
     return (
@@ -753,6 +1037,17 @@ export function FunnelIntegrationsTab({
             Push leads to your CRM when they opt in.
           </p>
           <GHLFunnelToggle funnelPageId={funnelPageId} />
+        </div>
+      )}
+
+      {/* LinkedIn Delivery section */}
+      {heyreachConnected && (
+        <div className="mt-6 pt-4 border-t">
+          <h3 className="text-sm font-semibold mb-1">LinkedIn Delivery</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Deliver lead magnets via LinkedIn DM campaigns.
+          </p>
+          <HeyReachFunnelToggle funnelPageId={funnelPageId} funnelUrl={funnelUrl} />
         </div>
       )}
     </div>

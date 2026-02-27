@@ -125,6 +125,24 @@ export function FunnelBuilder({
     checkGHL();
   }, []);
 
+  // HeyReach connection status
+  const [heyreachConnected, setHeyreachConnected] = useState(false);
+
+  useEffect(() => {
+    async function checkHeyReach() {
+      try {
+        const res = await fetch('/api/integrations/heyreach/status');
+        if (res.ok) {
+          const data = await res.json();
+          setHeyreachConnected(data.connected === true);
+        }
+      } catch {
+        // ignore - HeyReach section simply won't show
+      }
+    }
+    checkHeyReach();
+  }, []);
+
   function generateSlug(title: string): string {
     return title
       .toLowerCase()
@@ -430,6 +448,8 @@ export function FunnelBuilder({
               funnelPageId={funnel.id}
               connectedProviders={connectedEmailProviders}
               ghlConnected={ghlConnected}
+              heyreachConnected={heyreachConnected}
+              funnelUrl={username && slug ? `https://magnetlab.app/p/${username}/${slug}` : undefined}
             />
           )}
 
