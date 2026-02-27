@@ -34,44 +34,44 @@ export async function GET(request: Request) {
       scope
     );
 
-    // Determine which target type to query
+    // Determine which target type to query (team-aware ownership checks)
     if (leadMagnetId) {
       if (!isValidUUID(leadMagnetId)) {
         return ApiErrors.validationError('Invalid leadMagnetId');
       }
-      // Verify ownership
-      const { data: lm } = await supabase
+      // Verify ownership (team-scoped)
+      let lmQuery = supabase
         .from('lead_magnets')
         .select('id')
-        .eq('id', leadMagnetId)
-        .eq('user_id', session.user.id)
-        .single();
+        .eq('id', leadMagnetId);
+      lmQuery = applyScope(lmQuery, scope);
+      const { data: lm } = await lmQuery.single();
       if (!lm) return ApiErrors.notFound('Lead magnet');
       query = query.eq('lead_magnet_id', leadMagnetId);
     } else if (libraryId) {
       if (!isValidUUID(libraryId)) {
         return ApiErrors.validationError('Invalid libraryId');
       }
-      // Verify ownership
-      const { data: lib } = await supabase
+      // Verify ownership (team-scoped)
+      let libQuery = supabase
         .from('libraries')
         .select('id')
-        .eq('id', libraryId)
-        .eq('user_id', session.user.id)
-        .single();
+        .eq('id', libraryId);
+      libQuery = applyScope(libQuery, scope);
+      const { data: lib } = await libQuery.single();
       if (!lib) return ApiErrors.notFound('Library');
       query = query.eq('library_id', libraryId);
     } else if (externalResourceId) {
       if (!isValidUUID(externalResourceId)) {
         return ApiErrors.validationError('Invalid externalResourceId');
       }
-      // Verify ownership
-      const { data: er } = await supabase
+      // Verify ownership (team-scoped)
+      let erQuery = supabase
         .from('external_resources')
         .select('id')
-        .eq('id', externalResourceId)
-        .eq('user_id', session.user.id)
-        .single();
+        .eq('id', externalResourceId);
+      erQuery = applyScope(erQuery, scope);
+      const { data: er } = await erQuery.single();
       if (!er) return ApiErrors.notFound('External resource');
       query = query.eq('external_resource_id', externalResourceId);
     } else {
@@ -141,17 +141,17 @@ export async function POST(request: Request) {
     const supabase = createSupabaseAdminClient();
     let targetTitle = 'Funnel';
 
-    // Verify target ownership and get title
+    // Verify target ownership (team-aware) and get title
     if (resolvedTargetType === 'lead_magnet') {
       if (!isValidUUID(leadMagnetId)) {
         return ApiErrors.validationError('Invalid leadMagnetId');
       }
-      const { data: lm, error: lmError } = await supabase
+      let lmQuery = supabase
         .from('lead_magnets')
         .select('id, title')
-        .eq('id', leadMagnetId)
-        .eq('user_id', session.user.id)
-        .single();
+        .eq('id', leadMagnetId);
+      lmQuery = applyScope(lmQuery, scope);
+      const { data: lm, error: lmError } = await lmQuery.single();
       if (lmError || !lm) return ApiErrors.notFound('Lead magnet');
       targetTitle = lm.title;
 
@@ -166,12 +166,12 @@ export async function POST(request: Request) {
       if (!isValidUUID(libraryId)) {
         return ApiErrors.validationError('Invalid libraryId');
       }
-      const { data: lib, error: libError } = await supabase
+      let libQuery = supabase
         .from('libraries')
         .select('id, name')
-        .eq('id', libraryId)
-        .eq('user_id', session.user.id)
-        .single();
+        .eq('id', libraryId);
+      libQuery = applyScope(libQuery, scope);
+      const { data: lib, error: libError } = await libQuery.single();
       if (libError || !lib) return ApiErrors.notFound('Library');
       targetTitle = lib.name;
 
@@ -186,12 +186,12 @@ export async function POST(request: Request) {
       if (!isValidUUID(externalResourceId)) {
         return ApiErrors.validationError('Invalid externalResourceId');
       }
-      const { data: er, error: erError } = await supabase
+      let erQuery = supabase
         .from('external_resources')
         .select('id, title')
-        .eq('id', externalResourceId)
-        .eq('user_id', session.user.id)
-        .single();
+        .eq('id', externalResourceId);
+      erQuery = applyScope(erQuery, scope);
+      const { data: er, error: erError } = await erQuery.single();
       if (erError || !er) return ApiErrors.notFound('External resource');
       targetTitle = er.title;
 
@@ -218,12 +218,15 @@ export async function POST(request: Request) {
     brandKitQuery = applyScope(brandKitQuery, scope);
     const { data: brandKit } = await brandKitQuery.single();
 
+    // In team mode, use the team owner's user_id for public URL routing
+    const funnelUserId = scope.type === 'team' && scope.ownerId ? scope.ownerId : session.user.id;
+
     // Check for slug collision with a single query
     let finalSlug = slug;
     const { data: existingSlugs } = await supabase
       .from('funnel_pages')
       .select('slug')
-      .eq('user_id', session.user.id)
+      .eq('user_id', funnelUserId)
       .or(`slug.eq.${slug},slug.like.${slug}-%`);
 
     if (existingSlugs && existingSlugs.length > 0) {
@@ -243,7 +246,7 @@ export async function POST(request: Request) {
 
     // Create funnel page
     const funnelInsertData: Record<string, unknown> = {
-      user_id: session.user.id,
+      user_id: funnelUserId,
       team_id: scope.teamId || null,
       slug: finalSlug,
       target_type: resolvedTargetType,

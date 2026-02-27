@@ -1,0 +1,34 @@
+/* TipTap inline editor styles — match PolishedContentRenderer typography */
+
+.tiptap-text-block .tiptap {
+  outline: none;
+}
+
+.tiptap-text-block .tiptap p {
+  margin: 0;
+}
+
+.tiptap-text-block .tiptap a {
+  color: var(--ds-primary, #8b5cf6);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tiptap-text-block .tiptap a:hover {
+  opacity: 0.8;
+}
+
+/* Placeholder styling */
+.tiptap-text-block .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--ds-muted, #a1a1aa);
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
+
+/* Bubble menu transitions */
+.tippy-box[data-animation='fade'][data-state='hidden'] {
+  opacity: 0;
+}

@@ -51,17 +51,19 @@ export async function POST(request: Request, { params }: RouteParams) {
       return ApiErrors.notFound('Funnel page');
     }
 
-    // Check if user has username set (required for publishing)
+    // Check if funnel owner has username set (required for publishing)
+    // In team mode, use team owner's username for public URL routing
     let cachedUsername: string | null = null;
     if (publish) {
+      const usernameUserId = scope.type === 'team' && scope.ownerId ? scope.ownerId : session.user.id;
       const { data: user } = await supabase
         .from('users')
         .select('username')
-        .eq('id', session.user.id)
+        .eq('id', usernameUserId)
         .single();
 
       if (!user?.username) {
-        return ApiErrors.validationError('You must set a username before publishing. Go to Settings to set your username.');
+        return ApiErrors.validationError('The account owner must set a username before publishing. Go to Settings to set a username.');
       }
       cachedUsername = user.username;
 
@@ -73,12 +75,12 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Content guard + auto-polish on publish (only for lead_magnet funnels)
     if (publish && funnel.lead_magnets) {
-      const { data: lm } = await supabase
+      let lmQuery = supabase
         .from('lead_magnets')
         .select('id, extracted_content, polished_content, concept')
-        .eq('id', funnel.lead_magnets.id)
-        .eq('user_id', session.user.id)
-        .single();
+        .eq('id', funnel.lead_magnets.id);
+      lmQuery = applyScope(lmQuery, scope);
+      const { data: lm } = await lmQuery.single();
 
       // Block publishing if lead magnet has no substantive content
       const polishedLen = lm?.polished_content ? JSON.stringify(lm.polished_content).length : 0;

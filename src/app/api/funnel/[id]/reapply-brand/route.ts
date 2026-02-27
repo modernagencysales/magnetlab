@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { resolveBrandKit } from '@/lib/api/resolve-brand-kit';
+import { getDataScope, applyScope } from '@/lib/utils/team-context';
 
 export async function POST(
   _request: Request,
@@ -20,21 +21,23 @@ export async function POST(
 
   const { id: funnelPageId } = await params;
   const supabase = createSupabaseAdminClient();
+  const scope = await getDataScope(session.user.id);
 
-  // Verify funnel belongs to user
-  const { data: funnel, error: funnelError } = await supabase
+  // Verify funnel belongs to user/team
+  let funnelQuery = supabase
     .from('funnel_pages')
     .select('id, user_id')
-    .eq('id', funnelPageId)
-    .eq('user_id', session.user.id)
-    .single();
+    .eq('id', funnelPageId);
+  funnelQuery = applyScope(funnelQuery, scope);
+  const { data: funnel, error: funnelError } = await funnelQuery.single();
 
   if (funnelError || !funnel) {
     return NextResponse.json({ error: 'Funnel not found' }, { status: 404 });
   }
 
-  // Resolve brand kit
-  const brandKit = await resolveBrandKit(supabase, session.user.id);
+  // Resolve brand kit (use team owner for team-scoped brand kits)
+  const brandKitUserId = scope.type === 'team' && scope.ownerId ? scope.ownerId : session.user.id;
+  const brandKit = await resolveBrandKit(supabase, brandKitUserId);
 
   if (!brandKit) {
     return NextResponse.json({ success: true, applied: [], message: 'No brand kit found' });

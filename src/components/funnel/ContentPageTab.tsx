@@ -1,10 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useTheme } from 'next-themes';
-import { Loader2, Sparkles, ExternalLink, CheckCircle2, Clock, FileText, PenLine, Save, X } from 'lucide-react';
+import { Loader2, Sparkles, ExternalLink, CheckCircle2, Clock, FileText, PenLine } from 'lucide-react';
 import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
-import { EditablePolishedContentRenderer } from '@/components/content/EditablePolishedContentRenderer';
 
 interface ContentPageTabProps {
   leadMagnet: LeadMagnet;
@@ -31,15 +29,10 @@ function createBlankContent(title: string): PolishedContent {
 }
 
 export function ContentPageTab({ leadMagnet, username, slug, onPolished }: ContentPageTabProps) {
-  const { resolvedTheme } = useTheme();
   const [polishing, setPolishing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState<PolishedContent | null>(null);
-  const [saving, setSaving] = useState(false);
 
-  const isDark = resolvedTheme === 'dark';
   const hasExtracted = !!leadMagnet.extractedContent;
   const hasPolished = !!leadMagnet.polishedContent;
   const hasConcept = !!leadMagnet.concept;
@@ -93,95 +86,34 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
     }
   };
 
-  const handleStartEditing = (content: PolishedContent) => {
-    setEditContent(JSON.parse(JSON.stringify(content)));
-    setIsEditing(true);
-    setError(null);
-  };
-
   const handleStartBlank = () => {
-    handleStartEditing(createBlankContent(leadMagnet.title));
-  };
-
-  const handleDiscard = () => {
-    if (!window.confirm('Discard unsaved changes?')) return;
-    setEditContent(null);
-    setIsEditing(false);
-  };
-
-  const handleSave = async () => {
-    if (!editContent) return;
-    setSaving(true);
+    // Create blank content, save it, then redirect to inline editor
+    const blank = createBlankContent(leadMagnet.title);
     setError(null);
-
-    try {
-      const now = new Date().toISOString();
-      const contentToSave = { ...editContent, polishedAt: now };
-      const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/content`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ polishedContent: contentToSave }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save content');
+    (async () => {
+      try {
+        const now = new Date().toISOString();
+        const contentToSave = { ...blank, polishedAt: now };
+        const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/content`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ polishedContent: contentToSave }),
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to create content');
+        }
+        const { polishedContent: saved } = await response.json();
+        onPolished(saved, now);
+        // Redirect to inline editor
+        if (contentUrl) {
+          window.open(`${contentUrl}?edit=true`, '_blank');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create content');
       }
-
-      const { polishedContent } = await response.json();
-      onPolished(polishedContent, now);
-      setIsEditing(false);
-      setEditContent(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save content');
-    } finally {
-      setSaving(false);
-    }
+    })();
   };
-
-  // Inline editor view
-  if (isEditing && editContent) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium">Edit Content</h3>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleDiscard}
-              disabled={saving}
-              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors disabled:opacity-50"
-            >
-              <X className="h-3.5 w-3.5" />
-              Discard
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-600 transition-colors disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              Save
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-          </div>
-        )}
-
-        <div className="rounded-lg border p-4">
-          <EditablePolishedContentRenderer
-            content={editContent}
-            isDark={isDark}
-            primaryColor="#8b5cf6"
-            onChange={setEditContent}
-          />
-        </div>
-      </div>
-    );
-  }
 
   // Empty state: no polished content yet
   if (!hasPolished) {
@@ -306,15 +238,17 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
         </div>
       )}
 
-      {/* Edit Content button */}
-      {polished && (
-        <button
-          onClick={() => handleStartEditing(polished)}
+      {/* Edit Content link → inline editor on live page */}
+      {polished && contentUrl && (
+        <a
+          href={`${contentUrl}?edit=true`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
         >
           <PenLine className="h-4 w-4" />
           Edit Content
-        </button>
+        </a>
       )}
 
       {/* Re-polish (only if extracted content exists) */}

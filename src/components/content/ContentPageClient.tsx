@@ -6,7 +6,7 @@ import { ContentHeader } from './ContentHeader';
 import { ContentHero } from './ContentHero';
 import { TableOfContents } from './TableOfContents';
 import { PolishedContentRenderer } from './PolishedContentRenderer';
-import { EditablePolishedContentRenderer } from './EditablePolishedContentRenderer';
+import { InlineContentEditor } from './inline-editor';
 import { ExtractedContentRenderer } from './ExtractedContentRenderer';
 import { ContentFooter } from './ContentFooter';
 import { VideoEmbed } from '@/components/funnel/public/VideoEmbed';
@@ -42,6 +42,7 @@ interface ContentPageClientProps {
   interactiveConfig?: InteractiveConfig | null;
   sections?: FunnelPageSection[];
   hideBranding?: boolean;
+  autoEdit?: boolean;
 }
 
 export function ContentPageClient({
@@ -64,9 +65,10 @@ export function ContentPageClient({
   interactiveConfig,
   sections = [],
   hideBranding,
+  autoEdit = false,
 }: ContentPageClientProps) {
   const [isDark, setIsDark] = useState(initialTheme === 'dark');
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(autoEdit && isOwner);
   const [editContent, setEditContent] = useState<PolishedContent | null>(polishedContent);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -201,7 +203,7 @@ export function ContentPageClient({
           {/* Main content */}
           <div style={{ maxWidth: '700px', flex: 1, minWidth: 0 }}>
             {isEditing && editContent ? (
-              <EditablePolishedContentRenderer
+              <InlineContentEditor
                 content={editContent}
                 isDark={isDark}
                 primaryColor={primaryColor}
