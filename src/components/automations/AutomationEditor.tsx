@@ -94,7 +94,9 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
       setAutoConnect(automation.auto_connect);
       setAutoLike(automation.auto_like);
       setCommentReplyTemplate(automation.comment_reply_template || '');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setPlusvibeCampaignId((automation as any).plusvibe_campaign_id || '');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setOptInUrl((automation as any).opt_in_url || '');
       setEnableFollowUp(automation.enable_follow_up);
       setFollowUpTemplate(automation.follow_up_template || '');

@@ -88,13 +88,13 @@ export const enrichAndPushPlusvibe = task({
     try {
       const profile = await getProfile({ url: linkedinUrl });
       if (profile.data) {
-        company = profile.data.company || '';
+        company = profile.data.currentPosition?.[0]?.companyName || '';
         headline = profile.data.headline || '';
         // Try to extract company domain from experience
         const experience = profile.data.experience;
         if (Array.isArray(experience) && experience.length > 0) {
-          companyDomain = experience[0]?.company_url
-            ? new URL(experience[0].company_url).hostname.replace('www.', '')
+          companyDomain = experience[0]?.companyLink
+            ? new URL(experience[0].companyLink).hostname.replace('www.', '')
             : '';
         }
       }

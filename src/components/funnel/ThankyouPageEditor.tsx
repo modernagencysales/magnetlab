@@ -1,6 +1,7 @@
 'use client';
 
-import { Video, Calendar, MessageCircle, ExternalLink, Home, Mail } from 'lucide-react';
+import { Video, Calendar, MessageCircle, ExternalLink, Home, Mail, LayoutGrid } from 'lucide-react';
+import type { ThankyouLayout } from '@/lib/types/funnel';
 
 interface ThankyouPageEditorProps {
   headline: string;
@@ -27,6 +28,8 @@ interface ThankyouPageEditorProps {
   setHomepageLabel: (value: string) => void;
   sendResourceEmail: boolean;
   setSendResourceEmail: (value: boolean) => void;
+  layout: ThankyouLayout;
+  setLayout: (value: ThankyouLayout) => void;
 }
 
 export function ThankyouPageEditor({
@@ -54,9 +57,45 @@ export function ThankyouPageEditor({
   setHomepageLabel,
   sendResourceEmail,
   setSendResourceEmail,
+  layout,
+  setLayout,
 }: ThankyouPageEditorProps) {
+  const layoutOptions: { value: ThankyouLayout; label: string; description: string }[] = [
+    { value: 'survey_first', label: 'Survey First', description: 'Survey above fold, video after completion' },
+    { value: 'video_first', label: 'Video First', description: 'Video plays immediately, survey below' },
+    { value: 'side_by_side', label: 'Side by Side', description: 'Video + survey in two columns' },
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Page Layout */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <LayoutGrid className="h-4 w-4 text-violet-500" />
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Page Layout
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          {layoutOptions.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setLayout(opt.value)}
+              className={`rounded-lg border-2 p-3 text-left transition-all ${
+                layout === opt.value
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-muted-foreground/50'
+              }`}
+            >
+              <p className="text-sm font-medium">{opt.label}</p>
+              <p className="text-xs text-muted-foreground mt-1">{opt.description}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Resource Email Delivery */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">

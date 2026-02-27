@@ -20,7 +20,7 @@ interface ABTestPanelProps {
   funnelPageId: string;
 }
 
-type TestField = 'headline' | 'subline' | 'vsl_url' | 'pass_message';
+type TestField = 'headline' | 'subline' | 'vsl_url' | 'pass_message' | 'thankyou_layout';
 
 interface Experiment {
   id: string;
@@ -47,6 +47,7 @@ interface VariantStat {
   subline: string | null;
   vslUrl: string | null;
   passMessage: string;
+  thankyouLayout: string;
 }
 
 interface Suggestion {
@@ -62,6 +63,7 @@ const TEST_FIELD_OPTIONS: { field: TestField; label: string }[] = [
   { field: 'subline', label: 'Subline' },
   { field: 'vsl_url', label: 'Video' },
   { field: 'pass_message', label: 'Pass Message' },
+  { field: 'thankyou_layout', label: 'Page Layout' },
 ];
 
 const TEST_FIELD_TO_VARIANT_KEY: Record<TestField, keyof VariantStat> = {
@@ -69,6 +71,7 @@ const TEST_FIELD_TO_VARIANT_KEY: Record<TestField, keyof VariantStat> = {
   subline: 'subline',
   vsl_url: 'vslUrl',
   pass_message: 'passMessage',
+  thankyou_layout: 'thankyouLayout',
 };
 
 function formatDate(dateStr: string) {

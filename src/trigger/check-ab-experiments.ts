@@ -53,6 +53,7 @@ const FIELD_COLUMN_MAP: Record<string, string> = {
   subline: 'thankyou_subline',
   vsl_url: 'vsl_url',
   pass_message: 'qualification_pass_message',
+  thankyou_layout: 'thankyou_layout',
 };
 
 export const checkAbExperiments = schedules.task({

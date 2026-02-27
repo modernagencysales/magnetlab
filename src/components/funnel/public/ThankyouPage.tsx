@@ -14,6 +14,281 @@ import { logError } from '@/lib/utils/logger';
 
 type AnswerType = 'yes_no' | 'text' | 'textarea' | 'multiple_choice';
 
+// Extracted qualification result component
+function QualificationResult({ isQualified, passMessage, failMessage }: {
+  isQualified: boolean;
+  passMessage: string;
+  failMessage: string;
+}) {
+  return (
+    <div
+      className={`rounded-xl p-6 text-center ${
+        isQualified
+          ? 'bg-green-500/10 border border-green-500/30'
+          : 'bg-red-400/10 border border-red-400/30'
+      }`}
+    >
+      {isQualified ? (
+        <CheckCircle2 className="w-8 h-8 mx-auto mb-3 text-green-500" />
+      ) : (
+        <XCircle className="w-8 h-8 mx-auto mb-3 text-red-400" />
+      )}
+      <p className={`font-medium ${isQualified ? 'text-green-500' : 'text-red-400'}`}>
+        {isQualified ? passMessage : failMessage}
+      </p>
+    </div>
+  );
+}
+
+// Extracted survey card component used by all layouts
+function SurveyCard({
+  questions,
+  currentQuestionIndex,
+  setCurrentQuestionIndex,
+  currentTextValue,
+  setCurrentTextValue,
+  answers,
+  error,
+  setError,
+  submitting,
+  primaryColor,
+  currentQuestion,
+  handleYesNoAnswer,
+  handleTextSubmit,
+  handleMultipleChoiceSelect,
+  handleSkip,
+}: {
+  questions: Question[];
+  currentQuestionIndex: number;
+  setCurrentQuestionIndex: (i: number) => void;
+  currentTextValue: string;
+  setCurrentTextValue: (v: string) => void;
+  answers: Record<string, string>;
+  error: string | null;
+  setError: (e: string | null) => void;
+  submitting: boolean;
+  primaryColor: string;
+  currentQuestion: Question | undefined;
+  handleYesNoAnswer: (answer: 'yes' | 'no') => void;
+  handleTextSubmit: () => void;
+  handleMultipleChoiceSelect: (option: string) => void;
+  handleSkip: () => void;
+}) {
+  return (
+    <div className="relative">
+      {/* Background glow */}
+      <div
+        className="absolute -inset-3 rounded-2xl blur-xl opacity-30 pointer-events-none"
+        style={{ background: primaryColor }}
+      />
+      <div
+        className="relative rounded-xl p-4 sm:p-6 md:p-8 space-y-6"
+        style={{
+          background: 'var(--ds-card)',
+          border: `2px solid color-mix(in srgb, ${primaryColor} 40%, transparent)`,
+          boxShadow: `0 0 30px color-mix(in srgb, ${primaryColor} 15%, transparent)`,
+        }}
+      >
+        {/* Time estimate pill */}
+        <div className="flex justify-center -mt-8 sm:-mt-10 md:-mt-12 mb-2">
+          <span
+            className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white"
+            style={{ background: primaryColor }}
+          >
+            {questions.length <= 3 ? '30-second' : '2-minute'} survey
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {currentQuestionIndex > 0 && (
+              <button
+                onClick={() => {
+                  setCurrentQuestionIndex(currentQuestionIndex - 1);
+                  setCurrentTextValue(answers[questions[currentQuestionIndex - 1]?.id] || '');
+                  setError(null);
+                }}
+                className="text-xs transition-opacity hover:opacity-80"
+                style={{ color: 'var(--ds-muted)' }}
+              >
+                &larr; Back
+              </button>
+            )}
+            <p className="text-sm" style={{ color: 'var(--ds-placeholder)' }}>
+              Question {currentQuestionIndex + 1} of {questions.length}
+            </p>
+          </div>
+          <div className="flex gap-1">
+            {questions.map((_, i) => (
+              <div
+                key={i}
+                className="w-2 h-2 rounded-full"
+                style={{
+                  background: i <= currentQuestionIndex ? 'var(--ds-primary)' : 'var(--ds-border)'
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {error && (
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+            <p className="text-sm text-red-400">{error}</p>
+          </div>
+        )}
+
+        {submitting ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--ds-primary)' }} />
+          </div>
+        ) : (
+          <>
+            <p className="text-lg font-medium" style={{ color: 'var(--ds-text)' }}>
+              {currentQuestion?.questionText}
+            </p>
+
+            {/* Yes/No buttons */}
+            {currentQuestion?.answerType === 'yes_no' && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleYesNoAnswer('yes')}
+                  className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
+                  style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => handleYesNoAnswer('no')}
+                  className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
+                  style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                >
+                  No
+                </button>
+              </div>
+            )}
+
+            {/* Short text input */}
+            {currentQuestion?.answerType === 'text' && (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={currentTextValue}
+                  onChange={(e) => setCurrentTextValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
+                  placeholder={currentQuestion.placeholder || 'Type your answer...'}
+                  className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors"
+                  style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                  autoFocus
+                />
+                <div className="flex items-center justify-between">
+                  {!currentQuestion.isRequired && (
+                    <button
+                      onClick={handleSkip}
+                      className="text-sm transition-colors"
+                      style={{ color: 'var(--ds-placeholder)' }}
+                    >
+                      Skip
+                    </button>
+                  )}
+                  <button
+                    onClick={handleTextSubmit}
+                    className="ml-auto rounded-lg px-6 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                    style={{ background: 'var(--ds-primary)' }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Long text (textarea) input */}
+            {currentQuestion?.answerType === 'textarea' && (
+              <div className="space-y-3">
+                <textarea
+                  value={currentTextValue}
+                  onChange={(e) => setCurrentTextValue(e.target.value)}
+                  placeholder={currentQuestion.placeholder || 'Type your answer...'}
+                  rows={4}
+                  className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors resize-none"
+                  style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                  autoFocus
+                />
+                <div className="flex items-center justify-between">
+                  {!currentQuestion.isRequired && (
+                    <button
+                      onClick={handleSkip}
+                      className="text-sm transition-colors"
+                      style={{ color: 'var(--ds-placeholder)' }}
+                    >
+                      Skip
+                    </button>
+                  )}
+                  <button
+                    onClick={handleTextSubmit}
+                    className="ml-auto rounded-lg px-6 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                    style={{ background: 'var(--ds-primary)' }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Multiple choice radio buttons */}
+            {currentQuestion?.answerType === 'multiple_choice' && currentQuestion.options && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  {currentQuestion.options.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => handleMultipleChoiceSelect(option)}
+                      className="w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition-colors"
+                      style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = primaryColor)}
+                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = '')}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                {!currentQuestion.isRequired && (
+                  <button
+                    onClick={handleSkip}
+                    className="text-sm transition-colors"
+                    style={{ color: 'var(--ds-placeholder)' }}
+                  >
+                    Skip
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Fallback for unknown type - treat as yes/no */}
+            {currentQuestion && !['yes_no', 'text', 'textarea', 'multiple_choice'].includes(currentQuestion.answerType) && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleYesNoAnswer('yes')}
+                  className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
+                  style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => handleYesNoAnswer('no')}
+                  className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
+                  style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
+                >
+                  No
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface Question {
   id: string;
   questionText: string;
@@ -52,6 +327,7 @@ interface ThankyouPageProps {
   homepageUrl?: string | null;
   homepageLabel?: string | null;
   showResourceOnPage?: boolean;
+  layout?: 'survey_first' | 'video_first' | 'side_by_side';
 }
 
 export function ThankyouPage({
@@ -81,6 +357,7 @@ export function ThankyouPage({
   homepageUrl,
   homepageLabel,
   showResourceOnPage,
+  layout = 'survey_first',
 }: ThankyouPageProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -293,251 +570,108 @@ export function ThankyouPage({
           )}
         </div>
 
-        {/* 4. Above-video sections (social proof) */}
-        {aboveSections.length > 0 && (
+        {/* 4. Above-video sections (social proof) — only for survey_first layout */}
+        {layout === 'survey_first' && aboveSections.length > 0 && (
           <div className="space-y-6">
             {aboveSections.map(s => <SectionRenderer key={s.id} section={s} />)}
           </div>
         )}
 
-        {/* 5. Survey card - visually prominent (BEFORE video for higher completion) */}
-        {hasQuestions && !qualificationComplete && (
-          <div className="relative">
-            {/* Background glow */}
-            <div
-              className="absolute -inset-3 rounded-2xl blur-xl opacity-30 pointer-events-none"
-              style={{ background: primaryColor }}
-            />
-            <div
-              className="relative rounded-xl p-4 sm:p-6 md:p-8 space-y-6"
-              style={{
-                background: 'var(--ds-card)',
-                border: `2px solid color-mix(in srgb, ${primaryColor} 40%, transparent)`,
-                boxShadow: `0 0 30px color-mix(in srgb, ${primaryColor} 15%, transparent)`,
-              }}
-            >
-              {/* Time estimate pill */}
-              <div className="flex justify-center -mt-8 sm:-mt-10 md:-mt-12 mb-2">
-                <span
-                  className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white"
-                  style={{ background: primaryColor }}
-                >
-                  {questions.length <= 3 ? '30-second' : '2-minute'} survey
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {currentQuestionIndex > 0 && (
-                    <button
-                      onClick={() => {
-                        setCurrentQuestionIndex(currentQuestionIndex - 1);
-                        setCurrentTextValue(answers[questions[currentQuestionIndex - 1]?.id] || '');
-                        setError(null);
-                      }}
-                      className="text-xs transition-opacity hover:opacity-80"
-                      style={{ color: 'var(--ds-muted)' }}
-                    >
-                      &larr; Back
-                    </button>
-                  )}
-                  <p className="text-sm" style={{ color: 'var(--ds-placeholder)' }}>
-                    Question {currentQuestionIndex + 1} of {questions.length}
-                  </p>
-                </div>
-                <div className="flex gap-1">
-                  {questions.map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-2 h-2 rounded-full"
-                      style={{
-                        background: i <= currentQuestionIndex ? 'var(--ds-primary)' : 'var(--ds-border)'
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {error && (
-                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-                  <p className="text-sm text-red-400">{error}</p>
-                </div>
-              )}
-
-              {submitting ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--ds-primary)' }} />
-                </div>
-              ) : (
-                <>
-                  <p className="text-lg font-medium" style={{ color: 'var(--ds-text)' }}>
-                    {currentQuestion?.questionText}
-                  </p>
-
-                  {/* Yes/No buttons */}
-                  {currentQuestion?.answerType === 'yes_no' && (
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleYesNoAnswer('yes')}
-                        className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
-                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => handleYesNoAnswer('no')}
-                        className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
-                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                      >
-                        No
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Short text input */}
-                  {currentQuestion?.answerType === 'text' && (
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        value={currentTextValue}
-                        onChange={(e) => setCurrentTextValue(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
-                        placeholder={currentQuestion.placeholder || 'Type your answer...'}
-                        className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors"
-                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                        autoFocus
-                      />
-                      <div className="flex items-center justify-between">
-                        {!currentQuestion.isRequired && (
-                          <button
-                            onClick={handleSkip}
-                            className="text-sm transition-colors"
-                            style={{ color: 'var(--ds-placeholder)' }}
-                          >
-                            Skip
-                          </button>
-                        )}
-                        <button
-                          onClick={handleTextSubmit}
-                          className="ml-auto rounded-lg px-6 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-                          style={{ background: 'var(--ds-primary)' }}
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Long text (textarea) input */}
-                  {currentQuestion?.answerType === 'textarea' && (
-                    <div className="space-y-3">
-                      <textarea
-                        value={currentTextValue}
-                        onChange={(e) => setCurrentTextValue(e.target.value)}
-                        placeholder={currentQuestion.placeholder || 'Type your answer...'}
-                        rows={4}
-                        className="w-full rounded-lg px-4 py-3 text-sm outline-none transition-colors resize-none"
-                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                        autoFocus
-                      />
-                      <div className="flex items-center justify-between">
-                        {!currentQuestion.isRequired && (
-                          <button
-                            onClick={handleSkip}
-                            className="text-sm transition-colors"
-                            style={{ color: 'var(--ds-placeholder)' }}
-                          >
-                            Skip
-                          </button>
-                        )}
-                        <button
-                          onClick={handleTextSubmit}
-                          className="ml-auto rounded-lg px-6 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-                          style={{ background: 'var(--ds-primary)' }}
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Multiple choice radio buttons */}
-                  {currentQuestion?.answerType === 'multiple_choice' && currentQuestion.options && (
-                    <div className="space-y-3">
-                      <div className="space-y-2">
-                        {currentQuestion.options.map((option) => (
-                          <button
-                            key={option}
-                            onClick={() => handleMultipleChoiceSelect(option)}
-                            className="w-full text-left rounded-lg px-4 py-3 text-sm font-medium transition-colors"
-                            style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = primaryColor)}
-                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = '')}
-                          >
-                            {option}
-                          </button>
-                        ))}
-                      </div>
-                      {!currentQuestion.isRequired && (
-                        <button
-                          onClick={handleSkip}
-                          className="text-sm transition-colors"
-                          style={{ color: 'var(--ds-placeholder)' }}
-                        >
-                          Skip
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Fallback for unknown type - treat as yes/no */}
-                  {currentQuestion && !['yes_no', 'text', 'textarea', 'multiple_choice'].includes(currentQuestion.answerType) && (
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleYesNoAnswer('yes')}
-                        className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-green-500"
-                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => handleYesNoAnswer('no')}
-                        className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
-                        style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
-                      >
-                        No
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* 7. Video — shown after survey to avoid distraction */}
-        {vslUrl && (qualificationComplete || !hasQuestions) && (
+        {/* Layout: video_first — show video before survey */}
+        {layout === 'video_first' && vslUrl && (
           <VideoEmbed url={vslUrl} />
         )}
 
-        {/* 8. Qualification Result */}
-        {qualificationComplete && isQualified !== null && (
-          <div
-            className={`rounded-xl p-6 text-center ${
-              isQualified
-                ? 'bg-green-500/10 border border-green-500/30'
-                : 'bg-red-400/10 border border-red-400/30'
-            }`}
-          >
-            {isQualified ? (
-              <CheckCircle2 className="w-8 h-8 mx-auto mb-3 text-green-500" />
-            ) : (
-              <XCircle className="w-8 h-8 mx-auto mb-3 text-red-400" />
+        {/* Layout: side_by_side — 2-column grid (falls back to single column when no video) */}
+        {layout === 'side_by_side' ? (
+          vslUrl ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left: Video */}
+              <div>
+                <VideoEmbed url={vslUrl} />
+              </div>
+              {/* Right: Survey or qualification result */}
+              <div>
+                {hasQuestions && !qualificationComplete ? (
+                  <SurveyCard
+                    questions={questions}
+                    currentQuestionIndex={currentQuestionIndex}
+                    setCurrentQuestionIndex={setCurrentQuestionIndex}
+                    currentTextValue={currentTextValue}
+                    setCurrentTextValue={setCurrentTextValue}
+                    answers={answers}
+                    error={error}
+                    setError={setError}
+                    submitting={submitting}
+                    primaryColor={primaryColor}
+                    currentQuestion={currentQuestion}
+                    handleYesNoAnswer={handleYesNoAnswer}
+                    handleTextSubmit={handleTextSubmit}
+                    handleMultipleChoiceSelect={handleMultipleChoiceSelect}
+                    handleSkip={handleSkip}
+                  />
+                ) : qualificationComplete && isQualified !== null ? (
+                  <QualificationResult isQualified={isQualified} passMessage={passMessage} failMessage={failMessage} />
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            /* No video — render survey full-width */
+            <>
+              {hasQuestions && !qualificationComplete && (
+                <SurveyCard
+                  questions={questions}
+                  currentQuestionIndex={currentQuestionIndex}
+                  setCurrentQuestionIndex={setCurrentQuestionIndex}
+                  currentTextValue={currentTextValue}
+                  setCurrentTextValue={setCurrentTextValue}
+                  answers={answers}
+                  error={error}
+                  setError={setError}
+                  submitting={submitting}
+                  primaryColor={primaryColor}
+                  currentQuestion={currentQuestion}
+                  handleYesNoAnswer={handleYesNoAnswer}
+                  handleTextSubmit={handleTextSubmit}
+                  handleMultipleChoiceSelect={handleMultipleChoiceSelect}
+                  handleSkip={handleSkip}
+                />
+              )}
+            </>
+          )
+        ) : (
+          <>
+            {/* Survey card — for survey_first and video_first layouts */}
+            {hasQuestions && !qualificationComplete && (
+              <SurveyCard
+                questions={questions}
+                currentQuestionIndex={currentQuestionIndex}
+                setCurrentQuestionIndex={setCurrentQuestionIndex}
+                currentTextValue={currentTextValue}
+                setCurrentTextValue={setCurrentTextValue}
+                answers={answers}
+                error={error}
+                setError={setError}
+                submitting={submitting}
+                primaryColor={primaryColor}
+                currentQuestion={currentQuestion}
+                handleYesNoAnswer={handleYesNoAnswer}
+                handleTextSubmit={handleTextSubmit}
+                handleMultipleChoiceSelect={handleMultipleChoiceSelect}
+                handleSkip={handleSkip}
+              />
             )}
-            <p className={`font-medium ${isQualified ? 'text-green-500' : 'text-red-400'}`}>
-              {isQualified ? passMessage : failMessage}
-            </p>
-          </div>
+
+            {/* Video — for survey_first: shown after survey completion */}
+            {layout === 'survey_first' && vslUrl && (qualificationComplete || !hasQuestions) && (
+              <VideoEmbed url={vslUrl} />
+            )}
+          </>
+        )}
+
+        {/* 8. Qualification Result (skip for side_by_side with video — already shown in grid) */}
+        {qualificationComplete && isQualified !== null && !(layout === 'side_by_side' && vslUrl) && (
+          <QualificationResult isQualified={isQualified} passMessage={passMessage} failMessage={failMessage} />
         )}
 
         {/* Homepage link */}

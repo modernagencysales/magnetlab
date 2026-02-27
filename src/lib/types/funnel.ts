@@ -8,6 +8,7 @@ export type FunnelTheme = 'dark' | 'light' | 'custom';
 export type BackgroundStyle = 'solid' | 'gradient' | 'pattern';
 export type FunnelTargetType = 'lead_magnet' | 'library' | 'external_resource';
 export type RedirectTrigger = 'none' | 'immediate' | 'after_qualification';
+export type ThankyouLayout = 'survey_first' | 'video_first' | 'side_by_side';
 
 export interface FunnelPage {
   id: string;
@@ -45,6 +46,9 @@ export interface FunnelPage {
 
   // Resource email delivery
   sendResourceEmail: boolean;
+
+  // Thank-you page layout
+  thankyouLayout: ThankyouLayout;
 
   // Theme configuration
   theme: FunnelTheme;
@@ -244,6 +248,7 @@ export interface UpdateFunnelPagePayload {
   primaryColor?: string;
   backgroundStyle?: BackgroundStyle;
   logoUrl?: string | null;
+  thankyouLayout?: ThankyouLayout;
 }
 
 export interface CreateQuestionPayload {
@@ -395,6 +400,7 @@ export interface FunnelPageRow {
   homepage_url: string | null;
   homepage_label: string | null;
   send_resource_email: boolean;
+  thankyou_layout: string;
   theme: string;
   primary_color: string;
   background_style: string;
@@ -477,6 +483,7 @@ export function funnelPageFromRow(row: FunnelPageRow): FunnelPage {
     homepageUrl: row.homepage_url || null,
     homepageLabel: row.homepage_label || null,
     sendResourceEmail: row.send_resource_email ?? true,
+    thankyouLayout: (row.thankyou_layout || 'survey_first') as ThankyouLayout,
     qualificationFormId: row.qualification_form_id || null,
     theme: (row.theme || 'dark') as FunnelTheme,
     primaryColor: row.primary_color || '#8b5cf6',

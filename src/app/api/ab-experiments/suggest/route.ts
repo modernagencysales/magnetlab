@@ -8,7 +8,7 @@ import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 import { parseJsonResponse } from '@/lib/ai/content-pipeline/anthropic-client';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 
-const VALID_TEST_FIELDS = ['headline', 'subline', 'vsl_url', 'pass_message'] as const;
+const VALID_TEST_FIELDS = ['headline', 'subline', 'vsl_url', 'pass_message', 'thankyou_layout'] as const;
 type TestField = (typeof VALID_TEST_FIELDS)[number];
 
 const TEST_FIELD_TO_COLUMN: Record<TestField, string> = {
@@ -16,6 +16,7 @@ const TEST_FIELD_TO_COLUMN: Record<TestField, string> = {
   subline: 'thankyou_subline',
   vsl_url: 'vsl_url',
   pass_message: 'qualification_pass_message',
+  thankyou_layout: 'thankyou_layout',
 };
 
 interface Suggestion {
@@ -56,6 +57,29 @@ export async function POST(request: Request) {
             label: 'Remove video',
             value: null,
             rationale: 'Test if removing video increases survey completion.',
+          },
+        ],
+      });
+    }
+
+    // For thankyou_layout, return hardcoded layout options (no AI needed)
+    if (testField === 'thankyou_layout') {
+      return NextResponse.json({
+        suggestions: [
+          {
+            label: 'Video First',
+            value: 'video_first',
+            rationale: 'Show the video immediately to educate before qualifying.',
+          },
+          {
+            label: 'Side by Side',
+            value: 'side_by_side',
+            rationale: 'Maximize above-fold density with video and survey together.',
+          },
+          {
+            label: 'Survey First',
+            value: 'survey_first',
+            rationale: 'Focus on survey completion before revealing video content.',
           },
         ],
       });

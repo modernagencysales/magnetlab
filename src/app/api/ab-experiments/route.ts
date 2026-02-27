@@ -7,7 +7,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 
-const VALID_TEST_FIELDS = ['headline', 'subline', 'vsl_url', 'pass_message'] as const;
+const VALID_TEST_FIELDS = ['headline', 'subline', 'vsl_url', 'pass_message', 'thankyou_layout'] as const;
 type TestField = (typeof VALID_TEST_FIELDS)[number];
 
 // Map logical test field names to actual DB column names on funnel_pages
@@ -16,6 +16,7 @@ const TEST_FIELD_TO_COLUMN: Record<TestField, string> = {
   subline: 'thankyou_subline',
   vsl_url: 'vsl_url',
   pass_message: 'qualification_pass_message',
+  thankyou_layout: 'thankyou_layout',
 };
 
 // Fields to copy when cloning a funnel_page as a variant
@@ -27,6 +28,7 @@ const CLONE_FIELDS = [
   'theme', 'primary_color', 'background_style', 'logo_url',
   'qualification_form_id', 'font_family', 'font_url',
   'target_type', 'library_id', 'external_resource_id',
+  'thankyou_layout',
 ] as const;
 
 export async function GET(request: Request) {
@@ -99,7 +101,7 @@ export async function POST(request: Request) {
     // Verify ownership: must be a non-variant funnel page owned by this user
     const { data: controlRow, error: controlError } = await supabase
       .from('funnel_pages')
-      .select('id, slug, lead_magnet_id, user_id, team_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, font_family, font_url, target_type, library_id, external_resource_id')
+      .select('id, slug, lead_magnet_id, user_id, team_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, font_family, font_url, target_type, library_id, external_resource_id, thankyou_layout')
       .eq('id', funnelPageId)
       .eq('user_id', session.user.id)
       .eq('is_variant', false)

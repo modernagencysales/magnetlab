@@ -8,13 +8,14 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 
-type TestField = 'headline' | 'subline' | 'vsl_url' | 'pass_message';
+type TestField = 'headline' | 'subline' | 'vsl_url' | 'pass_message' | 'thankyou_layout';
 
 const TEST_FIELD_TO_COLUMN: Record<TestField, string> = {
   headline: 'thankyou_headline',
   subline: 'thankyou_subline',
   vsl_url: 'vsl_url',
   pass_message: 'qualification_pass_message',
+  thankyou_layout: 'thankyou_layout',
 };
 
 export async function GET(
@@ -49,7 +50,7 @@ export async function GET(
     // Fetch all variant pages (control + variants)
     const { data: variants, error: variantsError } = await supabase
       .from('funnel_pages')
-      .select('id, is_variant, variant_label, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message')
+      .select('id, is_variant, variant_label, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message, thankyou_layout')
       .or(`id.eq.${experiment.funnel_page_id},experiment_id.eq.${experiment.id}`);
 
     if (variantsError) {
@@ -104,6 +105,7 @@ export async function GET(
       thankyou_subline: string | null;
       vsl_url: string | null;
       qualification_pass_message: string;
+      thankyou_layout: string | null;
     }) => {
       const views = viewsByVariant.get(v.id) || 0;
       const completions = completionsByVariant.get(v.id) || 0;
@@ -118,6 +120,7 @@ export async function GET(
         subline: v.thankyou_subline,
         vslUrl: v.vsl_url,
         passMessage: v.qualification_pass_message,
+        thankyouLayout: v.thankyou_layout || 'survey_first',
       };
     });
 
@@ -202,7 +205,7 @@ export async function PATCH(
       // Verify winner is part of this experiment
       const { data: winnerPage, error: winnerError } = await supabase
         .from('funnel_pages')
-        .select('id, is_variant, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message')
+        .select('id, is_variant, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message, thankyou_layout')
         .eq('id', winnerId)
         .or(`id.eq.${experiment.funnel_page_id},experiment_id.eq.${id}`)
         .single();
