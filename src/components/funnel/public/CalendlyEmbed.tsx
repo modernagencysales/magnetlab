@@ -6,11 +6,14 @@ interface CalendlyEmbedProps {
   url: string;
 }
 
-type EmbedType = 'calendly' | 'cal' | 'unknown';
+type EmbedType = 'calendly' | 'cal' | 'iclosed' | 'unknown';
 
 function detectEmbedType(url: string): EmbedType {
   if (url.includes('calendly.com') || url.includes('calendly/')) {
     return 'calendly';
+  }
+  if (url.includes('iclosed.io') || url.includes('iclosed.com')) {
+    return 'iclosed';
   }
   if (url.includes('cal.com') || url.includes('cal/')) {
     return 'cal';
@@ -48,6 +51,20 @@ export function CalendlyEmbed({ url }: CalendlyEmbedProps) {
       script.async = true;
       document.body.appendChild(script);
     }
+
+    if (embedType === 'iclosed') {
+      // Check if script already exists
+      const existingScript = document.querySelector('script[src="https://app.iclosed.io/assets/widget.js"]');
+      if (existingScript) {
+        return;
+      }
+
+      // Load iClosed widget script
+      const script = document.createElement('script');
+      script.src = 'https://app.iclosed.io/assets/widget.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
   }, [embedType]);
 
   if (embedType === 'calendly') {
@@ -62,6 +79,20 @@ export function CalendlyEmbed({ url }: CalendlyEmbedProps) {
           background: '#18181B',
           border: '1px solid #27272A',
           borderRadius: '12px',
+        }}
+      />
+    );
+  }
+
+  if (embedType === 'iclosed') {
+    return (
+      <div
+        className="iclosed-widget"
+        data-url={url}
+        title="Book a Call"
+        style={{
+          width: '100%',
+          height: '620px',
         }}
       />
     );
