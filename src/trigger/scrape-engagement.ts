@@ -281,6 +281,9 @@ export const scrapeEngagement = schedules.task({
       }
     }
 
+    // DEPRECATED: Competitor scraping migrated to signal-profile-scan.ts (Harvest API)
+    // Phase 2 code below is disabled. Remove after confirming signal-profile-scan is stable.
+    if (false) {
     // ==========================================
     // STEP 2: Scrape COMPETITOR posts
     // ==========================================
@@ -369,6 +372,7 @@ export const scrapeEngagement = schedules.task({
         }
       }
     }
+    } // end disabled Phase 2
 
     logger.info(`Engagement scrape complete: ${totalScraped} targets scraped, ${allErrors.length} errors`);
     return { scraped: totalScraped, errors: allErrors };
