@@ -130,6 +130,32 @@ export async function processComment(
     }
   }
 
+  // 2b. Trigger PlusVibe enrichment + push (async background task)
+  if (automation.plusvibe_campaign_id && comment.commenterLinkedinUrl) {
+    try {
+      const { tasks } = await import('@trigger.dev/sdk/v3');
+      const { enrichAndPushPlusvibe } = await import('@/trigger/enrich-and-push-plusvibe');
+
+      await tasks.trigger(enrichAndPushPlusvibe.id, {
+        userId: automation.user_id,
+        automationId: automation.id,
+        linkedinUrl: comment.commenterLinkedinUrl,
+        firstName: comment.commenterName.split(' ')[0] || '',
+        lastName: comment.commenterName.split(' ').slice(1).join(' ') || '',
+        plusvibeCampaignId: automation.plusvibe_campaign_id,
+        optInUrl: automation.opt_in_url || undefined,
+      });
+
+      actions.push('plusvibe_enrichment_triggered');
+      await logEvent(automation.id, 'plusvibe_enrichment_triggered', comment,
+        `Campaign: ${automation.plusvibe_campaign_id}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      errors.push(`plusvibe_enrich: ${msg}`);
+      await logEvent(automation.id, 'plusvibe_enrichment_failed', comment, undefined, msg);
+    }
+  }
+
   // 3. Reply to comment (via Unipile — low risk)
   if (automation.comment_reply_template && automation.post_social_id && accountId) {
     try {

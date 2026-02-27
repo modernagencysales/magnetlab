@@ -683,7 +683,9 @@ export type AutomationEventType =
   | 'reply_failed'
   | 'follow_up_scheduled'
   | 'follow_up_sent'
-  | 'follow_up_failed';
+  | 'follow_up_failed'
+  | 'plusvibe_enrichment_triggered'
+  | 'plusvibe_enrichment_failed';
 
 export interface LinkedInAutomation {
   id: string;
@@ -703,6 +705,8 @@ export interface LinkedInAutomation {
   unipile_account_id: string | null;
   heyreach_campaign_id: string | null;
   resource_url: string | null;
+  plusvibe_campaign_id: string | null;
+  opt_in_url: string | null;
   leads_captured: number;
   created_at: string;
   updated_at: string;
