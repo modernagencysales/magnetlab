@@ -388,7 +388,6 @@ export interface ScreenshotUrl {
   type: 'hero' | 'section';
   sectionIndex?: number;
   sectionName?: string;
-  url1200x627: string;
   url1080x1080: string;
 }
 

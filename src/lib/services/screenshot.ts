@@ -9,7 +9,6 @@ export interface ScreenshotResult {
   type: 'hero' | 'section';
   sectionIndex?: number;
   sectionName?: string;
-  buffer1200x627: Buffer;
   buffer1080x1080: Buffer;
 }
 
@@ -39,35 +38,46 @@ async function captureScreenshot(
   const params = new URLSearchParams({
     access_key: accessKey,
     url: pageUrl,
-    viewport_width: '1200',
-    viewport_height: '800',
-    device_scale_factor: '2',
+    viewport_width: String(width),
+    viewport_height: String(height),
     format: 'png',
-    image_width: String(width),
-    image_height: String(height),
+    image_quality: '100',
     delay: String(delay),
-    wait_until: 'networkidle0',
+    wait_until: 'load',
+    full_page: 'false',
   });
 
-  // For sections below the fold, use clip_y to scroll down
+  // For sections below the fold, capture full page and clip
   if (scrollY > 0) {
+    params.set('full_page', 'true');
     params.set('clip_x', '0');
     params.set('clip_y', String(scrollY));
-    params.set('clip_width', '1200');
-    params.set('clip_height', String(Math.round(height * (800 / width))));
+    params.set('clip_width', String(width));
+    params.set('clip_height', String(height));
   }
 
-  const response = await fetch(`${SCREENSHOT_API_BASE}?${params.toString()}`, {
-    signal: AbortSignal.timeout(30000),
-  });
+  // Retry up to 2 times on transient 500 errors
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
 
-  if (!response.ok) {
+    const response = await fetch(`${SCREENSHOT_API_BASE}?${params.toString()}`, {
+      signal: AbortSignal.timeout(45000),
+    });
+
+    if (response.ok) {
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    }
+
     const text = await response.text().catch(() => 'Unknown error');
-    throw new Error(`ScreenshotOne API error (${response.status}): ${text}`);
+    lastError = new Error(`ScreenshotOne API error (${response.status}): ${text}`);
+
+    // Only retry on transient errors
+    if (response.status !== 500 && response.status !== 503 && response.status !== 429) throw lastError;
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
+  throw lastError!;
 }
 
 /**
@@ -81,15 +91,11 @@ export async function generateContentScreenshots(
   const delay = waitTime ? Math.ceil(waitTime / 1000) : 3;
   const results: ScreenshotResult[] = [];
 
-  // Hero shot: top of page at both dimensions
-  const [hero1200, hero1080] = await Promise.all([
-    captureScreenshot(pageUrl, 1200, 627, 0, delay),
-    captureScreenshot(pageUrl, 1080, 1080, 0, delay),
-  ]);
+  // Hero shot: square format optimized for social media
+  const hero1080 = await captureScreenshot(pageUrl, 1080, 1080, 0, delay);
 
   results.push({
     type: 'hero',
-    buffer1200x627: hero1200,
     buffer1080x1080: hero1080,
   });
 
@@ -99,16 +105,12 @@ export async function generateContentScreenshots(
     const scrollY = (i + 1) * 800;
     const sectionName = sectionNames?.[i] || `Section ${i + 1}`;
 
-    const [sec1200, sec1080] = await Promise.all([
-      captureScreenshot(pageUrl, 1200, 627, scrollY, delay),
-      captureScreenshot(pageUrl, 1080, 1080, scrollY, delay),
-    ]);
+    const sec1080 = await captureScreenshot(pageUrl, 1080, 1080, scrollY, delay);
 
     results.push({
       type: 'section',
       sectionIndex: i,
       sectionName,
-      buffer1200x627: sec1200,
       buffer1080x1080: sec1080,
     });
   }

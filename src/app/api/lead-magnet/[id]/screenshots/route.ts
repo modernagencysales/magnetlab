@@ -1,14 +1,15 @@
 // API Route: Generate Content Page Screenshots
-// POST /api/lead-magnet/[id]/screenshots
-// Uses ScreenshotOne API — fast HTTP calls, no browser dependencies
+// POST — triggers Trigger.dev task, polls for result
+// GET — returns current screenshot URLs from DB
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-import { generateContentScreenshots } from '@/lib/services/screenshot';
-import type { PolishedContent, PolishedSection, ScreenshotUrl } from '@/lib/types/lead-magnet';
+import { tasks, runs } from '@trigger.dev/sdk/v3';
+import type { generateScreenshots } from '@/trigger/generate-screenshots';
+import type { PolishedContent, PolishedSection } from '@/lib/types/lead-magnet';
 
 export const maxDuration = 60;
 
@@ -39,7 +40,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       return ApiErrors.notFound('Lead magnet');
     }
 
-    // Verify some renderable content exists (polished, interactive, or extracted)
+    // Verify some renderable content exists
     const polishedContent = leadMagnet.polished_content as PolishedContent | null;
     const hasPolished = !!polishedContent?.sections?.length;
     const hasInteractive = !!leadMagnet.interactive_config;
@@ -51,7 +52,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Find published funnel page for this lead magnet
+    // Find published funnel page
     const { data: funnelPage, error: funnelError } = await supabase
       .from('funnel_pages')
       .select('id, slug, user_id')
@@ -79,108 +80,47 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Build the public content page URL
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://magnetlab.app';
     const pageUrl = `${appUrl}/p/${user.username}/${funnelPage.slug}/content`;
 
-    // Section count and names for polished content
     const sectionCount = hasPolished ? polishedContent!.sections.length : 0;
-    const sectionNames = hasPolished
+    const polishedSectionNames = hasPolished
       ? polishedContent!.sections.map((s: PolishedSection, i: number) => s.sectionName || `Section ${i + 1}`)
       : undefined;
 
-    // Generate screenshots via ScreenshotOne API
-    let screenshotResults;
+    // Trigger the screenshot task on Trigger.dev
+    const handle = await tasks.trigger<typeof generateScreenshots>('generate-screenshots', {
+      pageUrl,
+      sectionCount,
+      userId: session.user.id,
+      leadMagnetId: id,
+      polishedSectionNames,
+    });
+
+    // Poll for the result (task runs on Trigger.dev infra, not Vercel)
     try {
-      screenshotResults = await generateContentScreenshots({
-        pageUrl,
-        sectionCount,
-        sectionNames,
-      });
-    } catch (screenshotError) {
-      const errMsg = screenshotError instanceof Error ? screenshotError.message : String(screenshotError);
-      logApiError('lead-magnet/screenshots/generate', screenshotError, {
+      const completed = await runs.poll(handle.id, { pollIntervalMs: 2000 });
+
+      if (completed.status === 'COMPLETED' && completed.output) {
+        return NextResponse.json({ screenshotUrls: completed.output.screenshotUrls });
+      }
+
+      const errMsg = completed.error?.message || `Task status: ${completed.status}`;
+      logApiError('lead-magnet/screenshots/task-failed', new Error(errMsg), {
         userId: session.user.id,
         leadMagnetId: id,
-        pageUrl,
+        runId: handle.id,
       });
+      return ApiErrors.internalError(`Screenshot generation failed: ${errMsg}`);
+    } catch (pollError) {
+      logApiError('lead-magnet/screenshots/poll', pollError, {
+        userId: session.user.id,
+        leadMagnetId: id,
+        runId: handle.id,
+      });
+      const errMsg = pollError instanceof Error ? pollError.message : String(pollError);
       return ApiErrors.internalError(`Failed to generate screenshots: ${errMsg}`);
     }
-
-    // Upload each screenshot to Supabase Storage and collect URLs
-    const screenshotUrls: ScreenshotUrl[] = [];
-
-    for (const result of screenshotResults) {
-      const prefix =
-        result.type === 'hero' ? 'hero' : `section-${result.sectionIndex}`;
-
-      // Upload 1200x627
-      const path1200 = `screenshots/${session.user.id}/${id}/${prefix}-1200x627.png`;
-      const { error: upload1200Error } = await supabase.storage
-        .from('magnetlab')
-        .upload(path1200, result.buffer1200x627, {
-          contentType: 'image/png',
-          upsert: true,
-        });
-
-      if (upload1200Error) {
-        logApiError('lead-magnet/screenshots/upload', upload1200Error, {
-          path: path1200,
-        });
-        return ApiErrors.databaseError('Failed to upload screenshot');
-      }
-
-      // Upload 1080x1080
-      const path1080 = `screenshots/${session.user.id}/${id}/${prefix}-1080x1080.png`;
-      const { error: upload1080Error } = await supabase.storage
-        .from('magnetlab')
-        .upload(path1080, result.buffer1080x1080, {
-          contentType: 'image/png',
-          upsert: true,
-        });
-
-      if (upload1080Error) {
-        logApiError('lead-magnet/screenshots/upload', upload1080Error, {
-          path: path1080,
-        });
-        return ApiErrors.databaseError('Failed to upload screenshot');
-      }
-
-      // Get public URLs
-      const { data: url1200Data } = supabase.storage
-        .from('magnetlab')
-        .getPublicUrl(path1200);
-
-      const { data: url1080Data } = supabase.storage
-        .from('magnetlab')
-        .getPublicUrl(path1080);
-
-      screenshotUrls.push({
-        type: result.type,
-        sectionIndex: result.sectionIndex,
-        sectionName: result.sectionName,
-        url1200x627: url1200Data.publicUrl,
-        url1080x1080: url1080Data.publicUrl,
-      });
-    }
-
-    // Save screenshot URLs to the lead_magnets table
-    let updateQuery = supabase
-      .from('lead_magnets')
-      .update({ screenshot_urls: screenshotUrls })
-      .eq('id', id);
-    updateQuery = applyScope(updateQuery, scope);
-    const { error: updateError } = await updateQuery;
-
-    if (updateError) {
-      logApiError('lead-magnet/screenshots/save', updateError, {
-        userId: session.user.id,
-        leadMagnetId: id,
-      });
-      return ApiErrors.databaseError('Failed to save screenshot URLs');
-    }
-
-    return NextResponse.json({ screenshotUrls });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     logApiError('lead-magnet/screenshots', error);

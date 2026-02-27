@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Key, Copy, Trash2, Plus, Loader2, Check, CheckCircle, XCircle } from 'lucide-react';
 import { WebhookSettings } from '@/components/settings/WebhookSettings';
 import { logError } from '@/lib/utils/logger';
@@ -257,12 +258,12 @@ export function DeveloperSettings() {
         <p className="text-sm text-muted-foreground">
           Documentation for the Content Pipeline API, webhooks, and integrations.
         </p>
-        <a
+        <Link
           href="/docs"
           className="mt-4 inline-block text-sm font-medium text-primary hover:text-primary/80 transition-colors"
         >
           View Full Documentation &rarr;
-        </a>
+        </Link>
       </div>
     </div>
   );

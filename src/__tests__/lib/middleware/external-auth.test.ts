@@ -162,6 +162,7 @@ describe('authenticateExternal — Bearer token fallback', () => {
     })
 
     it('rejects with expired timestamp', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { isTimestampValid } = require('@/lib/auth/service-auth')
       ;(isTimestampValid as jest.Mock).mockReturnValueOnce(false)
 
@@ -186,6 +187,7 @@ describe('authenticateExternal — Bearer token fallback', () => {
     })
 
     it('rejects with invalid signature', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { verifyServiceSignature } = require('@/lib/auth/service-auth')
       ;(verifyServiceSignature as jest.Mock).mockReturnValueOnce(false)
 
