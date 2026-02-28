@@ -3,18 +3,15 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { emailSequenceFromRow } from '@/lib/types/email';
-import type { EmailSequenceRow } from '@/lib/types/email';
-import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { getPostHogServerClient } from '@/lib/posthog';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
+import * as emailSequenceService from '@/server/services/email-sequence.service';
 
 interface RouteParams {
   params: Promise<{ leadMagnetId: string }>;
 }
 
-// POST - Activate email sequence (make it live for new leads)
-export async function POST(request: Request, { params }: RouteParams) {
+export async function POST(_request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -22,47 +19,30 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     const { leadMagnetId } = await params;
-    const supabase = createSupabaseAdminClient();
+    const result = await emailSequenceService.activate(session.user.id, leadMagnetId);
 
-    // Get the email sequence
-    const { data: sequenceData, error: seqError } = await supabase
-      .from('email_sequences')
-      .select('id, lead_magnet_id, user_id, emails, status, created_at, updated_at')
-      .eq('lead_magnet_id', leadMagnetId)
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (seqError || !sequenceData) {
-      return ApiErrors.notFound('Email sequence');
+    if (!result.success) {
+      if (result.error === 'not_found') return ApiErrors.notFound('Email sequence');
+      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
+      if (result.error === 'database') return ApiErrors.databaseError(result.message ?? 'Failed to activate');
+      return ApiErrors.internalError(result.message ?? 'Failed to activate');
     }
 
-    const sequence = emailSequenceFromRow(sequenceData as EmailSequenceRow);
-
-    if (!sequence.emails || sequence.emails.length === 0) {
-      return ApiErrors.validationError('No emails in sequence. Generate emails first.');
+    if (result.posthogPayload) {
+      try {
+        getPostHogServerClient()?.capture({
+          distinctId: session.user.id,
+          event: 'email_sequence_activated',
+          properties: result.posthogPayload,
+        });
+      } catch {
+        // ignore
+      }
     }
-
-    // Update status to active
-    const { data: updatedSequence, error: updateError } = await supabase
-      .from('email_sequences')
-      .update({
-        status: 'active',
-      })
-      .eq('id', sequence.id)
-      .eq('user_id', session.user.id)
-      .select()
-      .single();
-
-    if (updateError) {
-      logApiError('email-sequence/activate', updateError, { leadMagnetId });
-      return ApiErrors.databaseError('Failed to activate sequence');
-    }
-
-    try { getPostHogServerClient()?.capture({ distinctId: session.user.id, event: 'email_sequence_activated', properties: { lead_magnet_id: leadMagnetId, email_count: sequence.emails.length } }); } catch {}
 
     return NextResponse.json({
-      emailSequence: emailSequenceFromRow(updatedSequence as EmailSequenceRow),
-      message: 'Email sequence activated! New leads will automatically receive the welcome sequence.',
+      emailSequence: result.emailSequence,
+      message: result.message,
     });
   } catch (error) {
     logApiError('email-sequence/activate', error);

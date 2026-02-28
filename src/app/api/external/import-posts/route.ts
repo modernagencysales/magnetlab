@@ -6,8 +6,8 @@
 
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { importPosts } from '@/server/services/external.service';
 
 function authenticateRequest(request: Request): boolean {
   const authHeader = request.headers.get('Authorization');
@@ -55,45 +55,23 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('user_id and posts array are required');
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    // Auto-resolve team_profile_id from user's owned team if not provided
-    let resolvedTeamProfileId = team_profile_id || null;
-    if (!resolvedTeamProfileId) {
-      const { data: ownerProfile } = await supabase
-        .from('team_profiles')
-        .select('id')
-        .eq('user_id', user_id)
-        .eq('role', 'owner')
-        .limit(1)
-        .single();
-      if (ownerProfile) {
-        resolvedTeamProfileId = ownerProfile.id;
-      }
-    }
-
-    const rows = posts.map((post) => ({
+    const result = await importPosts({
       user_id,
-      team_profile_id: resolvedTeamProfileId,
-      status: 'reviewing' as const,
-      draft_content: post.content,
-      final_content: post.content,
-    }));
+      team_profile_id: team_profile_id ?? null,
+      posts,
+    });
 
-    const { data, error } = await supabase
-      .from('cp_pipeline_posts')
-      .insert(rows)
-      .select('id, status');
-
-    if (error) {
-      logApiError('external/import-posts/insert', error);
+    if (!result.success) {
       return ApiErrors.internalError('Failed to import posts');
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { imported_count: data.length, posts: data },
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: { imported_count: result.imported_count, posts: result.posts },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     logApiError('external/import-posts', error);
     return ApiErrors.internalError('Failed to import posts');

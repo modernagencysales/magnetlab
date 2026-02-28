@@ -22,14 +22,10 @@ jest.mock('@/lib/ai/embeddings', () => ({
   generateEmbedding: jest.fn().mockResolvedValue(null),
 }));
 
-// Mock Supabase
-const mockSingle = jest.fn();
-const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
-const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
-jest.mock('@/lib/utils/supabase-server', () => ({
-  createSupabaseAdminClient: () => ({
-    from: () => ({ insert: mockInsert }),
-  }),
+// Mock repo (route → service → repo)
+const mockCreateStyle = jest.fn();
+jest.mock('@/server/repositories/styles.repo', () => ({
+  createStyle: (...args: unknown[]) => mockCreateStyle(...args),
 }));
 
 jest.mock('@/lib/utils/logger', () => ({
@@ -157,22 +153,20 @@ describe('POST /api/content-pipeline/styles/extract-from-url', () => {
       error: null,
     });
     (extractWritingStyle as jest.Mock).mockResolvedValueOnce(MOCK_EXTRACTED_STYLE);
-    mockSingle.mockResolvedValueOnce({
-      data: {
-        id: 'style-1',
-        user_id: 'user-1',
-        name: 'Direct Educator',
-        description: 'A clear, instructional tone with actionable insights.',
-        source_linkedin_url: 'https://www.linkedin.com/in/janedoe',
-        source_posts_analyzed: 5,
-        style_profile: MOCK_EXTRACTED_STYLE.style_profile,
-        example_posts: MOCK_EXTRACTED_STYLE.example_posts,
-        is_active: true,
-        last_updated_at: null,
-        created_at: '2026-02-23T00:00:00Z',
-      },
-      error: null,
-    });
+    const savedStyle = {
+      id: 'style-1',
+      user_id: 'user-1',
+      name: 'Direct Educator',
+      description: 'A clear, instructional tone with actionable insights.',
+      source_linkedin_url: 'https://www.linkedin.com/in/janedoe',
+      source_posts_analyzed: 5,
+      style_profile: MOCK_EXTRACTED_STYLE.style_profile,
+      example_posts: MOCK_EXTRACTED_STYLE.example_posts,
+      is_active: true,
+      last_updated_at: null,
+      created_at: '2026-02-23T00:00:00Z',
+    };
+    mockCreateStyle.mockResolvedValueOnce(savedStyle);
 
     const res = await POST(makeRequest({ linkedin_url: 'https://www.linkedin.com/in/janedoe' }));
     expect(res.status).toBe(201);

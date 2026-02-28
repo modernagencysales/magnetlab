@@ -1,13 +1,11 @@
 // Email Marketing Disconnect API
 // POST /api/integrations/email-marketing/disconnect
-// Deletes integration and deactivates all funnel mappings for the provider
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { isEmailMarketingProvider } from '@/lib/integrations/email-marketing';
-import { deleteUserIntegration } from '@/lib/utils/encrypted-storage';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import * as integrationsService from '@/server/services/integrations.service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,16 +25,10 @@ export async function POST(request: NextRequest) {
       return ApiErrors.validationError(`Invalid provider: ${provider}`);
     }
 
-    // Delete the integration credentials
-    await deleteUserIntegration(session.user.id, provider);
-
-    // Deactivate all funnel mappings for this provider
-    const supabase = createSupabaseAdminClient();
-    await supabase
-      .from('funnel_integrations')
-      .update({ is_active: false })
-      .eq('user_id', session.user.id)
-      .eq('provider', provider);
+    const result = await integrationsService.disconnectEmailMarketing(session.user.id, provider);
+    if (!result.success) {
+      return ApiErrors.databaseError('Failed to deactivate funnel mappings');
+    }
 
     return NextResponse.json({
       message: 'Disconnected successfully',

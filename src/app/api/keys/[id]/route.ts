@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import * as keysService from '@/server/services/keys.service';
 
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -12,22 +12,10 @@ export async function DELETE(
     if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id } = await params;
-    const supabase = createSupabaseAdminClient();
-
-    const { error } = await supabase
-      .from('api_keys')
-      .update({ is_active: false })
-      .eq('id', id)
-      .eq('user_id', session.user.id);
-
-    if (error) {
-      logApiError('keys/revoke', error, { userId: session.user.id, keyId: id });
-      return ApiErrors.databaseError('Failed to revoke API key');
-    }
-
-    return NextResponse.json({ success: true });
+    const result = await keysService.revokeKey(session.user.id, id);
+    return NextResponse.json(result);
   } catch (error) {
-    logApiError('keys/revoke', error);
-    return ApiErrors.internalError();
+    logApiError('keys/revoke', error, { userId: (await auth())?.user?.id });
+    return ApiErrors.internalError('Failed to revoke API key');
   }
 }

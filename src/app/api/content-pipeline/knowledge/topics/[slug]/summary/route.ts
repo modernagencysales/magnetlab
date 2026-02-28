@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { generateAndCacheTopicSummary, verifyTeamMembership } from '@/lib/services/knowledge-brain';
+import * as knowledgeService from '@/server/services/knowledge.service';
 
 export async function POST(
   request: NextRequest,
@@ -17,17 +17,16 @@ export async function POST(
     const force = searchParams.get('force') === 'true';
     const teamId = searchParams.get('team_id') || undefined;
 
-    if (teamId) {
-      const isMember = await verifyTeamMembership(session.user.id, teamId);
-      if (!isMember) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    if (teamId) await knowledgeService.assertTeamMembership(session.user.id, teamId);
 
-    const result = await generateAndCacheTopicSummary(session.user.id, slug, force, teamId);
+    const result = await knowledgeService.getTopicSummary(session.user.id, slug, force, teamId);
     return NextResponse.json(result);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('not found')) {
+    const status = knowledgeService.getStatusCode(error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    if (message.includes('not found')) {
       return NextResponse.json({ error: 'Topic not found' }, { status: 404 });
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: message }, { status });
   }
 }

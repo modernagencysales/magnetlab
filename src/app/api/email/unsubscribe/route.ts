@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { generateUnsubscribeToken } from '@/lib/integrations/resend';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import * as emailService from '@/server/services/email.service';
 
 function htmlResponse(html: string, status = 200) {
   return new Response(html, {
@@ -76,28 +76,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Unsubscribe the subscriber
-  const supabase = createSupabaseAdminClient();
-
-  // Update subscriber status
-  const { error: subscriberError } = await supabase
-    .from('email_subscribers')
-    .update({ status: 'unsubscribed', unsubscribed_at: new Date().toISOString() })
-    .eq('id', sid);
-
-  if (subscriberError) {
+  const result = await emailService.unsubscribeByToken(sid);
+  if (!result.success) {
     return htmlResponse(
       page('Error', 'Something went wrong while processing your request. Please try again later.'),
       500
     );
   }
-
-  // Deactivate any active flow contacts for this subscriber
-  await supabase
-    .from('email_flow_contacts')
-    .update({ status: 'unsubscribed' })
-    .eq('subscriber_id', sid)
-    .eq('status', 'active');
 
   return htmlResponse(
     page(

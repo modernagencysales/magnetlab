@@ -1,27 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { tasks } from '@trigger.dev/sdk/v3';
-import type { processTranscript } from '@/trigger/process-transcript';
-
-import { logError, logWarn } from '@/lib/utils/logger';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
+import * as cpTranscriptsService from '@/server/services/cp-transcripts.service';
 
 function parseVTT(raw: string): string {
   const lines = raw.split('\n');
   const textLines: string[] = [];
   for (const line of lines) {
     const trimmed = line.trim();
-    // Skip WEBVTT header, empty lines, cue identifiers, and timestamp lines
     if (
       !trimmed ||
       trimmed === 'WEBVTT' ||
       trimmed.startsWith('NOTE') ||
       /^\d+$/.test(trimmed) ||
       /-->/.test(trimmed)
-    ) {
-      continue;
-    }
-    // Strip inline VTT tags like <v Speaker Name>
+    ) continue;
     const cleaned = trimmed.replace(/<[^>]+>/g, '').trim();
     if (cleaned) textLines.push(cleaned);
   }
@@ -33,11 +26,7 @@ function parseSRT(raw: string): string {
   const textLines: string[] = [];
   for (const line of lines) {
     const trimmed = line.trim();
-    // Skip empty lines, sequence numbers, and timestamp lines
-    if (!trimmed || /^\d+$/.test(trimmed) || /-->/.test(trimmed)) {
-      continue;
-    }
-    // Strip HTML-like tags
+    if (!trimmed || /^\d+$/.test(trimmed) || /-->/.test(trimmed)) continue;
     const cleaned = trimmed.replace(/<[^>]+>/g, '').trim();
     if (cleaned) textLines.push(cleaned);
   }
@@ -47,17 +36,13 @@ function parseSRT(raw: string): string {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const title = (formData.get('title') as string) || '';
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
-    }
+    if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
     const fileName = file.name.toLowerCase();
     const allowedExtensions = ['.txt', '.vtt', '.srt'];
@@ -68,23 +53,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // 10MB limit
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 });
     }
 
     const raw = await file.text();
-
-    // Parse based on file type
     let transcript: string;
-    if (ext === '.vtt') {
-      transcript = parseVTT(raw);
-    } else if (ext === '.srt') {
-      transcript = parseSRT(raw);
-    } else {
-      transcript = raw.trim();
-    }
+    if (ext === '.vtt') transcript = parseVTT(raw);
+    else if (ext === '.srt') transcript = parseSRT(raw);
+    else transcript = raw.trim();
 
     if (transcript.length < 100) {
       return NextResponse.json(
@@ -93,40 +70,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    const { data: record, error: insertError } = await supabase
-      .from('cp_call_transcripts')
-      .insert({
-        user_id: session.user.id,
-        source: 'upload',
-        title: title || file.name.replace(/\.(txt|vtt|srt)$/i, ''),
-        raw_transcript: transcript,
-      })
-      .select()
-      .single();
-
-    if (insertError || !record) {
-      logError('cp/transcripts/upload', new Error(String(insertError?.message)), { step: 'failed_to_insert_uploaded_transcript' });
-      return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 });
-    }
-
-    // Trigger processing
-    try {
-      await tasks.trigger<typeof processTranscript>('process-transcript', {
-        userId: session.user.id,
-        transcriptId: record.id,
-      });
-    } catch (triggerError) {
-      logWarn('cp/transcripts/upload', 'Failed to trigger process-transcript', { detail: String(triggerError) });
-    }
-
-    return NextResponse.json({
-      success: true,
-      transcript_id: record.id,
+    const result = await cpTranscriptsService.createFromUpload(session.user.id, {
+      title: title || file.name.replace(/\.(txt|vtt|srt)$/i, ''),
+      raw_transcript: transcript,
     });
+    if (!result.success) return ApiErrors.databaseError('Failed to save transcript');
+    return NextResponse.json({ success: true, transcript_id: result.transcript_id });
   } catch (error) {
-    logError('cp/transcripts/upload', error, { step: 'transcript_upload_error' });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logApiError('cp/transcripts/upload', error);
+    return ApiErrors.internalError('Failed to upload transcript');
   }
 }

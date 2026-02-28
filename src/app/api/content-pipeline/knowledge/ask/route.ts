@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { answerKnowledgeQuestion } from '@/lib/ai/content-pipeline/knowledge-answerer';
-import { verifyTeamMembership } from '@/lib/services/knowledge-brain';
 import { logError } from '@/lib/utils/logger';
+import * as knowledgeService from '@/server/services/knowledge.service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,19 +13,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { question, team_id: teamId } = body;
 
-    if (!question || typeof question !== 'string' || question.length < 3) {
-      return NextResponse.json({ error: 'Question must be at least 3 characters' }, { status: 400 });
-    }
+    if (teamId) await knowledgeService.assertTeamMembership(session.user.id, teamId);
 
-    if (teamId) {
-      const isMember = await verifyTeamMembership(session.user.id, teamId);
-      if (!isMember) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const result = await answerKnowledgeQuestion(session.user.id, question, teamId);
+    const result = await knowledgeService.askKnowledge(session.user.id, question, teamId);
     return NextResponse.json(result);
   } catch (error) {
     logError('cp/knowledge/ask', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const status = knowledgeService.getStatusCode(error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
   }
 }

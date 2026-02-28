@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getRecentKnowledgeDigest, verifyTeamMembership } from '@/lib/services/knowledge-brain';
+import * as knowledgeService from '@/server/services/knowledge.service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,14 +13,13 @@ export async function GET(request: NextRequest) {
     const days = parseInt(searchParams.get('days') || '7', 10);
     const teamId = searchParams.get('team_id') || undefined;
 
-    if (teamId) {
-      const isMember = await verifyTeamMembership(session.user.id, teamId);
-      if (!isMember) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    if (teamId) await knowledgeService.assertTeamMembership(session.user.id, teamId);
 
-    const digest = await getRecentKnowledgeDigest(session.user.id, Math.min(days, 90), teamId);
+    const digest = await knowledgeService.getKnowledgeDigest(session.user.id, days, teamId);
     return NextResponse.json(digest);
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error) {
+    const status = knowledgeService.getStatusCode(error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
   }
 }

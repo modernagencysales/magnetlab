@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { isSuperAdmin } from '@/lib/auth/super-admin';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { savePrompt } from '@/lib/services/prompt-registry';
+import * as adminService from '@/server/services/admin.service';
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -17,48 +16,23 @@ export async function POST(
   }
 
   const { slug } = await params;
-  const { version_id } = await request.json();
+  const body = await request.json();
+  const version_id = body.version_id;
 
   if (!version_id) {
     return NextResponse.json(
       { error: 'version_id is required' },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  const supabase = createSupabaseAdminClient();
-
-  // Fetch the version to restore
-  const { data: version, error } = await supabase
-    .from('ai_prompt_versions')
-    .select('*')
-    .eq('id', version_id)
-    .single();
-
-  if (error || !version) {
+  const result = await adminService.restorePrompt(
+    slug,
+    version_id,
+    session.user.email || session.user.id,
+  );
+  if (!result) {
     return NextResponse.json({ error: 'Version not found' }, { status: 404 });
   }
-
-  try {
-    // Save as a new version (restore)
-    const newVersion = await savePrompt(
-      slug,
-      {
-        system_prompt: version.system_prompt,
-        user_prompt: version.user_prompt,
-        model: version.model,
-        temperature: version.temperature,
-        max_tokens: version.max_tokens,
-      },
-      session.user.email || session.user.id,
-      `Restored from version ${version.version}`
-    );
-
-    return NextResponse.json({ version: newVersion });
-  } catch (err) {
-    return NextResponse.json(
-      { error: (err as Error).message },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(result);
 }
