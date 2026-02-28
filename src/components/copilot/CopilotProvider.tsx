@@ -40,7 +40,7 @@ export interface PendingConfirmation {
   toolUseId: string;
 }
 
-type ApplyHandler = (data: Record<string, unknown>) => void;
+type ApplyHandler = (type: string, data: unknown) => void;
 
 interface CopilotContextValue {
   // Panel state

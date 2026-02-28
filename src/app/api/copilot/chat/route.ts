@@ -266,11 +266,11 @@ export async function POST(req: NextRequest) {
                     if (b.type === 'text') return { type: 'text' as const, text: b.text };
                     if (b.type === 'tool_use') return { type: 'tool_use' as const, id: b.id, name: b.name, input: b.input };
                     return b;
-                  }),
+                  }) as Record<string, unknown>[],
                 },
                 {
                   role: 'user' as const,
-                  content: toolResults,
+                  content: toolResults as Record<string, unknown>[],
                 },
               ];
             }
