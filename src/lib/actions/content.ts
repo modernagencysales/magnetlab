@@ -46,6 +46,7 @@ registerAction({
         core_insight: params.topic,
         content_type: params.content_type || 'thought_leadership',
         full_context: brief.compiledContext || '',
+        why_post_worthy: null,
         hook: '',
         key_points: [],
       },

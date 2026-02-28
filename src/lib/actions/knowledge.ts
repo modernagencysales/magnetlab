@@ -29,7 +29,7 @@ registerAction({
   }): Promise<ActionResult> => {
     const results = await searchKnowledgeV2(ctx.userId, {
       query: params.query,
-      knowledgeType: params.knowledge_type,
+      knowledgeType: params.knowledge_type as import('@/lib/types/content-pipeline').KnowledgeType | undefined,
       topicSlug: params.topic,
       minQuality: params.min_quality,
       limit: params.limit || 10,

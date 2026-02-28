@@ -1196,6 +1196,90 @@ BOUNCEBAN_API_KEY
 PLUSVIBE_API_KEY
 ```
 
+## AI Co-pilot (Phase 2a — Feb 2026)
+
+In-app conversational AI assistant with a shared action layer, Claude tool_use agent loop, and global sidebar UI.
+
+### Architecture
+
+```
+User message → CopilotProvider (SSE fetch) → POST /api/copilot/chat
+  → buildCopilotSystemPrompt(userId, pageContext)
+    → base prompt (admin-editable: copilot-system slug)
+    → voice profile (team_profiles.voice_profile)
+    → learned preferences (copilot_memories)
+    → page context (entity type/id)
+  → Claude Sonnet tool_use loop (max 15 iterations)
+    → getToolDefinitions() → 13 actions as Claude tools
+    → executeAction(ctx, name, args) → ActionResult
+    → SSE events: text_delta, tool_call, tool_result, done, error
+  → Persist: copilot_conversations + copilot_messages
+```
+
+### Shared Action Layer
+
+Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 13 registered actions across 5 modules:
+
+| Module | Actions |
+|--------|---------|
+| `knowledge.ts` | `search_knowledge`, `list_topics`, `build_content_brief` |
+| `content.ts` | `write_post`, `polish_post`, `list_posts`, `update_post_content` |
+| `templates.ts` | `list_templates`, `list_writing_styles` |
+| `analytics.ts` | `get_post_performance`, `get_top_posts` |
+| `scheduling.ts` | `schedule_post` (confirmation required), `get_autopilot_status` |
+
+### Database Tables
+
+- `copilot_conversations` — user_id, entity_type/id binding, title, model, RLS
+- `copilot_messages` — conversation_id, role (user/assistant/tool_call/tool_result), content, tool_name/args/result, feedback JSONB, tokens_used
+- `copilot_memories` — auto-extracted preferences (rule, category, confidence, source, active)
+- Migration: `supabase/migrations/20260227500000_copilot_tables.sql`
+
+### Admin-Editable Prompts
+
+3 prompt slugs registered in `prompt-defaults.ts`, editable at `/admin/prompts`:
+- `copilot-system` — base identity prompt (Sonnet, temp 0.7)
+- `copilot-memory-extractor` — preference extraction from corrections (Haiku, temp 0.3)
+- `copilot-plan-generator` — multi-step task planning (Haiku, temp 0.3)
+
+### API Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/copilot/chat` | POST | SSE streaming agent loop |
+| `/api/copilot/conversations` | GET/POST | List + create conversations |
+| `/api/copilot/conversations/[id]` | GET/DELETE | Get with messages + delete |
+| `/api/copilot/conversations/[id]/feedback` | POST | Message feedback (positive/negative) |
+
+### Frontend Components
+
+| Component | Purpose |
+|-----------|---------|
+| `CopilotProvider` | React context — state, SSE streaming, conversation management |
+| `CopilotShell` | Client wrapper mounted in dashboard layout |
+| `CopilotSidebar` | 400px slide-in panel (conversation list + chat view) |
+| `CopilotToggleButton` | Floating button (bottom-right) |
+| `CopilotMessage` | Message bubbles (user/assistant/tool_call/tool_result) + feedback |
+| `ConversationInput` | Textarea + send/stop button |
+| `useCopilotContext` | Hook for page context registration |
+
+### Key Files
+
+- `src/lib/actions/` — types, registry, executor, 5 action modules, barrel import
+- `src/lib/ai/copilot/system-prompt.ts` — `buildCopilotSystemPrompt()` (5-min cache)
+- `src/app/api/copilot/chat/route.ts` — streaming agent loop
+- `src/app/api/copilot/conversations/` — CRUD + feedback
+- `src/components/copilot/` — CopilotProvider, Shell, Sidebar, Toggle, Message, Input, useCopilotContext
+- `src/lib/ai/content-pipeline/prompt-defaults.ts` — 3 copilot prompt slugs
+- `src/app/(dashboard)/layout.tsx` — CopilotShell integration
+
+### Tests (84 passing)
+
+- `src/__tests__/lib/actions/` — executor (5), knowledge (3), content (4), supporting (25)
+- `src/__tests__/api/copilot/` — chat (3), conversations (21)
+- `src/__tests__/lib/ai/copilot/` — system-prompt (3)
+- `src/__tests__/components/copilot/` — ConversationInput (10), CopilotMessage (10)
+
 ## Deployment
 
 - **Vercel**: Auto-deploy is broken for private org repos (needs Vercel Pro). Deploy manually:

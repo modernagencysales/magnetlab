@@ -10,15 +10,16 @@ export interface ActionResult<T = unknown> {
   displayHint?: 'post_preview' | 'knowledge_list' | 'plan' | 'idea_list' | 'calendar' | 'text';
 }
 
-export type ActionHandler<TParams = unknown, TResult = unknown> = (
+export type ActionHandler = (
   ctx: ActionContext,
-  params: TParams,
-) => Promise<ActionResult<TResult>>;
+  params: Record<string, unknown>,
+) => Promise<ActionResult>;
 
 export interface ActionDefinition {
   name: string;
   description: string;
   parameters: Record<string, unknown>; // JSON Schema object
-  handler: ActionHandler;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: (ctx: ActionContext, params: any) => Promise<ActionResult>;
   requiresConfirmation?: boolean; // For destructive actions
 }
