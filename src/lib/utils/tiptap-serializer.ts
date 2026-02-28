@@ -2,13 +2,13 @@
  * Bidirectional converter between TipTap JSON document format and
  * PolishedBlock.content markdown string format.
  *
- * Supports: **bold**, *italic*, [text](url) inline formatting.
+ * Supports: **bold**, *italic*, ~~strikethrough~~, [text](url) inline formatting.
  */
 
 // ─── TipTap JSON Types ─────────────────────────────────────────────
 
 export interface TiptapMark {
-  type: 'bold' | 'italic' | 'link';
+  type: 'bold' | 'italic' | 'link' | 'strike';
   attrs?: { href: string; target: string };
 }
 
@@ -34,7 +34,7 @@ export interface TiptapDoc {
  * Combined regex that matches bold (**...**), italic (*...*), and links ([text](url)).
  * Bold is matched FIRST to avoid the italic pattern consuming the outer asterisks.
  */
-const INLINE_REGEX = /(\*\*[^*]+\*\*)|(\*[^*]+\*)|(\[[^\]]+\]\([^)]+\))/g;
+const INLINE_REGEX = /(\*\*[^*]+\*\*)|(~~[^~]+~~)|(\*[^*]+\*)|(\[[^\]]+\]\([^)]+\))/g;
 
 /**
  * Parse a single line of markdown into an array of TipTap text nodes.
@@ -61,13 +61,20 @@ function parseInlineMarks(line: string): TiptapTextNode[] {
         marks: [{ type: 'bold' }],
       });
     } else if (match[2]) {
+      // Strikethrough: ~~text~~
+      nodes.push({
+        type: 'text',
+        text: full.slice(2, -2),
+        marks: [{ type: 'strike' }],
+      });
+    } else if (match[3]) {
       // Italic: *text*
       nodes.push({
         type: 'text',
         text: full.slice(1, -1),
         marks: [{ type: 'italic' }],
       });
-    } else if (match[3]) {
+    } else if (match[4]) {
       // Link: [text](url)
       const linkMatch = full.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
       if (linkMatch) {
@@ -144,6 +151,9 @@ function serializeTextNode(node: TiptapTextNode): string {
         break;
       case 'italic':
         result = `*${result}*`;
+        break;
+      case 'strike':
+        result = `~~${result}~~`;
         break;
       case 'link':
         result = `[${result}](${mark.attrs?.href ?? ''})`;

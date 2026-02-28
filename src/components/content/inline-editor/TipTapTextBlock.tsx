@@ -6,7 +6,8 @@ import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Bold, Italic, Link as LinkIcon, Unlink } from 'lucide-react';
+import CharacterCount from '@tiptap/extension-character-count';
+import { Bold, Italic, Strikethrough, Link as LinkIcon, Unlink } from 'lucide-react';
 import {
   markdownToTiptapDoc,
   tiptapDocToMarkdown,
@@ -20,6 +21,7 @@ import {
 export interface TipTapTextBlockProps {
   content: string; // Markdown string from PolishedBlock.content
   onChange: (content: string) => void;
+  onCharacterCount?: (count: number) => void;
   placeholder?: string;
   className?: string;
   style?: React.CSSProperties;
@@ -179,6 +181,23 @@ function BubbleToolbar({ editor }: ToolbarProps) {
         <Italic className="h-4 w-4" />
       </button>
 
+      <button
+        type="button"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          editor.chain().focus().toggleStrike().run();
+        }}
+        className={`rounded p-1.5 transition-colors ${
+          editor.isActive('strike')
+            ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'
+            : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700'
+        }`}
+        aria-label="Strikethrough"
+        title="Strikethrough"
+      >
+        <Strikethrough className="h-4 w-4" />
+      </button>
+
       <div className="mx-0.5 h-4 w-px bg-zinc-200 dark:bg-zinc-600" />
 
       <button
@@ -212,6 +231,7 @@ function BubbleToolbar({ editor }: ToolbarProps) {
 export function TipTapTextBlock({
   content,
   onChange,
+  onCharacterCount,
   placeholder: placeholderText,
   className,
   style,
@@ -222,6 +242,11 @@ export function TipTapTextBlock({
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  const onCharacterCountRef = useRef(onCharacterCount);
+  useEffect(() => {
+    onCharacterCountRef.current = onCharacterCount;
+  }, [onCharacterCount]);
 
   // Track the last content we set to avoid infinite loops when syncing
   const lastContentRef = useRef(content);
@@ -247,6 +272,7 @@ export function TipTapTextBlock({
       Placeholder.configure({
         placeholder: placeholderText || 'Start typing...',
       }),
+      CharacterCount,
     ],
     content: markdownToTiptapDoc(content) as JSONContent,
     editorProps: {
@@ -263,6 +289,9 @@ export function TipTapTextBlock({
       );
       lastContentRef.current = markdown;
       onChangeRef.current(markdown);
+      if (onCharacterCountRef.current) {
+        onCharacterCountRef.current(markdown.length);
+      }
     },
   });
 
