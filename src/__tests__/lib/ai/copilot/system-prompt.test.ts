@@ -23,7 +23,7 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(() => ({ from: mockFrom })),
 }));
 
-function createChain(data: unknown = null, { useSingle: _useSingle = true }: { useSingle?: boolean } = {}) {
+function createChain(data: unknown = null) {
   const result = { data, error: null };
   const chain: Record<string, jest.Mock> = {};
 
