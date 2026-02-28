@@ -11,6 +11,7 @@ import { DeviceToggle } from './DeviceToggle';
 import { HookOnlyToggle } from './HookOnlyToggle';
 import { HookScorePanel } from './HookScorePanel';
 import type { PipelinePost, PostVariation, LinkedInAutomation, AutomationStatus, TeamProfile } from '@/lib/types/content-pipeline';
+import { useCopilotContext } from '@/components/copilot/useCopilotContext';
 
 interface PostDetailModalProps {
   post: PipelinePost;
@@ -61,6 +62,14 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const [autoFollowUp, setAutoFollowUp] = useState(false);
   const [autoFollowUpTemplate, setAutoFollowUpTemplate] = useState('');
   const [automationEventCount, setAutomationEventCount] = useState(0);
+
+  // Register co-pilot page context
+  useCopilotContext({
+    page: '/content-pipeline',
+    entityType: 'post',
+    entityId: post.id,
+    entityTitle: (post.final_content || post.draft_content || '').slice(0, 60),
+  });
 
   // Template picker state
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
