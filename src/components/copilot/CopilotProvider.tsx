@@ -33,6 +33,14 @@ interface PageContext {
   entityTitle?: string;
 }
 
+export interface PendingConfirmation {
+  toolName: string;
+  toolArgs: Record<string, unknown>;
+  toolUseId: string;
+}
+
+type ApplyHandler = (data: Record<string, unknown>) => void;
+
 interface CopilotContextValue {
   // Panel state
   isOpen: boolean;
@@ -58,6 +66,14 @@ interface CopilotContextValue {
   // Page context
   pageContext: PageContext | null;
   setPageContext: (ctx: PageContext | null) => void;
+
+  // Confirmation
+  pendingConfirmation: PendingConfirmation | null;
+  confirmAction: (toolUseId: string, approved: boolean) => Promise<void>;
+
+  // Apply to page
+  applyToPage: ApplyHandler | null;
+  registerApplyHandler: (handler: ApplyHandler | null) => void;
 }
 
 // ============================================
@@ -110,6 +126,9 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [pageContext, setPageContext] = useState<PageContext | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const applyHandlerRef = useRef<ApplyHandler | null>(null);
+  const [applyToPage, setApplyToPage] = useState<ApplyHandler | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const open = useCallback(() => setIsOpen(true), []);
@@ -174,6 +193,31 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
   const cancelStream = useCallback(() => {
     abortRef.current?.abort();
     setIsStreaming(false);
+  }, []);
+
+  const confirmAction = useCallback(async (toolUseId: string, approved: boolean) => {
+    if (!activeConversationId) return;
+
+    try {
+      await fetch('/api/copilot/confirm-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: activeConversationId,
+          toolUseId,
+          approved,
+        }),
+      });
+    } catch {
+      /* ignore fetch errors */
+    } finally {
+      setPendingConfirmation(null);
+    }
+  }, [activeConversationId]);
+
+  const registerApplyHandler = useCallback((handler: ApplyHandler | null) => {
+    applyHandlerRef.current = handler;
+    setApplyToPage(() => handler);
   }, []);
 
   const sendMessage = useCallback(async (text: string) => {
@@ -257,6 +301,14 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
             }]);
             break;
 
+          case 'confirmation_required':
+            setPendingConfirmation({
+              toolName: data.tool as string,
+              toolArgs: data.args as Record<string, unknown>,
+              toolUseId: data.toolUseId as string,
+            });
+            break;
+
           case 'done':
             loadConversations();
             break;
@@ -329,6 +381,10 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
     submitFeedback,
     pageContext,
     setPageContext,
+    pendingConfirmation,
+    confirmAction,
+    applyToPage,
+    registerApplyHandler,
   };
 
   return (

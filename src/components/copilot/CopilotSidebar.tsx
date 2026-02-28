@@ -5,6 +5,8 @@ import { X, Plus, MessageSquare, ChevronLeft, Trash2 } from 'lucide-react';
 import { useCopilot } from './CopilotProvider';
 import { ConversationInput } from './ConversationInput';
 import { CopilotMessage as CopilotMessageComponent } from './CopilotMessage';
+import { ConversationHeader } from './ConversationHeader';
+import { ConfirmationDialog } from './ConfirmationDialog';
 
 export function CopilotSidebar() {
   const {
@@ -21,7 +23,12 @@ export function CopilotSidebar() {
     sendMessage,
     cancelStream,
     submitFeedback,
+    pageContext,
+    pendingConfirmation,
+    confirmAction,
   } = useCopilot();
+
+  const activeConversation = conversations.find(c => c.id === activeConversationId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasLoadedRef = useRef(false);
@@ -52,28 +59,28 @@ export function CopilotSidebar() {
       {/* Panel */}
       <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 z-50 flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-          {activeConversationId ? (
-            <button
-              onClick={startNewConversation}
-              className="flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Back
-            </button>
-          ) : (
+        {activeConversationId ? (
+          <ConversationHeader
+            title={activeConversation?.title}
+            entityType={pageContext?.entityType}
+            entityTitle={pageContext?.entityTitle}
+            onBack={startNewConversation}
+            onNewThread={startNewConversation}
+          />
+        ) : (
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
               AI Co-pilot
             </h2>
-          )}
-          <button
-            onClick={close}
-            className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
-            aria-label="Close co-pilot"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+            <button
+              onClick={close}
+              className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+              aria-label="Close co-pilot"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         {activeConversationId ? (
@@ -94,6 +101,14 @@ export function CopilotSidebar() {
               )}
               <div ref={messagesEndRef} />
             </div>
+            {pendingConfirmation && (
+              <ConfirmationDialog
+                toolName={pendingConfirmation.toolName}
+                toolArgs={pendingConfirmation.toolArgs}
+                toolUseId={pendingConfirmation.toolUseId}
+                onConfirm={confirmAction}
+              />
+            )}
             <div className="border-t border-zinc-200 dark:border-zinc-800 px-4 py-3">
               <ConversationInput
                 onSend={sendMessage}

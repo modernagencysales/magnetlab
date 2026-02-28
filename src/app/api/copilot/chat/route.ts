@@ -191,8 +191,10 @@ export async function POST(req: NextRequest) {
               const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string }> = [];
 
               for (const block of toolUseBlocks) {
-                // Check if confirmation required
-                if (actionRequiresConfirmation(block.name)) {
+                const needsConfirmation = actionRequiresConfirmation(block.name);
+
+                // Send confirmation_required event if needed
+                if (needsConfirmation) {
                   send('confirmation_required', {
                     tool: block.name,
                     args: block.input,
@@ -210,24 +212,48 @@ export async function POST(req: NextRequest) {
                   tool_args: block.input as Record<string, unknown>,
                 });
 
-                // Execute the action
-                const result = await executeAction(actionCtx, block.name, block.input as Record<string, unknown>);
+                if (needsConfirmation) {
+                  // Do NOT execute — wait for user confirmation
+                  const pendingResult = {
+                    success: false,
+                    error: 'Action requires user confirmation. Waiting for approval.',
+                    awaiting_confirmation: true,
+                  };
 
-                send('tool_result', { name: block.name, result, id: block.id });
+                  send('tool_result', { name: block.name, result: pendingResult, id: block.id });
 
-                // Save tool result message
-                await supabase.from('copilot_messages').insert({
-                  conversation_id: conversationId,
-                  role: 'tool_result',
-                  tool_name: block.name,
-                  tool_result: result,
-                });
+                  await supabase.from('copilot_messages').insert({
+                    conversation_id: conversationId,
+                    role: 'tool_result',
+                    tool_name: block.name,
+                    tool_result: pendingResult,
+                  });
 
-                toolResults.push({
-                  type: 'tool_result',
-                  tool_use_id: block.id,
-                  content: JSON.stringify(result),
-                });
+                  toolResults.push({
+                    type: 'tool_result',
+                    tool_use_id: block.id,
+                    content: JSON.stringify(pendingResult),
+                  });
+                } else {
+                  // Execute the action
+                  const result = await executeAction(actionCtx, block.name, block.input as Record<string, unknown>);
+
+                  send('tool_result', { name: block.name, result, id: block.id });
+
+                  // Save tool result message
+                  await supabase.from('copilot_messages').insert({
+                    conversation_id: conversationId,
+                    role: 'tool_result',
+                    tool_name: block.name,
+                    tool_result: result,
+                  });
+
+                  toolResults.push({
+                    type: 'tool_result',
+                    tool_use_id: block.id,
+                    content: JSON.stringify(result),
+                  });
+                }
               }
 
               // Build next iteration messages: one assistant message with all content blocks,
