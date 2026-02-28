@@ -316,6 +316,37 @@ export interface ContentIdea {
   updated_at: string;
 }
 
+// Visual Engine types
+export type ImageStyle = 'abstract' | 'illustration' | 'photography' | 'minimal';
+export type SlideType = 'title' | 'quote' | 'stat' | 'list' | 'cta';
+export type CarouselTheme = 'brand' | 'dark' | 'light';
+export type ImageGenerationStatus = 'generating' | 'ready' | 'failed';
+
+export interface CarouselSlide {
+  type: SlideType;
+  heading: string;
+  body: string;
+  image_url: string;
+  source_image_url?: string;
+}
+
+export interface CarouselData {
+  slides: CarouselSlide[];
+  theme: CarouselTheme;
+}
+
+export interface ImageTemplate {
+  id: string;
+  user_id: string;
+  name: string;
+  slide_type: SlideType;
+  html_template: string;
+  css_styles: string | null;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PipelinePost {
   id: string;
   user_id: string;
@@ -347,6 +378,9 @@ export interface PipelinePost {
   heyreach_campaign_id: string | null;
   last_engagement_scrape_at: string | null;
   engagement_scrape_count: number;
+  image_urls: string[];
+  carousel_data: CarouselData | null;
+  image_generation_status: ImageGenerationStatus | null;
   broadcast_group_id?: string | null;
   team_profile_id?: string | null;
   created_at: string;
