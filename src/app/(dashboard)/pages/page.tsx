@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Globe, ExternalLink, Edit, Plus, Loader2, Eye, EyeOff, Users, Upload, Trash2, BookOpen } from 'lucide-react';
+import { Globe, ExternalLink, Edit, Plus, Loader2, Upload, Trash2 } from 'lucide-react';
+import PagesListClient from '@/components/pages/PagesListClient';
+import type { PageListItem } from '@/components/pages/PagesListClient';
 
 interface FunnelPage {
   id: string;
@@ -40,6 +42,8 @@ interface FunnelStats {
     total: number;
     qualified: number;
     unqualified: number;
+    views: number;
+    conversionRate: number;
   };
 }
 
@@ -62,23 +66,6 @@ interface ExternalResourceSummary {
 
 type TabType = 'pages' | 'libraries' | 'resources';
 
-function StatusBadge({ isPublished }: { isPublished: boolean }) {
-  if (isPublished) {
-    return (
-      <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
-        <Eye className="h-3 w-3" />
-        Published
-      </span>
-    );
-  }
-  return (
-    <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-      <EyeOff className="h-3 w-3" />
-      Draft
-    </span>
-  );
-}
-
 function getEditLink(page: FunnelPage): string {
   if (page.target_type === 'library' && page.library_id) {
     return `/assets/libraries/${page.library_id}`;
@@ -90,16 +77,6 @@ function getEditLink(page: FunnelPage): string {
     return `/magnets/${page.lead_magnet_id}?tab=funnel`;
   }
   return '#';
-}
-
-function getTargetLabel(page: FunnelPage): string {
-  if (page.target_type === 'library' && page.libraries) {
-    return `${page.libraries.icon} ${page.libraries.name}`;
-  }
-  if (page.target_type === 'external_resource' && page.external_resources) {
-    return `${page.external_resources.icon} ${page.external_resources.title}`;
-  }
-  return page.lead_magnets?.title || 'Lead Magnet';
 }
 
 export default function PagesPage() {
@@ -169,6 +146,47 @@ export default function PagesPage() {
       setDeletingResource(null);
     }
   }
+
+  const pageListItems: PageListItem[] = useMemo(() => {
+    return pages.map((page) => {
+      const pageStats = stats[page.id];
+      const username = page.users?.username || user?.username || null;
+
+      let connectedName = page.lead_magnets?.title || 'Lead Magnet';
+      let connectedIcon: string | null = null;
+      let connectedId: string | null = page.lead_magnet_id;
+      let targetType: PageListItem['targetType'] = 'lead_magnet';
+
+      if (page.target_type === 'library' && page.libraries) {
+        targetType = 'library';
+        connectedName = page.libraries.name;
+        connectedIcon = page.libraries.icon;
+        connectedId = page.library_id;
+      } else if (page.target_type === 'external_resource' && page.external_resources) {
+        targetType = 'external_resource';
+        connectedName = page.external_resources.title;
+        connectedIcon = page.external_resources.icon;
+        connectedId = page.external_resource_id;
+      }
+
+      return {
+        id: page.id,
+        slug: page.slug,
+        headline: page.optin_headline,
+        isPublished: page.is_published,
+        createdAt: page.created_at,
+        targetType,
+        connectedName,
+        connectedIcon,
+        connectedId,
+        editLink: getEditLink(page),
+        viewUrl: page.is_published && username ? `/p/${username}/${page.slug}` : null,
+        views: pageStats?.views ?? 0,
+        leads: pageStats?.total ?? 0,
+        conversionRate: pageStats?.conversionRate ?? 0,
+      };
+    });
+  }, [pages, stats, user]);
 
   if (loading) {
     return (
@@ -294,69 +312,7 @@ export default function PagesPage() {
               </div>
             </div>
           ) : (
-            <div className="grid gap-4">
-              {pages.map((page) => {
-                const pageStats = stats[page.id];
-                const hasLeads = pageStats && pageStats.total > 0;
-
-                return (
-                  <div
-                    key={page.id}
-                    className="flex items-center justify-between rounded-lg border bg-card p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                        {page.target_type === 'library' ? (
-                          <BookOpen className="h-5 w-5 text-primary" />
-                        ) : (
-                          <Globe className="h-5 w-5 text-primary" />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-medium">{page.optin_headline}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {getTargetLabel(page)} · /{page.slug}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {hasLeads && (
-                        <Link
-                          href={`/leads?funnelId=${page.id}`}
-                          className="flex items-center gap-1 rounded-full bg-violet-100 px-2 py-1 text-xs font-medium text-violet-700 dark:bg-violet-900 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-800"
-                        >
-                          <Users className="h-3 w-3" />
-                          {pageStats.total} leads
-                        </Link>
-                      )}
-
-                      <StatusBadge isPublished={page.is_published} />
-
-                      <Link
-                        href={getEditLink(page)}
-                        className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-                      >
-                        <Edit className="h-4 w-4" />
-                        Edit
-                      </Link>
-
-                      {page.is_published && (page.users?.username || user?.username) && (
-                        <a
-                          href={`/p/${page.users?.username || user?.username}/${page.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          View
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <PagesListClient items={pageListItems} />
           )}
         </>
       )}

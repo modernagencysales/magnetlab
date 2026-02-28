@@ -1,11 +1,10 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { Plus, Calendar, Eye, Globe } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
-import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
-import { formatDate } from '@/lib/utils';
+import MagnetsListClient, { type MagnetListItem } from '@/components/magnets/MagnetsListClient';
 
 export const metadata = {
   title: 'Lead Magnets | MagnetLab',
@@ -22,13 +21,18 @@ function MagnetsSkeleton() {
         </div>
         <div className="h-10 w-32 animate-pulse rounded-lg bg-muted" />
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-xl border bg-card p-5">
-            <div className="mb-2 h-4 w-24 animate-pulse rounded bg-muted" />
-            <div className="mb-2 h-6 w-full animate-pulse rounded bg-muted" />
-            <div className="mb-4 h-5 w-40 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+      <div className="mb-4 flex gap-3">
+        <div className="h-9 w-64 animate-pulse rounded-lg bg-muted" />
+        <div className="h-9 w-48 animate-pulse rounded-lg bg-muted" />
+        <div className="h-9 w-28 animate-pulse rounded-lg bg-muted" />
+      </div>
+      <div className="rounded-xl border bg-card">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 border-b px-4 py-3 last:border-0">
+            <div className="h-4 flex-1 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-12 animate-pulse rounded bg-muted" />
           </div>
         ))}
       </div>
@@ -52,7 +56,7 @@ async function MagnetsContent() {
 
   let magnetsQuery = supabase
     .from('lead_magnets')
-    .select('id, user_id, title, archetype, concept, status, created_at, updated_at')
+    .select('id, user_id, title, archetype, status, created_at')
     .order('created_at', { ascending: false });
   magnetsQuery = applyScope(magnetsQuery, scope);
 
@@ -70,7 +74,6 @@ async function MagnetsContent() {
   const leadMagnets = leadMagnetsRes.data || [];
   const funnels = (funnelsRes.data || []) as FunnelInfo[];
 
-  // Build funnel lookup by lead_magnet_id
   const funnelByMagnet = new Map<string, FunnelInfo>();
   for (const f of funnels) {
     funnelByMagnet.set(f.lead_magnet_id, f);
@@ -102,13 +105,33 @@ async function MagnetsContent() {
     }
   }
 
+  // Shape data for client component
+  const items: MagnetListItem[] = leadMagnets.map((lm) => {
+    const funnel = funnelByMagnet.get(lm.id);
+    const views = funnel ? (viewsByFunnel.get(funnel.id) || 0) : 0;
+    const leads = funnel ? (leadsByFunnel.get(funnel.id) || 0) : 0;
+
+    return {
+      id: lm.id,
+      title: lm.title,
+      archetype: lm.archetype,
+      status: lm.status,
+      createdAt: lm.created_at,
+      isLive: funnel?.is_published ?? false,
+      hasFunnel: !!funnel,
+      views,
+      leads,
+      conversionRate: views > 0 ? (leads / views) * 100 : null,
+    };
+  });
+
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Lead Magnets</h1>
           <p className="mt-1 text-muted-foreground">
-            {leadMagnets.length} lead magnet{leadMagnets.length !== 1 ? 's' : ''} created
+            {items.length} lead magnet{items.length !== 1 ? 's' : ''} created
           </p>
         </div>
         <Link
@@ -120,76 +143,8 @@ async function MagnetsContent() {
         </Link>
       </div>
 
-      {leadMagnets.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {leadMagnets.map((lm) => {
-            const funnel = funnelByMagnet.get(lm.id);
-
-            return (
-              <Link
-                key={lm.id}
-                href={`/magnets/${lm.id}`}
-                className="group rounded-xl border bg-card p-5 transition-all hover:border-primary hover:shadow-lg"
-              >
-                <div className="mb-2 text-xs font-medium text-muted-foreground">
-                  {ARCHETYPE_NAMES[lm.archetype as keyof typeof ARCHETYPE_NAMES]}
-                </div>
-
-                <h3 className="mb-2 font-semibold group-hover:text-primary">
-                  {lm.title}
-                </h3>
-
-                <div className="mb-3 flex items-center gap-2 flex-wrap">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      lm.status === 'published'
-                        ? 'bg-green-500/10 text-green-600'
-                        : lm.status === 'scheduled'
-                        ? 'bg-blue-500/10 text-blue-600'
-                        : 'bg-secondary text-secondary-foreground'
-                    }`}
-                  >
-                    {lm.status}
-                  </span>
-                  {funnel && (
-                    <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                      funnel.is_published
-                        ? 'bg-emerald-500/10 text-emerald-600'
-                        : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
-                    }`}>
-                      <Globe className="h-3 w-3" />
-                      {funnel.is_published ? 'Live' : 'Draft page'}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {formatDate(lm.created_at)}
-                  </span>
-                  {lm.concept?.whyNowHook && (
-                    <span className="flex items-center gap-1 truncate">
-                      <Eye className="h-3 w-3" />
-                      <span className="truncate max-w-[120px]">{lm.concept.whyNowHook}</span>
-                    </span>
-                  )}
-                  {funnel && (() => {
-                    const funnelViews = viewsByFunnel.get(funnel.id) || 0;
-                    const funnelLeadCount = leadsByFunnel.get(funnel.id) || 0;
-                    if (funnelViews === 0) return null;
-                    const rate = ((funnelLeadCount / funnelViews) * 100).toFixed(1);
-                    return (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        {rate}% conversion
-                      </span>
-                    );
-                  })()}
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+      {items.length > 0 ? (
+        <MagnetsListClient items={items} totalCount={items.length} />
       ) : (
         <div className="rounded-xl border bg-card p-12 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
