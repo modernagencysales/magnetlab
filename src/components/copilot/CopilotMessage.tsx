@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { ThumbsUp, ThumbsDown, Wrench } from 'lucide-react';
 import type { CopilotMessage as CopilotMessageType } from './CopilotProvider';
 
@@ -34,13 +36,50 @@ export function CopilotMessage({ message, onFeedback }: CopilotMessageProps) {
   return (
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
       <div
-        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
           isUser
-            ? 'bg-violet-600 text-white'
+            ? 'bg-violet-600 text-white whitespace-pre-wrap'
             : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
         }`}
       >
-        {message.content}
+        {isUser ? (
+          message.content
+        ) : (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+              ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
+              li: ({ children }) => <li className="mb-0.5">{children}</li>,
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+              code: ({ node, className, children, ...props }) => {
+                const isBlock = className?.includes('language-') || (node?.position && node.position.start.line !== node.position.end.line);
+                if (isBlock) {
+                  return (
+                    <code className="block bg-gray-800 text-gray-100 rounded p-2 text-xs overflow-x-auto mb-2" {...props}>
+                      {children}
+                    </code>
+                  );
+                }
+                return (
+                  <code className="bg-gray-100 px-1 py-0.5 rounded text-sm" {...props}>
+                    {children}
+                  </code>
+                );
+              },
+              pre: ({ children }) => <pre className="mb-2">{children}</pre>,
+              a: ({ children, href }) => (
+                <a href={href} className="text-violet-600 underline" target="_blank" rel="noopener noreferrer">
+                  {children}
+                </a>
+              ),
+              h3: ({ children }) => <h3 className="font-semibold text-sm mt-2 mb-1">{children}</h3>,
+            }}
+          >
+            {message.content}
+          </ReactMarkdown>
+        )}
       </div>
       {/* Feedback buttons for assistant messages */}
       {message.role === 'assistant' && message.content && (

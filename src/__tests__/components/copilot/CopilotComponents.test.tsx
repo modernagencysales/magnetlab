@@ -5,6 +5,53 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 
+// Mock react-markdown (ESM-only, can't be transformed by Jest)
+jest.mock('react-markdown', () => {
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: ({ children, components }: { children: string; components?: Record<string, React.ComponentType<Record<string, unknown>>> }) => {
+      // Simple markdown-like rendering that uses the component overrides
+      if (!components) return React.createElement('div', null, children);
+
+      // Parse bold: **text** → <strong>text</strong>
+      let content: React.ReactNode = children;
+      const boldMatch = children.match(/\*\*(.+?)\*\*/);
+      if (boldMatch && components.strong) {
+        const Strong = components.strong;
+        const parts = children.split(/\*\*(.+?)\*\*/);
+        content = React.createElement(React.Fragment, null,
+          parts[0],
+          React.createElement(Strong, { key: 'bold' }, parts[1]),
+          parts[2] || '',
+        );
+      }
+
+      // Parse code blocks: ```\n...\n``` → <pre><code>...</code></pre>
+      const codeBlockMatch = children.match(/```\n?([\s\S]*?)\n?```/);
+      if (codeBlockMatch && components.code) {
+        const Code = components.code;
+        const Pre = components.pre || 'pre';
+        content = React.createElement(Pre, { key: 'pre' },
+          React.createElement(Code, { node: { position: { start: { line: 1 }, end: { line: 3 } } }, className: 'language-' }, codeBlockMatch[1]),
+        );
+      }
+
+      const P = components.p || 'p';
+      // Wrap in a paragraph if we're doing inline content (not code block)
+      if (!codeBlockMatch) {
+        return React.createElement(P, null, content);
+      }
+      return React.createElement('div', null, content);
+    },
+  };
+});
+
+jest.mock('remark-gfm', () => ({
+  __esModule: true,
+  default: () => {},
+}));
+
 // Mock lucide-react icons used by both components
 jest.mock('lucide-react', () => ({
   Send: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-send" {...props} />,
@@ -231,5 +278,45 @@ describe('CopilotMessage', () => {
     render(<CopilotMessage message={msg} onFeedback={mockFeedback} />);
     fireEvent.click(screen.getByLabelText('Bad response'));
     expect(mockFeedback).toHaveBeenCalledWith('negative');
+  });
+
+  it('renders markdown bold in assistant messages', () => {
+    const msg: CopilotMessageType = {
+      id: '8',
+      role: 'assistant',
+      content: 'This is **bold** text',
+      createdAt: new Date().toISOString(),
+    };
+    const { container } = render(<CopilotMessage message={msg} onFeedback={mockFeedback} />);
+    const strong = container.querySelector('strong');
+    expect(strong).toBeInTheDocument();
+    expect(strong?.textContent).toBe('bold');
+  });
+
+  it('renders markdown code blocks in assistant messages', () => {
+    const msg: CopilotMessageType = {
+      id: '9',
+      role: 'assistant',
+      content: '```\nconst x = 1;\n```',
+      createdAt: new Date().toISOString(),
+    };
+    const { container } = render(<CopilotMessage message={msg} onFeedback={mockFeedback} />);
+    const code = container.querySelector('code');
+    expect(code).toBeInTheDocument();
+    expect(code?.textContent).toContain('const x = 1;');
+  });
+
+  it('does not render markdown in user messages', () => {
+    const msg: CopilotMessageType = {
+      id: '10',
+      role: 'user',
+      content: 'This is **bold** text',
+      createdAt: new Date().toISOString(),
+    };
+    const { container } = render(<CopilotMessage message={msg} onFeedback={mockFeedback} />);
+    const strong = container.querySelector('strong');
+    expect(strong).not.toBeInTheDocument();
+    // The raw markdown syntax should be visible as plain text
+    expect(screen.getByText('This is **bold** text')).toBeInTheDocument();
   });
 });
