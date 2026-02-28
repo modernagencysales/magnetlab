@@ -1,4 +1,5 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
+import { extractHook } from './hook-utils';
 
 // ============================================
 // TYPES
@@ -15,17 +16,8 @@ export interface HookScoreResult {
   suggestions: string[];
 }
 
-// ============================================
-// HOOK EXTRACTION
-// ============================================
-
-/**
- * Extract the hook (first 5 lines) from a post.
- */
-export function extractHook(content: string): string {
-  const lines = content.split('\n').filter(l => l.trim().length > 0);
-  return lines.slice(0, 5).join('\n');
-}
+// Re-export for backward compatibility
+export { extractHook } from './hook-utils';
 
 // ============================================
 // AI HOOK SCORING

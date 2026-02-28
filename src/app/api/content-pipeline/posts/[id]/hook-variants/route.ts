@@ -47,11 +47,15 @@ export async function POST(
       selected: false,
     }));
 
-    // Merge with existing variations (keep existing, append new)
+    // Merge with existing variations, capping hook variants at 9
+    const MAX_HOOK_VARIANTS = 9;
     const existingVariations: PostVariation[] = Array.isArray(post.variations)
       ? post.variations
       : [];
-    const mergedVariations = [...existingVariations, ...variations];
+    const existingHookVariants = existingVariations.filter(v => v.id?.startsWith('hook-variant-'));
+    const otherVariations = existingVariations.filter(v => !v.id?.startsWith('hook-variant-'));
+    const allHookVariants = [...existingHookVariants, ...variations].slice(-MAX_HOOK_VARIANTS);
+    const mergedVariations = [...otherVariations, ...allHookVariants];
 
     // Save variations back to the post
     const { error: updateError } = await supabase

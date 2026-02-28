@@ -4,7 +4,7 @@
 
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import type { PipelinePost } from '@/lib/types/content-pipeline';
 
 // Mock TipTap editor (won't work in jsdom)
@@ -153,67 +153,84 @@ describe('PostDetailModal', () => {
     });
   });
 
-  it('renders the editor (TipTap mock textarea)', () => {
+  it('renders the editor (TipTap mock textarea)', async () => {
     render(<PostDetailModal {...defaultProps} />);
-    const textarea = screen.getByTestId('tiptap-mock');
-    expect(textarea).toBeInTheDocument();
-    expect(textarea).toHaveValue('Test post content for the editor.');
+    await waitFor(() => {
+      expect(screen.getByTestId('tiptap-mock')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('tiptap-mock')).toHaveValue('Test post content for the editor.');
   });
 
-  it('renders the LinkedIn preview', () => {
+  it('renders the LinkedIn preview', async () => {
     render(<PostDetailModal {...defaultProps} />);
-    const preview = screen.getByTestId('linkedin-preview');
-    expect(preview).toBeInTheDocument();
-    expect(preview).toHaveTextContent('Test post content for the editor.');
+    await waitFor(() => {
+      expect(screen.getByTestId('linkedin-preview')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('linkedin-preview')).toHaveTextContent('Test post content for the editor.');
   });
 
-  it('renders Hook Only toggle', () => {
+  it('renders Hook Only toggle', async () => {
     render(<PostDetailModal {...defaultProps} />);
-    const toggle = screen.getByTestId('hook-only-toggle');
-    expect(toggle).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('hook-only-toggle')).toBeInTheDocument();
+    });
   });
 
-  it('renders Hook Score Panel', () => {
+  it('renders Hook Score Panel', async () => {
     render(<PostDetailModal {...defaultProps} />);
-    const panel = screen.getByTestId('hook-score-panel');
-    expect(panel).toBeInTheDocument();
-    expect(panel).toHaveTextContent('Hook Analysis');
+    await waitFor(() => {
+      expect(screen.getByTestId('hook-score-panel')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('hook-score-panel')).toHaveTextContent('Hook Analysis');
   });
 
-  it('renders action buttons (Polish, Copy, Schedule)', () => {
+  it('renders action buttons (Polish, Copy, Schedule)', async () => {
     render(<PostDetailModal {...defaultProps} />);
-    expect(screen.getByText('Polish')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Polish')).toBeInTheDocument();
+    });
     expect(screen.getByText('Copy')).toBeInTheDocument();
     expect(screen.getByText('Schedule')).toBeInTheDocument();
   });
 
-  it('shows "Publish to LinkedIn" button for draft posts', () => {
+  it('shows "Publish to LinkedIn" button for draft posts', async () => {
     render(<PostDetailModal {...defaultProps} />);
-    expect(screen.getByText('Publish to LinkedIn')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Publish to LinkedIn')).toBeInTheDocument();
+    });
   });
 
-  it('renders Device Toggle', () => {
+  it('renders Device Toggle', async () => {
     render(<PostDetailModal {...defaultProps} />);
-    expect(screen.getByTestId('device-toggle')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('device-toggle')).toBeInTheDocument();
+    });
   });
 
-  it('shows the post status badge', () => {
+  it('shows the post status badge', async () => {
     render(<PostDetailModal {...defaultProps} />);
-    expect(screen.getByTestId('status-badge')).toHaveTextContent('draft');
+    await waitFor(() => {
+      expect(screen.getByTestId('status-badge')).toHaveTextContent('draft');
+    });
   });
 
-  it('does not show "Publish to LinkedIn" for published posts', () => {
+  it('does not show "Publish to LinkedIn" for published posts', async () => {
     const publishedPost: PipelinePost = {
       ...mockPost,
       status: 'published',
       linkedin_post_id: 'li-123',
     };
     render(<PostDetailModal {...defaultProps} post={publishedPost} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tiptap-mock')).toBeInTheDocument();
+    });
     expect(screen.queryByText('Publish to LinkedIn')).not.toBeInTheDocument();
   });
 
-  it('renders the modal with dialog role', () => {
+  it('renders the modal with dialog role', async () => {
     render(<PostDetailModal {...defaultProps} />);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
   });
 });

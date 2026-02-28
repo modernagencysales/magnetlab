@@ -1,4 +1,5 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
+import { splitHookAndBody } from './hook-utils';
 
 // ============================================
 // TYPES
@@ -9,37 +10,8 @@ export interface HookVariant {
   content: string;   // Full post with new hook + original body
 }
 
-// ============================================
-// HOOK EXTRACTION
-// ============================================
-
-/**
- * Split content into hook (first 5 non-empty lines) and body (rest).
- */
-export function splitHookAndBody(content: string): { hook: string; body: string } {
-  const lines = content.split('\n');
-  const nonEmptyIndices: number[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].trim().length > 0) {
-      nonEmptyIndices.push(i);
-    }
-    if (nonEmptyIndices.length === 5) break;
-  }
-
-  if (nonEmptyIndices.length === 0) {
-    return { hook: '', body: '' };
-  }
-
-  const lastHookLineIndex = nonEmptyIndices[nonEmptyIndices.length - 1];
-  const hookLines = lines.slice(0, lastHookLineIndex + 1);
-  const bodyLines = lines.slice(lastHookLineIndex + 1);
-
-  return {
-    hook: hookLines.join('\n'),
-    body: bodyLines.join('\n'),
-  };
-}
+// Re-export for backward compatibility
+export { splitHookAndBody } from './hook-utils';
 
 // ============================================
 // AI HOOK VARIANT GENERATION
