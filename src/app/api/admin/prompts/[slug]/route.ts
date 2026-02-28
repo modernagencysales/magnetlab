@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { isSuperAdmin } from '@/lib/auth/super-admin';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { savePrompt } from '@/lib/services/prompt-registry';
+import * as adminService from '@/server/services/admin.service';
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ slug: string }> }
+  _request: Request,
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -17,30 +17,16 @@ export async function GET(
   }
 
   const { slug } = await params;
-  const supabase = createSupabaseAdminClient();
-
-  const { data: prompt, error } = await supabase
-    .from('ai_prompt_templates')
-    .select('*')
-    .eq('slug', slug)
-    .single();
-
-  if (error || !prompt) {
+  const result = await adminService.getPromptBySlug(slug);
+  if (!result) {
     return NextResponse.json({ error: 'Prompt not found' }, { status: 404 });
   }
-
-  const { data: versions } = await supabase
-    .from('ai_prompt_versions')
-    .select('*')
-    .eq('prompt_id', prompt.id)
-    .order('version', { ascending: false });
-
-  return NextResponse.json({ prompt, versions: versions ?? [] });
+  return NextResponse.json(result);
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -52,19 +38,18 @@ export async function PATCH(
 
   const { slug } = await params;
   const body = await request.json();
-
   try {
     const version = await savePrompt(
       slug,
       body.updates || {},
       session.user.email || session.user.id,
-      body.change_note
+      body.change_note,
     );
     return NextResponse.json({ version });
   } catch (err) {
     return NextResponse.json(
       { error: (err as Error).message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

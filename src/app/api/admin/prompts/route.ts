@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { isSuperAdmin } from '@/lib/auth/super-admin';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import * as adminService from '@/server/services/admin.service';
 
 export async function GET() {
   const session = await auth();
@@ -12,16 +12,6 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from('ai_prompt_templates')
-    .select('slug, name, category, description, model, is_active, updated_at')
-    .order('category')
-    .order('name');
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
+  const data = await adminService.listPrompts();
   return NextResponse.json(data);
 }

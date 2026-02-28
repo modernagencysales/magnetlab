@@ -4,15 +4,13 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { libraryItemFromRow, type LibraryItemRow } from '@/lib/types/library';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
+import * as librariesService from '@/server/services/libraries.service';
 
 interface RouteParams {
   params: Promise<{ id: string; itemId: string }>;
 }
 
-// PUT - Update library item
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
@@ -28,63 +26,26 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const body = await request.json();
     const { iconOverride, sortOrder, isFeatured } = body;
 
-    const supabase = createSupabaseAdminClient();
+    const result = await librariesService.updateItem(session.user.id, libraryId, itemId, {
+      iconOverride,
+      sortOrder,
+      isFeatured,
+    });
 
-    // Verify library ownership
-    const { data: library } = await supabase
-      .from('libraries')
-      .select('id')
-      .eq('id', libraryId)
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (!library) {
-      return ApiErrors.notFound('Library');
-    }
-
-    // Verify item exists in library
-    const { data: existing } = await supabase
-      .from('library_items')
-      .select('id')
-      .eq('id', itemId)
-      .eq('library_id', libraryId)
-      .single();
-
-    if (!existing) {
-      return ApiErrors.notFound('Library item');
-    }
-
-    // Build update object
-    const updateData: Record<string, unknown> = {};
-    if (iconOverride !== undefined) updateData.icon_override = iconOverride;
-    if (sortOrder !== undefined) updateData.sort_order = sortOrder;
-    if (isFeatured !== undefined) updateData.is_featured = isFeatured;
-
-    if (Object.keys(updateData).length === 0) {
-      return ApiErrors.validationError('No fields to update');
-    }
-
-    const { data, error } = await supabase
-      .from('library_items')
-      .update(updateData)
-      .eq('id', itemId)
-      .select()
-      .single();
-
-    if (error) {
-      logApiError('libraries/items/update', error, { userId: session.user.id, libraryId, itemId });
+    if (!result.success) {
+      if (result.error === 'not_found') return ApiErrors.notFound('Library item');
+      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'No fields to update');
       return ApiErrors.databaseError('Failed to update library item');
     }
 
-    return NextResponse.json({ item: libraryItemFromRow(data as LibraryItemRow) });
+    return NextResponse.json({ item: result.item });
   } catch (error) {
     logApiError('libraries/items/update', error);
     return ApiErrors.internalError('Failed to update library item');
   }
 }
 
-// DELETE - Remove item from library
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(_request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -96,28 +57,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('Invalid ID format');
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    // Verify library ownership
-    const { data: library } = await supabase
-      .from('libraries')
-      .select('id')
-      .eq('id', libraryId)
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (!library) {
-      return ApiErrors.notFound('Library');
-    }
-
-    const { error } = await supabase
-      .from('library_items')
-      .delete()
-      .eq('id', itemId)
-      .eq('library_id', libraryId);
-
-    if (error) {
-      logApiError('libraries/items/delete', error, { userId: session.user.id, libraryId, itemId });
+    const result = await librariesService.deleteItem(session.user.id, libraryId, itemId);
+    if (!result.success) {
+      if (result.error === 'not_found') return ApiErrors.notFound('Library item');
       return ApiErrors.databaseError('Failed to remove item from library');
     }
 

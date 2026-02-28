@@ -5,77 +5,45 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { requireTeamScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { updateBroadcastSchema } from '@/lib/types/email-system';
-import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
-
-const BROADCAST_COLUMNS =
-  'id, team_id, user_id, subject, body, status, audience_filter, recipient_count, sent_at, created_at, updated_at';
+import * as emailService from '@/server/services/email.service';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// GET — Get a single broadcast with team ownership check
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(_request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return ApiErrors.unauthorized();
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id } = await params;
+    if (!isValidUUID(id)) return ApiErrors.validationError('Invalid broadcast ID format');
 
-    if (!isValidUUID(id)) {
-      return ApiErrors.validationError('Invalid broadcast ID format');
-    }
-
-    const supabase = createSupabaseAdminClient();
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) {
-      return ApiErrors.validationError('No team found for this user');
-    }
+    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
 
-    const teamId = scope.teamId;
-
-    const { data: broadcast, error } = await supabase
-      .from('email_broadcasts')
-      .select(BROADCAST_COLUMNS)
-      .eq('id', id)
-      .eq('team_id', teamId)
-      .maybeSingle();
-
-    if (error) {
-      logApiError('email/broadcasts/get', error, { id, teamId });
+    const result = await emailService.getBroadcast(scope.teamId, id);
+    if (!result.success) {
+      if (result.error === 'not_found') return ApiErrors.notFound('Broadcast');
       return ApiErrors.databaseError('Failed to get broadcast');
     }
-
-    if (!broadcast) {
-      return ApiErrors.notFound('Broadcast');
-    }
-
-    return NextResponse.json({ broadcast });
+    return NextResponse.json({ broadcast: result.broadcast });
   } catch (error) {
     logApiError('email/broadcasts/get', error);
     return ApiErrors.internalError('Failed to get broadcast');
   }
 }
 
-// PUT — Update a draft broadcast (subject, body, audience_filter)
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return ApiErrors.unauthorized();
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id } = await params;
-
-    if (!isValidUUID(id)) {
-      return ApiErrors.validationError('Invalid broadcast ID format');
-    }
+    if (!isValidUUID(id)) return ApiErrors.validationError('Invalid broadcast ID format');
 
     const body = await request.json();
     const parsed = updateBroadcastSchema.safeParse(body);
@@ -86,145 +54,48 @@ export async function PUT(request: Request, { params }: RouteParams) {
       );
     }
 
-    const supabase = createSupabaseAdminClient();
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) {
-      return ApiErrors.validationError('No team found for this user');
-    }
+    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
 
-    const teamId = scope.teamId;
-
-    // Verify broadcast exists, belongs to team, and is a draft
-    // Also fetch subject/body for edit diff comparison
-    const { data: existing, error: findError } = await supabase
-      .from('email_broadcasts')
-      .select('id, status, subject, body')
-      .eq('id', id)
-      .eq('team_id', teamId)
-      .maybeSingle();
-
-    if (findError) {
-      logApiError('email/broadcasts/update/find', findError, { id, teamId });
-      return ApiErrors.databaseError('Failed to look up broadcast');
-    }
-
-    if (!existing) {
-      return ApiErrors.notFound('Broadcast');
-    }
-
-    if (existing.status !== 'draft') {
-      return ApiErrors.validationError('Only draft broadcasts can be updated');
-    }
-
-    // Build update data from validated fields
-    const updateData: Record<string, unknown> = {};
-    if (parsed.data.subject !== undefined) updateData.subject = parsed.data.subject;
-    if (parsed.data.body !== undefined) updateData.body = parsed.data.body;
-    if (parsed.data.audience_filter !== undefined) updateData.audience_filter = parsed.data.audience_filter;
-
-    const { data: broadcast, error } = await supabase
-      .from('email_broadcasts')
-      .update(updateData)
-      .eq('id', id)
-      .eq('team_id', teamId)
-      .select(BROADCAST_COLUMNS)
-      .single();
-
-    if (error) {
-      logApiError('email/broadcasts/update', error, { id, teamId });
+    const result = await emailService.updateBroadcast(
+      scope.teamId,
+      id,
+      {
+        subject: parsed.data.subject,
+        body: parsed.data.body,
+        audience_filter: parsed.data.audience_filter,
+      },
+      { captureEdits: true }
+    );
+    if (!result.success) {
+      if (result.error === 'not_found') return ApiErrors.notFound('Broadcast');
+      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to update broadcast');
     }
-
-    // Capture edits with async classification (never blocks the response)
-    try {
-      if (parsed.data.subject && existing.subject) {
-        captureAndClassifyEdit(supabase, {
-          teamId,
-          profileId: null,
-          contentType: 'email',
-          contentId: id,
-          fieldName: 'subject',
-          originalText: existing.subject,
-          editedText: parsed.data.subject,
-        }).catch(() => {});
-      }
-
-      if (parsed.data.body && existing.body) {
-        captureAndClassifyEdit(supabase, {
-          teamId,
-          profileId: null,
-          contentType: 'email',
-          contentId: id,
-          fieldName: 'body',
-          originalText: existing.body,
-          editedText: parsed.data.body,
-        }).catch(() => {});
-      }
-    } catch {
-      // Edit capture must never affect the save flow
-    }
-
-    return NextResponse.json({ broadcast });
+    return NextResponse.json({ broadcast: result.broadcast });
   } catch (error) {
     logApiError('email/broadcasts/update', error);
     return ApiErrors.internalError('Failed to update broadcast');
   }
 }
 
-// DELETE — Delete a draft broadcast
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(_request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return ApiErrors.unauthorized();
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id } = await params;
+    if (!isValidUUID(id)) return ApiErrors.validationError('Invalid broadcast ID format');
 
-    if (!isValidUUID(id)) {
-      return ApiErrors.validationError('Invalid broadcast ID format');
-    }
-
-    const supabase = createSupabaseAdminClient();
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) {
-      return ApiErrors.validationError('No team found for this user');
-    }
+    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
 
-    const teamId = scope.teamId;
-
-    // Verify broadcast exists, belongs to team, and is a draft
-    const { data: existing, error: findError } = await supabase
-      .from('email_broadcasts')
-      .select('id, status')
-      .eq('id', id)
-      .eq('team_id', teamId)
-      .maybeSingle();
-
-    if (findError) {
-      logApiError('email/broadcasts/delete/find', findError, { id, teamId });
-      return ApiErrors.databaseError('Failed to look up broadcast');
-    }
-
-    if (!existing) {
-      return ApiErrors.notFound('Broadcast');
-    }
-
-    if (existing.status !== 'draft') {
-      return ApiErrors.validationError('Only draft broadcasts can be deleted');
-    }
-
-    const { error } = await supabase
-      .from('email_broadcasts')
-      .delete()
-      .eq('id', id)
-      .eq('team_id', teamId);
-
-    if (error) {
-      logApiError('email/broadcasts/delete', error, { id, teamId });
+    const result = await emailService.deleteBroadcast(scope.teamId, id);
+    if (!result.success) {
+      if (result.error === 'not_found') return ApiErrors.notFound('Broadcast');
+      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to delete broadcast');
     }
-
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     logApiError('email/broadcasts/delete', error);

@@ -1,60 +1,20 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { ApiErrors, logApiError } from '@/lib/api/errors';
-import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { getDataScope } from '@/lib/utils/team-context';
+import { ApiErrors } from '@/lib/api/errors';
+import * as funnelsService from '@/server/services/funnels.service';
 
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return ApiErrors.unauthorized();
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const scope = await getDataScope(session.user.id);
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await applyScope(
-      supabase
-        .from('funnel_pages')
-        .select(`
-          id,
-          slug,
-          optin_headline,
-          is_published,
-          published_at,
-          created_at,
-          target_type,
-          lead_magnet_id,
-          library_id,
-          external_resource_id,
-          users (
-            username
-          ),
-          lead_magnets (
-            title
-          ),
-          libraries (
-            name,
-            icon
-          ),
-          external_resources (
-            title,
-            icon
-          )
-        `)
-        .eq('is_variant', false),
-      scope
-    ).order('created_at', { ascending: false });
-
-    if (error) {
-      logApiError('funnel/all', error, { userId: session.user.id });
-      return ApiErrors.databaseError('Failed to fetch pages');
-    }
-
-    return NextResponse.json({ funnels: data });
+    const funnels = await funnelsService.getAllFunnels(scope);
+    return NextResponse.json({ funnels });
   } catch (error) {
-    logApiError('funnel/all', error);
-    return ApiErrors.internalError('Failed to fetch pages');
+    const status = funnelsService.getStatusCode(error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
   }
 }

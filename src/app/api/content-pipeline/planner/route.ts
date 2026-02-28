@@ -1,78 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-
-import { logError } from '@/lib/utils/logger';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
+import * as cpPlannerService from '@/server/services/cp-planner.service';
 
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from('cp_week_plans')
-      .select('id, user_id, week_start_date, posts_per_week, pillar_moments_pct, pillar_teaching_pct, pillar_human_pct, pillar_collab_pct, planned_posts, status, created_at, updated_at')
-      .eq('user_id', session.user.id)
-      .order('week_start_date', { ascending: false })
-      .limit(12);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ plans: data || [] });
+    const result = await cpPlannerService.list(session.user.id, 12);
+    if (!result.success) return ApiErrors.databaseError('Failed to fetch plans');
+    return NextResponse.json({ plans: result.plans });
   } catch (error) {
-    logError('cp/planner', error, { step: 'planner_list_error' });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logApiError('cp/planner', error);
+    return ApiErrors.internalError('Failed to fetch plans');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const body = await request.json();
     const { week_start_date, posts_per_week, pillar_moments_pct, pillar_teaching_pct, pillar_human_pct, pillar_collab_pct, planned_posts, generation_notes } = body;
+    if (!week_start_date) return ApiErrors.validationError('week_start_date is required');
 
-    if (!week_start_date) {
-      return NextResponse.json({ error: 'week_start_date is required' }, { status: 400 });
+    const result = await cpPlannerService.create(session.user.id, {
+      week_start_date,
+      posts_per_week,
+      pillar_moments_pct,
+      pillar_teaching_pct,
+      pillar_human_pct,
+      pillar_collab_pct,
+      planned_posts,
+      generation_notes,
+    });
+    if (!result.success) {
+      if (result.error === 'conflict') return NextResponse.json({ error: result.message }, { status: 409 });
+      return ApiErrors.databaseError(result.message ?? 'Failed to create plan');
     }
-
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from('cp_week_plans')
-      .insert({
-        user_id: session.user.id,
-        week_start_date,
-        posts_per_week: posts_per_week || 5,
-        pillar_moments_pct: pillar_moments_pct ?? 25,
-        pillar_teaching_pct: pillar_teaching_pct ?? 25,
-        pillar_human_pct: pillar_human_pct ?? 25,
-        pillar_collab_pct: pillar_collab_pct ?? 25,
-        planned_posts: planned_posts || [],
-        generation_notes: generation_notes || null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        return NextResponse.json({ error: 'A plan already exists for this week' }, { status: 409 });
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ plan: data }, { status: 201 });
+    return NextResponse.json({ plan: result.plan }, { status: 201 });
   } catch (error) {
-    logError('cp/planner', error, { step: 'planner_create_error' });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logApiError('cp/planner', error);
+    return ApiErrors.internalError('Failed to create plan');
   }
 }

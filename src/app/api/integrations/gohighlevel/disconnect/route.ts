@@ -1,12 +1,10 @@
 // GoHighLevel Disconnect API
 // POST /api/integrations/gohighlevel/disconnect
-// Deletes integration and deactivates all funnel mappings
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { deleteUserIntegration } from '@/lib/utils/encrypted-storage';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import * as integrationsService from '@/server/services/integrations.service';
 
 export async function POST() {
   try {
@@ -15,16 +13,10 @@ export async function POST() {
       return ApiErrors.unauthorized();
     }
 
-    // Delete the integration credentials
-    await deleteUserIntegration(session.user.id, 'gohighlevel');
-
-    // Deactivate all funnel mappings for this provider
-    const supabase = createSupabaseAdminClient();
-    await supabase
-      .from('funnel_integrations')
-      .update({ is_active: false })
-      .eq('user_id', session.user.id)
-      .eq('provider', 'gohighlevel');
+    const result = await integrationsService.disconnectGohighlevel(session.user.id);
+    if (!result.success) {
+      return ApiErrors.databaseError('Failed to deactivate funnel mappings');
+    }
 
     return NextResponse.json({
       message: 'Disconnected successfully',

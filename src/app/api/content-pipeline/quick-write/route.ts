@@ -1,79 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { quickWrite } from '@/lib/ai/content-pipeline/quick-writer';
-
-import { logError } from '@/lib/utils/logger';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { logError } from "@/lib/utils/logger";
+import * as quickWriteService from "@/server/services/quick-write.service";
 
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
-    const { raw_thought, template_structure, style_instructions, target_audience, profileId } = body;
+    const {
+      raw_thought,
+      template_structure,
+      style_instructions,
+      target_audience,
+      profileId,
+    } = body;
 
-    if (!raw_thought || typeof raw_thought !== 'string' || raw_thought.trim().length === 0) {
-      return NextResponse.json({ error: 'raw_thought is required' }, { status: 400 });
+    if (
+      !raw_thought ||
+      typeof raw_thought !== "string" ||
+      raw_thought.trim().length === 0
+    ) {
+      return NextResponse.json(
+        { error: "raw_thought is required" },
+        { status: 400 },
+      );
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    // If a profile is specified, fetch voice profile for the writer
-    let voiceOptions: { voiceProfile?: Record<string, unknown>; authorName?: string; authorTitle?: string } = {};
-    if (profileId) {
-      const { data: profile } = await supabase
-        .from('team_profiles')
-        .select('full_name, title, voice_profile')
-        .eq('id', profileId)
-        .single();
-      if (profile) {
-        voiceOptions = {
-          voiceProfile: profile.voice_profile as Record<string, unknown>,
-          authorName: profile.full_name,
-          authorTitle: profile.title || undefined,
-        };
-      }
-    }
-
-    const result = await quickWrite(raw_thought, {
-      templateStructure: template_structure,
-      styleInstructions: style_instructions,
-      targetAudience: target_audience,
-      ...voiceOptions,
+    const result = await quickWriteService.executeQuickWrite(session.user.id, {
+      raw_thought: raw_thought.trim(),
+      template_structure: template_structure ?? null,
+      style_instructions: style_instructions ?? null,
+      target_audience: target_audience ?? null,
+      profileId: profileId ?? null,
     });
 
-    // Save as a pipeline post
-    const { data: post, error } = await supabase
-      .from('cp_pipeline_posts')
-      .insert({
-        user_id: session.user.id,
-        draft_content: result.post.content,
-        final_content: result.polish.polished,
-        dm_template: result.post.dm_template,
-        cta_word: result.post.cta_word,
-        variations: result.post.variations,
-        status: 'draft',
-        hook_score: result.polish.hookScore?.score || null,
-        polish_status: 'polished',
-        polish_notes: result.polish.changes.join('; '),
-        team_profile_id: profileId || null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      post,
-      synthetic_idea: result.syntheticIdea,
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        post: result.post,
+        synthetic_idea: result.synthetic_idea,
+      },
+      { status: 201 },
+    );
   } catch (error) {
-    logError('cp/quick-write', error, { step: 'quick_write_error' });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError("cp/quick-write", error, { step: "quick_write_error" });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
