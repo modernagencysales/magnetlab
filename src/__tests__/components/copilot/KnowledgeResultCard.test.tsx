@@ -54,7 +54,6 @@ describe('KnowledgeResultCard', () => {
     render(<KnowledgeResultCard data={entries} />);
 
     // Should render 5 star SVGs (3 filled + 2 empty)
-    const stars = document.querySelectorAll('svg');
     // Filter for Star icons - they appear within the star component
     const starContainer = document.querySelector('.flex.items-center.gap-0\\.5');
     expect(starContainer).toBeInTheDocument();

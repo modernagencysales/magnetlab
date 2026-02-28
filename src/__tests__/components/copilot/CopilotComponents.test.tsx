@@ -7,6 +7,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 
 // Mock react-markdown (ESM-only, can't be transformed by Jest)
 jest.mock('react-markdown', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react');
   return {
     __esModule: true,

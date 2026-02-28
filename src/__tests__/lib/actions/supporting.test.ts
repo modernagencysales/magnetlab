@@ -19,7 +19,7 @@ function createChain(resolveData: unknown = []) {
 }
 
 // Use a stable reference that can be reassigned before jest.mock hoisting
-const mockState = { fromFn: jest.fn((_table?: string) => createChain()) };
+const mockState = { fromFn: jest.fn(() => createChain()) };
 
 jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(() => ({

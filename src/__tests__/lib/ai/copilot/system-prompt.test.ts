@@ -23,10 +23,9 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(() => ({ from: mockFrom })),
 }));
 
-function createChain(data: unknown = null, { useSingle = true }: { useSingle?: boolean } = {}) {
+function createChain(data: unknown = null, { useSingle: _useSingle = true }: { useSingle?: boolean } = {}) {
   const result = { data, error: null };
   const chain: Record<string, jest.Mock> = {};
-  const returnChain = () => chain;
 
   chain.select = jest.fn().mockReturnValue(chain);
   chain.eq = jest.fn().mockReturnValue(chain);
@@ -95,6 +94,7 @@ describe('buildCopilotSystemPrompt', () => {
     await buildCopilotSystemPrompt('user-1');
     await buildCopilotSystemPrompt('user-1');
     // getPrompt should only be called once (second call hits cache)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { getPrompt } = require('@/lib/services/prompt-registry');
     expect(getPrompt).toHaveBeenCalledTimes(1);
   });

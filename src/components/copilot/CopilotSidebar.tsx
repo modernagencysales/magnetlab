@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { X, Plus, MessageSquare, ChevronLeft, Trash2 } from 'lucide-react';
+import { X, Plus, MessageSquare, Trash2 } from 'lucide-react';
 import { useCopilot } from './CopilotProvider';
 import { ConversationInput } from './ConversationInput';
 import { CopilotMessage as CopilotMessageComponent } from './CopilotMessage';
