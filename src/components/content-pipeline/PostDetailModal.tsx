@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin, Users, Zap, MessageSquare, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
-import { PostPreview } from './PostPreview';
 import { StyleFeedbackToast } from './StyleFeedbackToast';
-import type { PipelinePost, PostVariation, LinkedInAutomation, AutomationStatus } from '@/lib/types/content-pipeline';
+import { TipTapTextBlock } from '@/components/content/inline-editor/TipTapTextBlock';
+import { LinkedInPreview, type DeviceMode } from './LinkedInPreview';
+import { DeviceToggle } from './DeviceToggle';
+import { HookOnlyToggle } from './HookOnlyToggle';
+import { HookScorePanel } from './HookScorePanel';
+import type { PipelinePost, PostVariation, LinkedInAutomation, AutomationStatus, TeamProfile } from '@/lib/types/content-pipeline';
 
 interface PostDetailModalProps {
   post: PipelinePost;
@@ -18,9 +22,7 @@ interface PostDetailModalProps {
 
 export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }: PostDetailModalProps) {
   const [activeVariation, setActiveVariation] = useState<number | null>(null);
-  const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.final_content || post.draft_content || '');
-  const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
@@ -29,6 +31,16 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const [publishError, setPublishError] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [feedbackEditId, setFeedbackEditId] = useState<string | null>(null);
+
+  // Split-pane editor state
+  const [device, setDevice] = useState<DeviceMode>('desktop');
+  const [hookOnly, setHookOnly] = useState(false);
+  const [charCount, setCharCount] = useState(0);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [profileData, setProfileData] = useState<{ name: string; headline: string; avatarUrl: string | null }>({
+    name: 'You', headline: '', avatarUrl: null,
+  });
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Engagement scraping state
   const [engagementStats, setEngagementStats] = useState<{ comments: number; reactions: number; resolved: number; pushed: number } | null>(null);
@@ -130,6 +142,53 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
     fetchAutomation();
   }, [fetchAutomation]);
 
+  // Fetch team profile for LinkedIn preview
+  useEffect(() => {
+    fetch('/api/teams/profiles')
+      .then(r => r.json())
+      .then(data => {
+        const profiles: TeamProfile[] = data.profiles || [];
+        const profile = post.team_profile_id
+          ? profiles.find(p => p.id === post.team_profile_id)
+          : profiles.find(p => p.is_default) || profiles[0];
+        if (profile) {
+          setProfileData({
+            name: profile.full_name,
+            headline: profile.title || '',
+            avatarUrl: profile.avatar_url,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [post.team_profile_id]);
+
+  // Debounced auto-save
+  const debouncedSave = useCallback((content: string) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSaveStatus('idle');
+    saveTimerRef.current = setTimeout(async () => {
+      setSaveStatus('saving');
+      try {
+        const response = await fetch(`/api/content-pipeline/posts/${post.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ final_content: content }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSaveStatus('saved');
+          onUpdate();
+          if (data.editId) setFeedbackEditId(data.editId);
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        } else {
+          setSaveStatus('idle');
+        }
+      } catch {
+        setSaveStatus('idle');
+      }
+    }, 1500);
+  }, [post.id, onUpdate]);
+
   const fetchTemplates = useCallback(async () => {
     if (templates.length > 0) return;
     setTemplatesLoading(true);
@@ -196,7 +255,7 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
 
   const displayContent = activeVariation !== null && post.variations?.[activeVariation]
     ? post.variations[activeVariation].content
-    : post.final_content || post.draft_content || '';
+    : editContent;
 
   const handleSchedule = async () => {
     setScheduling(true);
@@ -254,34 +313,9 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const response = await fetch(`/api/content-pipeline/posts/${post.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ final_content: editContent }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setEditing(false);
-        onUpdate();
-        // Show feedback toast if an edit was captured
-        if (data.editId) {
-          setFeedbackEditId(data.editId);
-        }
-      }
-    } catch {
-      // Silent failure
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Post Details">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">Post Details</h2>
@@ -327,7 +361,10 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
         {post.variations && post.variations.length > 0 && (
           <div className="mb-4 flex gap-2 flex-wrap">
             <button
-              onClick={() => setActiveVariation(null)}
+              onClick={() => {
+                setActiveVariation(null);
+                setEditContent(post.final_content || post.draft_content || '');
+              }}
               className={cn(
                 'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
                 activeVariation === null ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'
@@ -338,7 +375,10 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
             {post.variations.map((v: PostVariation, i: number) => (
               <button
                 key={v.id}
-                onClick={() => setActiveVariation(i)}
+                onClick={() => {
+                  setActiveVariation(i);
+                  setEditContent(v.content);
+                }}
                 className={cn(
                   'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
                   activeVariation === i ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'
@@ -350,36 +390,61 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
           </div>
         )}
 
-        {/* LinkedIn Preview */}
-        <div className="mb-4">
-          <PostPreview content={displayContent} />
-        </div>
-
-        {/* Edit Mode */}
-        {editing ? (
-          <div className="mb-4 space-y-3">
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="h-48 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => setEditing(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-              </button>
+        {/* Split Pane: Editor + Preview */}
+        <div className="mb-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Left: Editor */}
+          <div className="flex flex-col">
+            <div className="flex-1 rounded-lg border border-border bg-background">
+              <TipTapTextBlock
+                content={editContent}
+                onChange={(content) => {
+                  setEditContent(content);
+                  debouncedSave(content);
+                }}
+                onCharacterCount={setCharCount}
+                placeholder="Write your LinkedIn post..."
+                className="min-h-[300px] p-3"
+              />
+            </div>
+            {/* Footer: char count + save status */}
+            <div className="flex items-center justify-between px-1 pt-1.5 text-xs text-muted-foreground">
+              <span>{charCount} characters</span>
+              <div className="flex items-center gap-2">
+                {charCount > 210 && (
+                  <span className="text-amber-600">Will be truncated</span>
+                )}
+                {saveStatus === 'saving' && <span className="text-muted-foreground">Saving...</span>}
+                {saveStatus === 'saved' && <span className="text-green-600">Saved</span>}
+              </div>
             </div>
           </div>
-        ) : null}
+
+          {/* Right: Preview + Controls */}
+          <div className="flex flex-col gap-3">
+            {/* Device + Hook toggles */}
+            <div className="flex items-center justify-between">
+              <DeviceToggle device={device} onChange={setDevice} />
+              <HookOnlyToggle enabled={hookOnly} onChange={setHookOnly} />
+            </div>
+
+            {/* LinkedIn Preview */}
+            <LinkedInPreview
+              content={editContent}
+              authorName={profileData.name}
+              authorHeadline={profileData.headline}
+              authorAvatarUrl={profileData.avatarUrl}
+              device={device}
+              hookOnly={hookOnly}
+            />
+
+            {/* Hook Score Panel */}
+            <HookScorePanel
+              postId={post.id}
+              initialScore={post.hook_score}
+              onVariantsGenerated={onUpdate}
+            />
+          </div>
+        </div>
 
         {/* DM Template */}
         {post.dm_template && (
@@ -656,14 +721,6 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
             <FileText className="h-4 w-4" />
             Templates
           </button>
-          {!editing && (
-            <button
-              onClick={() => setEditing(true)}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-            >
-              Edit
-            </button>
-          )}
           <button
             onClick={() => onPolish(post.id)}
             disabled={polishing}
@@ -717,7 +774,6 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
                     const current = editContent.trim();
                     if (current && !confirm('Replace current content with this template?')) return;
                     setEditContent(t.structure);
-                    setEditing(true);
                     setShowTemplatePicker(false);
                   }}
                   className="w-full text-left rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors"
