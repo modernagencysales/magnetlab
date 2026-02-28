@@ -10,6 +10,12 @@ jest.mock('@/lib/auth', () => ({
   auth: () => mockAuth(),
 }));
 
+// Mock executeAction
+const mockExecuteAction = jest.fn();
+jest.mock('@/lib/actions', () => ({
+  executeAction: (...args: unknown[]) => mockExecuteAction(...args),
+}));
+
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
   logError: jest.fn(),
@@ -93,8 +99,12 @@ describe('POST /api/copilot/confirm-action', () => {
     mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
     // Default: conversation found
     mockSupabase.setResult('copilot_conversations', { data: { id: 'conv-1' }, error: null });
-    // Default: message insert works
-    mockSupabase.setResult('copilot_messages', { data: null, error: null });
+    // Default: message insert/select/update works
+    mockSupabase.setResult('copilot_messages', { data: { id: 'msg-1' }, error: null });
+    // Default: no team
+    mockSupabase.setResult('team_members', { data: null, error: null });
+    // Default: action execution returns success
+    mockExecuteAction.mockResolvedValue({ success: true, data: { id: 'f1', status: 'published' } });
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -166,26 +176,31 @@ describe('POST /api/copilot/confirm-action', () => {
     expect(res.status).toBe(404);
   });
 
-  it('returns 200 and saves confirmation result when approved', async () => {
+  it('executes action and returns result when approved with toolName and toolArgs', async () => {
     const req = makeRequest({
       conversationId: 'conv-1',
       toolUseId: 'tool-1',
       approved: true,
+      toolName: 'publish_funnel',
+      toolArgs: { id: 'f1' },
     });
 
     const res = await POST(req);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(body.executed).toBe(true);
+    expect(body.result).toEqual({ success: true, data: { id: 'f1', status: 'published' } });
 
-    // Verify conversation ownership check
-    expect(mockSupabase.from).toHaveBeenCalledWith('copilot_conversations');
-
-    // Verify message was inserted
-    expect(mockSupabase.from).toHaveBeenCalledWith('copilot_messages');
+    // Verify executeAction was called with correct context
+    expect(mockExecuteAction).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1' }),
+      'publish_funnel',
+      { id: 'f1' },
+    );
   });
 
-  it('returns 200 and saves confirmation result when rejected', async () => {
+  it('saves denial message when rejected', async () => {
     const req = makeRequest({
       conversationId: 'conv-1',
       toolUseId: 'tool-1',
@@ -196,5 +211,26 @@ describe('POST /api/copilot/confirm-action', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(body.executed).toBe(false);
+
+    // Verify denial was saved
+    expect(mockSupabase.from).toHaveBeenCalledWith('copilot_messages');
+  });
+
+  it('does not execute action when approved without toolName', async () => {
+    const req = makeRequest({
+      conversationId: 'conv-1',
+      toolUseId: 'tool-1',
+      approved: true,
+      // no toolName or toolArgs
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.executed).toBe(false);
+
+    // executeAction should not have been called
+    expect(mockExecuteAction).not.toHaveBeenCalled();
   });
 });

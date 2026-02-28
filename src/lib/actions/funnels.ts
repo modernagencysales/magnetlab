@@ -85,6 +85,18 @@ registerAction({
   handler: async (ctx: ActionContext, params: { id: string }): Promise<ActionResult> => {
     const supabase = createSupabaseAdminClient();
 
+    // Verify the funnel exists and belongs to the user before updating
+    const { data: existing } = await supabase
+      .from('funnel_pages')
+      .select('id')
+      .eq('id', params.id)
+      .eq('user_id', ctx.userId)
+      .single();
+
+    if (!existing) {
+      return { success: false, error: 'Funnel not found' };
+    }
+
     const { error } = await supabase
       .from('funnel_pages')
       .update({ status: 'published' })

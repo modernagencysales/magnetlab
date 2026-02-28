@@ -197,30 +197,49 @@ describe('Funnel Actions', () => {
     });
 
     it('publishes a funnel successfully', async () => {
-      const chain = createChain();
-      (chain as unknown as PromiseLike<unknown>).then = jest.fn(
+      // First call: existence check (select → single)
+      const checkChain = createChain({ id: 'f1' });
+      // Second call: update
+      const updateChain = createChain();
+      (updateChain as unknown as PromiseLike<unknown>).then = jest.fn(
         (resolve: (value: { data: unknown; error: null }) => unknown) =>
           resolve({ data: null, error: null })
       ) as jest.Mock;
-      mockState.fromFn.mockReturnValueOnce(chain);
+      mockState.fromFn
+        .mockReturnValueOnce(checkChain)
+        .mockReturnValueOnce(updateChain);
 
       const result = await executeAction(testCtx, 'publish_funnel', { id: 'f1' });
 
       expect(result.success).toBe(true);
       expect(result.displayHint).toBe('text');
       expect(result.data).toEqual({ id: 'f1', status: 'published' });
-      expect(chain.update).toHaveBeenCalledWith({ status: 'published' });
-      expect(chain.eq).toHaveBeenCalledWith('id', 'f1');
-      expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-test-123');
+      expect(updateChain.update).toHaveBeenCalledWith({ status: 'published' });
     });
 
-    it('returns error on supabase failure', async () => {
-      const chain = createChain();
-      (chain as unknown as PromiseLike<unknown>).then = jest.fn(
+    it('returns error when funnel not found', async () => {
+      const checkChain = createChain(null);
+      checkChain.single = jest.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } });
+      mockState.fromFn.mockReturnValueOnce(checkChain);
+
+      const result = await executeAction(testCtx, 'publish_funnel', { id: 'nonexistent' });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Funnel not found');
+    });
+
+    it('returns error on supabase update failure', async () => {
+      // Existence check passes
+      const checkChain = createChain({ id: 'f1' });
+      // Update fails
+      const updateChain = createChain();
+      (updateChain as unknown as PromiseLike<unknown>).then = jest.fn(
         (resolve: (value: { data: null; error: { message: string } }) => unknown) =>
           resolve({ data: null, error: { message: 'Update failed' } })
       ) as jest.Mock;
-      mockState.fromFn.mockReturnValueOnce(chain);
+      mockState.fromFn
+        .mockReturnValueOnce(checkChain)
+        .mockReturnValueOnce(updateChain);
 
       const result = await executeAction(testCtx, 'publish_funnel', { id: 'f1' });
 

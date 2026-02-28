@@ -197,24 +197,49 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const confirmAction = useCallback(async (toolUseId: string, approved: boolean) => {
-    if (!activeConversationId) return;
+    if (!activeConversationId || !pendingConfirmation) return;
+
+    const { toolName, toolArgs } = pendingConfirmation;
+    setPendingConfirmation(null);
 
     try {
-      await fetch('/api/copilot/confirm-action', {
+      const res = await fetch('/api/copilot/confirm-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId: activeConversationId,
           toolUseId,
           approved,
+          toolName,
+          toolArgs,
         }),
       });
+
+      if (res.ok) {
+        const data = await res.json();
+
+        if (data.executed && data.result) {
+          // Update the awaiting_confirmation tool_result in local state with the real result
+          setMessages(prev => {
+            const updated = prev.map(m =>
+              m.role === 'tool_result' && m.toolName === toolName && m.toolResult?.awaiting_confirmation
+                ? { ...m, toolResult: data.result, displayHint: data.result.displayHint }
+                : m
+            );
+            return updated;
+          });
+
+          // Resume the conversation so Claude can continue
+          await sendMessage(approved ? 'Confirmed.' : 'Cancelled.');
+        } else if (!approved) {
+          // User denied — send a message so Claude knows
+          await sendMessage('The user declined the action.');
+        }
+      }
     } catch {
       /* ignore fetch errors */
-    } finally {
-      setPendingConfirmation(null);
     }
-  }, [activeConversationId]);
+  }, [activeConversationId, pendingConfirmation, sendMessage]);
 
   const registerApplyHandler = useCallback((handler: ApplyHandler | null) => {
     applyHandlerRef.current = handler;
