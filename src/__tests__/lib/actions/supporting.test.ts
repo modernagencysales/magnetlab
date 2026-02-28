@@ -246,13 +246,14 @@ describe('Analytics Actions', () => {
       expect(post.status).toBe('published');
     });
 
-    it('defaults limit to 5', async () => {
+    it('fetches up to 100 then slices to requested limit', async () => {
       const chain = createChain([]);
       mockState.fromFn.mockReturnValueOnce(chain);
 
       await executeAction(testCtx, 'get_top_posts', {});
 
-      expect(chain.limit).toHaveBeenCalledWith(5);
+      // I7 FIX: fetches 100 to sort client-side by engagement, then slices
+      expect(chain.limit).toHaveBeenCalledWith(100);
     });
 
     it('filters by published status', async () => {

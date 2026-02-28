@@ -37,7 +37,19 @@ export async function POST(req: NextRequest) {
 
     // Get or create conversation
     let conversationId = body.conversationId;
-    if (!conversationId) {
+    if (conversationId) {
+      // C1 FIX: Verify conversation belongs to authenticated user
+      const { data: existing } = await supabase
+        .from('copilot_conversations')
+        .select('id')
+        .eq('id', conversationId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!existing) {
+        return new Response(JSON.stringify({ error: 'Conversation not found' }), { status: 404 });
+      }
+    } else {
       const { data: conv, error: convError } = await supabase
         .from('copilot_conversations')
         .insert({
@@ -63,35 +75,55 @@ export async function POST(req: NextRequest) {
     });
 
     // Load conversation history (last 50 messages)
+    // C2 FIX: Select id for deterministic tool_use_id generation
     const { data: history } = await supabase
       .from('copilot_messages')
-      .select('role, content, tool_name, tool_args, tool_result')
+      .select('id, role, content, tool_name, tool_args, tool_result')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true })
       .limit(50);
 
-    // Build messages for Claude
-    const claudeMessages = (history || []).map(msg => {
+    // C2 FIX: Build messages with deterministic tool IDs from message row IDs
+    // Group consecutive tool_call + tool_result pairs for correct multi-tool handling
+    const claudeMessages: Array<{ role: 'user' | 'assistant'; content: string | Array<Record<string, unknown>> }> = [];
+    const historyArr = history || [];
+
+    for (let i = 0; i < historyArr.length; i++) {
+      const msg = historyArr[i];
       if (msg.role === 'user') {
-        return { role: 'user' as const, content: msg.content || '' };
+        claudeMessages.push({ role: 'user', content: msg.content || '' });
+      } else if (msg.role === 'assistant') {
+        claudeMessages.push({ role: 'assistant', content: msg.content || '' });
+      } else if (msg.role === 'tool_call') {
+        // Collect all consecutive tool_call + tool_result pairs into one assistant + one user message
+        const toolUseBlocks: Array<Record<string, unknown>> = [];
+        const toolResultBlocks: Array<Record<string, unknown>> = [];
+
+        while (i < historyArr.length && historyArr[i].role === 'tool_call') {
+          const tc = historyArr[i];
+          const toolId = `tool_${tc.id}`;
+          toolUseBlocks.push({ type: 'tool_use', id: toolId, name: tc.tool_name || '', input: tc.tool_args || {} });
+
+          // Look for matching tool_result immediately after
+          if (i + 1 < historyArr.length && historyArr[i + 1].role === 'tool_result') {
+            const tr = historyArr[i + 1];
+            toolResultBlocks.push({ type: 'tool_result', tool_use_id: toolId, content: JSON.stringify(tr.tool_result) });
+            i += 2;
+          } else {
+            i++;
+          }
+        }
+        i--; // Adjust for outer loop increment
+
+        if (toolUseBlocks.length > 0) {
+          claudeMessages.push({ role: 'assistant', content: toolUseBlocks });
+        }
+        if (toolResultBlocks.length > 0) {
+          claudeMessages.push({ role: 'user', content: toolResultBlocks });
+        }
       }
-      if (msg.role === 'assistant') {
-        return { role: 'assistant' as const, content: msg.content || '' };
-      }
-      if (msg.role === 'tool_call') {
-        return {
-          role: 'assistant' as const,
-          content: [{ type: 'tool_use' as const, id: `tool_${Date.now()}`, name: msg.tool_name || '', input: msg.tool_args || {} }],
-        };
-      }
-      if (msg.role === 'tool_result') {
-        return {
-          role: 'user' as const,
-          content: [{ type: 'tool_result' as const, tool_use_id: `tool_${Date.now()}`, content: JSON.stringify(msg.tool_result) }],
-        };
-      }
-      return { role: 'user' as const, content: msg.content || '' };
-    });
+      // Skip orphan tool_result (handled above)
+    }
 
     // Build system prompt
     const systemPrompt = await buildCopilotSystemPrompt(userId, body.pageContext);
@@ -130,7 +162,8 @@ export async function POST(req: NextRequest) {
           while (iteration < MAX_ITERATIONS) {
             iteration++;
 
-            const response = await client.messages.create({
+            // I1 FIX: Use streaming API for real-time text deltas
+            const stream = client.messages.stream({
               model: 'claude-sonnet-4-20250514',
               max_tokens: 4096,
               system: systemPrompt,
@@ -138,16 +171,26 @@ export async function POST(req: NextRequest) {
               messages: currentMessages as Parameters<typeof client.messages.create>[0]['messages'],
             });
 
-            let hasToolUse = false;
             let assistantText = '';
 
-            for (const block of response.content) {
-              if (block.type === 'text') {
-                assistantText += block.text;
-                send('text_delta', { text: block.text });
-              } else if (block.type === 'tool_use') {
-                hasToolUse = true;
+            // Stream text deltas in real-time
+            stream.on('text', (text) => {
+              assistantText += text;
+              send('text_delta', { text });
+            });
 
+            // Wait for the full response (tool_use blocks only available after stream completes)
+            const response = await stream.finalMessage();
+
+            // I4 FIX: Collect ALL tool_use blocks first, then execute them,
+            // then send a single user message with all tool_results
+            const toolUseBlocks = response.content.filter(b => b.type === 'tool_use');
+            const hasToolUse = toolUseBlocks.length > 0;
+
+            if (hasToolUse) {
+              const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string }> = [];
+
+              for (const block of toolUseBlocks) {
                 // Check if confirmation required
                 if (actionRequiresConfirmation(block.name)) {
                   send('confirmation_required', {
@@ -155,7 +198,6 @@ export async function POST(req: NextRequest) {
                     args: block.input,
                     toolUseId: block.id,
                   });
-                  // For now, auto-approve (Phase 2b will add confirmation UI)
                 }
 
                 send('tool_call', { name: block.name, args: block.input, id: block.id });
@@ -171,11 +213,7 @@ export async function POST(req: NextRequest) {
                 // Execute the action
                 const result = await executeAction(actionCtx, block.name, block.input as Record<string, unknown>);
 
-                send('tool_result', {
-                  name: block.name,
-                  result,
-                  id: block.id,
-                });
+                send('tool_result', { name: block.name, result, id: block.id });
 
                 // Save tool result message
                 await supabase.from('copilot_messages').insert({
@@ -185,23 +223,30 @@ export async function POST(req: NextRequest) {
                   tool_result: result,
                 });
 
-                // Add to messages for next iteration
-                currentMessages = [
-                  ...currentMessages,
-                  {
-                    role: 'assistant' as const,
-                    content: response.content.map(b => {
-                      if (b.type === 'text') return { type: 'text' as const, text: b.text };
-                      if (b.type === 'tool_use') return { type: 'tool_use' as const, id: b.id, name: b.name, input: b.input };
-                      return b;
-                    }),
-                  },
-                  {
-                    role: 'user' as const,
-                    content: [{ type: 'tool_result' as const, tool_use_id: block.id, content: JSON.stringify(result) }],
-                  },
-                ];
+                toolResults.push({
+                  type: 'tool_result',
+                  tool_use_id: block.id,
+                  content: JSON.stringify(result),
+                });
               }
+
+              // Build next iteration messages: one assistant message with all content blocks,
+              // one user message with ALL tool results
+              currentMessages = [
+                ...currentMessages,
+                {
+                  role: 'assistant' as const,
+                  content: response.content.map(b => {
+                    if (b.type === 'text') return { type: 'text' as const, text: b.text };
+                    if (b.type === 'tool_use') return { type: 'tool_use' as const, id: b.id, name: b.name, input: b.input };
+                    return b;
+                  }),
+                },
+                {
+                  role: 'user' as const,
+                  content: toolResults,
+                },
+              ];
             }
 
             // Save assistant text if any
