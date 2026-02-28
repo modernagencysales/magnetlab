@@ -46,25 +46,27 @@ export async function POST(
 
   // Fire-and-forget: extract memories from negative feedback with notes
   if (rating === 'negative' && note) {
-    const { data: context } = await supabase
-      .from('copilot_messages')
-      .select('role, content')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: false })
-      .limit(6);
+    const userId = session.user.id;
+    (async () => {
+      const { data: context } = await supabase
+        .from('copilot_messages')
+        .select('role, content')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .limit(6);
 
-    const contextMsgs = (context || [])
-      .reverse()
-      .filter((m: { role: string; content: string | null }) => m.role === 'user' || m.role === 'assistant')
-      .map((m: { role: string; content: string | null }) => ({ role: m.role, content: m.content || '' }));
+      const contextMsgs = (context || [])
+        .reverse()
+        .filter((m: { role: string; content: string | null }) => m.role === 'user' || m.role === 'assistant')
+        .map((m: { role: string; content: string | null }) => ({ role: m.role, content: m.content || '' }));
 
-    contextMsgs.push({ role: 'user', content: `[Feedback note]: ${note}` });
+      contextMsgs.push({ role: 'user', content: `[Feedback note]: ${note}` });
 
-    extractMemories(session.user.id, contextMsgs).then(async (memories) => {
+      const memories = await extractMemories(userId, contextMsgs);
       if (memories.length > 0) {
         await supabase.from('copilot_memories').insert(
           memories.map(m => ({
-            user_id: session.user.id,
+            user_id: userId,
             rule: m.rule,
             category: m.category,
             confidence: m.confidence,
@@ -73,7 +75,7 @@ export async function POST(
           }))
         );
       }
-    }).catch(() => {});
+    })().catch(() => {});
   }
 
   return NextResponse.json({ success: true });
