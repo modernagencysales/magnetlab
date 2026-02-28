@@ -59,6 +59,7 @@ jest.mock('lucide-react', () => ({
   ThumbsUp: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-thumbs-up" {...props} />,
   ThumbsDown: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-thumbs-down" {...props} />,
   Wrench: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-wrench" {...props} />,
+  X: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-x" {...props} />,
 }));
 
 import { ConversationInput } from '@/components/copilot/ConversationInput';
@@ -265,10 +266,10 @@ describe('CopilotMessage', () => {
     };
     render(<CopilotMessage message={msg} onFeedback={mockFeedback} />);
     fireEvent.click(screen.getByLabelText('Good response'));
-    expect(mockFeedback).toHaveBeenCalledWith('positive');
+    expect(mockFeedback).toHaveBeenCalledWith('positive', undefined);
   });
 
-  it('calls onFeedback with negative when thumbs down clicked', () => {
+  it('shows note input when thumbs down clicked (FeedbackWidget)', () => {
     const msg: CopilotMessageType = {
       id: '7',
       role: 'assistant',
@@ -277,7 +278,11 @@ describe('CopilotMessage', () => {
     };
     render(<CopilotMessage message={msg} onFeedback={mockFeedback} />);
     fireEvent.click(screen.getByLabelText('Bad response'));
-    expect(mockFeedback).toHaveBeenCalledWith('negative');
+    // FeedbackWidget shows note input instead of immediately calling onFeedback
+    expect(screen.getByPlaceholderText(/what could be better/i)).toBeInTheDocument();
+    // Skip note to submit negative feedback without a note
+    fireEvent.click(screen.getByLabelText('Skip note'));
+    expect(mockFeedback).toHaveBeenCalledWith('negative', undefined);
   });
 
   it('renders markdown bold in assistant messages', () => {

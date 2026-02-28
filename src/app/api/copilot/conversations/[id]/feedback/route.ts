@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { extractMemories } from '@/lib/ai/copilot/memory-extractor';
 
 // POST — add feedback to a message
 export async function POST(
@@ -42,5 +43,38 @@ export async function POST(
     .eq('conversation_id', conversationId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Fire-and-forget: extract memories from negative feedback with notes
+  if (rating === 'negative' && note) {
+    const { data: context } = await supabase
+      .from('copilot_messages')
+      .select('role, content')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false })
+      .limit(6);
+
+    const contextMsgs = (context || [])
+      .reverse()
+      .filter((m: { role: string; content: string | null }) => m.role === 'user' || m.role === 'assistant')
+      .map((m: { role: string; content: string | null }) => ({ role: m.role, content: m.content || '' }));
+
+    contextMsgs.push({ role: 'user', content: `[Feedback note]: ${note}` });
+
+    extractMemories(session.user.id, contextMsgs).then(async (memories) => {
+      if (memories.length > 0) {
+        await supabase.from('copilot_memories').insert(
+          memories.map(m => ({
+            user_id: session.user.id,
+            rule: m.rule,
+            category: m.category,
+            confidence: m.confidence,
+            source: 'feedback' as const,
+            conversation_id: conversationId,
+          }))
+        );
+      }
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ success: true });
 }

@@ -3,7 +3,8 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ThumbsUp, ThumbsDown, Wrench } from 'lucide-react';
+import { Wrench } from 'lucide-react';
+import { FeedbackWidget } from './FeedbackWidget';
 import type { CopilotMessage as CopilotMessageType } from './CopilotProvider';
 import { PostPreviewCard } from './PostPreviewCard';
 import { KnowledgeResultCard } from './KnowledgeResultCard';
@@ -114,30 +115,10 @@ export function CopilotMessage({ message, onFeedback, onApply }: CopilotMessageP
       </div>
       {/* Feedback buttons for assistant messages */}
       {message.role === 'assistant' && message.content && (
-        <div className="flex items-center gap-1 mt-1">
-          <button
-            onClick={() => onFeedback('positive')}
-            className={`p-1 rounded transition-colors ${
-              message.feedback?.rating === 'positive'
-                ? 'text-emerald-500'
-                : 'text-zinc-300 hover:text-zinc-500'
-            }`}
-            aria-label="Good response"
-          >
-            <ThumbsUp className="w-3 h-3" />
-          </button>
-          <button
-            onClick={() => onFeedback('negative')}
-            className={`p-1 rounded transition-colors ${
-              message.feedback?.rating === 'negative'
-                ? 'text-red-500'
-                : 'text-zinc-300 hover:text-zinc-500'
-            }`}
-            aria-label="Bad response"
-          >
-            <ThumbsDown className="w-3 h-3" />
-          </button>
-        </div>
+        <FeedbackWidget
+          onFeedback={onFeedback}
+          existingFeedback={message.feedback}
+        />
       )}
     </div>
   );

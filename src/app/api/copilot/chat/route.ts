@@ -6,6 +6,7 @@ import { buildCopilotSystemPrompt } from '@/lib/ai/copilot/system-prompt';
 import { executeAction, actionRequiresConfirmation, getToolDefinitions } from '@/lib/actions';
 import type { ActionContext } from '@/lib/actions';
 import { logError } from '@/lib/utils/logger';
+import { detectCorrectionSignal, extractMemories } from '@/lib/ai/copilot/memory-extractor';
 
 const MAX_ITERATIONS = 15;
 
@@ -73,6 +74,36 @@ export async function POST(req: NextRequest) {
       role: 'user',
       content: body.message,
     });
+
+    // Fire-and-forget: extract memories if correction signal detected
+    if (detectCorrectionSignal(body.message)) {
+      const { data: recentMsgs } = await supabase
+        .from('copilot_messages')
+        .select('role, content')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      const context = (recentMsgs || [])
+        .reverse()
+        .filter((m: { role: string; content: string | null }) => m.role === 'user' || m.role === 'assistant')
+        .map((m: { role: string; content: string | null }) => ({ role: m.role, content: m.content || '' }));
+
+      extractMemories(userId, context).then(async (memories) => {
+        if (memories.length > 0) {
+          await supabase.from('copilot_memories').insert(
+            memories.map(m => ({
+              user_id: userId,
+              rule: m.rule,
+              category: m.category,
+              confidence: m.confidence,
+              source: 'conversation' as const,
+              conversation_id: conversationId,
+            }))
+          );
+        }
+      }).catch(() => {});
+    }
 
     // Load conversation history (last 50 messages)
     // C2 FIX: Select id for deterministic tool_use_id generation

@@ -90,6 +90,12 @@ jest.mock('@/lib/utils/logger', () => ({
   logError: jest.fn(),
 }));
 
+// Mock memory extractor
+jest.mock('@/lib/ai/copilot/memory-extractor', () => ({
+  detectCorrectionSignal: jest.fn().mockReturnValue(false),
+  extractMemories: jest.fn().mockResolvedValue([]),
+}));
+
 describe('POST /api/copilot/chat', () => {
   beforeEach(() => {
     jest.clearAllMocks();
