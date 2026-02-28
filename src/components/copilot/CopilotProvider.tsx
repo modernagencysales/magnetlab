@@ -131,6 +131,7 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
   const applyHandlerRef = useRef<ApplyHandler | null>(null);
   const [applyToPage, setApplyToPage] = useState<ApplyHandler | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const sendMessageRef = useRef<(text: string) => Promise<void>>(async () => {});
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
@@ -230,16 +231,16 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
           });
 
           // Resume the conversation so Claude can continue
-          await sendMessage(approved ? 'Confirmed.' : 'Cancelled.');
+          await sendMessageRef.current(approved ? 'Confirmed.' : 'Cancelled.');
         } else if (!approved) {
           // User denied — send a message so Claude knows
-          await sendMessage('The user declined the action.');
+          await sendMessageRef.current('The user declined the action.');
         }
       }
     } catch {
       /* ignore fetch errors */
     }
-  }, [activeConversationId, pendingConfirmation, sendMessage]);
+  }, [activeConversationId, pendingConfirmation]);
 
   const registerApplyHandler = useCallback((handler: ApplyHandler | null) => {
     applyHandlerRef.current = handler;
@@ -392,6 +393,9 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
       abortRef.current = null;
     }
   }, [isStreaming, activeConversationId, pageContext, loadConversations]);
+
+  // Keep ref in sync so confirmAction can call sendMessage without circular dependency
+  sendMessageRef.current = sendMessage;
 
   const submitFeedback = useCallback(async (messageId: string, rating: 'positive' | 'negative', note?: string) => {
     if (!activeConversationId) return;
