@@ -8,6 +8,7 @@ import { TimeSeriesChart } from '@/components/analytics/TimeSeriesChart';
 import { UTMBreakdown } from '@/components/analytics/UTMBreakdown';
 import { BarChart3, ExternalLink, FileText, Activity, Mail } from 'lucide-react';
 import Link from 'next/link';
+import { useCopilotContext } from '@/components/copilot/useCopilotContext';
 
 type Range = '7d' | '30d' | '90d';
 
@@ -110,6 +111,8 @@ export function AnalyticsOverview() {
   const [funnels, setFunnels] = useState<FunnelItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useCopilotContext({ page: 'analytics' });
 
   const fetchOverview = useCallback(async (selectedRange: Range) => {
     setLoading(true);

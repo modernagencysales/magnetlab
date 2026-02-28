@@ -17,6 +17,7 @@ import { PublishControls } from './PublishControls';
 import { LeadDeliveryInfo } from './LeadDeliveryInfo';
 import { ABTestPanel } from './ABTestPanel';
 import { FunnelIntegrationsTab } from './FunnelIntegrationsTab';
+import { useCopilotContext } from '@/components/copilot/useCopilotContext';
 import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle, RedirectTrigger, ThankyouLayout } from '@/lib/types/funnel';
 import type { LeadMagnet } from '@/lib/types/lead-magnet';
 import type { Library } from '@/lib/types/library';
@@ -59,6 +60,13 @@ export function FunnelBuilder({
   const targetType: FunnelTargetType = library ? 'library' : externalResource ? 'external_resource' : 'lead_magnet';
   const targetTitle = leadMagnet?.title || library?.name || externalResource?.title || 'Untitled';
   const targetId = leadMagnet?.id || library?.id || externalResource?.id || '';
+
+  useCopilotContext({
+    page: 'funnel-builder',
+    entityType: 'funnel',
+    entityId: existingFunnel?.id,
+    entityTitle: targetTitle,
+  });
   const isLeadMagnetTarget = targetType === 'lead_magnet';
   const backLink = isLeadMagnetTarget ? '/magnets' : '/pages';
   const backLabel = isLeadMagnetTarget ? 'Back to Lead Magnets' : 'Back to Pages';
