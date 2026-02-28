@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import { Mic, Brain, Lightbulb, FileText, Zap, Loader2, LayoutGrid, LayoutTemplate, Sparkles } from 'lucide-react';
+import { Mic, Brain, Lightbulb, FileText, Zap, Loader2, LayoutGrid, LayoutTemplate, Sparkles, CalendarRange } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProfileSwitcher, useProfileSelection } from './ProfileSwitcher';
 
@@ -15,10 +15,11 @@ const AutopilotTab = dynamic(() => import('./AutopilotTab').then((m) => ({ defau
 const PipelineTab = dynamic(() => import('./PipelineTab').then((m) => ({ default: m.PipelineTab })), { ssr: false });
 const TemplatesTab = dynamic(() => import('./TemplatesTab').then((m) => ({ default: m.TemplatesTab })), { ssr: false });
 const QuickWriteModal = dynamic(() => import('./QuickWriteModal').then((m) => ({ default: m.QuickWriteModal })), { ssr: false });
+const TeamCommandCenter = dynamic(() => import('./TeamCommandCenter').then((m) => ({ default: m.TeamCommandCenter })), { ssr: false });
 
-type Tab = 'transcripts' | 'brain' | 'ideas' | 'posts' | 'pipeline' | 'templates' | 'autopilot';
+type Tab = 'transcripts' | 'brain' | 'ideas' | 'posts' | 'pipeline' | 'templates' | 'autopilot' | 'command-center';
 
-const TABS: { id: Tab; label: string; icon: typeof Mic }[] = [
+const TABS: { id: Tab; label: string; icon: typeof Mic; teamOnly?: boolean }[] = [
   { id: 'transcripts', label: 'Transcripts', icon: Mic },
   { id: 'brain', label: 'Knowledge', icon: Brain },
   { id: 'ideas', label: 'Ideas', icon: Lightbulb },
@@ -26,6 +27,7 @@ const TABS: { id: Tab; label: string; icon: typeof Mic }[] = [
   { id: 'pipeline', label: 'Pipeline', icon: LayoutGrid },
   { id: 'templates', label: 'Templates', icon: LayoutTemplate },
   { id: 'autopilot', label: 'Autopilot', icon: Zap },
+  { id: 'command-center', label: 'Command Center', icon: CalendarRange, teamOnly: true },
 ];
 
 function TabLoader() {
@@ -72,7 +74,7 @@ export function ContentPipelineContent() {
 
       {/* Tabs */}
       <div className="mb-6 flex gap-2 overflow-x-auto">
-        {TABS.map((tab) => (
+        {TABS.filter((tab) => !tab.teamOnly || teamId).map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -102,6 +104,7 @@ export function ContentPipelineContent() {
             {activeTab === 'pipeline' && <PipelineTab />}
             {activeTab === 'templates' && <TemplatesTab />}
             {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}
+            {activeTab === 'command-center' && teamId && <TeamCommandCenter teamId={teamId} />}
           </>
         )}
       </Suspense>

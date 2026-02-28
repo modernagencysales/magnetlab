@@ -21,6 +21,7 @@ import { fireTrackingPixelLeadEvent, fireTrackingPixelQualifiedEvent } from '@/l
 import { getPostHogServerClient } from '@/lib/posthog';
 import { syncLeadToEmailProviders } from '@/lib/integrations/email-marketing';
 import { syncLeadToGoHighLevel } from '@/lib/integrations/gohighlevel/sync';
+import { syncLeadToHeyReach } from '@/lib/integrations/heyreach/sync';
 
 const VALID_PAGE_TYPES = ['optin', 'thankyou'];
 
@@ -221,7 +222,7 @@ function extractLinkedInUrl(answers: Record<string, string>): string | null {
 }
 
 export type LeadCreatedPayload = {
-  lead: { id: string; email: string; name: string | null; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; created_at: string };
+  lead: { id: string; email: string; name: string | null; linkedin_url: string | null; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; created_at: string };
   funnel: { id: string; user_id: string; lead_magnet_id: string | null; slug: string; team_id: string | null; send_resource_email: boolean };
   leadMagnetTitle: string;
   resourceUrl: string | null;
@@ -245,6 +246,7 @@ export async function submitLead(
   utmSource: string | null,
   utmMedium: string | null,
   utmCampaign: string | null,
+  linkedinUrl: string | null,
   fbc: string | null,
   fbp: string | null
 ): Promise<
@@ -268,6 +270,7 @@ export async function submitLead(
     utm_source: utmSource ?? null,
     utm_medium: utmMedium ?? null,
     utm_campaign: utmCampaign ?? null,
+    linkedin_url: linkedinUrl ?? null,
     ip_address: ip !== 'unknown' ? ip : null,
     user_agent: userAgent,
   });
@@ -288,6 +291,7 @@ export async function submitLead(
       id: lead.id,
       email: lead.email,
       name: lead.name,
+      linkedin_url: lead.linkedin_url ?? null,
       utm_source: lead.utm_source,
       utm_medium: lead.utm_medium,
       utm_campaign: lead.utm_campaign,
@@ -367,6 +371,24 @@ export async function runLeadCreatedSideEffects(
   await syncLeadToEmailProviders(payload.funnelPageId, { email: lead.email, name: lead.name ?? '' }).catch((err) =>
     console.error('[lead-capture] Email marketing sync error:', err)
   );
+
+  await syncLeadToHeyReach({
+    userId: funnel.user_id,
+    funnelPageId: payload.funnelPageId,
+    lead: {
+      email: lead.email,
+      name: lead.name,
+      linkedinUrl: lead.linkedin_url ?? null,
+      utmSource: lead.utm_source,
+      utmMedium: lead.utm_medium,
+      utmCampaign: lead.utm_campaign,
+      isQualified: null,
+      qualificationAnswers: null,
+    },
+    leadMagnetTitle,
+    leadMagnetUrl: resourceUrl ?? '',
+    funnelSlug: funnel.slug,
+  }).catch((err) => logApiError('public/lead/heyreach', err, { leadId: lead.id }));
 
   if (funnel.team_id) {
     await upsertSubscriberFromLead({

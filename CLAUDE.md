@@ -1,0 +1,1227 @@
+# CLAUDE.md
+
+> This repo: `/Users/timlife/Documents/claude code/magnetlab`
+
+## Identity
+
+MagnetLab is a SaaS platform for creating AI-powered LinkedIn lead magnets -- users go through a 6-step wizard to extract their expertise, generate content variations, publish to LinkedIn, and capture leads through customizable funnel pages.
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router), React 18.3, TypeScript 5.6+
+- **Database**: Supabase (PostgreSQL), 72 migrations
+- **Auth**: NextAuth v5 beta -- Google OAuth
+- **UI**: Tailwind CSS 3.4 + shadcn/ui + Framer Motion + Recharts
+- **AI**: @anthropic-ai/sdk (Claude) for content generation, style extraction, email sequences + OpenAI (embeddings)
+- **AI Brain**: pgvector semantic search over transcript knowledge base (content pipeline)
+- **Payments**: Stripe (checkout, webhooks, subscriptions: free/pro/unlimited)
+- **Email**: Resend (transactional) + Loops (marketing automation)
+- **Jobs/Integrations**: Trigger.dev v4, user webhooks
+- **Testing**: Jest 29 + React Testing Library + Playwright
+- **Deploy**: Vercel
+
+## Architecture
+
+### Directory (2 levels)
+
+```
+src/
+├── app/
+│   ├── (marketing)/       # Landing pages
+│   ├── (auth)/            # Login, callbacks
+│   ├── (dashboard)/       # create/, library/, leads/, analytics/, pages/, settings/, swipe-file/
+│   ├── api/               # 57 route handlers (see API Routes below)
+│   └── p/[username]/[slug]/ # Public opt-in, thankyou, content pages
+├── components/            # wizard/, funnel/, content/, dashboard/, ds/, settings/, leads/, ui/
+├── lib/                   # ai/, integrations/, auth/, types/, utils/, services/, validations/, webhooks/, constants/, api/
+├── trigger/               # Background jobs: create-lead-magnet.ts, email-sequence.ts, process-transcript.ts, autopilot-batch.ts, run-autopilot.ts, backfill-knowledge-types.ts
+├── middleware.ts          # Auth guard for dashboard routes
+└── __tests__/             # 16 test files: api/, components/, lib/
+```
+
+### Patterns
+
+- Server Components for data fetching; Client Components (`"use client"`) for interactive UI
+- Middleware checks `authjs.session-token` cookie; redirects unauthed to `/login`
+- API handlers use `getServerSession()` + return 401 if missing; Zod validates request bodies
+- Fire-and-forget GTM webhooks (5s timeout, non-blocking)
+- Stripe billing enforces plan limits via `usage_tracking` table
+- `@/` path alias maps to `src/`
+
+## Key Features
+
+### Dashboard Routes
+
+| Route | Purpose |
+|-------|---------|
+| `/(dashboard)/create` | 6-step lead magnet creation wizard |
+| `/(dashboard)/create/page-quick` | Quick landing page generator |
+| `/(dashboard)/library` | Lead magnet library (list, search, manage) |
+| `/(dashboard)/library/[id]/funnel` | Funnel builder for a specific lead magnet |
+| `/(dashboard)/leads` | Lead management table with filters |
+| `/(dashboard)/analytics` | Metrics dashboard (Recharts) |
+| `/(dashboard)/pages` | Funnel page management |
+| `/(dashboard)/settings` | Settings hub (redirects to /settings/account) |
+| `/(dashboard)/swipe-file` | Community post inspiration |
+
+### Settings Routes (Sidebar Navigation)
+
+The settings page uses a nested layout with vertical sidebar navigation and URL-based routing.
+
+| Route | Content |
+|-------|---------|
+| `/settings` | Redirects to `/settings/account` |
+| `/settings/account` | Profile, Username, Subscription, Team Members, Brand Kit summary |
+| `/settings/integrations` | LinkedIn, Resend, Email Marketing, CRM, HeyReach, Fathom, Conductor, Tracking Pixels, Webhooks |
+| `/settings/signals` | ICP Configuration, Keyword Monitors, Company Monitors, Competitor Monitoring |
+| `/settings/branding` | Branding (6-card accordion), Page Defaults (video, template), White Label (Pro+) |
+| `/settings/developer` | API Keys, Webhooks, Documentation |
+
+Key files:
+- `src/app/(dashboard)/settings/layout.tsx` — shared layout with `SettingsNav` sidebar
+- `src/components/settings/SettingsNav.tsx` — sidebar nav (client component, uses `usePathname()`)
+- `src/components/settings/AccountSettings.tsx` — account page wrapper
+- `src/components/settings/IntegrationsSettings.tsx` — integrations page wrapper
+- `src/components/settings/BrandingPage.tsx` — branding page wrapper
+- `src/components/settings/DeveloperSettings.tsx` — developer page wrapper (extracted API keys logic)
+
+### Public Routes
+
+| Route | Purpose |
+|-------|---------|
+| `/p/[username]/[slug]` | Public opt-in/landing page |
+| `/p/[username]/[slug]/thankyou` | Post-opt-in thank you page |
+| `/p/[username]/[slug]/content` | Hosted lead magnet content |
+
+### API Routes (57 handlers)
+
+Groups: `lead-magnet/` (CRUD, content, polish, ideation), `funnel/` (pages, sections, publish, themes), `stripe/` (checkout, webhooks, portal), `leads/` (management, export), `brand-kit/` (extraction), `thumbnail/` (generation), `email-sequence/` (CRUD, trigger), `swipe-file/` (browse, save), `webhooks/` (user-configured), `integrations/` (connect/disconnect), `public/` (lead capture, page data, content delivery), `linkedin/` (post helpers), `landing-page/` (quick create), `user/` (profile), `external/` (third-party callbacks).
+
+## Database
+
+Supabase PostgreSQL, 14 migrations. Tables:
+
+- `users` -- user accounts (linked to NextAuth)
+- `subscriptions` -- Stripe subscription state
+- `usage_tracking` -- plan limit enforcement (free/pro/unlimited)
+- `brand_kits` -- extracted brand styles and colors
+- `lead_magnets` -- core content entities (title, archetype, content blocks)
+- `lead_magnet_analytics` -- view/download metrics
+- `extraction_sessions` -- wizard state persistence (6-step progress)
+- `funnel_pages` -- published funnel/opt-in pages (slug, theme, config)
+- `funnel_leads` -- captured leads with UTM tracking
+- `qualification_questions` -- survey questions per funnel
+- `funnel_page_sections` -- modular page sections (hero, CTA, testimonials, etc.)
+- `page_views` -- analytics for public pages
+- `email_sequences` -- drip email campaign definitions
+- `swipe_file_posts` -- community-shared content
+- `swipe_file_lead_magnets` -- user saves of swipe file posts
+- `user_integrations` -- connected third-party accounts (encrypted keys)
+- `polished_content` -- AI-polished versions of content
+
+### Content Pipeline Tables (cp_ prefix)
+
+- `cp_call_transcripts` -- raw transcripts from Grain, Fireflies, Fathom, or paste (source: `'grain' | 'fireflies' | 'fathom' | 'paste'`). All three notetaker integrations are webhook-based (Fathom migrated from OAuth polling to per-user webhook auth in Feb 2026).
+- `cp_knowledge_entries` -- extracted insights/questions/intel with vector embeddings + knowledge_type, quality_score, topics, specificity, actionability, source_date
+- `cp_knowledge_tags` -- tag usage tracking per user
+- `cp_knowledge_topics` -- auto-discovered topic taxonomy per user (slug, display_name, description, entry_count, avg_quality)
+- `cp_knowledge_corroborations` -- links between entries that corroborate each other (entry_id, corroborated_by, unique constraint)
+- `cp_content_ideas` -- post-worthy ideas extracted from transcripts
+- `cp_pipeline_posts` -- posts in the autopilot pipeline (draft → review → schedule → publish)
+- `cp_posting_slots` -- user's publishing schedule (time slots per day)
+- `cp_post_templates` -- reusable post templates with embeddings
+- `cp_writing_styles` -- user style profiles
+
+RPCs: `cp_match_knowledge_entries()` (pgvector cosine similarity), `cp_match_knowledge_entries_v2()` (v2 with type/topic/quality/since filters), `cp_decrement_buffer_positions()` (buffer reordering), `cp_update_topic_stats()` (recalculate topic entry_count + avg_quality)
+
+### Content Pipeline API Routes
+
+- `api/webhooks/grain/` -- Grain transcript webhook
+- `api/webhooks/fireflies/` -- Fireflies transcript webhook
+- `api/webhooks/fathom/[userId]/` -- Fathom transcript webhook (per-user secret auth)
+- `api/integrations/fathom/webhook-url/` -- Fathom webhook URL generation (GET/POST/DELETE)
+- `api/content-pipeline/transcripts/` -- paste/upload + list transcripts
+- `api/content-pipeline/knowledge/` -- search/browse AI Brain knowledge base (supports V2 filters: type, topic, min_quality, since)
+- `api/content-pipeline/knowledge/topics/` -- list auto-discovered topics
+- `api/content-pipeline/knowledge/topics/[slug]/` -- topic detail with entries
+- `api/content-pipeline/knowledge/gaps/` -- gap analysis + readiness assessment
+- `api/content-pipeline/knowledge/recent/` -- recent knowledge digest (last N days)
+- `api/content-pipeline/knowledge/ask/` -- AI Q&A over knowledge base
+- `api/content-pipeline/knowledge/readiness/` -- content readiness assessment (topic + goal)
+- `api/content-pipeline/knowledge/export/` -- export knowledge by topic (structured or markdown)
+- `api/content-pipeline/ideas/` -- list, update, delete ideas; write post from idea
+- `api/content-pipeline/posts/` -- CRUD + polish posts
+- `api/content-pipeline/schedule/slots/` -- posting slots CRUD
+- `api/content-pipeline/schedule/autopilot/` -- trigger autopilot + status
+- `api/content-pipeline/schedule/buffer/` -- approve/reject buffer posts
+
+### Knowledge Data Lake
+
+Extends the AI Brain from 3 basic categories to a rich taxonomy with quality scoring, topic auto-discovery, gap analysis, readiness assessment, topic summaries, and a full Knowledge Dashboard UI.
+
+#### Knowledge Types (8 types)
+
+`how_to`, `insight`, `story`, `question`, `objection`, `mistake`, `decision`, `market_intel`
+
+Each knowledge entry also has: `quality_score` (1-5), `specificity` (boolean), `actionability` (immediately_actionable / contextual / theoretical), `topics` (array of topic slugs), `source_date`.
+
+#### Topic Auto-Discovery
+
+AI normalizes free-form topic suggestions into a canonical taxonomy per user. Topics stored in `cp_knowledge_topics` with auto-computed stats (entry_count, avg_quality, summary, summary_generated_at).
+
+#### Topic Summaries (v2)
+
+On-demand AI-generated summaries cached in `cp_knowledge_topics.summary`. Stale detection: regenerate when `last_seen > summary_generated_at`. API: `POST /api/content-pipeline/knowledge/topics/[slug]/summary?force=true`. AI module: `topic-summarizer.ts` (Claude Haiku, 200-400 word briefings organized by theme).
+
+#### Knowledge Dashboard (v2)
+
+Replaced `KnowledgeBrainTab` with `KnowledgeDashboard` containing 4 subtabs:
+
+| Subtab | Component | Content |
+|--------|-----------|---------|
+| **Overview** | `KnowledgeOverview` | Stats cards (entries, topics, new topics, highlights), most active topics, high-quality highlights |
+| **Topics** | `TopicBrowser` + `TopicDetail` | Card grid with quality stars + type breakdown. Detail view with summary generation, type bar, entries by type |
+| **Gaps** | `GapAnalysis` | Coverage bars, missing types, gap patterns. Readiness assessment panel (pick topic + goal) |
+| **Search** | `KnowledgeSearch` | Enhanced search with V2 filters: knowledge type, topic, min quality, since date. Plus existing tag/category/speaker filters |
+
+Team/Personal toggle in header when user belongs to a team. `teamId` flows to all child components.
+
+#### Briefing Agent V2 (v2)
+
+`buildContentBrief()` uses `searchKnowledgeV2()` with quality-aware retrieval. Groups context by 8 knowledge types with labels. Quality sorting (highest first), `[HIGH QUALITY]` tags for entries >= 4. Computes `topicReadiness` heuristic and `topKnowledgeTypes`. Backward-compatible `relevantInsights/Questions/ProductIntel` fields retained.
+
+#### Team Knowledge Sharing (v2)
+
+All knowledge API routes accept `team_id` query param. `searchKnowledgeV2()` uses `cp_match_team_knowledge_entries` RPC for team-wide semantic search with client-side V2 filters. `listKnowledgeTopics()` queries by team_id when provided.
+
+#### Data Flow
+
+```
+Transcript → process-transcript task
+  → classifyTranscript() → transcript_type
+  → extractKnowledge() → entries with knowledge_type, quality_score, topics, specificity, actionability
+  → normalizeTopics() → canonical topic slugs
+  → upsertTopics() → cp_knowledge_topics
+  → generateEmbedding() → pgvector embeddings
+  → checkForDuplicate() → insert/supersede/corroborate
+  → insert cp_knowledge_entries
+  → extractIdeas() → cp_content_ideas
+```
+
+#### Gap Analysis + Readiness
+
+- `analyzeTopicGaps()` identifies coverage gaps across knowledge types per topic
+- `assessContentReadiness()` scores how ready the knowledge base is for content generation
+- Both exposed via `GET /api/content-pipeline/knowledge/gaps` and `GET /api/content-pipeline/knowledge/readiness`
+
+#### Deduplication
+
+- `checkForDuplicate()` uses `cp_match_knowledge_entries` RPC (cosine similarity > 0.90 = supersede/corroborate, 0.85-0.90 = insert)
+- `supersedeEntry()` marks old entry with `superseded_by` pointer
+- `recordCorroboration()` links entries in `cp_knowledge_corroborations`
+- Weekly consolidation via `consolidate-knowledge` Trigger.dev task (Sundays 3 AM UTC)
+
+#### Backfill
+
+- `backfill-knowledge-types` Trigger.dev task — classifies existing entries without knowledge_type using Claude Haiku
+- Processes in batches of 10, normalizes topics, updates quality scores
+
+#### Key Files
+
+- `src/lib/ai/content-pipeline/topic-summarizer.ts` — AI topic summary generation (Claude Haiku)
+- `src/lib/ai/content-pipeline/briefing-agent.ts` — V2 briefing with 8 knowledge types + quality scoring
+- `src/lib/ai/content-pipeline/topic-normalizer.ts` — AI topic normalization + upsert
+- `src/lib/ai/content-pipeline/knowledge-gap-analyzer.ts` — gap analysis + readiness scoring
+- `src/lib/services/knowledge-brain.ts` — searchKnowledgeV2, topic listing, summary caching, dedup, gap/readiness
+- `src/lib/services/knowledge-dedup.ts` — checkForDuplicate, supersedeEntry, recordCorroboration
+- `src/lib/types/content-pipeline.ts` — KnowledgeType, TopicEntry, GapAnalysis, ContentBrief types
+- `src/components/content-pipeline/KnowledgeDashboard.tsx` — 4-subtab dashboard container with team toggle
+- `src/components/content-pipeline/KnowledgeOverview.tsx` — Overview stats + highlights
+- `src/components/content-pipeline/TopicBrowser.tsx` — Topic card grid
+- `src/components/content-pipeline/TopicDetail.tsx` — Topic detail with summary generation
+- `src/components/content-pipeline/GapAnalysis.tsx` — Gap cards + readiness assessment
+- `src/components/content-pipeline/KnowledgeSearch.tsx` — Enhanced search with V2 filters
+- `src/trigger/process-transcript.ts` — updated with topic normalization + dedup
+- `src/trigger/consolidate-knowledge.ts` — weekly dedup + topic stats
+- `src/trigger/backfill-knowledge-types.ts` — backfill task for existing entries
+- `supabase/migrations/20260220400000_knowledge_topic_summaries.sql` — summary columns migration
+
+#### MCP Tools (7 new, in @magnetlab/mcp v0.2.0)
+
+`search_knowledge_v2`, `list_knowledge_topics`, `get_topic_detail`, `analyze_knowledge_gaps`, `assess_content_readiness`, `get_recent_knowledge_digest`, `ask_knowledge`
+
+## System Context
+
+MagnetLab is one of five interconnected repos in the GTM ecosystem:
+
+```
+            gtm-system (orchestrator hub)
+              │ webhooks
+    ┌─────────┼──────────┐
+    v         v          v
+magnetlab  leadmagnet  copy-of-gtm-os
+(THIS REPO) -backend   (public pages,
+ SaaS app  (pipeline)   GC portal, LMS)
+                ^
+          leadmagnet-admin (admin UI)
+```
+
+MagnetLab is the customer-facing SaaS. On key events (lead captured, lead qualified, lead magnet deployed), it fires webhooks to gtm-system for downstream routing.
+
+## Feature Decision Guide
+
+Use this table to determine which repo owns a given feature. This prevents building features in the wrong codebase.
+
+| Feature Type | Repo | Rationale |
+|---|---|---|
+| Lead magnet creation/AI content generation | magnetlab | Owns the lead magnet product, AI pipeline, funnel builder |
+| LinkedIn profile scraping/enrichment | leadmagnet-backend | Owns the Blueprint pipeline (scrape -> enrich -> generate) |
+| Blueprint admin UI/prompt editing | leadmagnet-admin | Admin dashboard for the Blueprint backend |
+| Public Blueprint pages/prospect pages | copy-of-gtm-os | Hosts all public-facing Blueprint pages + student portals |
+| GC member portal features | copy-of-gtm-os | Owns the Growth Collective member experience |
+| Bootcamp LMS/student features | copy-of-gtm-os | Owns the LinkedIn Bootcamp product |
+| Webhook ingestion from 3rd parties | gtm-system | Central webhook hub for 14+ integrations |
+| Lead routing/pipeline orchestration | gtm-system | Owns lead lifecycle from capture to sales handoff |
+| Cold email campaigns | gtm-system | Owns all cold email: UI, campaign management, enrichment, pipeline |
+| Content scheduling/publishing | magnetlab | Owns content pipeline, autopilot, AI Brain (migrated from gtm-system) |
+| Reply classification/delivery | gtm-system | Owns the reply pipeline (AI classify -> Blueprint -> deliver) |
+| Funnel pages/opt-in pages | magnetlab | Owns funnel builder, opt-in, thank-you, content pages |
+| Stripe billing/subscriptions | magnetlab (SaaS billing) or copy-of-gtm-os (bootcamp subs) | Depends on which product the billing is for |
+| AI prompt management | leadmagnet-admin (Blueprint) or magnetlab (lead magnets) | Depends on which AI pipeline |
+
+## Branding & Conversion Tracking
+
+Team-level branding settings that apply across all funnels. Configured in Settings > Branding & Defaults.
+
+### Brand Kit Fields (on `brand_kits` table)
+
+- `logos` (jsonb array) -- client logos for logo bar sections
+- `default_testimonial` (jsonb) -- `{quote, author, role}` for testimonial sections
+- `default_steps` (jsonb) -- `{steps: [{icon, title, description}]}` for next-steps sections
+- `default_theme` -- `dark` or `light`
+- `default_primary_color` -- hex color (default `#8b5cf6`)
+- `default_background_style` -- `solid`, `gradient`, or `pattern`
+- `logo_url` -- uploaded logo (Supabase Storage `public-assets` bucket)
+- `font_family` -- Google Font name or custom font name
+- `font_url` -- custom .woff2 font URL (Supabase Storage)
+
+### How Branding Flows
+
+1. User configures branding in Settings (`BrandingSettings` component)
+2. On funnel creation (`POST /api/funnel`), brand kit values are fetched and merged into template sections (logo_bar, testimonial, steps) + theme/color/font defaults
+3. Font is snapshotted on `funnel_pages.font_family` / `font_url` at creation time -- changes to brand kit don't retroactively affect existing funnels
+4. `FontLoader` component handles both Google Fonts (CDN link) and custom .woff2 fonts (`@font-face` injection with XSS sanitization)
+
+### Conversion Tracking
+
+- `page_views` table has `page_type` column (`optin` or `thankyou`) with unique constraint on `(funnel_page_id, viewer_hash, page_type)`
+- Thank-you page tracks views via `POST /api/public/view` with `pageType: 'thankyou'`
+- Analytics API (`/api/analytics/funnel/[id]`) returns `thankyouViews`, `responded` (leads with qualification answers), and `responseRate`
+- Magnets page shows conversion rate badges (views → leads)
+
+### Key Files
+
+- `src/components/settings/BrandingSettings.tsx` -- 5-card settings UI (logo, theme, font, testimonial, steps)
+- `src/app/api/brand-kit/upload/route.ts` -- logo/font upload to Supabase Storage
+- `src/components/funnel/public/FontLoader.tsx` -- font loading + XSS sanitization, exports `GOOGLE_FONTS`
+- `src/app/api/public/view/route.ts` -- page view tracking with `pageType` validation
+
+## A/B Testing (Thank-You Page)
+
+Self-serve A/B testing for thank-you pages to maximize survey completion rate. Tests one field at a time: headline, subline, video on/off, pass message, or page layout.
+
+### Data Model
+
+- `ab_experiments` table -- experiment definition (status, test_field, winner_id, significance, min_sample_size)
+- `funnel_pages` columns added: `experiment_id`, `is_variant` (boolean), `variant_label`
+- Variants are cloned `funnel_pages` rows linked via `experiment_id`. Existing `page_views` and `funnel_leads` tracking works unchanged per variant.
+
+### How It Works
+
+1. **Create test**: User picks a field to test on the funnel builder's thank-you tab. AI (Claude) generates 2-3 variant suggestions. User picks one (or writes custom).
+2. **Bucketing**: Server-side deterministic hash (`SHA-256(IP + User-Agent + experiment_id)`) assigns visitors to variants. No cookies. Same visitor always sees same variant.
+3. **Tracking**: Each variant has its own `funnel_page_id`, so `page_views` (page_type='thankyou') and `funnel_leads` track per-variant automatically.
+4. **Auto-winner**: Trigger.dev scheduled task (`check-ab-experiments`, every 6 hours) runs two-proportion z-test. At p < 0.05 with min sample size met, declares winner.
+5. **Winner promotion**: Winning field value is copied back to the control row. URL never changes. Variant rows are unpublished.
+
+### API Routes
+
+- `GET/POST /api/ab-experiments` -- list (with `?funnelPageId=` filter) and create experiments
+- `GET/PATCH/DELETE /api/ab-experiments/[id]` -- get with stats, pause/resume/declare-winner, delete
+- `POST /api/ab-experiments/suggest` -- AI variant suggestions using Claude (claude-sonnet-4-5-20250514)
+
+### Key Files
+
+- `src/components/funnel/ABTestPanel.tsx` -- dashboard UI (4 states: no test, creating, running, completed)
+- `src/components/funnel/FunnelBuilder.tsx` -- integrates ABTestPanel in thankyou tab
+- `src/app/p/[username]/[slug]/thankyou/page.tsx` -- server-side bucketing logic
+- `src/trigger/check-ab-experiments.ts` -- auto-winner detection (6-hour cron)
+- `src/app/api/ab-experiments/` -- CRUD + suggest APIs
+- `supabase/migrations/20260218200000_ab_experiments.sql` -- migration
+
+### Important Notes
+
+- Always filter funnel queries with `.eq('is_variant', false)` to hide variant rows from funnel lists
+- One experiment per funnel at a time (create API enforces this)
+- Experiment paused/completed/draft → serve control (or winner if completed)
+
+## Thank-You Page Layouts
+
+Three layout variants for thank-you pages, controlled by `thankyou_layout` column on `funnel_pages`. A/B testable via the experiment system.
+
+### Layout Variants
+
+| Layout | Slug | Behavior |
+|--------|------|----------|
+| Survey First | `survey_first` | Default. Banner → headline → survey → video (after completion) → result → booking |
+| Video First | `video_first` | Banner → headline → video (plays immediately) → survey → result → booking |
+| Side by Side | `side_by_side` | Banner → headline → 2-column grid (video left, survey right) → result. Falls back to single-column when no video. Mobile: stacks vertically. |
+
+### Data Model
+
+- `funnel_pages.thankyou_layout` TEXT NOT NULL DEFAULT `'survey_first'` — CHECK constraint: `survey_first`, `video_first`, `side_by_side`
+- Type: `ThankyouLayout` exported from `src/lib/types/funnel.ts`
+
+### Key Rendering Logic
+
+- `survey_first`: `aboveSections` render before survey (backward compat). Video gated behind `qualificationComplete`.
+- `video_first` / `side_by_side`: Video shows immediately (not gated). `aboveSections` skipped to keep content above fold.
+- `side_by_side`: Uses `grid grid-cols-1 md:grid-cols-2 gap-6`. Qualification result renders in-grid when video present, below grid otherwise.
+- Extracted helper components: `SurveyCard`, `QualificationResult` in `ThankyouPage.tsx`.
+
+### Key Files
+
+- `src/components/funnel/public/ThankyouPage.tsx` — Core layout rendering (3 branches)
+- `src/components/funnel/ThankyouPageEditor.tsx` — Layout selector radio cards
+- `src/components/funnel/FunnelBuilder.tsx` — Layout state management
+- `src/components/funnel/ABTestPanel.tsx` — Layout as testable field (`thankyou_layout`)
+- `src/app/p/[username]/[slug]/thankyou/page.tsx` — Passes layout + variant bucketing
+- `supabase/migrations/20260227200000_thankyou_layout.sql` — Migration
+
+## External Thank-You Page Redirect
+
+Funnel owners can redirect leads to an external URL instead of showing the built-in thank-you page.
+
+### Configuration
+
+Three modes via `redirect_trigger` column on `funnel_pages`:
+- `none` (default): Built-in thank-you page
+- `immediate`: Skip thank-you page, redirect right after opt-in
+- `after_qualification`: Show survey first, then redirect based on result
+
+### Data Model
+
+- `redirect_trigger` TEXT NOT NULL DEFAULT 'none' — mode selector
+- `redirect_url` TEXT — primary redirect URL (or qualified-lead URL)
+- `redirect_fail_url` TEXT — unqualified-lead redirect URL (after_qualification only)
+
+Both URLs get `?leadId=xxx&email=yyy` appended automatically.
+
+### Key Files
+
+- `src/components/funnel/ThankyouPageEditor.tsx` — redirect config UI (dropdown + URL inputs)
+- `src/components/funnel/public/OptinPage.tsx` — immediate redirect logic
+- `src/components/funnel/public/ThankyouPage.tsx` — post-qualification redirect effect
+- `src/app/p/[username]/[slug]/page.tsx` — passes redirect config to OptinPage
+- `src/app/p/[username]/[slug]/thankyou/page.tsx` — passes redirect config + lead email to ThankyouPage
+
+## Default Resource Delivery Email
+
+Auto-sends a "here is your resource" email on opt-in, with a per-funnel toggle (default ON).
+
+### Priority Rules
+
+| Active sequence? | Toggle ON | Result |
+|---|---|---|
+| Yes | Any | Sequence handles delivery (default email skipped) |
+| No | ON | System sends fixed-template resource email |
+| No | OFF | Resource shown directly on thank-you page |
+
+### Data Model
+
+- `funnel_pages.send_resource_email` BOOLEAN NOT NULL DEFAULT true — per-funnel toggle
+- Fixed system template (no customization) — subject: "Your [Title] is ready"
+
+### How It Works
+
+1. Lead opts in → `POST /api/public/lead` creates lead, fires webhooks
+2. Calls `triggerEmailSequenceIfActive()` — if sequence handles it, done
+3. If no sequence: checks `send_resource_email` toggle
+4. Toggle ON + content exists → triggers `send-resource-email` Trigger.dev task
+5. Toggle OFF → thank-you page shows resource link/button directly
+
+### Key Files
+
+- `src/trigger/send-resource-email.ts` — Trigger.dev task (fixed HTML template via Resend)
+- `src/app/api/public/lead/route.ts` — conditional trigger (sequence > resource email > nothing)
+- `src/lib/services/email-sequence-trigger.ts` — exported `getSenderInfo()` + `getUserResendConfig()`
+- `src/components/funnel/ThankyouPageEditor.tsx` — toggle UI (Resource Delivery section)
+- `src/components/funnel/public/ThankyouPage.tsx` — conditional banner + resource button
+- `src/app/p/[username]/[slug]/thankyou/page.tsx` — computes `showResourceOnPage` from toggle + sequence state
+
+## Custom Domains & White-Label
+
+Team-level custom domain and white-label support. One domain per team via CNAME → Vercel. Pro+ plan only.
+
+### Database
+
+- `team_domains` table: `id, team_id, domain, vercel_domain_id, status, dns_config, last_checked_at, created_at, updated_at`
+- `teams` table columns: `hide_branding`, `custom_favicon_url`, `custom_site_name`, `custom_email_sender_name`, `whitelabel_enabled`
+- Status values: `pending_dns`, `verified`, `active`, `error`
+- RLS: public SELECT (middleware needs unauthenticated lookup), owner CRUD
+
+### How It Works
+
+1. **Domain setup**: User enters domain in Settings → `POST /api/settings/team-domain` → Vercel Domains API adds domain → returns DNS instructions
+2. **DNS verification**: User configures CNAME → clicks Verify (or auto-poll 10s×12) → `POST /api/settings/team-domain/verify` → Vercel API checks → status → `active`
+3. **Request routing**: `middleware.ts` reads Host header → `lookupCustomDomain()` (LRU cached 60s, 500 entries) → rewrites to `/p/[username]/[slug]` → sets `x-custom-domain` + `x-team-id` headers
+4. **White-label rendering**: Server components fetch `getWhitelabelConfig(teamId)` → pass `hideBranding` to client components → conditional "Powered by" footer
+5. **Metadata**: `custom_site_name` replaces "MagnetLab" in `<title>` suffix and og:site_name; `custom_favicon_url` as `<link rel="icon">`
+
+### Key Files
+
+- `src/lib/utils/domain-lookup.ts` -- LRU-cached domain → team/username resolution
+- `src/lib/utils/whitelabel.ts` -- `getWhitelabelConfig(teamId)` helper
+- `src/lib/integrations/vercel-domains.ts` -- Vercel Domains API client (add, check, remove, config)
+- `src/middleware.ts` -- Custom domain routing (Host header → rewrite)
+- `src/app/api/settings/team-domain/route.ts` -- Domain CRUD (GET, POST, DELETE)
+- `src/app/api/settings/team-domain/verify/route.ts` -- DNS verification
+- `src/app/api/settings/whitelabel/route.ts` -- White-label settings (GET, PATCH)
+- `src/components/settings/WhiteLabelSettings.tsx` -- Settings UI (domain + branding)
+- `src/components/funnel/public/OptinPage.tsx` -- Conditional branding
+- `src/components/funnel/public/ThankyouPage.tsx` -- Conditional branding
+- `src/components/content/ContentFooter.tsx` -- Conditional branding
+- `supabase/migrations/20260219000000_team_domains_whitelabel.sql` -- Migration
+
+### Env Vars
+
+- `VERCEL_TOKEN` -- Vercel API bearer token (required for domain provisioning)
+- `VERCEL_PROJECT_ID` -- Vercel project ID for magnetlab
+- `VERCEL_TEAM_ID` -- Vercel team ID (optional, for org accounts)
+
+### Whitelabel Email Domains
+
+Teams can verify their own email sending domain via Resend API (in-app), so transactional emails send from their domain instead of `sends.magnetlab.app`.
+
+- `team_email_domains` table: `id, team_id, domain, resend_domain_id, status, dns_records, region, last_checked_at, created_at, updated_at`
+- `teams.custom_from_email` column: full sender address (e.g., `hello@clientbrand.com`)
+- Status values: `pending`, `verified`, `failed`
+- DNS records from Resend include SPF (TXT), DKIM (TXT), and MX with per-record verification status
+- Sender resolution priority in `getSenderInfo()`: user's own Resend account > team verified email domain + `custom_from_email` > default `hello@sends.magnetlab.app`
+
+Key files:
+- `src/lib/integrations/resend-domains.ts` -- Resend Domains API client (create, get, verify, delete)
+- `src/app/api/settings/team-email-domain/route.ts` -- Email domain CRUD
+- `src/app/api/settings/team-email-domain/verify/route.ts` -- DNS verification
+- `src/app/api/settings/team-email-domain/from-email/route.ts` -- From-email with domain suffix validation
+- `src/lib/services/email-sequence-trigger.ts` -- `getSenderInfo()` resolves team email domain
+
+### Deprecation / Removed
+
+- `funnel_pages.custom_domain` column is ignored — domain is now team-level via `team_domains`
+- **Loops integration removed** — `src/lib/integrations/loops.ts` deleted, all Loops types and references cleaned from email types and API routes. DB columns `loops_synced_at` / `loops_transactional_ids` remain in `email_sequences` table (harmless).
+
+## Integration Points
+
+- **GTM webhooks**: Fires `lead.created`, `lead.qualified`, `lead_magnet.deployed` to gtm-system via `lib/webhooks/gtm-system.ts` (fire-and-forget, 5s timeout, `x-webhook-secret` auth). **Scoped to GTM system owner only** (`GTM_SYSTEM_USER_ID` env var) — other magnetlab users' leads are NOT sent to gtm-system.
+- **User webhooks**: Users configure their own endpoints for lead capture events (`lib/webhooks/sender.ts`, signature verify in `lib/webhooks/verify.ts`)
+- **Notetaker integrations (Grain, Fireflies, Fathom)**: All three use inbound webhooks — no OAuth polling. Grain and Fireflies use shared secrets (`GRAIN_WEBHOOK_SECRET`, `FIREFLIES_WEBHOOK_SECRET`). Fathom uses per-user webhook URLs with unique secrets (generated via `/api/integrations/fathom/webhook-url/`). Fathom was migrated from OAuth to webhook-based in Feb 2026.
+- **Stripe**: Checkout/subscriptions/webhooks at `/api/stripe/`, state in `subscriptions` table, limits via `usage_tracking`
+- **Email Marketing (Kit, MailerLite, Mailchimp, ActiveCampaign)**: Native ESP integrations that auto-subscribe funnel leads to user's email lists with optional tags. See "Email Marketing Integrations" section below.
+
+## Email Marketing Integrations
+
+Native integrations with 4 email service providers. Users connect their ESP in Settings, map funnels to specific lists+tags, and leads are auto-subscribed on opt-in (fire-and-forget).
+
+### Supported Providers
+
+| Provider | Auth | Base URL | Subscribe pattern |
+|----------|------|----------|-------------------|
+| Kit (ConvertKit) | `X-Kit-Api-Key` header | `api.kit.com/v4` | Form subscribe + optional tag (2 calls) |
+| MailerLite | `Bearer` token | `connect.mailerlite.com/api` | POST /subscribers with groups[] (1 call) |
+| Mailchimp | OAuth 2.0 access token | `{dc}.api.mailchimp.com/3.0` | PUT member upsert + tag by name (2 calls) |
+| ActiveCampaign | `Api-Token` header | `{account}.api-us1.com/api/3` | Create contact + add to list + tag (3 calls) |
+
+### Data Model
+
+- `user_integrations` -- stores encrypted API keys per service (existing table, new service values: `kit`, `mailerlite`, `mailchimp`, `activecampaign`)
+- `funnel_integrations` -- per-funnel provider mappings (`funnel_page_id + provider` unique constraint, RLS on `user_id`)
+
+### Data Flow
+
+```
+User connects ESP in Settings → credentials validated → stored in user_integrations
+User maps funnel to list+tag → stored in funnel_integrations
+Lead opts in → POST /api/public/lead → syncLeadToEmailProviders() [fire-and-forget]
+  → queries funnel_integrations for active mappings
+  → for each: gets credentials → provider.subscribe(list, email, tag)
+  → errors logged, never blocks response
+```
+
+### API Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/integrations/email-marketing/connect` | POST | Save API key + validate credentials |
+| `/api/integrations/email-marketing/disconnect` | POST | Remove connection + deactivate funnel mappings |
+| `/api/integrations/email-marketing/verify` | POST | Re-validate stored credentials |
+| `/api/integrations/email-marketing/lists` | GET | Fetch lists from provider (`?provider=kit`) |
+| `/api/integrations/email-marketing/tags` | GET | Fetch tags (`?provider=kit&listId=...`) |
+| `/api/integrations/email-marketing/connected` | GET | List connected provider names |
+| `/api/integrations/mailchimp/authorize` | GET | Start Mailchimp OAuth flow |
+| `/api/integrations/mailchimp/callback` | GET | Handle Mailchimp OAuth callback |
+| `/api/funnels/[id]/integrations` | GET/POST | List/upsert funnel integration mappings |
+| `/api/funnels/[id]/integrations/[provider]` | DELETE | Remove mapping |
+
+### Key Files
+
+- `src/lib/integrations/email-marketing/types.ts` -- `EmailMarketingProvider` interface
+- `src/lib/integrations/email-marketing/index.ts` -- factory, type guard, `syncLeadToEmailProviders()`
+- `src/lib/integrations/email-marketing/providers/` -- kit.ts, mailerlite.ts, mailchimp.ts, activecampaign.ts
+- `src/components/settings/EmailMarketingSettings.tsx` -- settings page UI
+- `src/components/funnel/FunnelIntegrationsTab.tsx` -- per-funnel mapping UI
+
+### Security Notes
+
+- ActiveCampaign `base_url` validated against `https://<account>.api-us1.com` pattern (SSRF prevention)
+- Mailchimp `server_prefix` validated against `^[a-z]{2}\d+$` pattern
+- All provider API calls have 10-second fetch timeout
+- Pagination loops capped at 50 pages
+- Mailchimp OAuth uses CSRF state cookie (httpOnly, 10-min TTL)
+
+### Env Vars
+
+- `MAILCHIMP_CLIENT_ID` -- Mailchimp OAuth app client ID
+- `MAILCHIMP_CLIENT_SECRET` -- Mailchimp OAuth app client secret
+- OAuth redirect URI: `{NEXT_PUBLIC_APP_URL}/api/integrations/mailchimp/callback`
+
+## GoHighLevel CRM Integration
+
+Push leads to GoHighLevel as contacts on capture. Account-level API key auth, per-funnel toggle with custom tags.
+
+### Data Flow
+
+```
+User connects GHL in Settings → API key validated → stored in user_integrations (service: 'gohighlevel')
+User enables GHL per-funnel → toggle stored in funnel_integrations (provider: 'gohighlevel', settings: { custom_tags })
+Lead opts in → POST /api/public/lead → syncLeadToGoHighLevel() [fire-and-forget with retry]
+  → checks account + funnel toggles
+  → builds payload with auto-tags + custom tags + UTMs + qualification data
+  → POST /contacts/ to GHL API v1 (https://rest.gohighlevel.com/v1)
+  → 3 retries with exponential backoff, errors logged only (never blocks lead capture)
+```
+
+### API Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/integrations/gohighlevel/connect` | POST | Validate API key + save integration |
+| `/api/integrations/gohighlevel/verify` | POST | Re-validate stored API key |
+| `/api/integrations/gohighlevel/disconnect` | POST | Remove key + deactivate funnel toggles |
+| `/api/integrations/gohighlevel/status` | GET | Check if GHL is connected (used by funnel builder) |
+
+### Key Files
+
+- `src/lib/integrations/gohighlevel/client.ts` -- GHL API client (createContact with retry, testConnection)
+- `src/lib/integrations/gohighlevel/sync.ts` -- `syncLeadToGoHighLevel()` called from lead capture route
+- `src/lib/integrations/gohighlevel/types.ts` -- GHL API types (GHLContactPayload, GHLSyncParams)
+- `src/components/settings/GoHighLevelSettings.tsx` -- Settings UI (connect/verify/disconnect)
+- `src/components/funnel/FunnelIntegrationsTab.tsx` -- Per-funnel toggle (GHLFunnelToggle component)
+
+### Tags Strategy
+
+Auto-tags (always applied): lead magnet title, funnel slug, `"magnetlab"`
+Custom tags (optional): configured per-funnel via comma-separated input, stored in `funnel_integrations.settings.custom_tags`
+
+### Database
+
+No new tables. Uses existing:
+- `user_integrations` -- `service: 'gohighlevel'`, stores API key
+- `funnel_integrations` -- `provider: 'gohighlevel'`, `settings` JSONB for custom_tags, `is_active` toggle
+- Migration: `20260225100000_funnel_integrations_settings.sql` -- adds `settings` column + GHL provider to constraint
+
+## HeyReach LinkedIn Delivery Integration
+
+Deliver lead magnets to opt-in leads via HeyReach LinkedIn DM campaigns. Account-level API key, per-funnel campaign selector, LinkedIn URL captured from `?li=` query param.
+
+### Data Flow
+
+```
+HeyReach campaign sends DM with link: magnetlab.app/p/user/slug?li={linkedinUrl}
+  → Prospect clicks → opt-in page reads ?li= param
+  → POST /api/public/lead (stores linkedin_url on funnel_leads)
+  → after() fires syncLeadToHeyReach() [fire-and-forget]
+    → checks user_integrations (api_key) + funnel_integrations (campaign_id, is_active)
+    → HeyReach addContactsToCampaign with customFields:
+        lead_magnet_title, lead_magnet_url, utm_source, utm_medium, utm_campaign
+    → updates funnel_leads.heyreach_delivery_status
+```
+
+### API Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/integrations/heyreach/connect` | POST | Validate API key + save integration |
+| `/api/integrations/heyreach/verify` | POST | Re-validate stored API key |
+| `/api/integrations/heyreach/disconnect` | POST | Remove key + deactivate funnel toggles |
+| `/api/integrations/heyreach/status` | GET | Check if HeyReach is connected |
+| `/api/integrations/heyreach/campaigns` | GET | Fetch campaigns for dropdown selector |
+| `/api/integrations/heyreach/accounts` | GET | Fetch LinkedIn accounts |
+
+### Key Files
+
+- `src/lib/integrations/heyreach/client.ts` -- HeyReach API client (addContactsToCampaign with retry, listCampaigns, listLinkedInAccounts, testConnection)
+- `src/lib/integrations/heyreach/sync.ts` -- `syncLeadToHeyReach()` fire-and-forget, called from lead capture route
+- `src/lib/integrations/heyreach/types.ts` -- HeyReach API types (HeyReachSyncParams, HeyReachContact, HeyReachCampaign)
+- `src/components/settings/HeyReachSettings.tsx` -- Settings UI (connect/verify/disconnect + variable reference)
+- `src/components/funnel/FunnelIntegrationsTab.tsx` -- Per-funnel toggle (HeyReachFunnelToggle with campaign dropdown)
+- `src/components/funnel/public/OptinPage.tsx` -- Reads `?li=` param, passes as `linkedinUrl` in form submission
+
+### Custom Variables (for HeyReach campaign templates)
+
+| Variable | Source |
+|----------|--------|
+| `{lead_magnet_title}` | Lead magnet title |
+| `{lead_magnet_url}` | Content delivery URL |
+| `{utm_source}` | UTM source param |
+| `{utm_medium}` | UTM medium param |
+| `{utm_campaign}` | UTM campaign param |
+
+### Database
+
+- `funnel_leads` -- added `linkedin_url TEXT` and `heyreach_delivery_status TEXT` columns
+- `user_integrations` -- `service: 'heyreach'`, stores API key
+- `funnel_integrations` -- `provider: 'heyreach'`, `settings: { campaign_id }` JSONB, `is_active` toggle
+- Migration: `20260227100000_heyreach_funnel_delivery.sql`
+
+## Development
+
+### Env Vars (`.env.local`)
+
+- `NEXT_PUBLIC_SUPABASE_URL` -- Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` -- Supabase anon key
+- `SUPABASE_SERVICE_ROLE_KEY` -- Supabase service role key
+- `NEXTAUTH_SECRET` -- NextAuth session secret
+- `NEXTAUTH_URL` -- App URL (http://localhost:3000)
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` -- Google OAuth
+- `ANTHROPIC_API_KEY` -- Claude AI
+- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` -- Stripe
+- `RESEND_API_KEY` -- Transactional email
+- `TRIGGER_SECRET_KEY` -- Background jobs
+- `GTM_SYSTEM_WEBHOOK_URL` / `GTM_SYSTEM_WEBHOOK_SECRET` / `GTM_SYSTEM_USER_ID` -- GTM webhooks (optional, only fires for this user's leads)
+- `OPENAI_API_KEY` -- Embeddings (text-embedding-3-small) for AI Brain / content pipeline
+- `GRAIN_WEBHOOK_SECRET` -- Grain transcript webhook auth
+- `FIREFLIES_WEBHOOK_SECRET` -- Fireflies transcript webhook auth
+- `VERCEL_TOKEN` -- Vercel API token for custom domain provisioning
+- `VERCEL_PROJECT_ID` -- Vercel project ID for domain management
+- `VERCEL_TEAM_ID` -- Vercel team ID (optional, for org accounts)
+- `MAILCHIMP_CLIENT_ID` -- Mailchimp OAuth app client ID
+- `MAILCHIMP_CLIENT_SECRET` -- Mailchimp OAuth app client secret
+
+### Commands
+
+```
+npm run dev              # Start dev server
+npm run build            # Production build
+npm run lint             # ESLint (flat config)
+npm run typecheck        # tsc --noEmit
+npm run test             # Run all Jest tests
+npm run test:watch       # Tests in watch mode
+npm run test:coverage    # Tests with coverage (50% min thresholds)
+npm run db:push          # Push Supabase migrations
+npm run db:reset         # Reset Supabase database
+npm run db:generate      # Regenerate TS types from DB schema
+```
+
+Tests in `src/__tests__/` mirror source structure (api/, components/, lib/). Uses `jest-environment-jsdom`, `@/` mapped via `moduleNameMapper`, mocks in `__tests__/__mocks__/`.
+
+## Testing Philosophy
+
+### What to test and when
+
+| Layer | Tool | What it catches | When to write |
+|-------|------|----------------|---------------|
+| **Schema validation** | Jest | Zod schema ↔ actual data shape mismatches | Every new/changed API route or Zod schema |
+| **API integration** | Jest | Route handler logic, auth, DB errors | Every new API route |
+| **Critical path e2e** | Playwright | Save flow, funnel publish, lead capture broken end-to-end | Every new archetype or major wizard change |
+| **Typecheck** | `tsc --noEmit` | Type errors | Always (run before commit) |
+
+### The #1 bug pattern to guard against
+
+**Zod schemas drifting from actual data shapes.** TypeScript can't catch this because DB columns accept `Json`/`unknown`. The Zod schema is the only runtime check, so if it's wrong, bad data silently passes or valid data gets rejected.
+
+**Rule: When you add or change a Zod schema, add a Jest test with realistic data matching what the UI actually sends.** See `src/__tests__/api/lead-magnet/create.test.ts` for the pattern — it tests each archetype's payload against `createLeadMagnetSchema`.
+
+### Jest tests (fast, run often)
+
+```
+npm run test                              # All tests
+npx jest src/__tests__/api/lead-magnet/   # Specific directory
+npx jest --no-coverage path/to/test.ts    # Single file, fast
+```
+
+- API route tests: mock Supabase + auth, test request/response shapes
+- Schema tests: validate Zod accepts realistic payloads, rejects bad ones
+- Use `@jest-environment node` for API route tests
+
+### Playwright e2e tests (slower, critical paths only)
+
+```
+npm run test:e2e                  # All e2e (needs dev server)
+npm run test:e2e:headed           # With browser visible
+npx playwright test e2e/wizard.spec.ts   # Single file
+```
+
+- Auth: cookie-based setup in `e2e/fixtures/auth.ts`
+- Mocks: `e2e/helpers/index.ts` has Supabase, Stripe, AI, and auth mocks
+- API contract tests in `e2e/wizard.spec.ts` POST realistic payloads directly to validate schema acceptance
+- Config: `playwright.config.ts` (chromium, firefox, mobile-safari)
+
+### When NOT to test
+
+- Don't write Playwright tests for every UI variation — only critical user flows
+- Don't test Supabase/Stripe internals — mock them and test your logic
+- Don't duplicate what `tsc --noEmit` already catches
+
+## LinkedIn Signal Engine (Feb 2026)
+
+Multi-signal LinkedIn lead discovery engine. Monitors LinkedIn for buying intent via keyword posts, company pages, profile engagement, and job changes. Enriches leads, filters against ICP criteria, scores with AI sentiment analysis, and pushes qualified leads to HeyReach. All LinkedIn data flows through Harvest API (replaced Apify).
+
+### Architecture
+
+```
+Signal Sources (Harvest API)
+  ├── Keyword Posts (searchPosts → getPostComments/Reactions)
+  ├── Company Pages (getCompanyPosts → getPostComments/Reactions)
+  ├── Profile Engagers (getProfilePosts → getPostComments/Reactions)
+  └── Job Changes (detected via enrichment)
+        │
+  Raw Leads → signal_events + signal_leads tables
+        │
+  Enrich → Harvest API /profile ($4-8/1k)
+        │
+  ICP Filter → Country + Job Title + Company match
+        │
+  AI Score → Claude Haiku sentiment + signal stacking
+        │
+  HeyReach → Push qualified leads to campaigns
+```
+
+### Signal Types (8)
+
+1. **Keyword Content Engagement** — Search posts by target keywords, extract commenters + reactors
+2. **Company Page Monitoring** — Track competitor/target company pages, extract engagers
+3. **Profile Engagement Tracking** — Monitor influencer/competitor profiles, extract engagers
+4. **Job Change Detection** — Flag profiles with role changes in last 90 days
+5. **Comment Sentiment Scoring** — AI classifies comments: `high_intent`, `question`, `medium_intent`, `low_intent`
+6. **Content Velocity Scoring** — Flag profiles with 3x+ posting frequency spike
+7. **Multi-Signal Stacking** — Compound score from distinct signal types (weights: job_change=30, keyword=15, etc.)
+8. **Job Posting Intelligence** — Scrape company job posts for tool/platform mentions
+
+### Database Tables (6)
+
+- `signal_configs` — Per-user ICP filters (countries, job titles, exclusions, company size, auto-push toggle)
+- `signal_keyword_monitors` — Keyword watchlists (max 20 per user), tracks posts_found/leads_found
+- `signal_company_monitors` — Company page watchlists (max 10 per user), LinkedIn company URLs
+- `signal_profile_monitors` — Profile watchlists (migrated from `cp_monitored_competitors`), competitor/influencer types
+- `signal_leads` — Deduplicated leads across all sources, with ICP score, compound score, sentiment, status pipeline
+- `signal_events` — Individual signal occurrences linked to leads, with signal_type, comment_text, sentiment
+
+All tables have RLS enabled (user self-management + service role bypass).
+
+### Harvest API Client
+
+- `src/lib/integrations/harvest-api.ts` — REST client at `https://api.harvest-api.com`, auth: `X-API-Key` header
+- Endpoints: `searchPosts`, `getPostComments`, `getPostReactions`, `getProfilePosts`, `getProfile`, `getCompanyPosts`, `searchJobs`
+- Replaces Apify integration (`apify-engagers.ts` deleted)
+
+### Trigger.dev Scheduled Tasks
+
+| Task | Cron | Purpose |
+|------|------|---------|
+| `signal-keyword-scan` | `0 */12 * * *` | Search posts by keyword, extract engagers |
+| `signal-company-scan` | `30 */12 * * *` | Scrape company page posts + engagers |
+| `signal-profile-scan` | `*/10 * * * *` | Profile monitoring (replaced Apify Phase 2) |
+| `signal-enrich-and-score` | `15 */2 * * *` | Enrich leads, ICP filter, sentiment score, compound score |
+| `signal-push-heyreach` | `*/30 * * * *` | Push qualified ICP-matched leads to HeyReach |
+| `scrape-engagement` | `*/10 * * * *` | Own-post engagement only (migrated to Harvest API) |
+
+### Services
+
+- `src/lib/services/signal-engine.ts` — `normalizeLinkedInUrl()`, `upsertSignalLead()`, `recordSignalEvent()`, `updateSignalCounts()`, `processEngagers()`
+- `src/lib/services/signal-icp-filter.ts` — `matchesIcp()`, `computeIcpScore()` (0-100 composite)
+- `src/lib/ai/signal-sentiment.ts` — `classifyCommentSentiment()` (Claude Haiku), `batchClassifySentiment()`
+
+### API Routes
+
+| Route | Purpose |
+|-------|---------|
+| `GET/PUT /api/signals/config` | User's ICP filter config |
+| `GET/POST /api/signals/keywords` | List/add keyword monitors |
+| `PATCH/DELETE /api/signals/keywords/[id]` | Toggle/delete keyword |
+| `GET/POST /api/signals/companies` | List/add company monitors |
+| `PATCH/DELETE /api/signals/companies/[id]` | Update/delete company |
+| `GET /api/signals/leads` | List leads with filters (status, ICP, signal type, score, pagination) |
+| `POST /api/signals/leads` | Bulk actions (exclude, push to HeyReach) |
+
+### UI Components
+
+- `src/components/settings/SignalConfig.tsx` — ICP config form (countries, titles, toggles)
+- `src/components/settings/KeywordMonitors.tsx` — Keyword watchlist manager
+- `src/components/settings/CompanyMonitors.tsx` — Company page watchlist manager
+- `src/components/signals/SignalLeadsTable.tsx` — Dashboard table with filters + bulk actions
+- `src/components/signals/SignalLeadDetail.tsx` — Slide-out detail drawer with signal events timeline
+- Dashboard nav: "Signals" item at `/(dashboard)/signals`
+
+### Compound Scoring
+
+Weights per signal type: `job_change=30`, `job_posting=20`, `keyword_engagement=15`, `content_velocity=15`, `company_engagement=10`, `profile_engagement=10`. Sentiment bonuses: `high_intent=+20`, `question=+15`, `medium_intent=+5`. Capped at 100.
+
+### Env Vars
+
+| Var | Where | Purpose |
+|-----|-------|---------|
+| `HARVEST_API_KEY` | `.env.local` + Vercel + Trigger.dev | Harvest API calls |
+| `HEYREACH_API_KEY` | Trigger.dev | HeyReach campaign enrollment |
+
+### Tool Responsibility Split
+
+| Tool | Does | Doesn't |
+|------|------|---------|
+| Harvest API | All LinkedIn scraping (posts, comments, reactions, profiles, jobs) | Any actions |
+| Unipile | Publish posts, like comments, reply to comments | Scrape, DM, connect |
+| HeyReach | DMs, connection requests (via campaign enrollment) | Scraping |
+
+### Legacy Engagement (still active for own posts)
+
+- `src/trigger/scrape-engagement.ts` — Own-post engagement scraping (migrated from Apify to Harvest API). Competitor scraping fully removed (handled by `signal-profile-scan.ts`).
+- `cp_post_engagements` table — Still used for own-post engagement tracking
+- `cp_monitored_competitors` table — Data migrated to `signal_profile_monitors`, table kept for backward compatibility
+
+## Team Command Center (Feb 2026)
+
+Unified weekly calendar view for managing LinkedIn posts across all team members from one screen. Includes broadcast-to-team with AI voice-adapted variations and content collision detection.
+
+### Data Model
+
+- `team_profile_integrations` — per-profile LinkedIn connection (service, metadata with unipile_account_id, connected_by)
+- `cp_pipeline_posts.broadcast_group_id` — UUID linking broadcast siblings
+
+### Architecture
+
+```
+Team Command Center (weekly grid) → team-schedule API → Supabase
+  ↓ right-click "Broadcast"
+  → broadcast API → Trigger.dev `broadcast-post-variations` task
+    → Claude AI rewrites in each member's voice
+    → Creates variation posts (status: reviewing)
+    → Auto-staggers across 2-3 days
+  ↓ collision check (Haiku)
+  → Detects same-day topic overlap → suggests rescheduling
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/components/content-pipeline/TeamCommandCenter.tsx` | Main container (week nav, grid, buffer dock) |
+| `src/components/content-pipeline/WeeklyGrid.tsx` | Calendar grid (profiles × days) |
+| `src/components/content-pipeline/GridCell.tsx` | Individual day cell (post preview, empty slot) |
+| `src/components/content-pipeline/BroadcastModal.tsx` | Profile picker + stagger config |
+| `src/components/content-pipeline/GridContextMenu.tsx` | Right-click actions (broadcast, reschedule, etc.) |
+| `src/components/content-pipeline/TeamLinkedInConnect.tsx` | Connection status banner |
+| `src/lib/services/team-integrations.ts` | Team profile LinkedIn account resolution |
+| `src/lib/ai/content-pipeline/collision-detector.ts` | Same-day topic overlap detection (Haiku) |
+| `src/trigger/broadcast-post-variations.ts` | AI voice rewriting + stagger scheduling |
+| `src/app/api/content-pipeline/team-schedule/route.ts` | GET: weekly data for all profiles |
+| `src/app/api/content-pipeline/team-schedule/assign/route.ts` | POST: assign buffer post to slot |
+| `src/app/api/content-pipeline/broadcast/route.ts` | POST: trigger broadcast task |
+| `supabase/migrations/20260226200000_team_command_center.sql` | DB migration |
+
+### LinkedIn Connection
+
+`team_profile_integrations` table decouples LinkedIn connections from user accounts. Connect flow: `/api/linkedin/connect?team_profile_id=X` → Unipile OAuth → webhook stores account ID against the profile. Falls back to `user_integrations` for backward compat.
+
+### Publishing
+
+`getTeamProfileLinkedInPublisher(profileId)` resolves the Unipile account ID from `team_profile_integrations` first, then `user_integrations` fallback.
+
+## Content Production System (Feb 2026)
+
+Daily content operations for Modern Agency Sales: 1 LinkedIn post/day per team member (different voice/topics), 1 newsletter email/day, 1 lead magnet/week. Core unlock: edit-tracking + style learning baked into every content surface.
+
+### Architecture
+
+magnetlab is the single content command center. gtm-system remains the intake engine, pushing warm leads via webhook.
+
+### Edit-Tracking + Style Learning (Phases 1-4)
+
+Every content save captures before/after diffs, auto-classifies patterns via AI, and evolves the team's voice profile over time.
+
+**Data Flow:**
+```
+CEO edits post → captureAndClassifyEdit() (fire-and-forget)
+  → isSignificantEdit() (5% word-level threshold)
+  → INSERT cp_edit_history
+  → classifyEditPatterns() (Claude Haiku, async)
+  → UPDATE auto_classified_changes
+  → StyleFeedbackToast (optional quick-tag: "Too formal", "Wrong tone", etc.)
+
+Weekly (Sunday 3:30 AM UTC):
+  evolve-writing-style task → aggregateEditPatterns()
+  → Claude evolves voice_profile JSONB on team_profiles
+  → buildVoicePromptSection() injects into ALL AI writing
+```
+
+**Key Tables:**
+- `cp_edit_history` — team_id, profile_id, content_type, content_id, field_name, original_text, edited_text, edit_diff, edit_tags, ceo_note, auto_classified_changes, processed
+
+**Key Files:**
+- `src/lib/services/edit-capture.ts` — `captureEdit()`, `captureAndClassifyEdit()`, `isSignificantEdit()`, `computeEditDiff()`
+- `src/lib/ai/content-pipeline/edit-classifier.ts` — `classifyEditPatterns()` (Claude Haiku)
+- `src/lib/services/style-evolution.ts` — `aggregateEditPatterns()` pure function
+- `src/trigger/evolve-writing-style.ts` — `evolveWritingStyle` + `weeklyStyleEvolution` cron
+- `src/lib/ai/content-pipeline/voice-prompt-builder.ts` — `buildVoicePromptSection(profile, contentType)` injected into post-writer, post-polish, briefing-agent, email-writer, promotion-post-writer
+- `src/components/content-pipeline/StyleFeedbackToast.tsx` — quick-tag chips
+- `src/app/api/content-pipeline/edit-feedback/route.ts` — POST (team-scoped, 500 char note limit)
+
+**Edit capture hooked into:** post save (PATCH), email broadcast save (PUT), email sequence save (PUT), lead magnet content save (PUT)
+
+### Email List Consolidation (Phase 5)
+
+**Sources:** lead_magnet, manual, import, csv_import, resend_import, positive_reply, purchaser, meeting, heyreach, plusvibe, gtm_sync, organic
+
+**Key Files:**
+- `src/app/api/admin/import-subscribers/route.ts` — CSV import (5MB max, RFC-4180, batched upserts)
+- `src/app/api/webhooks/subscriber-sync/route.ts` — inbound webhook from gtm-system (timing-safe secret, "keep richest record" merge)
+- `supabase/migrations/20260223100000_subscriber_sources.sql` — expanded source constraint + metadata JSONB + company TEXT
+
+**Env Vars:** `SUBSCRIBER_SYNC_WEBHOOK_SECRET` (Vercel + Trigger.dev)
+
+### Daily Newsletter Email (Phase 6)
+
+Distinct from LinkedIn posts: 300-500 words, subheadings, actionable takeaways, soft CTA. Uses today's approved LinkedIn post for topic consistency.
+
+**Key Files:**
+- `src/lib/ai/content-pipeline/email-writer.ts` — `writeNewsletterEmail()` (Claude Sonnet, voice-injected)
+- `src/app/api/email/generate-daily/route.ts` — POST: generates draft broadcast from today's post + knowledge brief
+
+### Lead Magnet Pipeline (Phase 7)
+
+Weekly AI-generated topic suggestions. CEO approves → promotion posts auto-generated.
+
+**Key Files:**
+- `src/trigger/suggest-lead-magnet-topics.ts` — `suggest-lead-magnet-topics` (on-demand) + `weekly-lead-magnet-suggestions` (Monday 8 AM UTC cron)
+- `src/lib/ai/content-pipeline/promotion-post-writer.ts` — `generatePromotionPosts()` (4 angles: problem_aware, curiosity, value_first, social_proof)
+- `supabase/migrations/20260223200000_add_lead_magnet_content_type.sql` — adds 'lead_magnet' to content_type constraint
+
+### gtm-system Subscriber Sync (Phase 8)
+
+Fire-and-forget webhook from gtm-system to magnetlab on positive replies and meetings.
+
+**gtm-system files modified:**
+- `src/lib/subscriber-sync.ts` — `syncSubscriberToMagnetlab()` (5s timeout, env-var guard)
+- Webhook handlers: plusvibe, heyreach, calcom — all call sync after positive events
+
+**Env Vars (Railway):** `MAGNETLAB_URL`, `MAGNETLAB_SUBSCRIBER_SYNC_SECRET`, `MAGNETLAB_TEAM_ID`
+
+### CEO Guide + Troubleshooting (Phase 9)
+
+- `src/app/(dashboard)/help/page.tsx` + `src/components/help/ContentOpsGuide.tsx` — 4-tab guide (Daily, Weekly, Troubleshoot, Style)
+- `docs/troubleshooting-content-production.md` — developer debug guide with SQL queries
+
+## AI Admin Panel
+
+Internal super-admin panel for managing all AI prompt templates and observing the self-learning system.
+
+### Access
+
+- Route: `/admin/prompts` (prompt management) and `/admin/learning` (learning observability)
+- Gate: `is_super_admin` boolean on `users` table — set via SQL: `UPDATE users SET is_super_admin = true WHERE email = 'your@email.com'`
+- Conditionally shown in sidebar nav for super-admins only
+
+### Data Model
+
+- `ai_prompt_templates` — 14 prompt templates with `{{variable}}` placeholders, model config, active/inactive toggle
+- `ai_prompt_versions` — full snapshot on every save, supports diff comparison and one-click restore
+- Prompts seeded with `is_active = false` — activate one at a time to override hardcoded defaults
+
+### Prompt Registry
+
+- `src/lib/services/prompt-registry.ts` — `getPrompt(slug)` with 5-min cache, `interpolatePrompt()`, `savePrompt()`
+- Falls back to hardcoded defaults in `src/lib/ai/content-pipeline/prompt-defaults.ts`
+- All AI modules read from registry: post-writer, post-polish, email-writer, knowledge-extractor, briefing-agent, edit-classifier, topic-summarizer, style-evolution
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/ai/content-pipeline/prompt-defaults.ts` | Hardcoded fallback prompts (14 entries) |
+| `src/lib/services/prompt-registry.ts` | Registry service (cache, interpolation, save, versioning) |
+| `src/lib/auth/super-admin.ts` | `isSuperAdmin()` auth helper |
+| `src/app/(dashboard)/admin/layout.tsx` | Admin route gate |
+| `src/app/(dashboard)/admin/prompts/page.tsx` | Prompt list page |
+| `src/app/(dashboard)/admin/prompts/[slug]/page.tsx` | Prompt editor page |
+| `src/app/(dashboard)/admin/learning/page.tsx` | Learning dashboard |
+| `src/components/admin/PromptEditor.tsx` | Editor with save, test, version history |
+| `src/components/admin/PromptDiffViewer.tsx` | Side-by-side diff viewer |
+| `src/components/admin/VersionTimeline.tsx` | Version history with restore |
+| `src/components/admin/LearningDashboard.tsx` | Edit activity, pattern frequency, voice evolution |
+| `src/app/api/admin/prompts/` | CRUD + versioning + restore + test APIs |
+| `src/app/api/admin/learning/` | Learning data API |
+
+## DFY Onboarding Automation (Feb 2026)
+
+4 automated steps in the DFY pipeline, triggered by gtm-system's dependency cascade after funnel/post creation.
+
+### External API Routes (called by gtm-system)
+
+| Route | Purpose |
+|-------|---------|
+| `POST /api/external/review-content` | AI reviews draft posts, flags bad ones, ranks quality, stores review_data |
+| `POST /api/external/apply-branding` | Applies brand kit to funnel pages + sections (theme, colors, fonts, logos) |
+| `POST /api/external/generate-quiz` | Generates qualification questions from ICP + knowledge + brand data |
+| `POST /api/external/setup-thankyou` | Builds branded thank-you page with sections (bridge, steps, CTA, testimonial, logos) |
+
+All authenticated via `Authorization: Bearer ${EXTERNAL_API_KEY}`.
+
+### AI Modules
+
+- `src/lib/ai/content-pipeline/content-reviewer.ts` -- Reviews posts for quality, AI patterns, consistency. Exports `reviewPosts()`, `parseReviewResults()`, `buildReviewPayload()`
+- `src/lib/ai/content-pipeline/quiz-generator.ts` -- Generates qualification questions from ICP data. Exports `generateQuizQuestions()`, `parseQuizQuestions()`, `validateQuizQuestion()`
+
+### Prompt Slugs
+
+- `content-review` -- Batch post review with scoring (1-10), categorization (excellent/good_with_edits/needs_rewrite/delete), edit recommendations, consistency flags
+- `quiz-generator` -- Qualification question generation (3-5 questions, yes_no/text/textarea/multiple_choice types)
+
+### Database
+
+- `cp_pipeline_posts.review_data` -- JSONB column for review results: `{review_score, review_category, review_notes, consistency_flags, reviewed_at}`
+- Partial btree index on `review_data->>'review_category'` for filtering
+
+### DFY Dependency Chain
+
+```
+process_intake -> select_and_finish_posts -> review_and_polish_content -> [admin review]
+                  lead_magnet_create -> build_funnel -> apply_branding    (parallel)
+                                                       generate_quiz      (parallel)
+                                                       setup_thankyou     (parallel)
+                  heyreach_setup
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/app/api/external/review-content/route.ts` | Review content API |
+| `src/app/api/external/apply-branding/route.ts` | Apply branding API |
+| `src/app/api/external/generate-quiz/route.ts` | Generate quiz API |
+| `src/app/api/external/setup-thankyou/route.ts` | Setup thank-you API |
+| `src/lib/ai/content-pipeline/content-reviewer.ts` | Content review AI module |
+| `src/lib/ai/content-pipeline/quiz-generator.ts` | Quiz generator AI module |
+| `src/lib/ai/content-pipeline/prompt-defaults.ts` | Prompt defaults (content-review, quiz-generator slugs) |
+| `supabase/migrations/20260226100000_post_review_data.sql` | review_data column migration |
+
+## Engagement Cold Email Pipeline (Feb 2026)
+
+Auto-enrich and push leads who engage with lead magnet posts to PlusVibe cold email campaigns. Also provides manual comment reply with opt-in link.
+
+### Architecture
+
+```
+Comment detected on lead magnet post (Unipile scrape)
+  → process-linkedin-comment (existing task)
+  → Keyword match → parallel actions:
+    1. Auto-like (existing)
+    2. Reply to comment (existing)
+    3. Push to HeyReach DM (existing)
+    4. NEW: enrich-and-push-plusvibe Trigger.dev task
+      → Harvest API (profile data)
+      → Waterfall email find: LeadMagic → Prospeo → BlitzAPI
+      → ZeroBounce validation (+ BounceBan catch-all escalation)
+      → PlusVibe campaign push with opt_in_url variable
+```
+
+### Data Model
+
+- `linkedin_automations` — added `plusvibe_campaign_id` (text) and `opt_in_url` (text) columns
+- `engagement_enrichments` — tracks enrichment status per lead (pending → enriching → enriched → pushed | failed | no_email)
+  - Unique constraint: `(user_id, automation_id, linkedin_url)` prevents double-enriching
+  - RLS: user self-management + service role bypass
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/integrations/enrichment/types.ts` | Core interfaces (EmailFinderProvider, EmailValidatorProvider, WaterfallResult) |
+| `src/lib/integrations/enrichment/leadmagic.ts` | Primary email finder |
+| `src/lib/integrations/enrichment/prospeo.ts` | Fallback email finder |
+| `src/lib/integrations/enrichment/blitzapi.ts` | Last resort email finder |
+| `src/lib/integrations/enrichment/zerobounce.ts` | Primary email validator |
+| `src/lib/integrations/enrichment/bounceban.ts` | Catch-all escalation validator |
+| `src/lib/integrations/enrichment/waterfall.ts` | `waterfallEmailFind()` orchestrator |
+| `src/lib/integrations/enrichment/index.ts` | Factory functions (getConfiguredFinders, getValidator) |
+| `src/lib/integrations/plusvibe.ts` | `addLeadsToPlusVibeCampaign()` client |
+| `src/trigger/enrich-and-push-plusvibe.ts` | Trigger.dev task (120s max, 2 retries) |
+| `src/lib/services/linkedin-automation.ts` | Pipeline wiring (section 2b triggers enrichment) |
+| `src/app/api/linkedin/automations/[id]/reply/route.ts` | Manual comment reply API |
+| `src/components/automations/AutomationEventsDrawer.tsx` | Events timeline + "Reply with Link" button |
+| `src/components/automations/AutomationEditor.tsx` | PlusVibe Campaign ID + Opt-In URL fields |
+| `supabase/migrations/20260227300000_engagement_enrichment_plusvibe.sql` | Migration |
+
+### PlusVibe Integration Notes
+
+- **API base**: `https://api.plusvibe.ai/api/v1`, auth: `x-api-key` header
+- **Variables**: Send WITHOUT `custom_` prefix — PlusVibe auto-prefixes. Templates use `{{custom_opt_in_url}}`
+- Campaign ID is per-automation (different lead magnets → different email sequences)
+
+### Manual Comment Reply
+
+- "Reply with Link" button on `comment_detected`/`keyword_matched` events in AutomationEventsDrawer
+- Pre-filled text: `Thanks {{name}}! Here's the link: {{opt_in_url}}`
+- Sends via Unipile `addComment()`, logs `reply_sent` event
+- API: `POST /api/linkedin/automations/[id]/reply` — body: `{ commentSocialId, text, commenterName }`
+
+### Env Vars
+
+Required in BOTH Vercel and Trigger.dev:
+
+```
+LEADMAGIC_API_KEY
+PROSPEO_API_KEY
+BLITZ_API_KEY
+ZEROBOUNCE_API_KEY
+BOUNCEBAN_API_KEY
+PLUSVIBE_API_KEY
+```
+
+## Deployment
+
+- **Vercel**: Auto-deploy is broken for private org repos (needs Vercel Pro). Deploy manually:
+  ```
+  vercel --prod
+  ```
+- **Trigger.dev tasks**: Deployed separately. Uses its own dedicated project (`proj_jdjofdqazqwitpinxady`):
+  ```
+  TRIGGER_SECRET_KEY=tr_prod_DB3vrdcduJYcXF19rrEB npx trigger.dev@4.3.3 deploy
+  ```
+- **DO NOT** add Trigger.dev deploy to Vercel build — CLI needs `TRIGGER_ACCESS_TOKEN` (PAT), not `TRIGGER_SECRET_KEY`.
+
+## Related Repos
+
+| Repo | Path | Purpose |
+|------|------|---------|
+| gtm-system | `/Users/timlife/Documents/claude code/gtm-system` | GTM orchestrator, webhooks, lead routing |
+| copy-of-gtm-os | `/Users/timlife/Documents/claude code/copy-of-gtm-os` | Public Blueprint pages, GC Portal, Bootcamp LMS |
+| leadmagnet-admin | `/Users/timlife/linkedin-leadmagnet-admin` | Admin dashboard for Blueprint Generator backend |
+| leadmagnet-backend | `/Users/timlife/linkedin-leadmagnet-backend` | Blueprint pipeline: scrape -> enrich -> generate |
+
+## Post-Feature Workflow
+
+After completing any new feature:
+
+1. **Write tests** -- every new feature MUST include tests before it is considered complete. At minimum: Zod schema tests for any new/changed schemas, API route tests for every new endpoint, and utility function tests for any new helpers. No exceptions.
+2. **Code review** -- trigger `superpowers:requesting-code-review` to catch security issues, missing scoping, and spec compliance
+3. **Resolve issues** -- fix all critical and important findings from the review
+4. **Update docs** -- add feature documentation to this CLAUDE.md (architecture, key files, data flow)

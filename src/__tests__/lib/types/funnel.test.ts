@@ -40,6 +40,7 @@ describe('Funnel Type Conversions', () => {
       homepage_url: null,
       homepage_label: null,
       send_resource_email: true,
+      thankyou_layout: 'survey_first',
       is_published: true,
       published_at: '2025-01-26T00:00:00Z',
       created_at: '2025-01-25T00:00:00Z',
@@ -78,6 +79,7 @@ describe('Funnel Type Conversions', () => {
         homepageUrl: null,
         homepageLabel: null,
         sendResourceEmail: true,
+        thankyouLayout: 'survey_first',
         isPublished: true,
         publishedAt: '2025-01-26T00:00:00Z',
         createdAt: '2025-01-25T00:00:00Z',
@@ -195,6 +197,8 @@ describe('Funnel Type Conversions', () => {
       utm_source: 'linkedin',
       utm_medium: 'social',
       utm_campaign: 'launch',
+      linkedin_url: null,
+      heyreach_delivery_status: null,
       created_at: '2025-01-26T00:00:00Z',
     };
 
@@ -213,6 +217,8 @@ describe('Funnel Type Conversions', () => {
         utmSource: 'linkedin',
         utmMedium: 'social',
         utmCampaign: 'launch',
+        linkedinUrl: null,
+        heyreachDeliveryStatus: null,
         createdAt: '2025-01-26T00:00:00Z',
       });
     });

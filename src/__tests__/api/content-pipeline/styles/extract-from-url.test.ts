@@ -7,9 +7,9 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn().mockResolvedValue({ user: { id: 'user-1' } }),
 }));
 
-// Mock Apify
-jest.mock('@/lib/integrations/apify-engagers', () => ({
-  scrapeProfilePosts: jest.fn(),
+// Mock Harvest API
+jest.mock('@/lib/integrations/harvest-api', () => ({
+  getProfilePosts: jest.fn(),
 }));
 
 // Mock style extractor
@@ -35,7 +35,7 @@ jest.mock('@/lib/utils/logger', () => ({
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/content-pipeline/styles/extract-from-url/route';
 import { auth } from '@/lib/auth';
-import { scrapeProfilePosts } from '@/lib/integrations/apify-engagers';
+import { getProfilePosts } from '@/lib/integrations/harvest-api';
 import { extractWritingStyle } from '@/lib/ai/style-extractor';
 
 function makeRequest(body: Record<string, unknown>) {
@@ -48,21 +48,12 @@ function makeRequest(body: Record<string, unknown>) {
 
 function makePost(index: number) {
   return {
-    url: `https://www.linkedin.com/feed/update/urn:li:activity:${index}`,
-    text: `This is a long enough post text that exceeds fifty characters for testing purposes. Post number ${index}.`,
-    numLikes: 10,
-    numComments: 5,
-    numShares: 2,
-    postedAtISO: '2026-01-01T00:00:00Z',
-    postedAtTimestamp: 1735689600,
-    authorName: 'Jane Doe',
-    authorProfileUrl: 'https://www.linkedin.com/in/janedoe',
-    author: {
-      firstName: 'Jane',
-      lastName: 'Doe',
-      occupation: 'CEO at Acme Corp',
-      publicId: 'janedoe',
-    },
+    id: `post-${index}`,
+    linkedinUrl: `https://www.linkedin.com/feed/update/urn:li:activity:${index}`,
+    content: `This is a long enough post text that exceeds fifty characters for testing purposes. Post number ${index}.`,
+    name: 'Jane Doe',
+    engagement: { likes: 10, comments: 5 },
+    postedAt: { timestamp: 1735689600, date: '2026-01-01T00:00:00Z' },
   };
 }
 
@@ -120,10 +111,10 @@ describe('POST /api/content-pipeline/styles/extract-from-url', () => {
     expect(body.error).toContain('LinkedIn');
   });
 
-  it('returns 502 if Apify scrape returns error', async () => {
-    (scrapeProfilePosts as jest.Mock).mockResolvedValueOnce({
+  it('returns 502 if Harvest scrape returns error', async () => {
+    (getProfilePosts as jest.Mock).mockResolvedValueOnce({
       data: [],
-      error: 'Apify HTTP 500: Internal error',
+      error: 'Harvest HTTP 500: Internal error',
     });
 
     const res = await POST(makeRequest({ linkedin_url: 'https://www.linkedin.com/in/janedoe' }));
@@ -134,8 +125,8 @@ describe('POST /api/content-pipeline/styles/extract-from-url', () => {
 
   it('returns 422 if fewer than 3 text posts found', async () => {
     // Return 2 posts with text > 50 chars and 1 with short text
-    const posts = [makePost(1), makePost(2), { ...makePost(3), text: 'Short' }];
-    (scrapeProfilePosts as jest.Mock).mockResolvedValueOnce({
+    const posts = [makePost(1), makePost(2), { ...makePost(3), content: 'Short' }];
+    (getProfilePosts as jest.Mock).mockResolvedValueOnce({
       data: posts,
       error: null,
     });
@@ -148,7 +139,7 @@ describe('POST /api/content-pipeline/styles/extract-from-url', () => {
 
   it('returns 201 with extracted style on success', async () => {
     const posts = [makePost(1), makePost(2), makePost(3), makePost(4), makePost(5)];
-    (scrapeProfilePosts as jest.Mock).mockResolvedValueOnce({
+    (getProfilePosts as jest.Mock).mockResolvedValueOnce({
       data: posts,
       error: null,
     });
@@ -183,7 +174,6 @@ describe('POST /api/content-pipeline/styles/extract-from-url', () => {
     expect(extractWritingStyle).toHaveBeenCalledWith(
       expect.objectContaining({
         posts: expect.arrayContaining([expect.any(String)]),
-        authorName: 'Jane Doe',
       })
     );
   });

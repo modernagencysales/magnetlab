@@ -22,3 +22,5 @@ export { matchTemplates, findBestTemplate, buildTemplateGuidance } from './templ
 export type { MatchedTemplate, MatchTemplateOptions } from './template-matcher';
 export { classifyEditPatterns } from './edit-classifier';
 export type { ClassifyInput, EditPattern, ClassifyResult } from './edit-classifier';
+export { detectContentCollisions } from './collision-detector';
+export type { PostForCollision, Collision, CollisionResult } from './collision-detector';

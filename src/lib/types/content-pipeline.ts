@@ -347,6 +347,7 @@ export interface PipelinePost {
   heyreach_campaign_id: string | null;
   last_engagement_scrape_at: string | null;
   engagement_scrape_count: number;
+  broadcast_group_id?: string | null;
   team_profile_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -682,7 +683,9 @@ export type AutomationEventType =
   | 'reply_failed'
   | 'follow_up_scheduled'
   | 'follow_up_sent'
-  | 'follow_up_failed';
+  | 'follow_up_failed'
+  | 'plusvibe_enrichment_triggered'
+  | 'plusvibe_enrichment_failed';
 
 export interface LinkedInAutomation {
   id: string;
@@ -702,6 +705,8 @@ export interface LinkedInAutomation {
   unipile_account_id: string | null;
   heyreach_campaign_id: string | null;
   resource_url: string | null;
+  plusvibe_campaign_id: string | null;
+  opt_in_url: string | null;
   leads_captured: number;
   created_at: string;
   updated_at: string;
@@ -718,4 +723,34 @@ export interface LinkedInAutomationEvent {
   action_details: string | null;
   error: string | null;
   created_at: string;
+}
+
+// ============================================
+// TEAM PROFILE INTEGRATIONS
+// ============================================
+
+export interface TeamProfileIntegration {
+  id: string;
+  team_profile_id: string;
+  service: string;
+  is_active: boolean;
+  metadata: Record<string, unknown>;
+  connected_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamProfileWithConnection extends TeamProfile {
+  linkedin_connected: boolean;
+  unipile_account_id: string | null;
+}
+
+export interface BroadcastGroup {
+  broadcast_group_id: string;
+  source_post_id: string;
+  variations: {
+    profile_id: string;
+    post_id: string;
+    scheduled_time: string | null;
+  }[];
 }

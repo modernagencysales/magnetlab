@@ -62,3 +62,13 @@ export async function disconnectGohighlevel(userId: string) {
   }
   return { success: true };
 }
+
+export async function disconnectHeyreach(userId: string) {
+  await deleteUserIntegration(userId, 'heyreach');
+  const { error } = await integrationsRepo.deactivateFunnelIntegrationsForProvider(userId, 'heyreach');
+  if (error) {
+    logApiError('heyreach/disconnect', error);
+    return { success: false, error: 'database' as const };
+  }
+  return { success: true };
+}

@@ -94,7 +94,8 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       redirect_fail_url,
       homepage_url,
       homepage_label,
-      send_resource_email
+      send_resource_email,
+      thankyou_layout
     `)
     .eq('user_id', user.id)
     .eq('slug', slug)
@@ -140,7 +141,7 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
     // Get all variants including control
     const { data: variants } = await supabase
       .from('funnel_pages')
-      .select('id, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message, is_variant, qualification_form_id')
+      .select('id, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message, is_variant, qualification_form_id, thankyou_layout')
       .or(`id.eq.${funnel.id},experiment_id.eq.${activeExperiment.id}`)
       .eq('is_published', true);
 
@@ -163,6 +164,7 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
         vsl_url: selected.vsl_url,
         qualification_pass_message: selected.qualification_pass_message,
         qualification_form_id: selected.qualification_form_id,
+        thankyou_layout: selected.thankyou_layout,
       };
     }
   }
@@ -294,6 +296,7 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       homepageUrl={funnel.homepage_url || brandWebsiteUrl}
       homepageLabel={funnel.homepage_label}
       showResourceOnPage={showResourceOnPage}
+      layout={(activeFunnel.thankyou_layout as 'survey_first' | 'video_first' | 'side_by_side') || 'survey_first'}
     />
   );
 }

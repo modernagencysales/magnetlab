@@ -360,7 +360,7 @@ function PostTab({
 // ─── Leads Tab ──────────────────────────────────────────────
 
 function LeadsTab({ funnelId }: { funnelId: string | null }) {
-  const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string; created_at: string }>>([]);
+  const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string; createdAt: string }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -422,7 +422,7 @@ function LeadsTab({ funnelId }: { funnelId: string | null }) {
             <tr key={lead.id} className="border-b last:border-0">
               <td className="px-4 py-3">{lead.name || '—'}</td>
               <td className="px-4 py-3 text-muted-foreground">{lead.email}</td>
-              <td className="px-4 py-3 text-muted-foreground">{formatDate(lead.created_at)}</td>
+              <td className="px-4 py-3 text-muted-foreground">{formatDate(lead.createdAt)}</td>
             </tr>
           ))}
         </tbody>

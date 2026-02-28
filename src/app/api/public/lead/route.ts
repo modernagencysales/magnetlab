@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { funnelPageId, email, name, utmSource, utmMedium, utmCampaign, fbc, fbp } = validation.data;
+    const { funnelPageId, email, name, utmSource, utmMedium, utmCampaign, linkedinUrl, fbc, fbp } = validation.data;
 
     const result = await submitLead(
       funnelPageId,
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       utmSource ?? null,
       utmMedium ?? null,
       utmCampaign ?? null,
+      linkedinUrl ?? null,
       fbc ?? null,
       fbp ?? null
     );

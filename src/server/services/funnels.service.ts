@@ -36,7 +36,7 @@ export type { FunnelPage, FunnelPageSection, QualificationQuestion };
 
 // ─── Validation constants ──────────────────────────────────────────────────
 
-const VALID_FUNNEL_PROVIDERS = ['kit', 'mailerlite', 'mailchimp', 'activecampaign', 'gohighlevel'] as const;
+const VALID_FUNNEL_PROVIDERS = ['kit', 'mailerlite', 'mailchimp', 'activecampaign', 'gohighlevel', 'heyreach'] as const;
 type FunnelProvider = typeof VALID_FUNNEL_PROVIDERS[number];
 
 function isValidFunnelProvider(s: string): s is FunnelProvider {
@@ -259,7 +259,9 @@ export async function publishFunnel(
 
   let cachedUsername: string | null = null;
   if (publish) {
-    const username = await funnelsRepo.getUsernameById(scope.userId);
+    // In team mode, use team owner's username for public URL routing (main parity)
+    const userIdForUsername = scope.type === 'team' && scope.ownerId ? scope.ownerId : scope.userId;
+    const username = await funnelsRepo.getUsernameById(userIdForUsername);
     if (!username) {
       throw Object.assign(
         new Error('You must set a username before publishing. Go to Settings to set your username.'),

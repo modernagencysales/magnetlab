@@ -6,7 +6,7 @@ import { ContentHeader } from './ContentHeader';
 import { ContentHero } from './ContentHero';
 import { TableOfContents } from './TableOfContents';
 import { PolishedContentRenderer } from './PolishedContentRenderer';
-import { EditablePolishedContentRenderer } from './EditablePolishedContentRenderer';
+import { InlineContentEditor } from './inline-editor';
 import { ExtractedContentRenderer } from './ExtractedContentRenderer';
 import { ContentFooter } from './ContentFooter';
 import { VideoEmbed } from '@/components/funnel/public/VideoEmbed';
@@ -17,6 +17,7 @@ import { FontLoader, getFontStyle } from '@/components/funnel/public/FontLoader'
 import { CalculatorTool } from '@/components/interactive/public/CalculatorTool';
 import { AssessmentTool } from '@/components/interactive/public/AssessmentTool';
 import { GPTChatTool } from '@/components/interactive/public/GPTChatTool';
+import { IClosedWidget } from '@/components/funnel/public/IClosedWidget';
 import type { PolishedContent, ExtractedContent, LeadMagnetConcept, InteractiveConfig } from '@/lib/types/lead-magnet';
 import type { FunnelPageSection } from '@/lib/types/funnel';
 
@@ -42,6 +43,8 @@ interface ContentPageClientProps {
   interactiveConfig?: InteractiveConfig | null;
   sections?: FunnelPageSection[];
   hideBranding?: boolean;
+  autoEdit?: boolean;
+  iClosedWidgetId?: string | null;
 }
 
 export function ContentPageClient({
@@ -64,9 +67,11 @@ export function ContentPageClient({
   interactiveConfig,
   sections = [],
   hideBranding,
+  autoEdit = false,
+  iClosedWidgetId,
 }: ContentPageClientProps) {
   const [isDark, setIsDark] = useState(initialTheme === 'dark');
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(autoEdit && isOwner);
   const [editContent, setEditContent] = useState<PolishedContent | null>(polishedContent);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -148,6 +153,7 @@ export function ContentPageClient({
             <GPTChatTool config={interactiveConfig} leadMagnetId={leadMagnetId!} theme={theme} primaryColor={primaryColor} />
           )}
         </div>
+        {iClosedWidgetId && <IClosedWidget widgetId={iClosedWidgetId} />}
       </div>
     );
   }
@@ -201,7 +207,7 @@ export function ContentPageClient({
           {/* Main content */}
           <div style={{ maxWidth: '700px', flex: 1, minWidth: 0 }}>
             {isEditing && editContent ? (
-              <EditablePolishedContentRenderer
+              <InlineContentEditor
                 content={editContent}
                 isDark={isDark}
                 primaryColor={primaryColor}
@@ -367,6 +373,8 @@ export function ContentPageClient({
           primaryColor={primaryColor}
         />
       )}
+
+      {iClosedWidgetId && <IClosedWidget widgetId={iClosedWidgetId} />}
     </div>
   );
 }

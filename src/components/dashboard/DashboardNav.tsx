@@ -10,6 +10,7 @@ import {
   Magnet, Settings, Plus, LogOut, Globe, Users, UsersRound,
   ChevronDown, PenTool, Menu, X, Sun, Moon,
   ArrowLeftRight, Home, Brain, Bot, BookOpen, Mail, HelpCircle, Shield,
+  Radio,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +43,7 @@ const mainNav = [
   { href: '/posts', label: 'Posts', icon: PenTool },
   { href: '/automations', label: 'Automations', icon: Bot },
   { href: '/leads', label: 'Leads', icon: Users },
+  { href: '/signals', label: 'Signals', icon: Radio },
   { href: '/email/flows', label: 'Email', icon: Mail, activePrefix: '/email' },
   { href: '/team', label: 'Team', icon: UsersRound },
 ];

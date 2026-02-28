@@ -17,7 +17,6 @@ export function ScreenshotGallery({
   const [screenshotUrls, setScreenshotUrls] = useState<ScreenshotUrl[]>(initialUrls);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<'1200x627' | '1080x1080'>('1200x627');
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const handleGenerate = async () => {
@@ -42,9 +41,7 @@ export function ScreenshotGallery({
   };
 
   const selectedShot = selectedIndex !== null ? screenshotUrls[selectedIndex] : null;
-  const selectedUrl = selectedShot
-    ? selectedFormat === '1200x627' ? selectedShot.url1200x627 : selectedShot.url1080x1080
-    : null;
+  const selectedUrl = selectedShot?.url1080x1080 ?? null;
 
   const canGenerate = hasPublishedFunnel;
 
@@ -74,22 +71,6 @@ export function ScreenshotGallery({
 
       {screenshotUrls.length > 0 && (
         <>
-          {/* Format toggle */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSelectedFormat('1200x627')}
-              className={`rounded px-2 py-1 text-xs ${selectedFormat === '1200x627' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-            >
-              Landscape (1200x627)
-            </button>
-            <button
-              onClick={() => setSelectedFormat('1080x1080')}
-              className={`rounded px-2 py-1 text-xs ${selectedFormat === '1080x1080' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-            >
-              Square (1080x1080)
-            </button>
-          </div>
-
           {/* Thumbnail grid */}
           <div className="grid grid-cols-3 gap-2">
             {screenshotUrls.map((shot, idx) => (
@@ -102,9 +83,9 @@ export function ScreenshotGallery({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={selectedFormat === '1200x627' ? shot.url1200x627 : shot.url1080x1080}
+                  src={shot.url1080x1080}
                   alt={shot.type === 'hero' ? 'Hero' : shot.sectionName || `Section ${(shot.sectionIndex ?? 0) + 1}`}
-                  className="aspect-video w-full object-cover"
+                  className="aspect-square w-full object-cover"
                 />
                 <span className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 text-xs text-white">
                   {shot.type === 'hero' ? 'Hero' : shot.sectionName || `Section ${(shot.sectionIndex ?? 0) + 1}`}

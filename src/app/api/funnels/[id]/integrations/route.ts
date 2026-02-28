@@ -7,7 +7,22 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+<<<<<<< HEAD
 export async function GET(request: NextRequest, { params }: RouteParams) {
+=======
+// All providers accepted in funnel_integrations (email marketing + CRM)
+const VALID_FUNNEL_PROVIDERS = ['kit', 'mailerlite', 'mailchimp', 'activecampaign', 'gohighlevel', 'heyreach'] as const;
+
+function isValidFunnelProvider(s: string): boolean {
+  return (VALID_FUNNEL_PROVIDERS as readonly string[]).includes(s);
+}
+
+// GET - List all integrations for this funnel page
+export async function GET(
+  request: NextRequest,
+  { params }: RouteParams
+) {
+>>>>>>> cd46c59795c3148789086a657c2176e3dd0f8a47
   try {
     const session = await auth();
     if (!session?.user?.id) return ApiErrors.unauthorized();

@@ -40,6 +40,13 @@
     "@sentry/nextjs": "^10.38.0",
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.4",
+    "@tiptap/extension-link": "^3.20.0",
+    "@tiptap/extension-placeholder": "^3.20.0",
+    "@tiptap/pm": "^3.20.0",
+    "@tiptap/react": "^3.20.0",
+    "@tiptap/starter-kit": "^3.20.0",
+    "@tiptap/suggestion": "^3.20.0",
+    "@trigger.dev/build": "^4.3.3",
     "@trigger.dev/sdk": "4.3.3",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
@@ -57,6 +64,7 @@
     "playwright": "^1.50.1",
     "posthog-js": "^1.342.1",
     "posthog-node": "^5.21.2",
+    "puppeteer": "^24.37.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
@@ -68,6 +76,7 @@
     "svix": "^1.85.0",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
+    "tippy.js": "^6.3.7",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -91,6 +100,7 @@
     "supabase": "^2.72.8",
     "tailwindcss": "^3.4.11",
     "ts-jest": "^29.1.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.6.2"
   }
 }

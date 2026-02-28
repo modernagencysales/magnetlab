@@ -2,7 +2,7 @@
 // Docs: https://{DSN}/api/v1/
 // Auth: X-API-KEY header
 // Used for: LinkedIn post publishing, like/reply on comments (low-risk actions only)
-// NOT used for: scraping (Apify), DMs/connections (HeyReach)
+// NOT used for: scraping (Harvest API), DMs/connections (HeyReach)
 
 import { BaseApiClient, ApiResponse } from './base-client';
 import { getUserIntegration } from '@/lib/utils/encrypted-storage';

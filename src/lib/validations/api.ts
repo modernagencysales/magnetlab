@@ -34,6 +34,7 @@ export const leadCaptureSchema = z.object({
   utmSource: z.string().max(100).optional(),
   utmMedium: z.string().max(100).optional(),
   utmCampaign: z.string().max(100).optional(),
+  linkedinUrl: z.string().url().max(500).optional(),
   fbc: z.string().max(500).optional(),  // Meta _fbc click cookie
   fbp: z.string().max(500).optional(),  // Meta _fbp browser cookie
 });
@@ -247,6 +248,7 @@ export const updateFunnelSchema = z.object({
   homepageUrl: z.string().url().max(2000).nullable().optional(),
   homepageLabel: z.string().max(200).nullable().optional(),
   sendResourceEmail: z.boolean().optional(),
+  thankyouLayout: z.enum(['survey_first', 'video_first', 'side_by_side']).optional(),
 });
 
 export type UpdateFunnelInput = z.infer<typeof updateFunnelSchema>;

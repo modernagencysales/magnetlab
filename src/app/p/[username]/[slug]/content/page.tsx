@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getWhitelabelConfig } from '@/lib/utils/whitelabel';
+import { checkTeamRole } from '@/lib/auth/rbac';
 import { ContentPageClient } from '@/components/content/ContentPageClient';
 import { funnelPageSectionFromRow, type FunnelPageSectionRow } from '@/lib/types/funnel';
 import type { Metadata } from 'next';
@@ -11,7 +12,7 @@ export const revalidate = 300;
 
 interface PageProps {
   params: Promise<{ username: string; slug: string }>;
-  searchParams: Promise<{ leadId?: string }>;
+  searchParams: Promise<{ leadId?: string; edit?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -70,22 +71,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicContentPage({ params, searchParams }: PageProps) {
   const { username, slug } = await params;
-  const { leadId } = await searchParams;
+  const { leadId, edit } = await searchParams;
   const supabase = createSupabaseAdminClient();
 
-  // Check if viewer is the owner
-  let isOwner = false;
+  // Get session (may be null for anonymous visitors)
+  let sessionUserId: string | null = null;
   try {
     const session = await auth();
-    if (session?.user?.id) {
-      const { data: ownerCheck } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', session.user.id)
-        .eq('username', username)
-        .single();
-      isOwner = !!ownerCheck;
-    }
+    sessionUserId = session?.user?.id ?? null;
   } catch {
     // Not logged in — that's fine
   }
@@ -101,8 +94,8 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
     notFound();
   }
 
-  // Find published funnel page (owners can view unpublished)
-  const query = supabase
+  // Fetch funnel page (no is_published filter — we check access after)
+  const { data: funnel, error: funnelError } = await supabase
     .from('funnel_pages')
     .select(`
       id,
@@ -120,19 +113,10 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       team_id
     `)
     .eq('user_id', user.id)
-    .eq('slug', slug);
-
-  if (!isOwner) {
-    query.eq('is_published', true);
-  }
-
-  const { data: funnel, error: funnelError } = await query.single();
+    .eq('slug', slug)
+    .single();
 
   if (funnelError || !funnel) {
-    notFound();
-  }
-
-  if (!isOwner && !funnel.is_published) {
     notFound();
   }
 
@@ -141,11 +125,32 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
   // Get lead magnet with content
   const { data: leadMagnet, error: lmError } = await supabase
     .from('lead_magnets')
-    .select('id, title, extracted_content, polished_content, concept, thumbnail_url, interactive_config')
+    .select('id, title, extracted_content, polished_content, concept, thumbnail_url, interactive_config, team_id')
     .eq('id', funnel.lead_magnet_id)
     .single();
 
   if (lmError || !leadMagnet) {
+    notFound();
+  }
+
+  // Determine edit access: page owner OR same-team member
+  let canEdit = false;
+  if (sessionUserId) {
+    const isOwner = sessionUserId === user.id;
+    if (isOwner) {
+      canEdit = true;
+    } else {
+      // Check team membership via funnel or lead magnet team_id (fallback)
+      const teamId = funnel.team_id || leadMagnet.team_id;
+      if (teamId) {
+        const role = await checkTeamRole(sessionUserId, teamId as string);
+        canEdit = role !== null;
+      }
+    }
+  }
+
+  // Non-team visitors can only see published pages
+  if (!canEdit && !funnel.is_published) {
     notFound();
   }
 
@@ -186,8 +191,24 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
 
   const sections = (sectionRows as FunnelPageSectionRow[] || []).map(funnelPageSectionFromRow);
 
-  // Track page view (fire-and-forget, not for owners)
-  if (!isOwner) {
+  // Fetch iClosed widget integration for the page owner
+  let iClosedWidgetId: string | null = null;
+  const { data: iClosedIntegration } = await supabase
+    .from('user_integrations')
+    .select('metadata')
+    .eq('user_id', user.id)
+    .eq('service', 'iclosed_widget')
+    .eq('is_active', true)
+    .single();
+  if (iClosedIntegration?.metadata) {
+    const meta = iClosedIntegration.metadata as { widget_id?: string };
+    if (meta.widget_id) {
+      iClosedWidgetId = meta.widget_id;
+    }
+  }
+
+  // Track page view (fire-and-forget, not for team members)
+  if (!canEdit) {
     supabase
       .from('page_views')
       .insert({ funnel_page_id: funnel.id, page_type: 'content' })
@@ -208,7 +229,7 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       fontUrl={funnel.font_url}
       vslUrl={funnel.vsl_url}
       calendlyUrl={funnel.calendly_url}
-      isOwner={isOwner}
+      isOwner={canEdit}
       interactiveConfig={leadMagnet.interactive_config as InteractiveConfig | null}
       leadMagnetId={leadMagnet.id}
       funnelPageId={funnel.id}
@@ -217,6 +238,8 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       hasQuestions={hasQuestions}
       sections={sections}
       hideBranding={whitelabel?.hideBranding || false}
+      autoEdit={edit === 'true'}
+      iClosedWidgetId={iClosedWidgetId}
     />
   );
 }

@@ -113,6 +113,7 @@ export function OptinPage({
           utmSource: searchParams.get('utm_source') || undefined,
           utmMedium: searchParams.get('utm_medium') || undefined,
           utmCampaign: searchParams.get('utm_campaign') || undefined,
+          linkedinUrl: searchParams.get('li') || undefined,
           fbc: cookies['_fbc'] || undefined,
           fbp: cookies['_fbp'] || undefined,
         }),
