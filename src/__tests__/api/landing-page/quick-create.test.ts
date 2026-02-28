@@ -105,7 +105,7 @@ describe('POST /api/landing-page/quick-create', () => {
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toBe('Failed to create lead magnet');
+    expect(data.error).toBe('Failed to create landing page');
   });
 
   it('should create landing page with AI-generated content', async () => {
@@ -267,7 +267,7 @@ describe('POST /api/landing-page/quick-create', () => {
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toBe('Failed to create funnel page');
+    expect(data.error).toBe('Failed to create landing page');
 
     // Verify cleanup: lead magnet was deleted
     expect(mockSupabaseClient.from).toHaveBeenCalledWith('lead_magnets');

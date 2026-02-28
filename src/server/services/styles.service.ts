@@ -7,7 +7,7 @@
 import * as stylesRepo from "@/server/repositories/styles.repo";
 import { extractWritingStyle } from "@/lib/ai/style-extractor";
 import { generateEmbedding } from "@/lib/ai/embeddings";
-import { scrapeProfilePosts } from "@/lib/integrations/apify-engagers";
+import { getProfilePosts } from "@/lib/integrations/harvest-api";
 import type { WritingStyle } from "@/lib/types/content-pipeline";
 import type { ExtractedStyle } from "@/lib/ai/style-extractor";
 
@@ -151,10 +151,9 @@ export async function extractFromUrlAndCreate(
 ): Promise<ExtractFromUrlResult> {
   const normalizedUrl = normalizeLinkedInUrl(input.linkedin_url);
 
-  const { data: posts, error: scrapeError } = await scrapeProfilePosts(
-    normalizedUrl,
-    10,
-  );
+  const { data: posts, error: scrapeError } = await getProfilePosts({
+    profile: normalizedUrl,
+  });
   if (scrapeError) {
     const err = Object.assign(
       new Error(`Failed to scrape profile: ${scrapeError}`),
@@ -163,7 +162,7 @@ export async function extractFromUrlAndCreate(
     throw err;
   }
 
-  const textPosts = posts.filter((p) => p.text && p.text.trim().length > 50);
+  const textPosts = posts.filter((p) => p.content && p.content.trim().length > 50);
   if (textPosts.length < 3) {
     const err = Object.assign(
       new Error(
@@ -177,12 +176,12 @@ export async function extractFromUrlAndCreate(
   const firstPost = textPosts[0];
   const authorName =
     input.author_name ||
-    firstPost.authorName ||
-    `${firstPost.author?.firstName ?? ""} ${firstPost.author?.lastName ?? ""}`.trim();
-  const authorHeadline = firstPost.author?.occupation;
+    firstPost.name ||
+    "";
+  const authorHeadline = undefined;
 
   const extracted = await extractWritingStyle({
-    posts: textPosts.map((p) => p.text),
+    posts: textPosts.map((p) => p.content),
     authorName: authorName || undefined,
     authorHeadline,
   });

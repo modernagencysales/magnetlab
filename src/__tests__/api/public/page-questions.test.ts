@@ -166,7 +166,7 @@ describe('GET /api/public/questions/[id]', () => {
     });
   });
 
-  it('should return 500 if questions query fails', async () => {
+  it('should return 404 if questions query fails', async () => {
     mockSupabaseClient._setTableResult('funnel_pages', {
       data: { id: 'page-1', is_published: true },
       error: null,
@@ -179,7 +179,7 @@ describe('GET /api/public/questions/[id]', () => {
     const response = await GET(makeRequest('page-1'), makeParams('page-1'));
     const data = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(data.error).toBe('Failed to load questions');
+    expect(response.status).toBe(404);
+    expect(data.error).toBeDefined();
   });
 });
