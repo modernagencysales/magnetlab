@@ -1196,9 +1196,9 @@ BOUNCEBAN_API_KEY
 PLUSVIBE_API_KEY
 ```
 
-## AI Co-pilot (Phase 2a — Feb 2026)
+## AI Co-pilot (Phase 2a+2b — Feb 2026)
 
-In-app conversational AI assistant with a shared action layer, Claude tool_use agent loop, and global sidebar UI.
+In-app conversational AI assistant with a shared action layer, Claude tool_use agent loop, rich result cards, confirmation dialogs, entity-scoped conversations, and global sidebar UI.
 
 ### Architecture
 
@@ -1208,17 +1208,21 @@ User message → CopilotProvider (SSE fetch) → POST /api/copilot/chat
     → base prompt (admin-editable: copilot-system slug)
     → voice profile (team_profiles.voice_profile)
     → learned preferences (copilot_memories)
+    → recent post performance (last 30 days engagement)
+    → negative feedback patterns (aggregated corrections)
     → page context (entity type/id)
   → Claude Sonnet tool_use loop (max 15 iterations)
-    → getToolDefinitions() → 13 actions as Claude tools
+    → getToolDefinitions() → 22 actions as Claude tools
     → executeAction(ctx, name, args) → ActionResult
-    → SSE events: text_delta, tool_call, tool_result, done, error
+    → Confirmation dialog for destructive actions (schedule, publish, create)
+    → SSE events: text_delta, tool_call, tool_result, confirmation_required, done, error
   → Persist: copilot_conversations + copilot_messages
+  → Rich result cards: PostPreviewCard, KnowledgeResultCard, IdeaListCard
 ```
 
 ### Shared Action Layer
 
-Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 13 registered actions across 5 modules:
+Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 22 registered actions across 8 modules:
 
 | Module | Actions |
 |--------|---------|
@@ -1226,7 +1230,33 @@ Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 13
 | `content.ts` | `write_post`, `polish_post`, `list_posts`, `update_post_content` |
 | `templates.ts` | `list_templates`, `list_writing_styles` |
 | `analytics.ts` | `get_post_performance`, `get_top_posts` |
-| `scheduling.ts` | `schedule_post` (confirmation required), `get_autopilot_status` |
+| `scheduling.ts` | `schedule_post` (confirmation), `get_autopilot_status` |
+| `lead-magnets.ts` | `list_lead_magnets`, `get_lead_magnet`, `create_lead_magnet` (confirmation) |
+| `funnels.ts` | `list_funnels`, `get_funnel`, `publish_funnel` (confirmation) |
+| `email.ts` | `list_email_sequences`, `get_subscriber_count`, `generate_newsletter_email` |
+
+### Confirmation Dialog System
+
+Actions with `requiresConfirmation: true` (schedule_post, publish_funnel, create_lead_magnet):
+1. Chat route sends `confirmation_required` SSE event but does NOT execute the action
+2. CopilotProvider sets `pendingConfirmation` state, ConfirmationDialog renders inline
+3. User clicks Confirm/Cancel → `POST /api/copilot/confirm-action` saves decision
+4. Claude receives `awaiting_confirmation` tool_result and responds accordingly
+
+### Rich Result Cards
+
+Tool results render specialized cards based on `displayHint`:
+- `post_preview` → **PostPreviewCard**: content preview, Apply to editor + Copy buttons, variation count
+- `knowledge_list` → **KnowledgeResultCard**: quality stars, knowledge_type badges, collapsible entries, Use in post
+- `idea_list` → **IdeaListCard**: selectable ideas, content_type badges, hook previews, Write This action
+
+### Entity-Scoped Conversations
+
+Conversations optionally bind to entities via `entity_type`/`entity_id`. When the sidebar opens on a page with registered context (e.g., funnel builder), it auto-loads the matching conversation. GET `/api/copilot/conversations` supports `?entity_type=&entity_id=` filtering.
+
+### Page Context Registration
+
+`useCopilotContext` registered on: content pipeline, knowledge dashboard, funnel builder (entity-scoped), analytics, signals, and post editor (entity-scoped).
 
 ### Database Tables
 
@@ -1247,38 +1277,45 @@ Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 13
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/copilot/chat` | POST | SSE streaming agent loop |
-| `/api/copilot/conversations` | GET/POST | List + create conversations |
+| `/api/copilot/conversations` | GET/POST | List (with entity filter) + create |
 | `/api/copilot/conversations/[id]` | GET/DELETE | Get with messages + delete |
 | `/api/copilot/conversations/[id]/feedback` | POST | Message feedback (positive/negative) |
+| `/api/copilot/confirm-action` | POST | Confirmation decision for destructive actions |
 
 ### Frontend Components
 
 | Component | Purpose |
 |-----------|---------|
-| `CopilotProvider` | React context — state, SSE streaming, conversation management |
+| `CopilotProvider` | React context — state, SSE, conversations, confirmation, applyToPage |
 | `CopilotShell` | Client wrapper mounted in dashboard layout |
 | `CopilotSidebar` | 400px slide-in panel (conversation list + chat view) |
 | `CopilotToggleButton` | Floating button (bottom-right) |
-| `CopilotMessage` | Message bubbles (user/assistant/tool_call/tool_result) + feedback |
+| `CopilotMessage` | Markdown rendering + displayHint routing to rich cards |
 | `ConversationInput` | Textarea + send/stop button |
+| `ConversationHeader` | Title + entity badge (icon + entity name) + nav buttons |
+| `ConfirmationDialog` | Inline amber card for destructive action approval |
+| `PostPreviewCard` | Post content preview + Apply/Copy buttons |
+| `KnowledgeResultCard` | Knowledge entries with quality stars + collapsible |
+| `IdeaListCard` | Selectable ideas with Write This action |
 | `useCopilotContext` | Hook for page context registration |
 
 ### Key Files
 
-- `src/lib/actions/` — types, registry, executor, 5 action modules, barrel import
-- `src/lib/ai/copilot/system-prompt.ts` — `buildCopilotSystemPrompt()` (5-min cache)
-- `src/app/api/copilot/chat/route.ts` — streaming agent loop
-- `src/app/api/copilot/conversations/` — CRUD + feedback
-- `src/components/copilot/` — CopilotProvider, Shell, Sidebar, Toggle, Message, Input, useCopilotContext
+- `src/lib/actions/` — types, registry, executor, 8 action modules, barrel import
+- `src/lib/ai/copilot/system-prompt.ts` — `buildCopilotSystemPrompt()` (5-min cache, performance + feedback sections)
+- `src/app/api/copilot/chat/route.ts` — streaming agent loop with confirmation blocking
+- `src/app/api/copilot/conversations/` — CRUD + feedback + entity filtering
+- `src/app/api/copilot/confirm-action/` — confirmation decision endpoint
+- `src/components/copilot/` — 12 components (Provider, Shell, Sidebar, Toggle, Message, Input, Header, ConfirmationDialog, PostPreviewCard, KnowledgeResultCard, IdeaListCard, useCopilotContext)
 - `src/lib/ai/content-pipeline/prompt-defaults.ts` — 3 copilot prompt slugs
 - `src/app/(dashboard)/layout.tsx` — CopilotShell integration
 
-### Tests (84 passing)
+### Tests (199 passing)
 
-- `src/__tests__/lib/actions/` — executor (5), knowledge (3), content (4), supporting (25)
-- `src/__tests__/api/copilot/` — chat (3), conversations (21)
-- `src/__tests__/lib/ai/copilot/` — system-prompt (3)
-- `src/__tests__/components/copilot/` — ConversationInput (10), CopilotMessage (10)
+- `src/__tests__/lib/actions/` — executor (5), knowledge (3), content (4), supporting (25), lead-magnets (14), funnels (13), email (17)
+- `src/__tests__/api/copilot/` — chat (3), conversations (23), confirm-action (8)
+- `src/__tests__/lib/ai/copilot/` — system-prompt (7)
+- `src/__tests__/components/copilot/` — CopilotMessage (13), ConversationInput (10), ConfirmationDialog (8), ConversationHeader (12), PostPreviewCard (10), KnowledgeResultCard (12), IdeaListCard (12)
 
 ## Deployment
 
