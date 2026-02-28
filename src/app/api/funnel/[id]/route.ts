@@ -16,31 +16,10 @@ export async function GET(request: Request, { params }: RouteParams) {
     const { id } = await params;
     if (!isValidUUID(id)) return ApiErrors.validationError('Invalid funnel page ID');
 
-<<<<<<< HEAD
     const scope = await getDataScope(session.user.id);
     const funnel = await funnelsService.getFunnelById(scope, id);
     if (!funnel) return ApiErrors.notFound('Funnel page');
     return NextResponse.json({ funnel });
-=======
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from('funnel_pages')
-      .select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, homepage_url, homepage_label, send_resource_email, thankyou_layout')
-      .eq('id', id)
-      .single();
-
-    if (error || !data) {
-      return ApiErrors.notFound('Funnel page');
-    }
-
-    const hasAccess = await verifyFunnelAccess(supabase, data.user_id, data.lead_magnet_id, session.user.id);
-    if (!hasAccess) {
-      return ApiErrors.notFound('Funnel page');
-    }
-
-    return NextResponse.json({ funnel: funnelPageFromRow(data as FunnelPageRow) });
->>>>>>> cd46c59795c3148789086a657c2176e3dd0f8a47
   } catch (error) {
     const status = funnelsService.getStatusCode(error);
     const message = error instanceof Error ? error.message : 'Internal server error';
@@ -56,110 +35,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const { id } = await params;
     if (!isValidUUID(id)) return ApiErrors.validationError('Invalid funnel page ID');
 
-<<<<<<< HEAD
     const scope = await getDataScope(session.user.id);
     const body = await request.json();
     const funnel = await funnelsService.updateFunnel(scope, id, body);
     return NextResponse.json({ funnel });
-=======
-    const body = await request.json();
-    const validation = validateBody(body, updateFunnelSchema);
-    if (!validation.success) {
-      return ApiErrors.validationError(validation.error, validation.details);
-    }
-
-    const validated = validation.data;
-    const supabase = createSupabaseAdminClient();
-
-    // Verify access: fetch funnel by ID, then check ownership/team membership
-    const { data: existingFunnel } = await supabase
-      .from('funnel_pages')
-      .select('id, user_id, lead_magnet_id')
-      .eq('id', id)
-      .single();
-
-    if (!existingFunnel) {
-      return ApiErrors.notFound('Funnel page');
-    }
-
-    const hasAccess = await verifyFunnelAccess(supabase, existingFunnel.user_id, existingFunnel.lead_magnet_id, session.user.id);
-    if (!hasAccess) {
-      return ApiErrors.notFound('Funnel page');
-    }
-
-    // Build update object with snake_case keys
-    const updateData: Record<string, unknown> = {};
-
-    if (validated.slug !== undefined) updateData.slug = validated.slug;
-    if (validated.optinHeadline !== undefined) updateData.optin_headline = validated.optinHeadline;
-    if (validated.optinSubline !== undefined) updateData.optin_subline = validated.optinSubline;
-    if (validated.optinButtonText !== undefined) updateData.optin_button_text = validated.optinButtonText;
-    if (validated.optinSocialProof !== undefined) updateData.optin_social_proof = validated.optinSocialProof;
-    if (validated.thankyouHeadline !== undefined) updateData.thankyou_headline = validated.thankyouHeadline;
-    if (validated.thankyouSubline !== undefined) updateData.thankyou_subline = validated.thankyouSubline;
-    if (validated.vslUrl !== undefined) updateData.vsl_url = validated.vslUrl;
-    if (validated.calendlyUrl !== undefined) updateData.calendly_url = validated.calendlyUrl;
-    if (validated.qualificationPassMessage !== undefined) updateData.qualification_pass_message = validated.qualificationPassMessage;
-    if (validated.qualificationFailMessage !== undefined) updateData.qualification_fail_message = validated.qualificationFailMessage;
-    if (validated.theme !== undefined) updateData.theme = validated.theme;
-    if (validated.primaryColor !== undefined) updateData.primary_color = validated.primaryColor;
-    if (validated.backgroundStyle !== undefined) updateData.background_style = validated.backgroundStyle;
-    if (validated.logoUrl !== undefined) updateData.logo_url = validated.logoUrl ? normalizeImageUrl(validated.logoUrl) : validated.logoUrl;
-    if (validated.qualificationFormId !== undefined) updateData.qualification_form_id = validated.qualificationFormId;
-    if (validated.redirectTrigger !== undefined) updateData.redirect_trigger = validated.redirectTrigger;
-    if (validated.redirectUrl !== undefined) updateData.redirect_url = validated.redirectUrl;
-    if (validated.redirectFailUrl !== undefined) updateData.redirect_fail_url = validated.redirectFailUrl;
-    if (validated.homepageUrl !== undefined) updateData.homepage_url = validated.homepageUrl;
-    if (validated.homepageLabel !== undefined) updateData.homepage_label = validated.homepageLabel;
-    if (validated.sendResourceEmail !== undefined) updateData.send_resource_email = validated.sendResourceEmail;
-    if (validated.thankyouLayout !== undefined) updateData.thankyou_layout = validated.thankyouLayout;
-
-    // Verify ownership of qualificationFormId if provided
-    if (validated.qualificationFormId) {
-      const { data: qf } = await supabase
-        .from('qualification_forms')
-        .select('id')
-        .eq('id', validated.qualificationFormId)
-        .single();
-
-      if (!qf) {
-        return ApiErrors.notFound('Qualification form');
-      }
-    }
-
-    // Check for slug collision if updating slug
-    if (validated.slug) {
-      const { data: existing } = await supabase
-        .from('funnel_pages')
-        .select('id')
-        .eq('slug', validated.slug)
-        .eq('user_id', existingFunnel.user_id)
-        .neq('id', id)
-        .maybeSingle();
-
-      if (existing) {
-        return ApiErrors.conflict('A funnel with this slug already exists');
-      }
-    }
-
-    const { data, error } = await supabase
-      .from('funnel_pages')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      logApiError('funnel/update', error, { userId: session.user.id, funnelId: id });
-      return ApiErrors.databaseError('Failed to update funnel page');
-    }
-
-    if (!data) {
-      return ApiErrors.notFound('Funnel page');
-    }
-
-    return NextResponse.json({ funnel: funnelPageFromRow(data as FunnelPageRow) });
->>>>>>> cd46c59795c3148789086a657c2176e3dd0f8a47
   } catch (error) {
     const status = funnelsService.getStatusCode(error);
     const message = error instanceof Error ? error.message : 'Internal server error';
@@ -175,47 +54,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { id } = await params;
     if (!isValidUUID(id)) return ApiErrors.validationError('Invalid funnel page ID');
 
-<<<<<<< HEAD
     const scope = await getDataScope(session.user.id);
     await funnelsService.deleteFunnel(scope, id);
-=======
-    const supabase = createSupabaseAdminClient();
-
-    // Verify access: fetch funnel by ID, then check ownership/team membership
-    const { data: funnel, error: findError } = await supabase
-      .from('funnel_pages')
-      .select('id, user_id, lead_magnet_id')
-      .eq('id', id)
-      .single();
-
-    if (findError || !funnel) {
-      return ApiErrors.notFound('Funnel page');
-    }
-
-    const hasAccess = await verifyFunnelAccess(supabase, funnel.user_id, funnel.lead_magnet_id, session.user.id);
-    if (!hasAccess) {
-      return ApiErrors.notFound('Funnel page');
-    }
-
-    // Cascade delete related records in parallel (no FK dependencies between them)
-    await Promise.all([
-      supabase.from('qualification_questions').delete().eq('funnel_page_id', id),
-      supabase.from('funnel_leads').delete().eq('funnel_page_id', id),
-      supabase.from('page_views').delete().eq('funnel_page_id', id),
-    ]);
-
-    // Delete the funnel page (after child records are cleared)
-    const { error } = await supabase
-      .from('funnel_pages')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      logApiError('funnel/delete', error, { userId: session.user.id, funnelId: id });
-      return ApiErrors.databaseError('Failed to delete funnel page');
-    }
-
->>>>>>> cd46c59795c3148789086a657c2176e3dd0f8a47
     return NextResponse.json({ success: true });
   } catch (error) {
     const status = funnelsService.getStatusCode(error);
