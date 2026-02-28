@@ -4,6 +4,9 @@ import './content';
 import './templates';
 import './analytics';
 import './scheduling';
+import './lead-magnets';
+import './funnels';
+import './email';
 
 // Re-export the executor and registry
 export { executeAction, actionRequiresConfirmation } from './executor';
