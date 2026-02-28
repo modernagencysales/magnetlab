@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 
 // ============================================
 // TYPES
@@ -14,6 +14,7 @@ export interface CopilotMessage {
   toolArgs?: Record<string, unknown>;
   toolResult?: Record<string, unknown>;
   feedback?: { rating: 'positive' | 'negative'; note?: string };
+  displayHint?: string;
   createdAt: string;
 }
 
@@ -220,6 +221,21 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
     setApplyToPage(() => handler);
   }, []);
 
+  // Auto-load entity-scoped conversations when page context changes
+  useEffect(() => {
+    if (pageContext?.entityType && pageContext?.entityId && isOpen) {
+      fetch(`/api/copilot/conversations?entity_type=${pageContext.entityType}&entity_id=${pageContext.entityId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.conversations?.length > 0) {
+            selectConversation(data.conversations[0].id);
+          }
+        })
+        .catch(() => {}); // Silently fail — user can start new conversation
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageContext?.entityType, pageContext?.entityId, isOpen]);
+
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isStreaming) return;
 
@@ -290,16 +306,19 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
             }]);
             break;
 
-          case 'tool_result':
+          case 'tool_result': {
+            const resultData = data.result as Record<string, unknown> | undefined;
             setMessages(prev => [...prev, {
               id: `tool-result-${data.id}`,
               role: 'tool_result' as const,
               content: '',
               toolName: data.name as string,
-              toolResult: data.result as Record<string, unknown>,
+              toolResult: resultData,
+              displayHint: resultData?.displayHint as string | undefined,
               createdAt: new Date().toISOString(),
             }]);
             break;
+          }
 
           case 'confirmation_required':
             setPendingConfirmation({

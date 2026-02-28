@@ -98,7 +98,8 @@ describe('Copilot Conversations API', () => {
     it('returns 401 without auth', async () => {
       mockAuth.mockResolvedValue(null);
 
-      const res = await GET();
+      const req = new NextRequest('http://localhost/api/copilot/conversations');
+      const res = await GET(req);
       expect(res.status).toBe(401);
       const data = await res.json();
       expect(data.error).toBe('Unauthorized');
@@ -113,7 +114,8 @@ describe('Copilot Conversations API', () => {
       ];
       mock.setTableResult('copilot_conversations', { data: conversations, error: null });
 
-      const res = await GET();
+      const req = new NextRequest('http://localhost/api/copilot/conversations');
+      const res = await GET(req);
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.conversations).toHaveLength(2);
@@ -125,7 +127,8 @@ describe('Copilot Conversations API', () => {
       mockAuth.mockResolvedValue({ user: { id: 'user-empty' } });
       mock.setTableResult('copilot_conversations', { data: [], error: null });
 
-      const res = await GET();
+      const req = new NextRequest('http://localhost/api/copilot/conversations');
+      const res = await GET(req);
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.conversations).toHaveLength(0);
@@ -135,10 +138,48 @@ describe('Copilot Conversations API', () => {
       mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
       mock.setTableResult('copilot_conversations', { data: null, error: { message: 'Connection timeout' } });
 
-      const res = await GET();
+      const req = new NextRequest('http://localhost/api/copilot/conversations');
+      const res = await GET(req);
       expect(res.status).toBe(500);
       const data = await res.json();
       expect(data.error).toBe('Connection timeout');
+    });
+
+    it('GET filters by entity_type and entity_id', async () => {
+      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+
+      const entityConversations = [
+        { id: 'conv-3', title: 'Post conversation', entity_type: 'post', entity_id: 'post-abc', model: null, created_at: '2026-02-27T00:00:00Z', updated_at: '2026-02-27T03:00:00Z' },
+      ];
+      mock.setTableResult('copilot_conversations', { data: entityConversations, error: null });
+
+      const req = new NextRequest('http://localhost/api/copilot/conversations?entity_type=post&entity_id=post-abc');
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.conversations).toHaveLength(1);
+      expect(data.conversations[0].entity_type).toBe('post');
+      expect(data.conversations[0].entity_id).toBe('post-abc');
+
+      // Verify the query was made against copilot_conversations table
+      expect(mock.client.from).toHaveBeenCalledWith('copilot_conversations');
+    });
+
+    it('GET returns all conversations when entity params are missing', async () => {
+      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+
+      const allConversations = [
+        { id: 'conv-1', title: 'General chat', entity_type: null, entity_id: null, model: null, created_at: '2026-02-27T00:00:00Z', updated_at: '2026-02-27T01:00:00Z' },
+        { id: 'conv-2', title: 'Post chat', entity_type: 'post', entity_id: 'post-1', model: null, created_at: '2026-02-27T00:00:00Z', updated_at: '2026-02-27T02:00:00Z' },
+      ];
+      mock.setTableResult('copilot_conversations', { data: allConversations, error: null });
+
+      // Only entity_type provided without entity_id — should NOT filter
+      const req = new NextRequest('http://localhost/api/copilot/conversations?entity_type=post');
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.conversations).toHaveLength(2);
     });
   });
 

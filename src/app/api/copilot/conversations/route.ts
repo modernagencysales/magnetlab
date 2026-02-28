@@ -3,15 +3,26 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
 // GET — list conversations
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { searchParams } = new URL(req.url);
+  const entityType = searchParams.get('entity_type');
+  const entityId = searchParams.get('entity_id');
+
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from('copilot_conversations')
     .select('id, title, entity_type, entity_id, model, created_at, updated_at')
-    .eq('user_id', session.user.id)
+    .eq('user_id', session.user.id);
+
+  // Apply entity filters when both are provided
+  if (entityType && entityId) {
+    query = query.eq('entity_type', entityType).eq('entity_id', entityId);
+  }
+
+  const { data, error } = await query
     .order('updated_at', { ascending: false })
     .limit(50);
 
