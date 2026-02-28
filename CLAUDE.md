@@ -75,6 +75,7 @@ The settings page uses a nested layout with vertical sidebar navigation and URL-
 | `/settings/integrations` | LinkedIn, Resend, Email Marketing, CRM, HeyReach, Fathom, Conductor, Tracking Pixels, Webhooks |
 | `/settings/signals` | ICP Configuration, Keyword Monitors, Company Monitors, Competitor Monitoring |
 | `/settings/branding` | Branding (6-card accordion), Page Defaults (video, template), White Label (Pro+) |
+| `/settings/copilot` | AI Co-pilot learned preferences (memory management) |
 | `/settings/developer` | API Keys, Webhooks, Documentation |
 
 Key files:
@@ -1196,9 +1197,9 @@ BOUNCEBAN_API_KEY
 PLUSVIBE_API_KEY
 ```
 
-## AI Co-pilot (Phase 2a+2b — Feb 2026)
+## AI Co-pilot (Phase 2a+2b+2c — Feb 2026)
 
-In-app conversational AI assistant with a shared action layer, Claude tool_use agent loop, rich result cards, confirmation dialogs, entity-scoped conversations, and global sidebar UI.
+In-app conversational AI assistant with a shared action layer, Claude tool_use agent loop, rich result cards, confirmation dialogs, entity-scoped conversations, global sidebar UI, and self-learning memory system.
 
 ### Architecture
 
@@ -1218,6 +1219,7 @@ User message → CopilotProvider (SSE fetch) → POST /api/copilot/chat
     → SSE events: text_delta, tool_call, tool_result, confirmation_required, done, error
   → Persist: copilot_conversations + copilot_messages
   → Rich result cards: PostPreviewCard, KnowledgeResultCard, IdeaListCard
+  → Memory extraction (fire-and-forget on correction signals + negative feedback)
 ```
 
 ### Shared Action Layer
@@ -1240,8 +1242,10 @@ Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 22
 Actions with `requiresConfirmation: true` (schedule_post, publish_funnel, create_lead_magnet):
 1. Chat route sends `confirmation_required` SSE event but does NOT execute the action
 2. CopilotProvider sets `pendingConfirmation` state, ConfirmationDialog renders inline
-3. User clicks Confirm/Cancel → `POST /api/copilot/confirm-action` saves decision
-4. Claude receives `awaiting_confirmation` tool_result and responds accordingly
+3. User clicks Confirm/Cancel → `POST /api/copilot/confirm-action`
+4. If approved: API executes the action via `executeAction()`, updates stale DB row with real result, returns result to Provider
+5. Provider updates local messages, auto-sends "Confirmed." to resume conversation
+6. If denied: saves denial message, Provider sends "The user declined the action."
 
 ### Rich Result Cards
 
@@ -1279,8 +1283,10 @@ Conversations optionally bind to entities via `entity_type`/`entity_id`. When th
 | `/api/copilot/chat` | POST | SSE streaming agent loop |
 | `/api/copilot/conversations` | GET/POST | List (with entity filter) + create |
 | `/api/copilot/conversations/[id]` | GET/DELETE | Get with messages + delete |
-| `/api/copilot/conversations/[id]/feedback` | POST | Message feedback (positive/negative) |
-| `/api/copilot/confirm-action` | POST | Confirmation decision for destructive actions |
+| `/api/copilot/conversations/[id]/feedback` | POST | Message feedback (positive/negative + optional note) |
+| `/api/copilot/confirm-action` | POST | Confirmation decision + action execution |
+| `/api/copilot/memories` | GET/POST | List + create learned preferences |
+| `/api/copilot/memories/[id]` | PATCH/DELETE | Update (toggle active) + delete preferences |
 
 ### Frontend Components
 
@@ -1297,7 +1303,9 @@ Conversations optionally bind to entities via `entity_type`/`entity_id`. When th
 | `PostPreviewCard` | Post content preview + Apply/Copy buttons |
 | `KnowledgeResultCard` | Knowledge entries with quality stars + collapsible |
 | `IdeaListCard` | Selectable ideas with Write This action |
+| `FeedbackWidget` | Thumbs up/down with expandable note input on negative feedback |
 | `useCopilotContext` | Hook for page context registration |
+| `CopilotMemorySettings` | Settings UI for managing learned preferences (list, add, toggle, delete) |
 
 ### Key Files
 
@@ -1306,16 +1314,48 @@ Conversations optionally bind to entities via `entity_type`/`entity_id`. When th
 - `src/app/api/copilot/chat/route.ts` — streaming agent loop with confirmation blocking
 - `src/app/api/copilot/conversations/` — CRUD + feedback + entity filtering
 - `src/app/api/copilot/confirm-action/` — confirmation decision endpoint
-- `src/components/copilot/` — 12 components (Provider, Shell, Sidebar, Toggle, Message, Input, Header, ConfirmationDialog, PostPreviewCard, KnowledgeResultCard, IdeaListCard, useCopilotContext)
+- `src/lib/ai/copilot/memory-extractor.ts` — `detectCorrectionSignal()` + `extractMemories()` (Haiku)
+- `src/components/copilot/` — 14 components (Provider, Shell, Sidebar, Toggle, Message, Input, Header, ConfirmationDialog, FeedbackWidget, PostPreviewCard, KnowledgeResultCard, IdeaListCard, useCopilotContext)
+- `src/components/settings/CopilotMemorySettings.tsx` — memory management UI
+- `src/app/(dashboard)/settings/copilot/page.tsx` — settings page
 - `src/lib/ai/content-pipeline/prompt-defaults.ts` — 3 copilot prompt slugs
 - `src/app/(dashboard)/layout.tsx` — CopilotShell integration
 
-### Tests (199 passing)
+### Learning & Memory (Phase 2c)
+
+Auto-extracts user preferences from corrections and feedback, stores them in `copilot_memories`, and injects active memories into the system prompt.
+
+**Memory Extraction Flow:**
+```
+User correction ("Don't use bullet points") → detectCorrectionSignal() (5 regex patterns)
+  → extractMemories() (Claude Haiku, fire-and-forget)
+  → INSERT copilot_memories (source: 'conversation', category, confidence)
+  → buildCopilotSystemPrompt() injects active memories
+
+Negative feedback + note → FeedbackWidget → POST /feedback
+  → extractMemories() (fire-and-forget)
+  → INSERT copilot_memories (source: 'feedback')
+
+Manual entry → Settings UI → POST /api/copilot/memories
+  → INSERT copilot_memories (source: 'manual')
+```
+
+**Memory Categories:** `tone`, `structure`, `vocabulary`, `content`, `general`
+
+**Correction Signal Detection:** 5 patterns — negation ("don't use"), preference ("I prefer"), tone complaint ("too formal"), comparative ("more like"), voice complaint ("sounds too")
+
+**Settings UI:** `/settings/copilot` — list with category badges, source labels, toggle active/inactive, add new, delete. Nav item under "AI Co-pilot" group in SettingsNav.
+
+**Edit Tracking:** `EditRecordInput.source` optional field (`'manual' | 'copilot'`) tags co-pilot-generated content so `evolve-writing-style` can learn from AI-generated edits.
+
+### Tests (225 passing)
 
 - `src/__tests__/lib/actions/` — executor (5), knowledge (3), content (4), supporting (25), lead-magnets (14), funnels (13), email (17)
-- `src/__tests__/api/copilot/` — chat (3), conversations (23), confirm-action (8)
-- `src/__tests__/lib/ai/copilot/` — system-prompt (7)
-- `src/__tests__/components/copilot/` — CopilotMessage (13), ConversationInput (10), ConfirmationDialog (8), ConversationHeader (12), PostPreviewCard (10), KnowledgeResultCard (12), IdeaListCard (12)
+- `src/__tests__/api/copilot/` — chat (6), conversations (23), confirm-action (7), memories (19)
+- `src/__tests__/lib/ai/copilot/` — system-prompt (7), memory-extractor (10)
+- `src/__tests__/components/copilot/` — CopilotMessage (13), ConversationInput (10), ConfirmationDialog (8), ConversationHeader (12), PostPreviewCard (10), KnowledgeResultCard (12), IdeaListCard (12), FeedbackWidget (9)
+- `src/__tests__/components/settings/` — CopilotMemorySettings (6)
+- `src/__tests__/lib/services/` — edit-capture (31)
 
 ## Deployment
 
