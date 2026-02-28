@@ -5,13 +5,17 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ThumbsUp, ThumbsDown, Wrench } from 'lucide-react';
 import type { CopilotMessage as CopilotMessageType } from './CopilotProvider';
+import { PostPreviewCard } from './PostPreviewCard';
+import { KnowledgeResultCard } from './KnowledgeResultCard';
+import { IdeaListCard } from './IdeaListCard';
 
 interface CopilotMessageProps {
   message: CopilotMessageType;
   onFeedback: (rating: 'positive' | 'negative', note?: string) => void;
+  onApply?: (type: string, data: unknown) => void;
 }
 
-export function CopilotMessage({ message, onFeedback }: CopilotMessageProps) {
+export function CopilotMessage({ message, onFeedback, onApply }: CopilotMessageProps) {
   if (message.role === 'tool_call') {
     return (
       <div className="flex items-start gap-2 text-xs text-zinc-400 py-1">
@@ -23,6 +27,33 @@ export function CopilotMessage({ message, onFeedback }: CopilotMessageProps) {
 
   if (message.role === 'tool_result') {
     const result = message.toolResult;
+    const resultData = (result && typeof result === 'object' && 'data' in result ? result.data : result) as Record<string, unknown> | unknown[] | undefined;
+
+    // Route to rich cards based on displayHint
+    switch (message.displayHint) {
+      case 'post_preview':
+        return (
+          <div className="my-1">
+            <PostPreviewCard data={resultData as Parameters<typeof PostPreviewCard>[0]['data']} onApply={onApply} />
+          </div>
+        );
+      case 'knowledge_list':
+        return (
+          <div className="my-1">
+            <KnowledgeResultCard data={resultData as Parameters<typeof KnowledgeResultCard>[0]['data']} onApply={onApply} />
+          </div>
+        );
+      case 'idea_list':
+        return (
+          <div className="my-1">
+            <IdeaListCard data={resultData as Parameters<typeof IdeaListCard>[0]['data']} onApply={onApply} />
+          </div>
+        );
+      default:
+        break;
+    }
+
+    // Default: simple success/failure badge
     const success = result && typeof result === 'object' && 'success' in result && result.success;
     return (
       <div className={`text-xs py-1 px-2 rounded ${success ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' : 'text-red-500 bg-red-50 dark:bg-red-900/20'}`}>

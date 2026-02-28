@@ -26,6 +26,7 @@ export function CopilotSidebar() {
     pageContext,
     pendingConfirmation,
     confirmAction,
+    applyToPage,
   } = useCopilot();
 
   const activeConversation = conversations.find(c => c.id === activeConversationId);
@@ -92,6 +93,7 @@ export function CopilotSidebar() {
                   key={msg.id}
                   message={msg}
                   onFeedback={(rating, note) => submitFeedback(msg.id, rating, note)}
+                  onApply={applyToPage ?? undefined}
                 />
               ))}
               {isStreaming && (
