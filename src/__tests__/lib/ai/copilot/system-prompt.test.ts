@@ -1,0 +1,89 @@
+/**
+ * @jest-environment node
+ */
+import { buildCopilotSystemPrompt, clearSystemPromptCache } from '@/lib/ai/copilot/system-prompt';
+
+jest.mock('@/lib/services/prompt-registry', () => ({
+  getPrompt: jest.fn().mockResolvedValue({
+    system_prompt: 'You are an AI co-pilot.',
+    user_prompt: '',
+    model: 'claude-sonnet-4-20250514',
+    temperature: 0.7,
+    max_tokens: 4096,
+  }),
+  interpolatePrompt: jest.fn((t: string) => t),
+}));
+
+jest.mock('@/lib/ai/content-pipeline/voice-prompt-builder', () => ({
+  buildVoicePromptSection: jest.fn().mockReturnValue('Voice: Direct, concise'),
+}));
+
+const mockFrom = jest.fn();
+jest.mock('@/lib/utils/supabase-server', () => ({
+  createSupabaseAdminClient: jest.fn(() => ({ from: mockFrom })),
+}));
+
+function createChain(data: unknown = null, { useSingle = true }: { useSingle?: boolean } = {}) {
+  const result = { data, error: null };
+  const chain: Record<string, jest.Mock> = {};
+  const returnChain = () => chain;
+
+  chain.select = jest.fn().mockReturnValue(chain);
+  chain.eq = jest.fn().mockReturnValue(chain);
+  chain.order = jest.fn().mockReturnValue(chain);
+  chain.limit = jest.fn().mockReturnValue(chain);
+  chain.single = jest.fn().mockResolvedValue(result);
+
+  // Make the chain thenable for queries that don't end with .single()
+  // This allows `const { data } = await supabase.from(...).select(...).eq(...)...`
+  chain.then = jest.fn((resolve: (value: typeof result) => void) => {
+    return Promise.resolve(resolve(result));
+  });
+
+  return chain;
+}
+
+describe('buildCopilotSystemPrompt', () => {
+  beforeEach(() => {
+    clearSystemPromptCache();
+    jest.clearAllMocks();
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'team_profiles') {
+        return createChain({ voice_profile: { tone: 'direct' }, full_name: 'Tim', title: 'CEO' });
+      }
+      if (table === 'copilot_memories') {
+        return createChain([
+          { rule: 'Never use bullet points', category: 'structure' },
+        ]);
+      }
+      return createChain();
+    });
+  });
+
+  it('assembles base prompt + voice + user info', async () => {
+    const result = await buildCopilotSystemPrompt('user-1');
+    expect(result).toContain('You are an AI co-pilot');
+    expect(result).toContain('Voice: Direct, concise');
+    expect(result).toContain('Tim');
+  });
+
+  it('includes page context when provided', async () => {
+    const result = await buildCopilotSystemPrompt('user-1', {
+      page: '/content-pipeline',
+      entityType: 'post',
+      entityId: 'post-123',
+      entityTitle: 'My Post',
+    });
+    expect(result).toContain('/content-pipeline');
+    expect(result).toContain('My Post');
+  });
+
+  it('caches results for same user + page', async () => {
+    await buildCopilotSystemPrompt('user-1');
+    await buildCopilotSystemPrompt('user-1');
+    // getPrompt should only be called once (second call hits cache)
+    const { getPrompt } = require('@/lib/services/prompt-registry');
+    expect(getPrompt).toHaveBeenCalledTimes(1);
+  });
+});
