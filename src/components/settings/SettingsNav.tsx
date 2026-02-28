@@ -23,6 +23,7 @@ import {
   Key,
   Webhook,
   BookOpen,
+  Brain,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/index';
@@ -75,6 +76,12 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Brand & Theme', href: '/settings/branding', icon: Palette },
       { label: 'Page Defaults', href: '/settings/branding#defaults', icon: Video },
       { label: 'White Label', href: '/settings/branding#whitelabel', icon: Crown },
+    ],
+  },
+  {
+    title: 'AI Co-pilot',
+    items: [
+      { label: 'Preferences', href: '/settings/copilot', icon: Brain },
     ],
   },
   {
