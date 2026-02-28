@@ -8,6 +8,7 @@ import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { PostHogIdentify } from '@/components/providers/PostHogIdentify';
+import { CopilotShell } from '@/components/copilot/CopilotShell';
 
 export default async function DashboardLayout({
   children,
@@ -98,7 +99,9 @@ export default async function DashboardLayout({
         teamContext={teamContext}
         isSuperAdmin={isAdmin}
       />
-      <main id="main-content" className="lg:pl-64"><ErrorBoundary>{children}</ErrorBoundary></main>
+      <CopilotShell>
+        <main id="main-content" className="lg:pl-64"><ErrorBoundary>{children}</ErrorBoundary></main>
+      </CopilotShell>
       <FeedbackWidget
         userEmail={session.user.email ?? null}
         userId={session.user.id ?? null}
