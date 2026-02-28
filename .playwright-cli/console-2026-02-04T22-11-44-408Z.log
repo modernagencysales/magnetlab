@@ -1,6 +1,0 @@
-[  107808ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://www.magnetlab.app/api/lead-magnet/ideate:0
-[  107817ms] [ERROR] Context submit error: Error: Failed to generate ideas
-    at https://www.magnetlab.app/_next/static/chunks/app/(dashboard)/create/page-7bb5cf88f2d4ccf3.js:1:75792 @ https://www.magnetlab.app/_next/static/chunks/app/(dashboard)/create/page-7bb5cf88f2d4ccf3.js:0
-[  444577ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://www.magnetlab.app/api/lead-magnet/ideate:0
-[  444586ms] [ERROR] Context submit error: Error: Failed to generate ideas
-    at https://www.magnetlab.app/_next/static/chunks/app/(dashboard)/create/page-7bb5cf88f2d4ccf3.js:1:75792 @ https://www.magnetlab.app/_next/static/chunks/app/(dashboard)/create/page-7bb5cf88f2d4ccf3.js:0
