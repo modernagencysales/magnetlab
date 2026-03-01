@@ -1,31 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-
-import { logError } from '@/lib/utils/logger';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { logError } from "@/lib/utils/logger";
+import * as creatorsService from "@/server/services/creators.service";
 
 export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from('cp_tracked_creators')
-      .select('id, linkedin_url, name, headline, avatar_url, avg_engagement, post_count, added_by_user_id, is_active, last_scraped_at, created_at')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ creators: data || [] });
+    const creators = await creatorsService.getCreators(session.user.id);
+    return NextResponse.json({ creators: creators ?? [] });
   } catch (error) {
-    logError('cp/creators', error, { step: 'creators_list_error' });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError("cp/creators", error, { step: "creators_list_error" });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -33,54 +22,34 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
     const { linkedin_url, name, headline } = body;
 
-    if (!linkedin_url || typeof linkedin_url !== 'string') {
-      return NextResponse.json({ error: 'linkedin_url is required' }, { status: 400 });
+    if (!linkedin_url || typeof linkedin_url !== "string") {
+      return NextResponse.json(
+        { error: "linkedin_url is required" },
+        { status: 400 },
+      );
     }
 
-    const supabase = createSupabaseAdminClient();
+    const result = await creatorsService.addCreator(session.user.id, {
+      linkedin_url,
+      name: name ?? null,
+      headline: headline ?? null,
+    });
 
-    // Deduplicate by linkedin_url — if it already exists, return the existing record
-    const { data: existing, error: lookupError } = await supabase
-      .from('cp_tracked_creators')
-      .select('id, linkedin_url, name, headline, avatar_url, avg_engagement, post_count, added_by_user_id, is_active, last_scraped_at, created_at')
-      .eq('linkedin_url', linkedin_url)
-      .maybeSingle();
-
-    if (lookupError) {
-      return NextResponse.json({ error: lookupError.message }, { status: 500 });
-    }
-
-    if (existing) {
+    if (result.message) {
       return NextResponse.json({
-        creator: existing,
-        message: 'Creator already exists',
+        creator: result.creator,
+        message: result.message,
       });
     }
-
-    const { data, error } = await supabase
-      .from('cp_tracked_creators')
-      .insert({
-        linkedin_url,
-        name: name || null,
-        headline: headline || null,
-        added_by_user_id: session.user.id,
-      })
-      .select('id, linkedin_url, name, headline, avatar_url, avg_engagement, post_count, added_by_user_id, is_active, last_scraped_at, created_at')
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ creator: data }, { status: 201 });
+    return NextResponse.json({ creator: result.creator }, { status: 201 });
   } catch (error) {
-    logError('cp/creators', error, { step: 'creator_create_error' });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logError("cp/creators", error, { step: "creator_create_error" });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

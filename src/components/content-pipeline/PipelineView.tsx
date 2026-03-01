@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { Lightbulb, PenLine, CalendarCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KanbanBoard } from './KanbanBoard';
@@ -9,6 +9,8 @@ import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
 interface PipelineViewProps {
   profileId?: string | null;
   onRefresh?: () => void;
+  initialIdeas: ContentIdea[];
+  initialPosts: PipelinePost[];
 }
 
 interface HeroStats {
@@ -18,62 +20,51 @@ interface HeroStats {
   scheduled: number;
 }
 
-export function PipelineView({ profileId, onRefresh }: PipelineViewProps) {
-  const [stats, setStats] = useState<HeroStats>({
-    readyToWrite: 0,
-    inProgress: 0,
-    reviewingCount: 0,
-    scheduled: 0,
-  });
+function computeStats(
+  ideas: ContentIdea[],
+  posts: PipelinePost[],
+  profileId?: string | null
+): HeroStats {
+  const filteredIdeas = profileId
+    ? ideas.filter((i) => i.team_profile_id === profileId)
+    : ideas;
+  const filteredPosts = profileId
+    ? posts.filter((p) => p.team_profile_id === profileId)
+    : posts;
+  const now = new Date();
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const draftOrReviewing = filteredPosts.filter(
+    (p) => p.status === 'draft' || p.status === 'reviewing'
+  );
+  const reviewing = draftOrReviewing.filter((p) => p.status === 'reviewing');
+  const scheduledSoon = filteredPosts.filter(
+    (p) =>
+      p.status === 'scheduled' &&
+      p.scheduled_time &&
+      new Date(p.scheduled_time) <= sevenDaysFromNow
+  );
+  return {
+    readyToWrite: filteredIdeas.length,
+    inProgress: draftOrReviewing.length,
+    reviewingCount: reviewing.length,
+    scheduled: scheduledSoon.length,
+  };
+}
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const profileParam = profileId ? `&team_profile_id=${profileId}` : '';
-      const [ideasRes, postsRes] = await Promise.all([
-        fetch(`/api/content-pipeline/ideas?status=extracted&limit=200${profileParam}`),
-        fetch(`/api/content-pipeline/posts?limit=200${profileParam}`),
-      ]);
-      const [ideasData, postsData] = await Promise.all([
-        ideasRes.json(),
-        postsRes.json(),
-      ]);
-
-      const ideas: ContentIdea[] = ideasData.ideas || [];
-      const posts: PipelinePost[] = postsData.posts || [];
-
-      const now = new Date();
-      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-      const draftOrReviewing = posts.filter(
-        (p) => p.status === 'draft' || p.status === 'reviewing'
-      );
-      const reviewing = draftOrReviewing.filter((p) => p.status === 'reviewing');
-      const scheduledSoon = posts.filter(
-        (p) =>
-          p.status === 'scheduled' &&
-          p.scheduled_time &&
-          new Date(p.scheduled_time) <= sevenDaysFromNow
-      );
-
-      setStats({
-        readyToWrite: ideas.length,
-        inProgress: draftOrReviewing.length,
-        reviewingCount: reviewing.length,
-        scheduled: scheduledSoon.length,
-      });
-    } catch {
-      // Stats are supplementary — silent failure is fine
-    }
-  }, [profileId]);
-
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+export function PipelineView({
+  profileId,
+  onRefresh,
+  initialIdeas,
+  initialPosts,
+}: PipelineViewProps) {
+  const stats = useMemo(
+    () => computeStats(initialIdeas, initialPosts, profileId),
+    [initialIdeas, initialPosts, profileId]
+  );
 
   const handleRefresh = useCallback(() => {
-    fetchStats();
     onRefresh?.();
-  }, [fetchStats, onRefresh]);
+  }, [onRefresh]);
 
   const cards = [
     {
@@ -130,7 +121,12 @@ export function PipelineView({ profileId, onRefresh }: PipelineViewProps) {
       </div>
 
       {/* Kanban board */}
-      <KanbanBoard onRefresh={handleRefresh} profileId={profileId} />
+      <KanbanBoard
+        onRefresh={handleRefresh}
+        profileId={profileId}
+        initialIdeas={initialIdeas}
+        initialPosts={initialPosts}
+      />
     </div>
   );
 }

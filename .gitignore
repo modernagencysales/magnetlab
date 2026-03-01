@@ -47,5 +47,12 @@ supabase/.temp
 # Playwright CLI artifacts
 .playwright-cli/
 
+# Playwright test artifacts
+playwright-report/
+test-results/
+
 # Trigger.dev build cache
 .trigger/tmp/
+
+# Local data dumps (use scripts/fixtures/ for committed sample data)
+data/

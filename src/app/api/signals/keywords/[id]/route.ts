@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError } from '@/lib/utils/logger';
+import * as signalsService from '@/server/services/signals.service';
 
 export async function PATCH(
   request: NextRequest,
@@ -16,27 +16,15 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
-      .from('signal_keyword_monitors')
-      .update({ is_active: body.is_active })
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .select()
-      .single();
+    const result = await signalsService.updateKeyword(session.user.id, id, { is_active: body.is_active });
 
-    if (error) {
-      if (error.code === 'PGRST116') {
+    if (!result.success) {
+      if (result.error === 'not_found') {
         return NextResponse.json({ error: 'Keyword monitor not found' }, { status: 404 });
       }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    if (!data) {
-      return NextResponse.json({ error: 'Keyword monitor not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ keyword: data });
+    return NextResponse.json({ keyword: result.keyword });
   } catch (error) {
     logError('api/signals/keywords/[id]', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -44,7 +32,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -55,17 +43,11 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const supabase = createSupabaseAdminClient();
-    const { error } = await supabase
-      .from('signal_keyword_monitors')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', session.user.id);
+    const result = await signalsService.deleteKeyword(session.user.id, id);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!result.success) {
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
     return NextResponse.json({ success: true });
   } catch (error) {
     logError('api/signals/keywords/[id]', error);

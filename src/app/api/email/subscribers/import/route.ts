@@ -5,9 +5,9 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { requireTeamScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import * as emailService from '@/server/services/email.service';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -54,7 +54,6 @@ export async function POST(request: Request) {
       return ApiErrors.unauthorized();
     }
 
-    const supabase = createSupabaseAdminClient();
     const scope = await requireTeamScope(session.user.id);
     if (!scope?.teamId) {
       return ApiErrors.validationError('No team found for this user');
@@ -147,68 +146,17 @@ export async function POST(request: Request) {
       });
     }
 
-    // Confirm mode: upsert all valid rows
+    // Confirm mode: upsert all valid rows via service
     if (valid.length === 0) {
       return NextResponse.json({ imported: 0, skipped: invalid.length });
     }
 
-    // Fetch existing subscribers to avoid overwriting names
-    const emails = valid.map((v) => v.email);
-    const { data: existingSubscribers } = await supabase
-      .from('email_subscribers')
-      .select('email, first_name, last_name')
-      .eq('team_id', teamId)
-      .in('email', emails);
-
-    const existingByEmail = new Map<string, { first_name: string | null; last_name: string | null }>();
-    if (existingSubscribers) {
-      for (const sub of existingSubscribers) {
-        existingByEmail.set(sub.email, {
-          first_name: sub.first_name,
-          last_name: sub.last_name,
-        });
-      }
+    const result = await emailService.importSubscribers(teamId, valid);
+    if (!result.success) {
+      return ApiErrors.databaseError('Failed to import subscribers');
     }
-
-    // Build upsert rows, preserving existing names
-    const upsertRows = valid.map((row) => {
-      const existing = existingByEmail.get(row.email);
-      return {
-        team_id: teamId,
-        email: row.email,
-        first_name: row.first_name || existing?.first_name || null,
-        last_name: row.last_name || existing?.last_name || null,
-        source: 'import' as const,
-        status: 'active' as const,
-      };
-    });
-
-    // Upsert in batches of 500 to avoid payload limits
-    const BATCH_SIZE = 500;
-    let imported = 0;
-
-    for (let i = 0; i < upsertRows.length; i += BATCH_SIZE) {
-      const batch = upsertRows.slice(i, i + BATCH_SIZE);
-      const { error, count } = await supabase
-        .from('email_subscribers')
-        .upsert(batch, { onConflict: 'team_id,email', count: 'exact' });
-
-      if (error) {
-        logApiError('email/subscribers/import/upsert', error, {
-          teamId,
-          batchStart: i,
-          batchSize: batch.length,
-        });
-        return ApiErrors.databaseError(
-          `Import failed at row ${i + 1}. ${imported} rows were imported before the failure.`
-        );
-      }
-
-      imported += count ?? batch.length;
-    }
-
     return NextResponse.json({
-      imported,
+      imported: result.imported,
       skipped: invalid.length,
     });
   } catch (error) {

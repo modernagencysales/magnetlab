@@ -150,7 +150,7 @@ describe('GET /api/analytics/engagement', () => {
     expect(post2.dmsSent).toBe(0);
   });
 
-  it('should handle engagement table errors gracefully', async () => {
+  it('should return 500 when engagement table errors occur', async () => {
     (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
 
     mock.setResult('cp_pipeline_posts', {
@@ -173,15 +173,7 @@ describe('GET /api/analytics/engagement', () => {
 
     const response = await GET();
 
-    expect(response.status).toBe(200);
-    const data = await response.json();
-
-    // Should return zeros, not error
-    expect(data.totals.comments).toBe(0);
-    expect(data.totals.reactions).toBe(0);
-    expect(data.totals.dmsSent).toBe(0);
-    expect(data.byPost).toHaveLength(1);
-    expect(data.byPost[0].comments).toBe(0);
+    expect(response.status).toBe(500);
   });
 
   it('should return 500 on database error for posts query', async () => {
@@ -196,6 +188,6 @@ describe('GET /api/analytics/engagement', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.code).toBe('DATABASE_ERROR');
+    expect(data.code).toBe('INTERNAL_ERROR');
   });
 });

@@ -14,30 +14,29 @@ import { PostDetailModal } from './PostDetailModal';
 
 // ─── Component ────────────────────────────────────────────
 
-export function KanbanBoard({ onRefresh, profileId }: { onRefresh?: () => void; profileId?: string | null }) {
-  // Data
-  const [ideas, setIdeas] = useState<ContentIdea[]>([]);
-  const [posts, setPosts] = useState<PipelinePost[]>([]);
-  const [loading, setLoading] = useState(true);
+interface KanbanBoardProps {
+  onRefresh?: () => void;
+  profileId?: string | null;
+  initialIdeas?: ContentIdea[];
+  initialPosts?: PipelinePost[];
+}
 
-  // Focused column
-  const [focusedColumn, setFocusedColumn] = useState<ColumnId>('ideas');
+export function KanbanBoard({
+  onRefresh,
+  profileId,
+  initialIdeas: initialIdeasProp,
+  initialPosts: initialPostsProp,
+}: KanbanBoardProps) {
+  const [ideas, setIdeas] = useState<ContentIdea[]>(initialIdeasProp ?? []);
+  const [posts, setPosts] = useState<PipelinePost[]>(initialPostsProp ?? []);
+  const [loading, setLoading] = useState(!initialIdeasProp && !initialPostsProp);
 
-  // Selection
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const lastSelectedId = useRef<string | null>(null);
-
-  // Preview
-  const [previewItem, setPreviewItem] = useState<{ item: CardItem; idea?: ContentIdea } | null>(null);
-
-  // Modal
-  const [modalPost, setModalPost] = useState<PipelinePost | null>(null);
-  const [polishing, setPolishing] = useState(false);
-
-  // Processing (kept for BulkSelectionBar prop — always false with optimistic updates)
-  const [isProcessing] = useState(false);
-
-  // ─── Data fetching ────────────────────────────────────────
+  useEffect(() => {
+    if (initialIdeasProp !== undefined && initialPostsProp !== undefined) {
+      setIdeas(initialIdeasProp);
+      setPosts(initialPostsProp);
+    }
+  }, [initialIdeasProp, initialPostsProp]);
 
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -61,39 +60,70 @@ export function KanbanBoard({ onRefresh, profileId }: { onRefresh?: () => void; 
   }, [profileId]);
 
   useEffect(() => {
-    fetchData(false);
-  }, [fetchData]);
+    if (initialIdeasProp === undefined || initialPostsProp === undefined) {
+      fetchData(false);
+    }
+  }, [fetchData, initialIdeasProp, initialPostsProp]);
+
+  // Filter by profileId for display (ideas/posts in state are full set for scope)
+  const displayIdeas = profileId
+    ? ideas.filter((i) => i.team_profile_id === profileId)
+    : ideas;
+  const displayPosts = profileId
+    ? posts.filter((p) => p.team_profile_id === profileId)
+    : posts;
+
+  // Focused column
+  const [focusedColumn, setFocusedColumn] = useState<ColumnId>('ideas');
+
+  // Selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const lastSelectedId = useRef<string | null>(null);
+
+  // Preview
+  const [previewItem, setPreviewItem] = useState<{ item: CardItem; idea?: ContentIdea } | null>(null);
+
+  // Modal
+  const [modalPost, setModalPost] = useState<PipelinePost | null>(null);
+  const [polishing, setPolishing] = useState(false);
+
+  // Processing (kept for BulkSelectionBar prop — always false with optimistic updates)
+  const [isProcessing] = useState(false);
 
   const refresh = useCallback(() => {
-    fetchData(true);
-    onRefresh?.();
-  }, [fetchData, onRefresh]);
+    if (initialIdeasProp !== undefined && initialPostsProp !== undefined) {
+      onRefresh?.();
+    } else {
+      fetchData(true);
+      onRefresh?.();
+    }
+  }, [onRefresh, initialIdeasProp, initialPostsProp, fetchData]);
 
   // ─── Column data ──────────────────────────────────────────
 
   const getColumnItems = useCallback((columnId: ColumnId): CardItem[] => {
     switch (columnId) {
       case 'ideas':
-        return ideas
+        return displayIdeas
           .slice()
           .sort((a, b) => (b.composite_score ?? 0) - (a.composite_score ?? 0))
           .map((idea) => ({ type: 'idea' as const, data: idea }));
       case 'written':
-        return posts
+        return displayPosts
           .filter((p) => p.status === 'draft' || p.status === 'reviewing')
           .map((post) => ({ type: 'post' as const, data: post }));
       case 'review':
-        return posts
+        return displayPosts
           .filter((p) => p.status === 'approved')
           .map((post) => ({ type: 'post' as const, data: post }));
       case 'scheduled':
-        return posts
+        return displayPosts
           .filter((p) => p.status === 'scheduled' || p.status === 'published')
           .map((post) => ({ type: 'post' as const, data: post }));
       default:
         return [];
     }
-  }, [ideas, posts]);
+  }, [displayIdeas, displayPosts]);
 
   // ─── Column switching ─────────────────────────────────────
 

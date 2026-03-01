@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError } from '@/lib/utils/logger';
-
-const MAX_COMPANIES = 10;
+import * as signalsService from '@/server/services/signals.service';
 
 export async function GET() {
   try {
@@ -12,18 +10,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
-      .from('signal_company_monitors')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    const result = await signalsService.listCompanies(session.user.id);
+    if (!result.success) {
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    return NextResponse.json({ companies: data || [] });
+    return NextResponse.json({ companies: result.companies });
   } catch (error) {
     logError('api/signals/companies', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -39,50 +30,26 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const linkedinCompanyUrl = (body.linkedin_company_url as string)?.trim();
+    const heyreachCampaignId = body.heyreach_campaign_id as string | undefined;
 
-    if (!linkedinCompanyUrl || !linkedinCompanyUrl.includes('linkedin.com/company/')) {
-      return NextResponse.json(
-        { error: 'Must be a LinkedIn company URL (must contain linkedin.com/company/)' },
-        { status: 400 }
-      );
-    }
+    const result = await signalsService.createCompany(session.user.id, {
+      linkedin_company_url: linkedinCompanyUrl ?? '',
+      heyreach_campaign_id: heyreachCampaignId ?? null,
+    });
 
-    const supabase = createSupabaseAdminClient();
-
-    // Check limit
-    const { count } = await supabase
-      .from('signal_company_monitors')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', session.user.id);
-
-    if ((count || 0) >= MAX_COMPANIES) {
-      return NextResponse.json(
-        { error: `Maximum ${MAX_COMPANIES} company monitors allowed` },
-        { status: 400 }
-      );
-    }
-
-    const { data, error } = await supabase
-      .from('signal_company_monitors')
-      .insert({
-        user_id: session.user.id,
-        linkedin_company_url: linkedinCompanyUrl,
-        heyreach_campaign_id: body.heyreach_campaign_id || null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        return NextResponse.json(
-          { error: 'Company already being monitored' },
-          { status: 409 }
-        );
+    if (!result.success) {
+      if (result.error === 'validation') {
+        return NextResponse.json({ error: result.message }, { status: 400 });
       }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      if (result.error === 'limit') {
+        return NextResponse.json({ error: result.message }, { status: 400 });
+      }
+      if (result.error === 'conflict') {
+        return NextResponse.json({ error: result.message }, { status: 409 });
+      }
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    return NextResponse.json({ company: data }, { status: 201 });
+    return NextResponse.json({ company: result.company }, { status: 201 });
   } catch (error) {
     logError('api/signals/companies', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

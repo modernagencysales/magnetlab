@@ -246,9 +246,9 @@ describe('Spreadsheet Import (MOD-92)', () => {
       });
 
       const response = await POST(request);
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(502);
       const data = await response.json();
-      expect(data.code).toBe('AI_GENERATION_ERROR');
+      expect(data.error).toBeDefined();
     });
 
     it('should accept optional title and description', async () => {

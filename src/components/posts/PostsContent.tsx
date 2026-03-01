@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { Lightbulb, LayoutGrid, Sparkles, Loader2, BookOpen, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProfileSwitcher, useProfileSelection } from '@/components/content-pipeline/ProfileSwitcher';
+import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
 
 const IdeasTab = dynamic(
   () => import('@/components/content-pipeline/IdeasTab').then((m) => ({ default: m.IdeasTab })),
@@ -50,7 +51,17 @@ function TabLoader() {
   );
 }
 
-export function PostsContent() {
+interface PostsContentProps {
+  initialBufferLow: boolean;
+  initialIdeas: ContentIdea[];
+  initialPosts: PipelinePost[];
+}
+
+export function PostsContent({
+  initialBufferLow,
+  initialIdeas,
+  initialPosts,
+}: PostsContentProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -61,17 +72,7 @@ export function PostsContent() {
   const [showQuickWrite, setShowQuickWrite] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const { selectedProfileId, onProfileChange } = useProfileSelection();
-  const [bufferLow, setBufferLow] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/content-pipeline/schedule/buffer')
-      .then((r) => r.json())
-      .then((data) => {
-        const count = data.buffer?.length ?? 0;
-        setBufferLow(count < 3);
-      })
-      .catch(() => {});
-  }, []);
+  const bufferLow = initialBufferLow;
 
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam)) {
@@ -135,7 +136,12 @@ export function PostsContent() {
           <PipelineView
             key={refreshKey}
             profileId={selectedProfileId}
-            onRefresh={() => setRefreshKey((k) => k + 1)}
+            onRefresh={() => {
+              router.refresh();
+              setRefreshKey((k) => k + 1);
+            }}
+            initialIdeas={initialIdeas}
+            initialPosts={initialPosts}
           />
         )}
         {activeTab === 'calendar' && <CalendarView />}

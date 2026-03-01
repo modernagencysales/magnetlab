@@ -8,9 +8,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { timingSafeEqual } from 'crypto';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-import { createLeadMagnetPipeline } from '@/trigger/create-lead-magnet';
+import { createLeadMagnetPipelineRun } from '@/server/services/external.service';
 import { LEAD_MAGNET_ARCHETYPES } from '@/lib/types/lead-magnet';
 import type { LeadMagnetArchetype } from '@/lib/types/lead-magnet';
 
@@ -71,12 +70,10 @@ function authenticateRequest(request: Request): boolean {
 
 export async function POST(request: Request) {
   try {
-    // Step 1: Authenticate
     if (!authenticateRequest(request)) {
       return ApiErrors.unauthorized('Invalid or missing API key');
     }
 
-    // Step 2: Parse and validate request body
     let body: unknown;
     try {
       body = await request.json();
@@ -91,72 +88,26 @@ export async function POST(request: Request) {
     }
 
     const input = parseResult.data;
-    const archetype = input.archetype as LeadMagnetArchetype;
-
-    // Step 3: Verify user exists
-    const supabase = createSupabaseAdminClient();
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, name, username')
-      .eq('id', input.userId)
-      .single();
-
-    if (userError || !user) {
-      return ApiErrors.notFound('User');
-    }
-
-    // Step 4: Resolve user's team_id from team_profiles
-    let teamId: string | null = null;
-    const { data: ownerProfile } = await supabase
-      .from('team_profiles')
-      .select('team_id')
-      .eq('user_id', input.userId)
-      .eq('role', 'owner')
-      .limit(1)
-      .single();
-    if (ownerProfile) {
-      teamId = ownerProfile.team_id;
-    }
-
-    // Step 5: Create stub lead magnet record
-    const { data: leadMagnet, error: createError } = await supabase
-      .from('lead_magnets')
-      .insert({
-        user_id: input.userId,
-        team_id: teamId,
-        title: `${archetype} lead magnet`,
-        archetype,
-        status: 'draft',
-      })
-      .select('id')
-      .single();
-
-    if (createError || !leadMagnet) {
-      logApiError('external/create-lead-magnet/db-create', createError, { userId: input.userId });
-      return ApiErrors.databaseError('Failed to create lead magnet record');
-    }
-
-    // Step 6: Trigger the background pipeline
-    await createLeadMagnetPipeline.trigger({
+    const result = await createLeadMagnetPipelineRun({
       userId: input.userId,
-      userName: user.name,
-      username: user.username,
-      archetype,
+      archetype: input.archetype as LeadMagnetArchetype,
       businessContext: input.businessContext,
       topic: input.topic,
       autoPublishFunnel: input.autoPublishFunnel,
       autoSchedulePost: input.autoSchedulePost,
       scheduledTime: input.scheduledTime,
-      leadMagnetId: leadMagnet.id,
-      teamId,
     });
 
-    // Step 7: Return immediately
+    if (!result.success) {
+      if (result.error === 'user_not_found') return ApiErrors.notFound('User');
+      return ApiErrors.databaseError('Failed to create lead magnet record');
+    }
+
     return NextResponse.json(
       {
         success: true,
-        leadMagnetId: leadMagnet.id,
-        status: 'processing',
+        leadMagnetId: result.leadMagnetId,
+        status: result.status,
       },
       { status: 202 }
     );

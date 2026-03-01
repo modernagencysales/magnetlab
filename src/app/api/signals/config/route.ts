@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError } from '@/lib/utils/logger';
+import * as signalsService from '@/server/services/signals.service';
 
 export async function GET() {
   try {
@@ -10,22 +10,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
-      .from('signal_configs')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (error) {
-      // PGRST116 = no rows found — not an error, just no config yet
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({ config: null });
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    const result = await signalsService.getConfig(session.user.id);
+    if (!result.success) {
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    return NextResponse.json({ config: data });
+    return NextResponse.json({ config: result.config });
   } catch (error) {
     logError('api/signals/config', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -41,33 +30,23 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
 
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
-      .from('signal_configs')
-      .upsert(
-        {
-          user_id: session.user.id,
-          target_countries: body.target_countries ?? [],
-          target_job_titles: body.target_job_titles ?? [],
-          exclude_job_titles: body.exclude_job_titles ?? [],
-          min_company_size: body.min_company_size ?? null,
-          max_company_size: body.max_company_size ?? null,
-          target_industries: body.target_industries ?? [],
-          default_heyreach_campaign_id: body.default_heyreach_campaign_id ?? null,
-          enrichment_enabled: body.enrichment_enabled ?? true,
-          sentiment_scoring_enabled: body.sentiment_scoring_enabled ?? true,
-          auto_push_enabled: body.auto_push_enabled ?? false,
-        },
-        { onConflict: 'user_id' }
-      )
-      .select()
-      .single();
+    const result = await signalsService.upsertConfig(session.user.id, {
+      target_countries: body.target_countries,
+      target_job_titles: body.target_job_titles,
+      exclude_job_titles: body.exclude_job_titles,
+      min_company_size: body.min_company_size,
+      max_company_size: body.max_company_size,
+      target_industries: body.target_industries,
+      default_heyreach_campaign_id: body.default_heyreach_campaign_id,
+      enrichment_enabled: body.enrichment_enabled,
+      sentiment_scoring_enabled: body.sentiment_scoring_enabled,
+      auto_push_enabled: body.auto_push_enabled,
+    });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!result.success) {
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    return NextResponse.json({ config: data });
+    return NextResponse.json({ config: result.config });
   } catch (error) {
     logError('api/signals/config', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

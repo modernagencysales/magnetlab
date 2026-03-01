@@ -6,8 +6,8 @@
 
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { createAccount } from '@/server/services/external.service';
 
 function authenticateRequest(request: Request): boolean {
   const authHeader = request.headers.get('Authorization');
@@ -52,75 +52,26 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('email and full_name are required');
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    // Check if user already exists
-    const { data: existing } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single();
-
-    if (existing) {
-      return NextResponse.json({
-        success: true,
-        data: { user_id: existing.id, already_existed: true },
-      });
-    }
-
-    // Create user record (no password yet — set during handoff)
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .insert({
-        email,
-        name: full_name,
-      })
-      .select('id')
-      .single();
-
-    if (userError) {
-      logApiError('external/create-account/user', userError);
-      return ApiErrors.internalError('Failed to create user');
-    }
-
-    // Create pro subscription
-    await supabase.from('subscriptions').insert({
-      user_id: user.id,
-      plan: 'pro',
-      status: 'active',
+    const result = await createAccount({
+      email,
+      full_name,
+      linkedin_url,
+      company,
+      job_title,
     });
 
-    // Create team + team profile if linkedin/company provided
-    if (linkedin_url || company) {
-      // Create a team for this user
-      const { data: team } = await supabase
-        .from('teams')
-        .insert({
-          name: company || `${full_name}'s Team`,
-          owner_id: user.id,
-        })
-        .select('id')
-        .single();
-
-      if (team) {
-        await supabase.from('team_profiles').insert({
-          team_id: team.id,
-          user_id: user.id,
-          email,
-          full_name,
-          linkedin_url: linkedin_url || null,
-          title: job_title || null,
-          role: 'owner',
-          status: 'active',
-          is_default: true,
-        });
-      }
+    if (!result.success) {
+      return ApiErrors.internalError('Failed to create account');
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { user_id: user.id, already_existed: false },
-    }, { status: 201 });
+    const status = result.already_existed ? 200 : 201;
+    return NextResponse.json(
+      {
+        success: true,
+        data: { user_id: result.user_id, already_existed: result.already_existed },
+      },
+      { status }
+    );
   } catch (error) {
     logApiError('external/create-account', error);
     return ApiErrors.internalError('Failed to create account');

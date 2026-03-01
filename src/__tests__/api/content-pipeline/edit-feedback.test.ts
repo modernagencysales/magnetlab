@@ -7,14 +7,15 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-// Mock Supabase
-jest.mock('@/lib/utils/supabase-server', () => ({
-  createSupabaseAdminClient: jest.fn(),
-}));
-
 // Mock team context
 jest.mock('@/lib/utils/team-context', () => ({
   requireTeamScope: jest.fn(),
+}));
+
+// Mock repo (route → service → repo)
+jest.mock('@/server/repositories/edit-history.repo', () => ({
+  findEditByTeamAndId: jest.fn(),
+  updateEditFeedback: jest.fn(),
 }));
 
 // Mock logger
@@ -27,12 +28,13 @@ jest.mock('@/lib/utils/logger', () => ({
 
 import { POST } from '@/app/api/content-pipeline/edit-feedback/route';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { requireTeamScope } from '@/lib/utils/team-context';
+import * as editHistoryRepo from '@/server/repositories/edit-history.repo';
 
 const mockAuth = auth as jest.Mock;
-const mockCreateSupabase = createSupabaseAdminClient as jest.Mock;
 const mockRequireTeamScope = requireTeamScope as jest.Mock;
+const mockFindEditByTeamAndId = editHistoryRepo.findEditByTeamAndId as jest.Mock;
+const mockUpdateEditFeedback = editHistoryRepo.updateEditFeedback as jest.Mock;
 
 function createRequest(body: Record<string, unknown>) {
   return new Request('http://localhost:3000/api/content-pipeline/edit-feedback', {
@@ -43,33 +45,13 @@ function createRequest(body: Record<string, unknown>) {
 }
 
 describe('POST /api/content-pipeline/edit-feedback', () => {
-  let mockMaybeSingle: jest.Mock;
-  let mockSelectEq: jest.Mock;
-  let mockUpdateEq: jest.Mock;
-  let mockUpdate: jest.Mock;
-  let mockSelect: jest.Mock;
-
   beforeEach(() => {
     jest.clearAllMocks();
 
     mockAuth.mockResolvedValue({ user: { id: 'user-123' } });
     mockRequireTeamScope.mockResolvedValue({ type: 'team', userId: 'user-123', teamId: 'team-456' });
-
-    // Build chainable mock — select chain: .select('id').eq('id', ...).eq('team_id', ...).maybeSingle()
-    mockMaybeSingle = jest.fn().mockResolvedValue({ data: { id: 'edit-abc' }, error: null });
-    const mockSelectTeamEq = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-    mockSelectEq = jest.fn().mockReturnValue({ eq: mockSelectTeamEq });
-    mockSelect = jest.fn().mockReturnValue({ eq: mockSelectEq });
-
-    mockUpdateEq = jest.fn().mockResolvedValue({ error: null });
-    mockUpdate = jest.fn().mockReturnValue({ eq: mockUpdateEq });
-
-    mockCreateSupabase.mockReturnValue({
-      from: jest.fn().mockReturnValue({
-        select: mockSelect,
-        update: mockUpdate,
-      }),
-    });
+    mockFindEditByTeamAndId.mockResolvedValue({ id: 'edit-abc' });
+    mockUpdateEditFeedback.mockResolvedValue(undefined);
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -113,7 +95,7 @@ describe('POST /api/content-pipeline/edit-feedback', () => {
   });
 
   it('returns 404 when edit record not found', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockFindEditByTeamAndId.mockResolvedValue(null);
 
     const res = await POST(createRequest({ editId: 'nonexistent', tags: ['Too formal'] }));
     expect(res.status).toBe(404);
@@ -136,8 +118,9 @@ describe('POST /api/content-pipeline/edit-feedback', () => {
     const body = await res.json();
     expect(body.success).toBe(true);
 
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ edit_tags: ['Too formal', 'Too long'] })
+    expect(mockUpdateEditFeedback).toHaveBeenCalledWith(
+      'edit-abc',
+      expect.objectContaining({ edit_tags: ['Too formal', 'Too long'] }),
     );
   });
 
@@ -148,8 +131,9 @@ describe('POST /api/content-pipeline/edit-feedback', () => {
     }));
 
     expect(res.status).toBe(200);
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ ceo_note: 'Needs more personality' })
+    expect(mockUpdateEditFeedback).toHaveBeenCalledWith(
+      'edit-abc',
+      expect.objectContaining({ ceo_note: 'Needs more personality' }),
     );
   });
 
@@ -161,16 +145,17 @@ describe('POST /api/content-pipeline/edit-feedback', () => {
     }));
 
     expect(res.status).toBe(200);
-    expect(mockUpdate).toHaveBeenCalledWith(
+    expect(mockUpdateEditFeedback).toHaveBeenCalledWith(
+      'edit-abc',
       expect.objectContaining({
         edit_tags: ['Wrong tone'],
         ceo_note: 'Should be more casual',
-      })
+      }),
     );
   });
 
   it('returns 500 on database error during update', async () => {
-    mockUpdateEq.mockResolvedValue({ error: { message: 'DB error' } });
+    mockUpdateEditFeedback.mockRejectedValue(new Error('DB error'));
 
     const res = await POST(createRequest({
       editId: 'edit-abc',

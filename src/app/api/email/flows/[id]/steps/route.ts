@@ -1,32 +1,24 @@
 // API Route: Email Flow Steps
-// POST /api/email/flows/[id]/steps — Add a step to a flow
+// POST — Add a step to a flow
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { requireTeamScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
 import { createStepSchema } from '@/lib/types/email-system';
-
-const STEP_COLUMNS =
-  'id, flow_id, step_number, subject, body, delay_days, created_at, updated_at';
+import * as emailService from '@/server/services/email.service';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// POST — Add a step to an email flow
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return ApiErrors.unauthorized();
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id: flowId } = await params;
-    if (!isValidUUID(flowId)) {
-      return ApiErrors.validationError('Invalid flow ID');
-    }
+    if (!isValidUUID(flowId)) return ApiErrors.validationError('Invalid flow ID');
 
     const body = await request.json();
     const parsed = createStepSchema.safeParse(body);
@@ -37,49 +29,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { step_number, subject, body: stepBody, delay_days } = parsed.data;
-
-    const supabase = createSupabaseAdminClient();
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) {
-      return ApiErrors.validationError('No team found for this user');
-    }
+    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
 
-    // Verify flow belongs to user's team and is draft or paused
-    const { data: flow, error: flowError } = await supabase
-      .from('email_flows')
-      .select('id, status')
-      .eq('id', flowId)
-      .eq('team_id', scope.teamId)
-      .single();
-
-    if (flowError || !flow) {
-      return ApiErrors.notFound('Flow');
-    }
-
-    if (flow.status !== 'draft' && flow.status !== 'paused') {
-      return ApiErrors.validationError('Steps can only be added to draft or paused flows');
-    }
-
-    // Insert the step
-    const { data: step, error: insertError } = await supabase
-      .from('email_flow_steps')
-      .insert({
-        flow_id: flowId,
-        step_number,
-        subject,
-        body: stepBody,
-        delay_days,
-      })
-      .select(STEP_COLUMNS)
-      .single();
-
-    if (insertError) {
-      logApiError('email/flows/steps/create', insertError, { flowId });
+    const result = await emailService.addFlowStep(scope.teamId, flowId, {
+      step_number: parsed.data.step_number,
+      subject: parsed.data.subject,
+      body: parsed.data.body,
+      delay_days: parsed.data.delay_days,
+    });
+    if (!result.success) {
+      if (result.error === 'not_found') return ApiErrors.notFound('Flow');
+      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to create step');
     }
-
-    return NextResponse.json({ step }, { status: 201 });
+    return NextResponse.json({ step: result.step }, { status: 201 });
   } catch (error) {
     logApiError('email/flows/steps/create', error);
     return ApiErrors.internalError('Failed to create step');

@@ -1,19 +1,17 @@
 // API Route: External Lead Magnet Get Single
-// GET /api/external/lead-magnets/[id] - Get a single lead magnet
-//
+// GET /api/external/lead-magnets/[id]
 // Authenticated via withExternalAuth (service-to-service auth)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withExternalAuth, ExternalAuthContext } from '@/lib/middleware/external-auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import * as externalService from '@/server/services/external.service';
 
 async function handleGet(
   request: NextRequest,
   context: ExternalAuthContext
 ): Promise<NextResponse> {
   try {
-    // Extract ID from URL path
     const url = new URL(request.url);
     const pathParts = url.pathname.split('/');
     const idIndex = pathParts.indexOf('lead-magnets') + 1;
@@ -23,20 +21,14 @@ async function handleGet(
       return ApiErrors.validationError('Lead magnet ID is required');
     }
 
-    const supabase = createSupabaseAdminClient();
+    const result = await externalService.getLeadMagnet(context.userId, id);
 
-    const { data, error } = await supabase
-      .from('lead_magnets')
-      .select('id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, status, published_at, created_at, updated_at')
-      .eq('id', id)
-      .eq('user_id', context.userId)
-      .single();
-
-    if (error || !data) {
-      return ApiErrors.notFound('Lead magnet');
+    if (!result.success) {
+      if (result.error === 'not_found') return ApiErrors.notFound('Lead magnet');
+      return ApiErrors.databaseError('Failed to get lead magnet');
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(result.leadMagnet);
   } catch (error) {
     logApiError('external/lead-magnets/get', error);
     return ApiErrors.internalError('Failed to get lead magnet');
