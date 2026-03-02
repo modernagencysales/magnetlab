@@ -5,6 +5,61 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
 import { logError } from '@/lib/utils/logger';
 
+export async function POST(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { draft_content, status, profileId, scheduled_time } = body;
+
+    if (!draft_content || typeof draft_content !== 'string' || !draft_content.trim()) {
+      return NextResponse.json({ error: 'draft_content is required' }, { status: 400 });
+    }
+
+    const VALID_STATUSES = ['draft', 'reviewing', 'approved', 'scheduled'];
+    const postStatus = status && VALID_STATUSES.includes(status) ? status : 'draft';
+
+    const supabase = createSupabaseAdminClient();
+
+    const insertData: Record<string, unknown> = {
+      user_id: session.user.id,
+      draft_content: draft_content.trim(),
+      final_content: draft_content.trim(),
+      status: postStatus,
+    };
+
+    if (profileId) {
+      insertData.team_profile_id = profileId;
+    }
+
+    if (scheduled_time) {
+      insertData.scheduled_time = scheduled_time;
+      if (postStatus === 'draft') {
+        insertData.status = 'scheduled';
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('cp_pipeline_posts')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) {
+      logError('cp/posts', new Error(error.message), { step: 'post_create_error' });
+      return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
+    }
+
+    return NextResponse.json({ post: data }, { status: 201 });
+  } catch (error) {
+    logError('cp/posts', error, { step: 'post_create_error' });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -42,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('cp_pipeline_posts')
-      .select('id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, team_profile_id, created_at, updated_at');
+      .select('id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, team_profile_id, image_urls, carousel_data, image_generation_status, created_at, updated_at');
 
     if (teamProfileScope) {
       query = query.in('team_profile_id', teamProfileScope);

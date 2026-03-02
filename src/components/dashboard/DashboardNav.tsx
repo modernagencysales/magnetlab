@@ -141,6 +141,14 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
             <Globe size={14} className="text-emerald-500" />
             Landing Page
           </Link>
+          <Link
+            href="/posts?quick_write=1"
+            onClick={() => { setOpen(false); onNavigate?.(); }}
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          >
+            <PenTool size={14} className="text-blue-500" />
+            Post
+          </Link>
           <div className="h-px bg-zinc-200 dark:bg-zinc-700 mx-2 my-1" />
           <Link
             href="/assets/libraries/new"

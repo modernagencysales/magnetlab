@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Lightbulb, PenLine, CalendarCheck } from 'lucide-react';
+import { Lightbulb, PenLine, CalendarCheck, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KanbanBoard } from './KanbanBoard';
 import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
@@ -9,6 +9,7 @@ import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
 interface PipelineViewProps {
   profileId?: string | null;
   onRefresh?: () => void;
+  onNewPost?: () => void;
 }
 
 interface HeroStats {
@@ -18,7 +19,7 @@ interface HeroStats {
   scheduled: number;
 }
 
-export function PipelineView({ profileId, onRefresh }: PipelineViewProps) {
+export function PipelineView({ profileId, onRefresh, onNewPost }: PipelineViewProps) {
   const [stats, setStats] = useState<HeroStats>({
     readyToWrite: 0,
     inProgress: 0,
@@ -103,6 +104,19 @@ export function PipelineView({ profileId, onRefresh }: PipelineViewProps) {
 
   return (
     <div className="space-y-6">
+      {/* Header with New Post button */}
+      {onNewPost && (
+        <div className="flex items-center justify-end">
+          <button
+            onClick={onNewPost}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            New Post
+          </button>
+        </div>
+      )}
+
       {/* Hero stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {cards.map((card) => (

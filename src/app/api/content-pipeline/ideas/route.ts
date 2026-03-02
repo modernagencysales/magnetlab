@@ -43,13 +43,31 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Verify access then update
+    // When in team context, include ideas owned by team profiles OR
+    // orphaned ideas (team_profile_id IS NULL) owned by team members
+    let teamMemberUserIds: string[] = [];
+    if (teamProfileScope && teamContextId) {
+      const { data: memberProfiles } = await supabase
+        .from('team_profiles')
+        .select('user_id')
+        .eq('team_id', teamContextId)
+        .eq('status', 'active')
+        .not('user_id', 'is', null);
+      if (memberProfiles) {
+        teamMemberUserIds = memberProfiles.map(p => p.user_id).filter(Boolean);
+      }
+    }
+
     let updateQuery = supabase
       .from('cp_content_ideas')
       .update({ status })
       .eq('id', ideaId);
 
     if (teamProfileScope) {
-      updateQuery = updateQuery.in('team_profile_id', teamProfileScope);
+      // Match ideas with team_profile_id in scope OR orphaned ideas by team members
+      updateQuery = updateQuery.or(
+        `team_profile_id.in.(${teamProfileScope.join(',')}),and(team_profile_id.is.null,user_id.in.(${teamMemberUserIds.join(',')}))`
+      );
     } else {
       updateQuery = updateQuery.eq('user_id', session.user.id);
     }
@@ -105,15 +123,18 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseAdminClient();
 
     // If team_id is provided, scope to ideas created for this team (by team_profile_id)
+    // Also include orphaned ideas (team_profile_id IS NULL) owned by team members
     let teamProfileScope: string[] | null = null;
+    let teamMemberUserIds: string[] = [];
     if (teamId) {
       const { data: profiles } = await supabase
         .from('team_profiles')
-        .select('id')
+        .select('id, user_id')
         .eq('team_id', teamId)
         .eq('status', 'active');
       if (profiles && profiles.length > 0) {
         teamProfileScope = profiles.map(p => p.id);
+        teamMemberUserIds = profiles.map(p => p.user_id).filter(Boolean);
       }
     }
 
@@ -122,7 +143,10 @@ export async function GET(request: NextRequest) {
       .select('id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, composite_score, hook, key_points, source_quote, target_audience, status, team_profile_id, created_at, updated_at');
 
     if (teamProfileScope) {
-      query = query.in('team_profile_id', teamProfileScope);
+      // Include ideas assigned to team profiles OR orphaned ideas by team members
+      query = query.or(
+        `team_profile_id.in.(${teamProfileScope.join(',')}),and(team_profile_id.is.null,user_id.in.(${teamMemberUserIds.join(',')}))`
+      );
     } else {
       query = query.eq('user_id', session.user.id);
     }

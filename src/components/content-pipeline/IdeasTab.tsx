@@ -41,9 +41,10 @@ const CONTENT_TYPES: { value: ContentType | ''; label: string }[] = [
 interface IdeasTabProps {
   profileId?: string | null;
   teamId?: string;
+  onNewPost?: () => void;
 }
 
-export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
+export function IdeasTab({ profileId, teamId, onNewPost }: IdeasTabProps) {
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -345,10 +346,21 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
       {filteredNonWriting.length === 0 && writingIdeas.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <Lightbulb className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <p className="mt-4 text-muted-foreground">No ideas found</p>
-          <p className="mt-1 text-sm text-muted-foreground/70">
-            {ideas.length === 0 ? 'Process transcripts to extract content ideas' : 'Try adjusting your filters'}
+          <p className="mt-4 text-muted-foreground">
+            {ideas.length === 0 ? 'No ideas yet' : 'No ideas found'}
           </p>
+          <p className="mt-1 text-sm text-muted-foreground/70">
+            {ideas.length === 0 ? 'Write a post from scratch or upload transcripts to extract ideas' : 'Try adjusting your filters'}
+          </p>
+          {ideas.length === 0 && onNewPost && (
+            <button
+              onClick={onNewPost}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Sparkles className="h-4 w-4" />
+              Write a Post
+            </button>
+          )}
         </div>
       ) : filteredNonWriting.length === 0 ? null : (
         <div className="grid gap-4 md:grid-cols-2">
