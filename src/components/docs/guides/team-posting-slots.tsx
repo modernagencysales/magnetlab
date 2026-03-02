@@ -32,7 +32,7 @@ export default function TeamPostingSlots() {
       <h2 className="text-xl font-semibold mt-8 mb-4">Set Up Posting Slots</h2>
       <ol className="list-decimal list-inside space-y-3 text-sm">
         <li>
-          Go to the <strong>Content Pipeline</strong> from the sidebar
+          Click <strong>Posts</strong> in the sidebar
         </li>
         <li>
           Switch to the <strong>Autopilot</strong> tab

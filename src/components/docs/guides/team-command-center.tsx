@@ -13,8 +13,9 @@ export default function TeamCommandCenter() {
 
       <h2 className="text-xl font-semibold mt-8 mb-4">Getting There</h2>
       <p className="text-sm mb-4">
-        Navigate to the <strong>Content Pipeline</strong> from the sidebar. If you&apos;re in a team
-        context, you&apos;ll see the Team Command Center as the main view.
+        Click <strong>Posts</strong> in the sidebar, then switch to the{' '}
+        <strong>Calendar</strong> tab. If you&apos;re in a team context, you&apos;ll see the Team
+        Command Center as the main calendar view.
       </p>
 
       <h2 className="text-xl font-semibold mt-8 mb-4">The Weekly Grid</h2>

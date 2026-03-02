@@ -20,7 +20,8 @@ export default function TeamLinkedInVoices() {
       <h3 className="text-base font-semibold mt-6 mb-3">How to Connect</h3>
       <ol className="list-decimal list-inside space-y-3 text-sm">
         <li>
-          Open the{' '}
+          Click <strong>Posts</strong> in the sidebar, then switch to the{' '}
+          <strong>Calendar</strong> tab to open the{' '}
           <Link
             href="/docs/team-command-center"
             className="text-violet-600 dark:text-violet-400 hover:underline"
