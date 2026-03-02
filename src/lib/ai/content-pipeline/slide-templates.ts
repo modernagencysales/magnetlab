@@ -219,7 +219,7 @@ function statSlide(slide: CarouselSlide, brand: SlidesBrandKit): string {
 }
 
 function listSlide(slide: CarouselSlide, brand: SlidesBrandKit): string {
-  const { primaryColor, textColor } = resolveBrand(brand);
+  const { textColor } = resolveBrand(brand);
   const logo = logoHtml(brand);
 
   // Split body by newlines, strip leading numbering or bullet prefixes
@@ -295,7 +295,7 @@ function listSlide(slide: CarouselSlide, brand: SlidesBrandKit): string {
 }
 
 function ctaSlide(slide: CarouselSlide, brand: SlidesBrandKit): string {
-  const { primaryColor, textColor } = resolveBrand(brand);
+  const { textColor } = resolveBrand(brand);
   const logo = logoHtml(brand);
   return `
     <style>
