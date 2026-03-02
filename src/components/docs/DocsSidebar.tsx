@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, Zap, Plug, Settings, Bot, ChevronRight } from 'lucide-react';
+import { BookOpen, Zap, Plug, Settings, Bot, ChevronRight, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavSection {
@@ -18,6 +18,17 @@ const sections: NavSection[] = [
     items: [
       { href: '/docs/create-landing-page', label: 'Create Your Landing Page' },
       { href: '/docs/connect-email-list', label: 'Connect to Your Email List' },
+    ],
+  },
+  {
+    title: 'Team Scheduling',
+    icon: Users,
+    items: [
+      { href: '/docs/team-setup', label: 'Setting Up Your Team' },
+      { href: '/docs/team-command-center', label: 'Using the Command Center' },
+      { href: '/docs/team-broadcasting', label: 'Broadcasting Posts' },
+      { href: '/docs/team-posting-slots', label: 'Managing Posting Slots' },
+      { href: '/docs/team-linkedin-voices', label: 'LinkedIn & Voice Profiles' },
     ],
   },
   {
