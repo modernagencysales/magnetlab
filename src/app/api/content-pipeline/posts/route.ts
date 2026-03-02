@@ -83,15 +83,18 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseAdminClient();
 
     // If team_id is provided, scope to posts created for this team (by team_profile_id)
+    // Also include orphaned posts (team_profile_id IS NULL) owned by team members
     let teamProfileScope: string[] | null = null;
+    let teamMemberUserIds: string[] = [];
     if (teamId) {
       const { data: profiles } = await supabase
         .from('team_profiles')
-        .select('id')
+        .select('id, user_id')
         .eq('team_id', teamId)
         .eq('status', 'active');
       if (profiles && profiles.length > 0) {
         teamProfileScope = profiles.map(p => p.id);
+        teamMemberUserIds = profiles.map(p => p.user_id).filter(Boolean);
       }
     }
 
@@ -100,7 +103,10 @@ export async function GET(request: NextRequest) {
       .select('id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, team_profile_id, image_urls, carousel_data, image_generation_status, created_at, updated_at');
 
     if (teamProfileScope) {
-      query = query.in('team_profile_id', teamProfileScope);
+      // Include posts assigned to team profiles OR orphaned posts by team members
+      query = query.or(
+        `team_profile_id.in.(${teamProfileScope.join(',')}),and(team_profile_id.is.null,user_id.in.(${teamMemberUserIds.join(',')}))`
+      );
     } else {
       query = query.eq('user_id', session.user.id);
     }
