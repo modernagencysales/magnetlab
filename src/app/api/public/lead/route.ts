@@ -18,6 +18,7 @@ import { getPostHogServerClient } from '@/lib/posthog';
 import { syncLeadToEmailProviders } from '@/lib/integrations/email-marketing';
 import { syncLeadToGoHighLevel } from '@/lib/integrations/gohighlevel/sync';
 import { syncLeadToHeyReach } from '@/lib/integrations/heyreach/sync';
+import { syncLeadToKajabi } from '@/lib/integrations/kajabi/sync';
 
 /**
  * Scan qualification answers for a LinkedIn profile URL.
@@ -322,6 +323,16 @@ export async function POST(request: Request) {
         leadMagnetUrl: resourceUrl || '',
         funnelSlug: funnel.slug,
       }).catch((err) => logApiError('public/lead/heyreach', err, { leadId: lead.id }));
+
+      // Sync to Kajabi
+      await syncLeadToKajabi({
+        userId: funnel.user_id,
+        funnelPageId: funnelPageId,
+        lead: {
+          email: lead.email,
+          name: lead.name,
+        },
+      }).catch((err) => logApiError('public/lead/kajabi', err, { leadId: lead.id }));
 
       try { getPostHogServerClient()?.capture({ distinctId: funnel.user_id, event: 'lead_captured', properties: { funnel_page_id: funnelPageId, lead_magnet_title: leadMagnet?.title || '', utm_source: utmSource || null, utm_medium: utmMedium || null, utm_campaign: utmCampaign || null } }); } catch {}
     });
