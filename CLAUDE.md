@@ -641,6 +641,55 @@ No new tables. Uses existing:
 - `funnel_integrations` -- `provider: 'gohighlevel'`, `settings` JSONB for custom_tags, `is_active` toggle
 - Migration: `20260225100000_funnel_integrations_settings.sql` -- adds `settings` column + GHL provider to constraint
 
+## Kajabi CRM Integration
+
+Push leads to Kajabi as contacts on capture with optional tag assignment. Account-level API key + Site ID auth, per-funnel toggle with multi-select tag picker.
+
+### Data Flow
+
+```
+User connects Kajabi in Settings → API key + Site ID validated → stored in user_integrations (service: 'kajabi', metadata: { site_id })
+User enables Kajabi per-funnel → toggle + tag_ids stored in funnel_integrations (provider: 'kajabi', settings: { tag_ids })
+Lead opts in → POST /api/public/lead → syncLeadToKajabi() [fire-and-forget]
+  → checks account integration (api_key + site_id from metadata)
+  → checks funnel integration (is_active)
+  → POST /v1/contacts (JSON:API format with site relationship)
+  → POST /v1/contacts/{id}/relationships/tags (if tag_ids configured)
+  → errors logged, never blocks lead capture
+```
+
+### Kajabi API
+
+- **Base URL**: `https://api.kajabi.com/v1`
+- **Auth**: `Authorization: Bearer {apiKey}`
+- **Content-Type**: `application/vnd.api+json` (JSON:API spec)
+- **Key endpoints**: `GET /v1/contacts` (list/test), `POST /v1/contacts` (create), `POST /v1/contacts/{id}/relationships/tags` (apply tags), `GET /v1/contact_tags` (list tags)
+- **Contact creation requires site relationship**: `relationships: { site: { data: { type: 'sites', id: SITE_ID } } }`
+
+### API Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/integrations/kajabi/connect` | POST | Validate API key + Site ID, save integration |
+| `/api/integrations/kajabi/verify` | POST | Re-validate stored credentials |
+| `/api/integrations/kajabi/disconnect` | POST | Remove key + deactivate funnel toggles |
+| `/api/integrations/kajabi/status` | GET | Check if Kajabi is connected (used by funnel builder) |
+| `/api/integrations/kajabi/tags` | GET | Fetch available Kajabi tags (for funnel tag picker) |
+
+### Key Files
+
+- `src/lib/integrations/kajabi/client.ts` -- KajabiClient (testConnection, createContact, addTagsToContact, listTags)
+- `src/lib/integrations/kajabi/sync.ts` -- `syncLeadToKajabi()` fire-and-forget, called from lead capture route
+- `src/lib/integrations/kajabi/types.ts` -- Kajabi JSON:API types (KajabiSyncParams, payloads, responses)
+- `src/components/settings/KajabiSettings.tsx` -- Settings UI (connect/verify/disconnect with API Key + Site ID inputs)
+- `src/components/funnel/FunnelIntegrationsTab.tsx` -- Per-funnel toggle (KajabiFunnelToggle with multi-select tag picker)
+
+### Database
+
+No new tables. Uses existing:
+- `user_integrations` -- `service: 'kajabi'`, stores API key, `metadata: { site_id }`
+- `funnel_integrations` -- `provider: 'kajabi'`, `settings: { tag_ids: [...] }` JSONB, `is_active` toggle
+
 ## HeyReach LinkedIn Delivery Integration
 
 Deliver lead magnets to opt-in leads via HeyReach LinkedIn DM campaigns. Account-level API key, per-funnel campaign selector, LinkedIn URL captured from `?li=` query param.
