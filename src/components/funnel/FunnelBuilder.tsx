@@ -167,6 +167,24 @@ export function FunnelBuilder({
     checkHeyReach();
   }, []);
 
+  // Kajabi connection status
+  const [kajabiConnected, setKajabiConnected] = useState(false);
+
+  useEffect(() => {
+    async function checkKajabi() {
+      try {
+        const res = await fetch('/api/integrations/kajabi/status');
+        if (res.ok) {
+          const data = await res.json();
+          setKajabiConnected(data.connected === true);
+        }
+      } catch {
+        // ignore - Kajabi section simply won't show
+      }
+    }
+    checkKajabi();
+  }, []);
+
   function generateSlug(title: string): string {
     return title
       .toLowerCase()
@@ -600,6 +618,7 @@ export function FunnelBuilder({
                 connectedProviders={connectedEmailProviders}
                 ghlConnected={ghlConnected}
                 heyreachConnected={heyreachConnected}
+                kajabiConnected={kajabiConnected}
                 funnelUrl={username && slug ? `https://magnetlab.app/p/${username}/${slug}` : undefined}
               />
             )}
