@@ -71,7 +71,7 @@ async function captureScreenshot(
     }
 
     const text = await response.text().catch(() => 'Unknown error');
-    lastError = new Error(`ScreenshotOne API error (${response.status}): ${text}`);
+    lastError = new Error(`ScreenshotOne API error (${response.status}) for url=${pageUrl}: ${text}`);
 
     // Only retry on transient errors
     if (response.status !== 500 && response.status !== 503 && response.status !== 429) throw lastError;

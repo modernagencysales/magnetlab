@@ -338,7 +338,7 @@ export async function generateScreenshots(scope: DataScope, userId: string, id: 
     );
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://magnetlab.ai';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.magnetlab.app';
   const pageUrl = `${appUrl}/p/${username}/${funnelPage.slug}/content`;
   const sectionCount = hasPolished ? polishedContent!.sections.length : 0;
 
@@ -352,15 +352,13 @@ export async function generateScreenshots(scope: DataScope, userId: string, id: 
   const screenshotUrls: ScreenshotUrl[] = [];
   for (const result of screenshotResults) {
     const prefix = result.type === 'hero' ? 'hero' : `section-${result.sectionIndex}`;
-    const [url1200, url1080] = await Promise.all([
-      leadMagnetsRepo.uploadScreenshotToStorage(userId, id, prefix, '1200x627', result.buffer1200x627),
-      leadMagnetsRepo.uploadScreenshotToStorage(userId, id, prefix, '1080x1080', result.buffer1080x1080),
-    ]);
+    const url1080 = await leadMagnetsRepo.uploadScreenshotToStorage(
+      userId, id, prefix, '1080x1080', result.buffer1080x1080,
+    );
     screenshotUrls.push({
       type: result.type,
       sectionIndex: result.sectionIndex,
       sectionName: result.sectionName,
-      url1200x627: url1200,
       url1080x1080: url1080,
     });
   }
