@@ -438,7 +438,7 @@ export async function importPosts(input: {
 
 // ─── ingest-knowledge ───────────────────────────────────────────────────────
 
-const VALID_KNOWLEDGE_TYPES = [
+const _VALID_KNOWLEDGE_TYPES = [
   'how_to', 'insight', 'story', 'question',
   'objection', 'mistake', 'decision', 'market_intel',
 ] as const;
