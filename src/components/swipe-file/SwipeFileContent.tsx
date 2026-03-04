@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import { logError } from '@/lib/utils/logger';
 import { createSupabaseBrowserClient } from '@/lib/utils/supabase-browser';
 import * as swipeFileApi from '@/frontend/api/swipe-file';
+import * as creatorsApi from '@/frontend/api/content-pipeline/creators';
 
 import {
   FileText,
@@ -196,51 +198,56 @@ export function SwipeFileContent() {
     return [...posts].sort((a, b) => b.engagement_score - a.engagement_score);
   }, [ctaPosts, creatorFilter, topicFilter]);
 
-  const fetchWinningPosts = useCallback(async (reset: boolean) => {
-    if (reset) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
-    try {
-      const supabase = createSupabaseBrowserClient();
-      const offset = reset ? 0 : allWinningPosts.length;
-
-      const orderCol = discoveredSort === 'engagement' ? 'engagement_score' : 'created_at';
-
-      let query = supabase
-        .from('cp_viral_posts')
-        .select('id, author_name, author_headline, author_url, content, likes, comments, shares, engagement_score, template_extracted, extracted_template_id, is_lead_magnet, topics, created_at')
-        .eq('is_winner', true)
-        .is('user_id', null);
-
-      if (topicFilter) {
-        query = query.contains('topics', [topicFilter]);
-      }
-
-      const { data, error } = await query
-        .order(orderCol, { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1);
-
-      if (error) {
-        logError('swipe-file', error, { step: 'discovered_fetch_error' });
-        if (reset) setAllWinningPosts([]);
+  const fetchWinningPosts = useCallback(
+    async (reset: boolean) => {
+      if (reset) {
+        setLoading(true);
       } else {
-        const newPosts = data || [];
-        setHasMore(newPosts.length === PAGE_SIZE);
-        if (reset) {
-          setAllWinningPosts(newPosts);
-        } else {
-          setAllWinningPosts((prev) => [...prev, ...newPosts]);
-        }
+        setLoadingMore(true);
       }
-    } catch {
-      if (reset) setAllWinningPosts([]);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [allWinningPosts.length, discoveredSort, topicFilter]);
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const offset = reset ? 0 : allWinningPosts.length;
+
+        const orderCol = discoveredSort === 'engagement' ? 'engagement_score' : 'created_at';
+
+        let query = supabase
+          .from('cp_viral_posts')
+          .select(
+            'id, author_name, author_headline, author_url, content, likes, comments, shares, engagement_score, template_extracted, extracted_template_id, is_lead_magnet, topics, created_at'
+          )
+          .eq('is_winner', true)
+          .is('user_id', null);
+
+        if (topicFilter) {
+          query = query.contains('topics', [topicFilter]);
+        }
+
+        const { data, error } = await query
+          .order(orderCol, { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1);
+
+        if (error) {
+          logError('swipe-file', error, { step: 'discovered_fetch_error' });
+          if (reset) setAllWinningPosts([]);
+        } else {
+          const newPosts = data || [];
+          setHasMore(newPosts.length === PAGE_SIZE);
+          if (reset) {
+            setAllWinningPosts(newPosts);
+          } else {
+            setAllWinningPosts((prev) => [...prev, ...newPosts]);
+          }
+        }
+      } catch {
+        if (reset) setAllWinningPosts([]);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [allWinningPosts.length, discoveredSort, topicFilter]
+  );
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -251,7 +258,7 @@ export function SwipeFileContent() {
           type: postType || undefined,
           featured: featuredOnly || undefined,
         });
-        setPosts(data.posts || []);
+        setPosts((data.posts || []) as SwipePost[]);
         setLoading(false);
       } else if (activeTab === 'lead-magnets' || activeTab === 'discovered') {
         // Fetch first page of winning posts (or skip if already loaded)
@@ -268,7 +275,7 @@ export function SwipeFileContent() {
             format: format || undefined,
             featured: featuredOnly || undefined,
           });
-          setLeadMagnets(data.leadMagnets || []);
+          setLeadMagnets((data.leadMagnets || []) as SwipeLeadMagnet[]);
         }
       }
     } catch {
@@ -316,19 +323,12 @@ export function SwipeFileContent() {
     if (!post.author_url) return;
     setTrackingInProgress(post.id);
     try {
-      const response = await fetch('/api/content-pipeline/creators', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          linkedin_url: post.author_url,
-          name: post.author_name,
-          headline: post.author_headline,
-        }),
+      await creatorsApi.addCreator({
+        linkedin_url: post.author_url,
+        name: post.author_name ?? null,
+        headline: post.author_headline ?? null,
       });
-
-      if (response.ok) {
-        setTrackedCreatorUrls((prev) => new Set(prev).add(post.author_url!));
-      }
+      setTrackedCreatorUrls((prev) => new Set(prev).add(post.author_url!));
     } catch (error) {
       logError('swipe-file', error, { step: 'track_creator_error' });
     } finally {
@@ -380,7 +380,10 @@ export function SwipeFileContent() {
           </div>
           <div className="ml-2 flex items-center gap-1.5 shrink-0">
             {dPost.topics?.slice(0, 2).map((t) => (
-              <span key={t} className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+              <span
+                key={t}
+                className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+              >
                 {t}
               </span>
             ))}
@@ -404,26 +407,17 @@ export function SwipeFileContent() {
         </div>
 
         {/* Content preview / expanded */}
-        <div
-          className="mb-4 cursor-pointer"
-          onClick={() => toggleExpandPost(dPost.id)}
-        >
+        <div className="mb-4 cursor-pointer" onClick={() => toggleExpandPost(dPost.id)}>
           {isExpanded ? (
             <div>
-              <p className="text-sm text-muted-foreground whitespace-pre-line">
-                {dPost.content}
-              </p>
-              <span className="mt-1 block text-xs text-primary font-medium">
-                Show less
-              </span>
+              <p className="text-sm text-muted-foreground whitespace-pre-line">{dPost.content}</p>
+              <span className="mt-1 block text-xs text-primary font-medium">Show less</span>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
               {truncateContent(dPost.content)}
               {dPost.content.length > 200 && (
-                <span className="ml-1 text-xs text-primary font-medium">
-                  Read more
-                </span>
+                <span className="ml-1 text-xs text-primary font-medium">Read more</span>
               )}
             </p>
           )}
@@ -514,7 +508,8 @@ export function SwipeFileContent() {
           Discovered
           {discoveredPosts.length > 0 && (
             <span className="rounded-full bg-primary-foreground/20 px-1.5 py-0.5 text-xs">
-              {discoveredPosts.length}{hasMore ? '+' : ''}
+              {discoveredPosts.length}
+              {hasMore ? '+' : ''}
             </span>
           )}
         </button>
@@ -529,10 +524,15 @@ export function SwipeFileContent() {
           <Magnet className="h-4 w-4" />
           Lead Magnets
           {ctaPosts.length > 0 && (
-            <span className={`rounded-full px-1.5 py-0.5 text-xs ${
-              activeTab === 'lead-magnets' ? 'bg-primary-foreground/20' : 'bg-primary/10 text-primary'
-            }`}>
-              {ctaPosts.length}{hasMore ? '+' : ''}
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-xs ${
+                activeTab === 'lead-magnets'
+                  ? 'bg-primary-foreground/20'
+                  : 'bg-primary/10 text-primary'
+              }`}
+            >
+              {ctaPosts.length}
+              {hasMore ? '+' : ''}
             </span>
           )}
         </button>
@@ -879,11 +879,12 @@ export function SwipeFileContent() {
                     className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30"
                   >
                     {lm.thumbnail_url && (
-                      <div className="mb-3 aspect-video overflow-hidden rounded-lg bg-muted">
-                        <img
+                      <div className="mb-3 relative aspect-video overflow-hidden rounded-lg bg-muted">
+                        <Image
                           src={lm.thumbnail_url}
                           alt={lm.title}
-                          className="h-full w-full object-cover"
+                          fill
+                          className="object-cover"
                         />
                       </div>
                     )}
@@ -1034,13 +1035,7 @@ export function SwipeFileContent() {
 }
 
 // Submit Modal Component
-function SubmitModal({
-  onClose,
-  onSubmit,
-}: {
-  onClose: () => void;
-  onSubmit: () => void;
-}) {
+function SubmitModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: () => void }) {
   const [type, setType] = useState<'post' | 'lead_magnet'>('post');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -1089,7 +1084,11 @@ function SubmitModal({
               conversion_rate: conversionRate ? parseFloat(conversionRate) : undefined,
             };
 
-      await swipeFileApi.submit(body);
+      await swipeFileApi.submit(
+        body as
+          | { type: 'post'; content: string }
+          | { type: 'lead_magnet'; title: string; [k: string]: unknown }
+      );
       setSuccess(true);
       setTimeout(() => {
         onSubmit();
@@ -1103,7 +1102,12 @@ function SubmitModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Submit to Swipe File">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Submit to Swipe File"
+    >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6">
         <h2 className="mb-4 text-lg font-semibold">Submit to Swipe File</h2>
 
@@ -1218,9 +1222,7 @@ function SubmitModal({
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Why does this post work?
-                  </label>
+                  <label className="mb-1 block text-sm font-medium">Why does this post work?</label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -1334,11 +1336,7 @@ function SubmitModal({
                 disabled={submitting || (type === 'post' ? !content : !title)}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Submit for Review'
-                )}
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit for Review'}
               </button>
             </div>
           </>

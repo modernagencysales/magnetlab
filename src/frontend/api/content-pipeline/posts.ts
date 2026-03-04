@@ -52,7 +52,10 @@ export interface UpdatePostResponse {
   editId?: string;
 }
 
-export async function updatePost(postId: string, body: UpdatePostBody): Promise<UpdatePostResponse> {
+export async function updatePost(
+  postId: string,
+  body: UpdatePostBody
+): Promise<UpdatePostResponse> {
   return apiClient.patch<UpdatePostResponse>(`/content-pipeline/posts/${postId}`, body);
 }
 
@@ -86,7 +89,10 @@ export interface SchedulePostResponse {
   scheduled_via?: string;
 }
 
-export async function schedulePost(postId: string, scheduledTime?: string): Promise<SchedulePostResponse> {
+export async function schedulePost(
+  postId: string,
+  scheduledTime?: string
+): Promise<SchedulePostResponse> {
   const body: SchedulePostBody = { post_id: postId };
   if (scheduledTime) body.scheduled_time = scheduledTime;
   return apiClient.post<SchedulePostResponse>('/content-pipeline/posts/schedule', body);
@@ -100,4 +106,22 @@ export interface PublishPostResponse {
 
 export async function publishPost(postId: string): Promise<PublishPostResponse> {
   return apiClient.post<PublishPostResponse>(`/content-pipeline/posts/${postId}/publish`);
+}
+
+// ── Engagement ──
+export interface PostEngagementResponse {
+  stats?: unknown;
+  config?: { scrape_engagement?: boolean; heyreach_campaign_id?: string };
+  [key: string]: unknown;
+}
+
+export async function getPostEngagement(postId: string): Promise<PostEngagementResponse> {
+  return apiClient.get<PostEngagementResponse>(`/content-pipeline/posts/${postId}/engagement`);
+}
+
+export async function updatePostEngagement(
+  postId: string,
+  body: { scrape_engagement?: boolean; heyreach_campaign_id?: string }
+): Promise<{ post: unknown }> {
+  return apiClient.patch<{ post: unknown }>(`/content-pipeline/posts/${postId}/engagement`, body);
 }

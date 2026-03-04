@@ -2,10 +2,23 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Loader2, Plus, Trash2, CheckCircle, XCircle, ChevronDown, Mail, Settings, MessageSquare, Copy, Check } from 'lucide-react';
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  ChevronDown,
+  Mail,
+  Settings,
+  MessageSquare,
+  Copy,
+  Check,
+} from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
 import * as funnelIntegrationsApi from '@/frontend/api/funnel-integrations';
+import * as integrationsApi from '@/frontend/api/integrations';
 
 const PROVIDER_LABELS: Record<string, string> = {
   kit: 'Kit (ConvertKit)',
@@ -89,7 +102,11 @@ function IntegrationRow({
   };
 
   const handleRemove = async () => {
-    if (!confirm(`Remove ${PROVIDER_LABELS[integration.provider] || integration.provider} from this funnel?`)) {
+    if (
+      !confirm(
+        `Remove ${PROVIDER_LABELS[integration.provider] || integration.provider} from this funnel?`
+      )
+    ) {
       return;
     }
 
@@ -147,11 +164,7 @@ function IntegrationRow({
           disabled={removing}
           className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
         >
-          {removing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
+          {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
         </button>
       </div>
     </div>
@@ -205,31 +218,34 @@ function AddIntegrationForm({
   }, [provider]);
 
   // Fetch tags when list is selected (for providers that support tags)
-  const fetchTags = useCallback(async (listId: string) => {
-    if (!hasTags || !listId) {
-      setTags([]);
-      return;
-    }
+  const fetchTags = useCallback(
+    async (listId: string) => {
+      if (!hasTags || !listId) {
+        setTags([]);
+        return;
+      }
 
-    setLoadingTags(true);
-    setSelectedTagId('');
-    setSelectedTagName('');
+      setLoadingTags(true);
+      setSelectedTagId('');
+      setSelectedTagName('');
 
-    try {
-      const url = `/api/integrations/email-marketing/tags?provider=${provider}&listId=${listId}`;
-      const response = await fetch(url);
+      try {
+        const url = `/api/integrations/email-marketing/tags?provider=${provider}&listId=${listId}`;
+        const response = await fetch(url);
 
-      if (!response.ok) throw new Error('Failed to fetch tags');
+        if (!response.ok) throw new Error('Failed to fetch tags');
 
-      const data = await response.json();
-      setTags(data.tags || []);
-    } catch (err) {
-      logError('funnel-integrations', err, { step: 'fetch_tags_error' });
-      setTags([]);
-    } finally {
-      setLoadingTags(false);
-    }
-  }, [provider, hasTags]);
+        const data = await response.json();
+        setTags(data.tags || []);
+      } catch (err) {
+        logError('funnel-integrations', err, { step: 'fetch_tags_error' });
+        setTags([]);
+      } finally {
+        setLoadingTags(false);
+      }
+    },
+    [provider, hasTags]
+  );
 
   const handleListChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const listId = e.target.value;
@@ -279,9 +295,7 @@ function AddIntegrationForm({
   return (
     <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">
-          Add {PROVIDER_LABELS[provider] || provider}
-        </p>
+        <p className="text-sm font-medium">Add {PROVIDER_LABELS[provider] || provider}</p>
         <button
           onClick={onCancel}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -390,9 +404,8 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
     async function loadGHL() {
       try {
         const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
-        const ghl = (data.integrations || []).find(
-          (i: FunnelIntegration) => i.provider === 'gohighlevel'
-        );
+        const integrations = (data.integrations || []) as FunnelIntegration[];
+        const ghl = integrations.find((i) => i.provider === 'gohighlevel');
 
         if (ghl) {
           setEnabled(ghl.is_active);
@@ -577,9 +590,8 @@ function HeyReachFunnelToggle({
     async function loadHeyReach() {
       try {
         const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
-        const hr = (data.integrations || []).find(
-          (i: FunnelIntegration) => i.provider === 'heyreach'
-        );
+        const integrations = (data.integrations || []) as FunnelIntegration[];
+        const hr = integrations.find((i) => i.provider === 'heyreach');
 
         if (hr) {
           setEnabled(hr.is_active);
@@ -603,11 +615,8 @@ function HeyReachFunnelToggle({
     async function fetchCampaigns() {
       setLoadingCampaigns(true);
       try {
-        const response = await fetch('/api/integrations/heyreach/campaigns');
-        if (response.ok) {
-          const data = await response.json();
-          setCampaigns(data.campaigns || []);
-        }
+        const data = await integrationsApi.getHeyReachCampaigns();
+        setCampaigns((data.campaigns || []) as HeyReachCampaign[]);
       } catch (err) {
         logError('heyreach-funnel-toggle', err, { step: 'fetch_campaigns_error' });
       } finally {
@@ -913,7 +922,8 @@ export function FunnelIntegrationsTab({
           <div>
             <h3 className="text-sm font-semibold">Email Marketing Integrations</h3>
             <p className="text-xs text-muted-foreground">
-              When a lead opts in to this funnel, they will be automatically added to the lists you configure below.
+              When a lead opts in to this funnel, they will be automatically added to the lists you
+              configure below.
             </p>
           </div>
 
@@ -945,13 +955,16 @@ export function FunnelIntegrationsTab({
           )}
 
           {/* Reminder when no integrations are mapped yet */}
-          {integrations.filter((i) => i.provider !== 'gohighlevel').length === 0 && unmappedProviders.length > 0 && !addingProvider && (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
-              <p className="text-sm text-amber-700 dark:text-amber-400">
-                Leads from this funnel are <strong>not being synced</strong> to your email provider yet. Add a list below to start syncing.
-              </p>
-            </div>
-          )}
+          {integrations.filter((i) => i.provider !== 'gohighlevel').length === 0 &&
+            unmappedProviders.length > 0 &&
+            !addingProvider && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  Leads from this funnel are <strong>not being synced</strong> to your email
+                  provider yet. Add a list below to start syncing.
+                </p>
+              </div>
+            )}
 
           {/* Add buttons for unmapped providers */}
           {unmappedProviders.length > 0 && !addingProvider && (
@@ -970,12 +983,14 @@ export function FunnelIntegrationsTab({
           )}
 
           {/* All connected providers are mapped */}
-          {integrations.filter((i) => i.provider !== 'gohighlevel').length > 0 && unmappedProviders.length === 0 && !addingProvider && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <CheckCircle className="h-3 w-3 text-green-500" />
-              All connected providers are configured for this funnel.
-            </p>
-          )}
+          {integrations.filter((i) => i.provider !== 'gohighlevel').length > 0 &&
+            unmappedProviders.length === 0 &&
+            !addingProvider && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <CheckCircle className="h-3 w-3 text-green-500" />
+                All connected providers are configured for this funnel.
+              </p>
+            )}
         </>
       )}
 

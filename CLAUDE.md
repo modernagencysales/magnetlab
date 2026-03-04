@@ -35,9 +35,14 @@ src/
 ├── components/            # wizard/, funnel/, content/, dashboard/, ds/, settings/, leads/, ui/
 ├── lib/                   # ai/, integrations/, auth/, types/, utils/, services/, validations/, webhooks/, constants/, api/
 ├── trigger/               # Background jobs: create-lead-magnet.ts, email-sequence.ts, process-transcript.ts, autopilot-batch.ts, run-autopilot.ts, backfill-knowledge-types.ts
+├── frontend/               # Client data layer: API client, domain modules, hooks, Zustand stores
 ├── middleware.ts          # Auth guard for dashboard routes
 └── __tests__/             # 16 test files: api/, components/, lib/
 ```
+
+### Frontend (client data layer)
+
+All client-side API calls and shared client state live under `src/frontend/`: `api/` (API client + domain modules), `hooks/api/` (e.g. useIdeas, usePosts), and `stores/` (Zustand, e.g. content-pipeline). Components use `@/frontend/api/*` and `@/frontend/hooks/api/*`; they should not call `fetch('/api/...')` directly. See [docs/frontend-architecture.md](docs/frontend-architecture.md), [docs/frontend-refactor-plan.md](docs/frontend-refactor-plan.md), and [docs/frontend-refactor-status.md](docs/frontend-refactor-status.md).
 
 ### Patterns
 

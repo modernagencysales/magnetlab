@@ -5,7 +5,7 @@ import { getChatContext, saveAssistantMessage, getChatHistory } from '@/server/s
 
 export async function POST(request: NextRequest) {
   try {
-    const { leadMagnetId, sessionToken, message, chatId } = await request.json();
+    const { leadMagnetId, sessionToken, message } = await request.json();
 
     if (!leadMagnetId || !sessionToken || !message) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {

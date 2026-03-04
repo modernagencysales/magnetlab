@@ -2,7 +2,15 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  X, Loader2, Pencil, Check, Calendar, Clock, Users, FileText, RotateCcw,
+  X,
+  Loader2,
+  Pencil,
+  Check,
+  Calendar,
+  Clock,
+  Users,
+  FileText,
+  RotateCcw,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { SpeakerMapEditor, type SpeakerMap } from './SpeakerMapEditor';
@@ -43,7 +51,11 @@ const SPEAKER_COLORS = [
   'text-cyan-600 dark:text-cyan-400',
 ];
 
-export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: TranscriptViewerModalProps) {
+export function TranscriptViewerModal({
+  transcriptId,
+  onClose,
+  onUpdated,
+}: TranscriptViewerModalProps) {
   const [transcript, setTranscript] = useState<TranscriptDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -75,7 +87,14 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
     try {
       const data = await transcriptsApi.updateTranscript(transcriptId, { [field]: value });
       if (data.transcript) {
-        setTranscript((prev) => prev ? { ...prev, ...data.transcript } : prev);
+        setTranscript((prev) =>
+          prev &&
+          data.transcript &&
+          typeof data.transcript === 'object' &&
+          !Array.isArray(data.transcript)
+            ? { ...prev, ...(data.transcript as Record<string, unknown>) }
+            : prev
+        );
         onUpdated?.();
       }
     } finally {
@@ -87,7 +106,11 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
   };
 
   const handleReprocess = async () => {
-    if (!confirm('This will delete all existing knowledge entries and content ideas for this transcript and re-process it. Continue?')) {
+    if (
+      !confirm(
+        'This will delete all existing knowledge entries and content ideas for this transcript and re-process it. Continue?'
+      )
+    ) {
       return;
     }
     setReprocessing(true);
@@ -158,7 +181,10 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
         <div className="rounded-lg bg-card p-8">
           <p className="text-muted-foreground">Transcript not found</p>
-          <button onClick={onClose} className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">
+          <button
+            onClick={onClose}
+            className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+          >
             Close
           </button>
         </div>
@@ -194,14 +220,20 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
                   >
                     <Check className="h-4 w-4" />
                   </button>
-                  <button onClick={() => setEditingTitle(false)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+                  <button
+                    onClick={() => setEditingTitle(false)}
+                    className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+                  >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
               ) : (
                 <h2
                   className="group flex cursor-pointer items-center gap-2 text-lg font-semibold"
-                  onClick={() => { setEditTitle(transcript.title || ''); setEditingTitle(true); }}
+                  onClick={() => {
+                    setEditTitle(transcript.title || '');
+                    setEditingTitle(true);
+                  }}
                 >
                   {transcript.title || 'Untitled'}
                   <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -225,17 +257,27 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
                       className="rounded-md border bg-background px-2 py-0.5 text-xs"
                       autoFocus
                     />
-                    <button onClick={() => handleSaveField('call_date', editDate || null)} disabled={saving} className="p-0.5 text-primary">
+                    <button
+                      onClick={() => handleSaveField('call_date', editDate || null)}
+                      disabled={saving}
+                      className="p-0.5 text-primary"
+                    >
                       <Check className="h-3 w-3" />
                     </button>
-                    <button onClick={() => setEditingDate(false)} className="p-0.5 text-muted-foreground">
+                    <button
+                      onClick={() => setEditingDate(false)}
+                      className="p-0.5 text-muted-foreground"
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </div>
                 ) : (
                   <button
                     className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    onClick={() => { setEditDate(transcript.call_date?.split('T')[0] || ''); setEditingDate(true); }}
+                    onClick={() => {
+                      setEditDate(transcript.call_date?.split('T')[0] || '');
+                      setEditingDate(true);
+                    }}
                   >
                     <Calendar className="h-3.5 w-3.5" />
                     {transcript.call_date ? formatDate(transcript.call_date) : 'No date'}
@@ -252,12 +294,14 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
 
                 {/* Type */}
                 {transcript.transcript_type && (
-                  <span className={cn(
-                    'rounded-full px-2 py-0.5 text-xs font-medium',
-                    transcript.transcript_type === 'coaching'
-                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
-                      : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                  )}>
+                  <span
+                    className={cn(
+                      'rounded-full px-2 py-0.5 text-xs font-medium',
+                      transcript.transcript_type === 'coaching'
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
+                        : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                    )}
+                  >
                     {transcript.transcript_type}
                   </span>
                 )}
@@ -283,7 +327,10 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          const parts = editParticipants.split(',').map(p => p.trim()).filter(Boolean);
+                          const parts = editParticipants
+                            .split(',')
+                            .map((p) => p.trim())
+                            .filter(Boolean);
                           handleSaveField('participants', parts.length > 0 ? parts : null);
                         }
                         if (e.key === 'Escape') setEditingParticipants(false);
@@ -291,7 +338,10 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
                     />
                     <button
                       onClick={() => {
-                        const parts = editParticipants.split(',').map(p => p.trim()).filter(Boolean);
+                        const parts = editParticipants
+                          .split(',')
+                          .map((p) => p.trim())
+                          .filter(Boolean);
                         handleSaveField('participants', parts.length > 0 ? parts : null);
                       }}
                       disabled={saving}
@@ -299,15 +349,22 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
                     >
                       <Check className="h-3 w-3" />
                     </button>
-                    <button onClick={() => setEditingParticipants(false)} className="p-0.5 text-muted-foreground">
+                    <button
+                      onClick={() => setEditingParticipants(false)}
+                      className="p-0.5 text-muted-foreground"
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </div>
                 ) : (
-                  transcript.participants && transcript.participants.length > 0 && (
+                  transcript.participants &&
+                  transcript.participants.length > 0 && (
                     <button
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      onClick={() => { setEditParticipants(transcript.participants?.join(', ') || ''); setEditingParticipants(true); }}
+                      onClick={() => {
+                        setEditParticipants(transcript.participants?.join(', ') || '');
+                        setEditingParticipants(true);
+                      }}
                     >
                       <Users className="h-3.5 w-3.5" />
                       {transcript.participants.join(', ')}

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
     await publicService.trackResourceClick(resourceId, funnelPageIdValid);
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: true });
   }
 }

@@ -163,7 +163,11 @@ export function AutomationEventsDrawer({
   const [replyingEventId, setReplyingEventId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
-  const [sendResult, setSendResult] = useState<{ eventId: string; success: boolean; message: string } | null>(null);
+  const [sendResult, setSendResult] = useState<{
+    eventId: string;
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   const fetchEvents = useCallback(async () => {
     if (!automationId) return;
@@ -171,7 +175,7 @@ export function AutomationEventsDrawer({
     setError(null);
     try {
       const data = await automationsApi.getAutomation(automationId);
-      setEvents(data.events || []);
+      setEvents((data.events || []) as AutomationEvent[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load events');
     } finally {
@@ -242,9 +246,7 @@ export function AutomationEventsDrawer({
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="text-base">Activity</SheetTitle>
-          <SheetDescription className="text-xs truncate">
-            {automationName}
-          </SheetDescription>
+          <SheetDescription className="text-xs truncate">{automationName}</SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-1">
@@ -326,9 +328,7 @@ export function AutomationEventsDrawer({
 
                         {/* Error */}
                         {event.error && (
-                          <p className="text-xs text-red-500 dark:text-red-400">
-                            {event.error}
-                          </p>
+                          <p className="text-xs text-red-500 dark:text-red-400">{event.error}</p>
                         )}
 
                         {/* Reply with Link button */}

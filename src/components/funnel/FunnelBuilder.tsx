@@ -2,7 +2,18 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { Loader2, Sparkles, FileText, CheckCircle2, Palette, LayoutGrid, PenLine, ClipboardList, Mail, Plug } from 'lucide-react';
+import {
+  Loader2,
+  Sparkles,
+  FileText,
+  CheckCircle2,
+  Palette,
+  LayoutGrid,
+  PenLine,
+  ClipboardList,
+  Mail,
+  Plug,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/index';
 import { OptinPageEditor } from './OptinPageEditor';
@@ -17,10 +28,21 @@ import { PublishControls } from './PublishControls';
 import { LeadDeliveryInfo } from './LeadDeliveryInfo';
 import { ABTestPanel } from './ABTestPanel';
 import { FunnelIntegrationsTab } from './FunnelIntegrationsTab';
-import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle, RedirectTrigger, ThankyouLayout } from '@/lib/types/funnel';
+import type {
+  FunnelPage,
+  FunnelPageSection,
+  QualificationQuestion,
+  GeneratedOptinContent,
+  FunnelTheme,
+  FunnelTargetType,
+  BackgroundStyle,
+  RedirectTrigger,
+  ThankyouLayout,
+} from '@/lib/types/funnel';
 import type { LeadMagnet } from '@/lib/types/lead-magnet';
 import type { Library } from '@/lib/types/library';
 import * as funnelApi from '@/frontend/api/funnel';
+import * as integrationsApi from '@/frontend/api/integrations';
 import { isApiError } from '@/frontend/api/errors';
 
 const VISUAL_TABS = new Set<TabType>(['optin', 'thankyou', 'theme', 'sections']);
@@ -46,7 +68,15 @@ interface FunnelBuilderProps {
   connectedEmailProviders?: string[];
 }
 
-type TabType = 'optin' | 'thankyou' | 'questions' | 'theme' | 'sections' | 'content' | 'email' | 'integrations';
+type TabType =
+  | 'optin'
+  | 'thankyou'
+  | 'questions'
+  | 'theme'
+  | 'sections'
+  | 'content'
+  | 'email'
+  | 'integrations';
 
 export function FunnelBuilder({
   leadMagnet,
@@ -58,7 +88,11 @@ export function FunnelBuilder({
   connectedEmailProviders = [],
 }: FunnelBuilderProps) {
   // Derive target info
-  const targetType: FunnelTargetType = library ? 'library' : externalResource ? 'external_resource' : 'lead_magnet';
+  const targetType: FunnelTargetType = library
+    ? 'library'
+    : externalResource
+      ? 'external_resource'
+      : 'lead_magnet';
   const targetTitle = leadMagnet?.title || library?.name || externalResource?.title || 'Untitled';
   const targetId = leadMagnet?.id || library?.id || externalResource?.id || '';
   const isLeadMagnetTarget = targetType === 'lead_magnet';
@@ -75,31 +109,47 @@ export function FunnelBuilder({
   // Form state for opt-in page
   const [optinHeadline, setOptinHeadline] = useState(existingFunnel?.optinHeadline || targetTitle);
   const [optinSubline, setOptinSubline] = useState(existingFunnel?.optinSubline || '');
-  const [optinButtonText, setOptinButtonText] = useState(existingFunnel?.optinButtonText || 'Get Free Access');
+  const [optinButtonText, setOptinButtonText] = useState(
+    existingFunnel?.optinButtonText || 'Get Free Access'
+  );
   const [optinSocialProof, setOptinSocialProof] = useState(existingFunnel?.optinSocialProof || '');
   const [slug, setSlug] = useState(existingFunnel?.slug || generateSlug(targetTitle));
 
   // Form state for thank-you page
-  const [thankyouHeadline, setThankyouHeadline] = useState(existingFunnel?.thankyouHeadline || 'Thanks! Check your email.');
+  const [thankyouHeadline, setThankyouHeadline] = useState(
+    existingFunnel?.thankyouHeadline || 'Thanks! Check your email.'
+  );
   const [thankyouSubline, setThankyouSubline] = useState(existingFunnel?.thankyouSubline || '');
   const [vslUrl, setVslUrl] = useState(existingFunnel?.vslUrl || '');
   const [calendlyUrl, setCalendlyUrl] = useState(existingFunnel?.calendlyUrl || '');
-  const [qualificationPassMessage, setQualificationPassMessage] = useState(existingFunnel?.qualificationPassMessage || 'Great! Book a call below.');
-  const [qualificationFailMessage, setQualificationFailMessage] = useState(existingFunnel?.qualificationFailMessage || 'Thanks for your interest!');
+  const [qualificationPassMessage, setQualificationPassMessage] = useState(
+    existingFunnel?.qualificationPassMessage || 'Great! Book a call below.'
+  );
+  const [qualificationFailMessage, setQualificationFailMessage] = useState(
+    existingFunnel?.qualificationFailMessage || 'Thanks for your interest!'
+  );
 
   // Form state for redirect
-  const [redirectTrigger, setRedirectTrigger] = useState<RedirectTrigger>(existingFunnel?.redirectTrigger || 'none');
+  const [redirectTrigger, setRedirectTrigger] = useState<RedirectTrigger>(
+    existingFunnel?.redirectTrigger || 'none'
+  );
   const [redirectUrl, setRedirectUrl] = useState(existingFunnel?.redirectUrl || '');
   const [redirectFailUrl, setRedirectFailUrl] = useState(existingFunnel?.redirectFailUrl || '');
   const [homepageUrl, setHomepageUrl] = useState(existingFunnel?.homepageUrl || '');
   const [homepageLabel, setHomepageLabel] = useState(existingFunnel?.homepageLabel || '');
-  const [sendResourceEmail, setSendResourceEmail] = useState(existingFunnel?.sendResourceEmail ?? true);
-  const [thankyouLayout, setThankyouLayout] = useState<ThankyouLayout>(existingFunnel?.thankyouLayout || 'survey_first');
+  const [sendResourceEmail, setSendResourceEmail] = useState(
+    existingFunnel?.sendResourceEmail ?? true
+  );
+  const [thankyouLayout, setThankyouLayout] = useState<ThankyouLayout>(
+    existingFunnel?.thankyouLayout || 'survey_first'
+  );
 
   // Form state for theme
   const [theme, setTheme] = useState<FunnelTheme>(existingFunnel?.theme || 'dark');
   const [primaryColor, setPrimaryColor] = useState(existingFunnel?.primaryColor || '#8b5cf6');
-  const [backgroundStyle, setBackgroundStyle] = useState<BackgroundStyle>(existingFunnel?.backgroundStyle || 'solid');
+  const [backgroundStyle, setBackgroundStyle] = useState<BackgroundStyle>(
+    existingFunnel?.backgroundStyle || 'solid'
+  );
   const [logoUrl, setLogoUrl] = useState<string | null>(existingFunnel?.logoUrl || null);
 
   // Lead magnet state (for content tab updates)
@@ -128,11 +178,8 @@ export function FunnelBuilder({
   useEffect(() => {
     async function checkGHL() {
       try {
-        const res = await fetch('/api/integrations/gohighlevel/status');
-        if (res.ok) {
-          const data = await res.json();
-          setGhlConnected(data.connected === true);
-        }
+        const data = await integrationsApi.getGoHighLevelStatus();
+        setGhlConnected(data.connected === true);
       } catch {
         // ignore - GHL section simply won't show
       }
@@ -146,11 +193,8 @@ export function FunnelBuilder({
   useEffect(() => {
     async function checkHeyReach() {
       try {
-        const res = await fetch('/api/integrations/heyreach/status');
-        if (res.ok) {
-          const data = await res.json();
-          setHeyreachConnected(data.connected === true);
-        }
+        const data = await integrationsApi.getHeyReachStatus();
+        setHeyreachConnected(data.connected === true);
       } catch {
         // ignore - HeyReach section simply won't show
       }
@@ -173,7 +217,9 @@ export function FunnelBuilder({
     setError(null);
 
     try {
-      const { content } = await funnelApi.generateFunnelContent(leadMagnet.id, true) as { content: GeneratedOptinContent };
+      const { content } = (await funnelApi.generateFunnelContent(leadMagnet.id, true)) as {
+        content: GeneratedOptinContent;
+      };
       setOptinHeadline(content.headline);
       setOptinSubline(content.subline);
       setOptinSocialProof(content.socialProof);
@@ -204,8 +250,8 @@ export function FunnelBuilder({
         qualificationPassMessage,
         qualificationFailMessage,
         redirectTrigger,
-        redirectUrl: redirectTrigger !== 'none' ? (redirectUrl || null) : null,
-        redirectFailUrl: redirectTrigger === 'after_qualification' ? (redirectFailUrl || null) : null,
+        redirectUrl: redirectTrigger !== 'none' ? redirectUrl || null : null,
+        redirectFailUrl: redirectTrigger === 'after_qualification' ? redirectFailUrl || null : null,
         homepageUrl: homepageUrl || null,
         homepageLabel: homepageLabel || null,
         sendResourceEmail,
@@ -228,9 +274,9 @@ export function FunnelBuilder({
       let result: { funnel: FunnelPage };
       try {
         if (funnel) {
-          result = await funnelApi.updateFunnel(funnel.id, payload) as { funnel: FunnelPage };
+          result = (await funnelApi.updateFunnel(funnel.id, payload)) as { funnel: FunnelPage };
         } else {
-          result = await funnelApi.createFunnel(payload) as { funnel: FunnelPage };
+          result = (await funnelApi.createFunnel(payload)) as { funnel: FunnelPage };
         }
       } catch (err: unknown) {
         // If funnel already exists (409), reload to get the existing funnel
@@ -263,52 +309,67 @@ export function FunnelBuilder({
   }, [activeTab]);
 
   // Build nav groups based on target type
-  const navGroups: NavGroup[] = useMemo(() => [
-    {
-      title: 'Pages',
-      items: [
-        { id: 'optin', label: 'Opt-in Page', icon: FileText },
-        { id: 'thankyou', label: 'Thank You', icon: CheckCircle2 },
-      ],
-    },
-    {
-      title: 'Design',
-      items: [
-        { id: 'theme', label: 'Theme', icon: Palette },
-        { id: 'sections', label: 'Sections', icon: LayoutGrid },
-      ],
-    },
-    {
-      title: 'Content',
-      items: [
-        ...(isLeadMagnetTarget ? [{ id: 'content' as TabType, label: 'Content', icon: PenLine }] : []),
-        { id: 'questions', label: 'Survey', icon: ClipboardList },
-      ],
-    },
-    {
-      title: 'Delivery',
-      items: [
-        { id: 'email', label: 'Email', icon: Mail },
-        { id: 'integrations', label: 'Integrations', icon: Plug },
-      ],
-    },
-  ], [isLeadMagnetTarget]);
+  const navGroups: NavGroup[] = useMemo(
+    () => [
+      {
+        title: 'Pages',
+        items: [
+          { id: 'optin', label: 'Opt-in Page', icon: FileText },
+          { id: 'thankyou', label: 'Thank You', icon: CheckCircle2 },
+        ],
+      },
+      {
+        title: 'Design',
+        items: [
+          { id: 'theme', label: 'Theme', icon: Palette },
+          { id: 'sections', label: 'Sections', icon: LayoutGrid },
+        ],
+      },
+      {
+        title: 'Content',
+        items: [
+          ...(isLeadMagnetTarget
+            ? [{ id: 'content' as TabType, label: 'Content', icon: PenLine }]
+            : []),
+          { id: 'questions', label: 'Survey', icon: ClipboardList },
+        ],
+      },
+      {
+        title: 'Delivery',
+        items: [
+          { id: 'email', label: 'Email', icon: Mail },
+          { id: 'integrations', label: 'Integrations', icon: Plug },
+        ],
+      },
+    ],
+    [isLeadMagnetTarget]
+  );
 
   // Find active group for mobile sub-tabs
-  const activeGroup = navGroups.find(g => g.items.some(i => i.id === activeTab)) || navGroups[0];
+  const activeGroup =
+    navGroups.find((g) => g.items.some((i) => i.id === activeTab)) || navGroups[0];
   const isVisualTab = VISUAL_TABS.has(activeTab);
 
   function isTabComplete(tabId: TabType): boolean {
     switch (tabId) {
-      case 'optin': return !!optinHeadline && optinHeadline !== targetTitle;
-      case 'thankyou': return !!thankyouHeadline && thankyouHeadline !== 'Thanks! Check your email.';
-      case 'theme': return true;
-      case 'sections': return sections.length > 0;
-      case 'content': return !!currentLeadMagnet?.polishedContent;
-      case 'questions': return questions.length > 0;
-      case 'email': return false;
-      case 'integrations': return false;
-      default: return false;
+      case 'optin':
+        return !!optinHeadline && optinHeadline !== targetTitle;
+      case 'thankyou':
+        return !!thankyouHeadline && thankyouHeadline !== 'Thanks! Check your email.';
+      case 'theme':
+        return true;
+      case 'sections':
+        return sections.length > 0;
+      case 'content':
+        return !!currentLeadMagnet?.polishedContent;
+      case 'questions':
+        return questions.length > 0;
+      case 'email':
+        return false;
+      case 'integrations':
+        return false;
+      default:
+        return false;
     }
   }
 
@@ -361,7 +422,7 @@ export function FunnelBuilder({
       <nav className="lg:hidden overflow-x-auto border-b">
         <div className="flex gap-1 px-2 py-2">
           {navGroups.map((group) => {
-            const isActiveGroup = group.items.some(i => i.id === activeTab);
+            const isActiveGroup = group.items.some((i) => i.id === activeTab);
             return (
               <button
                 key={group.title}
@@ -432,7 +493,9 @@ export function FunnelBuilder({
                         >
                           <Icon className="h-4 w-4 shrink-0" />
                           {item.label}
-                          {complete && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />}
+                          {complete && (
+                            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
+                          )}
                         </button>
                       </li>
                     );
@@ -549,9 +612,7 @@ export function FunnelBuilder({
             )}
 
             {activeTab === 'email' && isLeadMagnetTarget && leadMagnet && (
-              <EmailSequenceTab
-                leadMagnetId={leadMagnet.id}
-              />
+              <EmailSequenceTab leadMagnetId={leadMagnet.id} />
             )}
 
             {activeTab === 'email' && !isLeadMagnetTarget && (
@@ -568,7 +629,9 @@ export function FunnelBuilder({
                 connectedProviders={connectedEmailProviders}
                 ghlConnected={ghlConnected}
                 heyreachConnected={heyreachConnected}
-                funnelUrl={username && slug ? `https://magnetlab.app/p/${username}/${slug}` : undefined}
+                funnelUrl={
+                  username && slug ? `https://magnetlab.app/p/${username}/${slug}` : undefined
+                }
               />
             )}
 
@@ -603,11 +666,7 @@ export function FunnelBuilder({
             />
 
             {funnel && (
-              <PublishControls
-                funnel={funnel}
-                setFunnel={setFunnel}
-                username={username}
-              />
+              <PublishControls funnel={funnel} setFunnel={setFunnel} username={username} />
             )}
 
             <LeadDeliveryInfo />

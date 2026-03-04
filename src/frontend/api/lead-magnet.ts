@@ -19,11 +19,15 @@ export async function listLeadMagnets(params?: {
   );
 }
 
-export async function createLeadMagnet(body: Record<string, unknown>): Promise<{ id: string; [k: string]: unknown }> {
+export async function createLeadMagnet(
+  body: Record<string, unknown>
+): Promise<{ id: string; [k: string]: unknown }> {
   return apiClient.post<{ id: string; [k: string]: unknown }>('/lead-magnet', body);
 }
 
-export async function ideate(body: Record<string, unknown>): Promise<{ jobId?: string; concepts?: unknown[]; [k: string]: unknown }> {
+export async function ideate(
+  body: Record<string, unknown>
+): Promise<{ jobId?: string; concepts?: unknown[]; [k: string]: unknown }> {
   return apiClient.post('/lead-magnet/ideate', body);
 }
 
@@ -31,11 +35,15 @@ export async function getExtractionQuestions(archetype: string): Promise<unknown
   return apiClient.get(`/lead-magnet/extract?archetype=${encodeURIComponent(archetype)}`);
 }
 
-export async function extract(body: Record<string, unknown>): Promise<{ jobId?: string; questions?: unknown[]; [k: string]: unknown }> {
+export async function extract(
+  body: Record<string, unknown>
+): Promise<{ jobId?: string; questions?: unknown[]; [k: string]: unknown }> {
   return apiClient.post('/lead-magnet/extract', body);
 }
 
-export async function writePost(body: Record<string, unknown>): Promise<{ jobId?: string; [k: string]: unknown }> {
+export async function writePost(
+  body: Record<string, unknown>
+): Promise<{ jobId?: string; [k: string]: unknown }> {
   return apiClient.post('/lead-magnet/write-post', body);
 }
 
@@ -47,8 +55,13 @@ export async function analyzeCompetitor(content: string): Promise<Record<string,
   return apiClient.post('/lead-magnet/analyze-competitor', { content });
 }
 
-export async function importLeadMagnet(body: Record<string, unknown>): Promise<{ leadMagnetId: string; [k: string]: unknown }> {
-  return apiClient.post<{ leadMagnetId: string; [k: string]: unknown }>('/lead-magnet/import', body);
+export async function importLeadMagnet(
+  body: Record<string, unknown>
+): Promise<{ leadMagnetId: string; [k: string]: unknown }> {
+  return apiClient.post<{ leadMagnetId: string; [k: string]: unknown }>(
+    '/lead-magnet/import',
+    body
+  );
 }
 
 export async function polishLeadMagnet(leadMagnetId: string): Promise<{ jobId: string }> {
@@ -71,4 +84,13 @@ export async function updateLeadMagnetCatalog(
   body: { pain_point?: string; target_audience?: string; short_description?: string }
 ): Promise<{ success: boolean }> {
   return apiClient.patch<{ success: boolean }>(`/lead-magnet/${leadMagnetId}/catalog`, body);
+}
+
+export async function generateScreenshots(leadMagnetId: string): Promise<{
+  screenshotUrls?: unknown[];
+  [key: string]: unknown;
+}> {
+  return apiClient.post<{ screenshotUrls?: unknown[]; [key: string]: unknown }>(
+    `/lead-magnet/${leadMagnetId}/screenshots`
+  );
 }

@@ -1,8 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Sparkles, Check, AlertTriangle, Edit2, ChevronDown, ChevronUp, ArrowRight, X } from 'lucide-react';
-import type { BusinessContext, ExtractionResult, ExtractionSuggestion, ConfidenceLevel } from '@/lib/types/lead-magnet';
+import {
+  Loader2,
+  Sparkles,
+  Check,
+  AlertTriangle,
+  Edit2,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  X,
+} from 'lucide-react';
+import type {
+  BusinessContext,
+  ExtractionResult,
+  ExtractionSuggestion,
+  ConfidenceLevel,
+} from '@/lib/types/lead-magnet';
 import { BUSINESS_TYPE_LABELS } from '@/lib/types/lead-magnet';
 import * as brandKitApi from '@/frontend/api/brand-kit';
 
@@ -52,9 +67,14 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
     if (Array.isArray(currentValue)) {
       updateField(field, [...currentValue, suggestion.value] as BusinessContext[typeof field]);
     } else if (
-      field === 'credibilityMarkers' || field === 'urgentPains' || field === 'results' ||
-      field === 'templates' || field === 'processes' || field === 'tools' ||
-      field === 'frequentQuestions' || field === 'audienceTools'
+      field === 'credibilityMarkers' ||
+      field === 'urgentPains' ||
+      field === 'results' ||
+      field === 'templates' ||
+      field === 'processes' ||
+      field === 'tools' ||
+      field === 'frequentQuestions' ||
+      field === 'audienceTools'
     ) {
       // Field is an array type but currently empty/undefined
       updateField(field, [suggestion.value] as BusinessContext[typeof field]);
@@ -87,13 +107,14 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
 
     // Cycle through loading messages
     const messageInterval = setInterval(() => {
-      setLoadingMessageIndex((prev) =>
-        prev < LOADING_MESSAGES.length - 1 ? prev + 1 : prev
-      );
+      setLoadingMessageIndex((prev) => (prev < LOADING_MESSAGES.length - 1 ? prev + 1 : prev));
     }, 2000);
 
     try {
-      const data = await brandKitApi.extractBusinessContext({ content, contentType: 'other' }) as ExtractionResult;
+      const data = (await brandKitApi.extractBusinessContext({
+        content,
+        contentType: 'other',
+      })) as unknown as ExtractionResult;
       setResult(data);
       setEditedContext(data.extracted);
       setState('review');
@@ -139,12 +160,8 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
           <Sparkles className="h-5 w-5 text-yellow-500 absolute -top-1 -right-1 animate-pulse" />
         </div>
-        <p className="mt-4 text-foreground font-medium">
-          {LOADING_MESSAGES[loadingMessageIndex]}
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This may take a moment
-        </p>
+        <p className="mt-4 text-foreground font-medium">{LOADING_MESSAGES[loadingMessageIndex]}</p>
+        <p className="mt-2 text-sm text-muted-foreground">This may take a moment</p>
       </div>
     );
   }
@@ -156,7 +173,8 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
           <div>
             <h3 className="text-lg font-semibold">Review Extracted Context</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              We found the following from your content. Review and edit anything that needs adjusting.
+              We found the following from your content. Review and edit anything that needs
+              adjusting.
             </p>
           </div>
           <button
@@ -170,94 +188,100 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
         </div>
 
         {/* Suggestions */}
-        {result.suggestions.length > 0 && (() => {
-          const visibleSuggestions = result.suggestions
-            .map((s, i) => ({ suggestion: s, originalIndex: i }))
-            .filter(({ originalIndex }) => !dismissedSuggestions.has(originalIndex));
+        {result.suggestions.length > 0 &&
+          (() => {
+            const visibleSuggestions = result.suggestions
+              .map((s, i) => ({ suggestion: s, originalIndex: i }))
+              .filter(({ originalIndex }) => !dismissedSuggestions.has(originalIndex));
 
-          if (visibleSuggestions.length === 0) return null;
+            if (visibleSuggestions.length === 0) return null;
 
-          // Check if any are structured (new format)
-          const hasStructured = visibleSuggestions.some(
-            ({ suggestion }) => typeof suggestion === 'object' && 'field' in suggestion
-          );
+            // Check if any are structured (new format)
+            const hasStructured = visibleSuggestions.some(
+              ({ suggestion }) => typeof suggestion === 'object' && 'field' in suggestion
+            );
 
-          if (!hasStructured) {
-            // Legacy: plain string suggestions
-            return (
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Suggestions to improve</p>
-                    <ul className="mt-1 text-sm text-amber-700 dark:text-amber-300 list-disc list-inside">
-                      {visibleSuggestions.map(({ suggestion, originalIndex }) => (
-                        <li key={originalIndex}>{suggestion as string}</li>
-                      ))}
-                    </ul>
+            if (!hasStructured) {
+              // Legacy: plain string suggestions
+              return (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        Suggestions to improve
+                      </p>
+                      <ul className="mt-1 text-sm text-amber-700 dark:text-amber-300 list-disc list-inside">
+                        {visibleSuggestions.map(({ suggestion, originalIndex }) => (
+                          <li key={originalIndex}>{suggestion as string}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          }
+              );
+            }
 
-          return (
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
-                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                We found some gaps — click Apply to fill them in
-              </p>
-              {visibleSuggestions.map(({ suggestion, originalIndex }) => {
-                if (typeof suggestion === 'string') {
+            return (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  We found some gaps — click Apply to fill them in
+                </p>
+                {visibleSuggestions.map(({ suggestion, originalIndex }) => {
+                  if (typeof suggestion === 'string') {
+                    return (
+                      <div
+                        key={originalIndex}
+                        className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-300"
+                      >
+                        {suggestion}
+                      </div>
+                    );
+                  }
+
+                  const s = suggestion as ExtractionSuggestion;
                   return (
-                    <div key={originalIndex} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-300">
-                      {suggestion}
+                    <div
+                      key={originalIndex}
+                      className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                            {s.suggestion}
+                          </p>
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                            Field: {FIELD_LABELS[s.field] || s.field}
+                          </p>
+                          <p className="text-sm text-amber-700 dark:text-amber-300 mt-1 italic truncate">
+                            &ldquo;{s.value}&rdquo;
+                          </p>
+                        </div>
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => applySuggestion(s, originalIndex)}
+                            className="px-2.5 py-1 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors flex items-center gap-1"
+                          >
+                            Apply <ArrowRight className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => dismissSuggestion(originalIndex)}
+                            className="p-1 text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+                            title="Dismiss"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   );
-                }
-
-                const s = suggestion as ExtractionSuggestion;
-                return (
-                  <div
-                    key={originalIndex}
-                    className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                          {s.suggestion}
-                        </p>
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                          Field: {FIELD_LABELS[s.field] || s.field}
-                        </p>
-                        <p className="text-sm text-amber-700 dark:text-amber-300 mt-1 italic truncate">
-                          &ldquo;{s.value}&rdquo;
-                        </p>
-                      </div>
-                      <div className="flex gap-1.5 flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => applySuggestion(s, originalIndex)}
-                          className="px-2.5 py-1 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors flex items-center gap-1"
-                        >
-                          Apply <ArrowRight className="h-3 w-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => dismissSuggestion(originalIndex)}
-                          className="p-1 text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
-                          title="Dismiss"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+                })}
+              </div>
+            );
+          })()}
 
         {/* Extracted Fields */}
         <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
@@ -273,7 +297,9 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
             label="Business Type"
             value={editedContext.businessType}
             confidence={result.confidence.businessType}
-            onChange={(value) => updateField('businessType', value as BusinessContext['businessType'])}
+            onChange={(value) =>
+              updateField('businessType', value as BusinessContext['businessType'])
+            }
             type="select"
             options={Object.entries(BUSINESS_TYPE_LABELS).map(([value, label]) => ({
               value,
@@ -337,8 +363,8 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
     <div className="space-y-4">
       <div>
         <p className="text-sm text-muted-foreground mb-4">
-          Paste any content that describes your business - offer docs, LinkedIn profiles, sales pages, or anything else.
-          We&apos;ll extract the key details automatically.
+          Paste any content that describes your business - offer docs, LinkedIn profiles, sales
+          pages, or anything else. We&apos;ll extract the key details automatically.
         </p>
       </div>
 
@@ -404,7 +430,9 @@ function ConfidenceBadge({ confidence }: { confidence?: ConfidenceLevel }) {
   };
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full ${styles[confidence]}`}>
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full ${styles[confidence]}`}
+    >
       {icons[confidence]}
       {confidence}
     </span>
@@ -421,7 +449,14 @@ interface ExtractedFieldProps {
   options?: { value: string; label: string }[];
 }
 
-function ExtractedField({ label, value, confidence, onChange, type, options }: ExtractedFieldProps) {
+function ExtractedField({
+  label,
+  value,
+  confidence,
+  onChange,
+  type,
+  options,
+}: ExtractedFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
 
   if (!value && !isEditing) {
@@ -521,7 +556,14 @@ interface ExtractedArrayFieldProps {
   onToggle: () => void;
 }
 
-function ExtractedArrayField({ label, items, confidence, onChange, expanded, onToggle }: ExtractedArrayFieldProps) {
+function ExtractedArrayField({
+  label,
+  items,
+  confidence,
+  onChange,
+  expanded,
+  onToggle,
+}: ExtractedArrayFieldProps) {
   const [newItem, setNewItem] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');

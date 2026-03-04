@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { logError, logWarn } from '@/lib/utils/logger';
+import { logError } from '@/lib/utils/logger';
 import * as webhooksIncomingService from '@/server/services/webhooks-incoming.service';
 
 interface RouteParams {
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const result = await webhooksIncomingService.handleFathom(userId, secret, payload);
 
-    if (!result.success && result.error) {
+    if (!result.success && 'error' in result && result.error) {
       return NextResponse.json(
         { error: result.error },
         { status: result.error === 'Unauthorized' ? 401 : 400 }
@@ -28,9 +28,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({
       success: true,
-      ...(result.skipped && { skipped: true, reason: result.reason }),
-      ...(result.duplicate && { duplicate: true, transcript_id: result.transcript_id }),
-      ...(result.transcript_id && !result.duplicate && { transcript_id: result.transcript_id }),
+      ...('skipped' in result && result.skipped && { skipped: true, reason: result.reason }),
+      ...('duplicate' in result &&
+        result.duplicate && { duplicate: true, transcript_id: result.transcript_id }),
+      ...('transcript_id' in result &&
+        result.transcript_id &&
+        !('duplicate' in result && result.duplicate) && { transcript_id: result.transcript_id }),
     });
   } catch (error) {
     logError('webhooks/fathom', error, { step: 'fathom_webhook_error' });

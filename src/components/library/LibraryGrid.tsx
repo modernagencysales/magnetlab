@@ -27,7 +27,7 @@ export function LibraryGrid({
 }: LibraryGridProps) {
   const handleExternalClick = async (resourceId: string) => {
     try {
-      await publicApi.trackResourceClick({ resourceId, funnelPageId, leadId });
+      await publicApi.trackResourceClick({ resourceId, funnelPageId, leadId: leadId ?? undefined });
     } catch {
       // Silent fail - don't block navigation
     }

@@ -106,11 +106,17 @@ export default function PagesPage() {
 
         setPages((pagesData.funnels || []) as FunnelPage[]);
         setUser(userData as User);
-        setStats(statsData.stats && typeof statsData.stats === 'object' ? (statsData.stats as Record<string, unknown>) : {});
-        setLibraries((librariesData.libraries || []).map((lib: unknown) => {
-          const l = lib as { id: string; name: string; icon: string; slug: string };
-          return { ...l, itemCount: 0, hasFunnel: false };
-        }));
+        setStats(
+          statsData.stats && typeof statsData.stats === 'object'
+            ? (statsData.stats as FunnelStats)
+            : {}
+        );
+        setLibraries(
+          (librariesData.libraries || []).map((lib: unknown) => {
+            const l = lib as { id: string; name: string; icon: string; slug: string };
+            return { ...l, itemCount: 0, hasFunnel: false };
+          })
+        );
         setResources((resourcesData.resources || []) as typeof resources);
       } catch {
         // Silently handle errors
@@ -311,7 +317,8 @@ export default function PagesPage() {
               <span className="mx-auto block text-5xl mb-4">📚</span>
               <h3 className="text-lg font-medium">No libraries yet</h3>
               <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-                Libraries let you group multiple lead magnets and external resources into a single shareable page.
+                Libraries let you group multiple lead magnets and external resources into a single
+                shareable page.
               </p>
               <Link
                 href="/assets/libraries/new"
@@ -334,9 +341,7 @@ export default function PagesPage() {
                     </div>
                     <div>
                       <h3 className="font-medium">{lib.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        /{lib.slug}
-                      </p>
+                      <p className="text-sm text-muted-foreground">/{lib.slug}</p>
                     </div>
                   </div>
 
@@ -364,7 +369,8 @@ export default function PagesPage() {
               <span className="mx-auto block text-5xl mb-4">🔗</span>
               <h3 className="text-lg font-medium">No external resources yet</h3>
               <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-                Add links to external content like YouTube videos, tools, or guides. Track clicks when used in libraries.
+                Add links to external content like YouTube videos, tools, or guides. Track clicks
+                when used in libraries.
               </p>
               <Link
                 href="/assets/external/new"

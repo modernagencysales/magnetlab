@@ -9,7 +9,11 @@ import { PostDetailModal } from './PostDetailModal';
 import { TeamLinkedInConnect } from './TeamLinkedInConnect';
 import { BroadcastModal } from './BroadcastModal';
 import { GridContextMenu } from './GridContextMenu';
-import type { PipelinePost, PostingSlot, TeamProfileWithConnection } from '@/lib/types/content-pipeline';
+import type {
+  PipelinePost,
+  PostingSlot,
+  TeamProfileWithConnection,
+} from '@/lib/types/content-pipeline';
 import * as teamScheduleApi from '@/frontend/api/content-pipeline/team-schedule';
 import * as postsApi from '@/frontend/api/content-pipeline/posts';
 
@@ -64,7 +68,11 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
   const [collisions, setCollisions] = useState<CollisionResult | null>(null);
 
   // Context menu
-  const [contextMenu, setContextMenu] = useState<{ post: PipelinePost; x: number; y: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    post: PipelinePost;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // --- Fetch schedule data ---
   const fetchSchedule = useCallback(async () => {
@@ -74,7 +82,7 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
         team_id: teamId,
         week_start: weekStart.toISOString(),
       });
-      setData(json);
+      setData(json as unknown as ScheduleData);
     } catch {
       // Silent
     } finally {
@@ -143,7 +151,10 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
       let scheduledTime = assignTarget.date;
       if (slot?.time_of_day) {
         const [hStr, mStr] = slot.time_of_day.split(':');
-        scheduledTime = setMinutes(setHours(assignTarget.date, parseInt(hStr, 10)), parseInt(mStr || '0', 10));
+        scheduledTime = setMinutes(
+          setHours(assignTarget.date, parseInt(hStr, 10)),
+          parseInt(mStr || '0', 10)
+        );
       } else {
         // Default to 9:00 AM if no slot time
         scheduledTime = setMinutes(setHours(assignTarget.date, 9), 0);
@@ -233,12 +244,14 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
             {bufferCount} in buffer
           </span>
-          <span className={cn(
-            'rounded-full px-3 py-1 text-xs font-medium',
-            connectedCount === totalProfiles
-              ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-              : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
-          )}>
+          <span
+            className={cn(
+              'rounded-full px-3 py-1 text-xs font-medium',
+              connectedCount === totalProfiles
+                ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+            )}
+          >
             {connectedCount}/{totalProfiles} connected
           </span>
         </div>

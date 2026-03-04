@@ -5,6 +5,7 @@ import { X, Loader2, Check, Upload, FileText, Clipboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TeamProfile } from '@/lib/types/content-pipeline';
 import * as transcriptsApi from '@/frontend/api/content-pipeline/transcripts';
+import * as teamsApi from '@/frontend/api/teams';
 
 interface TranscriptPasteModalProps {
   onClose: () => void;
@@ -27,11 +28,11 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
   const [speakerProfileId, setSpeakerProfileId] = useState<string>('');
 
   useEffect(() => {
-    fetch('/api/teams/profiles')
-      .then(r => r.json())
-      .then(data => {
-        if (data.profiles?.length > 1) {
-          setTeamProfiles(data.profiles);
+    teamsApi
+      .listProfiles()
+      .then((profiles) => {
+        if (Array.isArray(profiles) && profiles.length > 1) {
+          setTeamProfiles(profiles as TeamProfile[]);
         }
       })
       .catch(() => {});
@@ -39,27 +40,33 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
 
   const ACCEPTED_TYPES = '.txt,.vtt,.srt';
 
-  const handleFile = useCallback((f: File) => {
-    const name = f.name.toLowerCase();
-    if (!name.endsWith('.txt') && !name.endsWith('.vtt') && !name.endsWith('.srt')) {
-      setError('Only .txt, .vtt, and .srt files are supported');
-      return;
-    }
-    if (f.size > 10 * 1024 * 1024) {
-      setError('File too large (max 10MB)');
-      return;
-    }
-    setFile(f);
-    setError('');
-    if (!title) setTitle(f.name.replace(/\.(txt|vtt|srt)$/i, ''));
-  }, [title]);
+  const handleFile = useCallback(
+    (f: File) => {
+      const name = f.name.toLowerCase();
+      if (!name.endsWith('.txt') && !name.endsWith('.vtt') && !name.endsWith('.srt')) {
+        setError('Only .txt, .vtt, and .srt files are supported');
+        return;
+      }
+      if (f.size > 10 * 1024 * 1024) {
+        setError('File too large (max 10MB)');
+        return;
+      }
+      setFile(f);
+      setError('');
+      if (!title) setTitle(f.name.replace(/\.(txt|vtt|srt)$/i, ''));
+    },
+    [title]
+  );
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
-  }, [handleFile]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragging(false);
+      const f = e.dataTransfer.files[0];
+      if (f) handleFile(f);
+    },
+    [handleFile]
+  );
 
   const handleSubmit = async () => {
     setError('');
@@ -77,7 +84,10 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
           speakerProfileId: speakerProfileId || undefined,
         });
         setSuccess(true);
-        setTimeout(() => { onSuccess(); onClose(); }, 1500);
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 1500);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to save transcript');
       } finally {
@@ -92,7 +102,10 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
       try {
         await transcriptsApi.uploadTranscript(file, title.trim() || undefined);
         setSuccess(true);
-        setTimeout(() => { onSuccess(); onClose(); }, 1500);
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 1500);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to upload transcript');
       } finally {
@@ -101,16 +114,23 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
     }
   };
 
-  const canSubmit = mode === 'paste'
-    ? transcript.trim().length >= 100
-    : !!file;
+  const canSubmit = mode === 'paste' ? transcript.trim().length >= 100 : !!file;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Add Transcript">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Add Transcript"
+    >
       <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Add Transcript</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 hover:bg-secondary"
+            aria-label="Close"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -129,7 +149,9 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
                 onClick={() => setMode('paste')}
                 className={cn(
                   'flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors',
-                  mode === 'paste' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  mode === 'paste'
+                    ? 'bg-background shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <Clipboard className="h-4 w-4" />
@@ -139,7 +161,9 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
                 onClick={() => setMode('upload')}
                 className={cn(
                   'flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors',
-                  mode === 'upload' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  mode === 'upload'
+                    ? 'bg-background shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <Upload className="h-4 w-4" />
@@ -170,9 +194,10 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Auto-detect / Default</option>
-                    {teamProfiles.map(p => (
+                    {teamProfiles.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.full_name}{p.title ? ` (${p.title})` : ''}
+                        {p.full_name}
+                        {p.title ? ` (${p.title})` : ''}
                       </option>
                     ))}
                   </select>
@@ -204,7 +229,10 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
                 <div>
                   <label className="mb-1 block text-sm font-medium">File *</label>
                   <div
-                    onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragging(true);
+                    }}
                     onDragLeave={() => setDragging(false)}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
@@ -225,7 +253,10 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
                           {(file.size / 1024).toFixed(1)} KB
                         </p>
                         <button
-                          onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFile(null);
+                          }}
                           className="mt-2 text-xs text-red-500 hover:underline"
                         >
                           Remove
@@ -235,7 +266,8 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
                       <>
                         <Upload className="h-8 w-8 text-muted-foreground/50" />
                         <p className="mt-2 text-sm text-muted-foreground">
-                          Drop a file here, or <span className="font-medium text-primary">browse</span>
+                          Drop a file here, or{' '}
+                          <span className="font-medium text-primary">browse</span>
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground/70">
                           .txt, .vtt, or .srt up to 10MB

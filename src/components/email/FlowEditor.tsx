@@ -15,6 +15,7 @@ import {
 import { FlowStepCard } from './FlowStepCard';
 import type { EmailFlowWithSteps, EmailFlowStep } from '@/lib/types/email-system';
 import * as flowsApi from '@/frontend/api/email/flows';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 interface FlowEditorProps {
   flowId: string;
@@ -92,15 +93,11 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
   useEffect(() => {
     if (flow?.trigger_type === 'lead_magnet' && leadMagnets.length === 0) {
       setLoadingLeadMagnets(true);
-      fetch('/api/lead-magnet')
-        .then((res) => res.json())
+      leadMagnetApi
+        .listLeadMagnets()
         .then((data) => {
-          const magnets = (data.leadMagnets || data || []).map(
-            (lm: { id: string; title: string }) => ({
-              id: lm.id,
-              title: lm.title,
-            })
-          );
+          const list = (data.leadMagnets || []) as Array<{ id: string; title: string }>;
+          const magnets = list.map((lm) => ({ id: lm.id, title: lm.title }));
           setLeadMagnets(magnets);
         })
         .catch(() => {
@@ -115,7 +112,9 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
     setError(null);
     try {
       const data = await flowsApi.updateFlow(flowId, updates);
-      setFlow((prev) => (prev ? { ...prev, ...(data.flow as EmailFlowWithSteps), steps: prev.steps } : prev));
+      setFlow((prev) =>
+        prev ? { ...prev, ...(data.flow as EmailFlowWithSteps), steps: prev.steps } : prev
+      );
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update flow');
@@ -243,9 +242,7 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
         delay_days: nextStepNumber === 0 ? 0 : 1,
       });
       const newStep = data.step as EmailFlowStep;
-      setFlow((prev) =>
-        prev ? { ...prev, steps: [...prev.steps, newStep] } : prev
-      );
+      setFlow((prev) => (prev ? { ...prev, steps: [...prev.steps, newStep] } : prev));
       setExpandedStep(newStep.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add step');
@@ -296,9 +293,7 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
         </button>
         <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <AlertCircle className="h-5 w-5 text-red-500" />
-          <p className="text-sm text-red-800 dark:text-red-200">
-            {error || 'Flow not found.'}
-          </p>
+          <p className="text-sm text-red-800 dark:text-red-200">{error || 'Flow not found.'}</p>
         </div>
       </div>
     );
@@ -378,7 +373,8 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
                 className={`text-sm text-muted-foreground mt-1 ${isEditable ? 'cursor-pointer hover:text-foreground/70' : ''}`}
                 title={isEditable ? 'Click to edit' : undefined}
               >
-                {flow.description || (isEditable ? 'Click to add a description...' : 'No description')}
+                {flow.description ||
+                  (isEditable ? 'Click to add a description...' : 'No description')}
               </p>
             )}
           </div>
@@ -533,18 +529,14 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
         <div className="text-center py-12 border-2 border-primary/30 rounded-lg bg-primary/5">
           <Loader2 className="h-10 w-10 mx-auto text-primary animate-spin mb-4" />
           <h4 className="font-medium mb-2">Generating Your Email Sequence</h4>
-          <p className="text-sm text-muted-foreground animate-pulse">
-            {generatingMessage}
-          </p>
+          <p className="text-sm text-muted-foreground animate-pulse">{generatingMessage}</p>
         </div>
       )}
 
       {/* Steps list */}
       {!generating && (
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            Steps ({flow.steps.length})
-          </h3>
+          <h3 className="text-sm font-medium text-muted-foreground">Steps ({flow.steps.length})</h3>
 
           {flow.steps.length === 0 ? (
             <div className="text-center py-8 border-2 border-dashed rounded-lg">
@@ -576,9 +568,7 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
                   flowId={flowId}
                   flowStatus={flow.status}
                   isExpanded={expandedStep === step.id}
-                  onToggle={() =>
-                    setExpandedStep(expandedStep === step.id ? null : step.id)
-                  }
+                  onToggle={() => setExpandedStep(expandedStep === step.id ? null : step.id)}
                   onSave={handleSaveStep}
                   onDelete={handleDeleteStep}
                 />

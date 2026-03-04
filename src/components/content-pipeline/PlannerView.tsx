@@ -63,7 +63,7 @@ export function PlannerView() {
       const data = await plannerApi.generatePlan({
         week_start_date: format(currentWeek, 'yyyy-MM-dd'),
         posts_per_week: postsPerWeek,
-        pillar_distribution: pillarDistribution,
+        pillar_distribution: pillarDistribution as unknown as Record<string, number>,
       });
       if (data.plan) setPlan(data.plan as WeekPlan);
     } catch {
@@ -107,9 +107,7 @@ export function PlannerView() {
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm font-medium">
-            Week of {format(currentWeek, 'MMM d')}
-          </span>
+          <span className="text-sm font-medium">Week of {format(currentWeek, 'MMM d')}</span>
           <button
             onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}
             className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
@@ -165,9 +163,13 @@ export function PlannerView() {
               className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {generating ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Generating...
+                </>
               ) : (
-                <><Zap className="h-4 w-4" /> {plan ? 'Regenerate Plan' : 'Generate Plan'}</>
+                <>
+                  <Zap className="h-4 w-4" /> {plan ? 'Regenerate Plan' : 'Generate Plan'}
+                </>
               )}
             </button>
 
@@ -178,9 +180,13 @@ export function PlannerView() {
                 className="flex items-center gap-2 rounded-lg border border-green-300 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950 disabled:opacity-50 transition-colors"
               >
                 {approving ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</>
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Approving...
+                  </>
                 ) : (
-                  <><Check className="h-4 w-4" /> Approve Plan</>
+                  <>
+                    <Check className="h-4 w-4" /> Approve Plan
+                  </>
                 )}
               </button>
             )}

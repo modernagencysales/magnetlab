@@ -9,10 +9,7 @@ export async function verifyIntegration(body: {
   api_key?: string;
   metadata?: Record<string, unknown>;
 }): Promise<{ verified: boolean; error?: string | null }> {
-  return apiClient.post<{ verified: boolean; error?: string | null }>(
-    '/integrations/verify',
-    body
-  );
+  return apiClient.post<{ verified: boolean; error?: string | null }>('/integrations/verify', body);
 }
 
 export async function getIntegrations(): Promise<{ integrations: unknown[] }> {
@@ -25,10 +22,7 @@ export async function saveIntegration(body: {
   webhook_secret?: string | null;
   metadata?: Record<string, unknown>;
 }): Promise<{ integration: unknown; message?: string }> {
-  return apiClient.post<{ integration: unknown; message?: string }>(
-    '/integrations',
-    body
-  );
+  return apiClient.post<{ integration: unknown; message?: string }>('/integrations', body);
 }
 
 export async function updateResendSettings(body: {
@@ -52,10 +46,7 @@ export async function getFathomWebhookUrl(): Promise<{
 }
 
 export async function createFathomWebhookUrl(): Promise<{ webhook_url: string }> {
-  return apiClient.post<{ webhook_url: string }>(
-    '/integrations/fathom/webhook-url',
-    {}
-  );
+  return apiClient.post<{ webhook_url: string }>('/integrations/fathom/webhook-url', {});
 }
 
 export async function deleteFathomWebhookUrl(): Promise<void> {
@@ -103,4 +94,21 @@ export async function verifyHeyReach(): Promise<unknown> {
 
 export async function disconnectHeyReach(): Promise<void> {
   await apiClient.post('/integrations/heyreach/disconnect', {});
+}
+
+// ── Status (GET) ──
+export async function getGoHighLevelStatus(): Promise<{ connected: boolean }> {
+  return apiClient.get<{ connected: boolean }>('/integrations/gohighlevel/status');
+}
+
+export async function getHeyReachStatus(): Promise<{ connected: boolean }> {
+  return apiClient.get<{ connected: boolean }>('/integrations/heyreach/status');
+}
+
+export async function getEmailMarketingConnected(): Promise<{ providers: string[] }> {
+  return apiClient.get<{ providers: string[] }>('/integrations/email-marketing/connected');
+}
+
+export async function getHeyReachCampaigns(): Promise<{ campaigns?: unknown[] }> {
+  return apiClient.get<{ campaigns?: unknown[] }>('/integrations/heyreach/campaigns');
 }

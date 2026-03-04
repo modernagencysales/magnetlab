@@ -70,14 +70,10 @@ export default function LeadsPage() {
         offset: page * limit,
         funnelId: selectedFunnel !== 'all' ? selectedFunnel : undefined,
         qualified:
-          qualifiedFilter === 'all'
-            ? undefined
-            : qualifiedFilter === 'qualified'
-              ? true
-              : false,
+          qualifiedFilter === 'all' ? undefined : qualifiedFilter === 'qualified' ? true : false,
         search: search || undefined,
       });
-      setLeads((data.leads as Lead[]));
+      setLeads(data.leads as Lead[]);
       setTotal(data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load leads');
@@ -89,11 +85,12 @@ export default function LeadsPage() {
   const fetchFunnels = async () => {
     try {
       const data = await funnelApi.getAllFunnels();
-      setFunnels((data.funnels || []).map((f: { id: string; slug: string; optin_headline: string }) => ({
-        id: f.id,
-        slug: f.slug,
-        optinHeadline: f.optin_headline,
-      })));
+      const list = (data.funnels || []) as Array<{
+        id: string;
+        slug: string;
+        optin_headline: string;
+      }>;
+      setFunnels(list.map((f) => ({ id: f.id, slug: f.slug, optinHeadline: f.optin_headline })));
     } catch (err) {
       logError('dashboard/leads', err, { step: 'failed_to_fetch_funnels' });
     }
@@ -123,11 +120,7 @@ export default function LeadsPage() {
       const { blob, filename } = await leadsApi.exportLeads({
         funnelId: selectedFunnel !== 'all' ? selectedFunnel : undefined,
         qualified:
-          qualifiedFilter === 'all'
-            ? undefined
-            : qualifiedFilter === 'qualified'
-              ? true
-              : false,
+          qualifiedFilter === 'all' ? undefined : qualifiedFilter === 'qualified' ? true : false,
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -143,11 +136,14 @@ export default function LeadsPage() {
   };
 
   // Memoize stats calculations to avoid recomputing on every render
-  const { qualifiedCount, unqualifiedCount, pendingCount } = useMemo(() => ({
-    qualifiedCount: leads.filter(l => l.isQualified === true).length,
-    unqualifiedCount: leads.filter(l => l.isQualified === false).length,
-    pendingCount: leads.filter(l => l.isQualified === null).length,
-  }), [leads]);
+  const { qualifiedCount, unqualifiedCount, pendingCount } = useMemo(
+    () => ({
+      qualifiedCount: leads.filter((l) => l.isQualified === true).length,
+      unqualifiedCount: leads.filter((l) => l.isQualified === false).length,
+      pendingCount: leads.filter((l) => l.isQualified === null).length,
+    }),
+    [leads]
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -158,9 +154,7 @@ export default function LeadsPage() {
             <Users className="h-6 w-6" />
             Leads
           </h1>
-          <p className="text-muted-foreground">
-            {total} total leads captured
-          </p>
+          <p className="text-muted-foreground">{total} total leads captured</p>
         </div>
         <button
           onClick={handleExport}
@@ -224,7 +218,9 @@ export default function LeadsPage() {
           >
             <Filter className="h-4 w-4" />
             Filters
-            <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+            />
           </button>
         </div>
 
@@ -319,14 +315,14 @@ export default function LeadsPage() {
                     <td className="px-4 py-3">
                       <div>
                         <p className="font-medium">{lead.email}</p>
-                        {lead.name && (
-                          <p className="text-sm text-muted-foreground">{lead.name}</p>
-                        )}
+                        {lead.name && <p className="text-sm text-muted-foreground">{lead.name}</p>}
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm">
-                        <p className="truncate max-w-[200px]">{lead.leadMagnetTitle || 'Unknown'}</p>
+                        <p className="truncate max-w-[200px]">
+                          {lead.leadMagnetTitle || 'Unknown'}
+                        </p>
                         <p className="text-muted-foreground">/{lead.funnelSlug}</p>
                       </div>
                     </td>
@@ -374,14 +370,14 @@ export default function LeadsPage() {
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
                   className="rounded-lg border px-3 py-1 text-sm disabled:opacity-50"
                 >
                   Previous
                 </button>
                 <button
-                  onClick={() => setPage(p => p + 1)}
+                  onClick={() => setPage((p) => p + 1)}
                   disabled={(page + 1) * limit >= total}
                   className="rounded-lg border px-3 py-1 text-sm disabled:opacity-50"
                 >
@@ -395,14 +391,18 @@ export default function LeadsPage() {
 
       {/* Lead Detail Modal */}
       {selectedLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedLead(null)}>
-          <div className="w-full max-w-lg rounded-lg bg-background p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setSelectedLead(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-lg bg-background p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-4 flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-semibold">{selectedLead.email}</h3>
-                {selectedLead.name && (
-                  <p className="text-muted-foreground">{selectedLead.name}</p>
-                )}
+                {selectedLead.name && <p className="text-muted-foreground">{selectedLead.name}</p>}
               </div>
               <button
                 onClick={() => setSelectedLead(null)}
@@ -457,19 +457,24 @@ export default function LeadsPage() {
                 </div>
               )}
 
-              {selectedLead.qualificationAnswers && Object.keys(selectedLead.qualificationAnswers).length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Qualification Answers</p>
-                  <div className="mt-2 space-y-2">
-                    {Object.entries(selectedLead.qualificationAnswers).map(([question, answer]) => (
-                      <div key={question} className="rounded-lg bg-muted/50 p-3">
-                        <p className="text-sm">{question}</p>
-                        <p className="mt-1 font-medium capitalize">{answer}</p>
-                      </div>
-                    ))}
+              {selectedLead.qualificationAnswers &&
+                Object.keys(selectedLead.qualificationAnswers).length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Qualification Answers
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {Object.entries(selectedLead.qualificationAnswers).map(
+                        ([question, answer]) => (
+                          <div key={question} className="rounded-lg bg-muted/50 p-3">
+                            <p className="text-sm">{question}</p>
+                            <p className="mt-1 font-medium capitalize">{answer}</p>
+                          </div>
+                        )
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               <div className="flex gap-2 pt-4">
                 <a

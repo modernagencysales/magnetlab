@@ -118,7 +118,7 @@ export function AnalyticsOverview() {
     setError(null);
     try {
       const json = await analyticsApi.getOverview(selectedRange);
-      setData(json);
+      setData(json as OverviewData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analytics');
     } finally {
@@ -252,7 +252,8 @@ export function AnalyticsOverview() {
                   <p className="text-sm text-muted-foreground">Knowledge Entries</p>
                   <p className="mt-1 text-2xl font-bold">{data.contentStats.knowledgeEntries}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {data.contentStats.transcripts} transcript{data.contentStats.transcripts !== 1 ? 's' : ''}
+                    {data.contentStats.transcripts} transcript
+                    {data.contentStats.transcripts !== 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
@@ -263,13 +264,19 @@ export function AnalyticsOverview() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-muted-foreground" />
-              <Link href="/analytics/engagement" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link
+                href="/analytics/engagement"
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
                 View engagement metrics →
               </Link>
             </div>
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-muted-foreground" />
-              <Link href="/analytics/email" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link
+                href="/analytics/email"
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
                 View email analytics →
               </Link>
             </div>
@@ -294,9 +301,7 @@ export function AnalyticsOverview() {
                           <BarChart3 className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium">
-                            {getFunnelName(funnel)}
-                          </p>
+                          <p className="text-sm font-medium">{getFunnelName(funnel)}</p>
                           <p className="text-xs text-muted-foreground">
                             /{funnel.slug}
                             {!funnel.is_published && (
@@ -323,8 +328,7 @@ export function AnalyticsOverview() {
           <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-medium">No analytics data yet</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Once visitors view your funnel pages and submit leads, your metrics
-            will appear here.
+            Once visitors view your funnel pages and submit leads, your metrics will appear here.
           </p>
         </div>
       )}

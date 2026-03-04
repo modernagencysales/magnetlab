@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Loader2, MessageCircle, Send, Lightbulb, Quote } from 'lucide-react';
-import type { LeadMagnetConcept, ContentExtractionQuestion, LeadMagnetArchetype, IdeationSources, BusinessContext } from '@/lib/types/lead-magnet';
+import type {
+  LeadMagnetConcept,
+  ContentExtractionQuestion,
+  LeadMagnetArchetype,
+  IdeationSources,
+  BusinessContext,
+} from '@/lib/types/lead-magnet';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 
 import { logError } from '@/lib/utils/logger';
@@ -11,7 +17,11 @@ import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 interface ExtractionStepProps {
   concept: LeadMagnetConcept;
   initialAnswers: Record<string, string>;
-  onComplete: (answers: Record<string, string>, archetype: LeadMagnetArchetype, concept: LeadMagnetConcept) => void;
+  onComplete: (
+    answers: Record<string, string>,
+    archetype: LeadMagnetArchetype,
+    concept: LeadMagnetConcept
+  ) => void;
   onBack: () => void;
   loading: boolean;
   ideationSources?: IdeationSources;
@@ -19,7 +29,16 @@ interface ExtractionStepProps {
 }
 
 // Map of question IDs to relevant transcript insight types
-const QUESTION_INSIGHT_MAPPING: Record<string, ('painPoints' | 'frequentQuestions' | 'transformationOutcomes' | 'objections' | 'languagePatterns')[]> = {
+const QUESTION_INSIGHT_MAPPING: Record<
+  string,
+  (
+    | 'painPoints'
+    | 'frequentQuestions'
+    | 'transformationOutcomes'
+    | 'objections'
+    | 'languagePatterns'
+  )[]
+> = {
   // single-breakdown
   example: ['painPoints', 'transformationOutcomes'],
   walkthrough: ['languagePatterns'],
@@ -114,14 +133,16 @@ export function ExtractionStep({
             concept,
             businessContext,
           });
-          if (data.questions?.length > 0) {
+          if ((data.questions?.length ?? 0) > 0) {
             setQuestions(data.questions as ContentExtractionQuestion[]);
             setLoadingQuestions(false);
             return;
           }
         }
 
-        const data = await leadMagnetApi.getExtractionQuestions(concept.archetype) as { questions?: ContentExtractionQuestion[] };
+        const data = (await leadMagnetApi.getExtractionQuestions(concept.archetype)) as {
+          questions?: ContentExtractionQuestion[];
+        };
         setQuestions(data.questions ?? []);
       } catch (error) {
         logError('wizard/extraction', error, { step: 'failed_to_fetch_questions' });
@@ -159,8 +180,14 @@ export function ExtractionStep({
         relevantInsights.painPoints = transcriptInsights.painPoints.slice(0, 2);
       } else if (type === 'frequentQuestions' && transcriptInsights.frequentQuestions?.length) {
         relevantInsights.frequentQuestions = transcriptInsights.frequentQuestions.slice(0, 2);
-      } else if (type === 'transformationOutcomes' && transcriptInsights.transformationOutcomes?.length) {
-        relevantInsights.transformationOutcomes = transcriptInsights.transformationOutcomes.slice(0, 2);
+      } else if (
+        type === 'transformationOutcomes' &&
+        transcriptInsights.transformationOutcomes?.length
+      ) {
+        relevantInsights.transformationOutcomes = transcriptInsights.transformationOutcomes.slice(
+          0,
+          2
+        );
       } else if (type === 'objections' && transcriptInsights.objections?.length) {
         relevantInsights.objections = transcriptInsights.objections.slice(0, 2);
       } else if (type === 'languagePatterns' && transcriptInsights.languagePatterns?.length) {
@@ -220,7 +247,8 @@ export function ExtractionStep({
           </div>
           <h1 className="text-3xl font-semibold">{concept.title}</h1>
           <p className="mt-2 text-muted-foreground">
-            Let&apos;s extract your unique expertise. Answer these questions to create genuinely valuable content.
+            Let&apos;s extract your unique expertise. Answer these questions to create genuinely
+            valuable content.
           </p>
         </div>
         <button
@@ -262,7 +290,9 @@ export function ExtractionStep({
           return (
             <div
               key={question.id}
-              ref={(el) => { questionRefs.current[question.id] = el; }}
+              ref={(el) => {
+                questionRefs.current[question.id] = el;
+              }}
               className={`rounded-xl border p-5 transition-all ${
                 isActive ? 'border-primary bg-card shadow-lg' : 'bg-muted/30'
               }`}
@@ -300,32 +330,36 @@ export function ExtractionStep({
                         </ul>
                       </div>
                     )}
-                    {relevantInsights.frequentQuestions && relevantInsights.frequentQuestions.length > 0 && (
-                      <div>
-                        <span className="font-medium">Questions prospects ask:</span>
-                        <ul className="mt-1 space-y-1">
-                          {relevantInsights.frequentQuestions.map((q, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="shrink-0">•</span>
-                              <span>{q.question}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {relevantInsights.transformationOutcomes && relevantInsights.transformationOutcomes.length > 0 && (
-                      <div>
-                        <span className="font-medium">Transformations desired:</span>
-                        <ul className="mt-1 space-y-1">
-                          {relevantInsights.transformationOutcomes.map((t, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="shrink-0">•</span>
-                              <span>{t.currentState} → {t.desiredState}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    {relevantInsights.frequentQuestions &&
+                      relevantInsights.frequentQuestions.length > 0 && (
+                        <div>
+                          <span className="font-medium">Questions prospects ask:</span>
+                          <ul className="mt-1 space-y-1">
+                            {relevantInsights.frequentQuestions.map((q, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="shrink-0">•</span>
+                                <span>{q.question}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    {relevantInsights.transformationOutcomes &&
+                      relevantInsights.transformationOutcomes.length > 0 && (
+                        <div>
+                          <span className="font-medium">Transformations desired:</span>
+                          <ul className="mt-1 space-y-1">
+                            {relevantInsights.transformationOutcomes.map((t, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="shrink-0">•</span>
+                                <span>
+                                  {t.currentState} → {t.desiredState}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     {relevantInsights.objections && relevantInsights.objections.length > 0 && (
                       <div>
                         <span className="font-medium">Objections heard:</span>
@@ -339,18 +373,22 @@ export function ExtractionStep({
                         </ul>
                       </div>
                     )}
-                    {relevantInsights.languagePatterns && relevantInsights.languagePatterns.length > 0 && (
-                      <div>
-                        <span className="font-medium">Language to use:</span>
-                        <div className="mt-1 flex flex-wrap gap-1.5">
-                          {relevantInsights.languagePatterns.map((pattern, i) => (
-                            <span key={i} className="rounded-full bg-amber-200/50 px-2 py-0.5 text-xs dark:bg-amber-800/50">
-                              {pattern}
-                            </span>
-                          ))}
+                    {relevantInsights.languagePatterns &&
+                      relevantInsights.languagePatterns.length > 0 && (
+                        <div>
+                          <span className="font-medium">Language to use:</span>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {relevantInsights.languagePatterns.map((pattern, i) => (
+                              <span
+                                key={i}
+                                className="rounded-full bg-amber-200/50 px-2 py-0.5 text-xs dark:bg-amber-800/50"
+                              >
+                                {pattern}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                   <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
                     Use these real insights to inform your answer
@@ -360,9 +398,7 @@ export function ExtractionStep({
 
               <textarea
                 value={answers[question.id] || ''}
-                onChange={(e) =>
-                  setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))
-                }
+                onChange={(e) => setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))}
                 placeholder={isActive ? 'Type your answer here...' : ''}
                 rows={isActive ? 4 : 2}
                 disabled={!isActive}

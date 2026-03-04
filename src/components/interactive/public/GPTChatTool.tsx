@@ -141,7 +141,7 @@ export function GPTChatTool({ config, leadMagnetId, theme, primaryColor }: GPTCh
           leadMagnetId,
           sessionToken,
           message: userMessage.content,
-          chatId,
+          chatId: chatId ?? undefined,
         },
         abortRef.current.signal
       );
