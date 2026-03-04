@@ -438,11 +438,6 @@ export async function importPosts(input: {
 
 // ─── ingest-knowledge ───────────────────────────────────────────────────────
 
-const _VALID_KNOWLEDGE_TYPES = [
-  'how_to', 'insight', 'story', 'question',
-  'objection', 'mistake', 'decision', 'market_intel',
-] as const;
-
 function getOpenAIClientForEmbeddings(): OpenAI {
   const heliconeKey = process.env.HELICONE_API_KEY;
   const config: ConstructorParameters<typeof OpenAI>[0] = {};
