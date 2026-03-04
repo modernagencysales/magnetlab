@@ -92,6 +92,7 @@ export function FunnelBuilder({
   const [homepageUrl, setHomepageUrl] = useState(existingFunnel?.homepageUrl || '');
   const [homepageLabel, setHomepageLabel] = useState(existingFunnel?.homepageLabel || '');
   const [sendResourceEmail, setSendResourceEmail] = useState(existingFunnel?.sendResourceEmail ?? true);
+  const [bootcampInviteCode, setBootcampInviteCode] = useState(existingFunnel?.bootcampInviteCode ?? '');
   const [thankyouLayout, setThankyouLayout] = useState<ThankyouLayout>(existingFunnel?.thankyouLayout || 'survey_first');
 
   // Form state for theme
@@ -221,6 +222,7 @@ export function FunnelBuilder({
         homepageUrl: homepageUrl || null,
         homepageLabel: homepageLabel || null,
         sendResourceEmail,
+        bootcampInviteCode: bootcampInviteCode || null,
         thankyouLayout,
         theme,
         primaryColor,
@@ -512,6 +514,8 @@ export function FunnelBuilder({
                   setHomepageLabel={setHomepageLabel}
                   sendResourceEmail={sendResourceEmail}
                   setSendResourceEmail={setSendResourceEmail}
+                  bootcampInviteCode={bootcampInviteCode}
+                  setBootcampInviteCode={setBootcampInviteCode}
                   layout={thankyouLayout}
                   setLayout={setThankyouLayout}
                 />

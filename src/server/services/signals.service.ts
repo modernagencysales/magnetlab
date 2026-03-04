@@ -10,7 +10,6 @@ import * as signalsRepo from '@/server/repositories/signals.repo';
 
 const MAX_KEYWORDS = 20;
 const MAX_COMPANIES = 10;
-const MAX_LEADS_BULK = 200;
 
 // ─── Keywords ─────────────────────────────────────────────────────────────
 

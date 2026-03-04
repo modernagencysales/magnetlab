@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       run_id: result.runId,
       message: `Broadcasting to ${target_profile_ids.length} team members`,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

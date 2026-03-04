@@ -18,8 +18,6 @@ import {
   type FunnelPage,
   type FunnelPageSection,
   type QualificationQuestion,
-  type PageLocation,
-  type AnswerType,
 } from '@/lib/types/funnel';
 import { resolveQuestionsForFunnel } from '@/lib/services/qualification';
 import { normalizeImageUrl, normalizeSectionConfigImageUrls } from '@/lib/utils/normalize-image-url';

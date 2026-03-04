@@ -35,7 +35,7 @@ export async function create(
 ) {
   let embedding: number[] | null = null;
   try {
-    const embeddingText = createTemplateEmbeddingText({ name: payload.name, category: payload.category, description: payload.description, structure: payload.structure, use_cases: payload.use_cases, tags: payload.tags });
+    const embeddingText = createTemplateEmbeddingText({ name: payload.name, category: payload.category, description: payload.description, structure: payload.structure, use_cases: payload.use_cases as string[] | undefined, tags: payload.tags as string[] | undefined });
     embedding = await generateEmbedding(embeddingText);
   } catch {
     // continue without embedding
@@ -123,7 +123,7 @@ export async function bulkImport(userId: string, templates: Array<{ name: string
   for (const template of templates) {
     let embedding: number[] | null = null;
     try {
-      const embeddingText = createTemplateEmbeddingText(template);
+      const embeddingText = createTemplateEmbeddingText({ ...template, use_cases: template.use_cases as string[] | undefined, tags: template.tags as string[] | undefined });
       embedding = await generateEmbedding(embeddingText);
     } catch {
       // continue without embedding

@@ -30,7 +30,7 @@ import {
   type ReadinessGoal,
 } from '@/lib/ai/content-pipeline/knowledge-readiness';
 import type { KnowledgeCategory, KnowledgeSpeaker, KnowledgeType } from '@/lib/types/content-pipeline';
-import type { KnowledgeEntry, KnowledgeUpdateInput } from '@/server/repositories/knowledge.repo';
+import type { KnowledgeEntry } from '@/server/repositories/knowledge.repo';
 
 // ─── Re-export types routes may need ──────────────────────────────────────
 export type { KnowledgeSortOption, ReadinessGoal };

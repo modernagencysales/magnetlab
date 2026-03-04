@@ -9,7 +9,6 @@ import { polishPost as aiPolishPost } from '@/lib/ai/content-pipeline/post-polis
 import { getUserLinkedInPublisher } from '@/lib/integrations/linkedin-publisher';
 import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 import { requireTeamScope } from '@/lib/utils/team-context';
-import { logError } from '@/lib/utils/logger';
 import type { DataScope } from '@/lib/utils/team-context';
 import type { PipelinePost, PostStatus, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 import type {
