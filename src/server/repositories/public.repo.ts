@@ -143,7 +143,7 @@ export async function findLeadMagnetForLead(leadMagnetId: string) {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('lead_magnets')
-    .select('title, external_url, polished_content, extracted_content')
+    .select('title, external_url, polished_content, extracted_content, interactive_config')
     .eq('id', leadMagnetId)
     .single();
   return data ?? null;
