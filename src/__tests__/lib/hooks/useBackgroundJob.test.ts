@@ -17,14 +17,22 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useBackgroundJob } from '@/frontend/hooks/useBackgroundJob';
 
-// Mock fetch for job status polling
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
+// Mock the API layer (hook uses getJobStatus, not fetch directly)
+jest.mock('@/frontend/api/jobs', () => ({
+  getJobStatus: jest.fn(),
+}));
+
+jest.mock('@/lib/utils/logger', () => ({
+  logError: jest.fn(),
+}));
+
+import { getJobStatus } from '@/frontend/api/jobs';
+const mockGetJobStatus = getJobStatus as jest.Mock;
 
 describe('useBackgroundJob', () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    mockFetch.mockClear();
+    mockGetJobStatus.mockClear();
   });
 
   afterEach(() => {
@@ -47,10 +55,7 @@ describe('useBackgroundJob', () => {
 
       const { result } = renderHook(() => useBackgroundJob({ onComplete }));
 
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ status: 'completed', result: testResult }),
-      });
+      mockGetJobStatus.mockResolvedValue({ status: 'completed', result: testResult });
 
       await act(async () => {
         result.current.startPolling('test-job-id');
@@ -72,10 +77,7 @@ describe('useBackgroundJob', () => {
 
       const { result } = renderHook(() => useBackgroundJob({ onError }));
 
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ status: 'failed', error: errorMessage }),
-      });
+      mockGetJobStatus.mockResolvedValue({ status: 'failed', error: errorMessage });
 
       await act(async () => {
         result.current.startPolling('test-job-id');
@@ -169,11 +171,8 @@ describe('useBackgroundJob', () => {
 
       const { result } = renderHook(() => useBackgroundJob({ timeout: shortTimeout, onError }));
 
-      // Mock fetch to always return 'processing' status (job never completes)
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ status: 'processing' }),
-      });
+      // Mock to always return 'processing' status (job never completes)
+      mockGetJobStatus.mockResolvedValue({ status: 'processing' });
 
       act(() => {
         result.current.startPolling('test-job-id');
@@ -226,23 +225,12 @@ describe('useBackgroundJob', () => {
 
       // Simulate: first few polls return 'processing', then 'failed' with backend error
       let pollCount = 0;
-      mockFetch.mockImplementation(() => {
+      mockGetJobStatus.mockImplementation(() => {
         pollCount++;
-        // After 3 polls (simulating 6 seconds), backend marks job as failed
         if (pollCount >= 3) {
-          return Promise.resolve({
-            ok: true,
-            json: () =>
-              Promise.resolve({
-                status: 'failed',
-                error: backendErrorMessage,
-              }),
-          });
+          return Promise.resolve({ status: 'failed', error: backendErrorMessage });
         }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ status: 'processing' }),
-        });
+        return Promise.resolve({ status: 'processing' });
       });
 
       await act(async () => {
@@ -290,18 +278,12 @@ describe('useBackgroundJob', () => {
 
       // First poll returns 'processing', second returns 'completed'
       let pollCount = 0;
-      mockFetch.mockImplementation(() => {
+      mockGetJobStatus.mockImplementation(() => {
         pollCount++;
         if (pollCount >= 2) {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ status: 'completed', result: testResult }),
-          });
+          return Promise.resolve({ status: 'completed', result: testResult });
         }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ status: 'processing' }),
-        });
+        return Promise.resolve({ status: 'processing' });
       });
 
       await act(async () => {

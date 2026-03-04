@@ -7,7 +7,7 @@ jest.mock('next/server', () => {
   const actual = jest.requireActual('next/server');
   return {
     ...actual,
-    after: jest.fn((fn: () => void) => {
+    after: jest.fn((_fn: () => void) => {
       // No-op in test — don't run side effects
     }),
   };
