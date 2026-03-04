@@ -1,16 +1,28 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Loader2, Sparkles, ExternalLink, CheckCircle2, Clock, FileText, PenLine } from 'lucide-react';
+import {
+  Loader2,
+  Sparkles,
+  ExternalLink,
+  CheckCircle2,
+  Clock,
+  FileText,
+  PenLine,
+} from 'lucide-react';
 import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
-import { useBackgroundJob } from '@/lib/hooks/useBackgroundJob';
+import { useBackgroundJob } from '@/frontend/hooks/useBackgroundJob';
 import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 interface ContentPageTabProps {
   leadMagnet: LeadMagnet;
   username: string | null;
   slug: string | null;
-  onPolished: (polishedContent: PolishedContent, polishedAt: string, extractedContent?: ExtractedContent) => void;
+  onPolished: (
+    polishedContent: PolishedContent,
+    polishedAt: string,
+    extractedContent?: ExtractedContent
+  ) => void;
 }
 
 interface ContentJobResult {
@@ -25,13 +37,15 @@ function createBlankContent(title: string): PolishedContent {
     polishedAt: new Date().toISOString(),
     title,
     heroSummary: '',
-    sections: [{
-      id: `section-${Date.now()}`,
-      sectionName: 'Introduction',
-      introduction: '',
-      keyTakeaway: '',
-      blocks: [{ type: 'paragraph', content: '' }],
-    }],
+    sections: [
+      {
+        id: `section-${Date.now()}`,
+        sectionName: 'Introduction',
+        introduction: '',
+        keyTakeaway: '',
+        blocks: [{ type: 'paragraph', content: '' }],
+      },
+    ],
     metadata: { wordCount: 0, readingTimeMinutes: 0 },
   };
 }
@@ -39,9 +53,12 @@ function createBlankContent(title: string): PolishedContent {
 export function ContentPageTab({ leadMagnet, username, slug, onPolished }: ContentPageTabProps) {
   const [error, setError] = useState<string | null>(null);
 
-  const onComplete = useCallback((result: ContentJobResult) => {
-    onPolished(result.polishedContent, result.polishedAt, result.extractedContent);
-  }, [onPolished]);
+  const onComplete = useCallback(
+    (result: ContentJobResult) => {
+      onPolished(result.polishedContent, result.polishedAt, result.extractedContent);
+    },
+    [onPolished]
+  );
 
   const onError = useCallback((errorMsg: string) => {
     setError(errorMsg);
@@ -89,9 +106,12 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       try {
         const now = new Date().toISOString();
         const contentToSave = { ...blank, polishedAt: now };
-        const { polishedContent: saved } = await leadMagnetApi.updateLeadMagnetContent(leadMagnet.id, {
-          polishedContent: contentToSave,
-        });
+        const { polishedContent: saved } = await leadMagnetApi.updateLeadMagnetContent(
+          leadMagnet.id,
+          {
+            polishedContent: contentToSave,
+          }
+        );
         onPolished(saved as PolishedContent, now);
         // Redirect to inline editor
         if (contentUrl) {
@@ -219,9 +239,7 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
               <Clock className="h-3.5 w-3.5" />
               {polished.metadata.readingTimeMinutes} min read
             </span>
-            <span>
-              {polished.metadata.wordCount.toLocaleString()} words
-            </span>
+            <span>{polished.metadata.wordCount.toLocaleString()} words</span>
           </div>
         </div>
       )}

@@ -42,7 +42,10 @@ export function ThemeEditor({
   onBrandApplied,
 }: ThemeEditorProps) {
   const [applyingBrand, setApplyingBrand] = useState(false);
-  const [brandMessage, setBrandMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [brandMessage, setBrandMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   const handleReapplyBrandKit = async () => {
     if (!funnelId) return;
@@ -50,9 +53,14 @@ export function ThemeEditor({
     setBrandMessage(null);
 
     try {
-      const data = await funnelApi.reapplyBrand(funnelId) as {
+      const data = (await funnelApi.reapplyBrand(funnelId)) as {
         applied?: string[];
-        values?: { theme?: FunnelTheme; primaryColor?: string; backgroundStyle?: BackgroundStyle; logoUrl?: string | null };
+        values?: {
+          theme?: FunnelTheme;
+          primaryColor?: string;
+          backgroundStyle?: BackgroundStyle;
+          logoUrl?: string | null;
+        };
         error?: string;
       };
 
@@ -121,9 +129,7 @@ export function ThemeEditor({
 
       {/* Primary Color */}
       <div className="space-y-3">
-        <label className="block text-sm font-medium">
-          Primary Color
-        </label>
+        <label className="block text-sm font-medium">Primary Color</label>
         <div className="flex flex-wrap gap-2">
           {PRESET_COLORS.map((color) => (
             <button
@@ -162,9 +168,7 @@ export function ThemeEditor({
 
       {/* Background Style */}
       <div className="space-y-3">
-        <label className="block text-sm font-medium">
-          Background Style
-        </label>
+        <label className="block text-sm font-medium">Background Style</label>
         <div className="grid grid-cols-3 gap-3">
           {(['solid', 'gradient', 'pattern'] as const).map((style) => (
             <button
@@ -180,14 +184,16 @@ export function ThemeEditor({
               <div
                 className={`h-12 rounded mb-2 ${
                   style === 'solid'
-                    ? theme === 'dark' ? 'bg-zinc-900' : 'bg-zinc-100'
-                    : style === 'gradient'
                     ? theme === 'dark'
-                      ? 'bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900'
-                      : 'bg-gradient-to-br from-zinc-100 via-white to-zinc-100'
-                    : theme === 'dark'
-                    ? 'bg-zinc-900 bg-[radial-gradient(circle_at_center,_rgba(139,92,246,0.1)_0%,_transparent_50%)]'
-                    : 'bg-zinc-100 bg-[radial-gradient(circle_at_center,_rgba(139,92,246,0.1)_0%,_transparent_50%)]'
+                      ? 'bg-zinc-900'
+                      : 'bg-zinc-100'
+                    : style === 'gradient'
+                      ? theme === 'dark'
+                        ? 'bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900'
+                        : 'bg-gradient-to-br from-zinc-100 via-white to-zinc-100'
+                      : theme === 'dark'
+                        ? 'bg-zinc-900 bg-[radial-gradient(circle_at_center,_rgba(139,92,246,0.1)_0%,_transparent_50%)]'
+                        : 'bg-zinc-100 bg-[radial-gradient(circle_at_center,_rgba(139,92,246,0.1)_0%,_transparent_50%)]'
                 }`}
               />
               <span className="text-sm font-medium capitalize">{style}</span>
@@ -198,9 +204,7 @@ export function ThemeEditor({
 
       {/* Logo URL */}
       <div className="space-y-3">
-        <label className="block text-sm font-medium">
-          Logo URL (Optional)
-        </label>
+        <label className="block text-sm font-medium">Logo URL (Optional)</label>
 
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
@@ -226,6 +230,7 @@ export function ThemeEditor({
 
         {logoUrl && (
           <div className="mt-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logoUrl}
               alt="Logo preview"
@@ -262,10 +267,13 @@ export function ThemeEditor({
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Overwrite this funnel&apos;s theme, colors, fonts, and logo with your current brand kit settings.
+            Overwrite this funnel&apos;s theme, colors, fonts, and logo with your current brand kit
+            settings.
           </p>
           {brandMessage && (
-            <p className={`text-xs ${brandMessage.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            <p
+              className={`text-xs ${brandMessage.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+            >
               {brandMessage.text}
             </p>
           )}
@@ -275,7 +283,8 @@ export function ThemeEditor({
       {/* Preview hint */}
       <div className="rounded-lg bg-muted/50 p-4">
         <p className="text-sm text-muted-foreground">
-          Changes will be reflected in the preview panel. Your theme settings will be saved when you click &quot;Save Changes&quot;.
+          Changes will be reflected in the preview panel. Your theme settings will be saved when you
+          click &quot;Save Changes&quot;.
         </p>
       </div>
     </div>

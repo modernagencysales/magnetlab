@@ -110,7 +110,6 @@ export async function updateLeadMagnet(
   body: Record<string, unknown>
 ) {
   // Strip immutable fields
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id: _id, user_id: _userId, team_id: _teamId, created_at: _createdAt, ...updates } = body;
   return leadMagnetsRepo.updateLeadMagnet(scope, id, updates);
 }

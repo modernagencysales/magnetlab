@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Image from 'next/image';
 import { LibrarySearch } from './LibrarySearch';
 import { LibraryGrid } from './LibraryGrid';
 import { SurveyPromptCard } from './SurveyPromptCard';
@@ -73,10 +74,7 @@ export function LibraryPageClient({
 
   return (
     <div
-      className={cn(
-        'min-h-screen',
-        isDark ? 'bg-gray-950 text-white' : 'bg-white text-gray-900'
-      )}
+      className={cn('min-h-screen', isDark ? 'bg-gray-950 text-white' : 'bg-white text-gray-900')}
       style={{ '--primary-color': primaryColor } as React.CSSProperties}
     >
       {/* Header */}
@@ -90,6 +88,7 @@ export function LibraryPageClient({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoUrl} alt="" className="h-8 w-auto" />
               ) : (
                 <span className="text-2xl">{library.icon}</span>
@@ -104,9 +103,11 @@ export function LibraryPageClient({
               </div>
             </div>
             {userAvatar && (
-              <img
+              <Image
                 src={userAvatar}
                 alt={userName || ''}
+                width={40}
+                height={40}
                 className="h-10 w-10 rounded-full"
               />
             )}
@@ -118,12 +119,7 @@ export function LibraryPageClient({
       <main className="mx-auto max-w-6xl px-4 py-8">
         {/* Description */}
         {library.description && (
-          <p
-            className={cn(
-              'mb-8 text-lg',
-              isDark ? 'text-gray-300' : 'text-gray-600'
-            )}
-          >
+          <p className={cn('mb-8 text-lg', isDark ? 'text-gray-300' : 'text-gray-600')}>
             {library.description}
           </p>
         )}

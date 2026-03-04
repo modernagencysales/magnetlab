@@ -18,7 +18,11 @@ import {
 
 import { logError } from '@/lib/utils/logger';
 import * as funnelIntegrationsApi from '@/frontend/api/funnel-integrations';
-import * as integrationsApi from '@/frontend/api/integrations';
+import {
+  getEmailMarketingLists,
+  getEmailMarketingTags,
+  getHeyReachCampaigns,
+} from '@/frontend/api/integrations';
 
 const PROVIDER_LABELS: Record<string, string> = {
   kit: 'Kit (ConvertKit)',
@@ -199,13 +203,7 @@ function AddIntegrationForm({
   useEffect(() => {
     async function fetchLists() {
       try {
-        const response = await fetch(
-          `/api/integrations/email-marketing/lists?provider=${provider}`
-        );
-
-        if (!response.ok) throw new Error('Failed to fetch lists');
-
-        const data = await response.json();
+        const data = await getEmailMarketingLists(provider);
         setLists(data.lists || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch lists');
@@ -230,12 +228,7 @@ function AddIntegrationForm({
       setSelectedTagName('');
 
       try {
-        const url = `/api/integrations/email-marketing/tags?provider=${provider}&listId=${listId}`;
-        const response = await fetch(url);
-
-        if (!response.ok) throw new Error('Failed to fetch tags');
-
-        const data = await response.json();
+        const data = await getEmailMarketingTags(provider, listId);
         setTags(data.tags || []);
       } catch (err) {
         logError('funnel-integrations', err, { step: 'fetch_tags_error' });
@@ -615,7 +608,7 @@ function HeyReachFunnelToggle({
     async function fetchCampaigns() {
       setLoadingCampaigns(true);
       try {
-        const data = await integrationsApi.getHeyReachCampaigns();
+        const data = await getHeyReachCampaigns();
         setCampaigns((data.campaigns || []) as HeyReachCampaign[]);
       } catch (err) {
         logError('heyreach-funnel-toggle', err, { step: 'fetch_campaigns_error' });

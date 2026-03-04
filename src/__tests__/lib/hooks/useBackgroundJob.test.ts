@@ -15,7 +15,7 @@
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useBackgroundJob } from '@/lib/hooks/useBackgroundJob';
+import { useBackgroundJob } from '@/frontend/hooks/useBackgroundJob';
 
 // Mock fetch for job status polling
 const mockFetch = jest.fn();
@@ -45,9 +45,7 @@ describe('useBackgroundJob', () => {
       const onComplete = jest.fn();
       const testResult = { ideas: ['idea1', 'idea2'] };
 
-      const { result } = renderHook(() =>
-        useBackgroundJob({ onComplete })
-      );
+      const { result } = renderHook(() => useBackgroundJob({ onComplete }));
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -72,9 +70,7 @@ describe('useBackgroundJob', () => {
       const onError = jest.fn();
       const errorMessage = 'AI generation failed';
 
-      const { result } = renderHook(() =>
-        useBackgroundJob({ onError })
-      );
+      const { result } = renderHook(() => useBackgroundJob({ onError }));
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -171,9 +167,7 @@ describe('useBackgroundJob', () => {
       const onError = jest.fn();
       const shortTimeout = 5000; // 5 seconds for testing
 
-      const { result } = renderHook(() =>
-        useBackgroundJob({ timeout: shortTimeout, onError })
-      );
+      const { result } = renderHook(() => useBackgroundJob({ timeout: shortTimeout, onError }));
 
       // Mock fetch to always return 'processing' status (job never completes)
       mockFetch.mockResolvedValue({
@@ -238,10 +232,11 @@ describe('useBackgroundJob', () => {
         if (pollCount >= 3) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              status: 'failed',
-              error: backendErrorMessage,
-            }),
+            json: () =>
+              Promise.resolve({
+                status: 'failed',
+                error: backendErrorMessage,
+              }),
           });
         }
         return Promise.resolve({

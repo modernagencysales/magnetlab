@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { getIdeas } from '@/frontend/api/content-pipeline/ideas';
 import type { ContentIdea } from '@/lib/types/content-pipeline';
 
@@ -40,36 +41,61 @@ export function useIdeas(options: UseIdeasOptions): UseIdeasResult {
     initialIdeas,
   } = options;
 
-  const [ideas, setIdeas] = useState<ContentIdea[]>(initialIdeas ?? []);
-  const [allIdeas, setAllIdeas] = useState<ContentIdea[]>(initialIdeas ?? []);
-  const [isLoading, setIsLoading] = useState(initialIdeas === undefined && enabled);
-  const [error, setError] = useState<Error | null>(null);
+  // Stable SWR key — null disables fetching or when initialIdeas are provided
+  const swrKey =
+    enabled && initialIdeas === undefined
+      ? ['ideas', status, pillar, contentType, profileId, teamId, limit]
+      : null;
 
-  const refetch = useCallback(
-    async (silent = false) => {
-      if (!enabled) return;
-      if (!silent) setIsLoading(true);
-      setError(null);
-      try {
-        const fetched = await getIdeas({
-          status,
-          pillar,
-          contentType,
-          teamProfileId: profileId ?? undefined,
-          teamId,
-          limit,
-        });
-        setIdeas(fetched);
-        if (!status) {
-          setAllIdeas(fetched);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error(String(err)));
-      } finally {
-        setIsLoading(false);
+  const { data, error, isLoading, mutate } = useSWR<ContentIdea[]>(
+    swrKey,
+    () =>
+      getIdeas({
+        status,
+        pillar,
+        contentType,
+        teamProfileId: profileId ?? undefined,
+        teamId,
+        limit,
+      }),
+    { revalidateOnFocus: false }
+  );
+
+  // allIdeas is the unfiltered full list — updated on unfilitered fetches
+  const [allIdeas, setAllIdeas] = useState<ContentIdea[]>(initialIdeas ?? []);
+
+  const ideas = data ?? initialIdeas ?? [];
+
+  // Keep allIdeas in sync when there's no status filter
+  useEffect(() => {
+    if (data && !status) {
+      setAllIdeas(data);
+    }
+  }, [data, status]);
+
+  // Sync initialIdeas on mount / change
+  useEffect(() => {
+    if (initialIdeas !== undefined) {
+      setAllIdeas(initialIdeas);
+    }
+  }, [initialIdeas]);
+
+  const setIdeas = useCallback(
+    (updater: React.SetStateAction<ContentIdea[]>) => {
+      if (typeof updater === 'function') {
+        mutate((current) => updater(current ?? []), { revalidate: false });
+      } else {
+        mutate(updater, { revalidate: false });
       }
     },
-    [enabled, profileId, teamId, limit, status, pillar, contentType]
+    [mutate]
+  );
+
+  const refetch = useCallback(
+    async (_silent = false) => {
+      await mutate();
+    },
+    [mutate]
   );
 
   const refetchWriting = useCallback(async () => {
@@ -90,25 +116,13 @@ export function useIdeas(options: UseIdeasOptions): UseIdeasResult {
     }
   }, [enabled, profileId, teamId, limit]);
 
-  useEffect(() => {
-    if (initialIdeas !== undefined) {
-      setIdeas(initialIdeas);
-      setAllIdeas(initialIdeas);
-      setIsLoading(false);
-      return;
-    }
-    if (enabled) {
-      refetch();
-    }
-  }, [enabled, initialIdeas, refetch]);
-
   return {
     ideas,
     allIdeas,
     setIdeas,
     setAllIdeas,
-    isLoading,
-    error,
+    isLoading: initialIdeas !== undefined ? false : isLoading,
+    error: error instanceof Error ? error : error ? new Error(String(error)) : null,
     refetch,
     refetchWriting,
   };

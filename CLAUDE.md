@@ -57,32 +57,33 @@ All client-side API calls and shared client state live under `src/frontend/`: `a
 
 ### Dashboard Routes
 
-| Route | Purpose |
-|-------|---------|
-| `/(dashboard)/create` | 6-step lead magnet creation wizard |
-| `/(dashboard)/create/page-quick` | Quick landing page generator |
-| `/(dashboard)/library` | Lead magnet library (list, search, manage) |
-| `/(dashboard)/library/[id]/funnel` | Funnel builder for a specific lead magnet |
-| `/(dashboard)/leads` | Lead management table with filters |
-| `/(dashboard)/analytics` | Metrics dashboard (Recharts) |
-| `/(dashboard)/pages` | Funnel page management |
-| `/(dashboard)/settings` | Settings hub (redirects to /settings/account) |
-| `/(dashboard)/swipe-file` | Community post inspiration |
+| Route                              | Purpose                                       |
+| ---------------------------------- | --------------------------------------------- |
+| `/(dashboard)/create`              | 6-step lead magnet creation wizard            |
+| `/(dashboard)/create/page-quick`   | Quick landing page generator                  |
+| `/(dashboard)/library`             | Lead magnet library (list, search, manage)    |
+| `/(dashboard)/library/[id]/funnel` | Funnel builder for a specific lead magnet     |
+| `/(dashboard)/leads`               | Lead management table with filters            |
+| `/(dashboard)/analytics`           | Metrics dashboard (Recharts)                  |
+| `/(dashboard)/pages`               | Funnel page management                        |
+| `/(dashboard)/settings`            | Settings hub (redirects to /settings/account) |
+| `/(dashboard)/swipe-file`          | Community post inspiration                    |
 
 ### Settings Routes (Sidebar Navigation)
 
 The settings page uses a nested layout with vertical sidebar navigation and URL-based routing.
 
-| Route | Content |
-|-------|---------|
-| `/settings` | Redirects to `/settings/account` |
-| `/settings/account` | Profile, Username, Subscription, Team Members, Brand Kit summary |
+| Route                    | Content                                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------- |
+| `/settings`              | Redirects to `/settings/account`                                                               |
+| `/settings/account`      | Profile, Username, Subscription, Team Members, Brand Kit summary                               |
 | `/settings/integrations` | LinkedIn, Resend, Email Marketing, CRM, HeyReach, Fathom, Conductor, Tracking Pixels, Webhooks |
-| `/settings/signals` | ICP Configuration, Keyword Monitors, Company Monitors, Competitor Monitoring |
-| `/settings/branding` | Branding (6-card accordion), Page Defaults (video, template), White Label (Pro+) |
-| `/settings/developer` | API Keys, Webhooks, Documentation |
+| `/settings/signals`      | ICP Configuration, Keyword Monitors, Company Monitors, Competitor Monitoring                   |
+| `/settings/branding`     | Branding (6-card accordion), Page Defaults (video, template), White Label (Pro+)               |
+| `/settings/developer`    | API Keys, Webhooks, Documentation                                                              |
 
 Key files:
+
 - `src/app/(dashboard)/settings/layout.tsx` — shared layout with `SettingsNav` sidebar
 - `src/components/settings/SettingsNav.tsx` — sidebar nav (client component, uses `usePathname()`)
 - `src/components/settings/AccountSettings.tsx` — account page wrapper
@@ -92,11 +93,11 @@ Key files:
 
 ### Public Routes
 
-| Route | Purpose |
-|-------|---------|
-| `/p/[username]/[slug]` | Public opt-in/landing page |
+| Route                           | Purpose                    |
+| ------------------------------- | -------------------------- |
+| `/p/[username]/[slug]`          | Public opt-in/landing page |
 | `/p/[username]/[slug]/thankyou` | Post-opt-in thank you page |
-| `/p/[username]/[slug]/content` | Hosted lead magnet content |
+| `/p/[username]/[slug]/content`  | Hosted lead magnet content |
 
 ### API Routes (57 handlers)
 
@@ -124,7 +125,7 @@ Supabase PostgreSQL, 14 migrations. Tables:
 - `user_integrations` -- connected third-party accounts (encrypted keys)
 - `polished_content` -- AI-polished versions of content
 
-### Content Pipeline Tables (cp_ prefix)
+### Content Pipeline Tables (cp\_ prefix)
 
 - `cp_call_transcripts` -- raw transcripts from Grain, Fireflies, Fathom, or paste (source: `'grain' | 'fireflies' | 'fathom' | 'paste'`). All three notetaker integrations are webhook-based (Fathom migrated from OAuth polling to per-user webhook auth in Feb 2026).
 - `cp_knowledge_entries` -- extracted insights/questions/intel with vector embeddings + knowledge_type, quality_score, topics, specificity, actionability, source_date
@@ -182,12 +183,12 @@ On-demand AI-generated summaries cached in `cp_knowledge_topics.summary`. Stale 
 
 Replaced `KnowledgeBrainTab` with `KnowledgeDashboard` containing 4 subtabs:
 
-| Subtab | Component | Content |
-|--------|-----------|---------|
-| **Overview** | `KnowledgeOverview` | Stats cards (entries, topics, new topics, highlights), most active topics, high-quality highlights |
-| **Topics** | `TopicBrowser` + `TopicDetail` | Card grid with quality stars + type breakdown. Detail view with summary generation, type bar, entries by type |
-| **Gaps** | `GapAnalysis` | Coverage bars, missing types, gap patterns. Readiness assessment panel (pick topic + goal) |
-| **Search** | `KnowledgeSearch` | Enhanced search with V2 filters: knowledge type, topic, min quality, since date. Plus existing tag/category/speaker filters |
+| Subtab       | Component                      | Content                                                                                                                     |
+| ------------ | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| **Overview** | `KnowledgeOverview`            | Stats cards (entries, topics, new topics, highlights), most active topics, high-quality highlights                          |
+| **Topics**   | `TopicBrowser` + `TopicDetail` | Card grid with quality stars + type breakdown. Detail view with summary generation, type bar, entries by type               |
+| **Gaps**     | `GapAnalysis`                  | Coverage bars, missing types, gap patterns. Readiness assessment panel (pick topic + goal)                                  |
+| **Search**   | `KnowledgeSearch`              | Enhanced search with V2 filters: knowledge type, topic, min quality, since date. Plus existing tag/category/speaker filters |
 
 Team/Personal toggle in header when user belongs to a team. `teamId` flows to all child components.
 
@@ -277,22 +278,22 @@ MagnetLab is the customer-facing SaaS. On key events (lead captured, lead qualif
 
 Use this table to determine which repo owns a given feature. This prevents building features in the wrong codebase.
 
-| Feature Type | Repo | Rationale |
-|---|---|---|
-| Lead magnet creation/AI content generation | magnetlab | Owns the lead magnet product, AI pipeline, funnel builder |
-| LinkedIn profile scraping/enrichment | leadmagnet-backend | Owns the Blueprint pipeline (scrape -> enrich -> generate) |
-| Blueprint admin UI/prompt editing | leadmagnet-admin | Admin dashboard for the Blueprint backend |
-| Public Blueprint pages/prospect pages | copy-of-gtm-os | Hosts all public-facing Blueprint pages + student portals |
-| GC member portal features | copy-of-gtm-os | Owns the Growth Collective member experience |
-| Bootcamp LMS/student features | copy-of-gtm-os | Owns the LinkedIn Bootcamp product |
-| Webhook ingestion from 3rd parties | gtm-system | Central webhook hub for 14+ integrations |
-| Lead routing/pipeline orchestration | gtm-system | Owns lead lifecycle from capture to sales handoff |
-| Cold email campaigns | gtm-system | Owns all cold email: UI, campaign management, enrichment, pipeline |
-| Content scheduling/publishing | magnetlab | Owns content pipeline, autopilot, AI Brain (migrated from gtm-system) |
-| Reply classification/delivery | gtm-system | Owns the reply pipeline (AI classify -> Blueprint -> deliver) |
-| Funnel pages/opt-in pages | magnetlab | Owns funnel builder, opt-in, thank-you, content pages |
-| Stripe billing/subscriptions | magnetlab (SaaS billing) or copy-of-gtm-os (bootcamp subs) | Depends on which product the billing is for |
-| AI prompt management | leadmagnet-admin (Blueprint) or magnetlab (lead magnets) | Depends on which AI pipeline |
+| Feature Type                               | Repo                                                       | Rationale                                                             |
+| ------------------------------------------ | ---------------------------------------------------------- | --------------------------------------------------------------------- |
+| Lead magnet creation/AI content generation | magnetlab                                                  | Owns the lead magnet product, AI pipeline, funnel builder             |
+| LinkedIn profile scraping/enrichment       | leadmagnet-backend                                         | Owns the Blueprint pipeline (scrape -> enrich -> generate)            |
+| Blueprint admin UI/prompt editing          | leadmagnet-admin                                           | Admin dashboard for the Blueprint backend                             |
+| Public Blueprint pages/prospect pages      | copy-of-gtm-os                                             | Hosts all public-facing Blueprint pages + student portals             |
+| GC member portal features                  | copy-of-gtm-os                                             | Owns the Growth Collective member experience                          |
+| Bootcamp LMS/student features              | copy-of-gtm-os                                             | Owns the LinkedIn Bootcamp product                                    |
+| Webhook ingestion from 3rd parties         | gtm-system                                                 | Central webhook hub for 14+ integrations                              |
+| Lead routing/pipeline orchestration        | gtm-system                                                 | Owns lead lifecycle from capture to sales handoff                     |
+| Cold email campaigns                       | gtm-system                                                 | Owns all cold email: UI, campaign management, enrichment, pipeline    |
+| Content scheduling/publishing              | magnetlab                                                  | Owns content pipeline, autopilot, AI Brain (migrated from gtm-system) |
+| Reply classification/delivery              | gtm-system                                                 | Owns the reply pipeline (AI classify -> Blueprint -> deliver)         |
+| Funnel pages/opt-in pages                  | magnetlab                                                  | Owns funnel builder, opt-in, thank-you, content pages                 |
+| Stripe billing/subscriptions               | magnetlab (SaaS billing) or copy-of-gtm-os (bootcamp subs) | Depends on which product the billing is for                           |
+| AI prompt management                       | leadmagnet-admin (Blueprint) or magnetlab (lead magnets)   | Depends on which AI pipeline                                          |
 
 ## Branding & Conversion Tracking
 
@@ -376,10 +377,10 @@ Three layout variants for thank-you pages, controlled by `thankyou_layout` colum
 
 ### Layout Variants
 
-| Layout | Slug | Behavior |
-|--------|------|----------|
-| Survey First | `survey_first` | Default. Banner → headline → survey → video (after completion) → result → booking |
-| Video First | `video_first` | Banner → headline → video (plays immediately) → survey → result → booking |
+| Layout       | Slug           | Behavior                                                                                                                                     |
+| ------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Survey First | `survey_first` | Default. Banner → headline → survey → video (after completion) → result → booking                                                            |
+| Video First  | `video_first`  | Banner → headline → video (plays immediately) → survey → result → booking                                                                    |
 | Side by Side | `side_by_side` | Banner → headline → 2-column grid (video left, survey right) → result. Falls back to single-column when no video. Mobile: stacks vertically. |
 
 ### Data Model
@@ -410,6 +411,7 @@ Funnel owners can redirect leads to an external URL instead of showing the built
 ### Configuration
 
 Three modes via `redirect_trigger` column on `funnel_pages`:
+
 - `none` (default): Built-in thank-you page
 - `immediate`: Skip thank-you page, redirect right after opt-in
 - `after_qualification`: Show survey first, then redirect based on result
@@ -436,11 +438,11 @@ Auto-sends a "here is your resource" email on opt-in, with a per-funnel toggle (
 
 ### Priority Rules
 
-| Active sequence? | Toggle ON | Result |
-|---|---|---|
-| Yes | Any | Sequence handles delivery (default email skipped) |
-| No | ON | System sends fixed-template resource email |
-| No | OFF | Resource shown directly on thank-you page |
+| Active sequence? | Toggle ON | Result                                            |
+| ---------------- | --------- | ------------------------------------------------- |
+| Yes              | Any       | Sequence handles delivery (default email skipped) |
+| No               | ON        | System sends fixed-template resource email        |
+| No               | OFF       | Resource shown directly on thank-you page         |
 
 ### Data Model
 
@@ -515,6 +517,7 @@ Teams can verify their own email sending domain via Resend API (in-app), so tran
 - Sender resolution priority in `getSenderInfo()`: user's own Resend account > team verified email domain + `custom_from_email` > default `hello@sends.magnetlab.app`
 
 Key files:
+
 - `src/lib/integrations/resend-domains.ts` -- Resend Domains API client (create, get, verify, delete)
 - `src/app/api/settings/team-email-domain/route.ts` -- Email domain CRUD
 - `src/app/api/settings/team-email-domain/verify/route.ts` -- DNS verification
@@ -540,12 +543,12 @@ Native integrations with 4 email service providers. Users connect their ESP in S
 
 ### Supported Providers
 
-| Provider | Auth | Base URL | Subscribe pattern |
-|----------|------|----------|-------------------|
-| Kit (ConvertKit) | `X-Kit-Api-Key` header | `api.kit.com/v4` | Form subscribe + optional tag (2 calls) |
-| MailerLite | `Bearer` token | `connect.mailerlite.com/api` | POST /subscribers with groups[] (1 call) |
-| Mailchimp | OAuth 2.0 access token | `{dc}.api.mailchimp.com/3.0` | PUT member upsert + tag by name (2 calls) |
-| ActiveCampaign | `Api-Token` header | `{account}.api-us1.com/api/3` | Create contact + add to list + tag (3 calls) |
+| Provider         | Auth                   | Base URL                      | Subscribe pattern                            |
+| ---------------- | ---------------------- | ----------------------------- | -------------------------------------------- |
+| Kit (ConvertKit) | `X-Kit-Api-Key` header | `api.kit.com/v4`              | Form subscribe + optional tag (2 calls)      |
+| MailerLite       | `Bearer` token         | `connect.mailerlite.com/api`  | POST /subscribers with groups[] (1 call)     |
+| Mailchimp        | OAuth 2.0 access token | `{dc}.api.mailchimp.com/3.0`  | PUT member upsert + tag by name (2 calls)    |
+| ActiveCampaign   | `Api-Token` header     | `{account}.api-us1.com/api/3` | Create contact + add to list + tag (3 calls) |
 
 ### Data Model
 
@@ -565,18 +568,18 @@ Lead opts in → POST /api/public/lead → syncLeadToEmailProviders() [fire-and-
 
 ### API Routes
 
-| Route | Method | Purpose |
-|-------|--------|---------|
-| `/api/integrations/email-marketing/connect` | POST | Save API key + validate credentials |
-| `/api/integrations/email-marketing/disconnect` | POST | Remove connection + deactivate funnel mappings |
-| `/api/integrations/email-marketing/verify` | POST | Re-validate stored credentials |
-| `/api/integrations/email-marketing/lists` | GET | Fetch lists from provider (`?provider=kit`) |
-| `/api/integrations/email-marketing/tags` | GET | Fetch tags (`?provider=kit&listId=...`) |
-| `/api/integrations/email-marketing/connected` | GET | List connected provider names |
-| `/api/integrations/mailchimp/authorize` | GET | Start Mailchimp OAuth flow |
-| `/api/integrations/mailchimp/callback` | GET | Handle Mailchimp OAuth callback |
-| `/api/funnels/[id]/integrations` | GET/POST | List/upsert funnel integration mappings |
-| `/api/funnels/[id]/integrations/[provider]` | DELETE | Remove mapping |
+| Route                                          | Method   | Purpose                                        |
+| ---------------------------------------------- | -------- | ---------------------------------------------- |
+| `/api/integrations/email-marketing/connect`    | POST     | Save API key + validate credentials            |
+| `/api/integrations/email-marketing/disconnect` | POST     | Remove connection + deactivate funnel mappings |
+| `/api/integrations/email-marketing/verify`     | POST     | Re-validate stored credentials                 |
+| `/api/integrations/email-marketing/lists`      | GET      | Fetch lists from provider (`?provider=kit`)    |
+| `/api/integrations/email-marketing/tags`       | GET      | Fetch tags (`?provider=kit&listId=...`)        |
+| `/api/integrations/email-marketing/connected`  | GET      | List connected provider names                  |
+| `/api/integrations/mailchimp/authorize`        | GET      | Start Mailchimp OAuth flow                     |
+| `/api/integrations/mailchimp/callback`         | GET      | Handle Mailchimp OAuth callback                |
+| `/api/funnels/[id]/integrations`               | GET/POST | List/upsert funnel integration mappings        |
+| `/api/funnels/[id]/integrations/[provider]`    | DELETE   | Remove mapping                                 |
 
 ### Key Files
 
@@ -618,12 +621,12 @@ Lead opts in → POST /api/public/lead → syncLeadToGoHighLevel() [fire-and-for
 
 ### API Routes
 
-| Route | Method | Purpose |
-|-------|--------|---------|
-| `/api/integrations/gohighlevel/connect` | POST | Validate API key + save integration |
-| `/api/integrations/gohighlevel/verify` | POST | Re-validate stored API key |
-| `/api/integrations/gohighlevel/disconnect` | POST | Remove key + deactivate funnel toggles |
-| `/api/integrations/gohighlevel/status` | GET | Check if GHL is connected (used by funnel builder) |
+| Route                                      | Method | Purpose                                            |
+| ------------------------------------------ | ------ | -------------------------------------------------- |
+| `/api/integrations/gohighlevel/connect`    | POST   | Validate API key + save integration                |
+| `/api/integrations/gohighlevel/verify`     | POST   | Re-validate stored API key                         |
+| `/api/integrations/gohighlevel/disconnect` | POST   | Remove key + deactivate funnel toggles             |
+| `/api/integrations/gohighlevel/status`     | GET    | Check if GHL is connected (used by funnel builder) |
 
 ### Key Files
 
@@ -641,6 +644,7 @@ Custom tags (optional): configured per-funnel via comma-separated input, stored 
 ### Database
 
 No new tables. Uses existing:
+
 - `user_integrations` -- `service: 'gohighlevel'`, stores API key
 - `funnel_integrations` -- `provider: 'gohighlevel'`, `settings` JSONB for custom_tags, `is_active` toggle
 - Migration: `20260225100000_funnel_integrations_settings.sql` -- adds `settings` column + GHL provider to constraint
@@ -664,14 +668,14 @@ HeyReach campaign sends DM with link: magnetlab.app/p/user/slug?li={linkedinUrl}
 
 ### API Routes
 
-| Route | Method | Purpose |
-|-------|--------|---------|
-| `/api/integrations/heyreach/connect` | POST | Validate API key + save integration |
-| `/api/integrations/heyreach/verify` | POST | Re-validate stored API key |
-| `/api/integrations/heyreach/disconnect` | POST | Remove key + deactivate funnel toggles |
-| `/api/integrations/heyreach/status` | GET | Check if HeyReach is connected |
-| `/api/integrations/heyreach/campaigns` | GET | Fetch campaigns for dropdown selector |
-| `/api/integrations/heyreach/accounts` | GET | Fetch LinkedIn accounts |
+| Route                                   | Method | Purpose                                |
+| --------------------------------------- | ------ | -------------------------------------- |
+| `/api/integrations/heyreach/connect`    | POST   | Validate API key + save integration    |
+| `/api/integrations/heyreach/verify`     | POST   | Re-validate stored API key             |
+| `/api/integrations/heyreach/disconnect` | POST   | Remove key + deactivate funnel toggles |
+| `/api/integrations/heyreach/status`     | GET    | Check if HeyReach is connected         |
+| `/api/integrations/heyreach/campaigns`  | GET    | Fetch campaigns for dropdown selector  |
+| `/api/integrations/heyreach/accounts`   | GET    | Fetch LinkedIn accounts                |
 
 ### Key Files
 
@@ -684,13 +688,13 @@ HeyReach campaign sends DM with link: magnetlab.app/p/user/slug?li={linkedinUrl}
 
 ### Custom Variables (for HeyReach campaign templates)
 
-| Variable | Source |
-|----------|--------|
-| `{lead_magnet_title}` | Lead magnet title |
-| `{lead_magnet_url}` | Content delivery URL |
-| `{utm_source}` | UTM source param |
-| `{utm_medium}` | UTM medium param |
-| `{utm_campaign}` | UTM campaign param |
+| Variable              | Source               |
+| --------------------- | -------------------- |
+| `{lead_magnet_title}` | Lead magnet title    |
+| `{lead_magnet_url}`   | Content delivery URL |
+| `{utm_source}`        | UTM source param     |
+| `{utm_medium}`        | UTM medium param     |
+| `{utm_campaign}`      | UTM campaign param   |
 
 ### Database
 
@@ -744,12 +748,12 @@ Tests in `src/__tests__/` mirror source structure (api/, components/, lib/). Use
 
 ### What to test and when
 
-| Layer | Tool | What it catches | When to write |
-|-------|------|----------------|---------------|
-| **Schema validation** | Jest | Zod schema ↔ actual data shape mismatches | Every new/changed API route or Zod schema |
-| **API integration** | Jest | Route handler logic, auth, DB errors | Every new API route |
-| **Critical path e2e** | Playwright | Save flow, funnel publish, lead capture broken end-to-end | Every new archetype or major wizard change |
-| **Typecheck** | `tsc --noEmit` | Type errors | Always (run before commit) |
+| Layer                 | Tool           | What it catches                                           | When to write                              |
+| --------------------- | -------------- | --------------------------------------------------------- | ------------------------------------------ |
+| **Schema validation** | Jest           | Zod schema ↔ actual data shape mismatches                 | Every new/changed API route or Zod schema  |
+| **API integration**   | Jest           | Route handler logic, auth, DB errors                      | Every new API route                        |
+| **Critical path e2e** | Playwright     | Save flow, funnel publish, lead capture broken end-to-end | Every new archetype or major wizard change |
+| **Typecheck**         | `tsc --noEmit` | Type errors                                               | Always (run before commit)                 |
 
 ### The #1 bug pattern to guard against
 
@@ -842,14 +846,14 @@ All tables have RLS enabled (user self-management + service role bypass).
 
 ### Trigger.dev Scheduled Tasks
 
-| Task | Cron | Purpose |
-|------|------|---------|
-| `signal-keyword-scan` | `0 */12 * * *` | Search posts by keyword, extract engagers |
-| `signal-company-scan` | `30 */12 * * *` | Scrape company page posts + engagers |
-| `signal-profile-scan` | `*/10 * * * *` | Profile monitoring (replaced Apify Phase 2) |
-| `signal-enrich-and-score` | `15 */2 * * *` | Enrich leads, ICP filter, sentiment score, compound score |
-| `signal-push-heyreach` | `*/30 * * * *` | Push qualified ICP-matched leads to HeyReach |
-| `scrape-engagement` | `*/10 * * * *` | Own-post engagement only (migrated to Harvest API) |
+| Task                      | Cron            | Purpose                                                   |
+| ------------------------- | --------------- | --------------------------------------------------------- |
+| `signal-keyword-scan`     | `0 */12 * * *`  | Search posts by keyword, extract engagers                 |
+| `signal-company-scan`     | `30 */12 * * *` | Scrape company page posts + engagers                      |
+| `signal-profile-scan`     | `*/10 * * * *`  | Profile monitoring (replaced Apify Phase 2)               |
+| `signal-enrich-and-score` | `15 */2 * * *`  | Enrich leads, ICP filter, sentiment score, compound score |
+| `signal-push-heyreach`    | `*/30 * * * *`  | Push qualified ICP-matched leads to HeyReach              |
+| `scrape-engagement`       | `*/10 * * * *`  | Own-post engagement only (migrated to Harvest API)        |
 
 ### Services
 
@@ -859,15 +863,15 @@ All tables have RLS enabled (user self-management + service role bypass).
 
 ### API Routes
 
-| Route | Purpose |
-|-------|---------|
-| `GET/PUT /api/signals/config` | User's ICP filter config |
-| `GET/POST /api/signals/keywords` | List/add keyword monitors |
-| `PATCH/DELETE /api/signals/keywords/[id]` | Toggle/delete keyword |
-| `GET/POST /api/signals/companies` | List/add company monitors |
-| `PATCH/DELETE /api/signals/companies/[id]` | Update/delete company |
-| `GET /api/signals/leads` | List leads with filters (status, ICP, signal type, score, pagination) |
-| `POST /api/signals/leads` | Bulk actions (exclude, push to HeyReach) |
+| Route                                      | Purpose                                                               |
+| ------------------------------------------ | --------------------------------------------------------------------- |
+| `GET/PUT /api/signals/config`              | User's ICP filter config                                              |
+| `GET/POST /api/signals/keywords`           | List/add keyword monitors                                             |
+| `PATCH/DELETE /api/signals/keywords/[id]`  | Toggle/delete keyword                                                 |
+| `GET/POST /api/signals/companies`          | List/add company monitors                                             |
+| `PATCH/DELETE /api/signals/companies/[id]` | Update/delete company                                                 |
+| `GET /api/signals/leads`                   | List leads with filters (status, ICP, signal type, score, pagination) |
+| `POST /api/signals/leads`                  | Bulk actions (exclude, push to HeyReach)                              |
 
 ### UI Components
 
@@ -884,18 +888,18 @@ Weights per signal type: `job_change=30`, `job_posting=20`, `keyword_engagement=
 
 ### Env Vars
 
-| Var | Where | Purpose |
-|-----|-------|---------|
-| `HARVEST_API_KEY` | `.env.local` + Vercel + Trigger.dev | Harvest API calls |
-| `HEYREACH_API_KEY` | Trigger.dev | HeyReach campaign enrollment |
+| Var                | Where                               | Purpose                      |
+| ------------------ | ----------------------------------- | ---------------------------- |
+| `HARVEST_API_KEY`  | `.env.local` + Vercel + Trigger.dev | Harvest API calls            |
+| `HEYREACH_API_KEY` | Trigger.dev                         | HeyReach campaign enrollment |
 
 ### Tool Responsibility Split
 
-| Tool | Does | Doesn't |
-|------|------|---------|
-| Harvest API | All LinkedIn scraping (posts, comments, reactions, profiles, jobs) | Any actions |
-| Unipile | Publish posts, like comments, reply to comments | Scrape, DM, connect |
-| HeyReach | DMs, connection requests (via campaign enrollment) | Scraping |
+| Tool        | Does                                                               | Doesn't             |
+| ----------- | ------------------------------------------------------------------ | ------------------- |
+| Harvest API | All LinkedIn scraping (posts, comments, reactions, profiles, jobs) | Any actions         |
+| Unipile     | Publish posts, like comments, reply to comments                    | Scrape, DM, connect |
+| HeyReach    | DMs, connection requests (via campaign enrollment)                 | Scraping            |
 
 ### Legacy Engagement (still active for own posts)
 
@@ -927,21 +931,21 @@ Team Command Center (weekly grid) → team-schedule API → Supabase
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/components/content-pipeline/TeamCommandCenter.tsx` | Main container (week nav, grid, buffer dock) |
-| `src/components/content-pipeline/WeeklyGrid.tsx` | Calendar grid (profiles × days) |
-| `src/components/content-pipeline/GridCell.tsx` | Individual day cell (post preview, empty slot) |
-| `src/components/content-pipeline/BroadcastModal.tsx` | Profile picker + stagger config |
-| `src/components/content-pipeline/GridContextMenu.tsx` | Right-click actions (broadcast, reschedule, etc.) |
-| `src/components/content-pipeline/TeamLinkedInConnect.tsx` | Connection status banner |
-| `src/lib/services/team-integrations.ts` | Team profile LinkedIn account resolution |
-| `src/lib/ai/content-pipeline/collision-detector.ts` | Same-day topic overlap detection (Haiku) |
-| `src/trigger/broadcast-post-variations.ts` | AI voice rewriting + stagger scheduling |
-| `src/app/api/content-pipeline/team-schedule/route.ts` | GET: weekly data for all profiles |
-| `src/app/api/content-pipeline/team-schedule/assign/route.ts` | POST: assign buffer post to slot |
-| `src/app/api/content-pipeline/broadcast/route.ts` | POST: trigger broadcast task |
-| `supabase/migrations/20260226200000_team_command_center.sql` | DB migration |
+| File                                                         | Purpose                                           |
+| ------------------------------------------------------------ | ------------------------------------------------- |
+| `src/components/content-pipeline/TeamCommandCenter.tsx`      | Main container (week nav, grid, buffer dock)      |
+| `src/components/content-pipeline/WeeklyGrid.tsx`             | Calendar grid (profiles × days)                   |
+| `src/components/content-pipeline/GridCell.tsx`               | Individual day cell (post preview, empty slot)    |
+| `src/components/content-pipeline/BroadcastModal.tsx`         | Profile picker + stagger config                   |
+| `src/components/content-pipeline/GridContextMenu.tsx`        | Right-click actions (broadcast, reschedule, etc.) |
+| `src/components/content-pipeline/TeamLinkedInConnect.tsx`    | Connection status banner                          |
+| `src/lib/services/team-integrations.ts`                      | Team profile LinkedIn account resolution          |
+| `src/lib/ai/content-pipeline/collision-detector.ts`          | Same-day topic overlap detection (Haiku)          |
+| `src/trigger/broadcast-post-variations.ts`                   | AI voice rewriting + stagger scheduling           |
+| `src/app/api/content-pipeline/team-schedule/route.ts`        | GET: weekly data for all profiles                 |
+| `src/app/api/content-pipeline/team-schedule/assign/route.ts` | POST: assign buffer post to slot                  |
+| `src/app/api/content-pipeline/broadcast/route.ts`            | POST: trigger broadcast task                      |
+| `supabase/migrations/20260226200000_team_command_center.sql` | DB migration                                      |
 
 ### LinkedIn Connection
 
@@ -964,6 +968,7 @@ magnetlab is the single content command center. gtm-system remains the intake en
 Every content save captures before/after diffs, auto-classifies patterns via AI, and evolves the team's voice profile over time.
 
 **Data Flow:**
+
 ```
 CEO edits post → captureAndClassifyEdit() (fire-and-forget)
   → isSignificantEdit() (5% word-level threshold)
@@ -979,9 +984,11 @@ Weekly (Sunday 3:30 AM UTC):
 ```
 
 **Key Tables:**
+
 - `cp_edit_history` — team_id, profile_id, content_type, content_id, field_name, original_text, edited_text, edit_diff, edit_tags, ceo_note, auto_classified_changes, processed
 
 **Key Files:**
+
 - `src/lib/services/edit-capture.ts` — `captureEdit()`, `captureAndClassifyEdit()`, `isSignificantEdit()`, `computeEditDiff()`
 - `src/lib/ai/content-pipeline/edit-classifier.ts` — `classifyEditPatterns()` (Claude Haiku)
 - `src/lib/services/style-evolution.ts` — `aggregateEditPatterns()` pure function
@@ -997,6 +1004,7 @@ Weekly (Sunday 3:30 AM UTC):
 **Sources:** lead_magnet, manual, import, csv_import, resend_import, positive_reply, purchaser, meeting, heyreach, plusvibe, gtm_sync, organic
 
 **Key Files:**
+
 - `src/app/api/admin/import-subscribers/route.ts` — CSV import (5MB max, RFC-4180, batched upserts)
 - `src/app/api/webhooks/subscriber-sync/route.ts` — inbound webhook from gtm-system (timing-safe secret, "keep richest record" merge)
 - `supabase/migrations/20260223100000_subscriber_sources.sql` — expanded source constraint + metadata JSONB + company TEXT
@@ -1008,6 +1016,7 @@ Weekly (Sunday 3:30 AM UTC):
 Distinct from LinkedIn posts: 300-500 words, subheadings, actionable takeaways, soft CTA. Uses today's approved LinkedIn post for topic consistency.
 
 **Key Files:**
+
 - `src/lib/ai/content-pipeline/email-writer.ts` — `writeNewsletterEmail()` (Claude Sonnet, voice-injected)
 - `src/app/api/email/generate-daily/route.ts` — POST: generates draft broadcast from today's post + knowledge brief
 
@@ -1016,6 +1025,7 @@ Distinct from LinkedIn posts: 300-500 words, subheadings, actionable takeaways, 
 Weekly AI-generated topic suggestions. CEO approves → promotion posts auto-generated.
 
 **Key Files:**
+
 - `src/trigger/suggest-lead-magnet-topics.ts` — `suggest-lead-magnet-topics` (on-demand) + `weekly-lead-magnet-suggestions` (Monday 8 AM UTC cron)
 - `src/lib/ai/content-pipeline/promotion-post-writer.ts` — `generatePromotionPosts()` (4 angles: problem_aware, curiosity, value_first, social_proof)
 - `supabase/migrations/20260223200000_add_lead_magnet_content_type.sql` — adds 'lead_magnet' to content_type constraint
@@ -1025,6 +1035,7 @@ Weekly AI-generated topic suggestions. CEO approves → promotion posts auto-gen
 Fire-and-forget webhook from gtm-system to magnetlab on positive replies and meetings.
 
 **gtm-system files modified:**
+
 - `src/lib/subscriber-sync.ts` — `syncSubscriberToMagnetlab()` (5s timeout, env-var guard)
 - Webhook handlers: plusvibe, heyreach, calcom — all call sync after positive events
 
@@ -1059,21 +1070,21 @@ Internal super-admin panel for managing all AI prompt templates and observing th
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/lib/ai/content-pipeline/prompt-defaults.ts` | Hardcoded fallback prompts (14 entries) |
-| `src/lib/services/prompt-registry.ts` | Registry service (cache, interpolation, save, versioning) |
-| `src/lib/auth/super-admin.ts` | `isSuperAdmin()` auth helper |
-| `src/app/(dashboard)/admin/layout.tsx` | Admin route gate |
-| `src/app/(dashboard)/admin/prompts/page.tsx` | Prompt list page |
-| `src/app/(dashboard)/admin/prompts/[slug]/page.tsx` | Prompt editor page |
-| `src/app/(dashboard)/admin/learning/page.tsx` | Learning dashboard |
-| `src/components/admin/PromptEditor.tsx` | Editor with save, test, version history |
-| `src/components/admin/PromptDiffViewer.tsx` | Side-by-side diff viewer |
-| `src/components/admin/VersionTimeline.tsx` | Version history with restore |
-| `src/components/admin/LearningDashboard.tsx` | Edit activity, pattern frequency, voice evolution |
-| `src/app/api/admin/prompts/` | CRUD + versioning + restore + test APIs |
-| `src/app/api/admin/learning/` | Learning data API |
+| File                                                | Purpose                                                   |
+| --------------------------------------------------- | --------------------------------------------------------- |
+| `src/lib/ai/content-pipeline/prompt-defaults.ts`    | Hardcoded fallback prompts (14 entries)                   |
+| `src/lib/services/prompt-registry.ts`               | Registry service (cache, interpolation, save, versioning) |
+| `src/lib/auth/super-admin.ts`                       | `isSuperAdmin()` auth helper                              |
+| `src/app/(dashboard)/admin/layout.tsx`              | Admin route gate                                          |
+| `src/app/(dashboard)/admin/prompts/page.tsx`        | Prompt list page                                          |
+| `src/app/(dashboard)/admin/prompts/[slug]/page.tsx` | Prompt editor page                                        |
+| `src/app/(dashboard)/admin/learning/page.tsx`       | Learning dashboard                                        |
+| `src/components/admin/PromptEditor.tsx`             | Editor with save, test, version history                   |
+| `src/components/admin/PromptDiffViewer.tsx`         | Side-by-side diff viewer                                  |
+| `src/components/admin/VersionTimeline.tsx`          | Version history with restore                              |
+| `src/components/admin/LearningDashboard.tsx`        | Edit activity, pattern frequency, voice evolution         |
+| `src/app/api/admin/prompts/`                        | CRUD + versioning + restore + test APIs                   |
+| `src/app/api/admin/learning/`                       | Learning data API                                         |
 
 ## DFY Onboarding Automation (Feb 2026)
 
@@ -1081,11 +1092,11 @@ Internal super-admin panel for managing all AI prompt templates and observing th
 
 ### External API Routes (called by gtm-system)
 
-| Route | Purpose |
-|-------|---------|
-| `POST /api/external/review-content` | AI reviews draft posts, flags bad ones, ranks quality, stores review_data |
-| `POST /api/external/apply-branding` | Applies brand kit to funnel pages + sections (theme, colors, fonts, logos) |
-| `POST /api/external/generate-quiz` | Generates qualification questions from ICP + knowledge + brand data |
+| Route                               | Purpose                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------ |
+| `POST /api/external/review-content` | AI reviews draft posts, flags bad ones, ranks quality, stores review_data            |
+| `POST /api/external/apply-branding` | Applies brand kit to funnel pages + sections (theme, colors, fonts, logos)           |
+| `POST /api/external/generate-quiz`  | Generates qualification questions from ICP + knowledge + brand data                  |
 | `POST /api/external/setup-thankyou` | Builds branded thank-you page with sections (bridge, steps, CTA, testimonial, logos) |
 
 All authenticated via `Authorization: Bearer ${EXTERNAL_API_KEY}`.
@@ -1117,16 +1128,16 @@ process_intake -> select_and_finish_posts -> review_and_polish_content -> [admin
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/app/api/external/review-content/route.ts` | Review content API |
-| `src/app/api/external/apply-branding/route.ts` | Apply branding API |
-| `src/app/api/external/generate-quiz/route.ts` | Generate quiz API |
-| `src/app/api/external/setup-thankyou/route.ts` | Setup thank-you API |
-| `src/lib/ai/content-pipeline/content-reviewer.ts` | Content review AI module |
-| `src/lib/ai/content-pipeline/quiz-generator.ts` | Quiz generator AI module |
-| `src/lib/ai/content-pipeline/prompt-defaults.ts` | Prompt defaults (content-review, quiz-generator slugs) |
-| `supabase/migrations/20260226100000_post_review_data.sql` | review_data column migration |
+| File                                                      | Purpose                                                |
+| --------------------------------------------------------- | ------------------------------------------------------ |
+| `src/app/api/external/review-content/route.ts`            | Review content API                                     |
+| `src/app/api/external/apply-branding/route.ts`            | Apply branding API                                     |
+| `src/app/api/external/generate-quiz/route.ts`             | Generate quiz API                                      |
+| `src/app/api/external/setup-thankyou/route.ts`            | Setup thank-you API                                    |
+| `src/lib/ai/content-pipeline/content-reviewer.ts`         | Content review AI module                               |
+| `src/lib/ai/content-pipeline/quiz-generator.ts`           | Quiz generator AI module                               |
+| `src/lib/ai/content-pipeline/prompt-defaults.ts`          | Prompt defaults (content-review, quiz-generator slugs) |
+| `supabase/migrations/20260226100000_post_review_data.sql` | review_data column migration                           |
 
 ## Engagement Cold Email Pipeline (Feb 2026)
 
@@ -1157,23 +1168,23 @@ Comment detected on lead magnet post (Unipile scrape)
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/lib/integrations/enrichment/types.ts` | Core interfaces (EmailFinderProvider, EmailValidatorProvider, WaterfallResult) |
-| `src/lib/integrations/enrichment/leadmagic.ts` | Primary email finder |
-| `src/lib/integrations/enrichment/prospeo.ts` | Fallback email finder |
-| `src/lib/integrations/enrichment/blitzapi.ts` | Last resort email finder |
-| `src/lib/integrations/enrichment/zerobounce.ts` | Primary email validator |
-| `src/lib/integrations/enrichment/bounceban.ts` | Catch-all escalation validator |
-| `src/lib/integrations/enrichment/waterfall.ts` | `waterfallEmailFind()` orchestrator |
-| `src/lib/integrations/enrichment/index.ts` | Factory functions (getConfiguredFinders, getValidator) |
-| `src/lib/integrations/plusvibe.ts` | `addLeadsToPlusVibeCampaign()` client |
-| `src/trigger/enrich-and-push-plusvibe.ts` | Trigger.dev task (120s max, 2 retries) |
-| `src/lib/services/linkedin-automation.ts` | Pipeline wiring (section 2b triggers enrichment) |
-| `src/app/api/linkedin/automations/[id]/reply/route.ts` | Manual comment reply API |
-| `src/components/automations/AutomationEventsDrawer.tsx` | Events timeline + "Reply with Link" button |
-| `src/components/automations/AutomationEditor.tsx` | PlusVibe Campaign ID + Opt-In URL fields |
-| `supabase/migrations/20260227300000_engagement_enrichment_plusvibe.sql` | Migration |
+| File                                                                    | Purpose                                                                        |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `src/lib/integrations/enrichment/types.ts`                              | Core interfaces (EmailFinderProvider, EmailValidatorProvider, WaterfallResult) |
+| `src/lib/integrations/enrichment/leadmagic.ts`                          | Primary email finder                                                           |
+| `src/lib/integrations/enrichment/prospeo.ts`                            | Fallback email finder                                                          |
+| `src/lib/integrations/enrichment/blitzapi.ts`                           | Last resort email finder                                                       |
+| `src/lib/integrations/enrichment/zerobounce.ts`                         | Primary email validator                                                        |
+| `src/lib/integrations/enrichment/bounceban.ts`                          | Catch-all escalation validator                                                 |
+| `src/lib/integrations/enrichment/waterfall.ts`                          | `waterfallEmailFind()` orchestrator                                            |
+| `src/lib/integrations/enrichment/index.ts`                              | Factory functions (getConfiguredFinders, getValidator)                         |
+| `src/lib/integrations/plusvibe.ts`                                      | `addLeadsToPlusVibeCampaign()` client                                          |
+| `src/trigger/enrich-and-push-plusvibe.ts`                               | Trigger.dev task (120s max, 2 retries)                                         |
+| `src/lib/services/linkedin-automation.ts`                               | Pipeline wiring (section 2b triggers enrichment)                               |
+| `src/app/api/linkedin/automations/[id]/reply/route.ts`                  | Manual comment reply API                                                       |
+| `src/components/automations/AutomationEventsDrawer.tsx`                 | Events timeline + "Reply with Link" button                                     |
+| `src/components/automations/AutomationEditor.tsx`                       | PlusVibe Campaign ID + Opt-In URL fields                                       |
+| `supabase/migrations/20260227300000_engagement_enrichment_plusvibe.sql` | Migration                                                                      |
 
 ### PlusVibe Integration Notes
 
@@ -1215,12 +1226,12 @@ PLUSVIBE_API_KEY
 
 ## Related Repos
 
-| Repo | Path | Purpose |
-|------|------|---------|
-| gtm-system | `/Users/timlife/Documents/claude code/gtm-system` | GTM orchestrator, webhooks, lead routing |
-| copy-of-gtm-os | `/Users/timlife/Documents/claude code/copy-of-gtm-os` | Public Blueprint pages, GC Portal, Bootcamp LMS |
-| leadmagnet-admin | `/Users/timlife/linkedin-leadmagnet-admin` | Admin dashboard for Blueprint Generator backend |
-| leadmagnet-backend | `/Users/timlife/linkedin-leadmagnet-backend` | Blueprint pipeline: scrape -> enrich -> generate |
+| Repo               | Path                                                  | Purpose                                          |
+| ------------------ | ----------------------------------------------------- | ------------------------------------------------ |
+| gtm-system         | `/Users/timlife/Documents/claude code/gtm-system`     | GTM orchestrator, webhooks, lead routing         |
+| copy-of-gtm-os     | `/Users/timlife/Documents/claude code/copy-of-gtm-os` | Public Blueprint pages, GC Portal, Bootcamp LMS  |
+| leadmagnet-admin   | `/Users/timlife/linkedin-leadmagnet-admin`            | Admin dashboard for Blueprint Generator backend  |
+| leadmagnet-backend | `/Users/timlife/linkedin-leadmagnet-backend`          | Blueprint pipeline: scrape -> enrich -> generate |
 
 ## Post-Feature Workflow
 

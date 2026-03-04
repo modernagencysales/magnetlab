@@ -29,6 +29,39 @@ const eslintConfig = [
       "@typescript-eslint/no-require-imports": "off",
     },
   },
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
+  // Enforce server/client boundary: client files must not import from src/server/
+  {
+    files: [
+      "src/components/**/*.{ts,tsx}",
+      "src/frontend/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["*/server/*", "@/server/*"],
+              message:
+                "Client files must not import from src/server/. Use @/frontend/api/* instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

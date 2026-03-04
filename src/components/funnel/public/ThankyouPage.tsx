@@ -533,6 +533,7 @@ export function ThankyouPage({
 
         {/* 2. Logo */}
         {logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logoUrl}
             alt="Logo"

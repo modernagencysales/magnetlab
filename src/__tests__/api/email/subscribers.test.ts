@@ -38,10 +38,7 @@ import { requireTeamScope } from '@/lib/utils/team-context';
  *   await supabase.from('t').select('*').eq('id', 1).order('x').range(0, 9)
  */
 function createMockSupabase() {
-  const tableResults: Record<
-    string,
-    { data: unknown; error: unknown; count?: number | null }
-  > = {};
+  const tableResults: Record<string, { data: unknown; error: unknown; count?: number | null }> = {};
 
   // Track created chains so tests can inspect them
   const chains: Record<string, Record<string, jest.Mock>> = {};
@@ -55,7 +52,7 @@ function createMockSupabase() {
     const chain: Record<string, unknown> = {
       then: (
         onFulfilled?: (value: unknown) => unknown,
-        onRejected?: (reason: unknown) => unknown,
+        onRejected?: (reason: unknown) => unknown
       ) => resolve().then(onFulfilled, onRejected),
     };
 
@@ -92,10 +89,7 @@ function createMockSupabase() {
   return {
     client,
     /** Register the result that awaiting a chain for `table` will resolve to. */
-    setResult(
-      table: string,
-      result: { data: unknown; error: unknown; count?: number | null },
-    ) {
+    setResult(table: string, result: { data: unknown; error: unknown; count?: number | null }) {
       tableResults[table] = result;
     },
     /** Access chain spies for a given table (after from() has been called). */
@@ -143,10 +137,9 @@ describe('Email Subscribers API', () => {
     it('returns 401 when not authenticated', async () => {
       (auth as jest.Mock).mockResolvedValue(null);
 
-      const request = new Request(
-        'http://localhost:3000/api/email/subscribers?page=1&limit=10',
-        { method: 'GET' },
-      );
+      const request = new Request('http://localhost:3000/api/email/subscribers?page=1&limit=10', {
+        method: 'GET',
+      });
       const response = await GET(request);
       const json = await response.json();
 
@@ -192,10 +185,9 @@ describe('Email Subscribers API', () => {
         count: 25,
       });
 
-      const request = new Request(
-        'http://localhost:3000/api/email/subscribers?page=2&limit=10',
-        { method: 'GET' },
-      );
+      const request = new Request('http://localhost:3000/api/email/subscribers?page=2&limit=10', {
+        method: 'GET',
+      });
       const response = await GET(request);
       const json = await response.json();
 
@@ -208,7 +200,9 @@ describe('Email Subscribers API', () => {
       // Verify from() was called for email_subscribers (data query + count query)
       expect(mock.client.from).toHaveBeenCalledWith('email_subscribers');
       // At least two calls: one for data, one for count
-      expect(mock.client.from.mock.calls.filter((c: string[]) => c[0] === 'email_subscribers').length).toBe(2);
+      expect(
+        mock.client.from.mock.calls.filter((c: string[]) => c[0] === 'email_subscribers').length
+      ).toBe(2);
     });
 
     it('applies search filter correctly', async () => {
@@ -223,7 +217,7 @@ describe('Email Subscribers API', () => {
 
       const request = new Request(
         'http://localhost:3000/api/email/subscribers?search=alice&page=1&limit=50',
-        { method: 'GET' },
+        { method: 'GET' }
       );
       const response = await GET(request);
       const json = await response.json();
@@ -258,7 +252,7 @@ describe('Email Subscribers API', () => {
 
       const request = new Request(
         'http://localhost:3000/api/email/subscribers?status=unsubscribed&page=1&limit=50',
-        { method: 'GET' },
+        { method: 'GET' }
       );
       const response = await GET(request);
       await response.json();
@@ -273,7 +267,7 @@ describe('Email Subscribers API', () => {
         // eq is called at least twice: once for team_id, once for status
         const eqCalls = chain.eq.mock.calls as [string, string][];
         const statusCall = eqCalls.find(
-          ([col, val]: [string, string]) => col === 'status' && val === 'unsubscribed',
+          ([col, val]: [string, string]) => col === 'status' && val === 'unsubscribed'
         );
         expect(statusCall).toBeDefined();
       }
@@ -285,7 +279,7 @@ describe('Email Subscribers API', () => {
 
       const request = new Request(
         'http://localhost:3000/api/email/subscribers?status=deleted&page=1&limit=50',
-        { method: 'GET' },
+        { method: 'GET' }
       );
       const response = await GET(request);
       const json = await response.json();
@@ -299,10 +293,9 @@ describe('Email Subscribers API', () => {
       (auth as jest.Mock).mockResolvedValue(authenticatedSession());
       (requireTeamScope as jest.Mock).mockResolvedValue(noTeamScope());
 
-      const request = new Request(
-        'http://localhost:3000/api/email/subscribers?page=1&limit=10',
-        { method: 'GET' },
-      );
+      const request = new Request('http://localhost:3000/api/email/subscribers?page=1&limit=10', {
+        method: 'GET',
+      });
       const response = await GET(request);
       const json = await response.json();
 
@@ -367,7 +360,6 @@ describe('Email Subscribers API', () => {
       // second for upsert.
 
       let callCount = 0;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       mock.client.from.mockImplementation((_table: string) => {
         callCount++;
         const existingCheckResult = { data: null, error: null };
@@ -380,13 +372,23 @@ describe('Email Subscribers API', () => {
         const chain: Record<string, unknown> = {
           then: (
             onFulfilled?: (value: unknown) => unknown,
-            onRejected?: (reason: unknown) => unknown,
+            onRejected?: (reason: unknown) => unknown
           ) => resolve().then(onFulfilled, onRejected),
         };
 
         for (const method of [
-          'select', 'insert', 'upsert', 'update', 'delete',
-          'eq', 'or', 'in', 'order', 'range', 'single', 'maybeSingle',
+          'select',
+          'insert',
+          'upsert',
+          'update',
+          'delete',
+          'eq',
+          'or',
+          'in',
+          'order',
+          'range',
+          'single',
+          'maybeSingle',
         ]) {
           chain[method] = jest.fn(() => chain);
         }
@@ -476,13 +478,22 @@ describe('Email Subscribers API', () => {
         const chain: Record<string, unknown> = {
           then: (
             onFulfilled?: (value: unknown) => unknown,
-            onRejected?: (reason: unknown) => unknown,
+            onRejected?: (reason: unknown) => unknown
           ) => resolve().then(onFulfilled, onRejected),
         };
 
         for (const method of [
-          'select', 'insert', 'update', 'delete',
-          'eq', 'or', 'in', 'order', 'range', 'single', 'maybeSingle',
+          'select',
+          'insert',
+          'update',
+          'delete',
+          'eq',
+          'or',
+          'in',
+          'order',
+          'range',
+          'single',
+          'maybeSingle',
         ]) {
           chain[method] = jest.fn(() => chain);
         }

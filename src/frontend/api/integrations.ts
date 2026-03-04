@@ -112,3 +112,21 @@ export async function getEmailMarketingConnected(): Promise<{ providers: string[
 export async function getHeyReachCampaigns(): Promise<{ campaigns?: unknown[] }> {
   return apiClient.get<{ campaigns?: unknown[] }>('/integrations/heyreach/campaigns');
 }
+
+// ── Email marketing lists/tags ──
+export async function getEmailMarketingLists(
+  provider: string
+): Promise<{ lists: Array<{ id: string; name: string }> }> {
+  return apiClient.get<{ lists: Array<{ id: string; name: string }> }>(
+    `/integrations/email-marketing/lists?provider=${encodeURIComponent(provider)}`
+  );
+}
+
+export async function getEmailMarketingTags(
+  provider: string,
+  listId: string
+): Promise<{ tags: Array<{ id: string; name: string }> }> {
+  return apiClient.get<{ tags: Array<{ id: string; name: string }> }>(
+    `/integrations/email-marketing/tags?provider=${encodeURIComponent(provider)}&listId=${encodeURIComponent(listId)}`
+  );
+}
