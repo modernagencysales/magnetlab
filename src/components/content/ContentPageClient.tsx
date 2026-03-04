@@ -73,6 +73,7 @@ export function ContentPageClient({
   const [isDark, setIsDark] = useState(initialTheme === 'dark');
   const [isEditing, setIsEditing] = useState(autoEdit && isOwner);
   const [editContent, setEditContent] = useState<PolishedContent | null>(polishedContent);
+  const [savedContent, setSavedContent] = useState<PolishedContent | null>(polishedContent);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -88,7 +89,7 @@ export function ContentPageClient({
   const belowSections = sections.filter(s => s.sortOrder >= 50);
 
   // The content to display (edited or original)
-  const displayContent = isEditing ? editContent : polishedContent;
+  const displayContent = isEditing ? editContent : savedContent;
 
   // Build TOC sections
   const tocSections = displayContent
@@ -104,11 +105,11 @@ export function ContentPageClient({
   const handleToggleEdit = useCallback(() => {
     if (isEditing) {
       // Discard changes
-      setEditContent(polishedContent);
+      setEditContent(savedContent);
     }
     setIsEditing(!isEditing);
     setSaveError(null);
-  }, [isEditing, polishedContent]);
+  }, [isEditing, savedContent]);
 
   const handleSave = async () => {
     if (!editContent || !leadMagnetId) return;
@@ -127,7 +128,8 @@ export function ContentPageClient({
         throw new Error(data.error || 'Failed to save');
       }
 
-      // Exit edit mode after successful save
+      // Update local state so display reflects saved content
+      setSavedContent(editContent);
       setIsEditing(false);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
@@ -167,7 +169,7 @@ export function ContentPageClient({
         onToggleTheme={() => setIsDark(!isDark)}
         isOwner={isOwner}
         isEditing={isEditing}
-        onToggleEdit={polishedContent ? handleToggleEdit : undefined}
+        onToggleEdit={savedContent ? handleToggleEdit : undefined}
       />
 
       <div
