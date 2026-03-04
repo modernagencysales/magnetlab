@@ -58,6 +58,9 @@ export interface EmailGenerationContext {
 
   // Audience info
   audienceStyle: string;
+
+  // Resource delivery
+  resourceUrl?: string;
 }
 
 // ============================================

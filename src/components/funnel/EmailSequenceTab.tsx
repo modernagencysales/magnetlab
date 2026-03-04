@@ -217,7 +217,11 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
 
       const data = await response.json();
       setSequence(data.emailSequence);
-      setSuccess('Email sequence generated successfully!');
+      if (data.autoActivated) {
+        setSuccess('Email sequence is live! New leads will receive it automatically. Review your emails to make sure everything looks right.');
+      } else {
+        setSuccess('Email sequence generated! Review your emails and click "Activate Sequence" to go live.');
+      }
       setExpandedEmail(0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate email sequence');
