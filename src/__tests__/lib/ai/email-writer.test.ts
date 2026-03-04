@@ -9,8 +9,69 @@ jest.mock('@/lib/ai/content-pipeline/anthropic-client', () => ({
   parseJsonResponse: (text: string) => JSON.parse(text),
 }));
 
-jest.mock('@/lib/ai/content-pipeline/model-config', () => ({
-  CLAUDE_SONNET_MODEL: 'claude-sonnet-test',
+jest.mock('@/lib/services/prompt-registry', () => ({
+  getPrompt: jest.fn(() =>
+    Promise.resolve({
+      slug: 'email-newsletter',
+      model: 'claude-sonnet-test',
+      max_tokens: 2000,
+      temperature: 1.0,
+      user_prompt: `Write a daily newsletter email for a B2B audience.
+
+TOPIC: {{topic}}
+{{linkedin_topic_section}}
+{{author_section}}
+
+KNOWLEDGE CONTEXT:
+{{knowledge_context}}
+
+{{voice_style_section}}
+
+NEWSLETTER EMAIL RULES:
+- This is NOT a LinkedIn post. It should be longer, more detailed, more utility-focused.
+- Include actionable takeaways the reader can use immediately.
+- Use subheadings to break up the content.
+- Open with a personal/relatable hook (not "Hey {{first_name}}")
+- 300-500 words in the body.
+- End with a soft CTA (reply to this email, check out a resource, etc.)
+- Conversational but substantive — the reader should feel like they learned something.
+
+Return ONLY valid JSON with "subject" (compelling, 5-10 words) and "body" (markdown formatted).`,
+      system_prompt: '',
+    })
+  ),
+  interpolatePrompt: jest.fn((template: string, vars: Record<string, string>) => {
+    let result = template;
+    for (const [key, value] of Object.entries(vars)) {
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+    }
+    return result;
+  }),
+}));
+
+jest.mock('@/lib/ai/content-pipeline/voice-prompt-builder', () => ({
+  buildVoicePromptSection: jest.fn((profile: unknown, _contentType: string) => {
+    if (!profile) return '';
+    const p = profile as {
+      tone?: string;
+      banned_phrases?: string[];
+      structure_patterns?: Record<string, string[]>;
+      content_length?: Record<string, string>;
+    };
+    const sections: string[] = [];
+    sections.push('## Writing Style (learned from author edits)');
+    if (p.tone) sections.push(`Tone: ${p.tone}`);
+    if (p.banned_phrases?.length) {
+      sections.push(`NEVER use these phrases: ${p.banned_phrases.join(', ')}`);
+    }
+    const structurePatterns = p.structure_patterns?.['email'];
+    if (structurePatterns?.length) {
+      sections.push(`Structure (email): ${structurePatterns.join('. ')}`);
+    }
+    const lengthTarget = p.content_length?.['email'];
+    if (lengthTarget) sections.push(`Length target: ${lengthTarget}`);
+    return sections.join('\n');
+  }),
 }));
 
 import { writeNewsletterEmail, type WriteEmailInput } from '@/lib/ai/content-pipeline/email-writer';

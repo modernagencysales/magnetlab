@@ -1,4 +1,3 @@
-import { describe, it, expect } from 'vitest';
 import { getEmailMarketingProvider, isEmailMarketingProvider } from '../index';
 import { KitProvider } from '../providers/kit';
 import { MailerLiteProvider } from '../providers/mailerlite';
@@ -6,12 +5,11 @@ import { MailchimpProvider } from '../providers/mailchimp';
 import { ActiveCampaignProvider } from '../providers/activecampaign';
 
 // Mock the Supabase and encrypted-storage imports so the module loads without env vars
-import { vi } from 'vitest';
-vi.mock('@/lib/utils/encrypted-storage', () => ({
-  getUserIntegration: vi.fn(),
+jest.mock('@/lib/utils/encrypted-storage', () => ({
+  getUserIntegration: jest.fn(),
 }));
-vi.mock('@/lib/utils/supabase-server', () => ({
-  createSupabaseAdminClient: vi.fn(),
+jest.mock('@/lib/utils/supabase-server', () => ({
+  createSupabaseAdminClient: jest.fn(),
 }));
 
 describe('getEmailMarketingProvider', () => {
