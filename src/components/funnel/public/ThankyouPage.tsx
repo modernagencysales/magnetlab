@@ -11,6 +11,7 @@ import { FontLoader, getFontStyle } from './FontLoader';
 import type { FunnelPageSection } from '@/lib/types/funnel';
 
 import { logError } from '@/lib/utils/logger';
+import * as publicApi from '@/frontend/api/public';
 
 type AnswerType = 'yes_no' | 'text' | 'textarea' | 'multiple_choice';
 
@@ -396,18 +397,7 @@ export function ThankyouPage({
     setSubmitting(true);
     try {
       if (leadId) {
-        const response = await fetch('/api/public/lead', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ leadId, answers: finalAnswers }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to submit answers');
-        }
-
+        const data = await publicApi.updateLeadQualification({ leadId, answers: finalAnswers });
         setIsQualified(data.isQualified);
       }
       setQualificationComplete(true);
@@ -502,11 +492,7 @@ export function ThankyouPage({
   // Track thank-you page view
   useEffect(() => {
     if (funnelPageId) {
-      fetch('/api/public/view', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ funnelPageId, pageType: 'thankyou' }),
-      }).catch(() => {});
+      publicApi.trackView({ funnelPageId, pageType: 'thankyou' }).catch(() => {});
     }
   }, [funnelPageId]);
 

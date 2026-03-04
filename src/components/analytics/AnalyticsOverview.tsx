@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import * as analyticsApi from '@/frontend/api/analytics';
+import * as funnelApi from '@/frontend/api/funnel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatCards } from '@/components/analytics/StatCards';
 import { TimeSeriesChart } from '@/components/analytics/TimeSeriesChart';
@@ -115,11 +117,7 @@ export function AnalyticsOverview() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/analytics/overview?range=${selectedRange}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch analytics data');
-      }
-      const json = await response.json();
+      const json = await analyticsApi.getOverview(selectedRange);
       setData(json);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analytics');
@@ -130,11 +128,8 @@ export function AnalyticsOverview() {
 
   const fetchFunnels = useCallback(async () => {
     try {
-      const response = await fetch('/api/funnel/all');
-      if (response.ok) {
-        const json = await response.json();
-        setFunnels(json.funnels || []);
-      }
+      const json = await funnelApi.getAllFunnels();
+      setFunnels((json.funnels || []) as FunnelItem[]);
     } catch {
       // Non-critical -- funnels list is supplementary
     }

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Loader2, AlertTriangle, CheckCircle2, XCircle, BarChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KNOWLEDGE_TYPE_LABELS } from '@/lib/types/content-pipeline';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 const GOALS = [
   { value: 'lead_magnet', label: 'Lead Magnet' },
@@ -45,10 +47,7 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ limit: '20' });
-      if (teamId) params.append('team_id', teamId);
-      const res = await fetch(`/api/content-pipeline/knowledge/gaps?${params}`);
-      const data = await res.json();
+      const data = await knowledgeApi.getKnowledgeGaps({ limit: 20, team_id: teamId }) as { gaps?: GapData[] };
       setGaps(data.gaps || []);
     } catch {
       setError('Failed to load data. Please try again.');
@@ -64,9 +63,11 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
     setAssessing(true);
     setReadiness(null);
     try {
-      const params = new URLSearchParams({ topic: selectedTopic, goal: selectedGoal });
-      const res = await fetch(`/api/content-pipeline/knowledge/readiness?${params}`);
-      const data = await res.json();
+      const data = await knowledgeApi.getKnowledgeReadiness({
+        topic: selectedTopic,
+        goal: selectedGoal,
+        team_id: teamId,
+      }) as { readiness?: ReadinessResult };
       setReadiness(data.readiness || null);
     } catch {
       // Silent

@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
 import { KNOWLEDGE_TYPE_LABELS } from '@/lib/types/content-pipeline';
 import type { KnowledgeCategory } from '@/lib/types/content-pipeline';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 const KNOWLEDGE_TYPE_COLORS: Record<string, string> = {
   how_to: 'bg-blue-500', insight: 'bg-purple-500', story: 'bg-green-500',
@@ -54,10 +55,7 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (teamId) params.append('team_id', teamId);
-      const res = await fetch(`/api/content-pipeline/knowledge/topics/${slug}?${params}`);
-      const detail = await res.json();
+      const detail = await knowledgeApi.getTopicDetail(slug, teamId) as TopicDetailData;
       setData(detail);
       setSummary(detail.topic?.summary || null);
     } catch {
@@ -72,11 +70,7 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
   const handleGenerateSummary = async (force: boolean = false) => {
     setGeneratingSummary(true);
     try {
-      const params = force ? '?force=true' : '';
-      const res = await fetch(`/api/content-pipeline/knowledge/topics/${slug}/summary${params}`, {
-        method: 'POST',
-      });
-      const result = await res.json();
+      const result = await knowledgeApi.getTopicSummary(slug, { force, team_id: teamId }) as { summary?: string };
       if (result.summary) {
         setSummary(result.summary);
       }

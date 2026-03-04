@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { FunnelBuilder } from '@/components/funnel';
 import type { FunnelPage, QualificationQuestion } from '@/lib/types/funnel';
 import type { Library } from '@/lib/types/library';
+import * as funnelApi from '@/frontend/api/funnel';
 
 export default function LibraryFunnelPage() {
   const params = useParams();
@@ -23,10 +24,10 @@ export default function LibraryFunnelPage() {
     async function fetchData() {
       try {
         // Fetch library, user, existing funnel, and connected email providers
-        const [libraryRes, userRes, funnelsRes, emailProvidersRes] = await Promise.all([
+        const [libraryRes, userRes, funnelsData, emailProvidersRes] = await Promise.all([
           fetch(`/api/libraries/${libraryId}`),
           fetch('/api/user/username'),
-          fetch('/api/funnel/all'),
+          funnelApi.getAllFunnels().catch(() => ({ funnels: [] })),
           fetch('/api/integrations/email-marketing/connected'),
         ]);
 
@@ -44,29 +45,22 @@ export default function LibraryFunnelPage() {
         }
 
         // Find existing funnel targeting this library
-        if (funnelsRes.ok) {
-          const funnelsData = await funnelsRes.json();
-          const existingFunnel = (funnelsData.funnels || []).find(
-            (f: { library_id: string | null; target_type: string }) =>
-              f.library_id === libraryId && f.target_type === 'library'
-          );
+        const funnelsList = funnelsData.funnels || [];
+        const existingFunnel = (funnelsList as { library_id: string | null; target_type: string }[]).find(
+          (f) => f.library_id === libraryId && f.target_type === 'library'
+        );
 
-          if (existingFunnel) {
-            // Fetch full funnel data with the funnel API
-            const funnelRes = await fetch(`/api/funnel/${existingFunnel.id}`);
-            if (funnelRes.ok) {
-              const funnelData = await funnelRes.json();
-              setFunnel(funnelData.funnel);
+        if (existingFunnel) {
+          try {
+            const funnelData = await funnelApi.getFunnel(existingFunnel.id);
+            setFunnel(funnelData.funnel as FunnelPage);
 
-              // Fetch questions if funnel exists
-              if (funnelData.funnel?.id) {
-                const questionsRes = await fetch(`/api/funnel/${funnelData.funnel.id}/questions`);
-                if (questionsRes.ok) {
-                  const questionsData = await questionsRes.json();
-                  setQuestions(questionsData.questions || []);
-                }
-              }
+            if (funnelData.funnel && typeof funnelData.funnel === 'object' && 'id' in funnelData.funnel) {
+              const questionsData = await funnelApi.getQuestions((funnelData.funnel as { id: string }).id);
+              setQuestions((questionsData.questions || []) as QualificationQuestion[]);
             }
+          } catch {
+            // ignore
           }
         }
 

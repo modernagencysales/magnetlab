@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { AddSubscriberDialog } from '@/components/email/AddSubscriberDialog';
 import { CsvImportDialog } from '@/components/email/CsvImportDialog';
+import * as subscribersApi from '@/frontend/api/email/subscribers';
 import type { EmailSubscriber, SubscriberStatus, SubscriberSource } from '@/lib/types/email-system';
 
 const STATUS_BADGE_CLASSES: Record<SubscriberStatus, string> = {
@@ -56,22 +57,13 @@ export function SubscriberTable() {
     setError(null);
 
     try {
-      const params = new URLSearchParams();
-      params.set('page', page.toString());
-      params.set('limit', limit.toString());
-
-      if (search) {
-        params.set('search', search);
-      }
-      if (statusFilter !== 'all') {
-        params.set('status', statusFilter);
-      }
-
-      const response = await fetch(`/api/email/subscribers?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch subscribers');
-
-      const data = await response.json();
-      setSubscribers(data.subscribers);
+      const data = await subscribersApi.listSubscribers({
+        page,
+        limit,
+        search: search || undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+      });
+      setSubscribers(data.subscribers as EmailSubscriber[]);
       setTotal(data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load subscribers');
@@ -98,15 +90,7 @@ export function SubscriberTable() {
 
     setDeletingId(id);
     try {
-      const response = await fetch(`/api/email/subscribers/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to unsubscribe');
-      }
-
+      await subscribersApi.unsubscribeSubscriber(id);
       toast.success(`${email} has been unsubscribed`);
       fetchSubscribers();
     } catch (err) {

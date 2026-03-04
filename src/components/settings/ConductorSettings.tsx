@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle, Zap } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as integrationsApi from '@/frontend/api/integrations';
 
 interface ConductorSettingsProps {
   isConnected: boolean;
@@ -30,18 +31,11 @@ export function ConductorSettings({ isConnected, lastVerifiedAt, metadata }: Con
     setStatus({ verifying: true, verified: null, error: null });
 
     try {
-      // First verify the API key against the Conductor endpoint
-      const verifyResponse = await fetch('/api/integrations/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service: 'conductor',
-          api_key: apiKey,
-          metadata: { endpointUrl: endpointUrl.replace(/\/+$/, '') },
-        }),
+      const verifyData = await integrationsApi.verifyIntegration({
+        service: 'conductor',
+        api_key: apiKey,
+        metadata: { endpointUrl: endpointUrl.replace(/\/+$/, '') },
       });
-
-      const verifyData = await verifyResponse.json();
 
       if (!verifyData.verified) {
         setStatus({
@@ -52,20 +46,11 @@ export function ConductorSettings({ isConnected, lastVerifiedAt, metadata }: Con
         return;
       }
 
-      // Save the integration with endpoint URL in metadata
-      const saveResponse = await fetch('/api/integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service: 'conductor',
-          api_key: apiKey,
-          metadata: { endpointUrl: endpointUrl.replace(/\/+$/, '') },
-        }),
+      await integrationsApi.saveIntegration({
+        service: 'conductor',
+        api_key: apiKey,
+        metadata: { endpointUrl: endpointUrl.replace(/\/+$/, '') },
       });
-
-      if (!saveResponse.ok) {
-        throw new Error('Failed to save integration');
-      }
 
       setStatus({ verifying: false, verified: true, error: null });
       setApiKey('');
@@ -88,11 +73,7 @@ export function ConductorSettings({ isConnected, lastVerifiedAt, metadata }: Con
 
     setLoading(true);
     try {
-      await fetch('/api/integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: 'conductor', api_key: null }),
-      });
+      await integrationsApi.saveIntegration({ service: 'conductor', api_key: null });
       window.location.reload();
     } catch (error) {
       logError('settings/conductor', error, { step: 'disconnect_error' });

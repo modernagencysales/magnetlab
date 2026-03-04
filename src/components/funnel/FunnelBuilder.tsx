@@ -20,6 +20,8 @@ import { FunnelIntegrationsTab } from './FunnelIntegrationsTab';
 import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle, RedirectTrigger, ThankyouLayout } from '@/lib/types/funnel';
 import type { LeadMagnet } from '@/lib/types/lead-magnet';
 import type { Library } from '@/lib/types/library';
+import * as funnelApi from '@/frontend/api/funnel';
+import { isApiError } from '@/frontend/api/errors';
 
 const VISUAL_TABS = new Set<TabType>(['optin', 'thankyou', 'theme', 'sections']);
 
@@ -109,11 +111,8 @@ export function FunnelBuilder({
   const fetchSections = useCallback(async () => {
     if (!funnel?.id) return;
     try {
-      const res = await fetch(`/api/funnel/${funnel.id}/sections`);
-      if (res.ok) {
-        const data = await res.json();
-        setSections(data.sections);
-      }
+      const data = await funnelApi.getSections(funnel.id);
+      setSections((data.sections || []) as FunnelPageSection[]);
     } catch {
       // ignore
     }
@@ -174,18 +173,7 @@ export function FunnelBuilder({
     setError(null);
 
     try {
-      const response = await fetch('/api/funnel/generate-content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadMagnetId: leadMagnet.id, useAI: true }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate content');
-      }
-
-      const { content } = await response.json() as { content: GeneratedOptinContent };
-
+      const { content } = await funnelApi.generateFunnelContent(leadMagnet.id, true) as { content: GeneratedOptinContent };
       setOptinHeadline(content.headline);
       setOptinSubline(content.subline);
       setOptinSocialProof(content.socialProof);
@@ -237,35 +225,23 @@ export function FunnelBuilder({
         payload.externalResourceId = targetId;
       }
 
-      let response;
-      if (funnel) {
-        response = await fetch(`/api/funnel/${funnel.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        response = await fetch('/api/funnel', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-      }
-
-      if (!response.ok) {
-        const data = await response.json();
-
+      let result: { funnel: FunnelPage };
+      try {
+        if (funnel) {
+          result = await funnelApi.updateFunnel(funnel.id, payload) as { funnel: FunnelPage };
+        } else {
+          result = await funnelApi.createFunnel(payload) as { funnel: FunnelPage };
+        }
+      } catch (err: unknown) {
         // If funnel already exists (409), reload to get the existing funnel
-        if (response.status === 409) {
+        if (isApiError(err) && err.status === 409) {
           window.location.reload();
           return;
         }
-
-        throw new Error(data.error || 'Failed to save');
+        throw err instanceof Error ? err : new Error(String(err));
       }
 
-      const { funnel: savedFunnel } = await response.json();
-      setFunnel(savedFunnel);
+      setFunnel(result.funnel);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {

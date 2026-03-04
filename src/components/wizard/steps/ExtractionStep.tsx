@@ -6,6 +6,7 @@ import type { LeadMagnetConcept, ContentExtractionQuestion, LeadMagnetArchetype,
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 
 import { logError } from '@/lib/utils/logger';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 interface ExtractionStepProps {
   concept: LeadMagnetConcept;
@@ -107,32 +108,21 @@ export function ExtractionStep({
       try {
         // Try context-aware questions first if we have business context
         if (businessContext?.businessDescription) {
-          const contextualRes = await fetch('/api/lead-magnet/extract', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'contextual-questions',
-              archetype: concept.archetype,
-              concept,
-              businessContext,
-            }),
+          const data = await leadMagnetApi.extract({
+            action: 'contextual-questions',
+            archetype: concept.archetype,
+            concept,
+            businessContext,
           });
-          if (contextualRes.ok) {
-            const data = await contextualRes.json();
-            if (data.questions?.length > 0) {
-              setQuestions(data.questions);
-              setLoadingQuestions(false);
-              return;
-            }
+          if (data.questions?.length > 0) {
+            setQuestions(data.questions as ContentExtractionQuestion[]);
+            setLoadingQuestions(false);
+            return;
           }
         }
 
-        // Fallback to static questions
-        const response = await fetch(
-          `/api/lead-magnet/extract?archetype=${concept.archetype}`
-        );
-        const data = await response.json();
-        setQuestions(data.questions);
+        const data = await leadMagnetApi.getExtractionQuestions(concept.archetype) as { questions?: ContentExtractionQuestion[] };
+        setQuestions(data.questions ?? []);
       } catch (error) {
         logError('wizard/extraction', error, { step: 'failed_to_fetch_questions' });
       } finally {

@@ -6,6 +6,7 @@ import { Plus, Trash2, Play, Loader2, Check, X, Globe } from 'lucide-react';
 import type { WebhookConfig } from '@/lib/types/funnel';
 
 import { logError } from '@/lib/utils/logger';
+import * as webhooksApi from '@/frontend/api/webhooks';
 
 export function WebhookSettings() {
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
@@ -26,10 +27,8 @@ export function WebhookSettings() {
 
   const fetchWebhooks = async () => {
     try {
-      const response = await fetch('/api/webhooks');
-      if (!response.ok) throw new Error('Failed to fetch webhooks');
-      const data = await response.json();
-      setWebhooks(data.webhooks);
+      const data = await webhooksApi.getWebhooks();
+      setWebhooks((data.webhooks || []) as WebhookConfig[]);
     } catch (err) {
       logError('settings/webhooks', err, { step: 'fetch_webhooks_error' });
     } finally {
@@ -45,18 +44,8 @@ export function WebhookSettings() {
     setError(null);
 
     try {
-      const response = await fetch('/api/webhooks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName, url: newUrl }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create webhook');
-      }
-
-      const { webhook } = await response.json();
+      const data = await webhooksApi.createWebhook({ name: newName, url: newUrl });
+      const webhook = data.webhook as WebhookConfig;
       setWebhooks([webhook, ...webhooks]);
       setNewName('');
       setNewUrl('');
@@ -70,15 +59,10 @@ export function WebhookSettings() {
 
   const handleToggleActive = async (webhook: WebhookConfig) => {
     try {
-      const response = await fetch(`/api/webhooks/${webhook.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: !webhook.isActive }),
+      const data = await webhooksApi.updateWebhook(webhook.id, {
+        isActive: !webhook.isActive,
       });
-
-      if (!response.ok) throw new Error('Failed to update webhook');
-
-      const { webhook: updated } = await response.json();
+      const updated = data.webhook as WebhookConfig;
       setWebhooks(webhooks.map((w) => (w.id === webhook.id ? updated : w)));
     } catch (err) {
       logError('settings/webhooks', err, { step: 'toggle_webhook_error' });
@@ -89,12 +73,7 @@ export function WebhookSettings() {
     if (!confirm('Are you sure you want to delete this webhook?')) return;
 
     try {
-      const response = await fetch(`/api/webhooks/${webhookId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete webhook');
-
+      await webhooksApi.deleteWebhook(webhookId);
       setWebhooks(webhooks.filter((w) => w.id !== webhookId));
     } catch (err) {
       logError('settings/webhooks', err, { step: 'delete_webhook_error' });
@@ -106,15 +85,11 @@ export function WebhookSettings() {
     setTestResult(null);
 
     try {
-      const response = await fetch(`/api/webhooks/${webhookId}`, {
-        method: 'POST',
-      });
-
-      const data = await response.json();
+      const data = await webhooksApi.testWebhook(webhookId);
       setTestResult({
         id: webhookId,
         success: data.success,
-        message: data.message,
+        message: data.message ?? '',
       });
     } catch (err) {
       setTestResult({

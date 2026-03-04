@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Loader2, Plus, Trash2, CheckCircle, XCircle, ChevronDown, Mail, Settings, MessageSquare, Copy, Check } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as funnelIntegrationsApi from '@/frontend/api/funnel-integrations';
 
 const PROVIDER_LABELS: Record<string, string> = {
   kit: 'Kit (ConvertKit)',
@@ -71,21 +72,14 @@ function IntegrationRow({
   const handleToggle = async () => {
     setToggling(true);
     try {
-      const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: integration.provider,
-          list_id: integration.list_id,
-          list_name: integration.list_name,
-          tag_id: integration.tag_id,
-          tag_name: integration.tag_name,
-          is_active: !integration.is_active,
-        }),
+      await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+        provider: integration.provider,
+        list_id: integration.list_id,
+        list_name: integration.list_name,
+        tag_id: integration.tag_id,
+        tag_name: integration.tag_name,
+        is_active: !integration.is_active,
       });
-
-      if (!response.ok) throw new Error('Failed to update');
-
       onToggled(integration.provider, !integration.is_active);
     } catch (error) {
       logError('funnel-integrations', error, { step: 'toggle_error' });
@@ -101,13 +95,7 @@ function IntegrationRow({
 
     setRemoving(true);
     try {
-      const response = await fetch(
-        `/api/funnels/${funnelPageId}/integrations/${integration.provider}`,
-        { method: 'DELETE' }
-      );
-
-      if (!response.ok) throw new Error('Failed to remove');
-
+      await funnelIntegrationsApi.deleteFunnelIntegration(funnelPageId, integration.provider);
       onRemoved(integration.provider);
     } catch (error) {
       logError('funnel-integrations', error, { step: 'remove_error' });
@@ -272,26 +260,15 @@ function AddIntegrationForm({
     setError(null);
 
     try {
-      const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          list_id: selectedListId,
-          list_name: selectedListName || null,
-          tag_id: selectedTagId || null,
-          tag_name: selectedTagName || null,
-          is_active: true,
-        }),
+      const data = await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+        provider,
+        list_id: selectedListId,
+        list_name: selectedListName || null,
+        tag_id: selectedTagId || null,
+        tag_name: selectedTagName || null,
+        is_active: true,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to save integration');
-      }
-
-      onAdded(data.integration);
+      onAdded(data.integration as FunnelIntegration);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
@@ -412,10 +389,7 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
   useEffect(() => {
     async function loadGHL() {
       try {
-        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
-        if (!response.ok) return;
-
-        const data = await response.json();
+        const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
         const ghl = (data.integrations || []).find(
           (i: FunnelIntegration) => i.provider === 'gohighlevel'
         );
@@ -444,24 +418,15 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'gohighlevel',
-        list_id: 'n/a',
-        list_name: null,
-        tag_id: null,
-        tag_name: null,
-        is_active: isActive,
-        settings: { custom_tags: customTagsArray },
-      }),
+    await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+      provider: 'gohighlevel',
+      list_id: 'n/a',
+      list_name: null,
+      tag_id: null,
+      tag_name: null,
+      is_active: isActive,
+      settings: { custom_tags: customTagsArray },
     });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to save');
-    }
   };
 
   const handleToggle = async () => {
@@ -611,10 +576,7 @@ function HeyReachFunnelToggle({
   useEffect(() => {
     async function loadHeyReach() {
       try {
-        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
-        if (!response.ok) return;
-
-        const data = await response.json();
+        const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
         const hr = (data.integrations || []).find(
           (i: FunnelIntegration) => i.provider === 'heyreach'
         );
@@ -659,24 +621,15 @@ function HeyReachFunnelToggle({
   const saveHeyReach = async (isActive: boolean, campaignId?: number | null) => {
     const idToSave = campaignId !== undefined ? campaignId : selectedCampaignId;
 
-    const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'heyreach',
-        list_id: 'n/a',
-        list_name: null,
-        tag_id: null,
-        tag_name: null,
-        is_active: isActive,
-        settings: { campaign_id: idToSave },
-      }),
+    await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+      provider: 'heyreach',
+      list_id: 'n/a',
+      list_name: null,
+      tag_id: null,
+      tag_name: null,
+      is_active: isActive,
+      settings: { campaign_id: idToSave },
     });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to save');
-    }
   };
 
   const handleToggle = async () => {
@@ -878,11 +831,8 @@ export function FunnelIntegrationsTab({
   useEffect(() => {
     async function fetchIntegrations() {
       try {
-        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
-        if (response.ok) {
-          const data = await response.json();
-          setIntegrations(data.integrations || []);
-        }
+        const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
+        setIntegrations((data.integrations || []) as FunnelIntegration[]);
       } catch (error) {
         logError('funnel-integrations', error, { step: 'fetch_error' });
       } finally {

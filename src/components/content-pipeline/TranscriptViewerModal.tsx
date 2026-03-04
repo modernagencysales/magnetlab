@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { SpeakerMapEditor, type SpeakerMap } from './SpeakerMapEditor';
+import * as transcriptsApi from '@/frontend/api/content-pipeline/transcripts';
 
 interface TranscriptDetail {
   id: string;
@@ -58,11 +59,8 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
 
   const fetchTranscript = useCallback(async () => {
     try {
-      const res = await fetch(`/api/content-pipeline/transcripts/${transcriptId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTranscript(data.transcript);
-      }
+      const data = await transcriptsApi.getTranscript(transcriptId);
+      if (data.transcript) setTranscript(data.transcript as TranscriptDetail);
     } finally {
       setLoading(false);
     }
@@ -75,13 +73,8 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
   const handleSaveField = async (field: string, value: unknown) => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/content-pipeline/transcripts/${transcriptId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await transcriptsApi.updateTranscript(transcriptId, { [field]: value });
+      if (data.transcript) {
         setTranscript((prev) => prev ? { ...prev, ...data.transcript } : prev);
         onUpdated?.();
       }
@@ -99,13 +92,9 @@ export function TranscriptViewerModal({ transcriptId, onClose, onUpdated }: Tran
     }
     setReprocessing(true);
     try {
-      const res = await fetch(`/api/content-pipeline/transcripts/${transcriptId}/reprocess`, {
-        method: 'POST',
-      });
-      if (res.ok) {
-        await fetchTranscript();
-        onUpdated?.();
-      }
+      await transcriptsApi.reprocessTranscript(transcriptId);
+      await fetchTranscript();
+      onUpdated?.();
     } finally {
       setReprocessing(false);
     }

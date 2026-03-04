@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { logError } from '@/lib/utils/logger';
+import * as funnelApi from '@/frontend/api/funnel';
+import * as leadsApi from '@/frontend/api/leads';
 
 import {
   Users,
@@ -63,25 +65,19 @@ export default function LeadsPage() {
     setError(null);
 
     try {
-      const params = new URLSearchParams();
-      params.set('limit', limit.toString());
-      params.set('offset', (page * limit).toString());
-
-      if (selectedFunnel !== 'all') {
-        params.set('funnelId', selectedFunnel);
-      }
-      if (qualifiedFilter !== 'all') {
-        params.set('qualified', qualifiedFilter);
-      }
-      if (search) {
-        params.set('search', search);
-      }
-
-      const response = await fetch(`/api/leads?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch leads');
-
-      const data = await response.json();
-      setLeads(data.leads);
+      const data = await leadsApi.listLeads({
+        limit,
+        offset: page * limit,
+        funnelId: selectedFunnel !== 'all' ? selectedFunnel : undefined,
+        qualified:
+          qualifiedFilter === 'all'
+            ? undefined
+            : qualifiedFilter === 'qualified'
+              ? true
+              : false,
+        search: search || undefined,
+      });
+      setLeads((data.leads as Lead[]));
       setTotal(data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load leads');
@@ -92,15 +88,12 @@ export default function LeadsPage() {
 
   const fetchFunnels = async () => {
     try {
-      const response = await fetch('/api/funnel/all');
-      if (response.ok) {
-        const data = await response.json();
-        setFunnels(data.funnels?.map((f: { id: string; slug: string; optin_headline: string }) => ({
-          id: f.id,
-          slug: f.slug,
-          optinHeadline: f.optin_headline,
-        })) || []);
-      }
+      const data = await funnelApi.getAllFunnels();
+      setFunnels((data.funnels || []).map((f: { id: string; slug: string; optin_headline: string }) => ({
+        id: f.id,
+        slug: f.slug,
+        optinHeadline: f.optin_headline,
+      })));
     } catch (err) {
       logError('dashboard/leads', err, { step: 'failed_to_fetch_funnels' });
     }
@@ -127,22 +120,19 @@ export default function LeadsPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const params = new URLSearchParams();
-      if (selectedFunnel !== 'all') {
-        params.set('funnelId', selectedFunnel);
-      }
-      if (qualifiedFilter !== 'all') {
-        params.set('qualified', qualifiedFilter);
-      }
-
-      const response = await fetch(`/api/leads/export?${params}`);
-      if (!response.ok) throw new Error('Export failed');
-
-      const blob = await response.blob();
+      const { blob, filename } = await leadsApi.exportLeads({
+        funnelId: selectedFunnel !== 'all' ? selectedFunnel : undefined,
+        qualified:
+          qualifiedFilter === 'all'
+            ? undefined
+            : qualifiedFilter === 'qualified'
+              ? true
+              : false,
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `leads-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, TrendingUp, Hash, Star, FileText } from 'lucide-react';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 interface OverviewStats {
   entries_added: number;
@@ -29,20 +30,12 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (teamId) params.append('team_id', teamId);
-
-      const [digestRes, topicsRes] = await Promise.all([
-        fetch(`/api/content-pipeline/knowledge/recent?days=7&${params}`),
-        // We fetch topics to get total count — limit is generous but bounded
-        fetch(`/api/content-pipeline/knowledge/topics?limit=200&${params}`),
+      const [digest, topicsData] = await Promise.all([
+        knowledgeApi.getRecentKnowledge({ days: 7, team_id: teamId }),
+        knowledgeApi.getTopics({ limit: 200, team_id: teamId }),
       ]);
-
-      const digest = await digestRes.json();
-      const topics = await topicsRes.json();
-
-      setStats(digest);
-      setTopicCount(topics.topics?.length || 0);
+      setStats(digest as OverviewStats);
+      setTopicCount((topicsData.topics?.length as number) || 0);
     } catch {
       setError('Failed to load data. Please try again.');
     } finally {

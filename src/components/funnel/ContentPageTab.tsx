@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Loader2, Sparkles, ExternalLink, CheckCircle2, Clock, FileText, PenLine } from 'lucide-react';
 import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
 import { useBackgroundJob } from '@/lib/hooks/useBackgroundJob';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 interface ContentPageTabProps {
   leadMagnet: LeadMagnet;
@@ -62,22 +63,7 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
     setError(null);
 
     try {
-      const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/polish`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        let errorMsg = 'Failed to polish content';
-        try {
-          const data = await response.json();
-          errorMsg = data.error || errorMsg;
-        } catch {
-          // Non-JSON response (e.g. Vercel timeout)
-        }
-        throw new Error(errorMsg);
-      }
-
-      const { jobId } = await response.json();
+      const { jobId } = await leadMagnetApi.polishLeadMagnet(leadMagnet.id);
       startPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to polish content');
@@ -88,22 +74,7 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
     setError(null);
 
     try {
-      const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/generate-content`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        let errorMsg = 'Failed to generate content';
-        try {
-          const data = await response.json();
-          errorMsg = data.error || errorMsg;
-        } catch {
-          // Non-JSON response (e.g. Vercel timeout)
-        }
-        throw new Error(errorMsg);
-      }
-
-      const { jobId } = await response.json();
+      const { jobId } = await leadMagnetApi.generateLeadMagnetContent(leadMagnet.id);
       startPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate content');
@@ -118,23 +89,10 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       try {
         const now = new Date().toISOString();
         const contentToSave = { ...blank, polishedAt: now };
-        const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/content`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ polishedContent: contentToSave }),
+        const { polishedContent: saved } = await leadMagnetApi.updateLeadMagnetContent(leadMagnet.id, {
+          polishedContent: contentToSave,
         });
-        if (!response.ok) {
-          let errorMsg = 'Failed to create content';
-          try {
-            const data = await response.json();
-            errorMsg = data.error || errorMsg;
-          } catch {
-            // Non-JSON response (e.g. Vercel timeout)
-          }
-          throw new Error(errorMsg);
-        }
-        const { polishedContent: saved } = await response.json();
-        onPolished(saved, now);
+        onPolished(saved as PolishedContent, now);
         // Redirect to inline editor
         if (contentUrl) {
           window.open(`${contentUrl}?edit=true`, '_blank');

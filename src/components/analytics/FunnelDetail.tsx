@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import * as analyticsApi from '@/frontend/api/analytics';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatCards } from '@/components/analytics/StatCards';
 import { TimeSeriesChart } from '@/components/analytics/TimeSeriesChart';
@@ -134,24 +135,11 @@ export function FunnelDetail({ funnelId }: FunnelDetailProps) {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(
-          `/api/analytics/funnel/${funnelId}?range=${selectedRange}`
-        );
-        if (response.status === 403) {
-          throw new Error('You do not have access to this funnel.');
-        }
-        if (response.status === 404) {
-          throw new Error('Funnel not found.');
-        }
-        if (!response.ok) {
-          throw new Error('Failed to fetch funnel analytics.');
-        }
-        const json = await response.json();
+        const json = await analyticsApi.getFunnelDetail(funnelId, selectedRange);
         setData(json);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to load funnel analytics'
-        );
+        const msg = err instanceof Error ? err.message : 'Failed to load funnel analytics';
+        setError(msg);
       } finally {
         setLoading(false);
       }

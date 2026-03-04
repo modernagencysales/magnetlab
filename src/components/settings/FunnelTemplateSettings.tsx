@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Loader2, Check, Layout, Sparkles, Award, Layers } from 'lucide-react';
 import { FUNNEL_TEMPLATES } from '@/lib/constants/funnel-templates';
+import * as userApi from '@/frontend/api/user';
 
 const TEMPLATE_ICONS: Record<string, React.ReactNode> = {
   minimal: <Layout className="h-5 w-5" />,
@@ -28,17 +29,7 @@ export function FunnelTemplateSettings({ currentTemplate, onSaved }: FunnelTempl
     setError(null);
 
     try {
-      const res = await fetch('/api/user/defaults', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ defaultFunnelTemplate: templateId }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to save');
-      }
-
+      await userApi.updateDefaults({ defaultFunnelTemplate: templateId });
       onSaved(templateId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');

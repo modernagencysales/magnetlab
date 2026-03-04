@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { FlowStepCard } from './FlowStepCard';
 import type { EmailFlowWithSteps, EmailFlowStep } from '@/lib/types/email-system';
+import * as flowsApi from '@/frontend/api/email/flows';
 
 interface FlowEditorProps {
   flowId: string;
@@ -71,14 +72,11 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
   // Fetch flow data
   const fetchFlow = useCallback(async () => {
     try {
-      const response = await fetch(`/api/email/flows/${flowId}`);
-      if (!response.ok) {
-        throw new Error('Failed to load flow');
-      }
-      const data = await response.json();
-      setFlow(data.flow);
-      setNameValue(data.flow.name);
-      setDescriptionValue(data.flow.description || '');
+      const data = await flowsApi.getFlow(flowId);
+      const f = data.flow as EmailFlowWithSteps;
+      setFlow(f);
+      setNameValue(f.name);
+      setDescriptionValue(f.description || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load flow');
     } finally {
@@ -116,19 +114,8 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
   const updateFlow = async (updates: Record<string, unknown>) => {
     setError(null);
     try {
-      const response = await fetch(`/api/email/flows/${flowId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update flow');
-      }
-
-      const data = await response.json();
-      setFlow((prev) => (prev ? { ...prev, ...data.flow, steps: prev.steps } : prev));
+      const data = await flowsApi.updateFlow(flowId, updates);
+      setFlow((prev) => (prev ? { ...prev, ...(data.flow as EmailFlowWithSteps), steps: prev.steps } : prev));
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update flow');
@@ -222,25 +209,14 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
     }, 4000);
 
     try {
-      const response = await fetch(`/api/email/flows/${flowId}/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stepCount: 5 }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to generate steps');
-      }
-
-      const data = await response.json();
-      setFlow((prev) => (prev ? { ...prev, steps: data.steps || [] } : prev));
+      const data = await flowsApi.generateFlowSteps(flowId, { stepCount: 5 });
+      const steps = (data.steps || []) as EmailFlowStep[];
+      setFlow((prev) => (prev ? { ...prev, steps } : prev));
       setSuccess(`Generated ${data.stepCount} email steps!`);
       setTimeout(() => setSuccess(null), 4000);
 
-      // Expand first step
-      if (data.steps && data.steps.length > 0) {
-        setExpandedStep(data.steps[0].id);
+      if (steps.length > 0) {
+        setExpandedStep(steps[0].id);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate steps');
@@ -260,27 +236,17 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
     const nextStepNumber = flow.steps.length;
 
     try {
-      const response = await fetch(`/api/email/flows/${flowId}/steps`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          step_number: nextStepNumber,
-          subject: '',
-          body: '',
-          delay_days: nextStepNumber === 0 ? 0 : 1,
-        }),
+      const data = await flowsApi.addFlowStep(flowId, {
+        step_number: nextStepNumber,
+        subject: '',
+        body: '',
+        delay_days: nextStepNumber === 0 ? 0 : 1,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to add step');
-      }
-
-      const data = await response.json();
+      const newStep = data.step as EmailFlowStep;
       setFlow((prev) =>
-        prev ? { ...prev, steps: [...prev.steps, data.step] } : prev
+        prev ? { ...prev, steps: [...prev.steps, newStep] } : prev
       );
-      setExpandedStep(data.step.id);
+      setExpandedStep(newStep.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add step');
     } finally {

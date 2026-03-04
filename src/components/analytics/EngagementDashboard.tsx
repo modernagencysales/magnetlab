@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import * as analyticsApi from '@/frontend/api/analytics';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageSquare, Heart, Send, ArrowLeft, Activity } from 'lucide-react';
 import Link from 'next/link';
@@ -85,11 +86,7 @@ export function EngagementDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/analytics/engagement');
-      if (!response.ok) {
-        throw new Error('Failed to fetch engagement data');
-      }
-      const json = await response.json();
+      const json = await analyticsApi.getEngagement();
       setData(json);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load engagement data');

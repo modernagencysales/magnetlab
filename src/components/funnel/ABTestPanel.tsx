@@ -13,6 +13,7 @@ import {
   X,
   Check,
 } from 'lucide-react';
+import * as abExperimentsApi from '@/frontend/api/ab-experiments';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -118,10 +119,8 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
 
   const fetchExperiments = useCallback(async () => {
     try {
-      const res = await fetch(`/api/ab-experiments?funnelPageId=${funnelPageId}`);
-      if (!res.ok) throw new Error('Failed to fetch experiments');
-      const data = await res.json();
-      const exps: Experiment[] = data.experiments || [];
+      const data = await abExperimentsApi.listExperiments(funnelPageId);
+      const exps: Experiment[] = (data.experiments || []) as Experiment[];
       setExperiments(exps);
 
       // Pick the latest active (running/paused) or most recent experiment
@@ -142,11 +141,9 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
 
   const fetchExperimentDetail = useCallback(async (expId: string) => {
     try {
-      const res = await fetch(`/api/ab-experiments/${expId}`);
-      if (!res.ok) throw new Error('Failed to fetch experiment details');
-      const data = await res.json();
-      setActiveExperiment(data.experiment);
-      setVariants(data.variants || []);
+      const data = await abExperimentsApi.getExperiment(expId);
+      setActiveExperiment(data.experiment as Experiment);
+      setVariants((data.variants || []) as VariantStat[]);
     } catch {
       // Silently fail on poll errors
     }
@@ -191,15 +188,8 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     setLoadingSuggestions(true);
 
     try {
-      const res = await fetch('/api/ab-experiments/suggest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ funnelPageId, testField: field }),
-      });
-
-      if (!res.ok) throw new Error('Failed to get suggestions');
-      const data = await res.json();
-      setSuggestions(data.suggestions || []);
+      const data = await abExperimentsApi.suggestVariants({ funnelPageId, testField: field });
+      setSuggestions((data.suggestions || []) as { value: string; label: string }[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get suggestions');
     } finally {
@@ -231,22 +221,13 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
 
     try {
       const fieldLabel = TEST_FIELD_OPTIONS.find((o) => o.field === selectedField)?.label || selectedField;
-      const res = await fetch('/api/ab-experiments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          funnelPageId,
-          name: `${fieldLabel} Test`,
-          testField: selectedField,
-          variantValue,
-          variantLabel,
-        }),
+      await abExperimentsApi.createExperiment({
+        funnelPageId,
+        name: `${fieldLabel} Test`,
+        testField: selectedField,
+        variantValue,
+        variantLabel,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to create experiment');
-      }
 
       // Reset creation flow and refetch
       setCreating(false);
@@ -271,12 +252,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     if (!activeExperiment) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/ab-experiments/${activeExperiment.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'pause' }),
-      });
-      if (!res.ok) throw new Error('Failed to pause');
+      await abExperimentsApi.patchExperiment(activeExperiment.id, 'pause');
       await fetchExperiments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to pause test');
@@ -289,12 +265,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     if (!activeExperiment) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/ab-experiments/${activeExperiment.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'resume' }),
-      });
-      if (!res.ok) throw new Error('Failed to resume');
+      await abExperimentsApi.patchExperiment(activeExperiment.id, 'resume');
       await fetchExperiments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resume test');
@@ -308,12 +279,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     setActionLoading(true);
     setDeclareOpen(false);
     try {
-      const res = await fetch(`/api/ab-experiments/${activeExperiment.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'declare_winner', winnerId }),
-      });
-      if (!res.ok) throw new Error('Failed to declare winner');
+      await abExperimentsApi.patchExperiment(activeExperiment.id, 'declare_winner', winnerId);
       await fetchExperiments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to declare winner');
@@ -327,10 +293,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     if (!window.confirm('Delete this experiment? This cannot be undone.')) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/ab-experiments/${activeExperiment.id}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Failed to delete');
+      await abExperimentsApi.deleteExperiment(activeExperiment.id);
       await fetchExperiments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete test');

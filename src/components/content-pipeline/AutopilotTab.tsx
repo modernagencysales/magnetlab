@@ -8,6 +8,7 @@ import { PlannerView } from './PlannerView';
 import { BusinessContextModal } from './BusinessContextModal';
 import type { PipelinePost, PostingSlot, PillarDistribution, ContentPillar } from '@/lib/types/content-pipeline';
 import { CONTENT_PILLAR_LABELS } from '@/lib/types/content-pipeline';
+import * as scheduleApi from '@/frontend/api/content-pipeline/schedule';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -44,13 +45,13 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
     setLoading(true);
     try {
       const [bufferResult, slotsResult, statusResult] = await Promise.allSettled([
-        fetch('/api/content-pipeline/schedule/buffer').then((r) => r.json()),
-        fetch('/api/content-pipeline/schedule/slots').then((r) => r.json()),
-        fetch('/api/content-pipeline/schedule/autopilot').then((r) => r.json()),
+        scheduleApi.getBuffer(),
+        scheduleApi.getSlots(),
+        scheduleApi.getAutopilotStatus(),
       ]);
 
-      if (bufferResult.status === 'fulfilled') setBuffer(bufferResult.value.buffer || []);
-      if (slotsResult.status === 'fulfilled') setSlots(slotsResult.value.slots || []);
+      if (bufferResult.status === 'fulfilled') setBuffer((bufferResult.value.buffer || []) as PipelinePost[]);
+      if (slotsResult.status === 'fulfilled') setSlots((slotsResult.value.slots || []) as PostingSlot[]);
       if (statusResult.status === 'fulfilled') setAutopilotStatus(statusResult.value);
     } catch {
       // Silent failure
@@ -67,14 +68,8 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
     setActionId(postId);
     setActionType(action);
     try {
-      const response = await fetch('/api/content-pipeline/schedule/buffer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId, action }),
-      });
-      if (response.ok) {
-        await fetchAll();
-      }
+      await scheduleApi.bufferAction(postId, action);
+      await fetchAll();
     } catch {
       // Silent failure
     } finally {
@@ -86,10 +81,10 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
   const handleRunAutopilot = async () => {
     setRunningAutopilot(true);
     try {
-      await fetch('/api/content-pipeline/schedule/autopilot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postsPerBatch, autoPublish, profileId: profileId || undefined }),
+      await scheduleApi.triggerAutopilot({
+        postsPerBatch,
+        autoPublish,
+        profileId: profileId ?? undefined,
       });
       // Refresh after a short delay to let the task start
       setTimeout(() => fetchAll(), 2000);
@@ -103,21 +98,15 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
   const handleAddSlot = async () => {
     setAddingSlot(true);
     try {
-      const response = await fetch('/api/content-pipeline/schedule/slots', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          time_of_day: newSlotTime,
-          day_of_week: newSlotDay ? parseInt(newSlotDay) : null,
-          timezone: newSlotTimezone,
-        }),
+      await scheduleApi.createSlot({
+        time_of_day: newSlotTime,
+        day_of_week: newSlotDay ? parseInt(newSlotDay) : null,
+        timezone: newSlotTimezone,
       });
-      if (response.ok) {
-        setShowAddSlot(false);
-        setNewSlotTime('09:00');
-        setNewSlotDay('');
-        await fetchAll();
-      }
+      setShowAddSlot(false);
+      setNewSlotTime('09:00');
+      setNewSlotDay('');
+      await fetchAll();
     } catch {
       // Silent failure
     } finally {
@@ -127,11 +116,7 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
 
   const handleToggleSlot = async (slot: PostingSlot) => {
     try {
-      await fetch(`/api/content-pipeline/schedule/slots/${slot.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !slot.is_active }),
-      });
+      await scheduleApi.updateSlot(slot.id, { is_active: !slot.is_active });
       await fetchAll();
     } catch {
       // Silent failure
@@ -140,9 +125,7 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
 
   const handleDeleteSlot = async (slotId: string) => {
     try {
-      await fetch(`/api/content-pipeline/schedule/slots/${slotId}`, {
-        method: 'DELETE',
-      });
+      await scheduleApi.deleteSlot(slotId);
       await fetchAll();
     } catch {
       // Silent failure

@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { Plus, Trash2, GripVertical, Loader2, HelpCircle, ListChecks, X, ChevronDown } from 'lucide-react';
 import type { QualificationQuestion, AnswerType } from '@/lib/types/funnel';
 import { SURVEY_TEMPLATE_QUESTIONS } from '@/lib/constants/survey-templates';
+import * as funnelApi from '@/frontend/api/funnel';
 
 interface QuestionsManagerProps {
   funnelId: string | null;
@@ -93,27 +94,32 @@ export function QuestionsManager({
         }
       }
 
-      const response = await fetch(apiBase, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionText: newQuestion.trim(),
-          answerType: newAnswerType,
-          qualifyingAnswer,
-          options: newAnswerType === 'multiple_choice' ? validOptions : null,
-          placeholder: (newAnswerType === 'text' || newAnswerType === 'textarea') ? newPlaceholder || null : null,
-          isQualifying,
-          isRequired: newIsRequired,
-        }),
-      });
+      const body = {
+        questionText: newQuestion.trim(),
+        answerType: newAnswerType,
+        qualifyingAnswer,
+        options: newAnswerType === 'multiple_choice' ? validOptions : null,
+        placeholder: (newAnswerType === 'text' || newAnswerType === 'textarea') ? newPlaceholder || null : null,
+        isQualifying,
+        isRequired: newIsRequired,
+      };
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to add question');
+      if (funnelId) {
+        const data = await funnelApi.createQuestion(funnelId, body);
+        setQuestions([...questions, data.question as QualificationQuestion]);
+      } else {
+        const response = await fetch(apiBase!, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to add question');
+        }
+        const { question } = await response.json();
+        setQuestions([...questions, question]);
       }
-
-      const { question } = await response.json();
-      setQuestions([...questions, question]);
       resetNewForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add question');
@@ -123,46 +129,46 @@ export function QuestionsManager({
   };
 
   const handleUpdateQuestion = async (questionId: string, updates: Record<string, unknown>) => {
-    if (!apiBase) return;
+    if (!apiBase && !funnelId) return;
 
     try {
-      const response = await fetch(`${apiBase}/${questionId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update question');
+      if (funnelId) {
+        const data = await funnelApi.updateQuestion(funnelId, questionId, updates);
+        setQuestions(questions.map(q => q.id === questionId ? (data.question as QualificationQuestion) : q));
+      } else {
+        const response = await fetch(`${apiBase}/${questionId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        });
+        if (!response.ok) throw new Error('Failed to update question');
+        const { question: updated } = await response.json();
+        setQuestions(questions.map(q => q.id === questionId ? updated : q));
       }
-
-      const { question: updated } = await response.json();
-      setQuestions(questions.map(q => q.id === questionId ? updated : q));
     } catch {
       // Error handled silently - UI remains responsive
     }
   };
 
   const handleDeleteQuestion = async (questionId: string) => {
-    if (!apiBase) return;
+    if (!apiBase && !funnelId) return;
 
     try {
-      const response = await fetch(`${apiBase}/${questionId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete question');
+      if (funnelId) {
+        await funnelApi.deleteQuestion(funnelId, questionId);
+        setQuestions(questions.filter(q => q.id !== questionId));
+      } else {
+        const response = await fetch(`${apiBase}/${questionId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete question');
+        setQuestions(questions.filter(q => q.id !== questionId));
       }
-
-      setQuestions(questions.filter(q => q.id !== questionId));
     } catch {
       // Error handled silently - UI remains responsive
     }
   };
 
   const handleLoadTemplate = async () => {
-    if (!apiBase) {
+    if (!apiBase && !funnelId) {
       onNeedsSave();
       setError('Please save the funnel first before loading a template.');
       return;
@@ -175,27 +181,29 @@ export function QuestionsManager({
       const newQuestions: QualificationQuestion[] = [];
       for (let i = 0; i < SURVEY_TEMPLATE_QUESTIONS.length; i++) {
         const tq = SURVEY_TEMPLATE_QUESTIONS[i];
-        const response = await fetch(apiBase, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            questionText: tq.questionText,
-            answerType: tq.answerType,
-            qualifyingAnswer: tq.qualifyingAnswer,
-            options: tq.options,
-            placeholder: tq.placeholder,
-            isQualifying: tq.isQualifying,
-            isRequired: tq.isRequired,
-            questionOrder: questions.length + i,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create template question');
+        const body = {
+          questionText: tq.questionText,
+          answerType: tq.answerType,
+          qualifyingAnswer: tq.qualifyingAnswer,
+          options: tq.options,
+          placeholder: tq.placeholder,
+          isQualifying: tq.isQualifying,
+          isRequired: tq.isRequired,
+          questionOrder: questions.length + i,
+        };
+        if (funnelId) {
+          const data = await funnelApi.createQuestion(funnelId, body);
+          newQuestions.push(data.question as QualificationQuestion);
+        } else {
+          const response = await fetch(apiBase!, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          if (!response.ok) throw new Error('Failed to create template question');
+          const { question } = await response.json();
+          newQuestions.push(question);
         }
-
-        const { question } = await response.json();
-        newQuestions.push(question);
       }
       setQuestions([...questions, ...newQuestions]);
     } catch (err) {
@@ -247,16 +255,15 @@ export function QuestionsManager({
     handleDragEnd();
 
     try {
-      const response = await fetch(apiBase, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionIds: newQuestions.map(q => q.id),
-        }),
-      });
-
-      if (!response.ok) {
-        setQuestions(questions);
+      if (funnelId) {
+        await funnelApi.reorderQuestions(funnelId, newQuestions.map(q => q.id));
+      } else {
+        const response = await fetch(apiBase!, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questionIds: newQuestions.map(q => q.id) }),
+        });
+        if (!response.ok) setQuestions(questions);
       }
     } catch {
       setQuestions(questions);

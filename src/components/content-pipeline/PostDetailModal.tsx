@@ -7,6 +7,8 @@ import { StatusBadge } from './StatusBadge';
 import { PostPreview } from './PostPreview';
 import { StyleFeedbackToast } from './StyleFeedbackToast';
 import type { PipelinePost, PostVariation, LinkedInAutomation, AutomationStatus } from '@/lib/types/content-pipeline';
+import { updatePost, schedulePost, publishPost } from '@/frontend/api/content-pipeline/posts';
+import * as automationsApi from '@/frontend/api/linkedin/automations';
 
 interface PostDetailModalProps {
   post: PipelinePost;
@@ -98,28 +100,21 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
     if (!isPublishedWithLinkedIn) return;
     setAutomationLoading(true);
     try {
-      const res = await fetch('/api/linkedin/automations');
-      if (res.ok) {
-        const data = await res.json();
-        const existing = (data.automations || []).find(
-          (a: LinkedInAutomation) => a.post_id === post.id || a.post_social_id === post.linkedin_post_id
-        );
-        if (existing) {
-          setAutomation(existing);
-          setAutoKeywords((existing.keywords || []).join(', '));
-          setAutoDmTemplate(existing.dm_template || post.dm_template || '');
-          setAutoConnect(existing.auto_connect);
-          setAutoLike(existing.auto_like);
-          setAutoFollowUp(existing.enable_follow_up);
-          setAutoFollowUpTemplate(existing.follow_up_template || '');
+      const data = await automationsApi.listAutomations();
+      const existing = (data.automations || []).find(
+        (a) => a.post_id === post.id || a.post_social_id === post.linkedin_post_id
+      );
+      if (existing) {
+        setAutomation(existing as LinkedInAutomation);
+        setAutoKeywords((existing.keywords || []).join(', '));
+        setAutoDmTemplate(existing.dm_template || post.dm_template || '');
+        setAutoConnect(existing.auto_connect);
+        setAutoLike(existing.auto_like);
+        setAutoFollowUp(existing.enable_follow_up);
+        setAutoFollowUpTemplate(existing.follow_up_template || '');
 
-          // Get event count
-          const evtRes = await fetch(`/api/linkedin/automations/${existing.id}`);
-          if (evtRes.ok) {
-            const evtData = await evtRes.json();
-            setAutomationEventCount((evtData.events || []).length);
-          }
-        }
+        const evtData = await automationsApi.getAutomation(existing.id);
+        setAutomationEventCount((evtData.events || []).length);
       }
     } catch { /* silent */ } finally {
       setAutomationLoading(false);
@@ -148,29 +143,19 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
     setAutomationSaving(true);
     try {
       const keywords = autoKeywords.split(',').map(k => k.trim()).filter(Boolean);
-      const body = {
+      const data = await automationsApi.createAutomation({
         name: `Auto: ${(post.final_content || post.draft_content || '').substring(0, 30)}...`,
         postId: post.id,
-        postSocialId: post.linkedin_post_id,
+        postSocialId: post.linkedin_post_id || null,
         keywords,
         dmTemplate: autoDmTemplate || null,
         autoConnect,
         autoLike,
         enableFollowUp: autoFollowUp,
         followUpTemplate: autoFollowUpTemplate || null,
-      };
-
-      const res = await fetch('/api/linkedin/automations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        setAutomation(data.automation);
-        setShowAutomationSetup(false);
-      }
+      setAutomation(data.automation as LinkedInAutomation);
+      setShowAutomationSetup(false);
     } catch { /* silent */ } finally {
       setAutomationSaving(false);
     }
@@ -180,15 +165,8 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
     if (!automation) return;
     setAutomationSaving(true);
     try {
-      const res = await fetch(`/api/linkedin/automations/${automation.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAutomation(data.automation);
-      }
+      const data = await automationsApi.updateAutomation(automation.id, { status: newStatus });
+      setAutomation(data.automation as LinkedInAutomation);
     } catch { /* silent */ } finally {
       setAutomationSaving(false);
     }
@@ -202,23 +180,12 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
     setScheduling(true);
     setScheduleError(null);
     try {
-      const response = await fetch('/api/content-pipeline/posts/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          post_id: post.id,
-          scheduled_time: scheduleTime || undefined,
-        }),
-      });
-      if (response.ok) {
-        onUpdate();
-        onClose();
-      } else {
-        const data = await response.json();
-        setScheduleError(data.error || 'Failed to schedule');
-      }
-    } catch {
-      setScheduleError('Network error. Please try again.');
+      await schedulePost(post.id, scheduleTime || undefined);
+      onUpdate();
+      onClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to schedule';
+      setScheduleError(message);
     } finally {
       setScheduling(false);
     }
@@ -228,18 +195,12 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
     setPublishing(true);
     setPublishError(null);
     try {
-      const response = await fetch(`/api/content-pipeline/posts/${post.id}/publish`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (response.ok) {
-        onUpdate();
-        onClose();
-      } else {
-        setPublishError(data.error || 'Failed to publish');
-      }
-    } catch {
-      setPublishError('Network error. Please try again.');
+      await publishPost(post.id);
+      onUpdate();
+      onClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to publish';
+      setPublishError(message);
     } finally {
       setPublishing(false);
     }
@@ -257,20 +218,11 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch(`/api/content-pipeline/posts/${post.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ final_content: editContent }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setEditing(false);
-        onUpdate();
-        // Show feedback toast if an edit was captured
-        if (data.editId) {
-          setFeedbackEditId(data.editId);
-        }
+      const data = await updatePost(post.id, { final_content: editContent });
+      setEditing(false);
+      onUpdate();
+      if (data.editId) {
+        setFeedbackEditId(data.editId);
       }
     } catch {
       // Silent failure

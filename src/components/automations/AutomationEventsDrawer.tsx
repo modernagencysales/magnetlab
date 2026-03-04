@@ -8,6 +8,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import * as automationsApi from '@/frontend/api/linkedin/automations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -169,9 +170,7 @@ export function AutomationEventsDrawer({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/linkedin/automations/${automationId}`);
-      if (!res.ok) throw new Error('Failed to fetch events');
-      const data = await res.json();
+      const data = await automationsApi.getAutomation(automationId);
       setEvents(data.events || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load events');
@@ -213,20 +212,11 @@ export function AutomationEventsDrawer({
     setSending(true);
     setSendResult(null);
     try {
-      const res = await fetch(`/api/linkedin/automations/${automationId}/reply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          commentSocialId: event.commenter_provider_id,
-          text: replyText.trim(),
-          commenterName: event.commenter_name,
-        }),
+      await automationsApi.sendReply(automationId, {
+        commentSocialId: event.commenter_provider_id || '',
+        text: replyText.trim(),
+        commenterName: event.commenter_name ?? undefined,
       });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to send reply');
-      }
 
       setSendResult({ eventId: event.id, success: true, message: 'Reply sent successfully!' });
       setReplyingEventId(null);

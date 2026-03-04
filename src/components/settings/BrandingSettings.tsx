@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { GOOGLE_FONTS } from '@/components/funnel/public/FontLoader';
+import * as brandKitApi from '@/frontend/api/brand-kit';
 
 interface LogoItem {
   name: string;
@@ -103,15 +104,9 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
       setSaving(true);
       setSaved(false);
       try {
-        const res = await fetch('/api/brand-kit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates),
-        });
-        if (res.ok) {
-          setSaved(true);
-          setTimeout(() => setSaved(false), 2000);
-        }
+        await brandKitApi.updateBrandKit(updates);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
       } catch {
         // Network error — saved stays false
       } finally {
@@ -127,14 +122,7 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('type', type);
-
-        const res = await fetch('/api/brand-kit/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!res.ok) return null;
-        const data = await res.json();
+        const data = await brandKitApi.uploadBrandKitFile(formData);
         return data.url || null;
       } catch {
         return null;

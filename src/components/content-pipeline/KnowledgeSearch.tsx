@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
 import { ManualKnowledgeModal } from './ManualKnowledgeModal';
 import type { KnowledgeCategory, KnowledgeSpeaker } from '@/lib/types/content-pipeline';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 const CATEGORIES: { value: KnowledgeCategory | ''; label: string }[] = [
   { value: '', label: 'All' },
@@ -96,19 +97,17 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (searchQuery) params.append('q', searchQuery);
-      if (cat) params.append('category', cat);
-      if (spk) params.append('speaker', spk);
-      if (tag) params.append('tag', tag);
-      if (knowledgeType) params.append('type', knowledgeType);
-      if (topicSlug) params.append('topic', topicSlug);
-      if (minQuality) params.append('min_quality', minQuality);
-      if (sinceDate) params.append('since', sinceDate);
-      if (teamId) params.append('team_id', teamId);
-
-      const response = await fetch(`/api/content-pipeline/knowledge?${params}`);
-      const data = await response.json();
+      const data = await knowledgeApi.listKnowledge({
+        q: searchQuery || undefined,
+        category: cat || undefined,
+        speaker: spk || undefined,
+        tag: tag || undefined,
+        type: knowledgeType || undefined,
+        topic: topicSlug || undefined,
+        min_quality: minQuality ? parseInt(minQuality, 10) : undefined,
+        since: sinceDate || undefined,
+        team_id: teamId,
+      }) as { entries?: KnowledgeEntryResult[]; total_count?: number };
       setEntries(data.entries || []);
       setTotalCount(data.total_count || 0);
     } catch {
@@ -120,10 +119,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
 
   const fetchTags = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ view: 'tags' });
-      if (teamId) params.append('team_id', teamId);
-      const response = await fetch(`/api/content-pipeline/knowledge?${params}`);
-      const data = await response.json();
+      const data = await knowledgeApi.listKnowledge({ view: 'tags', team_id: teamId }) as { tags?: { tag_name: string; usage_count: number }[] };
       setTags(data.tags || []);
     } catch {
       // Silent
@@ -132,8 +128,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
 
   const fetchClusters = useCallback(async () => {
     try {
-      const response = await fetch('/api/content-pipeline/knowledge/clusters');
-      const data = await response.json();
+      const data = await knowledgeApi.getClusters() as { clusters?: TagCluster[] };
       setClusters(data.clusters || []);
     } catch {
       // Silent
@@ -142,11 +137,8 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
 
   const fetchTopics = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ limit: '100' });
-      if (teamId) params.append('team_id', teamId);
-      const response = await fetch(`/api/content-pipeline/knowledge/topics?${params}`);
-      const data = await response.json();
-      setTopics(data.topics || []);
+      const data = await knowledgeApi.getTopics({ limit: 100, team_id: teamId });
+      setTopics((data.topics || []) as TopicOption[]);
     } catch {
       // Silent
     }
@@ -202,7 +194,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
   const handleOrganizeTags = async () => {
     setClustering(true);
     try {
-      await fetch('/api/content-pipeline/knowledge/clusters', { method: 'POST' });
+      await knowledgeApi.triggerClustering();
       await fetchClusters();
       await fetchTags();
     } catch {

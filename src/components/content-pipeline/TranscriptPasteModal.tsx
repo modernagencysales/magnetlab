@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { X, Loader2, Check, Upload, FileText, Clipboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TeamProfile } from '@/lib/types/content-pipeline';
+import * as transcriptsApi from '@/frontend/api/content-pipeline/transcripts';
 
 interface TranscriptPasteModalProps {
   onClose: () => void;
@@ -70,24 +71,15 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
       }
       setSubmitting(true);
       try {
-        const response = await fetch('/api/content-pipeline/transcripts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: title.trim() || undefined,
-            transcript: transcript.trim(),
-            speakerProfileId: speakerProfileId || undefined,
-          }),
+        await transcriptsApi.createTranscript({
+          title: title.trim() || undefined,
+          transcript: transcript.trim(),
+          speakerProfileId: speakerProfileId || undefined,
         });
-        if (!response.ok) {
-          const data = await response.json();
-          setError(data.error || 'Failed to save transcript');
-          return;
-        }
         setSuccess(true);
         setTimeout(() => { onSuccess(); onClose(); }, 1500);
-      } catch {
-        setError('Failed to save transcript');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to save transcript');
       } finally {
         setSubmitting(false);
       }
@@ -98,23 +90,11 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
       }
       setSubmitting(true);
       try {
-        const formData = new FormData();
-        formData.append('file', file);
-        if (title.trim()) formData.append('title', title.trim());
-
-        const response = await fetch('/api/content-pipeline/transcripts/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        if (!response.ok) {
-          const data = await response.json();
-          setError(data.error || 'Failed to upload transcript');
-          return;
-        }
+        await transcriptsApi.uploadTranscript(file, title.trim() || undefined);
         setSuccess(true);
         setTimeout(() => { onSuccess(); onClose(); }, 1500);
-      } catch {
-        setError('Failed to upload transcript');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to upload transcript');
       } finally {
         setSubmitting(false);
       }

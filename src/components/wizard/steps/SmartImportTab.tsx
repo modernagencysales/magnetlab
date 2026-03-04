@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2, Sparkles, Check, AlertTriangle, Edit2, ChevronDown, ChevronUp, ArrowRight, X } from 'lucide-react';
 import type { BusinessContext, ExtractionResult, ExtractionSuggestion, ConfidenceLevel } from '@/lib/types/lead-magnet';
 import { BUSINESS_TYPE_LABELS } from '@/lib/types/lead-magnet';
+import * as brandKitApi from '@/frontend/api/brand-kit';
 
 interface SmartImportTabProps {
   onExtracted: (context: Partial<BusinessContext>) => void;
@@ -92,18 +93,7 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
     }, 2000);
 
     try {
-      const response = await fetch('/api/brand-kit/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, contentType: 'other' }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to extract context');
-      }
-
-      const data: ExtractionResult = await response.json();
+      const data = await brandKitApi.extractBusinessContext({ content, contentType: 'other' }) as ExtractionResult;
       setResult(data);
       setEditedContext(data.extracted);
       setState('review');

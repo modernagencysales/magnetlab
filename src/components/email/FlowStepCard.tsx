@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import type { EmailFlowStep } from '@/lib/types/email-system';
+import * as flowsApi from '@/frontend/api/email/flows';
 
 interface FlowStepCardProps {
   step: EmailFlowStep;
@@ -59,26 +60,12 @@ export function FlowStepCard({
     setError(null);
 
     try {
-      const response = await fetch(
-        `/api/email/flows/${flowId}/steps/${step.id}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            subject: subject || undefined,
-            body: body || undefined,
-            delay_days: delayDays,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save step');
-      }
-
-      const data = await response.json();
-      onSave(data.step);
+      const data = await flowsApi.updateFlowStep(flowId, step.id, {
+        subject: subject || undefined,
+        body: body || undefined,
+        delay_days: delayDays,
+      });
+      onSave(data.step as EmailFlowStep);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save step');
     } finally {
@@ -91,16 +78,7 @@ export function FlowStepCard({
     setError(null);
 
     try {
-      const response = await fetch(
-        `/api/email/flows/${flowId}/steps/${step.id}`,
-        { method: 'DELETE' }
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete step');
-      }
-
+      await flowsApi.deleteFlowStep(flowId, step.id);
       onDelete(step.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete step');

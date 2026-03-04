@@ -5,6 +5,7 @@ import { Loader2, Sparkles, FileText, Lightbulb, History, Users, Eye, X, Check }
 import type { BusinessContext, BusinessType, IdeationSources, CallTranscriptInsights, CompetitorAnalysis } from '@/lib/types/lead-magnet';
 import { BUSINESS_TYPE_LABELS } from '@/lib/types/lead-magnet';
 import { SmartImportTab } from './SmartImportTab';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 type TabValue = 'smart' | 'manual';
 type ModalType = 'transcript' | 'inspiration' | null;
@@ -121,16 +122,7 @@ export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIde
     setModalError(null);
 
     try {
-      const response = await fetch('/api/lead-magnet/analyze-transcript', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: modalText }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to analyze transcript');
-      }
+      const data = await leadMagnetApi.analyzeTranscript(modalText) as { insights?: unknown };
       setTranscriptInsights(data.insights);
     } catch (error) {
       setModalError(error instanceof Error ? error.message : 'Analysis failed');
@@ -145,16 +137,7 @@ export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIde
     setModalError(null);
 
     try {
-      const response = await fetch('/api/lead-magnet/analyze-competitor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: modalText }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to analyze content');
-      }
+      const data = await leadMagnetApi.analyzeCompetitor(modalText) as { analysis?: unknown };
       setCompetitorAnalysis(data.analysis);
     } catch (error) {
       setModalError(error instanceof Error ? error.message : 'Analysis failed');

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Star, BookOpen } from 'lucide-react';
 import { TopicDetail } from './TopicDetail';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 interface Topic {
   id: string;
@@ -25,11 +26,8 @@ export function TopicBrowser({ teamId }: { teamId?: string }) {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ limit: '100' });
-      if (teamId) params.append('team_id', teamId);
-      const res = await fetch(`/api/content-pipeline/knowledge/topics?${params}`);
-      const data = await res.json();
-      setTopics(data.topics || []);
+      const data = await knowledgeApi.getTopics({ limit: 100, team_id: teamId });
+      setTopics((data.topics || []) as Topic[]);
     } catch {
       setError('Failed to load data. Please try again.');
     } finally {

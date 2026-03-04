@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { Automation } from './AutomationList';
+import * as automationsApi from '@/frontend/api/linkedin/automations';
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -191,23 +192,9 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
     };
 
     try {
-      const url = isEdit
-        ? `/api/linkedin/automations/${automation.id}`
-        : '/api/linkedin/automations';
-      const method = isEdit ? 'PATCH' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Failed to ${isEdit ? 'update' : 'create'} automation`);
-      }
-
-      const data = await res.json();
+      const data = isEdit
+        ? await automationsApi.updateAutomation(automation.id, payload)
+        : await automationsApi.createAutomation(payload);
       onSave(data.automation);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');

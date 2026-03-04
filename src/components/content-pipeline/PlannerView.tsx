@@ -6,6 +6,7 @@ import { format, startOfWeek, addWeeks, subWeeks } from 'date-fns';
 import type { WeekPlan, PillarDistribution } from '@/lib/types/content-pipeline';
 import { PillarDistributionSlider } from './PillarDistributionSlider';
 import { WeekGrid } from './WeekGrid';
+import * as plannerApi from '@/frontend/api/content-pipeline/planner';
 
 export function PlannerView() {
   const [currentWeek, setCurrentWeek] = useState<Date | null>(null);
@@ -31,10 +32,9 @@ export function PlannerView() {
     setLoading(true);
     try {
       const weekDate = format(currentWeek, 'yyyy-MM-dd');
-      const response = await fetch(`/api/content-pipeline/planner?week=${weekDate}`);
-      const data = await response.json();
-      const plans = data.plans || [];
-      const match = plans.find((p: WeekPlan) => p.week_start_date === weekDate);
+      const data = await plannerApi.listPlans({ week: weekDate });
+      const plans = (data.plans || []) as WeekPlan[];
+      const match = plans.find((p) => p.week_start_date === weekDate);
       setPlan(match || null);
       if (match) {
         setPostsPerWeek(match.posts_per_week);
@@ -60,19 +60,12 @@ export function PlannerView() {
     if (!currentWeek) return;
     setGenerating(true);
     try {
-      const response = await fetch('/api/content-pipeline/planner/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          week_start_date: format(currentWeek, 'yyyy-MM-dd'),
-          posts_per_week: postsPerWeek,
-          pillar_distribution: pillarDistribution,
-        }),
+      const data = await plannerApi.generatePlan({
+        week_start_date: format(currentWeek, 'yyyy-MM-dd'),
+        posts_per_week: postsPerWeek,
+        pillar_distribution: pillarDistribution,
       });
-      if (response.ok) {
-        const data = await response.json();
-        setPlan(data.plan);
-      }
+      if (data.plan) setPlan(data.plan as WeekPlan);
     } catch {
       // Silent failure
     } finally {
@@ -84,14 +77,8 @@ export function PlannerView() {
     if (!plan) return;
     setApproving(true);
     try {
-      const response = await fetch('/api/content-pipeline/planner/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan_id: plan.id }),
-      });
-      if (response.ok) {
-        await fetchPlan();
-      }
+      await plannerApi.approvePlan(plan.id);
+      await fetchPlan();
     } catch {
       // Silent failure
     } finally {

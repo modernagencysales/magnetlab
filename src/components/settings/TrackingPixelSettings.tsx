@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
+import * as integrationsApi from '@/frontend/api/integrations';
 
 interface Integration {
   service: string;
@@ -51,26 +52,16 @@ function MetaPixelCard({ integration }: { integration?: Integration }) {
     setResult(null);
 
     try {
-      const response = await fetch('/api/integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service: 'meta_pixel',
-          api_key: accessToken.trim(),
-          metadata: {
-            pixel_id: pixelId.trim(),
-            enabled_events: enabledEvents,
-            default_conversion_value: parseFloat(conversionValue) || 0,
-            test_event_code: testEventCode.trim() || undefined,
-          },
-        }),
+      await integrationsApi.saveIntegration({
+        service: 'meta_pixel',
+        api_key: accessToken.trim(),
+        metadata: {
+          pixel_id: pixelId.trim(),
+          enabled_events: enabledEvents,
+          default_conversion_value: parseFloat(conversionValue) || 0,
+          test_event_code: testEventCode.trim() || undefined,
+        },
       });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to save');
-      }
-
       setResult({ success: true, message: 'Meta Pixel connected!' });
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
@@ -84,11 +75,7 @@ function MetaPixelCard({ integration }: { integration?: Integration }) {
     if (!confirm('Disconnect Meta Pixel?')) return;
     setDisconnecting(true);
     try {
-      await fetch('/api/integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: 'meta_pixel', api_key: null }),
-      });
+      await integrationsApi.saveIntegration({ service: 'meta_pixel', api_key: null });
       window.location.reload();
     } catch {
       setResult({ success: false, message: 'Failed to disconnect' });
@@ -289,26 +276,16 @@ function LinkedInInsightCard({ integration }: { integration?: Integration }) {
     setResult(null);
 
     try {
-      const response = await fetch('/api/integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service: 'linkedin_insight',
-          api_key: accessToken.trim(),
-          metadata: {
-            partner_id: partnerId.trim(),
-            conversion_id: conversionId.trim(),
-            enabled_events: enabledEvents,
-            default_conversion_value: parseFloat(conversionValue) || 0,
-          },
-        }),
+      await integrationsApi.saveIntegration({
+        service: 'linkedin_insight',
+        api_key: accessToken.trim(),
+        metadata: {
+          partner_id: partnerId.trim(),
+          conversion_id: conversionId.trim(),
+          enabled_events: enabledEvents,
+          default_conversion_value: parseFloat(conversionValue) || 0,
+        },
       });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to save');
-      }
-
       setResult({ success: true, message: 'LinkedIn Insight Tag connected!' });
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
@@ -322,11 +299,7 @@ function LinkedInInsightCard({ integration }: { integration?: Integration }) {
     if (!confirm('Disconnect LinkedIn Insight Tag?')) return;
     setDisconnecting(true);
     try {
-      await fetch('/api/integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: 'linkedin_insight', api_key: null }),
-      });
+      await integrationsApi.saveIntegration({ service: 'linkedin_insight', api_key: null });
       window.location.reload();
     } catch {
       setResult({ success: false, message: 'Failed to disconnect' });

@@ -18,6 +18,10 @@ import {
 } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as whitelabelApi from '@/frontend/api/settings/whitelabel';
+import * as teamDomainApi from '@/frontend/api/settings/team-domain';
+import * as teamEmailDomainApi from '@/frontend/api/settings/team-email-domain';
+import * as brandKitApi from '@/frontend/api/brand-kit';
 
 interface DomainData {
   id: string;
@@ -128,19 +132,17 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
   // Fetch domain data
   const fetchDomain = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings/team-domain');
-      if (res.ok) {
-        const data = await res.json();
-        setDomain(data.domain || null);
-        if (data.domain?.dns_config) {
-          setDnsInstructions({
-            type: data.domain.dns_config.type || 'CNAME',
-            name: data.domain.dns_config.name || data.domain.domain,
-            value: data.domain.dns_config.value || 'cname.vercel-dns.com',
-            note: 'Add this CNAME record in your domain DNS settings. Verification may take a few minutes.',
-            verification: data.domain.dns_config.verification || [],
-          });
-        }
+      const data = await teamDomainApi.getTeamDomain();
+      const dom = data.domain as DomainData | null;
+      setDomain(dom || null);
+      if (dom?.dns_config) {
+        setDnsInstructions({
+          type: dom.dns_config.type || 'CNAME',
+          name: dom.dns_config.name || dom.domain,
+          value: dom.dns_config.value || 'cname.vercel-dns.com',
+          note: 'Add this CNAME record in your domain DNS settings. Verification may take a few minutes.',
+          verification: dom.dns_config.verification || [],
+        });
       }
     } catch (error) {
       logError('settings/whitelabel', error, { step: 'fetch_domain' });
@@ -152,16 +154,14 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
   // Fetch whitelabel data
   const fetchWhitelabel = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings/whitelabel');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.whitelabel) {
-          setHideBranding(data.whitelabel.hide_branding || false);
-          setSiteName(data.whitelabel.custom_site_name || '');
-          setFaviconUrl(data.whitelabel.custom_favicon_url || '');
-          setEmailSenderName(data.whitelabel.custom_email_sender_name || '');
-          setFromEmail(data.whitelabel.custom_from_email || '');
-        }
+      const data = await whitelabelApi.getWhitelabel();
+      const wl = data.whitelabel as Record<string, unknown> | null;
+      if (wl) {
+        setHideBranding((wl.hide_branding as boolean) || false);
+        setSiteName((wl.custom_site_name as string) || '');
+        setFaviconUrl((wl.custom_favicon_url as string) || '');
+        setEmailSenderName((wl.custom_email_sender_name as string) || '');
+        setFromEmail((wl.custom_from_email as string) || '');
       }
     } catch (error) {
       logError('settings/whitelabel', error, { step: 'fetch_whitelabel' });
@@ -173,11 +173,8 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
   // Fetch email domain data
   const fetchEmailDomain = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings/team-email-domain');
-      if (res.ok) {
-        const data = await res.json();
-        setEmailDomain(data.emailDomain || null);
-      }
+      const data = await teamEmailDomainApi.getTeamEmailDomain();
+      setEmailDomain((data.emailDomain as EmailDomainData | null) || null);
     } catch (error) {
       logError('settings/whitelabel', error, { step: 'fetch_email_domain' });
     } finally {
@@ -223,16 +220,13 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
       }
 
       try {
-        const res = await fetch('/api/settings/team-domain/verify', { method: 'POST' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.verified) {
-            setDomain((prev) => prev ? { ...prev, status: 'active' } : prev);
-            setDomainSuccess('Domain verified successfully!');
-            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-            setIsPolling(false);
-            setTimeout(() => setDomainSuccess(null), 5000);
-          }
+        const data = await teamDomainApi.verifyTeamDomain();
+        if (data.verified) {
+          setDomain((prev) => prev ? { ...prev, status: 'active' } : prev);
+          setDomainSuccess('Domain verified successfully!');
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          setIsPolling(false);
+          setTimeout(() => setDomainSuccess(null), 5000);
         }
       } catch {
         // Ignore polling errors silently
@@ -249,32 +243,21 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
     setDomainSuccess(null);
 
     try {
-      const res = await fetch('/api/settings/team-domain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: domainInput.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save domain');
-      }
-
-      setDomain(data.domain);
+      const data = await teamDomainApi.setTeamDomain(domainInput.trim());
+      const dom = data.domain as DomainData;
+      setDomain(dom);
       setDomainInput('');
       if (data.dnsInstructions) {
-        setDnsInstructions(data.dnsInstructions);
+        setDnsInstructions(data.dnsInstructions as DnsInstructions);
         setDnsExpanded(true);
       }
 
-      if (data.domain.status === 'active') {
+      if (dom.status === 'active') {
         setDomainSuccess('Domain added and verified!');
         setTimeout(() => setDomainSuccess(null), 5000);
       } else {
         setDomainSuccess('Domain added. Configure DNS and verify below.');
         setTimeout(() => setDomainSuccess(null), 5000);
-        // Start polling for verification
         startPolling();
       }
     } catch (error) {
@@ -289,18 +272,12 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
     setDomainError(null);
 
     try {
-      const res = await fetch('/api/settings/team-domain/verify', { method: 'POST' });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to verify domain');
-      }
+      const data = await teamDomainApi.verifyTeamDomain();
 
       if (data.verified) {
         setDomain((prev) => prev ? { ...prev, status: 'active' } : prev);
         setDomainSuccess('Domain verified successfully!');
         setTimeout(() => setDomainSuccess(null), 5000);
-        // Stop polling if running
         if (pollTimerRef.current) {
           clearInterval(pollTimerRef.current);
           setIsPolling(false);
@@ -324,13 +301,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
     setDomainError(null);
 
     try {
-      const res = await fetch('/api/settings/team-domain', { method: 'DELETE' });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to remove domain');
-      }
-
+      await teamDomainApi.deleteTeamDomain();
       setDomain(null);
       setDnsInstructions(null);
       setDnsExpanded(false);
@@ -363,18 +334,15 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
         return;
       }
       try {
-        const res = await fetch('/api/settings/team-email-domain/verify', { method: 'POST' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.verified) {
-            setEmailDomain(prev => prev ? { ...prev, status: 'verified', dns_records: data.records } : prev);
-            setEmailDomainSuccess('Email domain verified!');
-            if (emailPollTimerRef.current) clearInterval(emailPollTimerRef.current);
-            setIsEmailPolling(false);
-            setTimeout(() => setEmailDomainSuccess(null), 5000);
-          } else if (data.records) {
-            setEmailDomain(prev => prev ? { ...prev, dns_records: data.records } : prev);
-          }
+        const data = await teamEmailDomainApi.verifyTeamEmailDomain();
+        if (data.verified) {
+          setEmailDomain(prev => prev ? { ...prev, status: 'verified', dns_records: data.records as EmailDomainData['dns_records'] } : prev);
+          setEmailDomainSuccess('Email domain verified!');
+          if (emailPollTimerRef.current) clearInterval(emailPollTimerRef.current);
+          setIsEmailPolling(false);
+          setTimeout(() => setEmailDomainSuccess(null), 5000);
+        } else if (data.records) {
+          setEmailDomain(prev => prev ? { ...prev, dns_records: data.records as EmailDomainData['dns_records'] } : prev);
         }
       } catch { /* ignore */ }
     }, 10000);
@@ -389,25 +357,15 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
     setEmailDomainSuccess(null);
 
     try {
-      const res = await fetch('/api/settings/team-email-domain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: emailDomainInput.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save email domain');
-      }
-
-      setEmailDomain(data.emailDomain);
+      const data = await teamEmailDomainApi.setTeamEmailDomain(emailDomainInput.trim());
+      const ed = data.emailDomain as EmailDomainData;
+      setEmailDomain(ed);
       setEmailDomainInput('');
       if (data.dnsRecords) {
         setEmailDnsExpanded(true);
       }
 
-      if (data.emailDomain.status === 'verified') {
+      if (ed.status === 'verified') {
         setEmailDomainSuccess('Email domain added and verified!');
         setTimeout(() => setEmailDomainSuccess(null), 5000);
       } else {
@@ -427,15 +385,10 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
     setEmailDomainError(null);
 
     try {
-      const res = await fetch('/api/settings/team-email-domain/verify', { method: 'POST' });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to verify email domain');
-      }
+      const data = await teamEmailDomainApi.verifyTeamEmailDomain();
 
       if (data.verified) {
-        setEmailDomain(prev => prev ? { ...prev, status: 'verified', dns_records: data.records } : prev);
+        setEmailDomain(prev => prev ? { ...prev, status: 'verified', dns_records: data.records as EmailDomainData['dns_records'] } : prev);
         setEmailDomainSuccess('Email domain verified successfully!');
         setTimeout(() => setEmailDomainSuccess(null), 5000);
         if (emailPollTimerRef.current) {
@@ -444,7 +397,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
         }
       } else {
         if (data.records) {
-          setEmailDomain(prev => prev ? { ...prev, dns_records: data.records } : prev);
+          setEmailDomain(prev => prev ? { ...prev, dns_records: data.records as EmailDomainData['dns_records'] } : prev);
         }
         setEmailDomainError('DNS records not fully configured yet. Add all required records and wait for propagation.');
       }
@@ -464,13 +417,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
     setEmailDomainError(null);
 
     try {
-      const res = await fetch('/api/settings/team-email-domain', { method: 'DELETE' });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to remove email domain');
-      }
-
+      await teamEmailDomainApi.deleteTeamEmailDomain();
       setEmailDomain(null);
       setEmailDnsExpanded(false);
       setEmailDomainSuccess('Email domain removed.');
@@ -501,18 +448,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
     setFromEmailSaved(false);
 
     try {
-      const res = await fetch('/api/settings/team-email-domain/from-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromEmail: fromEmail.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save from email');
-      }
-
+      await teamEmailDomainApi.setTeamFromEmail(fromEmail.trim());
       setFromEmailSaved(true);
       setTimeout(() => setFromEmailSaved(false), 3000);
     } catch (error) {
@@ -532,17 +468,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('type', 'logo');
-
-      const res = await fetch('/api/brand-kit/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to upload favicon');
-      }
-
-      const data = await res.json();
+      const data = await brandKitApi.uploadBrandKitFile(formData);
       if (data.url) {
         setFaviconUrl(data.url);
       }
@@ -560,23 +486,12 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
     setBrandingSaved(false);
 
     try {
-      const res = await fetch('/api/settings/whitelabel', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          hideBranding,
-          customFaviconUrl: faviconUrl || null,
-          customSiteName: siteName || null,
-          customEmailSenderName: emailSenderName || null,
-        }),
+      await whitelabelApi.updateWhitelabel({
+        hideBranding,
+        customFaviconUrl: faviconUrl || null,
+        customSiteName: siteName || null,
+        customEmailSenderName: emailSenderName || null,
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save branding settings');
-      }
-
       setBrandingSaved(true);
       setTimeout(() => setBrandingSaved(false), 3000);
     } catch (error) {

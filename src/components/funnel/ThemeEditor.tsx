@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Palette, Sun, Moon, X, Link as LinkIcon, RefreshCw, Loader2 } from 'lucide-react';
 import type { FunnelTheme, BackgroundStyle } from '@/lib/types/funnel';
+import * as funnelApi from '@/frontend/api/funnel';
 
 interface ThemeEditorProps {
   theme: FunnelTheme;
@@ -49,16 +50,18 @@ export function ThemeEditor({
     setBrandMessage(null);
 
     try {
-      const res = await fetch(`/api/funnel/${funnelId}/reapply-brand`, { method: 'POST' });
-      const data = await res.json();
+      const data = await funnelApi.reapplyBrand(funnelId) as {
+        applied?: string[];
+        values?: { theme?: FunnelTheme; primaryColor?: string; backgroundStyle?: BackgroundStyle; logoUrl?: string | null };
+        error?: string;
+      };
 
-      if (!res.ok) {
+      if (data.error) {
         setBrandMessage({ type: 'error', text: data.error || 'Failed to apply brand kit' });
         return;
       }
 
       if (data.applied && data.applied.length > 0) {
-        // Update local state with the new brand values
         if (data.values) {
           if (data.values.theme) setTheme(data.values.theme);
           if (data.values.primaryColor) setPrimaryColor(data.values.primaryColor);

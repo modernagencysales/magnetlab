@@ -10,6 +10,8 @@ import { TeamLinkedInConnect } from './TeamLinkedInConnect';
 import { BroadcastModal } from './BroadcastModal';
 import { GridContextMenu } from './GridContextMenu';
 import type { PipelinePost, PostingSlot, TeamProfileWithConnection } from '@/lib/types/content-pipeline';
+import * as teamScheduleApi from '@/frontend/api/content-pipeline/team-schedule';
+import * as postsApi from '@/frontend/api/content-pipeline/posts';
 
 interface CollisionItem {
   post_a_id: string;
@@ -68,13 +70,11 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
   const fetchSchedule = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/content-pipeline/team-schedule?team_id=${teamId}&week_start=${weekStart.toISOString()}`
-      );
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      }
+      const json = await teamScheduleApi.getTeamSchedule({
+        team_id: teamId,
+        week_start: weekStart.toISOString(),
+      });
+      setData(json);
     } catch {
       // Silent
     } finally {
@@ -149,21 +149,14 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
         scheduledTime = setMinutes(setHours(assignTarget.date, 9), 0);
       }
 
-      const res = await fetch('/api/content-pipeline/team-schedule/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          post_id: post.id,
-          scheduled_time: scheduledTime.toISOString(),
-          team_profile_id: assignTarget.profileId,
-        }),
+      await teamScheduleApi.assignPost({
+        post_id: post.id,
+        scheduled_time: scheduledTime.toISOString(),
+        team_profile_id: assignTarget.profileId,
       });
-
-      if (res.ok) {
-        setShowBufferDock(false);
-        setAssignTarget(null);
-        await fetchSchedule();
-      }
+      setShowBufferDock(false);
+      setAssignTarget(null);
+      await fetchSchedule();
     } catch {
       // Silent
     } finally {
@@ -175,7 +168,7 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
   const handlePolish = async (postId: string) => {
     setPolishing(true);
     try {
-      await fetch(`/api/content-pipeline/posts/${postId}/polish`, { method: 'POST' });
+      await postsApi.polishPost(postId);
       await fetchSchedule();
     } catch {
       // Silent
@@ -431,14 +424,10 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
             const post = contextMenu.post;
             setContextMenu(null);
             try {
-              await fetch(`/api/content-pipeline/posts/${post.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  status: 'approved',
-                  scheduled_time: null,
-                  is_buffer: true,
-                }),
+              await postsApi.updatePost(post.id, {
+                status: 'approved',
+                scheduled_time: null,
+                is_buffer: true,
               });
               await fetchSchedule();
             } catch {

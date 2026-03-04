@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ExternalLink, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LibraryItem } from './LibraryPageClient';
+import * as publicApi from '@/frontend/api/public';
 
 interface LibraryGridProps {
   items: LibraryItem[];
@@ -25,17 +26,8 @@ export function LibraryGrid({
   funnelPageId,
 }: LibraryGridProps) {
   const handleExternalClick = async (resourceId: string) => {
-    // Track the click
     try {
-      await fetch(`/api/public/resource-click`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resourceId,
-          funnelPageId,
-          leadId,
-        }),
-      });
+      await publicApi.trackResourceClick({ resourceId, funnelPageId, leadId });
     } catch {
       // Silent fail - don't block navigation
     }

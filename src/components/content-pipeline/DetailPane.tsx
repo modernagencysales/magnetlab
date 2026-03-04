@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { PillarBadge } from './PillarBadge';
 import { StatusBadge } from './StatusBadge';
 import type { ContentIdea, PipelinePost, ReviewData } from '@/lib/types/content-pipeline';
+import { schedulePost, publishPost } from '@/frontend/api/content-pipeline/posts';
 
 type DetailItem =
   | { type: 'idea'; data: ContentIdea }
@@ -222,12 +223,8 @@ function PostDetail({
 
   const handleSchedule = async () => {
     try {
-      const response = await fetch('/api/content-pipeline/posts/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ post_id: post.id }),
-      });
-      if (response.ok) onRefresh();
+      await schedulePost(post.id);
+      onRefresh();
     } catch {
       // Silent
     }
@@ -237,17 +234,10 @@ function PostDetail({
     setPublishing(true);
     setPublishError(null);
     try {
-      const response = await fetch(`/api/content-pipeline/posts/${post.id}/publish`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (response.ok) {
-        onRefresh();
-      } else {
-        setPublishError(data.error || 'Failed to publish');
-      }
-    } catch {
-      setPublishError('Network error. Please try again.');
+      await publishPost(post.id);
+      onRefresh();
+    } catch (err) {
+      setPublishError(err instanceof Error ? err.message : 'Failed to publish');
     } finally {
       setPublishing(false);
     }

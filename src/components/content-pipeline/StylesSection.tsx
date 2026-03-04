@@ -5,6 +5,7 @@ import { Loader2, Trash2, ExternalLink, ChevronDown, ChevronUp, Wand2 } from 'lu
 import { toast } from 'sonner';
 import { StyleMixer } from './StyleMixer';
 import type { WritingStyle, StyleProfile } from '@/lib/types/content-pipeline';
+import * as stylesApi from '@/frontend/api/content-pipeline/styles';
 
 const TONE_COLORS: Record<StyleProfile['tone'], string> = {
   conversational: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
@@ -25,9 +26,8 @@ export function StylesSection() {
 
   const fetchStyles = useCallback(async () => {
     try {
-      const res = await fetch('/api/content-pipeline/styles');
-      const data = await res.json();
-      setStyles(data.styles || []);
+      const data = await stylesApi.getStyles();
+      setStyles((data.styles || []) as WritingStyle[]);
     } catch {
       // Silent failure
     } finally {
@@ -43,23 +43,14 @@ export function StylesSection() {
     if (!url.trim()) return;
     setExtracting(true);
     try {
-      const res = await fetch('/api/content-pipeline/styles/extract-from-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          linkedin_url: url.trim(),
-          author_name: authorName.trim() || undefined,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
+      const data = await stylesApi.extractStylesFromUrl(url.trim(), authorName.trim() || undefined) as {
+        style?: { name?: string }; posts_analyzed?: number; error?: string;
+      };
+      if (data.error) {
         toast.error(data.error || 'Extraction failed');
         return;
       }
-
-      toast.success(`Style "${data.style.name}" extracted from ${data.posts_analyzed} posts`);
+      toast.success(`Style "${data.style?.name ?? 'Unknown'}" extracted from ${data.posts_analyzed ?? 0} posts`);
       setUrl('');
       setAuthorName('');
       await fetchStyles();
@@ -76,13 +67,8 @@ export function StylesSection() {
     setStyles((s) => s.filter((style) => style.id !== id));
 
     try {
-      const res = await fetch(`/api/content-pipeline/styles/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        setStyles(prev);
-        toast.error('Failed to delete style');
-      } else {
-        toast.success('Style deleted');
-      }
+      await stylesApi.deleteStyle(id);
+      toast.success('Style deleted');
     } catch {
       setStyles(prev);
       toast.error('Failed to delete style');

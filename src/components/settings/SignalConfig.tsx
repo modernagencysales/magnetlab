@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Plus, X, Save, CheckCircle, Settings2 } from 'lucide-react';
+import * as signalsApi from '@/frontend/api/signals';
 
 interface SignalConfigData {
   target_countries: string[];
@@ -146,9 +147,7 @@ export function SignalConfig() {
 
   const fetchConfig = useCallback(async () => {
     try {
-      const res = await fetch('/api/signals/config');
-      if (!res.ok) throw new Error('Failed to load config');
-      const data = await res.json();
+      const data = await signalsApi.getSignalsConfig();
       const c = data.config;
       if (c) {
         setConfig({
@@ -177,15 +176,7 @@ export function SignalConfig() {
     setError(null);
     setSaved(false);
     try {
-      const res = await fetch('/api/signals/config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to save config');
-      }
+      await signalsApi.updateSignalsConfig(config);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {

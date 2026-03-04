@@ -18,6 +18,7 @@ import { FunnelBuilder } from '@/components/funnel';
 import type { LeadMagnet } from '@/lib/types/lead-magnet';
 import type { FunnelPage, QualificationQuestion } from '@/lib/types/funnel';
 import { ScreenshotGallery } from './ScreenshotGallery';
+import * as leadsApi from '@/frontend/api/leads';
 
 type Tab = 'overview' | 'funnel' | 'post' | 'leads' | 'analytics';
 
@@ -368,9 +369,9 @@ function LeadsTab({ funnelId }: { funnelId: string | null }) {
       setLoading(false);
       return;
     }
-    fetch(`/api/leads?funnelId=${funnelId}`)
-      .then((r) => r.ok ? r.json() : { leads: [] })
-      .then((data) => setLeads(data.leads || []))
+    leadsApi
+      .listLeads({ funnelId, limit: 100 })
+      .then((data) => setLeads((data.leads || []) as typeof leads))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [funnelId]);

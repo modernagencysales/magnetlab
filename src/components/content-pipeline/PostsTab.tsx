@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { FileText, Loader2, Copy, Check, Sparkles, Trash2, Eye } from 'lucide-react';
 import { cn, truncate, formatDateTime } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostDetailModal } from './PostDetailModal';
 import type { PipelinePost, PostStatus, ReviewData } from '@/lib/types/content-pipeline';
+import { usePosts } from '@/frontend/hooks/api/usePosts';
+import { usePolishPost, useDeletePost } from '@/frontend/hooks/api/usePostsMutations';
+import { getPostById } from '@/frontend/api/content-pipeline/posts';
 
 const STATUS_FILTERS: { value: PostStatus | ''; label: string }[] = [
   { value: '', label: 'All' },
@@ -30,51 +33,31 @@ interface PostsTabProps {
 }
 
 export function PostsTab({ profileId, teamId }: PostsTabProps) {
-  const [posts, setPosts] = useState<PipelinePost[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<PostStatus | ''>('');
   const [selectedPost, setSelectedPost] = useState<PipelinePost | null>(null);
   const [reviewFilter, setReviewFilter] = useState<ReviewCategory>('');
   const [polishingId, setPolishingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const fetchPosts = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter) params.append('status', statusFilter);
-      params.append('is_buffer', 'false');
-      if (profileId) params.append('team_profile_id', profileId);
-      if (teamId) params.append('team_id', teamId);
+  const { posts, setPosts, isLoading: loading, refetch: fetchPosts } = usePosts({
+    profileId,
+    teamId,
+    status: statusFilter || undefined,
+    isBuffer: false,
+  });
 
-      const response = await fetch(`/api/content-pipeline/posts?${params}`);
-      const data = await response.json();
-      setPosts(data.posts || []);
-    } catch {
-      // Silent failure
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, profileId, teamId]);
-
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  const { mutate: polishMutate } = usePolishPost(async () => {
+    await fetchPosts(true);
+  });
+  const { mutate: deleteMutate } = useDeletePost(() => fetchPosts(true));
 
   const handlePolish = async (postId: string) => {
     setPolishingId(postId);
     try {
-      const response = await fetch(`/api/content-pipeline/posts/${postId}/polish`, {
-        method: 'POST',
-      });
-      if (response.ok) {
-        await fetchPosts(true);
-        // Refresh the selected post if it's the one we polished
-        if (selectedPost?.id === postId) {
-          const detailRes = await fetch(`/api/content-pipeline/posts/${postId}`);
-          const detailData = await detailRes.json();
-          if (detailData.post) setSelectedPost(detailData.post);
-        }
+      await polishMutate(postId);
+      if (selectedPost?.id === postId) {
+        const updated = await getPostById(postId);
+        setSelectedPost(updated);
       }
     } catch {
       // Silent failure
@@ -84,15 +67,9 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
   };
 
   const handleDelete = async (postId: string) => {
-    // Optimistically remove from list
     setPosts((prev) => prev.filter((p) => p.id !== postId));
     try {
-      const response = await fetch(`/api/content-pipeline/posts/${postId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        await fetchPosts(true);
-      }
+      await deleteMutate(postId);
     } catch {
       await fetchPosts(true);
     }

@@ -32,6 +32,9 @@ import type {
   LeadMagnetConcept,
   IdeationSources,
 } from '@/lib/types/lead-magnet';
+import * as brandKitApi from '@/frontend/api/brand-kit';
+import * as wizardDraftApi from '@/frontend/api/wizard-draft';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 type GeneratingState = 'idle' | 'ideas' | 'extraction' | 'posts';
 
@@ -189,44 +192,38 @@ export function WizardContainer() {
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [brandKitRes, draftsRes] = await Promise.all([
-          fetch('/api/brand-kit'),
-          fetch('/api/wizard-draft'),
+        const [brandKitData, draftsData] = await Promise.all([
+          brandKitApi.getBrandKit(),
+          wizardDraftApi.listDrafts(),
         ]);
 
-        if (brandKitRes.ok) {
-          const data = await brandKitRes.json();
-          if (data.brandKit) {
-            const bk = data.brandKit;
+        const data = brandKitData as { brandKit?: Record<string, unknown>; savedIdeation?: unknown; ideationGeneratedAt?: string };
+        if (data.brandKit) {
+            const bk = data.brandKit as Record<string, unknown>;
             // Convert snake_case API response to camelCase BusinessContext
             const brandKit: Partial<BusinessContext> = {
-              businessDescription: bk.business_description || '',
-              businessType: bk.business_type || 'coach-consultant',
-              credibilityMarkers: bk.credibility_markers || [],
-              urgentPains: bk.urgent_pains || [],
-              templates: bk.templates || [],
-              processes: bk.processes || [],
-              tools: bk.tools || [],
-              frequentQuestions: bk.frequent_questions || [],
-              results: bk.results || [],
-              successExample: bk.success_example || '',
-              audienceTools: bk.audience_tools || [],
+              businessDescription: (bk.business_description as string) || '',
+              businessType: (bk.business_type as string) || 'coach-consultant',
+              credibilityMarkers: (bk.credibility_markers as string[]) || [],
+              urgentPains: (bk.urgent_pains as string[]) || [],
+              templates: (bk.templates as string[]) || [],
+              processes: (bk.processes as string[]) || [],
+              tools: (bk.tools as string[]) || [],
+              frequentQuestions: (bk.frequent_questions as string[]) || [],
+              results: (bk.results as string[]) || [],
+              successExample: (bk.success_example as string) || '',
+              audienceTools: (bk.audience_tools as string[]) || [],
             };
             setState((prev) => ({ ...prev, brandKit }));
           }
-          // Load saved ideation if available
           if (data.savedIdeation) {
             setSavedIdeation(data.savedIdeation);
-            setIdeationGeneratedAt(data.ideationGeneratedAt);
+            setIdeationGeneratedAt(data.ideationGeneratedAt ?? undefined);
           }
-        }
 
-        if (draftsRes.ok) {
-          const data = await draftsRes.json();
-          if (data.drafts && data.drafts.length > 0) {
-            setDrafts(data.drafts);
-            setShowDraftPicker(true);
-          }
+        if (draftsData.drafts && draftsData.drafts.length > 0) {
+          setDrafts(draftsData.drafts as WizardDraft[]);
+          setShowDraftPicker(true);
         }
       } catch (err) {
         logWarn('wizard/container', 'Failed to load initial data', { detail: String(err) });
@@ -311,25 +308,9 @@ export function WizardContainer() {
         };
       }
 
-      // Trigger background job
-      const response = await fetch('/api/lead-magnet/ideate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to start ideation');
-        } else {
-          const text = await response.text();
-          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
-        }
-      }
-
-      const { jobId } = await response.json();
+      const result = await leadMagnetApi.ideate(requestBody);
+      const jobId = result.jobId;
+      if (!jobId) throw new Error('Failed to start ideation');
 
       // Update state with context + pending job (auto-saves to draft)
       setState((prev) => ({
@@ -372,14 +353,9 @@ export function WizardContainer() {
     setError(null);
 
     try {
-      // Save business context to brand_kit (same as normal flow)
-      const brandKitResponse = await fetch('/api/brand-kit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(context),
-      });
-
-      if (!brandKitResponse.ok) {
+      try {
+        await brandKitApi.updateBrandKit(context as Record<string, unknown>);
+      } catch {
         logWarn('wizard/container', 'Failed to save brand kit, continuing anyway');
       }
 
@@ -428,24 +404,9 @@ export function WizardContainer() {
         requestBody.businessContext = state.brandKit;
       }
 
-      const response = await fetch('/api/lead-magnet/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to start extraction');
-        } else {
-          const text = await response.text();
-          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
-        }
-      }
-
-      const { jobId } = await response.json();
+      const result = await leadMagnetApi.extract(requestBody);
+      const jobId = result.jobId;
+      if (!jobId) throw new Error('Failed to start extraction');
       setState((prev) => ({ ...prev, pendingJob: { jobId, jobType: 'extraction', startedAt: new Date().toISOString() } }));
       startExtractionPolling(jobId);
     } catch (err) {
@@ -471,30 +432,21 @@ export function WizardContainer() {
     setError(null);
 
     try {
-      const response = await fetch('/api/lead-magnet/write-post', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          leadMagnetTitle: state.extractedContent.title,
-          format: state.extractedContent.format,
-          contents: state.extractedContent.structure
-            .map((s) => `${s.sectionName}: ${s.contents.join(', ')}`)
-            .join('; '),
-          problemSolved: concept.painSolved,
-          credibility: (state.brandKit.credibilityMarkers || []).join(', '),
-          audience: state.brandKit.businessDescription || state.brandKit.businessType || 'B2B professionals',
-          audienceStyle: 'casual-direct',
-          proof: state.extractedContent.proof,
-          ctaWord: 'LINK',
-        }),
+      const result = await leadMagnetApi.writePost({
+        leadMagnetTitle: state.extractedContent.title,
+        format: state.extractedContent.format,
+        contents: state.extractedContent.structure
+          .map((s) => `${s.sectionName}: ${s.contents.join(', ')}`)
+          .join('; '),
+        problemSolved: concept.painSolved,
+        credibility: (state.brandKit.credibilityMarkers || []).join(', '),
+        audience: state.brandKit.businessDescription || state.brandKit.businessType || 'B2B professionals',
+        audienceStyle: 'casual-direct',
+        proof: state.extractedContent.proof,
+        ctaWord: 'LINK',
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to generate posts');
-      }
-
-      const { jobId } = await response.json();
+      const jobId = result.jobId;
+      if (!jobId) throw new Error('Failed to generate posts');
       setState((prev) => ({ ...prev, pendingJob: { jobId, jobType: 'posts', startedAt: new Date().toISOString() } }));
       startPostsPolling(jobId);
     } catch (err) {
@@ -527,28 +479,19 @@ export function WizardContainer() {
           ? `${state.interactiveConfig.headline}: ${state.interactiveConfig.description}`
           : `${state.interactiveConfig.name}: ${state.interactiveConfig.description}`;
 
-      const response = await fetch('/api/lead-magnet/write-post', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          leadMagnetTitle: concept.title,
-          format: concept.deliveryFormat,
-          contents: toolSummary,
-          problemSolved: concept.painSolved,
-          credibility: (state.brandKit.credibilityMarkers || []).join(', '),
-          audience: state.brandKit.businessDescription || state.brandKit.businessType || 'B2B professionals',
-          audienceStyle: 'casual-direct',
-          proof: concept.contents,
-          ctaWord: 'LINK',
-        }),
+      const result = await leadMagnetApi.writePost({
+        leadMagnetTitle: concept.title,
+        format: concept.deliveryFormat,
+        contents: toolSummary,
+        problemSolved: concept.painSolved,
+        credibility: (state.brandKit.credibilityMarkers || []).join(', '),
+        audience: state.brandKit.businessDescription || state.brandKit.businessType || 'B2B professionals',
+        audienceStyle: 'casual-direct',
+        proof: concept.contents,
+        ctaWord: 'LINK',
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to generate posts');
-      }
-
-      const { jobId } = await response.json();
+      const jobId = result.jobId;
+      if (!jobId) throw new Error('Failed to generate posts');
       try { posthog.capture('wizard_interactive_approved', { type: state.interactiveConfig.type }); } catch {}
       setState((prev) => ({ ...prev, pendingJob: { jobId, jobType: 'posts', startedAt: new Date().toISOString() } }));
       startPostsPolling(jobId);
@@ -573,33 +516,17 @@ export function WizardContainer() {
 
     try {
       const transcriptInsights = state.ideationSources?.callTranscript?.insights;
-      const response = await fetch('/api/lead-magnet/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'generate-interactive',
-          archetype: concept.archetype,
-          concept,
-          answers: state.extractionAnswers,
-          businessContext: state.brandKit,
-          transcriptInsights,
-        }),
+      const result = await leadMagnetApi.extract({
+        action: 'generate-interactive',
+        archetype: concept.archetype,
+        concept,
+        answers: state.extractionAnswers,
+        businessContext: state.brandKit,
+        transcriptInsights,
       });
-
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to regenerate interactive config');
-        } else {
-          const text = await response.text();
-          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
-        }
-      }
-
-      const { jobId } = await response.json();
-      setState((prev) => ({ ...prev, pendingJob: { jobId, jobType: 'extraction', startedAt: new Date().toISOString() } }));
-      startExtractionPolling(jobId);
+      if (!result.jobId) throw new Error('Failed to regenerate interactive config');
+      setState((prev) => ({ ...prev, pendingJob: { jobId: result.jobId!, jobType: 'extraction', startedAt: new Date().toISOString() } }));
+      startExtractionPolling(result.jobId);
     } catch (err) {
       logError('wizard/container', err, { step: 'regenerate_interactive_error' });
       setError(err instanceof Error ? err.message : 'An error occurred');

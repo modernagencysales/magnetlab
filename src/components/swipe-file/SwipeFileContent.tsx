@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { logError } from '@/lib/utils/logger';
 import { createSupabaseBrowserClient } from '@/lib/utils/supabase-browser';
+import * as swipeFileApi from '@/frontend/api/swipe-file';
 
 import {
   FileText,
@@ -245,13 +246,11 @@ export function SwipeFileContent() {
     setLoading(true);
     try {
       if (activeTab === 'posts') {
-        const params = new URLSearchParams();
-        if (niche) params.append('niche', niche);
-        if (postType) params.append('type', postType);
-        if (featuredOnly) params.append('featured', 'true');
-
-        const response = await fetch(`/api/swipe-file/posts?${params}`);
-        const data = await response.json();
+        const data = await swipeFileApi.listPosts({
+          niche: niche || undefined,
+          type: postType || undefined,
+          featured: featuredOnly || undefined,
+        });
         setPosts(data.posts || []);
         setLoading(false);
       } else if (activeTab === 'lead-magnets' || activeTab === 'discovered') {
@@ -264,13 +263,11 @@ export function SwipeFileContent() {
 
         // Also fetch submitted lead magnets for the lead-magnets tab
         if (activeTab === 'lead-magnets') {
-          const params = new URLSearchParams();
-          if (niche) params.append('niche', niche);
-          if (format) params.append('format', format);
-          if (featuredOnly) params.append('featured', 'true');
-
-          const response = await fetch(`/api/swipe-file/lead-magnets?${params}`);
-          const data = await response.json();
+          const data = await swipeFileApi.listLeadMagnets({
+            niche: niche || undefined,
+            format: format || undefined,
+            featured: featuredOnly || undefined,
+          });
           setLeadMagnets(data.leadMagnets || []);
         }
       }
@@ -1092,19 +1089,12 @@ function SubmitModal({
               conversion_rate: conversionRate ? parseFloat(conversionRate) : undefined,
             };
 
-      const response = await fetch('/api/swipe-file/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      if (response.ok) {
-        setSuccess(true);
-        setTimeout(() => {
-          onSubmit();
-          onClose();
-        }, 1500);
-      }
+      await swipeFileApi.submit(body);
+      setSuccess(true);
+      setTimeout(() => {
+        onSubmit();
+        onClose();
+      }, 1500);
     } catch (error) {
       logError('swipe-file', error, { step: 'submit_error' });
     } finally {

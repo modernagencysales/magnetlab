@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Lightbulb, Loader2, Search, Filter, ChevronDown, ChevronUp, Archive, Sparkles } from 'lucide-react';
 import { cn, truncate } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PillarBadge } from './PillarBadge';
 import { IdeaDetailModal } from './IdeaDetailModal';
 import type { ContentIdea, IdeaStatus, ContentPillar, ContentType } from '@/lib/types/content-pipeline';
+import { useIdeas } from '@/frontend/hooks/api/useIdeas';
+import { useWriteFromIdea, useArchiveIdea } from '@/frontend/hooks/api/useIdeasMutations';
 
 const STATUSES: { value: IdeaStatus | ''; label: string }[] = [
   { value: '', label: 'All Statuses' },
@@ -41,11 +43,11 @@ const CONTENT_TYPES: { value: ContentType | ''; label: string }[] = [
 interface IdeasTabProps {
   profileId?: string | null;
   teamId?: string;
+  /** When provided, used as initial data and initial fetch is skipped (Phase 3: server-side data). */
+  initialIdeas?: ContentIdea[];
 }
 
-export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
-  const [ideas, setIdeas] = useState<ContentIdea[]>([]);
-  const [loading, setLoading] = useState(true);
+export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [pillarFilter, setPillarFilter] = useState('');
@@ -55,59 +57,33 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
   const [selectedIdea, setSelectedIdea] = useState<ContentIdea | null>(null);
   const [writingId, setWritingId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
-  // Track all ideas (unfiltered) so we always know about writing ideas
-  const [allIdeas, setAllIdeas] = useState<ContentIdea[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchIdeas = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter) params.append('status', statusFilter);
-      if (pillarFilter) params.append('pillar', pillarFilter);
-      if (typeFilter) params.append('content_type', typeFilter);
-      if (profileId) params.append('team_profile_id', profileId);
-      if (teamId) params.append('team_id', teamId);
+  const {
+    ideas,
+    allIdeas,
+    setIdeas,
+    setAllIdeas,
+    isLoading: loading,
+    refetch: fetchIdeas,
+    refetchWriting: fetchWritingIdeas,
+  } = useIdeas({
+    profileId,
+    teamId,
+    status: statusFilter || undefined,
+    pillar: pillarFilter || undefined,
+    contentType: typeFilter || undefined,
+    initialIdeas,
+  });
 
-      const response = await fetch(`/api/content-pipeline/ideas?${params}`);
-      const data = await response.json();
-      const fetched = data.ideas || [];
-      setIdeas(fetched);
-
-      // If we have no status filter, use this as the source for allIdeas too
-      if (!statusFilter) {
-        setAllIdeas(fetched);
-      }
-    } catch {
-      // Silent failure
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, pillarFilter, typeFilter, profileId, teamId]);
-
-  // Separate fetch for writing ideas (always unfiltered by status)
-  const fetchWritingIdeas = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      params.append('status', 'writing');
-      if (profileId) params.append('team_profile_id', profileId);
-      if (teamId) params.append('team_id', teamId);
-      const response = await fetch(`/api/content-pipeline/ideas?${params}`);
-      const data = await response.json();
-      const writingOnes = data.ideas || [];
-      setAllIdeas(prev => {
-        // Merge writing ideas into allIdeas, replacing existing ones
-        const nonWriting = prev.filter(i => i.status !== 'writing');
-        return [...writingOnes, ...nonWriting];
-      });
-    } catch {
-      // Silent
-    }
-  }, [profileId, teamId]);
-
-  useEffect(() => {
-    fetchIdeas();
-  }, [fetchIdeas]);
+  const { mutate: writeFromIdeaMutate, isPending: writePending } = useWriteFromIdea(() => {
+    fetchIdeas(true);
+    fetchWritingIdeas();
+    setSelectedIdea(null);
+  });
+  const { mutate: archiveIdeaMutate, isPending: archivePending } = useArchiveIdea(() => {
+    fetchIdeas(true);
+  });
 
   // Poll for writing ideas every 5 seconds while there are any in-progress
   const writingIdeas = allIdeas.filter(i => i.status === 'writing');
@@ -126,10 +102,8 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
   // Keyboard shortcut: "w" to write selected idea
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Don't trigger if typing in an input/textarea
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-
       if (e.key === 'w' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         if (selectedIdea && (selectedIdea.status === 'extracted' || selectedIdea.status === 'selected') && !writingId) {
           e.preventDefault();
@@ -139,31 +113,17 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIdea, writingId]);
 
   const handleWritePost = async (ideaId: string) => {
     setWritingId(ideaId);
-    // Optimistically update the idea status to 'writing' in both lists
     const updateToWriting = (prev: ContentIdea[]) => prev.map((idea) =>
       idea.id === ideaId ? { ...idea, status: 'writing' as IdeaStatus } : idea
     );
     setIdeas(updateToWriting);
     setAllIdeas(updateToWriting);
     try {
-      const response = await fetch(`/api/content-pipeline/ideas/${ideaId}/write`, {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        // Silent refetch — no full-page loader
-        await fetchIdeas(true);
-        await fetchWritingIdeas();
-        setSelectedIdea(null);
-      } else {
-        // Revert on failure
-        await fetchIdeas(true);
-      }
+      await writeFromIdeaMutate(ideaId);
     } catch {
       await fetchIdeas(true);
     } finally {
@@ -173,18 +133,10 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
 
   const handleArchive = async (ideaId: string) => {
     setArchivingId(ideaId);
-    // Optimistically remove the idea from the list
     setIdeas((prev) => prev.filter((idea) => idea.id !== ideaId));
     setSelectedIdea(null);
     try {
-      const response = await fetch('/api/content-pipeline/ideas', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ideaId, status: 'archived' }),
-      });
-      if (!response.ok) {
-        await fetchIdeas(true);
-      }
+      await archiveIdeaMutate(ideaId);
     } catch {
       await fetchIdeas(true);
     } finally {

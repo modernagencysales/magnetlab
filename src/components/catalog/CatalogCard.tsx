@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Copy, Check, ExternalLink, Pencil, X } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 interface CatalogItem {
   id: string;
@@ -58,24 +59,17 @@ export function CatalogCard({ item, isOwner, baseUrl, onUpdate }: CatalogCardPro
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/lead-magnet/${item.id}/catalog`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pain_point: painPoint,
-          target_audience: targetAudience,
-          short_description: shortDescription,
-        }),
+      await leadMagnetApi.updateLeadMagnetCatalog(item.id, {
+        pain_point: painPoint || undefined,
+        target_audience: targetAudience || undefined,
+        short_description: shortDescription || undefined,
       });
-
-      if (res.ok) {
-        onUpdate?.(item.id, {
-          pain_point: painPoint || undefined,
-          target_audience: targetAudience || undefined,
-          short_description: shortDescription || undefined,
-        });
-        setEditing(false);
-      }
+      onUpdate?.(item.id, {
+        pain_point: painPoint || undefined,
+        target_audience: targetAudience || undefined,
+        short_description: shortDescription || undefined,
+      });
+      setEditing(false);
     } catch (err) {
       logError('catalog/card', err, { step: 'save_error' });
     } finally {

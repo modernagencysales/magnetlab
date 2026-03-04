@@ -11,6 +11,8 @@ import { COLUMN_STYLES, type ColumnId } from './KanbanColumn';
 import { BulkSelectionBar } from './BulkSelectionBar';
 import { DetailPane } from './DetailPane';
 import { PostDetailModal } from './PostDetailModal';
+import { getIdeas, writeFromIdea, updateIdeaStatus, deleteIdea } from '@/frontend/api/content-pipeline/ideas';
+import { getPosts, updatePost, deletePost, schedulePost, publishPost, polishPost } from '@/frontend/api/content-pipeline/posts';
 
 // ─── Component ────────────────────────────────────────────
 
@@ -41,17 +43,12 @@ export function KanbanBoard({
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const profileParam = profileId ? `&team_profile_id=${profileId}` : '';
-      const [ideasRes, postsRes] = await Promise.all([
-        fetch(`/api/content-pipeline/ideas?status=extracted&limit=200${profileParam}`),
-        fetch(`/api/content-pipeline/posts?limit=200${profileParam}`),
+      const [ideasList, postsList] = await Promise.all([
+        getIdeas({ status: 'extracted', limit: 200, teamProfileId: profileId ?? undefined }),
+        getPosts({ limit: 200, teamProfileId: profileId ?? undefined, isBuffer: false }),
       ]);
-      const [ideasData, postsData] = await Promise.all([
-        ideasRes.json(),
-        postsRes.json(),
-      ]);
-      setIdeas(ideasData.ideas || []);
-      setPosts(postsData.posts || []);
+      setIdeas(ideasList);
+      setPosts(postsList);
     } catch {
       // Silent
     } finally {
@@ -212,52 +209,30 @@ export function KanbanBoard({
       if (item.type === 'idea') {
         const idea = item.data as ContentIdea;
         if (action === 'write') {
-          // Optimistic: remove idea from list immediately
           setIdeas((prev) => prev.filter((i) => i.id !== idea.id));
           if (previewItem?.item.data.id === idea.id) setPreviewItem(null);
-          fetch(`/api/content-pipeline/ideas/${idea.id}/write`, { method: 'POST' })
-            .then((res) => {
-              if (res.ok) fetchData(true);
-              else { setIdeas((prev) => [...prev, idea]); toast.error('Failed to write post'); }
-            })
+          writeFromIdea(idea.id)
+            .then(() => fetchData(true))
             .catch(() => {
               setIdeas((prev) => [...prev, idea]);
               toast.error('Failed to write post');
             });
           return;
         } else if (action === 'archive') {
-          // Optimistic: remove idea from list immediately
           setIdeas((prev) => prev.filter((i) => i.id !== idea.id));
           if (previewItem?.item.data.id === idea.id) setPreviewItem(null);
-          fetch(`/api/content-pipeline/ideas/${idea.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'archived' }),
-          }).then((res) => {
-            if (!res.ok) {
-              setIdeas((prev) => [...prev, idea]);
-              toast.error('Failed to archive idea');
-            }
-          }).catch(() => {
+          updateIdeaStatus({ ideaId: idea.id, status: 'archived' }).catch(() => {
             setIdeas((prev) => [...prev, idea]);
             toast.error('Failed to archive idea');
           });
           return;
         } else if (action === 'delete') {
-          // Optimistic: remove idea from list immediately
           setIdeas((prev) => prev.filter((i) => i.id !== idea.id));
           if (previewItem?.item.data.id === idea.id) setPreviewItem(null);
-          fetch(`/api/content-pipeline/ideas/${idea.id}`, { method: 'DELETE' })
-            .then((res) => {
-              if (!res.ok) {
-                setIdeas((prev) => [...prev, idea]);
-                toast.error('Failed to delete idea');
-              }
-            })
-            .catch(() => {
-              setIdeas((prev) => [...prev, idea]);
-              toast.error('Failed to delete idea');
-            });
+          deleteIdea(idea.id).catch(() => {
+            setIdeas((prev) => [...prev, idea]);
+            toast.error('Failed to delete idea');
+          });
           return;
         }
       } else {
@@ -265,43 +240,26 @@ export function KanbanBoard({
         if (action === 'edit') {
           setModalPost(post);
         } else if (action === 'publish') {
-          // Optimistic: update status to published immediately
           const oldStatus = post.status;
           setPosts((prev) => prev.map((p) =>
             p.id === post.id ? { ...p, status: 'published' as PostStatus } : p
           ));
-          fetch(`/api/content-pipeline/posts/${post.id}/publish`, { method: 'POST' })
-            .then(async (res) => {
-              if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                setPosts((prev) => prev.map((p) =>
-                  p.id === post.id ? { ...p, status: oldStatus } : p
-                ));
-                toast.error(data.error?.includes('Settings') ? data.error : 'Failed to publish');
-              }
-            })
-            .catch(() => {
+          publishPost(post.id)
+            .catch((err) => {
               setPosts((prev) => prev.map((p) =>
                 p.id === post.id ? { ...p, status: oldStatus } : p
               ));
-              toast.error('Failed to publish');
+              const msg = err instanceof Error ? err.message : 'Failed to publish';
+              toast.error(msg.includes('Settings') ? msg : 'Failed to publish');
             });
           return;
         } else if (action === 'delete') {
-          // Optimistic: remove post from list immediately
           setPosts((prev) => prev.filter((p) => p.id !== post.id));
           if (previewItem?.item.data.id === post.id) setPreviewItem(null);
-          fetch(`/api/content-pipeline/posts/${post.id}`, { method: 'DELETE' })
-            .then((res) => {
-              if (!res.ok) {
-                setPosts((prev) => [...prev, post]);
-                toast.error('Failed to delete post');
-              }
-            })
-            .catch(() => {
-              setPosts((prev) => [...prev, post]);
-              toast.error('Failed to delete post');
-            });
+          deletePost(post.id).catch(() => {
+            setPosts((prev) => [...prev, post]);
+            toast.error('Failed to delete post');
+          });
           return;
         }
       }
@@ -324,10 +282,8 @@ export function KanbanBoard({
       if (previewItem && selectedIds.has(previewItem.item.data.id)) setPreviewItem(null);
       setSelectedIds(new Set());
 
-      Promise.allSettled(ids.map((id) =>
-        fetch(`/api/content-pipeline/ideas/${id}/write`, { method: 'POST' })
-      )).then((results) => {
-        const failed = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok));
+      Promise.allSettled(ids.map((id) => writeFromIdea(id))).then((results) => {
+        const failed = results.filter((r) => r.status === 'rejected');
         if (failed.length > 0) {
           toast.error(`Failed to write ${failed.length} post(s)`);
         }
@@ -338,60 +294,39 @@ export function KanbanBoard({
       });
 
     } else if (focusedColumn === 'written') {
-      // Optimistic: update selected posts to approved immediately
       setPosts((prev) => prev.map((p) =>
         ids.includes(p.id) ? { ...p, status: 'approved' as PostStatus } : p
       ));
       setSelectedIds(new Set());
 
-      Promise.allSettled(ids.map((id) =>
-        fetch(`/api/content-pipeline/posts/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'approved' }),
-        })
-      )).then((results) => {
-        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
+      Promise.allSettled(ids.map((id) => updatePost(id, { status: 'approved' }))).then((results) => {
+        if (results.some((r) => r.status === 'rejected')) {
           fetchData(true);
           toast.error('Some posts failed to approve');
         }
       }).catch(() => { fetchData(true); toast.error('Failed to approve posts'); });
 
     } else if (focusedColumn === 'review') {
-      // Optimistic: update selected posts to scheduled immediately
       setPosts((prev) => prev.map((p) =>
         ids.includes(p.id) ? { ...p, status: 'scheduled' as PostStatus } : p
       ));
       setSelectedIds(new Set());
 
-      Promise.allSettled(ids.map((id) =>
-        fetch('/api/content-pipeline/posts/schedule', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ post_id: id }),
-        })
-      )).then((results) => {
-        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
+      Promise.allSettled(ids.map((id) => schedulePost(id))).then((results) => {
+        if (results.some((r) => r.status === 'rejected')) {
           fetchData(true);
           toast.error('Some posts failed to schedule');
         }
       }).catch(() => { fetchData(true); toast.error('Failed to schedule posts'); });
 
     } else if (focusedColumn === 'scheduled') {
-      // Optimistic: update selected posts to approved immediately
       setPosts((prev) => prev.map((p) =>
         ids.includes(p.id) ? { ...p, status: 'approved' as PostStatus } : p
       ));
       setSelectedIds(new Set());
 
-      Promise.allSettled(ids.map((id) =>
-        fetch(`/api/content-pipeline/posts/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'approved' }),
-        })
-      )).then((results) => {
-        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
+      Promise.allSettled(ids.map((id) => updatePost(id, { status: 'approved' }))).then((results) => {
+        if (results.some((r) => r.status === 'rejected')) {
           fetchData(true);
           toast.error('Some posts failed to move');
         }
@@ -414,12 +349,11 @@ export function KanbanBoard({
     setSelectedIds(new Set());
 
     Promise.allSettled(ids.map((id) => {
-      const endpoint = ideaIds.has(id)
-        ? `/api/content-pipeline/ideas/${id}`
-        : `/api/content-pipeline/posts/${id}`;
-      return fetch(endpoint, { method: 'DELETE' });
+      if (ideaIds.has(id)) return deleteIdea(id);
+      return deletePost(id);
     })).then((results) => {
-      if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
+      const hasFailure = results.some((r) => r.status === 'rejected');
+      if (hasFailure) {
         fetchData(true);
         toast.error('Some items failed to delete');
       }
@@ -433,18 +367,11 @@ export function KanbanBoard({
   // ─── Detail pane callbacks ────────────────────────────────
 
   const handleWritePost = useCallback(async (ideaId: string) => {
-    // Optimistic: remove idea from list immediately
     const removedIdea = ideas.find((i) => i.id === ideaId);
     setIdeas((prev) => prev.filter((i) => i.id !== ideaId));
     setPreviewItem(null);
-    fetch(`/api/content-pipeline/ideas/${ideaId}/write`, { method: 'POST' })
-      .then((res) => {
-        if (res.ok) fetchData(true);
-        else {
-          if (removedIdea) setIdeas((prev) => [...prev, removedIdea]);
-          toast.error('Failed to write post');
-        }
-      })
+    writeFromIdea(ideaId)
+      .then(() => fetchData(true))
       .catch(() => {
         if (removedIdea) setIdeas((prev) => [...prev, removedIdea]);
         toast.error('Failed to write post');
@@ -466,7 +393,7 @@ export function KanbanBoard({
   const handlePolish = useCallback(async (postId: string) => {
     setPolishing(true);
     try {
-      await fetch(`/api/content-pipeline/posts/${postId}/polish`, { method: 'POST' });
+      await polishPost(postId);
       refresh();
     } catch {
       // Silent

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2, CheckCircle, XCircle, ExternalLink, Eye, EyeOff, Mail } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as integrationsApi from '@/frontend/api/integrations';
 
 interface Integration {
   service: string;
@@ -123,21 +124,11 @@ function ProviderCard({
         metadata[provider.extraField.key] = extraFieldValue.trim();
       }
 
-      const response = await fetch('/api/integrations/email-marketing/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: provider.id,
-          api_key: apiKey.trim(),
-          metadata,
-        }),
+      await integrationsApi.connectEmailMarketing({
+        provider: provider.id,
+        api_key: apiKey.trim(),
+        metadata: Object.keys(metadata).length ? metadata : undefined,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to connect');
-      }
 
       setFeedback({ type: 'success', message: 'Connected successfully! Refreshing...' });
       setApiKey('');
@@ -159,14 +150,7 @@ function ProviderCard({
     setFeedback(null);
 
     try {
-      const response = await fetch('/api/integrations/email-marketing/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: provider.id }),
-      });
-
-      const data = await response.json();
-
+      const data = await integrationsApi.verifyEmailMarketing({ provider: provider.id }) as { verified?: boolean };
       if (data.verified) {
         setFeedback({ type: 'success', message: 'Connection verified successfully' });
       } else {
@@ -189,16 +173,7 @@ function ProviderCard({
     setFeedback(null);
 
     try {
-      const response = await fetch('/api/integrations/email-marketing/disconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: provider.id }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to disconnect');
-      }
-
+      await integrationsApi.disconnectEmailMarketing({ provider: provider.id });
       window.location.reload();
     } catch (error) {
       logError('settings/email-marketing', error, { step: 'disconnect_error', provider: provider.id });

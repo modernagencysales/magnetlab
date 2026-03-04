@@ -17,6 +17,7 @@ import {
 import type { Email, EmailSequence } from '@/lib/types/email';
 
 import { logError } from '@/lib/utils/logger';
+import * as emailSequenceApi from '@/frontend/api/email-sequence';
 
 interface EmailSequenceTabProps {
   leadMagnetId: string;
@@ -176,11 +177,8 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
   useEffect(() => {
     async function fetchSequence() {
       try {
-        const response = await fetch(`/api/email-sequence/${leadMagnetId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSequence(data.emailSequence);
-        }
+        const data = await emailSequenceApi.getEmailSequence(leadMagnetId);
+        if (data.emailSequence) setSequence(data.emailSequence as EmailSequence);
       } catch (err) {
         logError('funnel/email-sequence', err, { step: 'error_fetching_email_sequence' });
       } finally {
@@ -204,19 +202,8 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
     }, 4000);
 
     try {
-      const response = await fetch('/api/email-sequence/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadMagnetId, useAI: true }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to generate');
-      }
-
-      const data = await response.json();
-      setSequence(data.emailSequence);
+      const data = await emailSequenceApi.generateEmailSequence(leadMagnetId, true);
+      setSequence(data.emailSequence as EmailSequence);
       setSuccess('Email sequence generated successfully!');
       setExpandedEmail(0);
     } catch (err) {
@@ -234,19 +221,9 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
     setSuccess(null);
 
     try {
-      const response = await fetch(`/api/email-sequence/${leadMagnetId}/activate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to activate');
-      }
-
-      const data = await response.json();
-      setSequence(data.emailSequence);
-      setSuccess(data.message || 'Email sequence activated! New leads will receive it automatically.');
+      const data = await emailSequenceApi.activateEmailSequence(leadMagnetId);
+      setSequence(data.emailSequence as EmailSequence);
+      setSuccess((data as { message?: string }).message || 'Email sequence activated! New leads will receive it automatically.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to activate email sequence');
     } finally {
@@ -260,19 +237,8 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
     setSuccess(null);
 
     try {
-      const response = await fetch(`/api/email-sequence/${leadMagnetId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'synced' }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to deactivate');
-      }
-
-      const data = await response.json();
-      setSequence(data.emailSequence);
+      const data = await emailSequenceApi.updateEmailSequence(leadMagnetId, { status: 'synced' });
+      setSequence(data.emailSequence as EmailSequence);
       setSuccess('Email sequence paused. New leads will not receive emails.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to deactivate email sequence');
@@ -298,19 +264,8 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
     updatedEmails[editingEmail] = editedEmail;
 
     try {
-      const response = await fetch(`/api/email-sequence/${leadMagnetId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emails: updatedEmails }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save');
-      }
-
-      const data = await response.json();
-      setSequence(data.emailSequence);
+      const data = await emailSequenceApi.updateEmailSequence(leadMagnetId, { emails: updatedEmails });
+      setSequence(data.emailSequence as EmailSequence);
       setEditingEmail(null);
       setEditedEmail(null);
       setSuccess('Email updated successfully!');

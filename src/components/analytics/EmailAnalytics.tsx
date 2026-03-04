@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import * as analyticsApi from '@/frontend/api/analytics';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Mail, CheckCircle, Eye, MousePointer, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
@@ -121,11 +122,7 @@ export function EmailAnalytics() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/analytics/email?range=${selectedRange}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch email analytics');
-      }
-      const json = await response.json();
+      const json = await analyticsApi.getEmailAnalytics(selectedRange);
       setData(json);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load email analytics');
