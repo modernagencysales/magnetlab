@@ -60,6 +60,19 @@ export async function getUserName(userId: string): Promise<string | null> {
   return data?.name ?? null;
 }
 
+// ----- Unscoped lookups (for cross-team scope resolution) -----
+
+/** Get a lead magnet's team_id by ID, without scope filtering. Used to resolve cross-team scope. */
+export async function getLeadMagnetTeamId(leadMagnetId: string): Promise<string | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('lead_magnets')
+    .select('team_id')
+    .eq('id', leadMagnetId)
+    .maybeSingle();
+  return data?.team_id ?? null;
+}
+
 // ----- Email sequence CRUD -----
 
 export async function upsertEmailSequence(params: {

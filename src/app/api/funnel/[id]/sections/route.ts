@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getDataScope } from '@/lib/utils/team-context';
+import { getScopeForResource } from '@/lib/utils/team-context';
 import { ApiErrors } from '@/lib/api/errors';
 import * as funnelsService from '@/server/services/funnels.service';
+import { getFunnelTeamId } from '@/server/repositories/funnels.repo';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -14,7 +15,8 @@ export async function GET(request: Request, { params }: RouteParams) {
     if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id } = await params;
-    const scope = await getDataScope(session.user.id);
+    const teamId = await getFunnelTeamId(id);
+    const scope = await getScopeForResource(session.user.id, teamId);
     const sections = await funnelsService.getSections(scope, id);
     return NextResponse.json({ sections });
   } catch (error) {
@@ -31,7 +33,8 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
-    const scope = await getDataScope(session.user.id);
+    const teamId = await getFunnelTeamId(id);
+    const scope = await getScopeForResource(session.user.id, teamId);
     const section = await funnelsService.createSection(scope, id, body);
     return NextResponse.json({ section }, { status: 201 });
   } catch (error) {

@@ -4,9 +4,10 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getPostHogServerClient } from '@/lib/posthog';
-import { getDataScope } from '@/lib/utils/team-context';
+import { getScopeForResource } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import * as emailSequenceService from '@/server/services/email-sequence.service';
+import { getLeadMagnetTeamId } from '@/server/repositories/email-sequence.repo';
 
 interface RouteParams {
   params: Promise<{ leadMagnetId: string }>;
@@ -20,7 +21,8 @@ export async function POST(_request: Request, { params }: RouteParams) {
     }
 
     const { leadMagnetId } = await params;
-    const scope = await getDataScope(session.user.id);
+    const teamId = await getLeadMagnetTeamId(leadMagnetId);
+    const scope = await getScopeForResource(session.user.id, teamId);
     const result = await emailSequenceService.activate(scope, leadMagnetId);
 
     if (!result.success) {

@@ -3,9 +3,10 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getDataScope } from '@/lib/utils/team-context';
+import { getScopeForResource } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import * as emailSequenceService from '@/server/services/email-sequence.service';
+import { getLeadMagnetTeamId } from '@/server/repositories/email-sequence.repo';
 
 interface RouteParams {
   params: Promise<{ leadMagnetId: string }>;
@@ -19,7 +20,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
     }
 
     const { leadMagnetId } = await params;
-    const scope = await getDataScope(session.user.id);
+    const teamId = await getLeadMagnetTeamId(leadMagnetId);
+    const scope = await getScopeForResource(session.user.id, teamId);
     const result = await emailSequenceService.getByLeadMagnetId(scope, leadMagnetId);
 
     if (!result.success) {
@@ -71,7 +73,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('status must be draft, synced, or active');
     }
 
-    const scope = await getDataScope(session.user.id);
+    const teamId = await getLeadMagnetTeamId(leadMagnetId);
+    const scope = await getScopeForResource(session.user.id, teamId);
     const result = await emailSequenceService.update(scope, leadMagnetId, { emails, status });
 
     if (!result.success) {

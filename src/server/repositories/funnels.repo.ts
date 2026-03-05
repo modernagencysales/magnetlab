@@ -38,6 +38,19 @@ const SECTION_COLUMNS =
 const INTEGRATION_COLUMNS =
   'id, provider, list_id, list_name, tag_id, tag_name, is_active, settings, created_at, updated_at';
 
+// ─── Unscoped lookups (for cross-team scope resolution) ──────────────────
+
+/** Get a funnel's team_id by ID, without scope filtering. Used to resolve cross-team scope. */
+export async function getFunnelTeamId(id: string): Promise<string | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('funnel_pages')
+    .select('team_id')
+    .eq('id', id)
+    .maybeSingle();
+  return data?.team_id ?? null;
+}
+
 // ─── Internal helpers ──────────────────────────────────────────────────────
 
 /** Verify a funnel exists and the current scope has access. Returns the id or null. */
