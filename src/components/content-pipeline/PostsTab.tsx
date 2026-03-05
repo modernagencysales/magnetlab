@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, Loader2, Copy, Check, Sparkles, Trash2, Eye } from 'lucide-react';
+import { FileText, Loader2, Copy, Check, Sparkles, Trash2, Eye, List, LayoutGrid } from 'lucide-react';
 import { cn, truncate, formatDateTime } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostDetailModal } from './PostDetailModal';
+import { BatchView } from './BatchView';
 import type { PipelinePost, PostStatus, ReviewData } from '@/lib/types/content-pipeline';
 
 const STATUS_FILTERS: { value: PostStatus | ''; label: string }[] = [
@@ -37,6 +38,7 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
   const [reviewFilter, setReviewFilter] = useState<ReviewCategory>('');
   const [polishingId, setPolishingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'batch'>('list');
 
   const fetchPosts = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -46,6 +48,7 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
       params.append('is_buffer', 'false');
       if (profileId) params.append('team_profile_id', profileId);
       if (teamId) params.append('team_id', teamId);
+      if (viewMode === 'batch') params.append('limit', '200');
 
       const response = await fetch(`/api/content-pipeline/posts?${params}`);
       const data = await response.json();
@@ -55,7 +58,7 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, profileId, teamId]);
+  }, [statusFilter, profileId, teamId, viewMode]);
 
   useEffect(() => {
     fetchPosts();
@@ -104,6 +107,21 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleStatusChange = async (postId: string, newStatus: PostStatus) => {
+    try {
+      const response = await fetch(`/api/content-pipeline/posts/${postId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (response.ok) {
+        await fetchPosts(true);
+      }
+    } catch {
+      // Silent failure
+    }
+  };
+
   // Stats
   const stats = {
     draft: posts.filter((p) => p.status === 'draft').length,
@@ -142,8 +160,8 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
         </div>
       </div>
 
-      {/* Status Filter */}
-      <div className="mb-4 flex gap-2">
+      {/* Status Filter + View Toggle */}
+      <div className="mb-4 flex items-center gap-2">
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
@@ -158,6 +176,32 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
             {f.label}
           </button>
         ))}
+        <div className="ml-auto flex items-center gap-1 rounded-lg border p-0.5">
+          <button
+            onClick={() => setViewMode('list')}
+            className={cn(
+              'rounded-md p-1.5 transition-colors',
+              viewMode === 'list'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            title="List view"
+          >
+            <List className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('batch')}
+            className={cn(
+              'rounded-md p-1.5 transition-colors',
+              viewMode === 'batch'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            title="Batch view"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Review Category Filter */}
@@ -181,99 +225,119 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
         </div>
       )}
 
-      {/* Posts List */}
+      {/* Posts List / Batch View */}
       {(() => {
         const filteredPosts = reviewFilter
           ? posts.filter((p) => (p.review_data as ReviewData | null)?.category === reviewFilter)
           : posts;
-        return filteredPosts.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <p className="mt-4 text-muted-foreground">No posts found</p>
-          <p className="mt-1 text-sm text-muted-foreground/70">
-            Write posts from your ideas or run autopilot
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredPosts.map((post) => {
-            const content = post.final_content || post.draft_content || '';
-            return (
-              <div
-                key={post.id}
-                className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="mb-2 flex items-center gap-2 flex-wrap">
-                      <StatusBadge status={post.status} />
-                      {(post as PipelinePost & { profile_name?: string | null }).profile_name && (
-                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
-                          {(post as PipelinePost & { profile_name?: string | null }).profile_name}
-                        </span>
-                      )}
-                      {post.hook_score !== null && post.hook_score !== undefined && (
-                        <span className={cn(
-                          'rounded-full px-2 py-0.5 text-xs font-semibold',
-                          post.hook_score >= 8 ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
-                          post.hook_score >= 5 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
-                          'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-                        )}>
-                          {post.hook_score}/10
-                        </span>
-                      )}
-                      {post.review_data && (
-                        <ReviewBadge reviewData={post.review_data as ReviewData} />
-                      )}
-                      {post.scheduled_time && (
-                        <span className="text-xs text-muted-foreground">
-                          {formatDateTime(post.scheduled_time)}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {truncate(content, 200)}
-                    </p>
-                    <ReviewNotes reviewData={post.review_data as ReviewData | null} />
-                  </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => setSelectedPost(post)}
-                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                      title="View"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handlePolish(post.id)}
-                      disabled={polishingId === post.id}
-                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-50"
-                      title="Polish"
-                    >
-                      {polishingId === post.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    </button>
-                    <button
-                      onClick={() => handleCopy(content, post.id)}
-                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                      title="Copy"
-                    >
-                      {copiedId === post.id ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(post.id)}
-                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-red-500 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+        if (filteredPosts.length === 0) {
+          return (
+            <div className="rounded-lg border border-dashed p-12 text-center">
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
+              <p className="mt-4 text-muted-foreground">No posts found</p>
+              <p className="mt-1 text-sm text-muted-foreground/70">
+                Write posts from your ideas or run autopilot
+              </p>
+            </div>
+          );
+        }
+
+        if (viewMode === 'batch') {
+          return (
+            <BatchView
+              posts={filteredPosts}
+              onOpenPost={setSelectedPost}
+              onPolish={handlePolish}
+              onDelete={handleDelete}
+              onCopy={handleCopy}
+              onStatusChange={handleStatusChange}
+              polishingId={polishingId}
+              copiedId={copiedId}
+            />
+          );
+        }
+
+        return (
+          <div className="space-y-3">
+            {filteredPosts.map((post) => {
+              const content = post.final_content || post.draft_content || '';
+              return (
+                <div
+                  key={post.id}
+                  className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="mb-2 flex items-center gap-2 flex-wrap">
+                        <StatusBadge status={post.status} />
+                        {(post as PipelinePost & { profile_name?: string | null }).profile_name && (
+                          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                            {(post as PipelinePost & { profile_name?: string | null }).profile_name}
+                          </span>
+                        )}
+                        {post.hook_score !== null && post.hook_score !== undefined && (
+                          <span className={cn(
+                            'rounded-full px-2 py-0.5 text-xs font-semibold',
+                            post.hook_score >= 8 ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
+                            post.hook_score >= 5 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
+                            'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+                          )}>
+                            {post.hook_score}/10
+                          </span>
+                        )}
+                        {post.review_data && (
+                          <ReviewBadge reviewData={post.review_data as ReviewData} />
+                        )}
+                        {post.scheduled_time && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatDateTime(post.scheduled_time)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {truncate(content, 200)}
+                      </p>
+                      <ReviewNotes reviewData={post.review_data as ReviewData | null} />
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => setSelectedPost(post)}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                        title="View"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handlePolish(post.id)}
+                        disabled={polishingId === post.id}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-50"
+                        title="Polish"
+                      >
+                        {polishingId === post.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      </button>
+                      <button
+                        onClick={() => handleCopy(content, post.id)}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                        title="Copy"
+                      >
+                        {copiedId === post.id ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(post.id)}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-red-500 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      );
+              );
+            })}
+          </div>
+        );
       })()}
 
       {selectedPost && (
@@ -291,16 +355,20 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
 
 // ─── Review Badge ─────────────────────────────────────────
 
+// SYNC: also in BatchView.tsx
 const REVIEW_BADGE_STYLES: Record<string, string> = {
   excellent: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
   good_with_edits: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
   needs_rewrite: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+  delete: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
 };
 
+// SYNC: also in BatchView.tsx
 const REVIEW_CATEGORY_LABELS: Record<string, string> = {
   excellent: 'Excellent',
   good_with_edits: 'Needs Edits',
   needs_rewrite: 'Rewrite',
+  delete: 'Delete',
 };
 
 function ReviewBadge({ reviewData }: { reviewData: ReviewData }) {
