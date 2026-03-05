@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { JobStatus, JobStatusResponse } from '@/lib/types/background-jobs';
+import type { JobStatus } from '@/lib/types/background-jobs';
 import { logError } from '@/lib/utils/logger';
+import { getJobStatus } from '@/frontend/api/jobs';
 
 interface UseBackgroundJobOptions<TResult> {
   /** Polling interval in ms (default: 2000) */
@@ -66,65 +67,63 @@ export function useBackgroundJob<TResult = unknown>(
     setIsPolling(false);
   }, []);
 
-  const pollStatus = useCallback(async (id: string) => {
-    try {
-      const response = await fetch(`/api/jobs/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch job status');
+  const pollStatus = useCallback(
+    async (id: string) => {
+      try {
+        const data = await getJobStatus<TResult>(id);
+        setStatus(data.status);
+
+        if (data.status === 'completed' && data.result) {
+          setResult(data.result);
+          stopPolling();
+          onCompleteRef.current?.(data.result);
+        } else if (data.status === 'failed') {
+          setError(data.error || 'Job failed');
+          stopPolling();
+          onErrorRef.current?.(data.error || 'Job failed');
+        }
+      } catch (err) {
+        logError('hooks/useBackgroundJob', err, { action: 'poll' });
+        // Don't stop polling on network errors, just log
       }
+    },
+    [stopPolling]
+  );
 
-      const data: JobStatusResponse<TResult> = await response.json();
-      setStatus(data.status);
+  const startPolling = useCallback(
+    (id: string) => {
+      // Reset state
+      setStatus('pending');
+      setResult(null);
+      setError(null);
+      setIsPolling(true);
 
-      if (data.status === 'completed' && data.result) {
-        setResult(data.result);
-        stopPolling();
-        onCompleteRef.current?.(data.result);
-      } else if (data.status === 'failed') {
-        setError(data.error || 'Job failed');
-        stopPolling();
-        onErrorRef.current?.(data.error || 'Job failed');
-      }
-    } catch (err) {
-      logError('hooks/useBackgroundJob', err, { action: 'poll' });
-      // Don't stop polling on network errors, just log
-    }
-  }, [stopPolling]);
-
-  const startPolling = useCallback((id: string) => {
-    // Reset state
-    setStatus('pending');
-    setResult(null);
-    setError(null);
-    setIsPolling(true);
-
-    // Clear any existing intervals
-    stopPolling();
-
-    // Start polling
-    intervalRef.current = setInterval(() => {
-      pollStatus(id);
-    }, pollInterval);
-
-    // Set timeout
-    timeoutRef.current = setTimeout(() => {
+      // Clear any existing intervals
       stopPolling();
-      setStatus(null);
-      setError('Generation took too long. Please try again.');
-      onErrorRef.current?.('Generation took too long. Please try again.');
-    }, timeout);
 
-    // Initial poll
-    pollStatus(id);
-  }, [pollInterval, timeout, pollStatus, stopPolling]);
+      // Start polling
+      intervalRef.current = setInterval(() => {
+        pollStatus(id);
+      }, pollInterval);
+
+      // Set timeout
+      timeoutRef.current = setTimeout(() => {
+        stopPolling();
+        setStatus(null);
+        setError('Generation took too long. Please try again.');
+        onErrorRef.current?.('Generation took too long. Please try again.');
+      }, timeout);
+
+      // Initial poll
+      pollStatus(id);
+    },
+    [pollInterval, timeout, pollStatus, stopPolling]
+  );
 
   // One-shot check: returns true if job is still running (caller should start polling)
   const checkJob = useCallback(async (jobId: string): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/jobs/${jobId}`);
-      if (!response.ok) return false;
-
-      const data: JobStatusResponse<TResult> = await response.json();
+      const data = await getJobStatus<TResult>(jobId);
       setStatus(data.status);
 
       if (data.status === 'completed' && data.result) {

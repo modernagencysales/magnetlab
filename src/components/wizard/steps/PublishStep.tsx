@@ -6,6 +6,8 @@ import Link from 'next/link';
 import type { ExtractedContent, PostVariation, LeadMagnetConcept, InteractiveConfig } from '@/lib/types/lead-magnet';
 
 import { logError } from '@/lib/utils/logger';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
+import * as wizardDraftApi from '@/frontend/api/wizard-draft';
 
 interface PublishStepProps {
   content: ExtractedContent | null;
@@ -98,43 +100,22 @@ export function PublishStep({
     setSaveError(null);
 
     try {
-      const response = await fetch('/api/lead-magnet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: trimmedTitle,
-          archetype: concept.archetype || 'single-breakdown',
-          concept,
-          extractedContent: content,
-          interactiveConfig,
-          linkedinPost: post.post,
-          postVariations: [post],
-          dmTemplate,
-          ctaWord,
-        }),
+      const data = await leadMagnetApi.createLeadMagnet({
+        title: trimmedTitle,
+        archetype: concept.archetype || 'single-breakdown',
+        concept,
+        extractedContent: content,
+        interactiveConfig,
+        linkedinPost: post.post,
+        postVariations: [post],
+        dmTemplate,
+        ctaWord,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        // Provide a user-friendly message instead of raw Zod errors like "Required"
-        if (data.code === 'VALIDATION_ERROR' && data.details?.length) {
-          const field = data.details[0]?.path?.join('.') || 'unknown';
-          throw new Error(`Save failed: missing data in "${field}". Please go back and try regenerating your content.`);
-        }
-        throw new Error(data.error || 'Failed to save');
-      }
-
-      const data = await response.json();
       setSavedLeadMagnetId(data.id);
       setSaved(true);
 
-      // Clean up the auto-saved draft
       if (draftId) {
-        fetch('/api/wizard-draft', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: draftId }),
-        }).catch(() => {}); // fire-and-forget
+        wizardDraftApi.deleteDraft(draftId).catch(() => {});
       }
     } catch (error) {
       logError('wizard/publish', error, { step: 'save_error' });

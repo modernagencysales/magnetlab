@@ -4,6 +4,7 @@
  */
 
 import { generateWeekPlan } from '@/lib/ai/content-pipeline/week-planner';
+import type { PillarDistribution } from '@/lib/types/content-pipeline';
 import { logError } from '@/lib/utils/logger';
 import * as cpPlannerRepo from '@/server/repositories/cp-planner.repo';
 
@@ -31,7 +32,12 @@ export async function create(
 ) {
   const { data, error } = await cpPlannerRepo.createWeekPlan(userId, payload);
   if (error) {
-    if (error.code === '23505') return { success: false, error: 'conflict' as const, message: 'A plan already exists for this week' };
+    if (error.code === '23505')
+      return {
+        success: false,
+        error: 'conflict' as const,
+        message: 'A plan already exists for this week',
+      };
     logError('cp/planner', error, { step: 'planner_create_error' });
     return { success: false, error: 'database' as const };
   }
@@ -60,7 +66,8 @@ export async function update(userId: string, id: string, body: Record<string, un
   for (const field of ALLOWED_UPDATE_FIELDS) {
     if (field in body) updates[field] = body[field];
   }
-  if (Object.keys(updates).length === 0) return { success: false, error: 'validation' as const, message: 'No valid fields to update' };
+  if (Object.keys(updates).length === 0)
+    return { success: false, error: 'validation' as const, message: 'No valid fields to update' };
 
   const { data, error } = await cpPlannerRepo.updateWeekPlan(id, userId, updates);
   if (error) {
@@ -94,7 +101,11 @@ export async function generate(
   const recentPostTitles = await cpPlannerRepo.getRecentPostDraftContent(userId, 20);
 
   if (ideas.length === 0) {
-    return { success: false, error: 'validation' as const, message: 'No ideas available. Process some transcripts first.' };
+    return {
+      success: false,
+      error: 'validation' as const,
+      message: 'No ideas available. Process some transcripts first.',
+    };
   }
 
   const dist = payload.pillar_distribution || {
@@ -108,7 +119,7 @@ export async function generate(
     userId,
     weekStartDate: payload.week_start_date,
     postsPerWeek: payload.posts_per_week || 5,
-    pillarDistribution: dist,
+    pillarDistribution: dist as unknown as PillarDistribution,
     ideas,
     templates,
     slots,
@@ -136,12 +147,31 @@ export async function generate(
 }
 
 export async function approve(userId: string, planId: string) {
-  const { data: plan, error: planError } = await cpPlannerRepo.getWeekPlanForApprove(planId, userId);
-  if (planError || !plan) return { success: false, error: 'not_found' as const, message: 'Plan not found' };
-  if (plan.status !== 'draft') return { success: false, error: 'validation' as const, message: 'Plan is not in draft status' };
+  const { data: plan, error: planError } = await cpPlannerRepo.getWeekPlanForApprove(
+    planId,
+    userId
+  );
+  if (planError || !plan)
+    return { success: false, error: 'not_found' as const, message: 'Plan not found' };
+  if (plan.status !== 'draft')
+    return { success: false, error: 'validation' as const, message: 'Plan is not in draft status' };
 
-  const plannedPosts = (plan.planned_posts as Array<{ idea_id: string; template_id: string | null; day: number; time: string; pillar: string }>) ?? [];
-  const updatedPlannedPosts: Array<{ idea_id: string; template_id: string | null; day: number; time: string; pillar: string; assigned_post_id: string | null }> = [];
+  const plannedPosts =
+    (plan.planned_posts as Array<{
+      idea_id: string;
+      template_id: string | null;
+      day: number;
+      time: string;
+      pillar: string;
+    }>) ?? [];
+  const updatedPlannedPosts: Array<{
+    idea_id: string;
+    template_id: string | null;
+    day: number;
+    time: string;
+    pillar: string;
+    assigned_post_id: string | null;
+  }> = [];
 
   for (const pp of plannedPosts) {
     const { data: created, error: insertError } = await cpPlannerRepo.insertPipelinePost({

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle, Mail } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as integrationsApi from '@/frontend/api/integrations';
 
 interface ResendSettingsProps {
   isConnected: boolean;
@@ -32,14 +33,10 @@ export function ResendSettings({ isConnected, lastVerifiedAt, metadata }: Resend
     setStatus({ verifying: true, verified: null, error: null });
 
     try {
-      // First verify the API key
-      const verifyResponse = await fetch('/api/integrations/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: 'resend', api_key: apiKey }),
+      const verifyData = await integrationsApi.verifyIntegration({
+        service: 'resend',
+        api_key: apiKey,
       });
-
-      const verifyData = await verifyResponse.json();
 
       if (!verifyData.verified) {
         setStatus({
@@ -50,23 +47,14 @@ export function ResendSettings({ isConnected, lastVerifiedAt, metadata }: Resend
         return;
       }
 
-      // Save the integration with metadata
-      const saveResponse = await fetch('/api/integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service: 'resend',
-          api_key: apiKey,
-          metadata: {
-            fromEmail: fromEmail || null,
-            fromName: fromName || null,
-          },
-        }),
+      await integrationsApi.saveIntegration({
+        service: 'resend',
+        api_key: apiKey,
+        metadata: {
+          fromEmail: fromEmail || null,
+          fromName: fromName || null,
+        },
       });
-
-      if (!saveResponse.ok) {
-        throw new Error('Failed to save integration');
-      }
 
       setStatus({ verifying: false, verified: true, error: null });
       setApiKey('');
@@ -89,11 +77,7 @@ export function ResendSettings({ isConnected, lastVerifiedAt, metadata }: Resend
 
     setLoading(true);
     try {
-      await fetch('/api/integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: 'resend', api_key: null }),
-      });
+      await integrationsApi.saveIntegration({ service: 'resend', api_key: null });
       window.location.reload();
     } catch (error) {
       logError('settings/resend', error, { step: 'disconnect_error' });
@@ -105,18 +89,10 @@ export function ResendSettings({ isConnected, lastVerifiedAt, metadata }: Resend
   const handleUpdateSettings = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/integrations/resend/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fromEmail,
-          fromName,
-        }),
+      await integrationsApi.updateResendSettings({
+        fromEmail: fromEmail || null,
+        fromName: fromName || null,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update settings');
-      }
 
       window.location.reload();
     } catch (error) {

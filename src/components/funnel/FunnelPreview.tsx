@@ -2,7 +2,12 @@
 
 import { Monitor, Smartphone, CheckCircle2, Play } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
-import type { QualificationQuestion, FunnelPageSection, FunnelTheme, BackgroundStyle } from '@/lib/types/funnel';
+import type {
+  QualificationQuestion,
+  FunnelPageSection,
+  FunnelTheme,
+  BackgroundStyle,
+} from '@/lib/types/funnel';
 import SectionRenderer from '@/components/ds/SectionRenderer';
 
 interface FunnelPreviewProps {
@@ -44,24 +49,40 @@ export function FunnelPreview({
 
   // Theme-based colors - memoized to avoid recalculation on every render
   const isDark = theme === 'dark';
-  const colors = useMemo(() => ({
-    bgColor: isDark ? '#09090B' : '#FAFAFA',
-    textColor: isDark ? '#FAFAFA' : '#09090B',
-    mutedColor: isDark ? '#A1A1AA' : '#71717A',
-    borderColor: isDark ? '#27272A' : '#E4E4E7',
-    inputBg: isDark ? '#09090B' : '#FFFFFF',
-    placeholderColor: isDark ? '#71717A' : '#A1A1AA',
-    browserBg: isDark ? '#18181B' : '#F4F4F5',
-    browserBorder: isDark ? '#27272A' : '#E4E4E7',
-  }), [isDark]);
+  const colors = useMemo(
+    () => ({
+      bgColor: isDark ? '#09090B' : '#FAFAFA',
+      textColor: isDark ? '#FAFAFA' : '#09090B',
+      mutedColor: isDark ? '#A1A1AA' : '#71717A',
+      borderColor: isDark ? '#27272A' : '#E4E4E7',
+      inputBg: isDark ? '#09090B' : '#FFFFFF',
+      placeholderColor: isDark ? '#71717A' : '#A1A1AA',
+      browserBg: isDark ? '#18181B' : '#F4F4F5',
+      browserBorder: isDark ? '#27272A' : '#E4E4E7',
+    }),
+    [isDark]
+  );
 
-  const { bgColor, textColor, mutedColor, borderColor, inputBg, placeholderColor, browserBg, browserBorder } = colors;
+  const {
+    bgColor,
+    textColor,
+    mutedColor,
+    borderColor,
+    inputBg,
+    placeholderColor,
+    browserBg,
+    browserBorder,
+  } = colors;
 
   // Filter sections by current page view
   const pageLocation = pageView;
-  const pageSections = sections.filter(s => s.pageLocation === pageLocation && s.isVisible);
-  const aboveSections = pageSections.filter(s => s.sortOrder < 50).sort((a, b) => a.sortOrder - b.sortOrder);
-  const belowSections = pageSections.filter(s => s.sortOrder >= 50).sort((a, b) => a.sortOrder - b.sortOrder);
+  const pageSections = sections.filter((s) => s.pageLocation === pageLocation && s.isVisible);
+  const aboveSections = pageSections
+    .filter((s) => s.sortOrder < 50)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const belowSections = pageSections
+    .filter((s) => s.sortOrder >= 50)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   // Background style - memoized
   const getBackgroundStyle = useCallback(() => {
@@ -145,7 +166,7 @@ export function FunnelPreview({
           className="px-4 py-2 flex items-center gap-2"
           style={{
             background: browserBg,
-            borderBottom: `1px solid ${browserBorder}`
+            borderBottom: `1px solid ${browserBorder}`,
           }}
         >
           <div className="flex gap-1.5">
@@ -173,32 +194,23 @@ export function FunnelPreview({
             <div className="max-w-md space-y-6">
               {/* Logo */}
               {logoUrl && (
-                <img
-                  src={logoUrl}
-                  alt="Logo"
-                  className="h-10 w-auto mx-auto"
-                />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="Logo" className="h-10 w-auto mx-auto" />
               )}
 
               {/* Above sections */}
-              {aboveSections.map(s => (
+              {aboveSections.map((s) => (
                 <SectionRenderer key={s.id} section={s} />
               ))}
 
               {/* Headline */}
-              <h1
-                className="text-2xl font-semibold leading-tight"
-                style={{ color: textColor }}
-              >
+              <h1 className="text-2xl font-semibold leading-tight" style={{ color: textColor }}>
                 {headline || 'Your Headline Here'}
               </h1>
 
               {/* Subline */}
               {subline && (
-                <p
-                  className="text-base leading-relaxed"
-                  style={{ color: mutedColor }}
-                >
+                <p className="text-base leading-relaxed" style={{ color: mutedColor }}>
                   {subline}
                 </p>
               )}
@@ -229,16 +241,13 @@ export function FunnelPreview({
 
               {/* Social Proof */}
               {socialProof && (
-                <p
-                  className="text-xs"
-                  style={{ color: placeholderColor }}
-                >
+                <p className="text-xs" style={{ color: placeholderColor }}>
                   {socialProof}
                 </p>
               )}
 
               {/* Below sections */}
-              {belowSections.map(s => (
+              {belowSections.map((s) => (
                 <SectionRenderer key={s.id} section={s} />
               ))}
             </div>
@@ -247,15 +256,12 @@ export function FunnelPreview({
             <div className="max-w-md space-y-6 w-full">
               {/* Logo */}
               {logoUrl && (
-                <img
-                  src={logoUrl}
-                  alt="Logo"
-                  className="h-10 w-auto mx-auto"
-                />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="Logo" className="h-10 w-auto mx-auto" />
               )}
 
               {/* Above sections */}
-              {aboveSections.map(s => (
+              {aboveSections.map((s) => (
                 <SectionRenderer key={s.id} section={s} />
               ))}
 
@@ -268,19 +274,13 @@ export function FunnelPreview({
               </div>
 
               {/* Thank You Headline */}
-              <h1
-                className="text-2xl font-semibold leading-tight"
-                style={{ color: textColor }}
-              >
+              <h1 className="text-2xl font-semibold leading-tight" style={{ color: textColor }}>
                 {thankyouHeadline || 'Thanks! Check your email.'}
               </h1>
 
               {/* Thank You Subline */}
               {thankyouSubline && (
-                <p
-                  className="text-base leading-relaxed"
-                  style={{ color: mutedColor }}
-                >
+                <p className="text-base leading-relaxed" style={{ color: mutedColor }}>
                   {thankyouSubline}
                 </p>
               )}
@@ -298,7 +298,9 @@ export function FunnelPreview({
                     >
                       <Play className="w-5 h-5 text-white ml-0.5" />
                     </div>
-                    <span className="text-xs" style={{ color: mutedColor }}>Video Preview</span>
+                    <span className="text-xs" style={{ color: mutedColor }}>
+                      Video Preview
+                    </span>
                   </div>
                 </div>
               )}
@@ -307,7 +309,10 @@ export function FunnelPreview({
               {questions.length > 0 && (
                 <div
                   className="rounded-lg p-4 text-left space-y-3"
-                  style={{ background: isDark ? '#18181B' : '#FFFFFF', border: `1px solid ${borderColor}` }}
+                  style={{
+                    background: isDark ? '#18181B' : '#FFFFFF',
+                    border: `1px solid ${borderColor}`,
+                  }}
                 >
                   <p className="text-xs" style={{ color: placeholderColor }}>
                     Question 1 of {questions.length}
@@ -318,13 +323,21 @@ export function FunnelPreview({
                   <div className="flex gap-2">
                     <button
                       className="flex-1 rounded-lg px-3 py-2 text-xs"
-                      style={{ background: isDark ? '#09090B' : '#FAFAFA', border: `1px solid ${borderColor}`, color: textColor }}
+                      style={{
+                        background: isDark ? '#09090B' : '#FAFAFA',
+                        border: `1px solid ${borderColor}`,
+                        color: textColor,
+                      }}
                     >
                       Yes
                     </button>
                     <button
                       className="flex-1 rounded-lg px-3 py-2 text-xs"
-                      style={{ background: isDark ? '#09090B' : '#FAFAFA', border: `1px solid ${borderColor}`, color: textColor }}
+                      style={{
+                        background: isDark ? '#09090B' : '#FAFAFA',
+                        border: `1px solid ${borderColor}`,
+                        color: textColor,
+                      }}
                     >
                       No
                     </button>
@@ -336,15 +349,22 @@ export function FunnelPreview({
               {calendlyUrl && (
                 <div
                   className="rounded-lg p-4 text-center"
-                  style={{ background: isDark ? '#18181B' : '#FFFFFF', border: `1px solid ${borderColor}` }}
+                  style={{
+                    background: isDark ? '#18181B' : '#FFFFFF',
+                    border: `1px solid ${borderColor}`,
+                  }}
                 >
-                  <p className="text-sm font-medium mb-2" style={{ color: textColor }}>Book Your Call</p>
-                  <p className="text-xs" style={{ color: mutedColor }}>Calendly embed will appear here</p>
+                  <p className="text-sm font-medium mb-2" style={{ color: textColor }}>
+                    Book Your Call
+                  </p>
+                  <p className="text-xs" style={{ color: mutedColor }}>
+                    Calendly embed will appear here
+                  </p>
                 </div>
               )}
 
               {/* Below sections */}
-              {belowSections.map(s => (
+              {belowSections.map((s) => (
                 <SectionRenderer key={s.id} section={s} />
               ))}
             </div>
@@ -360,21 +380,24 @@ export function FunnelPreview({
           </h4>
           <div className="space-y-2">
             {questions.slice(0, 3).map((q, i) => (
-              <div
-                key={q.id}
-                className="flex items-center gap-2 text-sm"
-              >
+              <div key={q.id} className="flex items-center gap-2 text-sm">
                 <span className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 text-xs flex items-center justify-center font-medium">
                   {i + 1}
                 </span>
-                <span className="text-muted-foreground truncate">
-                  {q.questionText}
-                </span>
+                <span className="text-muted-foreground truncate">{q.questionText}</span>
                 <span className="ml-auto text-xs text-muted-foreground shrink-0">
                   {q.isQualifying ? (
                     <span className="text-green-600 dark:text-green-400">Qualifying</span>
                   ) : (
-                    <span>{q.answerType === 'yes_no' ? 'Yes/No' : q.answerType === 'text' ? 'Text' : q.answerType === 'textarea' ? 'Long text' : 'Choice'}</span>
+                    <span>
+                      {q.answerType === 'yes_no'
+                        ? 'Yes/No'
+                        : q.answerType === 'text'
+                          ? 'Text'
+                          : q.answerType === 'textarea'
+                            ? 'Long text'
+                            : 'Choice'}
+                    </span>
                   )}
                 </span>
               </div>

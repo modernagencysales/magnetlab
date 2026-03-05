@@ -1,9 +1,20 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, Loader2, HelpCircle, ListChecks, X, ChevronDown } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  Loader2,
+  HelpCircle,
+  ListChecks,
+  X,
+  ChevronDown,
+} from 'lucide-react';
 import type { QualificationQuestion, AnswerType } from '@/lib/types/funnel';
 import { SURVEY_TEMPLATE_QUESTIONS } from '@/lib/constants/survey-templates';
+import * as funnelApi from '@/frontend/api/funnel';
+import * as qualificationFormsApi from '@/frontend/api/qualification-forms';
 
 interface QuestionsManagerProps {
   funnelId: string | null;
@@ -27,12 +38,6 @@ export function QuestionsManager({
   setQuestions,
   onNeedsSave,
 }: QuestionsManagerProps) {
-  // Determine API base path: form-based or legacy funnel-based
-  const apiBase = formId
-    ? `/api/qualification-forms/${formId}/questions`
-    : funnelId
-      ? `/api/funnel/${funnelId}/questions`
-      : null;
   const [newQuestion, setNewQuestion] = useState('');
   const [newAnswerType, setNewAnswerType] = useState<AnswerType>('yes_no');
   const [newQualifyingAnswer, setNewQualifyingAnswer] = useState<string>('yes');
@@ -63,14 +68,14 @@ export function QuestionsManager({
   const handleAddQuestion = async () => {
     if (!newQuestion.trim()) return;
 
-    if (!apiBase) {
+    if (!funnelId && !formId) {
       onNeedsSave();
       setError('Please save the funnel first before adding questions.');
       return;
     }
 
     if (newAnswerType === 'multiple_choice') {
-      const validOptions = newOptions.filter(o => o.trim());
+      const validOptions = newOptions.filter((o) => o.trim());
       if (validOptions.length < 2) {
         setError('Multiple choice questions need at least 2 options.');
         return;
@@ -81,8 +86,9 @@ export function QuestionsManager({
     setError(null);
 
     try {
-      const validOptions = newOptions.filter(o => o.trim());
-      const isQualifying = newIsQualifying && (newAnswerType === 'yes_no' || newAnswerType === 'multiple_choice');
+      const validOptions = newOptions.filter((o) => o.trim());
+      const isQualifying =
+        newIsQualifying && (newAnswerType === 'yes_no' || newAnswerType === 'multiple_choice');
 
       let qualifyingAnswer: string | string[] | null = null;
       if (isQualifying) {
@@ -93,27 +99,24 @@ export function QuestionsManager({
         }
       }
 
-      const response = await fetch(apiBase, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionText: newQuestion.trim(),
-          answerType: newAnswerType,
-          qualifyingAnswer,
-          options: newAnswerType === 'multiple_choice' ? validOptions : null,
-          placeholder: (newAnswerType === 'text' || newAnswerType === 'textarea') ? newPlaceholder || null : null,
-          isQualifying,
-          isRequired: newIsRequired,
-        }),
-      });
+      const body = {
+        questionText: newQuestion.trim(),
+        answerType: newAnswerType,
+        qualifyingAnswer,
+        options: newAnswerType === 'multiple_choice' ? validOptions : null,
+        placeholder:
+          newAnswerType === 'text' || newAnswerType === 'textarea' ? newPlaceholder || null : null,
+        isQualifying,
+        isRequired: newIsRequired,
+      };
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to add question');
+      if (funnelId) {
+        const data = await funnelApi.createQuestion(funnelId, body);
+        setQuestions([...questions, data.question as QualificationQuestion]);
+      } else if (formId) {
+        const data = await qualificationFormsApi.createFormQuestion(formId, body);
+        setQuestions([...questions, data.question]);
       }
-
-      const { question } = await response.json();
-      setQuestions([...questions, question]);
       resetNewForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add question');
@@ -123,46 +126,40 @@ export function QuestionsManager({
   };
 
   const handleUpdateQuestion = async (questionId: string, updates: Record<string, unknown>) => {
-    if (!apiBase) return;
+    if (!funnelId && !formId) return;
 
     try {
-      const response = await fetch(`${apiBase}/${questionId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update question');
+      if (funnelId) {
+        const data = await funnelApi.updateQuestion(funnelId, questionId, updates);
+        setQuestions(
+          questions.map((q) => (q.id === questionId ? (data.question as QualificationQuestion) : q))
+        );
+      } else if (formId) {
+        const data = await qualificationFormsApi.updateFormQuestion(formId, questionId, updates);
+        setQuestions(questions.map((q) => (q.id === questionId ? data.question : q)));
       }
-
-      const { question: updated } = await response.json();
-      setQuestions(questions.map(q => q.id === questionId ? updated : q));
     } catch {
       // Error handled silently - UI remains responsive
     }
   };
 
   const handleDeleteQuestion = async (questionId: string) => {
-    if (!apiBase) return;
+    if (!funnelId && !formId) return;
 
     try {
-      const response = await fetch(`${apiBase}/${questionId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete question');
+      if (funnelId) {
+        await funnelApi.deleteQuestion(funnelId, questionId);
+      } else if (formId) {
+        await qualificationFormsApi.deleteFormQuestion(formId, questionId);
       }
-
-      setQuestions(questions.filter(q => q.id !== questionId));
+      setQuestions(questions.filter((q) => q.id !== questionId));
     } catch {
       // Error handled silently - UI remains responsive
     }
   };
 
   const handleLoadTemplate = async () => {
-    if (!apiBase) {
+    if (!funnelId && !formId) {
       onNeedsSave();
       setError('Please save the funnel first before loading a template.');
       return;
@@ -175,27 +172,23 @@ export function QuestionsManager({
       const newQuestions: QualificationQuestion[] = [];
       for (let i = 0; i < SURVEY_TEMPLATE_QUESTIONS.length; i++) {
         const tq = SURVEY_TEMPLATE_QUESTIONS[i];
-        const response = await fetch(apiBase, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            questionText: tq.questionText,
-            answerType: tq.answerType,
-            qualifyingAnswer: tq.qualifyingAnswer,
-            options: tq.options,
-            placeholder: tq.placeholder,
-            isQualifying: tq.isQualifying,
-            isRequired: tq.isRequired,
-            questionOrder: questions.length + i,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create template question');
+        const body = {
+          questionText: tq.questionText,
+          answerType: tq.answerType,
+          qualifyingAnswer: tq.qualifyingAnswer,
+          options: tq.options,
+          placeholder: tq.placeholder,
+          isQualifying: tq.isQualifying,
+          isRequired: tq.isRequired,
+          questionOrder: questions.length + i,
+        };
+        if (funnelId) {
+          const data = await funnelApi.createQuestion(funnelId, body);
+          newQuestions.push(data.question as QualificationQuestion);
+        } else if (formId) {
+          const data = await qualificationFormsApi.createFormQuestion(formId, body);
+          newQuestions.push(data.question);
         }
-
-        const { question } = await response.json();
-        newQuestions.push(question);
       }
       setQuestions([...questions, ...newQuestions]);
     } catch (err) {
@@ -235,7 +228,7 @@ export function QuestionsManager({
   };
 
   const handleDrop = async (targetIndex: number) => {
-    if (draggedIndex === null || draggedIndex === targetIndex || !apiBase) {
+    if (draggedIndex === null || draggedIndex === targetIndex || (!funnelId && !formId)) {
       handleDragEnd();
       return;
     }
@@ -247,16 +240,16 @@ export function QuestionsManager({
     handleDragEnd();
 
     try {
-      const response = await fetch(apiBase, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionIds: newQuestions.map(q => q.id),
-        }),
-      });
-
-      if (!response.ok) {
-        setQuestions(questions);
+      if (funnelId) {
+        await funnelApi.reorderQuestions(
+          funnelId,
+          newQuestions.map((q) => q.id)
+        );
+      } else if (formId) {
+        await qualificationFormsApi.reorderFormQuestions(
+          formId,
+          newQuestions.map((q) => q.id)
+        );
       }
     } catch {
       setQuestions(questions);
@@ -284,7 +277,8 @@ export function QuestionsManager({
             Survey Questions
           </h3>
           <p className="text-sm text-muted-foreground">
-            Add questions to qualify leads and collect data. Qualifying questions determine if a lead sees your Calendly.
+            Add questions to qualify leads and collect data. Qualifying questions determine if a
+            lead sees your Calendly.
           </p>
         </div>
         {questions.length < SURVEY_TEMPLATE_QUESTIONS.length && (
@@ -306,7 +300,8 @@ export function QuestionsManager({
       {formId && (
         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            These questions come from a shared form. Edits here will apply to all funnels using this form.
+            These questions come from a shared form. Edits here will apply to all funnels using this
+            form.
           </p>
         </div>
       )}
@@ -331,9 +326,7 @@ export function QuestionsManager({
             onDrop={() => handleDrop(index)}
             className={`rounded-lg border bg-card p-4 transition-all ${
               draggedIndex === index ? 'opacity-50 scale-[0.98]' : ''
-            } ${
-              dragOverIndex === index ? 'border-primary border-2 shadow-lg' : ''
-            }`}
+            } ${dragOverIndex === index ? 'border-primary border-2 shadow-lg' : ''}`}
           >
             <div className="flex items-start gap-3">
               <div className="text-muted-foreground cursor-grab active:cursor-grabbing mt-0.5">
@@ -361,7 +354,9 @@ export function QuestionsManager({
                 </div>
                 <p className="text-sm truncate">{question.questionText}</p>
                 {question.isQualifying && (
-                  <p className="text-xs text-muted-foreground mt-1">{getQualifyingLabel(question)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {getQualifyingLabel(question)}
+                  </p>
                 )}
                 {question.answerType === 'multiple_choice' && question.options && (
                   <p className="text-xs text-muted-foreground mt-1">
@@ -372,10 +367,14 @@ export function QuestionsManager({
 
               <div className="flex items-center gap-1 shrink-0">
                 <button
-                  onClick={() => setExpandedQuestion(expandedQuestion === question.id ? null : question.id)}
+                  onClick={() =>
+                    setExpandedQuestion(expandedQuestion === question.id ? null : question.id)
+                  }
                   className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <ChevronDown className={`h-4 w-4 transition-transform ${expandedQuestion === question.id ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${expandedQuestion === question.id ? 'rotate-180' : ''}`}
+                  />
                 </button>
                 <button
                   onClick={() => handleDeleteQuestion(question.id)}
@@ -390,25 +389,35 @@ export function QuestionsManager({
             {expandedQuestion === question.id && (
               <div className="mt-4 pt-4 border-t border-border space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Question Text</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Question Text
+                  </label>
                   <input
                     type="text"
                     value={question.questionText}
-                    onChange={(e) => handleUpdateQuestion(question.id, { questionText: e.target.value })}
+                    onChange={(e) =>
+                      handleUpdateQuestion(question.id, { questionText: e.target.value })
+                    }
                     className="w-full rounded border border-border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary transition-colors"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Answer Type</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Answer Type
+                    </label>
                     <select
                       value={question.answerType}
-                      onChange={(e) => handleUpdateQuestion(question.id, { answerType: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdateQuestion(question.id, { answerType: e.target.value })
+                      }
                       className="w-full rounded border border-border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
                     >
                       {Object.entries(ANSWER_TYPE_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -418,9 +427,13 @@ export function QuestionsManager({
                       <input
                         type="checkbox"
                         checked={question.isQualifying}
-                        onChange={(e) => handleUpdateQuestion(question.id, { isQualifying: e.target.checked })}
+                        onChange={(e) =>
+                          handleUpdateQuestion(question.id, { isQualifying: e.target.checked })
+                        }
                         className="rounded border-border"
-                        disabled={question.answerType === 'text' || question.answerType === 'textarea'}
+                        disabled={
+                          question.answerType === 'text' || question.answerType === 'textarea'
+                        }
                       />
                       Qualifying
                     </label>
@@ -428,7 +441,9 @@ export function QuestionsManager({
                       <input
                         type="checkbox"
                         checked={question.isRequired}
-                        onChange={(e) => handleUpdateQuestion(question.id, { isRequired: e.target.checked })}
+                        onChange={(e) =>
+                          handleUpdateQuestion(question.id, { isRequired: e.target.checked })
+                        }
                         className="rounded border-border"
                       />
                       Required
@@ -438,11 +453,15 @@ export function QuestionsManager({
 
                 {(question.answerType === 'text' || question.answerType === 'textarea') && (
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Placeholder</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Placeholder
+                    </label>
                     <input
                       type="text"
                       value={question.placeholder || ''}
-                      onChange={(e) => handleUpdateQuestion(question.id, { placeholder: e.target.value || null })}
+                      onChange={(e) =>
+                        handleUpdateQuestion(question.id, { placeholder: e.target.value || null })
+                      }
                       className="w-full rounded border border-border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
                       placeholder="e.g. Enter your answer..."
                     />
@@ -451,12 +470,16 @@ export function QuestionsManager({
 
                 {question.answerType === 'yes_no' && question.isQualifying && (
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Qualifying Answer</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Qualifying Answer
+                    </label>
                     <div className="flex gap-2">
-                      {['yes', 'no'].map(val => (
+                      {['yes', 'no'].map((val) => (
                         <button
                           key={val}
-                          onClick={() => handleUpdateQuestion(question.id, { qualifyingAnswer: val })}
+                          onClick={() =>
+                            handleUpdateQuestion(question.id, { qualifyingAnswer: val })
+                          }
                           className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                             question.qualifyingAnswer === val
                               ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
@@ -481,9 +504,14 @@ export function QuestionsManager({
                           {question.isQualifying && (
                             <input
                               type="checkbox"
-                              checked={Array.isArray(question.qualifyingAnswer) && question.qualifyingAnswer.includes(opt)}
+                              checked={
+                                Array.isArray(question.qualifyingAnswer) &&
+                                question.qualifyingAnswer.includes(opt)
+                              }
                               onChange={(e) => {
-                                const current = Array.isArray(question.qualifyingAnswer) ? [...question.qualifyingAnswer] : [];
+                                const current = Array.isArray(question.qualifyingAnswer)
+                                  ? [...question.qualifyingAnswer]
+                                  : [];
                                 if (e.target.checked) {
                                   current.push(opt);
                                 } else {
@@ -504,10 +532,18 @@ export function QuestionsManager({
                               updatedOptions[optIdx] = e.target.value;
                               // Update qualifying answers if the renamed option was qualifying
                               let updatedQualifying = question.qualifyingAnswer;
-                              if (Array.isArray(question.qualifyingAnswer) && question.qualifyingAnswer.includes(oldVal)) {
-                                updatedQualifying = question.qualifyingAnswer.map(o => o === oldVal ? e.target.value : o);
+                              if (
+                                Array.isArray(question.qualifyingAnswer) &&
+                                question.qualifyingAnswer.includes(oldVal)
+                              ) {
+                                updatedQualifying = question.qualifyingAnswer.map((o) =>
+                                  o === oldVal ? e.target.value : o
+                                );
                               }
-                              handleUpdateQuestion(question.id, { options: updatedOptions, qualifyingAnswer: updatedQualifying });
+                              handleUpdateQuestion(question.id, {
+                                options: updatedOptions,
+                                qualifyingAnswer: updatedQualifying,
+                              });
                             }}
                             className="flex-1 rounded border border-border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
                             placeholder={`Option ${optIdx + 1}`}
@@ -515,11 +551,16 @@ export function QuestionsManager({
                           {(question.options || []).length > 2 && (
                             <button
                               onClick={() => {
-                                const updatedOptions = (question.options || []).filter((_, i) => i !== optIdx);
+                                const updatedOptions = (question.options || []).filter(
+                                  (_, i) => i !== optIdx
+                                );
                                 const updatedQualifying = Array.isArray(question.qualifyingAnswer)
-                                  ? question.qualifyingAnswer.filter(o => o !== opt)
+                                  ? question.qualifyingAnswer.filter((o) => o !== opt)
                                   : question.qualifyingAnswer;
-                                handleUpdateQuestion(question.id, { options: updatedOptions, qualifyingAnswer: updatedQualifying });
+                                handleUpdateQuestion(question.id, {
+                                  options: updatedOptions,
+                                  qualifyingAnswer: updatedQualifying,
+                                });
                               }}
                               className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
                             >
@@ -562,7 +603,9 @@ export function QuestionsManager({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Answer Type</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Answer Type
+            </label>
             <select
               value={newAnswerType}
               onChange={(e) => {
@@ -578,7 +621,9 @@ export function QuestionsManager({
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
             >
               {Object.entries(ANSWER_TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+                <option key={value} value={value}>
+                  {label}
+                </option>
               ))}
             </select>
           </div>
@@ -609,7 +654,9 @@ export function QuestionsManager({
         {/* Placeholder for text/textarea */}
         {(newAnswerType === 'text' || newAnswerType === 'textarea') && (
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Placeholder (optional)</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Placeholder (optional)
+            </label>
             <input
               type="text"
               value={newPlaceholder}
@@ -623,9 +670,11 @@ export function QuestionsManager({
         {/* Yes/No qualifying answer */}
         {newAnswerType === 'yes_no' && newIsQualifying && (
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Qualifying Answer</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Qualifying Answer
+            </label>
             <div className="flex gap-2">
-              {['yes', 'no'].map(val => (
+              {['yes', 'no'].map((val) => (
                 <button
                   key={val}
                   onClick={() => setNewQualifyingAnswer(val)}
@@ -659,7 +708,7 @@ export function QuestionsManager({
                         if (e.target.checked && opt.trim()) {
                           setNewQualifyingOptions([...newQualifyingOptions, opt]);
                         } else {
-                          setNewQualifyingOptions(newQualifyingOptions.filter(o => o !== opt));
+                          setNewQualifyingOptions(newQualifyingOptions.filter((o) => o !== opt));
                         }
                       }}
                       className="rounded border-border"
@@ -676,7 +725,9 @@ export function QuestionsManager({
                       setNewOptions(updated);
                       // Update qualifying options if the value changed
                       if (newQualifyingOptions.includes(oldVal)) {
-                        setNewQualifyingOptions(newQualifyingOptions.map(o => o === oldVal ? e.target.value : o));
+                        setNewQualifyingOptions(
+                          newQualifyingOptions.map((o) => (o === oldVal ? e.target.value : o))
+                        );
                       }
                     }}
                     className="flex-1 rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
@@ -686,7 +737,7 @@ export function QuestionsManager({
                     <button
                       onClick={() => {
                         setNewOptions(newOptions.filter((_, i) => i !== idx));
-                        setNewQualifyingOptions(newQualifyingOptions.filter(o => o !== opt));
+                        setNewQualifyingOptions(newQualifyingOptions.filter((o) => o !== opt));
                       }}
                       className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
                     >
@@ -711,11 +762,7 @@ export function QuestionsManager({
             disabled={!newQuestion.trim() || saving}
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
-            {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Add Question
           </button>
         </div>
@@ -729,7 +776,8 @@ export function QuestionsManager({
           <div className="space-y-1">
             <p className="text-sm font-medium">No survey questions yet</p>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-              Add questions to qualify leads and collect data. Use the template to get started quickly.
+              Add questions to qualify leads and collect data. Use the template to get started
+              quickly.
             </p>
           </div>
         </div>
@@ -737,9 +785,7 @@ export function QuestionsManager({
 
       {/* Reorder hint */}
       {questions.length > 1 && (
-        <p className="text-xs text-muted-foreground text-center">
-          Drag questions to reorder them
-        </p>
+        <p className="text-xs text-muted-foreground text-center">Drag questions to reorder them</p>
       )}
     </div>
   );

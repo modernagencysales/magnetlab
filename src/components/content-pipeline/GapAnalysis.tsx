@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Loader2, AlertTriangle, CheckCircle2, XCircle, BarChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KNOWLEDGE_TYPE_LABELS } from '@/lib/types/content-pipeline';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 const GOALS = [
   { value: 'lead_magnet', label: 'Lead Magnet' },
@@ -45,10 +46,9 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ limit: '20' });
-      if (teamId) params.append('team_id', teamId);
-      const res = await fetch(`/api/content-pipeline/knowledge/gaps?${params}`);
-      const data = await res.json();
+      const data = (await knowledgeApi.getKnowledgeGaps({ limit: 20, team_id: teamId })) as {
+        gaps?: GapData[];
+      };
       setGaps(data.gaps || []);
     } catch {
       setError('Failed to load data. Please try again.');
@@ -57,16 +57,20 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
     }
   }, [teamId]);
 
-  useEffect(() => { fetchGaps(); }, [fetchGaps]);
+  useEffect(() => {
+    fetchGaps();
+  }, [fetchGaps]);
 
   const handleAssessReadiness = async () => {
     if (!selectedTopic) return;
     setAssessing(true);
     setReadiness(null);
     try {
-      const params = new URLSearchParams({ topic: selectedTopic, goal: selectedGoal });
-      const res = await fetch(`/api/content-pipeline/knowledge/readiness?${params}`);
-      const data = await res.json();
+      const data = (await knowledgeApi.getKnowledgeReadiness({
+        topic: selectedTopic,
+        goal: selectedGoal,
+        team_id: teamId,
+      })) as { readiness?: ReadinessResult };
       setReadiness(data.readiness || null);
     } catch {
       // Silent
@@ -87,7 +91,12 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
         <p className="text-sm text-destructive">{error}</p>
-        <button onClick={() => fetchGaps()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Retry</button>
+        <button
+          onClick={() => fetchGaps()}
+          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -97,7 +106,9 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
       <div className="rounded-lg border border-dashed p-12 text-center">
         <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground/50" />
         <p className="mt-4 text-muted-foreground">No topics to analyze</p>
-        <p className="mt-1 text-sm text-muted-foreground/70">Process transcripts to discover topics and analyze gaps</p>
+        <p className="mt-1 text-sm text-muted-foreground/70">
+          Process transcripts to discover topics and analyze gaps
+        </p>
       </div>
     );
   }
@@ -115,12 +126,17 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Topic</label>
             <select
               value={selectedTopic}
-              onChange={(e) => { setSelectedTopic(e.target.value); setReadiness(null); }}
+              onChange={(e) => {
+                setSelectedTopic(e.target.value);
+                setReadiness(null);
+              }}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
               <option value="">Select a topic...</option>
               {gaps.map((g) => (
-                <option key={g.topic_slug} value={g.topic_name}>{g.topic_name}</option>
+                <option key={g.topic_slug} value={g.topic_name}>
+                  {g.topic_name}
+                </option>
               ))}
             </select>
           </div>
@@ -128,11 +144,16 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Goal</label>
             <select
               value={selectedGoal}
-              onChange={(e) => { setSelectedGoal(e.target.value); setReadiness(null); }}
+              onChange={(e) => {
+                setSelectedGoal(e.target.value);
+                setReadiness(null);
+              }}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
               {GOALS.map((g) => (
-                <option key={g.value} value={g.value}>{g.label}</option>
+                <option key={g.value} value={g.value}>
+                  {g.label}
+                </option>
               ))}
             </select>
           </div>
@@ -153,7 +174,12 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
               ) : (
                 <XCircle className="h-5 w-5 text-red-500" />
               )}
-              <span className={cn('font-semibold text-sm', readiness.ready ? 'text-green-600' : 'text-red-600')}>
+              <span
+                className={cn(
+                  'font-semibold text-sm',
+                  readiness.ready ? 'text-green-600' : 'text-red-600'
+                )}
+              >
                 {readiness.ready ? 'Ready' : 'Not Ready'}
               </span>
               <span className="text-xs text-muted-foreground">
@@ -177,10 +203,17 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
 
       {/* Gap Cards */}
       <div>
-        <h3 className="mb-4 text-sm font-semibold uppercase text-muted-foreground">Knowledge Gaps by Topic</h3>
+        <h3 className="mb-4 text-sm font-semibold uppercase text-muted-foreground">
+          Knowledge Gaps by Topic
+        </h3>
         <div className="space-y-4">
           {gaps.map((gap) => {
-            const scoreColor = gap.coverage_score < 0.3 ? 'bg-red-500' : gap.coverage_score < 0.6 ? 'bg-yellow-500' : 'bg-green-500';
+            const scoreColor =
+              gap.coverage_score < 0.3
+                ? 'bg-red-500'
+                : gap.coverage_score < 0.6
+                  ? 'bg-yellow-500'
+                  : 'bg-green-500';
             return (
               <div key={gap.topic_slug} className="rounded-lg border bg-card p-4">
                 <div className="flex items-start justify-between gap-3 mb-3">
@@ -207,7 +240,10 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
                     <p className="text-xs font-medium text-muted-foreground mb-1">Missing:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {gap.missing_types.map((type) => (
-                        <span key={type} className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-600 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+                        <span
+                          key={type}
+                          className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-600 dark:border-red-900 dark:bg-red-950 dark:text-red-400"
+                        >
                           {KNOWLEDGE_TYPE_LABELS[type] || type}
                         </span>
                       ))}
@@ -219,7 +255,9 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
                 {gap.gap_patterns.length > 0 && (
                   <div className="mt-2 space-y-1">
                     {gap.gap_patterns.map((pattern, i) => (
-                      <p key={i} className="text-xs text-muted-foreground italic">{pattern}</p>
+                      <p key={i} className="text-xs text-muted-foreground italic">
+                        {pattern}
+                      </p>
                     ))}
                   </div>
                 )}

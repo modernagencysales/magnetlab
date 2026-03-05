@@ -7,8 +7,20 @@ jest.mock('@/lib/ai/content-pipeline/anthropic-client', () => ({
   getAnthropicClient: jest.fn(),
 }));
 
-jest.mock('@/lib/ai/content-pipeline/model-config', () => ({
-  CLAUDE_HAIKU_MODEL: 'claude-haiku-test',
+jest.mock('@/lib/services/prompt-registry', () => ({
+  getPrompt: jest.fn().mockResolvedValue({
+    model: 'claude-haiku-test',
+    max_tokens: 500,
+    user_prompt: 'Analyze the edit from {{content_type}} field {{field_name}}.\n\nOriginal:\n{{original_text}}\n\nEdited:\n{{edited_text}}',
+    system_prompt: '',
+  }),
+  interpolatePrompt: jest.fn((template: string, vars: Record<string, string>) => {
+    let result = template;
+    for (const [key, value] of Object.entries(vars)) {
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+    }
+    return result;
+  }),
 }));
 
 import { classifyEditPatterns } from '@/lib/ai/content-pipeline/edit-classifier';

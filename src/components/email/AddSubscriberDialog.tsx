@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import * as subscribersApi from '@/frontend/api/email/subscribers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,21 +42,11 @@ export function AddSubscriberDialog({ open, onOpenChange, onSuccess }: AddSubscr
     setSubmitting(true);
 
     try {
-      const response = await fetch('/api/email/subscribers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim(),
-          first_name: firstName.trim() || undefined,
-          last_name: lastName.trim() || undefined,
-        }),
+      await subscribersApi.createSubscriber({
+        email: email.trim(),
+        first_name: firstName.trim() || undefined,
+        last_name: lastName.trim() || undefined,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to add subscriber');
-      }
-
       toast.success('Subscriber added successfully');
       resetForm();
       onOpenChange(false);

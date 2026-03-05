@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Copy, Check, Loader2, ChevronDown, ExternalLink, Webhook } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import * as transcriptsApi from '@/frontend/api/content-pipeline/transcripts';
 
 interface ConnectRecorderGuideProps {
   onClose: () => void;
@@ -156,11 +157,8 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
   useEffect(() => {
     async function fetchConfig() {
       try {
-        const res = await fetch('/api/content-pipeline/transcripts/webhook-config');
-        if (res.ok) {
-          const data = await res.json();
-          setWebhookUrl(data.webhook_url);
-        }
+        const data = await transcriptsApi.getWebhookConfig();
+        if (data.webhook_url) setWebhookUrl(data.webhook_url);
       } catch {
         // Silent
       } finally {

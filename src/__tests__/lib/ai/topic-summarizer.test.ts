@@ -8,8 +8,24 @@ jest.mock('@/lib/ai/content-pipeline/anthropic-client', () => ({
   parseJsonResponse: jest.fn((text: string) => JSON.parse(text)),
 }));
 
-jest.mock('@/lib/ai/content-pipeline/model-config', () => ({
-  CLAUDE_HAIKU_MODEL: 'claude-haiku-test',
+jest.mock('@/lib/services/prompt-registry', () => ({
+  getPrompt: jest.fn(() =>
+    Promise.resolve({
+      slug: 'topic-summarizer',
+      model: 'claude-haiku-test',
+      max_tokens: 1500,
+      temperature: 1.0,
+      user_prompt: 'Synthesize these knowledge entries about "{{topic_name}}" into a concise briefing.\n\nKNOWLEDGE ENTRIES:\n{{knowledge_sections}}',
+      system_prompt: '',
+    })
+  ),
+  interpolatePrompt: jest.fn((template: string, vars: Record<string, string>) => {
+    let result = template;
+    for (const [key, value] of Object.entries(vars)) {
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+    }
+    return result;
+  }),
 }));
 
 jest.mock('@/lib/utils/logger', () => ({
@@ -48,7 +64,7 @@ describe('generateTopicSummary', () => {
     const callArgs = mockMessagesCreate.mock.calls[0][0];
     expect(callArgs.model).toBe('claude-haiku-test');
     expect(callArgs.max_tokens).toBe(1500);
-    expect(callArgs.messages[0].content).toContain('"Cold Email"');
+    expect(callArgs.messages[0].content).toContain('Cold Email');
   });
 
   it('returns fallback summary when AI fails', async () => {

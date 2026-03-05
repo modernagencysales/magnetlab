@@ -1,11 +1,29 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { X, Loader2, Check, AlertCircle, Sparkles, Copy, Calendar, ExternalLink, PenLine, ChevronDown, Linkedin } from 'lucide-react';
+import {
+  X,
+  Loader2,
+  Check,
+  AlertCircle,
+  Sparkles,
+  Copy,
+  Calendar,
+  ExternalLink,
+  PenLine,
+  ChevronDown,
+  Linkedin,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PillarBadge } from './PillarBadge';
 import { StatusBadge } from './StatusBadge';
 import type { ContentIdea, PipelinePost, ReviewData } from '@/lib/types/content-pipeline';
+import {
+  schedulePost,
+  publishPost,
+  updatePost,
+  polishPost,
+} from '@/frontend/api/content-pipeline/posts';
 
 type DetailItem =
   | { type: 'idea'; data: ContentIdea }
@@ -33,7 +51,14 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   contrarian: 'Contrarian',
 };
 
-export function DetailPane({ item, onClose, onWritePost, onContentUpdate, onOpenModal, onRefresh }: DetailPaneProps) {
+export function DetailPane({
+  item,
+  onClose,
+  onWritePost,
+  onContentUpdate,
+  onOpenModal,
+  onRefresh,
+}: DetailPaneProps) {
   if (item.type === 'idea') {
     return <IdeaDetail idea={item.data} onClose={onClose} onWritePost={onWritePost} />;
   }
@@ -75,7 +100,11 @@ function IdeaDetail({
           <StatusBadge status={idea.status} />
           <PillarBadge pillar={idea.content_pillar} />
         </div>
-        <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary transition-colors" aria-label="Close">
+        <button
+          onClick={onClose}
+          className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
+          aria-label="Close"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -99,8 +128,12 @@ function IdeaDetail({
 
         {idea.why_post_worthy && (
           <div className="rounded-lg bg-violet-50 p-3 dark:bg-violet-950/30">
-            <p className="mb-1 text-xs font-medium uppercase text-violet-600 dark:text-violet-400">Why Post-Worthy</p>
-            <p className="text-sm italic leading-relaxed text-violet-700 dark:text-violet-300">{idea.why_post_worthy}</p>
+            <p className="mb-1 text-xs font-medium uppercase text-violet-600 dark:text-violet-400">
+              Why Post-Worthy
+            </p>
+            <p className="text-sm italic leading-relaxed text-violet-700 dark:text-violet-300">
+              {idea.why_post_worthy}
+            </p>
           </div>
         )}
 
@@ -113,7 +146,9 @@ function IdeaDetail({
 
         {idea.source_quote && (
           <div className="border-l-2 border-muted pl-3">
-            <p className="text-sm italic text-muted-foreground">&ldquo;{idea.source_quote}&rdquo;</p>
+            <p className="text-sm italic text-muted-foreground">
+              &ldquo;{idea.source_quote}&rdquo;
+            </p>
           </div>
         )}
       </div>
@@ -166,26 +201,21 @@ function PostDetail({
     setSaveState('idle');
   }, [post.id, post.draft_content, post.final_content]);
 
-  const doSave = useCallback(async (text: string) => {
-    setSaveState('saving');
-    try {
-      const response = await fetch(`/api/content-pipeline/posts/${post.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draft_content: text, final_content: null }),
-      });
-      if (response.ok) {
+  const doSave = useCallback(
+    async (text: string) => {
+      setSaveState('saving');
+      try {
+        await updatePost(post.id, { draft_content: text, final_content: null });
         setSaveState('saved');
         onContentUpdate(post.id, text);
         if (savedTimeout.current) clearTimeout(savedTimeout.current);
         savedTimeout.current = setTimeout(() => setSaveState('idle'), 2000);
-      } else {
+      } catch {
         setSaveState('error');
       }
-    } catch {
-      setSaveState('error');
-    }
-  }, [post.id, onContentUpdate]);
+    },
+    [post.id, onContentUpdate]
+  );
 
   const handleChange = (value: string) => {
     setEditContent(value);
@@ -209,10 +239,8 @@ function PostDetail({
   const handlePolish = async () => {
     setPolishing(true);
     try {
-      const response = await fetch(`/api/content-pipeline/posts/${post.id}/polish`, {
-        method: 'POST',
-      });
-      if (response.ok) onRefresh();
+      await polishPost(post.id);
+      onRefresh();
     } catch {
       // Silent
     } finally {
@@ -222,12 +250,8 @@ function PostDetail({
 
   const handleSchedule = async () => {
     try {
-      const response = await fetch('/api/content-pipeline/posts/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ post_id: post.id }),
-      });
-      if (response.ok) onRefresh();
+      await schedulePost(post.id);
+      onRefresh();
     } catch {
       // Silent
     }
@@ -237,24 +261,17 @@ function PostDetail({
     setPublishing(true);
     setPublishError(null);
     try {
-      const response = await fetch(`/api/content-pipeline/posts/${post.id}/publish`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (response.ok) {
-        onRefresh();
-      } else {
-        setPublishError(data.error || 'Failed to publish');
-      }
-    } catch {
-      setPublishError('Network error. Please try again.');
+      await publishPost(post.id);
+      onRefresh();
+    } catch (err) {
+      setPublishError(err instanceof Error ? err.message : 'Failed to publish');
     } finally {
       setPublishing(false);
     }
   };
 
-  const canPublish = editContent.trim().length > 0 &&
-    ['draft', 'reviewing', 'approved'].includes(post.status);
+  const canPublish =
+    editContent.trim().length > 0 && ['draft', 'reviewing', 'approved'].includes(post.status);
 
   return (
     <div className="flex h-full flex-col border-l bg-background">
@@ -263,34 +280,50 @@ function PostDetail({
         <div className="flex items-center gap-2">
           <StatusBadge status={post.status} />
           {post.hook_score !== null && post.hook_score !== undefined && (
-            <span className={cn(
-              'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-              post.hook_score >= 8 ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
-              post.hook_score >= 5 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
-              'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-            )}>
+            <span
+              className={cn(
+                'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                post.hook_score >= 8
+                  ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                  : post.hook_score >= 5
+                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
+                    : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+              )}
+            >
               Hook {post.hook_score}/10
             </span>
           )}
-          {post.review_data && (() => {
-            const rd = post.review_data as ReviewData;
-            const badgeStyle =
-              rd.category === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
-              rd.category === 'good_with_edits' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
-              'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300';
-            const label =
-              rd.category === 'excellent' ? 'Excellent' :
-              rd.category === 'good_with_edits' ? 'Needs Edits' : 'Rewrite';
-            return (
-              <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-semibold', badgeStyle)}>
-                {label} {rd.score}/10
-              </span>
-            );
-          })()}
+          {post.review_data &&
+            (() => {
+              const rd = post.review_data as ReviewData;
+              const badgeStyle =
+                rd.category === 'excellent'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                  : rd.category === 'good_with_edits'
+                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
+                    : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300';
+              const label =
+                rd.category === 'excellent'
+                  ? 'Excellent'
+                  : rd.category === 'good_with_edits'
+                    ? 'Needs Edits'
+                    : 'Rewrite';
+              return (
+                <span
+                  className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-semibold', badgeStyle)}
+                >
+                  {label} {rd.score}/10
+                </span>
+              );
+            })()}
           {/* Save indicator */}
           <SaveIndicator state={saveState} />
         </div>
-        <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary transition-colors" aria-label="Close">
+        <button
+          onClick={onClose}
+          className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
+          aria-label="Close"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -307,40 +340,45 @@ function PostDetail({
       </div>
 
       {/* Review notes accordion */}
-      {post.review_data && (() => {
-        const rd = post.review_data as ReviewData;
-        const hasNotes = rd.notes && rd.notes.length > 0;
-        const hasFlags = rd.flags && rd.flags.length > 0;
-        if (!hasNotes && !hasFlags) return null;
-        return (
-          <div className="border-t px-4 py-2 space-y-1">
-            {hasNotes && (
-              <details>
-                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                  {rd.notes.length} edit suggestion{rd.notes.length !== 1 ? 's' : ''}
-                </summary>
-                <ul className="mt-1 space-y-1 pl-4">
-                  {rd.notes.map((note: string, i: number) => (
-                    <li key={i} className="text-xs text-muted-foreground">&bull; {note}</li>
-                  ))}
-                </ul>
-              </details>
-            )}
-            {hasFlags && (
-              <details>
-                <summary className="cursor-pointer text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300">
-                  {rd.flags.length} consistency flag{rd.flags.length !== 1 ? 's' : ''}
-                </summary>
-                <ul className="mt-1 space-y-1 pl-4">
-                  {rd.flags.map((flag: string, i: number) => (
-                    <li key={i} className="text-xs text-orange-600 dark:text-orange-400">&bull; {flag}</li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </div>
-        );
-      })()}
+      {post.review_data &&
+        (() => {
+          const rd = post.review_data as ReviewData;
+          const hasNotes = rd.notes && rd.notes.length > 0;
+          const hasFlags = rd.flags && rd.flags.length > 0;
+          if (!hasNotes && !hasFlags) return null;
+          return (
+            <div className="border-t px-4 py-2 space-y-1">
+              {hasNotes && (
+                <details>
+                  <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                    {rd.notes.length} edit suggestion{rd.notes.length !== 1 ? 's' : ''}
+                  </summary>
+                  <ul className="mt-1 space-y-1 pl-4">
+                    {rd.notes.map((note: string, i: number) => (
+                      <li key={i} className="text-xs text-muted-foreground">
+                        &bull; {note}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {hasFlags && (
+                <details>
+                  <summary className="cursor-pointer text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300">
+                    {rd.flags.length} consistency flag{rd.flags.length !== 1 ? 's' : ''}
+                  </summary>
+                  <ul className="mt-1 space-y-1 pl-4">
+                    {rd.flags.map((flag: string, i: number) => (
+                      <li key={i} className="text-xs text-orange-600 dark:text-orange-400">
+                        &bull; {flag}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          );
+        })()}
 
       {/* Idea context accordion */}
       {idea && (
@@ -351,7 +389,9 @@ function PostDetail({
           </summary>
           <div className="mt-2 space-y-2 pb-2">
             <p className="text-xs font-medium">{idea.title}</p>
-            {idea.core_insight && <p className="text-xs text-muted-foreground">{idea.core_insight}</p>}
+            {idea.core_insight && (
+              <p className="text-xs text-muted-foreground">{idea.core_insight}</p>
+            )}
           </div>
         </details>
       )}
@@ -363,14 +403,22 @@ function PostDetail({
           disabled={polishing}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
         >
-          {polishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          {polishing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="h-3.5 w-3.5" />
+          )}
           Polish
         </button>
         <button
           onClick={handleCopy}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
         >
-          {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-green-500" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
           {copied ? 'Copied' : 'Copy'}
         </button>
         <button
@@ -386,7 +434,11 @@ function PostDetail({
             disabled={publishing}
             className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Linkedin className="h-3.5 w-3.5" />}
+            {publishing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Linkedin className="h-3.5 w-3.5" />
+            )}
             Publish
           </button>
         )}
@@ -423,12 +475,14 @@ function SaveIndicator({ state }: { state: SaveState }) {
   if (state === 'idle') return null;
 
   return (
-    <span className={cn(
-      'flex items-center gap-1 text-[10px] font-medium',
-      state === 'saving' && 'text-muted-foreground',
-      state === 'saved' && 'text-green-600 dark:text-green-400',
-      state === 'error' && 'text-red-600 dark:text-red-400',
-    )}>
+    <span
+      className={cn(
+        'flex items-center gap-1 text-[10px] font-medium',
+        state === 'saving' && 'text-muted-foreground',
+        state === 'saved' && 'text-green-600 dark:text-green-400',
+        state === 'error' && 'text-red-600 dark:text-red-400'
+      )}
+    >
       {state === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}
       {state === 'saved' && <Check className="h-3 w-3" />}
       {state === 'error' && <AlertCircle className="h-3 w-3" />}

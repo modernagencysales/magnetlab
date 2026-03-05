@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import * as integrationsApi from '@/frontend/api/integrations';
 
 interface Integration {
   service: string;
@@ -32,21 +33,11 @@ export function IClosedWidgetSettings({ integration }: IClosedWidgetSettingsProp
     setResult(null);
 
     try {
-      const response = await fetch('/api/integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service: 'iclosed_widget',
-          api_key: 'connected',
-          metadata: { widget_id: sanitized },
-        }),
+      await integrationsApi.saveIntegration({
+        service: 'iclosed_widget',
+        api_key: 'connected',
+        metadata: { widget_id: sanitized },
       });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to save');
-      }
-
       setResult({ success: true, message: 'iClosed Widget connected!' });
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
@@ -60,11 +51,7 @@ export function IClosedWidgetSettings({ integration }: IClosedWidgetSettingsProp
     if (!confirm('Disconnect iClosed Widget?')) return;
     setDisconnecting(true);
     try {
-      await fetch('/api/integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: 'iclosed_widget', api_key: null }),
-      });
+      await integrationsApi.saveIntegration({ service: 'iclosed_widget', api_key: null });
       window.location.reload();
     } catch {
       setResult({ success: false, message: 'Failed to disconnect' });

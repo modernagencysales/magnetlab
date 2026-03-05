@@ -1,10 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Sparkles, FileText, Lightbulb, History, Users, Eye, X, Check } from 'lucide-react';
-import type { BusinessContext, BusinessType, IdeationSources, CallTranscriptInsights, CompetitorAnalysis } from '@/lib/types/lead-magnet';
+import {
+  Loader2,
+  Sparkles,
+  FileText,
+  Lightbulb,
+  History,
+  Users,
+  Eye,
+  X,
+  Check,
+} from 'lucide-react';
+import type {
+  BusinessContext,
+  BusinessType,
+  IdeationSources,
+  CallTranscriptInsights,
+  CompetitorAnalysis,
+} from '@/lib/types/lead-magnet';
 import { BUSINESS_TYPE_LABELS } from '@/lib/types/lead-magnet';
 import { SmartImportTab } from './SmartImportTab';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 type TabValue = 'smart' | 'manual';
 type ModalType = 'transcript' | 'inspiration' | null;
@@ -21,7 +38,17 @@ interface ContextStepProps {
   onIdeationSourcesChange?: (sources: IdeationSources) => void;
 }
 
-export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIdeas, hasSavedIdeas, savedIdeasDate, loading, ideationSources = {}, onIdeationSourcesChange }: ContextStepProps) {
+export function ContextStep({
+  initialData,
+  onSubmit,
+  onCustomIdea,
+  onUseSavedIdeas,
+  hasSavedIdeas,
+  savedIdeasDate,
+  loading,
+  ideationSources = {},
+  onIdeationSourcesChange,
+}: ContextStepProps) {
   const [activeTab, setActiveTab] = useState<TabValue>('smart');
   const [hasExtracted, setHasExtracted] = useState(false);
   const [formData, setFormData] = useState<Partial<BusinessContext>>({
@@ -96,7 +123,8 @@ export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIde
     };
 
     // Include sources if any have been analyzed
-    const hasAnySources = sources.callTranscript?.insights || sources.competitorInspiration?.analysis;
+    const hasAnySources =
+      sources.callTranscript?.insights || sources.competitorInspiration?.analysis;
     onSubmit(context, hasAnySources ? sources : undefined);
   };
 
@@ -121,17 +149,8 @@ export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIde
     setModalError(null);
 
     try {
-      const response = await fetch('/api/lead-magnet/analyze-transcript', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: modalText }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to analyze transcript');
-      }
-      setTranscriptInsights(data.insights);
+      const data = (await leadMagnetApi.analyzeTranscript(modalText)) as { insights?: unknown };
+      setTranscriptInsights(data.insights as CallTranscriptInsights | null);
     } catch (error) {
       setModalError(error instanceof Error ? error.message : 'Analysis failed');
     } finally {
@@ -145,17 +164,8 @@ export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIde
     setModalError(null);
 
     try {
-      const response = await fetch('/api/lead-magnet/analyze-competitor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: modalText }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to analyze content');
-      }
-      setCompetitorAnalysis(data.analysis);
+      const data = (await leadMagnetApi.analyzeCompetitor(modalText)) as { analysis?: unknown };
+      setCompetitorAnalysis(data.analysis as CompetitorAnalysis | null);
     } catch (error) {
       setModalError(error instanceof Error ? error.message : 'Analysis failed');
     } finally {
@@ -219,7 +229,13 @@ export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIde
     onSubmit(context, newSources);
   };
 
-  const addToArray = (field: keyof Pick<BusinessContext, 'credibilityMarkers' | 'urgentPains' | 'results' | 'frequentQuestions'>, inputKey: keyof typeof currentInput) => {
+  const addToArray = (
+    field: keyof Pick<
+      BusinessContext,
+      'credibilityMarkers' | 'urgentPains' | 'results' | 'frequentQuestions'
+    >,
+    inputKey: keyof typeof currentInput
+  ) => {
     const value = currentInput[inputKey].trim();
     if (value) {
       setFormData((prev) => ({
@@ -230,7 +246,13 @@ export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIde
     }
   };
 
-  const removeFromArray = (field: keyof Pick<BusinessContext, 'credibilityMarkers' | 'urgentPains' | 'results' | 'frequentQuestions'>, index: number) => {
+  const removeFromArray = (
+    field: keyof Pick<
+      BusinessContext,
+      'credibilityMarkers' | 'urgentPains' | 'results' | 'frequentQuestions'
+    >,
+    index: number
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: (prev[field] || []).filter((_, i) => i !== index),
@@ -272,326 +294,335 @@ export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIde
         <SmartImportTab onExtracted={handleExtracted} />
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Business Type */}
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">What type of business are you?</label>
-          <select
-            value={formData.businessType}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, businessType: e.target.value as BusinessType }))
-            }
-            className="mt-2 w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none cursor-pointer focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-          >
-            {Object.entries(BUSINESS_TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Business Description */}
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">
-            Describe what you do and who you serve
-          </label>
-          <textarea
-            value={formData.businessDescription}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, businessDescription: e.target.value }))
-            }
-            placeholder="I help [specific audience] achieve [specific outcome] through [your method/approach]..."
-            rows={3}
-            className="mt-2 w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
-            required
-          />
-        </div>
-
-        {/* Credibility Markers */}
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">
-            Credibility markers (specific results you&apos;ve achieved)
-          </label>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Numbers work best: &quot;$2.3M in client revenue&quot;, &quot;1,200+ students&quot;, &quot;15 years experience&quot;
-          </p>
-          <div className="mt-2 flex gap-2">
-            <input
-              type="text"
-              value={currentInput.credibility}
+          {/* Business Type */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              What type of business are you?
+            </label>
+            <select
+              value={formData.businessType}
               onChange={(e) =>
-                setCurrentInput((prev) => ({ ...prev, credibility: e.target.value }))
+                setFormData((prev) => ({ ...prev, businessType: e.target.value as BusinessType }))
               }
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addToArray('credibilityMarkers', 'credibility');
-                }
-              }}
-              placeholder="Add a credibility marker..."
-              className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-            />
-            <button
-              type="button"
-              onClick={() => addToArray('credibilityMarkers', 'credibility')}
-              className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80 transition-colors"
+              className="mt-2 w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none cursor-pointer focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
             >
-              Add
-            </button>
+              {Object.entries(BUSINESS_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {(formData.credibilityMarkers || []).map((item, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium"
-              >
-                {item}
-                <button
-                  type="button"
-                  onClick={() => removeFromArray('credibilityMarkers', index)}
-                  className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
 
-        {/* Urgent Pains */}
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">
-            What are the 3 most urgent pains your audience faces?
-          </label>
-          <div className="mt-2 flex gap-2">
-            <input
-              type="text"
-              value={currentInput.pain}
+          {/* Business Description */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              Describe what you do and who you serve
+            </label>
+            <textarea
+              value={formData.businessDescription}
               onChange={(e) =>
-                setCurrentInput((prev) => ({ ...prev, pain: e.target.value }))
+                setFormData((prev) => ({ ...prev, businessDescription: e.target.value }))
               }
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addToArray('urgentPains', 'pain');
-                }
-              }}
-              placeholder="Add a pain point..."
-              className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              placeholder="I help [specific audience] achieve [specific outcome] through [your method/approach]..."
+              rows={3}
+              className="mt-2 w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+              required
             />
-            <button
-              type="button"
-              onClick={() => addToArray('urgentPains', 'pain')}
-              className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80 transition-colors"
-            >
-              Add
-            </button>
           </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {(formData.urgentPains || []).map((item, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-1 text-xs font-medium"
-              >
-                {item}
-                <button
-                  type="button"
-                  onClick={() => removeFromArray('urgentPains', index)}
-                  className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
 
-        {/* Results */}
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">
-            What results have you achieved for yourself or clients?
-          </label>
-          <div className="mt-2 flex gap-2">
-            <input
-              type="text"
-              value={currentInput.result}
-              onChange={(e) =>
-                setCurrentInput((prev) => ({ ...prev, result: e.target.value }))
-              }
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addToArray('results', 'result');
+          {/* Credibility Markers */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              Credibility markers (specific results you&apos;ve achieved)
+            </label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Numbers work best: &quot;$2.3M in client revenue&quot;, &quot;1,200+ students&quot;,
+              &quot;15 years experience&quot;
+            </p>
+            <div className="mt-2 flex gap-2">
+              <input
+                type="text"
+                value={currentInput.credibility}
+                onChange={(e) =>
+                  setCurrentInput((prev) => ({ ...prev, credibility: e.target.value }))
                 }
-              }}
-              placeholder="Add a result..."
-              className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-            />
-            <button
-              type="button"
-              onClick={() => addToArray('results', 'result')}
-              className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80 transition-colors"
-            >
-              Add
-            </button>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {(formData.results || []).map((item, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center gap-1 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 text-xs font-medium"
-              >
-                {item}
-                <button
-                  type="button"
-                  onClick={() => removeFromArray('results', index)}
-                  className="ml-1 text-green-600 dark:text-green-500 hover:text-green-800 dark:hover:text-green-300 transition-colors"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Success Example */}
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">
-            Do you have a success example we could break down? (optional)
-          </label>
-          <textarea
-            value={formData.successExample}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, successExample: e.target.value }))
-            }
-            placeholder="A campaign, post, email, or process that worked really well..."
-            rows={2}
-            className="mt-2 w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
-          />
-        </div>
-
-        {/* Choice Buttons */}
-        <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
-          <p className="text-sm font-medium text-center">How would you like to proceed?</p>
-
-          {/* Use Saved Ideas - shown first if available */}
-          {hasSavedIdeas && onUseSavedIdeas && (
-            <>
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addToArray('credibilityMarkers', 'credibility');
+                  }
+                }}
+                placeholder="Add a credibility marker..."
+                className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              />
               <button
                 type="button"
-                disabled={loading}
-                onClick={onUseSavedIdeas}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                onClick={() => addToArray('credibilityMarkers', 'credibility')}
+                className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80 transition-colors"
               >
-                <History className="h-4 w-4" />
-                Use Previously Generated Ideas
+                Add
               </button>
-              <p className="text-xs text-muted-foreground text-center">
-                Generated {savedIdeasDate ? new Date(savedIdeasDate).toLocaleDateString() : 'recently'}
-              </p>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(formData.credibilityMarkers || []).map((item, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium"
+                >
+                  {item}
+                  <button
+                    type="button"
+                    onClick={() => removeFromArray('credibilityMarkers', index)}
+                    className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
 
-              <div className="relative flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
+          {/* Urgent Pains */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              What are the 3 most urgent pains your audience faces?
+            </label>
+            <div className="mt-2 flex gap-2">
+              <input
+                type="text"
+                value={currentInput.pain}
+                onChange={(e) => setCurrentInput((prev) => ({ ...prev, pain: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addToArray('urgentPains', 'pain');
+                  }
+                }}
+                placeholder="Add a pain point..."
+                className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => addToArray('urgentPains', 'pain')}
+                className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80 transition-colors"
+              >
+                Add
+              </button>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(formData.urgentPains || []).map((item, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-1 text-xs font-medium"
+                >
+                  {item}
+                  <button
+                    type="button"
+                    onClick={() => removeFromArray('urgentPains', index)}
+                    className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Results */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              What results have you achieved for yourself or clients?
+            </label>
+            <div className="mt-2 flex gap-2">
+              <input
+                type="text"
+                value={currentInput.result}
+                onChange={(e) => setCurrentInput((prev) => ({ ...prev, result: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addToArray('results', 'result');
+                  }
+                }}
+                placeholder="Add a result..."
+                className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => addToArray('results', 'result')}
+                className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80 transition-colors"
+              >
+                Add
+              </button>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(formData.results || []).map((item, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 text-xs font-medium"
+                >
+                  {item}
+                  <button
+                    type="button"
+                    onClick={() => removeFromArray('results', index)}
+                    className="ml-1 text-green-600 dark:text-green-500 hover:text-green-800 dark:hover:text-green-300 transition-colors"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Success Example */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              Do you have a success example we could break down? (optional)
+            </label>
+            <textarea
+              value={formData.successExample}
+              onChange={(e) => setFormData((prev) => ({ ...prev, successExample: e.target.value }))}
+              placeholder="A campaign, post, email, or process that worked really well..."
+              rows={2}
+              className="mt-2 w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+            />
+          </div>
+
+          {/* Choice Buttons */}
+          <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+            <p className="text-sm font-medium text-center">How would you like to proceed?</p>
+
+            {/* Use Saved Ideas - shown first if available */}
+            {hasSavedIdeas && onUseSavedIdeas && (
+              <>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={onUseSavedIdeas}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  <History className="h-4 w-4" />
+                  Use Previously Generated Ideas
+                </button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Generated{' '}
+                  {savedIdeasDate ? new Date(savedIdeasDate).toLocaleDateString() : 'recently'}
+                </p>
+
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <span className="relative bg-muted/30 px-2 text-xs text-muted-foreground">
+                    or
+                  </span>
                 </div>
-                <span className="relative bg-muted/30 px-2 text-xs text-muted-foreground">or</span>
-              </div>
-            </>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading || !formData.businessDescription}
-            className={`flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50 ${
-              hasSavedIdeas
-                ? 'border border-border bg-background hover:bg-muted/50'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90'
-            }`}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generating 10 lead magnet ideas...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Generate {hasSavedIdeas ? 'New' : '10 AI'} Ideas
               </>
             )}
-          </button>
-          <p className="text-xs text-muted-foreground text-center">
-            {hasSavedIdeas ? 'Create fresh concepts from your context' : 'Uses your context to create concepts'}
-          </p>
 
-          <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <span className="relative bg-muted/30 px-2 text-xs text-muted-foreground">or ideate from</span>
-          </div>
-
-          {/* Alternate Ideation Modes */}
-          <div className="grid grid-cols-2 gap-3">
             <button
-              type="button"
+              type="submit"
               disabled={loading || !formData.businessDescription}
-              onClick={() => handleOpenModal('transcript')}
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-4 text-sm font-medium hover:bg-muted/50 hover:border-primary/50 disabled:opacity-50 transition-colors"
+              className={`flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50 ${
+                hasSavedIdeas
+                  ? 'border border-border bg-background hover:bg-muted/50'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              }`}
             >
-              <Users className="h-5 w-5 text-blue-500" />
-              <span>Call Transcript</span>
-              <span className="text-xs text-muted-foreground font-normal">Extract real pain points</span>
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating 10 lead magnet ideas...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Generate {hasSavedIdeas ? 'New' : '10 AI'} Ideas
+                </>
+              )}
             </button>
-            <button
-              type="button"
-              disabled={loading || !formData.businessDescription}
-              onClick={() => handleOpenModal('inspiration')}
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-4 text-sm font-medium hover:bg-muted/50 hover:border-primary/50 disabled:opacity-50 transition-colors"
-            >
-              <Eye className="h-5 w-5 text-purple-500" />
-              <span>Inspiration Post</span>
-              <span className="text-xs text-muted-foreground font-normal">Adapt what works</span>
-            </button>
-          </div>
+            <p className="text-xs text-muted-foreground text-center">
+              {hasSavedIdeas
+                ? 'Create fresh concepts from your context'
+                : 'Uses your context to create concepts'}
+            </p>
 
-          {onCustomIdea && (
-            <>
-              <div className="relative flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
-                </div>
-                <span className="relative bg-muted/30 px-2 text-xs text-muted-foreground">or</span>
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border" />
               </div>
+              <span className="relative bg-muted/30 px-2 text-xs text-muted-foreground">
+                or ideate from
+              </span>
+            </div>
 
+            {/* Alternate Ideation Modes */}
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 disabled={loading || !formData.businessDescription}
-                onClick={() => {
-                  if (!formData.businessDescription || !formData.businessType) return;
-                  onCustomIdea({
-                    businessDescription: formData.businessDescription,
-                    businessType: formData.businessType,
-                    credibilityMarkers: formData.credibilityMarkers || [],
-                    urgentPains: formData.urgentPains || [],
-                    templates: formData.templates || [],
-                    processes: formData.processes || [],
-                    tools: formData.tools || [],
-                    frequentQuestions: formData.frequentQuestions || [],
-                    results: formData.results || [],
-                    successExample: formData.successExample,
-                  });
-                }}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-medium hover:bg-muted/50 disabled:opacity-50 transition-colors"
+                onClick={() => handleOpenModal('transcript')}
+                className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-4 text-sm font-medium hover:bg-muted/50 hover:border-primary/50 disabled:opacity-50 transition-colors"
               >
-                <Lightbulb className="h-4 w-4" />
-                I Have My Own Idea
+                <Users className="h-5 w-5 text-blue-500" />
+                <span>Call Transcript</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  Extract real pain points
+                </span>
               </button>
-              <p className="text-xs text-muted-foreground text-center">Skip to entering your concept</p>
-            </>
-          )}
-        </div>
-      </form>
+              <button
+                type="button"
+                disabled={loading || !formData.businessDescription}
+                onClick={() => handleOpenModal('inspiration')}
+                className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-4 text-sm font-medium hover:bg-muted/50 hover:border-primary/50 disabled:opacity-50 transition-colors"
+              >
+                <Eye className="h-5 w-5 text-purple-500" />
+                <span>Inspiration Post</span>
+                <span className="text-xs text-muted-foreground font-normal">Adapt what works</span>
+              </button>
+            </div>
+
+            {onCustomIdea && (
+              <>
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <span className="relative bg-muted/30 px-2 text-xs text-muted-foreground">
+                    or
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={loading || !formData.businessDescription}
+                  onClick={() => {
+                    if (!formData.businessDescription || !formData.businessType) return;
+                    onCustomIdea({
+                      businessDescription: formData.businessDescription,
+                      businessType: formData.businessType,
+                      credibilityMarkers: formData.credibilityMarkers || [],
+                      urgentPains: formData.urgentPains || [],
+                      templates: formData.templates || [],
+                      processes: formData.processes || [],
+                      tools: formData.tools || [],
+                      frequentQuestions: formData.frequentQuestions || [],
+                      results: formData.results || [],
+                      successExample: formData.successExample,
+                    });
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-medium hover:bg-muted/50 disabled:opacity-50 transition-colors"
+                >
+                  <Lightbulb className="h-4 w-4" />I Have My Own Idea
+                </button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Skip to entering your concept
+                </p>
+              </>
+            )}
+          </div>
+        </form>
       )}
 
       {/* Modal for Transcript Analysis */}
@@ -605,7 +636,9 @@ export function ContextStep({ initialData, onSubmit, onCustomIdea, onUseSavedIde
                 </div>
                 <div>
                   <h3 className="font-semibold">Ideate from Call Transcript</h3>
-                  <p className="text-sm text-muted-foreground">Paste a sales or coaching call to extract real customer insights</p>
+                  <p className="text-sm text-muted-foreground">
+                    Paste a sales or coaching call to extract real customer insights
+                  </p>
                 </div>
               </div>
               <button
@@ -634,9 +667,7 @@ We'll extract:
                     rows={10}
                     className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
                   />
-                  {modalError && (
-                    <p className="text-sm text-destructive">{modalError}</p>
-                  )}
+                  {modalError && <p className="text-sm text-destructive">{modalError}</p>}
                   <button
                     type="button"
                     onClick={handleAnalyzeTranscript}
@@ -667,7 +698,9 @@ We'll extract:
                     <div className="space-y-3 text-sm">
                       {transcriptInsights.painPoints.length > 0 && (
                         <div>
-                          <p className="font-medium mb-1">Pain Points ({transcriptInsights.painPoints.length})</p>
+                          <p className="font-medium mb-1">
+                            Pain Points ({transcriptInsights.painPoints.length})
+                          </p>
                           <ul className="space-y-1 text-muted-foreground">
                             {transcriptInsights.painPoints.slice(0, 3).map((p, i) => (
                               <li key={i} className="flex items-start gap-2">
@@ -676,7 +709,9 @@ We'll extract:
                               </li>
                             ))}
                             {transcriptInsights.painPoints.length > 3 && (
-                              <li className="text-muted-foreground/70">+{transcriptInsights.painPoints.length - 3} more</li>
+                              <li className="text-muted-foreground/70">
+                                +{transcriptInsights.painPoints.length - 3} more
+                              </li>
                             )}
                           </ul>
                         </div>
@@ -684,7 +719,9 @@ We'll extract:
 
                       {transcriptInsights.frequentQuestions.length > 0 && (
                         <div>
-                          <p className="font-medium mb-1">Questions ({transcriptInsights.frequentQuestions.length})</p>
+                          <p className="font-medium mb-1">
+                            Questions ({transcriptInsights.frequentQuestions.length})
+                          </p>
                           <ul className="space-y-1 text-muted-foreground">
                             {transcriptInsights.frequentQuestions.slice(0, 2).map((q, i) => (
                               <li key={i}>• {q.question}</li>
@@ -755,7 +792,9 @@ We'll extract:
                 </div>
                 <div>
                   <h3 className="font-semibold">Ideate from Inspiration</h3>
-                  <p className="text-sm text-muted-foreground">Paste a successful lead magnet to analyze and adapt</p>
+                  <p className="text-sm text-muted-foreground">
+                    Paste a successful lead magnet to analyze and adapt
+                  </p>
                 </div>
               </div>
               <button
@@ -784,9 +823,7 @@ We'll analyze:
                     rows={10}
                     className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
                   />
-                  {modalError && (
-                    <p className="text-sm text-destructive">{modalError}</p>
-                  )}
+                  {modalError && <p className="text-sm text-destructive">{modalError}</p>}
                   <button
                     type="button"
                     onClick={handleAnalyzeCompetitor}
@@ -817,21 +854,27 @@ We'll analyze:
                     <div className="space-y-3 text-sm">
                       <div>
                         <p className="font-medium mb-1">Detected Format</p>
-                        <p className="text-muted-foreground">{competitorAnalysis.detectedArchetype || competitorAnalysis.format}</p>
+                        <p className="text-muted-foreground">
+                          {competitorAnalysis.detectedArchetype || competitorAnalysis.format}
+                        </p>
                       </div>
 
                       <div>
                         <p className="font-medium mb-1">Pain Point Addressed</p>
-                        <p className="text-muted-foreground">{competitorAnalysis.painPointAddressed}</p>
+                        <p className="text-muted-foreground">
+                          {competitorAnalysis.painPointAddressed}
+                        </p>
                       </div>
 
                       {competitorAnalysis.effectivenessFactors.length > 0 && (
                         <div>
                           <p className="font-medium mb-1">Why It Works</p>
                           <ul className="space-y-1 text-muted-foreground">
-                            {competitorAnalysis.effectivenessFactors.slice(0, 3).map((factor, i) => (
-                              <li key={i}>• {factor}</li>
-                            ))}
+                            {competitorAnalysis.effectivenessFactors
+                              .slice(0, 3)
+                              .map((factor, i) => (
+                                <li key={i}>• {factor}</li>
+                              ))}
                           </ul>
                         </div>
                       )}
@@ -840,9 +883,11 @@ We'll analyze:
                         <div>
                           <p className="font-medium mb-1">Adaptation Ideas</p>
                           <ul className="space-y-1 text-muted-foreground">
-                            {competitorAnalysis.adaptationSuggestions.slice(0, 2).map((suggestion, i) => (
-                              <li key={i}>• {suggestion}</li>
-                            ))}
+                            {competitorAnalysis.adaptationSuggestions
+                              .slice(0, 2)
+                              .map((suggestion, i) => (
+                                <li key={i}>• {suggestion}</li>
+                              ))}
                           </ul>
                         </div>
                       )}
@@ -905,15 +950,14 @@ function TabButton({ active, onClick, icon, label, description, badge }: TabButt
       onClick={onClick}
       className={`
         flex items-center gap-3 px-4 py-3 border-b-2 transition-colors
-        ${active
-          ? 'border-primary text-primary'
-          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
+        ${
+          active
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
         }
       `}
     >
-      <div className={`p-2 rounded-lg ${active ? 'bg-primary/10' : 'bg-muted'}`}>
-        {icon}
-      </div>
+      <div className={`p-2 rounded-lg ${active ? 'bg-primary/10' : 'bg-muted'}`}>{icon}</div>
       <div className="text-left">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{label}</span>

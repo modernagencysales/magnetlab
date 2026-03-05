@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Plus, Trash2, Eye, EyeOff, Hash } from 'lucide-react';
+import * as signalsApi from '@/frontend/api/signals';
 
 interface Keyword {
   id: string;
@@ -21,10 +22,8 @@ export function KeywordMonitors() {
 
   const fetchKeywords = useCallback(async () => {
     try {
-      const res = await fetch('/api/signals/keywords');
-      if (!res.ok) throw new Error('Failed to load keywords');
-      const data = await res.json();
-      setKeywords(data.keywords || []);
+      const data = await signalsApi.listSignalKeywords();
+      setKeywords((data.keywords || []) as Keyword[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
@@ -43,21 +42,7 @@ export function KeywordMonitors() {
     setAdding(true);
     setError(null);
     try {
-      const res = await fetch('/api/signals/keywords', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword: newKeyword.trim() }),
-      });
-
-      if (res.status === 409) {
-        throw new Error('This keyword is already being monitored');
-      }
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to add keyword');
-      }
-
+      await signalsApi.createSignalKeyword(newKeyword.trim());
       setNewKeyword('');
       await fetchKeywords();
     } catch (err) {
@@ -69,12 +54,7 @@ export function KeywordMonitors() {
 
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
-      const res = await fetch(`/api/signals/keywords/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !isActive }),
-      });
-      if (!res.ok) throw new Error('Failed to update');
+      await signalsApi.updateSignalKeyword(id, { is_active: !isActive });
       await fetchKeywords();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update');
@@ -84,8 +64,7 @@ export function KeywordMonitors() {
   const handleDelete = async (id: string) => {
     if (!confirm('Remove this keyword? Historical data will remain.')) return;
     try {
-      const res = await fetch(`/api/signals/keywords/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete');
+      await signalsApi.deleteSignalKeyword(id);
       await fetchKeywords();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');

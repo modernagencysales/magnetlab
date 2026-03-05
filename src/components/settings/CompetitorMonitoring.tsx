@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Plus, Trash2, Eye, EyeOff, Users } from 'lucide-react';
+import * as competitorsApi from '@/frontend/api/competitors';
 
 interface Competitor {
   id: string;
@@ -25,10 +26,8 @@ export function CompetitorMonitoring() {
 
   const fetchCompetitors = useCallback(async () => {
     try {
-      const res = await fetch('/api/competitors');
-      if (!res.ok) throw new Error('Failed to load competitors');
-      const data = await res.json();
-      setCompetitors(data.competitors || []);
+      const data = await competitorsApi.listCompetitors();
+      setCompetitors((data.competitors || []) as Competitor[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
@@ -47,20 +46,10 @@ export function CompetitorMonitoring() {
     setAdding(true);
     setError(null);
     try {
-      const res = await fetch('/api/competitors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          linkedinProfileUrl: newUrl.trim(),
-          heyreachCampaignId: newCampaignId.trim() || undefined,
-        }),
+      await competitorsApi.createCompetitor({
+        linkedinProfileUrl: newUrl.trim(),
+        heyreachCampaignId: newCampaignId.trim() || undefined,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to add competitor');
-      }
-
       setNewUrl('');
       setNewCampaignId('');
       await fetchCompetitors();
@@ -73,12 +62,7 @@ export function CompetitorMonitoring() {
 
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
-      const res = await fetch(`/api/competitors/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !isActive }),
-      });
-      if (!res.ok) throw new Error('Failed to update');
+      await competitorsApi.updateCompetitor(id, { is_active: !isActive });
       await fetchCompetitors();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update');
@@ -88,8 +72,7 @@ export function CompetitorMonitoring() {
   const handleDelete = async (id: string) => {
     if (!confirm('Remove this competitor? Their engagement data will remain.')) return;
     try {
-      const res = await fetch(`/api/competitors/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete');
+      await competitorsApi.deleteCompetitor(id);
       await fetchCompetitors();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');

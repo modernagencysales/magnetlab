@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Plus, X, Save, CheckCircle, Settings2 } from 'lucide-react';
+import * as signalsApi from '@/frontend/api/signals';
 
 interface SignalConfigData {
   target_countries: string[];
@@ -114,9 +115,7 @@ function ToggleSwitch({
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm font-medium">{label}</p>
-        {description && (
-          <p className="text-xs text-muted-foreground">{description}</p>
-        )}
+        {description && <p className="text-xs text-muted-foreground">{description}</p>}
       </div>
       <button
         type="button"
@@ -146,10 +145,8 @@ export function SignalConfig() {
 
   const fetchConfig = useCallback(async () => {
     try {
-      const res = await fetch('/api/signals/config');
-      if (!res.ok) throw new Error('Failed to load config');
-      const data = await res.json();
-      const c = data.config;
+      const data = await signalsApi.getSignalsConfig();
+      const c = data.config as SignalConfigData | null | undefined;
       if (c) {
         setConfig({
           target_countries: c.target_countries || [],
@@ -177,15 +174,7 @@ export function SignalConfig() {
     setError(null);
     setSaved(false);
     try {
-      const res = await fetch('/api/signals/config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to save config');
-      }
+      await signalsApi.updateSignalsConfig(config as unknown as Record<string, unknown>);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -275,9 +264,7 @@ export function SignalConfig() {
 
           {/* Text Input */}
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Default HeyReach Campaign ID
-            </label>
+            <label className="block text-sm font-medium mb-1">Default HeyReach Campaign ID</label>
             <input
               type="text"
               value={config.default_heyreach_campaign_id}
@@ -314,9 +301,7 @@ export function SignalConfig() {
               label="Auto Push to HeyReach"
               description="Automatically push matching leads to HeyReach"
               checked={config.auto_push_enabled}
-              onChange={(checked) =>
-                setConfig((prev) => ({ ...prev, auto_push_enabled: checked }))
-              }
+              onChange={(checked) => setConfig((prev) => ({ ...prev, auto_push_enabled: checked }))}
             />
           </div>
 
@@ -327,11 +312,7 @@ export function SignalConfig() {
               disabled={saving}
               className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Configuration
             </button>
           </div>
@@ -345,9 +326,7 @@ export function SignalConfig() {
         </div>
       )}
 
-      {error && (
-        <p className="mt-2 text-sm text-red-500">{error}</p>
-      )}
+      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
     </div>
   );
 }

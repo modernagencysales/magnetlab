@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle, Building2 } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as integrationsApi from '@/frontend/api/integrations';
 
 interface GoHighLevelSettingsProps {
   isConnected: boolean;
@@ -29,22 +30,7 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
     setFeedback(null);
 
     try {
-      const response = await fetch('/api/integrations/gohighlevel/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: apiKey }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setFeedback({
-          type: 'error',
-          message: data.error || 'Failed to connect GoHighLevel',
-        });
-        return;
-      }
-
+      await integrationsApi.connectGoHighLevel({ api_key: apiKey });
       setFeedback({ type: 'success', message: 'Connected successfully! Refreshing...' });
       setApiKey('');
       setTimeout(() => window.location.reload(), 1500);
@@ -64,13 +50,7 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
     setFeedback(null);
 
     try {
-      const response = await fetch('/api/integrations/gohighlevel/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await response.json();
-
+      const data = await integrationsApi.verifyGoHighLevel() as { verified?: boolean };
       if (data.verified) {
         setFeedback({ type: 'success', message: 'Connection verified successfully' });
       } else {
@@ -99,10 +79,7 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
     setFeedback(null);
 
     try {
-      await fetch('/api/integrations/gohighlevel/disconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      await integrationsApi.disconnectGoHighLevel();
       window.location.reload();
     } catch (error) {
       logError('settings/gohighlevel', error, { step: 'disconnect_error' });

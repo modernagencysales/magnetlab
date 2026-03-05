@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { WizardState } from '@/lib/types/lead-magnet';
 import { logWarn } from '@/lib/utils/logger';
+import * as wizardDraftApi from '@/frontend/api/wizard-draft';
 
 interface UseWizardAutoSaveOptions {
   state: WizardState;
@@ -31,7 +32,6 @@ export function useWizardAutoSave({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
   const lastSnapshotRef = useRef<string>('');
   const draftIdRef = useRef<string | null>(initialDraftId);
 
@@ -54,35 +54,20 @@ export function useWizardAutoSave({
       return;
     }
 
-    // Cancel in-flight request
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
     setIsSaving(true);
     try {
-      const response = await fetch('/api/wizard-draft', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: draftIdRef.current,
-          wizardState: stateToSave,
-        }),
-        signal: controller.signal,
+      const data = await wizardDraftApi.saveDraft({
+        id: draftIdRef.current ?? undefined,
+        wizardState: stateToSave,
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (!draftIdRef.current && data.id) {
-          setCurrentDraftId(data.id);
-          draftIdRef.current = data.id;
-        }
-        lastSnapshotRef.current = snapshot;
-        setLastSavedAt(new Date());
-        setHasUnsavedChanges(false);
+      if (!draftIdRef.current && data.id) {
+        setCurrentDraftId(data.id);
+        draftIdRef.current = data.id;
       }
+      lastSnapshotRef.current = snapshot;
+      setLastSavedAt(new Date());
+      setHasUnsavedChanges(false);
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
       logWarn('hooks/useWizardAutoSave', 'Auto-save failed', { error: String(err) });
     } finally {
       setIsSaving(false);

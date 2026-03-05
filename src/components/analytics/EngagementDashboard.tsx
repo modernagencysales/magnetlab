@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import * as analyticsApi from '@/frontend/api/analytics';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageSquare, Heart, Send, ArrowLeft, Activity } from 'lucide-react';
 import Link from 'next/link';
@@ -85,12 +86,8 @@ export function EngagementDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/analytics/engagement');
-      if (!response.ok) {
-        throw new Error('Failed to fetch engagement data');
-      }
-      const json = await response.json();
-      setData(json);
+      const json = await analyticsApi.getEngagement();
+      setData(json as EngagementData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load engagement data');
     } finally {
@@ -170,9 +167,7 @@ export function EngagementDashboard() {
                     <p className="text-sm text-muted-foreground">DMs Sent</p>
                     <p className="text-2xl font-bold">{data.totals.dmsSent}</p>
                     {data.totals.dmsFailed > 0 && (
-                      <p className="text-xs text-red-500">
-                        {data.totals.dmsFailed} failed
-                      </p>
+                      <p className="text-xs text-red-500">{data.totals.dmsFailed} failed</p>
                     )}
                   </div>
                 </div>
@@ -191,12 +186,8 @@ export function EngagementDashboard() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
-                        <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                          Post Title
-                        </th>
-                        <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                          Published
-                        </th>
+                        <th className="pb-3 pr-4 font-medium text-muted-foreground">Post Title</th>
+                        <th className="pb-3 pr-4 font-medium text-muted-foreground">Published</th>
                         <th className="pb-3 pr-4 text-right font-medium text-muted-foreground">
                           Comments
                         </th>
@@ -225,15 +216,9 @@ export function EngagementDashboard() {
                           <td className="py-3 pr-4 text-muted-foreground whitespace-nowrap">
                             {formatDate(post.publishedAt)}
                           </td>
-                          <td className="py-3 pr-4 text-right tabular-nums">
-                            {post.comments}
-                          </td>
-                          <td className="py-3 pr-4 text-right tabular-nums">
-                            {post.reactions}
-                          </td>
-                          <td className="py-3 text-right tabular-nums">
-                            {post.dmsSent}
-                          </td>
+                          <td className="py-3 pr-4 text-right tabular-nums">{post.comments}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums">{post.reactions}</td>
+                          <td className="py-3 text-right tabular-nums">{post.dmsSent}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -246,8 +231,7 @@ export function EngagementDashboard() {
               <Activity className="mx-auto h-12 w-12 text-muted-foreground/50" />
               <h3 className="mt-4 text-lg font-medium">No engagement data yet</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Publish posts and enable automations to start tracking comments,
-                reactions, and DMs.
+                Publish posts and enable automations to start tracking comments, reactions, and DMs.
               </p>
             </div>
           )}

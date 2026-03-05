@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { ScreenshotUrl } from '@/lib/types/lead-magnet';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 interface ScreenshotGalleryProps {
   screenshotUrls: ScreenshotUrl[];
@@ -23,15 +24,8 @@ export function ScreenshotGallery({
     setIsGenerating(true);
     setError(null);
     try {
-      const res = await fetch(`/api/lead-magnet/${leadMagnetId}/screenshots`, {
-        method: 'POST',
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to generate screenshots');
-      }
-      const data = await res.json();
-      setScreenshotUrls(data.screenshotUrls);
+      const data = await leadMagnetApi.generateScreenshots(leadMagnetId);
+      setScreenshotUrls((data.screenshotUrls || []) as ScreenshotUrl[]);
       setSelectedIndex(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate screenshots');
@@ -55,13 +49,15 @@ export function ScreenshotGallery({
           className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           title={!canGenerate ? 'Publish a funnel page first' : undefined}
         >
-          {isGenerating ? 'Generating...' : screenshotUrls.length ? 'Regenerate' : 'Generate Images'}
+          {isGenerating
+            ? 'Generating...'
+            : screenshotUrls.length
+              ? 'Regenerate'
+              : 'Generate Images'}
         </button>
       </div>
 
-      {error && (
-        <p className="text-sm text-red-500">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-500">{error}</p>}
 
       {!canGenerate && screenshotUrls.length === 0 && (
         <p className="text-sm text-muted-foreground">
@@ -78,17 +74,25 @@ export function ScreenshotGallery({
                 key={idx}
                 onClick={() => setSelectedIndex(idx)}
                 className={`relative overflow-hidden rounded-lg border-2 transition-all ${
-                  selectedIndex === idx ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-muted'
+                  selectedIndex === idx
+                    ? 'border-primary ring-2 ring-primary/20'
+                    : 'border-transparent hover:border-muted'
                 }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={shot.url1080x1080}
-                  alt={shot.type === 'hero' ? 'Hero' : shot.sectionName || `Section ${(shot.sectionIndex ?? 0) + 1}`}
+                  alt={
+                    shot.type === 'hero'
+                      ? 'Hero'
+                      : shot.sectionName || `Section ${(shot.sectionIndex ?? 0) + 1}`
+                  }
                   className="aspect-square w-full object-cover"
                 />
                 <span className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 text-xs text-white">
-                  {shot.type === 'hero' ? 'Hero' : shot.sectionName || `Section ${(shot.sectionIndex ?? 0) + 1}`}
+                  {shot.type === 'hero'
+                    ? 'Hero'
+                    : shot.sectionName || `Section ${(shot.sectionIndex ?? 0) + 1}`}
                 </span>
               </button>
             ))}

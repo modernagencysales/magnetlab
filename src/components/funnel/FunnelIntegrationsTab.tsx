@@ -2,9 +2,27 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Loader2, Plus, Trash2, CheckCircle, XCircle, ChevronDown, Mail, Settings, MessageSquare, Copy, Check } from 'lucide-react';
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  ChevronDown,
+  Mail,
+  Settings,
+  MessageSquare,
+  Copy,
+  Check,
+} from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as funnelIntegrationsApi from '@/frontend/api/funnel-integrations';
+import {
+  getEmailMarketingLists,
+  getEmailMarketingTags,
+  getHeyReachCampaigns,
+} from '@/frontend/api/integrations';
 
 const PROVIDER_LABELS: Record<string, string> = {
   kit: 'Kit (ConvertKit)',
@@ -71,21 +89,14 @@ function IntegrationRow({
   const handleToggle = async () => {
     setToggling(true);
     try {
-      const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: integration.provider,
-          list_id: integration.list_id,
-          list_name: integration.list_name,
-          tag_id: integration.tag_id,
-          tag_name: integration.tag_name,
-          is_active: !integration.is_active,
-        }),
+      await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+        provider: integration.provider,
+        list_id: integration.list_id,
+        list_name: integration.list_name,
+        tag_id: integration.tag_id,
+        tag_name: integration.tag_name,
+        is_active: !integration.is_active,
       });
-
-      if (!response.ok) throw new Error('Failed to update');
-
       onToggled(integration.provider, !integration.is_active);
     } catch (error) {
       logError('funnel-integrations', error, { step: 'toggle_error' });
@@ -95,19 +106,17 @@ function IntegrationRow({
   };
 
   const handleRemove = async () => {
-    if (!confirm(`Remove ${PROVIDER_LABELS[integration.provider] || integration.provider} from this funnel?`)) {
+    if (
+      !confirm(
+        `Remove ${PROVIDER_LABELS[integration.provider] || integration.provider} from this funnel?`
+      )
+    ) {
       return;
     }
 
     setRemoving(true);
     try {
-      const response = await fetch(
-        `/api/funnels/${funnelPageId}/integrations/${integration.provider}`,
-        { method: 'DELETE' }
-      );
-
-      if (!response.ok) throw new Error('Failed to remove');
-
+      await funnelIntegrationsApi.deleteFunnelIntegration(funnelPageId, integration.provider);
       onRemoved(integration.provider);
     } catch (error) {
       logError('funnel-integrations', error, { step: 'remove_error' });
@@ -159,11 +168,7 @@ function IntegrationRow({
           disabled={removing}
           className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
         >
-          {removing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
+          {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
         </button>
       </div>
     </div>
@@ -198,13 +203,7 @@ function AddIntegrationForm({
   useEffect(() => {
     async function fetchLists() {
       try {
-        const response = await fetch(
-          `/api/integrations/email-marketing/lists?provider=${provider}`
-        );
-
-        if (!response.ok) throw new Error('Failed to fetch lists');
-
-        const data = await response.json();
+        const data = await getEmailMarketingLists(provider);
         setLists(data.lists || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch lists');
@@ -217,31 +216,29 @@ function AddIntegrationForm({
   }, [provider]);
 
   // Fetch tags when list is selected (for providers that support tags)
-  const fetchTags = useCallback(async (listId: string) => {
-    if (!hasTags || !listId) {
-      setTags([]);
-      return;
-    }
+  const fetchTags = useCallback(
+    async (listId: string) => {
+      if (!hasTags || !listId) {
+        setTags([]);
+        return;
+      }
 
-    setLoadingTags(true);
-    setSelectedTagId('');
-    setSelectedTagName('');
+      setLoadingTags(true);
+      setSelectedTagId('');
+      setSelectedTagName('');
 
-    try {
-      const url = `/api/integrations/email-marketing/tags?provider=${provider}&listId=${listId}`;
-      const response = await fetch(url);
-
-      if (!response.ok) throw new Error('Failed to fetch tags');
-
-      const data = await response.json();
-      setTags(data.tags || []);
-    } catch (err) {
-      logError('funnel-integrations', err, { step: 'fetch_tags_error' });
-      setTags([]);
-    } finally {
-      setLoadingTags(false);
-    }
-  }, [provider, hasTags]);
+      try {
+        const data = await getEmailMarketingTags(provider, listId);
+        setTags(data.tags || []);
+      } catch (err) {
+        logError('funnel-integrations', err, { step: 'fetch_tags_error' });
+        setTags([]);
+      } finally {
+        setLoadingTags(false);
+      }
+    },
+    [provider, hasTags]
+  );
 
   const handleListChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const listId = e.target.value;
@@ -272,26 +269,15 @@ function AddIntegrationForm({
     setError(null);
 
     try {
-      const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          list_id: selectedListId,
-          list_name: selectedListName || null,
-          tag_id: selectedTagId || null,
-          tag_name: selectedTagName || null,
-          is_active: true,
-        }),
+      const data = await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+        provider,
+        list_id: selectedListId,
+        list_name: selectedListName || null,
+        tag_id: selectedTagId || null,
+        tag_name: selectedTagName || null,
+        is_active: true,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to save integration');
-      }
-
-      onAdded(data.integration);
+      onAdded(data.integration as FunnelIntegration);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
@@ -302,9 +288,7 @@ function AddIntegrationForm({
   return (
     <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">
-          Add {PROVIDER_LABELS[provider] || provider}
-        </p>
+        <p className="text-sm font-medium">Add {PROVIDER_LABELS[provider] || provider}</p>
         <button
           onClick={onCancel}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -412,13 +396,9 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
   useEffect(() => {
     async function loadGHL() {
       try {
-        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const ghl = (data.integrations || []).find(
-          (i: FunnelIntegration) => i.provider === 'gohighlevel'
-        );
+        const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
+        const integrations = (data.integrations || []) as FunnelIntegration[];
+        const ghl = integrations.find((i) => i.provider === 'gohighlevel');
 
         if (ghl) {
           setEnabled(ghl.is_active);
@@ -444,24 +424,15 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'gohighlevel',
-        list_id: 'n/a',
-        list_name: null,
-        tag_id: null,
-        tag_name: null,
-        is_active: isActive,
-        settings: { custom_tags: customTagsArray },
-      }),
+    await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+      provider: 'gohighlevel',
+      list_id: 'n/a',
+      list_name: null,
+      tag_id: null,
+      tag_name: null,
+      is_active: isActive,
+      settings: { custom_tags: customTagsArray },
     });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to save');
-    }
   };
 
   const handleToggle = async () => {
@@ -611,13 +582,9 @@ function HeyReachFunnelToggle({
   useEffect(() => {
     async function loadHeyReach() {
       try {
-        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const hr = (data.integrations || []).find(
-          (i: FunnelIntegration) => i.provider === 'heyreach'
-        );
+        const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
+        const integrations = (data.integrations || []) as FunnelIntegration[];
+        const hr = integrations.find((i) => i.provider === 'heyreach');
 
         if (hr) {
           setEnabled(hr.is_active);
@@ -641,11 +608,8 @@ function HeyReachFunnelToggle({
     async function fetchCampaigns() {
       setLoadingCampaigns(true);
       try {
-        const response = await fetch('/api/integrations/heyreach/campaigns');
-        if (response.ok) {
-          const data = await response.json();
-          setCampaigns(data.campaigns || []);
-        }
+        const data = await getHeyReachCampaigns();
+        setCampaigns((data.campaigns || []) as HeyReachCampaign[]);
       } catch (err) {
         logError('heyreach-funnel-toggle', err, { step: 'fetch_campaigns_error' });
       } finally {
@@ -659,24 +623,15 @@ function HeyReachFunnelToggle({
   const saveHeyReach = async (isActive: boolean, campaignId?: number | null) => {
     const idToSave = campaignId !== undefined ? campaignId : selectedCampaignId;
 
-    const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'heyreach',
-        list_id: 'n/a',
-        list_name: null,
-        tag_id: null,
-        tag_name: null,
-        is_active: isActive,
-        settings: { campaign_id: idToSave },
-      }),
+    await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+      provider: 'heyreach',
+      list_id: 'n/a',
+      list_name: null,
+      tag_id: null,
+      tag_name: null,
+      is_active: isActive,
+      settings: { campaign_id: idToSave },
     });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to save');
-    }
   };
 
   const handleToggle = async () => {
@@ -878,11 +833,8 @@ export function FunnelIntegrationsTab({
   useEffect(() => {
     async function fetchIntegrations() {
       try {
-        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
-        if (response.ok) {
-          const data = await response.json();
-          setIntegrations(data.integrations || []);
-        }
+        const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
+        setIntegrations((data.integrations || []) as FunnelIntegration[]);
       } catch (error) {
         logError('funnel-integrations', error, { step: 'fetch_error' });
       } finally {
@@ -963,7 +915,8 @@ export function FunnelIntegrationsTab({
           <div>
             <h3 className="text-sm font-semibold">Email Marketing Integrations</h3>
             <p className="text-xs text-muted-foreground">
-              When a lead opts in to this funnel, they will be automatically added to the lists you configure below.
+              When a lead opts in to this funnel, they will be automatically added to the lists you
+              configure below.
             </p>
           </div>
 
@@ -995,13 +948,16 @@ export function FunnelIntegrationsTab({
           )}
 
           {/* Reminder when no integrations are mapped yet */}
-          {integrations.filter((i) => i.provider !== 'gohighlevel').length === 0 && unmappedProviders.length > 0 && !addingProvider && (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
-              <p className="text-sm text-amber-700 dark:text-amber-400">
-                Leads from this funnel are <strong>not being synced</strong> to your email provider yet. Add a list below to start syncing.
-              </p>
-            </div>
-          )}
+          {integrations.filter((i) => i.provider !== 'gohighlevel').length === 0 &&
+            unmappedProviders.length > 0 &&
+            !addingProvider && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  Leads from this funnel are <strong>not being synced</strong> to your email
+                  provider yet. Add a list below to start syncing.
+                </p>
+              </div>
+            )}
 
           {/* Add buttons for unmapped providers */}
           {unmappedProviders.length > 0 && !addingProvider && (
@@ -1020,12 +976,14 @@ export function FunnelIntegrationsTab({
           )}
 
           {/* All connected providers are mapped */}
-          {integrations.filter((i) => i.provider !== 'gohighlevel').length > 0 && unmappedProviders.length === 0 && !addingProvider && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <CheckCircle className="h-3 w-3 text-green-500" />
-              All connected providers are configured for this funnel.
-            </p>
-          )}
+          {integrations.filter((i) => i.provider !== 'gohighlevel').length > 0 &&
+            unmappedProviders.length === 0 &&
+            !addingProvider && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <CheckCircle className="h-3 w-3 text-green-500" />
+                All connected providers are configured for this funnel.
+              </p>
+            )}
         </>
       )}
 

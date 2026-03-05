@@ -10,6 +10,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { logError } from '@/lib/utils/logger';
+import * as signalsApi from '@/frontend/api/signals';
 import { SignalLeadDetail } from './SignalLeadDetail';
 import type {
   SignalLead,
@@ -93,28 +94,15 @@ export function SignalLeadsTable() {
     setError(null);
 
     try {
-      const params = new URLSearchParams();
-      params.set('page', page.toString());
-      params.set('limit', limit.toString());
-
-      if (statusFilter !== 'all') {
-        params.set('status', statusFilter);
-      }
-      if (icpOnly) {
-        params.set('icp_match', 'true');
-      }
-      if (signalTypeFilter !== 'all') {
-        params.set('signal_type', signalTypeFilter);
-      }
-      if (minScore > 0) {
-        params.set('min_score', minScore.toString());
-      }
-
-      const response = await fetch(`/api/signals/leads?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch signal leads');
-
-      const data = await response.json();
-      setLeads(data.leads || []);
+      const data = await signalsApi.listSignalLeads({
+        page,
+        limit,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        icp_match: icpOnly ? 'true' : undefined,
+        signal_type: signalTypeFilter !== 'all' ? signalTypeFilter : undefined,
+        min_score: minScore > 0 ? minScore : undefined,
+      });
+      setLeads((data.leads || []) as SignalLeadWithEvents[]);
       setTotal(data.total || 0);
       setSelectedIds(new Set());
     } catch (err) {
@@ -162,18 +150,10 @@ export function SignalLeadsTable() {
     if (selectedIds.size === 0) return;
     setBulkLoading(true);
     try {
-      const response = await fetch('/api/signals/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'exclude',
-          lead_ids: Array.from(selectedIds),
-        }),
+      await signalsApi.bulkSignalLeadsAction({
+        action: 'exclude',
+        lead_ids: Array.from(selectedIds),
       });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to exclude leads');
-      }
       await fetchLeads();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to exclude leads');
@@ -186,19 +166,11 @@ export function SignalLeadsTable() {
     if (selectedIds.size === 0 || !campaignId.trim()) return;
     setBulkLoading(true);
     try {
-      const response = await fetch('/api/signals/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'push',
-          lead_ids: Array.from(selectedIds),
-          campaign_id: campaignId.trim(),
-        }),
+      await signalsApi.bulkSignalLeadsAction({
+        action: 'push',
+        lead_ids: Array.from(selectedIds),
+        campaign_id: campaignId.trim(),
       });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to push leads');
-      }
       setShowPushModal(false);
       setCampaignId('');
       await fetchLeads();
@@ -563,18 +535,10 @@ export function SignalLeadsTable() {
           onClose={() => setSelectedLead(null)}
           onExclude={async (leadId) => {
             try {
-              const response = await fetch('/api/signals/leads', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  action: 'exclude',
-                  lead_ids: [leadId],
-                }),
+              await signalsApi.bulkSignalLeadsAction({
+                action: 'exclude',
+                lead_ids: [leadId],
               });
-              if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to exclude lead');
-              }
               setSelectedLead(null);
               await fetchLeads();
             } catch (err) {
@@ -583,19 +547,11 @@ export function SignalLeadsTable() {
           }}
           onPush={async (leadId, campId) => {
             try {
-              const response = await fetch('/api/signals/leads', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  action: 'push',
-                  lead_ids: [leadId],
-                  campaign_id: campId,
-                }),
+              await signalsApi.bulkSignalLeadsAction({
+                action: 'push',
+                lead_ids: [leadId],
+                campaign_id: campId,
               });
-              if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to push lead');
-              }
               setSelectedLead(null);
               await fetchLeads();
             } catch (err) {

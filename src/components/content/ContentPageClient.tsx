@@ -18,8 +18,14 @@ import { CalculatorTool } from '@/components/interactive/public/CalculatorTool';
 import { AssessmentTool } from '@/components/interactive/public/AssessmentTool';
 import { GPTChatTool } from '@/components/interactive/public/GPTChatTool';
 import { IClosedWidget } from '@/components/funnel/public/IClosedWidget';
-import type { PolishedContent, ExtractedContent, LeadMagnetConcept, InteractiveConfig } from '@/lib/types/lead-magnet';
+import type {
+  PolishedContent,
+  ExtractedContent,
+  LeadMagnetConcept,
+  InteractiveConfig,
+} from '@/lib/types/lead-magnet';
 import type { FunnelPageSection } from '@/lib/types/funnel';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 interface ContentPageClientProps {
   title: string;
@@ -84,8 +90,8 @@ export function ContentPageClient({
   const textColor = isDark ? '#FAFAFA' : '#09090B';
 
   // Split sections into above-content and below-content slots
-  const aboveSections = sections.filter(s => s.sortOrder < 50);
-  const belowSections = sections.filter(s => s.sortOrder >= 50);
+  const aboveSections = sections.filter((s) => s.sortOrder < 50);
+  const belowSections = sections.filter((s) => s.sortOrder >= 50);
 
   // The content to display (edited or original)
   const displayContent = isEditing ? editContent : polishedContent;
@@ -116,18 +122,7 @@ export function ContentPageClient({
     setSaveError(null);
 
     try {
-      const response = await fetch(`/api/lead-magnet/${leadMagnetId}/content`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ polishedContent: editContent }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save');
-      }
-
-      // Exit edit mode after successful save
+      await leadMagnetApi.updateLeadMagnetContent(leadMagnetId, { polishedContent: editContent });
       setIsEditing(false);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
@@ -141,7 +136,9 @@ export function ContentPageClient({
 
   if (interactiveConfig) {
     return (
-      <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-white text-gray-900'}`}>
+      <div
+        className={`min-h-screen ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-white text-gray-900'}`}
+      >
         <div className="mx-auto max-w-3xl px-4 py-12">
           {interactiveConfig.type === 'calculator' && (
             <CalculatorTool config={interactiveConfig} theme={theme} primaryColor={primaryColor} />
@@ -150,7 +147,12 @@ export function ContentPageClient({
             <AssessmentTool config={interactiveConfig} theme={theme} primaryColor={primaryColor} />
           )}
           {interactiveConfig.type === 'gpt' && (
-            <GPTChatTool config={interactiveConfig} leadMagnetId={leadMagnetId!} theme={theme} primaryColor={primaryColor} />
+            <GPTChatTool
+              config={interactiveConfig}
+              leadMagnetId={leadMagnetId!}
+              theme={theme}
+              primaryColor={primaryColor}
+            />
           )}
         </div>
         {iClosedWidgetId && <IClosedWidget widgetId={iClosedWidgetId} />}
@@ -159,7 +161,15 @@ export function ContentPageClient({
   }
 
   return (
-    <div style={{ background: bgColor, minHeight: '100vh', paddingBottom: showStickyCta ? '5rem' : undefined, ...themeVars, ...getFontStyle(fontFamily) }}>
+    <div
+      style={{
+        background: bgColor,
+        minHeight: '100vh',
+        paddingBottom: showStickyCta ? '5rem' : undefined,
+        ...themeVars,
+        ...getFontStyle(fontFamily),
+      }}
+    >
       <FontLoader fontFamily={fontFamily || null} fontUrl={fontUrl || null} />
       <ContentHeader
         logoUrl={logoUrl}
@@ -198,7 +208,9 @@ export function ContentPageClient({
         {/* Above-content sections */}
         {aboveSections.length > 0 && (
           <div style={{ maxWidth: '700px', marginBottom: '2.5rem' }} className="space-y-6">
-            {aboveSections.map(s => <SectionRenderer key={s.id} section={s} />)}
+            {aboveSections.map((s) => (
+              <SectionRenderer key={s.id} section={s} />
+            ))}
           </div>
         )}
 
@@ -220,28 +232,26 @@ export function ContentPageClient({
                 primaryColor={primaryColor}
               />
             ) : extractedContent ? (
-              <ExtractedContentRenderer
-                content={extractedContent}
-                isDark={isDark}
-              />
+              <ExtractedContentRenderer content={extractedContent} isDark={isDark} />
             ) : null}
           </div>
 
           {/* TOC sidebar */}
           {!isEditing && tocSections.length > 1 && (
-            <TableOfContents
-              sections={tocSections}
-              isDark={isDark}
-              primaryColor={primaryColor}
-            />
+            <TableOfContents sections={tocSections} isDark={isDark} primaryColor={primaryColor} />
           )}
         </div>
       </div>
 
       {/* Below-content sections */}
       {belowSections.length > 0 && (
-        <div style={{ maxWidth: '700px', margin: '0 auto', padding: '0 1.5rem' }} className="space-y-6">
-          {belowSections.map(s => <SectionRenderer key={s.id} section={s} />)}
+        <div
+          style={{ maxWidth: '700px', margin: '0 auto', padding: '0 1.5rem' }}
+          className="space-y-6"
+        >
+          {belowSections.map((s) => (
+            <SectionRenderer key={s.id} section={s} />
+          ))}
         </div>
       )}
 
@@ -272,9 +282,7 @@ export function ContentPageClient({
             }}
           >
             <div>
-              {saveError && (
-                <p style={{ color: '#ef4444', fontSize: '0.875rem' }}>{saveError}</p>
-              )}
+              {saveError && <p style={{ color: '#ef4444', fontSize: '0.875rem' }}>{saveError}</p>}
               {!saveError && (
                 <p style={{ color: isDark ? '#A1A1AA' : '#71717A', fontSize: '0.875rem' }}>
                   Editing mode — changes are not saved until you click Save

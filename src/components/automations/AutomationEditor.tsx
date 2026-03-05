@@ -15,6 +15,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { Automation } from './AutomationList';
+import * as automationsApi from '@/frontend/api/linkedin/automations';
+import * as postsApi from '@/frontend/api/content-pipeline/posts';
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -67,11 +69,8 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
   const fetchPosts = useCallback(async () => {
     setPostsLoading(true);
     try {
-      const res = await fetch('/api/content-pipeline/posts?status=published&limit=100');
-      if (res.ok) {
-        const data = await res.json();
-        setPosts(data.posts || []);
-      }
+      const list = await postsApi.getPosts({ status: 'published', limit: 100 });
+      setPosts(list || []);
     } catch {
       // Non-critical — user can still enter manual social ID
     } finally {
@@ -191,23 +190,9 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
     };
 
     try {
-      const url = isEdit
-        ? `/api/linkedin/automations/${automation.id}`
-        : '/api/linkedin/automations';
-      const method = isEdit ? 'PATCH' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Failed to ${isEdit ? 'update' : 'create'} automation`);
-      }
-
-      const data = await res.json();
+      const data = isEdit
+        ? await automationsApi.updateAutomation(automation.id, payload)
+        : await automationsApi.createAutomation(payload);
       onSave(data.automation);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -301,11 +286,7 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
             {keywords.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {keywords.map((kw) => (
-                  <Badge
-                    key={kw}
-                    variant="secondary"
-                    className="gap-1 pr-1"
-                  >
+                  <Badge key={kw} variant="secondary" className="gap-1 pr-1">
                     {kw}
                     <button
                       type="button"
@@ -330,12 +311,15 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
               id="automation-dm-template"
               value={dmTemplate}
               onChange={(e) => setDmTemplate(e.target.value)}
-              placeholder={"Hey {{name}}, thanks for your comment! I noticed you said \"{{comment}}\" — I'd love to share more about this..."}
+              placeholder={
+                'Hey {{name}}, thanks for your comment! I noticed you said "{{comment}}" — I\'d love to share more about this...'
+              }
               rows={4}
               className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              Use {'{{name}}'} for the commenter&apos;s name and {'{{comment}}'} for their comment text.
+              Use {'{{name}}'} for the commenter&apos;s name and {'{{comment}}'} for their comment
+              text.
             </p>
           </div>
 
@@ -401,7 +385,8 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
               placeholder="https://magnetlab.app/p/username/lead-magnet"
             />
             <p className="text-xs text-muted-foreground">
-              Used as a PlusVibe email variable and for quick &quot;Reply with Link&quot; in the activity feed.
+              Used as a PlusVibe email variable and for quick &quot;Reply with Link&quot; in the
+              activity feed.
             </p>
           </div>
 

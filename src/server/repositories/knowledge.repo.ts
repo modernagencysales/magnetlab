@@ -47,7 +47,7 @@ export interface KnowledgeUpdateInput {
  */
 export async function resolveEffectiveUserId(
   sessionUserId: string,
-  teamId?: string,
+  teamId?: string
 ): Promise<string> {
   if (!teamId) return sessionUserId;
 
@@ -67,7 +67,7 @@ export async function resolveEffectiveUserId(
 
 export async function findKnowledgeEntrySnapshot(
   userId: string,
-  id: string,
+  id: string
 ): Promise<KnowledgeEntrySnapshot | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -88,7 +88,7 @@ const ENTRY_RETURN_COLUMNS =
 export async function updateKnowledgeEntry(
   userId: string,
   id: string,
-  updates: Record<string, unknown>,
+  updates: Record<string, unknown>
 ): Promise<KnowledgeEntry> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -114,15 +114,75 @@ export async function deleteKnowledgeEntry(userId: string, id: string): Promise<
 
 /** Bulk insert knowledge entries (for external ingest-knowledge). */
 export async function insertKnowledgeEntriesBulk(
-  rows: Array<Record<string, unknown>>,
+  rows: Array<Record<string, unknown>>
 ): Promise<Array<{ id: string }>> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from('cp_knowledge_entries')
-    .insert(rows)
-    .select('id');
+  const { data, error } = await supabase.from('cp_knowledge_entries').insert(rows).select('id');
   if (error) throw new Error(`knowledge.insertKnowledgeEntriesBulk: ${error.message}`);
   return (data ?? []) as Array<{ id: string }>;
+}
+
+// ─── Deduplication operations ──────────────────────────────────────────────
+
+export interface DedupMatchResult {
+  id: string;
+  speaker: string | null;
+  similarity: number;
+}
+
+export async function matchKnowledgeEntriesForDedup(
+  userId: string,
+  embedding: number[],
+  threshold = 0.85,
+  matchCount = 5
+): Promise<DedupMatchResult[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.rpc('cp_match_knowledge_entries', {
+    query_embedding: JSON.stringify(embedding),
+    p_user_id: userId,
+    threshold,
+    match_count: matchCount,
+  });
+  if (error || !data?.length) return [];
+  return data as DedupMatchResult[];
+}
+
+export async function supersedeKnowledgeEntry(
+  userId: string,
+  oldEntryId: string,
+  newEntryId: string
+): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from('cp_knowledge_entries')
+    .update({ superseded_by: newEntryId })
+    .eq('id', oldEntryId)
+    .eq('user_id', userId);
+  if (error) throw new Error(`knowledge.supersedeKnowledgeEntry: ${error.message}`);
+}
+
+export async function upsertKnowledgeCorroboration(
+  userId: string,
+  entryId: string,
+  corroboratedById: string
+): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  // Verify entry belongs to user first
+  const { data: entry } = await supabase
+    .from('cp_knowledge_entries')
+    .select('id')
+    .eq('id', entryId)
+    .eq('user_id', userId)
+    .single();
+  if (!entry) return;
+
+  const { error } = await supabase
+    .from('cp_knowledge_corroborations')
+    .upsert(
+      { entry_id: entryId, corroborated_by: corroboratedById },
+      { onConflict: 'entry_id,corroborated_by' }
+    );
+  if (error) throw new Error(`knowledge.upsertKnowledgeCorroboration: ${error.message}`);
 }
 
 // ─── Tag count management ──────────────────────────────────────────────────
@@ -141,7 +201,7 @@ export async function decrementTagCount(userId: string, tag: string): Promise<vo
 
 export async function buildEmbeddingUpdate(
   content: string,
-  context: string | null,
+  context: string | null
 ): Promise<string | null> {
   if (!isEmbeddingsConfigured()) return null;
   const embeddingText = context ? `${content}\n\n${context}` : content;

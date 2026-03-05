@@ -16,18 +16,18 @@ export const VALID_ANSWER_TYPES: AnswerType[] = ['yes_no', 'text', 'textarea', '
 
 export async function listForms(userId: string, limit: number, offset: number) {
   const data = await repo.listForms(userId, limit, offset);
-  return { forms: (data as QualificationFormRow[]).map(qualificationFormFromRow) };
+  return { forms: (data as unknown as QualificationFormRow[]).map(qualificationFormFromRow) };
 }
 
 export async function createForm(userId: string, name: string) {
   const row = await repo.createForm(userId, name.trim());
-  return { form: qualificationFormFromRow(row as QualificationFormRow) };
+  return { form: qualificationFormFromRow(row as unknown as QualificationFormRow) };
 }
 
 export async function getForm(userId: string, formId: string) {
   const row = await repo.getFormByIdAndUser(formId, userId);
   if (!row) return null;
-  return { form: qualificationFormFromRow(row as QualificationFormRow) };
+  return { form: qualificationFormFromRow(row as unknown as QualificationFormRow) };
 }
 
 export async function updateForm(userId: string, formId: string, updates: { name?: string }) {
@@ -37,7 +37,7 @@ export async function updateForm(userId: string, formId: string, updates: { name
   payload.updated_at = new Date().toISOString();
   const row = await repo.updateForm(formId, userId, payload);
   if (!row) return null;
-  return { form: qualificationFormFromRow(row as QualificationFormRow) };
+  return { form: qualificationFormFromRow(row as unknown as QualificationFormRow) };
 }
 
 export async function deleteForm(userId: string, formId: string): Promise<boolean> {
@@ -48,7 +48,9 @@ export async function listQuestions(userId: string, formId: string) {
   const ok = await repo.assertFormOwnership(formId, userId);
   if (!ok) return null;
   const data = await repo.listQuestions(formId);
-  return { questions: (data as QualificationQuestionRow[]).map(qualificationQuestionFromRow) };
+  return {
+    questions: (data as unknown as QualificationQuestionRow[]).map(qualificationQuestionFromRow),
+  };
 }
 
 export async function createQuestion(
@@ -63,7 +65,7 @@ export async function createQuestion(
     placeholder?: string | null;
     isQualifying?: boolean;
     isRequired?: boolean;
-  },
+  }
 ) {
   const ok = await repo.assertFormOwnership(formId, userId);
   if (!ok) return null;
@@ -74,19 +76,19 @@ export async function createQuestion(
     question_order: nextOrder,
     answer_type: payload.answerType ?? 'yes_no',
     qualifying_answer: payload.qualifyingAnswer ?? null,
-    options: payload.answerType === 'multiple_choice' ? payload.options ?? null : null,
+    options: payload.answerType === 'multiple_choice' ? (payload.options ?? null) : null,
     placeholder: payload.placeholder ?? null,
-    is_qualifying: payload.isQualifying ?? (payload.answerType === 'yes_no'),
+    is_qualifying: payload.isQualifying ?? payload.answerType === 'yes_no',
     is_required: payload.isRequired ?? true,
   });
-  return { question: qualificationQuestionFromRow(row as QualificationQuestionRow) };
+  return { question: qualificationQuestionFromRow(row as unknown as QualificationQuestionRow) };
 }
 
 export async function updateQuestion(
   userId: string,
   formId: string,
   questionId: string,
-  updates: Record<string, unknown>,
+  updates: Record<string, unknown>
 ) {
   const ok = await repo.assertFormOwnership(formId, userId);
   if (!ok) return null;
@@ -94,7 +96,8 @@ export async function updateQuestion(
   if (updates.questionText !== undefined) dbUpdates.question_text = updates.questionText;
   if (updates.questionOrder !== undefined) dbUpdates.question_order = updates.questionOrder;
   if (updates.answerType !== undefined) dbUpdates.answer_type = updates.answerType;
-  if (updates.qualifyingAnswer !== undefined) dbUpdates.qualifying_answer = updates.qualifyingAnswer;
+  if (updates.qualifyingAnswer !== undefined)
+    dbUpdates.qualifying_answer = updates.qualifyingAnswer;
   if (updates.options !== undefined) dbUpdates.options = updates.options;
   if (updates.placeholder !== undefined) dbUpdates.placeholder = updates.placeholder;
   if (updates.isQualifying !== undefined) dbUpdates.is_qualifying = updates.isQualifying;
@@ -102,17 +105,25 @@ export async function updateQuestion(
   if (Object.keys(dbUpdates).length === 0) return null;
   const row = await repo.updateQuestion(questionId, formId, dbUpdates);
   if (!row) return null;
-  return { question: qualificationQuestionFromRow(row as QualificationQuestionRow) };
+  return { question: qualificationQuestionFromRow(row as unknown as QualificationQuestionRow) };
 }
 
-export async function deleteQuestion(userId: string, formId: string, questionId: string): Promise<boolean | null> {
+export async function deleteQuestion(
+  userId: string,
+  formId: string,
+  questionId: string
+): Promise<boolean | null> {
   const ok = await repo.assertFormOwnership(formId, userId);
   if (!ok) return null;
   await repo.deleteQuestion(questionId, formId);
   return true;
 }
 
-export async function reorderQuestions(userId: string, formId: string, questionIds: string[]): Promise<boolean | null> {
+export async function reorderQuestions(
+  userId: string,
+  formId: string,
+  questionIds: string[]
+): Promise<boolean | null> {
   const ok = await repo.assertFormOwnership(formId, userId);
   if (!ok) return null;
   await repo.reorderQuestions(formId, questionIds);

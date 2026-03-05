@@ -2,7 +2,6 @@
  * @jest-environment node
  */
 
-import { GET, POST } from '@/app/api/content-pipeline/transcripts/route';
 import { NextRequest } from 'next/server';
 
 // Mock auth
@@ -10,9 +9,11 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-// Mock Supabase
-jest.mock('@/lib/utils/supabase-server', () => ({
-  createSupabaseAdminClient: jest.fn(),
+// Mock next/headers cookies
+jest.mock('next/headers', () => ({
+  cookies: jest.fn().mockResolvedValue({
+    get: jest.fn().mockReturnValue(undefined),
+  }),
 }));
 
 // Mock logger
@@ -23,90 +24,22 @@ jest.mock('@/lib/utils/logger', () => ({
   logDebug: jest.fn(),
 }));
 
-// Mock Trigger.dev tasks
-jest.mock('@trigger.dev/sdk/v3', () => ({
-  tasks: {
-    trigger: jest.fn(() => Promise.resolve()),
-  },
+// Mock cp-transcripts service
+const mockList = jest.fn();
+const mockCreateFromPaste = jest.fn();
+
+jest.mock('@/server/services/cp-transcripts.service', () => ({
+  list: (...args: unknown[]) => mockList(...args),
+  createFromPaste: (...args: unknown[]) => mockCreateFromPaste(...args),
+  deleteTranscript: jest.fn(),
 }));
 
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-
-/**
- * Creates a mock Supabase client with chainable methods.
- * Tracks from() calls and routes to different result sets by table name.
- */
-function createMockSupabase() {
-  type TableResult = { data: unknown; error: unknown };
-
-  const tableResults: Record<string, TableResult> = {};
-  const singleResults: Record<string, TableResult[]> = {};
-  const singleCallIndex: Record<string, number> = {};
-
-  function createChain(tableName: string) {
-    const chain: Record<string, jest.Mock> = {};
-
-    chain.select = jest.fn(() => chain);
-    chain.insert = jest.fn(() => chain);
-    chain.delete = jest.fn(() => chain);
-    chain.eq = jest.fn(() => chain);
-    chain.in = jest.fn(() => chain);
-    chain.order = jest.fn(() => chain);
-    chain.limit = jest.fn(() => chain);
-
-    chain.single = jest.fn(() => {
-      if (singleResults[tableName] && singleResults[tableName].length > 0) {
-        const idx = singleCallIndex[tableName] || 0;
-        singleCallIndex[tableName] = idx + 1;
-        return Promise.resolve(singleResults[tableName][idx] || { data: null, error: null });
-      }
-      return Promise.resolve(tableResults[tableName] || { data: null, error: null });
-    });
-
-    // Make the chain thenable so `await query` resolves
-    Object.defineProperty(chain, 'then', {
-      value: (
-        onFulfilled?: (value: unknown) => unknown,
-        onRejected?: (reason: unknown) => unknown
-      ) => {
-        const result = tableResults[tableName] || { data: [], error: null };
-        return Promise.resolve(result).then(onFulfilled, onRejected);
-      },
-      enumerable: false,
-    });
-
-    return chain;
-  }
-
-  const client = {
-    from: jest.fn((table: string) => createChain(table)),
-  };
-
-  return {
-    client,
-    setTableResult: (table: string, result: TableResult) => {
-      tableResults[table] = result;
-    },
-    setSingleResults: (table: string, results: TableResult[]) => {
-      singleResults[table] = results;
-      singleCallIndex[table] = 0;
-    },
-    reset: () => {
-      Object.keys(tableResults).forEach(k => delete tableResults[k]);
-      Object.keys(singleResults).forEach(k => delete singleResults[k]);
-      Object.keys(singleCallIndex).forEach(k => delete singleCallIndex[k]);
-    },
-  };
-}
-
-let mock: ReturnType<typeof createMockSupabase>;
+import { GET, POST } from '@/app/api/content-pipeline/transcripts/route';
 
 describe('Content Pipeline — Transcripts API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mock = createMockSupabase();
-    (createSupabaseAdminClient as jest.Mock).mockReturnValue(mock.client);
   });
 
   describe('GET /api/content-pipeline/transcripts', () => {
@@ -153,7 +86,7 @@ describe('Content Pipeline — Transcripts API', () => {
         },
       ];
 
-      mock.setTableResult('cp_call_transcripts', { data: transcripts, error: null });
+      mockList.mockResolvedValue({ success: true, transcripts });
 
       const request = new NextRequest('http://localhost:3000/api/content-pipeline/transcripts');
       const response = await GET(request);
@@ -164,13 +97,12 @@ describe('Content Pipeline — Transcripts API', () => {
       expect(data.transcripts[0].id).toBe('tx-1');
       expect(data.transcripts[1].id).toBe('tx-2');
 
-      // Verify it queries the correct table
-      expect(mock.client.from).toHaveBeenCalledWith('cp_call_transcripts');
+      expect(mockList).toHaveBeenCalledWith('user-1', null, null, 50);
     });
 
     it('should return empty array when user has no transcripts', async () => {
       (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-new' } });
-      mock.setTableResult('cp_call_transcripts', { data: [], error: null });
+      mockList.mockResolvedValue({ success: true, transcripts: [] });
 
       const request = new NextRequest('http://localhost:3000/api/content-pipeline/transcripts');
       const response = await GET(request);
@@ -219,24 +151,10 @@ describe('Content Pipeline — Transcripts API', () => {
 
       const transcriptText = 'A'.repeat(200);
 
-      // Mock team lookup (user owns no team)
-      mock.setSingleResults('teams', [
-        { data: { id: 'team-1' }, error: null },
-      ]);
-
-      // Mock insert
-      mock.setSingleResults('cp_call_transcripts', [
-        {
-          data: {
-            id: 'tx-new',
-            user_id: 'user-1',
-            source: 'paste',
-            title: 'Pasted Transcript',
-            raw_transcript: transcriptText,
-          },
-          error: null,
-        },
-      ]);
+      mockCreateFromPaste.mockResolvedValue({
+        success: true,
+        transcript_id: 'tx-new',
+      });
 
       const request = new NextRequest('http://localhost:3000/api/content-pipeline/transcripts', {
         method: 'POST',
@@ -253,24 +171,15 @@ describe('Content Pipeline — Transcripts API', () => {
       const data = await response.json();
       expect(data.success).toBe(true);
       expect(data.transcript_id).toBe('tx-new');
-
-      // Verify it inserts into correct table
-      expect(mock.client.from).toHaveBeenCalledWith('cp_call_transcripts');
     });
 
-    it('should return 500 when database insert fails', async () => {
+    it('should return 500 when service fails', async () => {
       (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
 
-      mock.setSingleResults('teams', [
-        { data: null, error: null },
-      ]);
-
-      mock.setSingleResults('cp_call_transcripts', [
-        {
-          data: null,
-          error: { message: 'DB error', code: '500' },
-        },
-      ]);
+      mockCreateFromPaste.mockResolvedValue({
+        success: false,
+        error: 'DB error',
+      });
 
       const request = new NextRequest('http://localhost:3000/api/content-pipeline/transcripts', {
         method: 'POST',

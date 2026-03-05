@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FileText, Trash2, Plus, Clock } from 'lucide-react';
 import { WIZARD_STEPS } from '@/lib/types/lead-magnet';
 import type { WizardDraft } from '@/lib/types/lead-magnet';
+import * as wizardDraftApi from '@/frontend/api/wizard-draft';
 
 interface DraftPickerProps {
   drafts: WizardDraft[];
@@ -40,14 +41,8 @@ export function DraftPicker({ drafts, onSelect, onDelete, onStartNew }: DraftPic
     }
     setDeletingId(id);
     try {
-      const response = await fetch('/api/wizard-draft', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-      if (response.ok) {
-        onDelete(id);
-      }
+      await wizardDraftApi.deleteDraft(id);
+      onDelete(id);
     } finally {
       setDeletingId(null);
       setConfirmId(null);

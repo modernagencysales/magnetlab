@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Check, Loader2, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import * as editFeedbackApi from '@/frontend/api/content-pipeline/edit-feedback';
 
 const QUICK_TAGS = [
   'Too formal',
@@ -46,19 +47,12 @@ export function StyleFeedbackToast({ editId, onDismiss }: StyleFeedbackToastProp
 
     setSubmitting(true);
     try {
-      const response = await fetch('/api/content-pipeline/edit-feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          editId,
-          tags: selectedTags,
-          note: note.trim() || null,
-        }),
+      await editFeedbackApi.submitEditFeedback({
+        editId,
+        tags: selectedTags,
+        note: note.trim() || undefined,
       });
-
-      if (response.ok) {
-        setSubmitted(true);
-      }
+      setSubmitted(true);
     } catch {
       // Silent failure — feedback is non-critical
     } finally {

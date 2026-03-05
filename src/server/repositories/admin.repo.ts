@@ -49,7 +49,9 @@ export async function getVersionById(versionId: string): Promise<Record<string, 
   return data as Record<string, unknown>;
 }
 
-export async function getTeamOwner(teamId: string): Promise<{ id: string; owner_id: string } | null> {
+export async function getTeamOwner(
+  teamId: string
+): Promise<{ id: string; owner_id: string } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('teams')
@@ -71,8 +73,61 @@ export interface EmailSubscriberRecord {
   metadata: Record<string, unknown>;
 }
 
+export async function getActivePromptBySlug(slug: string): Promise<Record<string, unknown> | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('ai_prompt_templates')
+    .select('*')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .single();
+  return data ? (data as Record<string, unknown>) : null;
+}
+
+export async function updatePromptTemplate(
+  slug: string,
+  updates: Record<string, unknown>
+): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from('ai_prompt_templates')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('slug', slug);
+  if (error) throw new Error(`admin.updatePromptTemplate: ${error.message}`);
+}
+
+export async function getLatestPromptVersion(
+  promptId: string
+): Promise<{ version: number } | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('ai_prompt_versions')
+    .select('version')
+    .eq('prompt_id', promptId)
+    .order('version', { ascending: false })
+    .limit(1)
+    .single();
+  return data ? (data as { version: number }) : null;
+}
+
+export async function insertPromptVersion(record: {
+  prompt_id: string;
+  version: number;
+  system_prompt: string;
+  user_prompt: string;
+  model: string;
+  temperature: number;
+  max_tokens: number;
+  change_note: string | null;
+  changed_by: string;
+}): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.from('ai_prompt_versions').insert(record);
+  if (error) throw new Error(`admin.insertPromptVersion: ${error.message}`);
+}
+
 export async function upsertEmailSubscribersBatch(
-  records: EmailSubscriberRecord[],
+  records: EmailSubscriberRecord[]
 ): Promise<{ count: number }> {
   if (records.length === 0) return { count: 0 };
   const supabase = createSupabaseAdminClient();

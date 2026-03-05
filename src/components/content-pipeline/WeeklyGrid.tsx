@@ -1,10 +1,15 @@
 'use client';
 
 import { useMemo, Fragment } from 'react';
+import Image from 'next/image';
 import { startOfWeek, addDays, format, isSameDay, isToday as dateFnsIsToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { GridCell } from './GridCell';
-import type { PipelinePost, PostingSlot, TeamProfileWithConnection } from '@/lib/types/content-pipeline';
+import type {
+  PipelinePost,
+  PostingSlot,
+  TeamProfileWithConnection,
+} from '@/lib/types/content-pipeline';
 
 interface WeeklyGridProps {
   profiles: TeamProfileWithConnection[];
@@ -20,10 +25,15 @@ interface WeeklyGridProps {
  * Find the slot for a given profile on a given day-of-week (JS convention: 0=Sun, 1=Mon..6=Sat).
  * Slots with day_of_week=null are "daily" and apply to every day.
  */
-function getSlotForDay(slots: PostingSlot[], profileId: string, dayOfWeek: number): PostingSlot | null {
+function getSlotForDay(
+  slots: PostingSlot[],
+  profileId: string,
+  dayOfWeek: number
+): PostingSlot | null {
   return (
     slots.find(
-      (s) => s.team_profile_id === profileId && (s.day_of_week === dayOfWeek || s.day_of_week === null)
+      (s) =>
+        s.team_profile_id === profileId && (s.day_of_week === dayOfWeek || s.day_of_week === null)
     ) ?? null
   );
 }
@@ -88,7 +98,9 @@ export function WeeklyGrid({
                 today && 'bg-blue-50 dark:bg-blue-950/40'
               )}
             >
-              <p className={cn('text-xs font-semibold', today && 'text-blue-600 dark:text-blue-400')}>
+              <p
+                className={cn('text-xs font-semibold', today && 'text-blue-600 dark:text-blue-400')}
+              >
                 {format(day, 'EEE')}
               </p>
               <p className={cn('text-[10px] text-muted-foreground', today && 'text-blue-500')}>
@@ -102,15 +114,15 @@ export function WeeklyGrid({
         {profiles.map((profile) => (
           <Fragment key={profile.id}>
             {/* Profile name cell */}
-            <div
-              className="flex items-center gap-2 bg-card px-3 py-2"
-            >
+            <div className="flex items-center gap-2 bg-card px-3 py-2">
               {/* Avatar or initials */}
               <div className="relative flex-shrink-0">
                 {profile.avatar_url ? (
-                  <img
+                  <Image
                     src={profile.avatar_url}
                     alt=""
+                    width={28}
+                    height={28}
                     className="h-7 w-7 rounded-full object-cover"
                   />
                 ) : (
@@ -144,10 +156,7 @@ export function WeeklyGrid({
               return (
                 <div
                   key={`${profile.id}-${day.toISOString()}`}
-                  className={cn(
-                    'bg-card p-1',
-                    today && 'bg-blue-50/30 dark:bg-blue-950/10'
-                  )}
+                  className={cn('bg-card p-1', today && 'bg-blue-50/30 dark:bg-blue-950/10')}
                 >
                   <GridCell
                     post={post}
@@ -162,9 +171,7 @@ export function WeeklyGrid({
                       }
                     }}
                     onContextMenu={
-                      post && onPostContextMenu
-                        ? (e) => onPostContextMenu(post, e)
-                        : undefined
+                      post && onPostContextMenu ? (e) => onPostContextMenu(post, e) : undefined
                     }
                   />
                 </div>

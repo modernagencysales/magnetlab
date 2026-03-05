@@ -3,14 +3,27 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
-import type { WritingStyle, StyleProfile, TeamProfile, TeamVoiceProfile } from '@/lib/types/content-pipeline';
+import type {
+  WritingStyle,
+  StyleProfile,
+  TeamProfile,
+  TeamVoiceProfile,
+} from '@/lib/types/content-pipeline';
+import * as teamsApi from '@/frontend/api/teams';
 
 interface StyleMixerProps {
   sourceStyle: WritingStyle;
   onClose: () => void;
 }
 
-type TraitKey = 'tone' | 'hook_patterns' | 'cta_patterns' | 'signature_phrases' | 'banned_phrases' | 'sentence_length' | 'formatting';
+type TraitKey =
+  | 'tone'
+  | 'hook_patterns'
+  | 'cta_patterns'
+  | 'signature_phrases'
+  | 'banned_phrases'
+  | 'sentence_length'
+  | 'formatting';
 
 interface TraitRow {
   key: TraitKey;
@@ -54,7 +67,9 @@ function buildTraitRows(profile: StyleProfile): TraitRow[] {
     rows.push({
       key: 'hook_patterns',
       label: 'Hook Patterns',
-      preview: profile.hook_patterns.slice(0, 2).join(', ') + (profile.hook_patterns.length > 2 ? ` +${profile.hook_patterns.length - 2}` : ''),
+      preview:
+        profile.hook_patterns.slice(0, 2).join(', ') +
+        (profile.hook_patterns.length > 2 ? ` +${profile.hook_patterns.length - 2}` : ''),
       isEmpty: false,
     });
   }
@@ -64,7 +79,9 @@ function buildTraitRows(profile: StyleProfile): TraitRow[] {
     rows.push({
       key: 'cta_patterns',
       label: 'CTA Patterns',
-      preview: profile.cta_patterns.slice(0, 2).join(', ') + (profile.cta_patterns.length > 2 ? ` +${profile.cta_patterns.length - 2}` : ''),
+      preview:
+        profile.cta_patterns.slice(0, 2).join(', ') +
+        (profile.cta_patterns.length > 2 ? ` +${profile.cta_patterns.length - 2}` : ''),
       isEmpty: false,
     });
   }
@@ -74,7 +91,12 @@ function buildTraitRows(profile: StyleProfile): TraitRow[] {
     rows.push({
       key: 'signature_phrases',
       label: 'Signature Phrases',
-      preview: profile.signature_phrases.slice(0, 2).map(p => `"${p}"`).join(', ') + (profile.signature_phrases.length > 2 ? ` +${profile.signature_phrases.length - 2}` : ''),
+      preview:
+        profile.signature_phrases
+          .slice(0, 2)
+          .map((p) => `"${p}"`)
+          .join(', ') +
+        (profile.signature_phrases.length > 2 ? ` +${profile.signature_phrases.length - 2}` : ''),
       isEmpty: false,
     });
   }
@@ -84,7 +106,9 @@ function buildTraitRows(profile: StyleProfile): TraitRow[] {
     rows.push({
       key: 'banned_phrases',
       label: 'Banned Phrases',
-      preview: profile.banned_phrases.slice(0, 2).join(', ') + (profile.banned_phrases.length > 2 ? ` +${profile.banned_phrases.length - 2}` : ''),
+      preview:
+        profile.banned_phrases.slice(0, 2).join(', ') +
+        (profile.banned_phrases.length > 2 ? ` +${profile.banned_phrases.length - 2}` : ''),
       isEmpty: false,
     });
   }
@@ -102,7 +126,8 @@ function buildTraitRows(profile: StyleProfile): TraitRow[] {
   // Formatting (special)
   const f = profile.formatting;
   if (f) {
-    const hasAny = f.uses_emojis || f.uses_lists || f.uses_bold || f.uses_line_breaks || f.avg_paragraphs > 0;
+    const hasAny =
+      f.uses_emojis || f.uses_lists || f.uses_bold || f.uses_line_breaks || f.avg_paragraphs > 0;
     if (hasAny) {
       rows.push({
         key: 'formatting',
@@ -159,7 +184,10 @@ function mergeTraits(
     // cta_style is a free-text string; append new patterns as newline-separated entries
     // to avoid comma-splitting which breaks patterns containing commas
     const existingPatterns = merged.cta_style
-      ? merged.cta_style.split('\n').map(s => s.trim()).filter(Boolean)
+      ? merged.cta_style
+          .split('\n')
+          .map((s) => s.trim())
+          .filter(Boolean)
       : [];
     const merged_patterns = unionArrays(existingPatterns, source.cta_patterns);
     merged.cta_style = merged_patterns.join('\n');
@@ -177,7 +205,8 @@ function mergeTraits(
     if (!merged.content_length) {
       merged.content_length = { linkedin: '', email: '' };
     }
-    merged.content_length.linkedin = SENTENCE_LENGTH_MAP[source.sentence_length] || source.sentence_length;
+    merged.content_length.linkedin =
+      SENTENCE_LENGTH_MAP[source.sentence_length] || source.sentence_length;
   }
 
   if (selectedTraits.has('formatting')) {
@@ -210,17 +239,15 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
   const profile = sourceStyle.style_profile as StyleProfile;
   const traitRows = buildTraitRows(profile);
 
-  const selectedProfile = profiles.find(p => p.id === selectedProfileId) || null;
+  const selectedProfile = profiles.find((p) => p.id === selectedProfileId) || null;
 
   // Fetch team profiles on mount
   const fetchProfiles = useCallback(async () => {
     try {
-      const res = await fetch('/api/teams/profiles');
-      const data = await res.json();
-      setProfiles(data.profiles || []);
-      // Auto-select first profile if available
-      if (data.profiles?.length > 0) {
-        setSelectedProfileId(data.profiles[0].id);
+      const list = await teamsApi.listProfiles();
+      setProfiles((list || []) as TeamProfile[]);
+      if (list?.length > 0) {
+        setSelectedProfileId((list[0] as { id: string }).id);
       }
     } catch {
       toast.error('Failed to load team profiles');
@@ -243,7 +270,7 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
   }, [onClose]);
 
   const toggleTrait = (key: TraitKey) => {
-    setSelectedTraits(prev => {
+    setSelectedTraits((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
         next.delete(key);
@@ -255,7 +282,7 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
   };
 
   const selectAll = () => {
-    setSelectedTraits(new Set(traitRows.map(r => r.key)));
+    setSelectedTraits(new Set(traitRows.map((r) => r.key)));
   };
 
   const clearAll = () => {
@@ -270,18 +297,11 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
       const existingVoice = (selectedProfile.voice_profile || {}) as TeamVoiceProfile;
       const mergedVoice = mergeTraits(existingVoice, profile, selectedTraits);
 
-      const res = await fetch(`/api/teams/profiles/${selectedProfile.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice_profile: mergedVoice }),
-      });
+      await teamsApi.updateProfile(selectedProfile.id, { voice_profile: mergedVoice });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to update profile');
-      }
-
-      toast.success(`Applied ${selectedTraits.size} trait${selectedTraits.size !== 1 ? 's' : ''} to ${selectedProfile.full_name}`);
+      toast.success(
+        `Applied ${selectedTraits.size} trait${selectedTraits.size !== 1 ? 's' : ''} to ${selectedProfile.full_name}`
+      );
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to apply traits');
@@ -296,16 +316,16 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
       role="dialog"
       aria-modal="true"
       aria-label="Style Mixer"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="relative flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border bg-card shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div>
             <h2 className="text-base font-semibold">Apply Style Traits</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              From: {sourceStyle.name}
-            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">From: {sourceStyle.name}</p>
           </div>
           <button
             onClick={onClose}
@@ -339,7 +359,8 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
               >
                 {profiles.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.full_name}{p.title ? ` - ${p.title}` : ''}
+                    {p.full_name}
+                    {p.title ? ` - ${p.title}` : ''}
                   </option>
                 ))}
               </select>
@@ -352,10 +373,7 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">Traits to apply</span>
                 <div className="flex gap-2">
-                  <button
-                    onClick={selectAll}
-                    className="text-xs text-primary hover:underline"
-                  >
+                  <button onClick={selectAll} className="text-xs text-primary hover:underline">
                     Select all
                   </button>
                   <button
@@ -381,9 +399,7 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
                     />
                     <div className="min-w-0 flex-1">
                       <span className="text-sm font-medium">{row.label}</span>
-                      <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                        {row.preview}
-                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground truncate">{row.preview}</p>
                     </div>
                   </label>
                 ))}
@@ -398,7 +414,11 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
                 onClick={() => setShowExamples(!showExamples)}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                {showExamples ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                {showExamples ? (
+                  <ChevronUp className="h-3 w-3" />
+                ) : (
+                  <ChevronDown className="h-3 w-3" />
+                )}
                 {showExamples ? 'Hide' : 'Show'} example posts ({sourceStyle.example_posts.length})
               </button>
               {showExamples && (

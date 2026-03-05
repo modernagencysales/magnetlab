@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { CalendlyEmbed } from '@/components/funnel/public/CalendlyEmbed';
+import * as publicApi from '@/frontend/api/public';
 
 type AnswerType = 'yes_no' | 'text' | 'textarea' | 'multiple_choice';
 
@@ -64,11 +65,11 @@ export function BookCallDrawer({
     }
 
     setLoading(true);
-    fetch(`/api/public/questions/${funnelPageId}`)
-      .then((res) => res.json())
+    publicApi
+      .getQuestions(funnelPageId)
       .then((data) => {
         if (data.questions && data.questions.length > 0) {
-          setQuestions(data.questions);
+          setQuestions(data.questions as Question[]);
         } else {
           setQualificationComplete(true);
           setIsQualified(true);
@@ -86,13 +87,7 @@ export function BookCallDrawer({
   const submitAllAnswers = async (finalAnswers: Record<string, string>) => {
     setSubmitting(true);
     try {
-      const response = await fetch('/api/public/lead', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId, answers: finalAnswers }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to submit');
+      const data = await publicApi.updateLeadQualification({ leadId, answers: finalAnswers });
       setIsQualified(data.isQualified);
       setQualificationComplete(true);
     } catch (err) {

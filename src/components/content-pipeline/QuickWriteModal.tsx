@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Loader2, Sparkles } from 'lucide-react';
+import * as quickWriteApi from '@/frontend/api/content-pipeline/quick-write';
 
 interface QuickWriteModalProps {
   onClose: () => void;
@@ -26,23 +27,12 @@ export function QuickWriteModal({ onClose, onPostCreated, profileId }: QuickWrit
     setError(null);
 
     try {
-      const response = await fetch('/api/content-pipeline/quick-write', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          raw_thought: rawThought,
-          target_audience: targetAudience || undefined,
-          profileId: profileId || undefined,
-        }),
+      const data = await quickWriteApi.quickWrite({
+        raw_thought: rawThought,
+        target_audience: targetAudience || undefined,
+        profileId: profileId ?? undefined,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to generate post');
-      }
-
-      const data = await response.json();
-      setResult(data);
+      setResult(data as typeof result);
       onPostCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');

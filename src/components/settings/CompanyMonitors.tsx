@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Plus, Trash2, Eye, EyeOff, Building2 } from 'lucide-react';
+import * as signalsApi from '@/frontend/api/signals';
 
 interface MonitoredCompany {
   id: string;
@@ -23,10 +24,8 @@ export function CompanyMonitors() {
 
   const fetchCompanies = useCallback(async () => {
     try {
-      const res = await fetch('/api/signals/companies');
-      if (!res.ok) throw new Error('Failed to load companies');
-      const data = await res.json();
-      setCompanies(data.companies || []);
+      const data = await signalsApi.listSignalCompanies();
+      setCompanies((data.companies || []) as MonitoredCompany[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
@@ -54,20 +53,10 @@ export function CompanyMonitors() {
     setAdding(true);
     setError(null);
     try {
-      const res = await fetch('/api/signals/companies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          linkedin_company_url: newUrl.trim(),
-          heyreach_campaign_id: newCampaignId.trim() || undefined,
-        }),
+      await signalsApi.createSignalCompany({
+        linkedin_company_url: newUrl.trim(),
+        heyreach_campaign_id: newCampaignId.trim() || undefined,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to add company');
-      }
-
       setNewUrl('');
       setNewCampaignId('');
       await fetchCompanies();
@@ -80,12 +69,7 @@ export function CompanyMonitors() {
 
   const handleToggle = async (id: string, isActive: boolean) => {
     try {
-      const res = await fetch(`/api/signals/companies/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !isActive }),
-      });
-      if (!res.ok) throw new Error('Failed to update');
+      await signalsApi.updateSignalCompany(id, { is_active: !isActive });
       await fetchCompanies();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update');
@@ -95,8 +79,7 @@ export function CompanyMonitors() {
   const handleDelete = async (id: string) => {
     if (!confirm('Remove this company? Historical data will remain.')) return;
     try {
-      const res = await fetch(`/api/signals/companies/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete');
+      await signalsApi.deleteSignalCompany(id);
       await fetchCompanies();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');

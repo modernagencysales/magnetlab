@@ -1,12 +1,28 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Lightbulb, Loader2, Search, Filter, ChevronDown, ChevronUp, Archive, Sparkles } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  Lightbulb,
+  Loader2,
+  Search,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  Archive,
+  Sparkles,
+} from 'lucide-react';
 import { cn, truncate } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PillarBadge } from './PillarBadge';
 import { IdeaDetailModal } from './IdeaDetailModal';
-import type { ContentIdea, IdeaStatus, ContentPillar, ContentType } from '@/lib/types/content-pipeline';
+import type {
+  ContentIdea,
+  IdeaStatus,
+  ContentPillar,
+  ContentType,
+} from '@/lib/types/content-pipeline';
+import { useIdeas } from '@/frontend/hooks/api/useIdeas';
+import { useWriteFromIdea, useArchiveIdea } from '@/frontend/hooks/api/useIdeasMutations';
 
 const STATUSES: { value: IdeaStatus | ''; label: string }[] = [
   { value: '', label: 'All Statuses' },
@@ -41,11 +57,11 @@ const CONTENT_TYPES: { value: ContentType | ''; label: string }[] = [
 interface IdeasTabProps {
   profileId?: string | null;
   teamId?: string;
+  /** When provided, used as initial data and initial fetch is skipped (Phase 3: server-side data). */
+  initialIdeas?: ContentIdea[];
 }
 
-export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
-  const [ideas, setIdeas] = useState<ContentIdea[]>([]);
-  const [loading, setLoading] = useState(true);
+export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [pillarFilter, setPillarFilter] = useState('');
@@ -55,62 +71,56 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
   const [selectedIdea, setSelectedIdea] = useState<ContentIdea | null>(null);
   const [writingId, setWritingId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
-  // Track all ideas (unfiltered) so we always know about writing ideas
-  const [allIdeas, setAllIdeas] = useState<ContentIdea[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchIdeas = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter) params.append('status', statusFilter);
-      if (pillarFilter) params.append('pillar', pillarFilter);
-      if (typeFilter) params.append('content_type', typeFilter);
-      if (profileId) params.append('team_profile_id', profileId);
-      if (teamId) params.append('team_id', teamId);
+  const {
+    ideas,
+    allIdeas,
+    setIdeas,
+    setAllIdeas,
+    isLoading: loading,
+    refetch: fetchIdeas,
+    refetchWriting: fetchWritingIdeas,
+  } = useIdeas({
+    profileId,
+    teamId,
+    status: statusFilter || undefined,
+    pillar: pillarFilter || undefined,
+    contentType: typeFilter || undefined,
+    initialIdeas,
+  });
 
-      const response = await fetch(`/api/content-pipeline/ideas?${params}`);
-      const data = await response.json();
-      const fetched = data.ideas || [];
-      setIdeas(fetched);
+  const { mutate: writeFromIdeaMutate } = useWriteFromIdea(() => {
+    fetchIdeas(true);
+    fetchWritingIdeas();
+    setSelectedIdea(null);
+  });
+  const { mutate: archiveIdeaMutate } = useArchiveIdea(() => {
+    fetchIdeas(true);
+  });
 
-      // If we have no status filter, use this as the source for allIdeas too
-      if (!statusFilter) {
-        setAllIdeas(fetched);
+  const handleWritePost = useCallback(
+    async (ideaId: string) => {
+      setWritingId(ideaId);
+      const updateToWriting = (prev: ContentIdea[]) =>
+        prev.map((idea) =>
+          idea.id === ideaId ? { ...idea, status: 'writing' as IdeaStatus } : idea
+        );
+      setIdeas(updateToWriting);
+      setAllIdeas(updateToWriting);
+      try {
+        await writeFromIdeaMutate(ideaId);
+      } catch {
+        await fetchIdeas(true);
+      } finally {
+        setWritingId(null);
       }
-    } catch {
-      // Silent failure
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, pillarFilter, typeFilter, profileId, teamId]);
-
-  // Separate fetch for writing ideas (always unfiltered by status)
-  const fetchWritingIdeas = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      params.append('status', 'writing');
-      if (profileId) params.append('team_profile_id', profileId);
-      if (teamId) params.append('team_id', teamId);
-      const response = await fetch(`/api/content-pipeline/ideas?${params}`);
-      const data = await response.json();
-      const writingOnes = data.ideas || [];
-      setAllIdeas(prev => {
-        // Merge writing ideas into allIdeas, replacing existing ones
-        const nonWriting = prev.filter(i => i.status !== 'writing');
-        return [...writingOnes, ...nonWriting];
-      });
-    } catch {
-      // Silent
-    }
-  }, [profileId, teamId]);
-
-  useEffect(() => {
-    fetchIdeas();
-  }, [fetchIdeas]);
+    },
+    [writeFromIdeaMutate, fetchIdeas, setIdeas, setAllIdeas]
+  );
 
   // Poll for writing ideas every 5 seconds while there are any in-progress
-  const writingIdeas = allIdeas.filter(i => i.status === 'writing');
+  const writingIdeas = allIdeas.filter((i) => i.status === 'writing');
   useEffect(() => {
     if (writingIdeas.length > 0) {
       pollRef.current = setInterval(() => {
@@ -126,12 +136,14 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
   // Keyboard shortcut: "w" to write selected idea
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Don't trigger if typing in an input/textarea
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-
       if (e.key === 'w' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        if (selectedIdea && (selectedIdea.status === 'extracted' || selectedIdea.status === 'selected') && !writingId) {
+        if (
+          selectedIdea &&
+          (selectedIdea.status === 'extracted' || selectedIdea.status === 'selected') &&
+          !writingId
+        ) {
           e.preventDefault();
           handleWritePost(selectedIdea.id);
         }
@@ -139,52 +151,14 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIdea, writingId]);
-
-  const handleWritePost = async (ideaId: string) => {
-    setWritingId(ideaId);
-    // Optimistically update the idea status to 'writing' in both lists
-    const updateToWriting = (prev: ContentIdea[]) => prev.map((idea) =>
-      idea.id === ideaId ? { ...idea, status: 'writing' as IdeaStatus } : idea
-    );
-    setIdeas(updateToWriting);
-    setAllIdeas(updateToWriting);
-    try {
-      const response = await fetch(`/api/content-pipeline/ideas/${ideaId}/write`, {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        // Silent refetch — no full-page loader
-        await fetchIdeas(true);
-        await fetchWritingIdeas();
-        setSelectedIdea(null);
-      } else {
-        // Revert on failure
-        await fetchIdeas(true);
-      }
-    } catch {
-      await fetchIdeas(true);
-    } finally {
-      setWritingId(null);
-    }
-  };
+  }, [selectedIdea, writingId, handleWritePost]);
 
   const handleArchive = async (ideaId: string) => {
     setArchivingId(ideaId);
-    // Optimistically remove the idea from the list
     setIdeas((prev) => prev.filter((idea) => idea.id !== ideaId));
     setSelectedIdea(null);
     try {
-      const response = await fetch('/api/content-pipeline/ideas', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ideaId, status: 'archived' }),
-      });
-      if (!response.ok) {
-        await fetchIdeas(true);
-      }
+      await archiveIdeaMutate(ideaId);
     } catch {
       await fetchIdeas(true);
     } finally {
@@ -192,24 +166,28 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
     }
   };
 
-  const filteredIdeas = (searchQuery
-    ? ideas.filter((idea) =>
-        idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        idea.core_insight?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : ideas
-  ).slice().sort((a, b) => {
-    switch (sortBy) {
-      case 'score':
-        return (b.composite_score ?? 0) - (a.composite_score ?? 0);
-      case 'newest':
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      case 'type':
-        return (a.content_type ?? '').localeCompare(b.content_type ?? '');
-      default:
-        return 0;
-    }
-  });
+  const filteredIdeas = (
+    searchQuery
+      ? ideas.filter(
+          (idea) =>
+            idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            idea.core_insight?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : ideas
+  )
+    .slice()
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'score':
+          return (b.composite_score ?? 0) - (a.composite_score ?? 0);
+        case 'newest':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'type':
+          return (a.content_type ?? '').localeCompare(b.content_type ?? '');
+        default:
+          return 0;
+      }
+    });
 
   if (loading) {
     return (
@@ -220,7 +198,7 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
   }
 
   // Separate writing ideas from the filtered list for the top section
-  const filteredNonWriting = filteredIdeas.filter(i => i.status !== 'writing');
+  const filteredNonWriting = filteredIdeas.filter((i) => i.status !== 'writing');
 
   return (
     <div>
@@ -270,7 +248,11 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                {STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             </div>
@@ -280,7 +262,11 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
                 onChange={(e) => setPillarFilter(e.target.value)}
                 className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {PILLARS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                {PILLARS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             </div>
@@ -290,7 +276,11 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="appearance-none rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {CONTENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                {CONTENT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             </div>
@@ -304,7 +294,9 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
           <div className="mb-3 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-yellow-500 animate-pulse" />
             <h3 className="text-sm font-semibold">AI Writing ({writingIdeas.length})</h3>
-            <span className="text-xs text-muted-foreground">Posts will appear in Drafts when complete</span>
+            <span className="text-xs text-muted-foreground">
+              Posts will appear in Drafts when complete
+            </span>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             {writingIdeas.map((idea) => (
@@ -347,7 +339,9 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
           <Lightbulb className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-muted-foreground">No ideas found</p>
           <p className="mt-1 text-sm text-muted-foreground/70">
-            {ideas.length === 0 ? 'Process transcripts to extract content ideas' : 'Try adjusting your filters'}
+            {ideas.length === 0
+              ? 'Process transcripts to extract content ideas'
+              : 'Try adjusting your filters'}
           </p>
         </div>
       ) : filteredNonWriting.length === 0 ? null : (
@@ -362,12 +356,16 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
                 <PillarBadge pillar={idea.content_pillar} />
                 <StatusBadge status={idea.status} />
                 {idea.composite_score != null && (
-                  <span className={cn(
-                    'rounded-full px-2 py-0.5 text-xs font-semibold',
-                    idea.composite_score >= 7 ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
-                    idea.composite_score >= 4 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
-                    'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-                  )}>
+                  <span
+                    className={cn(
+                      'rounded-full px-2 py-0.5 text-xs font-semibold',
+                      idea.composite_score >= 7
+                        ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                        : idea.composite_score >= 4
+                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
+                          : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                    )}
+                  >
                     {idea.composite_score.toFixed(1)}
                   </span>
                 )}
@@ -409,7 +407,11 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
                       className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors"
                       title="Archive idea"
                     >
-                      {archivingId === idea.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                      {archivingId === idea.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Archive className="h-3.5 w-3.5" />
+                      )}
                     </button>
                   )}
                   {(idea.status === 'extracted' || idea.status === 'selected') && (
@@ -421,7 +423,11 @@ export function IdeasTab({ profileId, teamId }: IdeasTabProps) {
                       disabled={writingId === idea.id}
                       className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                     >
-                      {writingId === idea.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Write Post'}
+                      {writingId === idea.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        'Write Post'
+                      )}
                     </button>
                   )}
                 </div>

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { BackLink, FormError, IconPicker, RESOURCE_ICONS } from '@/components/assets';
+import * as externalResourcesApi from '@/frontend/api/external-resources';
 
 function isValidUrl(urlString: string): boolean {
   try {
@@ -45,25 +46,12 @@ function NewExternalResourceForm() {
     setError(null);
 
     try {
-      const response = await fetch('/api/external-resources', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          url: url.trim(),
-          icon,
-        }),
+      const data = await externalResourcesApi.createExternalResource({
+        title: title.trim(),
+        url: url.trim(),
+        icon,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create external resource');
-      }
-
-      const data = await response.json();
-
       if (createPage && data.resource?.id) {
-        // Redirect to funnel builder for this resource
         router.push(`/assets/external/${data.resource.id}/funnel`);
       } else {
         router.push('/pages');

@@ -5,6 +5,7 @@ import { Download, ChevronLeft, ChevronRight, Filter, CheckCircle2, XCircle, Loa
 import type { FunnelLead } from '@/lib/types/funnel';
 
 import { logError } from '@/lib/utils/logger';
+import * as leadsApi from '@/frontend/api/leads';
 
 interface LeadsTableProps {
   funnelId?: string;
@@ -22,21 +23,15 @@ export function LeadsTable({ funnelId, leadMagnetId }: LeadsTableProps) {
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.set('limit', String(limit));
-      params.set('offset', String(offset));
-
-      if (funnelId) params.set('funnelId', funnelId);
-      if (leadMagnetId) params.set('leadMagnetId', leadMagnetId);
-      if (filter === 'qualified') params.set('qualified', 'true');
-      if (filter === 'not-qualified') params.set('qualified', 'false');
-
-      const response = await fetch(`/api/leads?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch leads');
-
-      const data = await response.json();
-      setLeads(data.leads);
-      setTotal(data.total);
+      const data = await leadsApi.listLeads({
+        funnelId: funnelId ?? undefined,
+        leadMagnetId: leadMagnetId ?? undefined,
+        qualified: filter === 'qualified' ? true : filter === 'not-qualified' ? false : undefined,
+        limit,
+        offset,
+      });
+      setLeads((data.leads as FunnelLead[]));
+      setTotal(data.total ?? 0);
     } catch (err) {
       logError('leads/table', err, { step: 'fetch_leads_error' });
     } finally {
@@ -49,13 +44,21 @@ export function LeadsTable({ funnelId, leadMagnetId }: LeadsTableProps) {
   }, [fetchLeads]);
 
   const handleExport = async () => {
-    const params = new URLSearchParams();
-    if (funnelId) params.set('funnelId', funnelId);
-    if (leadMagnetId) params.set('leadMagnetId', leadMagnetId);
-    if (filter === 'qualified') params.set('qualified', 'true');
-    if (filter === 'not-qualified') params.set('qualified', 'false');
-
-    window.location.href = `/api/leads/export?${params}`;
+    try {
+      const { blob, filename } = await leadsApi.exportLeads({
+        funnelId: funnelId ?? undefined,
+        leadMagnetId: leadMagnetId ?? undefined,
+        qualified: filter === 'qualified' ? true : filter === 'not-qualified' ? false : undefined,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      logError('leads/table', err, { step: 'export_error' });
+    }
   };
 
   const totalPages = Math.ceil(total / limit);

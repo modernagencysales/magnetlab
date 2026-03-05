@@ -1,5 +1,6 @@
 'use client';
 
+import * as publicApi from '@/frontend/api/public';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageSquare, Send, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -80,17 +81,12 @@ export function GPTChatTool({ config, leadMagnetId, theme, primaryColor }: GPTCh
 
     async function loadExistingMessages() {
       try {
-        const res = await fetch(
-          `/api/public/chat?leadMagnetId=${encodeURIComponent(leadMagnetId)}&sessionToken=${encodeURIComponent(sessionToken!)}`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (data.messages && data.messages.length > 0) {
-            setMessages(data.messages);
-          }
-          if (data.chatId) {
-            setChatId(data.chatId);
-          }
+        const data = await publicApi.getChatMessages({ leadMagnetId, sessionToken: sessionToken! });
+        if (data.messages && data.messages.length > 0) {
+          setMessages(data.messages as ChatMessage[]);
+        }
+        if (data.chatId) {
+          setChatId(data.chatId);
         }
       } catch {
         // Silently fail - user can still start a new conversation
@@ -140,17 +136,15 @@ export function GPTChatTool({ config, leadMagnetId, theme, primaryColor }: GPTCh
 
     try {
       abortRef.current = new AbortController();
-      const response = await fetch('/api/public/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const response = await publicApi.sendChatMessage(
+        {
           leadMagnetId,
           sessionToken,
           message: userMessage.content,
-          chatId,
-        }),
-        signal: abortRef.current.signal,
-      });
+          chatId: chatId ?? undefined,
+        },
+        abortRef.current.signal
+      );
 
       if (!response.ok) {
         throw new Error(`Chat request failed (${response.status})`);

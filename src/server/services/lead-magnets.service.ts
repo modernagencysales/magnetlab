@@ -8,7 +8,12 @@
 import * as leadMagnetsRepo from '@/server/repositories/lead-magnets.repo';
 import { checkResourceLimit } from '@/lib/auth/plan-limits';
 import { getPostHogServerClient } from '@/lib/posthog';
-import { validateBody, createLeadMagnetSchema, updateContentBodySchema, spreadsheetImportSchema } from '@/lib/validations/api';
+import {
+  validateBody,
+  createLeadMagnetSchema,
+  updateContentBodySchema,
+  spreadsheetImportSchema,
+} from '@/lib/validations/api';
 import { tasks } from '@trigger.dev/sdk/v3';
 import { logApiError } from '@/lib/api/errors';
 import {
@@ -46,7 +51,7 @@ import type { IdeationJobInput, CreateJobResponse } from '@/lib/types/background
 
 export async function listLeadMagnets(
   scope: DataScope,
-  opts: { status?: string | null; limit?: number; offset?: number },
+  opts: { status?: string | null; limit?: number; offset?: number }
 ) {
   const { data, count } = await leadMagnetsRepo.findLeadMagnets(scope, opts);
   return { leadMagnets: data, total: count, limit: opts.limit ?? 50, offset: opts.offset ?? 0 };
@@ -68,7 +73,10 @@ export async function createLeadMagnet(scope: DataScope, body: Record<string, un
 
   const validation = validateBody(body, createLeadMagnetSchema);
   if (!validation.success) {
-    throw Object.assign(new Error(validation.error), { statusCode: 400, details: validation.details });
+    throw Object.assign(new Error(validation.error), {
+      statusCode: 400,
+      details: validation.details,
+    });
   }
 
   const v = validation.data;
@@ -96,9 +104,12 @@ export async function createLeadMagnet(scope: DataScope, body: Record<string, un
   return data;
 }
 
-export async function updateLeadMagnet(scope: DataScope, id: string, body: Record<string, unknown>) {
+export async function updateLeadMagnet(
+  scope: DataScope,
+  id: string,
+  body: Record<string, unknown>
+) {
   // Strip immutable fields
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id: _id, user_id: _userId, team_id: _teamId, created_at: _createdAt, ...updates } = body;
   return leadMagnetsRepo.updateLeadMagnet(scope, id, updates);
 }
@@ -114,7 +125,7 @@ export async function deleteLeadMagnet(scope: DataScope, id: string): Promise<vo
 export async function updateCatalogFields(
   userId: string,
   id: string,
-  body: { pain_point?: string; target_audience?: string; short_description?: string },
+  body: { pain_point?: string; target_audience?: string; short_description?: string }
 ): Promise<void> {
   const magnet = await leadMagnetsRepo.findLeadMagnetByOwner(userId, id);
   if (!magnet) throw Object.assign(new Error('Lead magnet not found'), { statusCode: 404 });
@@ -123,7 +134,8 @@ export async function updateCatalogFields(
   const updates: Record<string, string | null> = {};
   if ('pain_point' in body) updates.pain_point = body.pain_point?.trim() || null;
   if ('target_audience' in body) updates.target_audience = body.target_audience?.trim() || null;
-  if ('short_description' in body) updates.short_description = body.short_description?.trim() || null;
+  if ('short_description' in body)
+    updates.short_description = body.short_description?.trim() || null;
 
   if (Object.keys(updates).length === 0) {
     throw Object.assign(new Error('No fields to update'), { statusCode: 400 });
@@ -137,11 +149,14 @@ export async function updateCatalogFields(
 export async function updatePolishedContent(
   scope: DataScope,
   id: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ): Promise<{ polishedContent: unknown }> {
   const validation = validateBody(body, updateContentBodySchema);
   if (!validation.success) {
-    throw Object.assign(new Error(validation.error), { statusCode: 400, details: validation.details });
+    throw Object.assign(new Error(validation.error), {
+      statusCode: 400,
+      details: validation.details,
+    });
   }
 
   const polishedContent = validation.data.polishedContent as unknown as PolishedContent;
@@ -169,7 +184,7 @@ export async function updatePolishedContent(
     scope,
     id,
     { polished_content: polishedContent },
-    'polished_content',
+    'polished_content'
   );
 
   // Edit capture fire-and-forget (team only)
@@ -179,8 +194,13 @@ export async function updatePolishedContent(
 
     if (oldContent.heroSummary && polishedContent.heroSummary) {
       captureAndClassifyEdit(supabase, {
-        teamId, profileId: null, contentType: 'lead_magnet', contentId: id,
-        fieldName: 'heroSummary', originalText: oldContent.heroSummary, editedText: polishedContent.heroSummary,
+        teamId,
+        profileId: null,
+        contentType: 'lead_magnet',
+        contentId: id,
+        fieldName: 'heroSummary',
+        originalText: oldContent.heroSummary,
+        editedText: polishedContent.heroSummary,
       }).catch(() => {});
     }
 
@@ -193,14 +213,24 @@ export async function updatePolishedContent(
 
       if (oldSection.introduction && newSection.introduction) {
         captureAndClassifyEdit(supabase, {
-          teamId, profileId: null, contentType: 'lead_magnet', contentId: id,
-          fieldName: `section_${i}_introduction`, originalText: oldSection.introduction, editedText: newSection.introduction,
+          teamId,
+          profileId: null,
+          contentType: 'lead_magnet',
+          contentId: id,
+          fieldName: `section_${i}_introduction`,
+          originalText: oldSection.introduction,
+          editedText: newSection.introduction,
         }).catch(() => {});
       }
       if (oldSection.keyTakeaway && newSection.keyTakeaway) {
         captureAndClassifyEdit(supabase, {
-          teamId, profileId: null, contentType: 'lead_magnet', contentId: id,
-          fieldName: `section_${i}_keyTakeaway`, originalText: oldSection.keyTakeaway, editedText: newSection.keyTakeaway,
+          teamId,
+          profileId: null,
+          contentType: 'lead_magnet',
+          contentId: id,
+          fieldName: `section_${i}_keyTakeaway`,
+          originalText: oldSection.keyTakeaway,
+          editedText: newSection.keyTakeaway,
         }).catch(() => {});
       }
       const oldBlocks = oldSection.blocks || [];
@@ -210,8 +240,13 @@ export async function updatePolishedContent(
         const newBlock = newBlocks[j];
         if (oldBlock?.content && newBlock?.content) {
           captureAndClassifyEdit(supabase, {
-            teamId, profileId: null, contentType: 'lead_magnet', contentId: id,
-            fieldName: `section_${i}_block_${j}_content`, originalText: oldBlock.content, editedText: newBlock.content,
+            teamId,
+            profileId: null,
+            contentType: 'lead_magnet',
+            contentId: id,
+            fieldName: `section_${i}_block_${j}_content`,
+            originalText: oldBlock.content,
+            editedText: newBlock.content,
           }).catch(() => {});
         }
       }
@@ -224,10 +259,16 @@ export async function updatePolishedContent(
 // ─── Generate content (concept → extracted → polished) ──────────────────────
 
 export async function generateAndPolishContent(scope: DataScope, id: string) {
-  const leadMagnet = await leadMagnetsRepo.findLeadMagnetScoped(scope, id, 'id, title, concept, user_id');
+  const leadMagnet = await leadMagnetsRepo.findLeadMagnetScoped(
+    scope,
+    id,
+    'id, title, concept, user_id'
+  );
   if (!leadMagnet) throw Object.assign(new Error('Lead magnet not found'), { statusCode: 404 });
   if (!leadMagnet.concept) {
-    throw Object.assign(new Error('Lead magnet has no concept — cannot generate content'), { statusCode: 400 });
+    throw Object.assign(new Error('Lead magnet has no concept — cannot generate content'), {
+      statusCode: 400,
+    });
   }
 
   const concept = leadMagnet.concept as LeadMagnetConcept;
@@ -243,13 +284,18 @@ export async function generateAndPolishContent(scope: DataScope, id: string) {
 
   const extractedContent = await generateFullContent(leadMagnet.title, concept, knowledgeContext);
 
-  await leadMagnetsRepo.updateLeadMagnetNoReturn(scope, id, { extracted_content: extractedContent });
+  await leadMagnetsRepo.updateLeadMagnetNoReturn(scope, id, {
+    extracted_content: extractedContent,
+  });
 
   const polishedContent = await polishLeadMagnetContent(extractedContent, concept);
   const polishedAt = new Date().toISOString();
 
   try {
-    await leadMagnetsRepo.updateLeadMagnetNoReturn(scope, id, { polished_content: polishedContent, polished_at: polishedAt });
+    await leadMagnetsRepo.updateLeadMagnetNoReturn(scope, id, {
+      polished_content: polishedContent,
+      polished_at: polishedAt,
+    });
   } catch (err) {
     logApiError('lead-magnets.service/generateAndPolishContent/savePolished', err, { id });
     // extractedContent was already saved — partial success is OK
@@ -269,10 +315,16 @@ export async function generateAndPolishContent(scope: DataScope, id: string) {
 // ─── Polish content (extracted → polished) ──────────────────────────────────
 
 export async function polishContent(scope: DataScope, id: string) {
-  const leadMagnet = await leadMagnetsRepo.findLeadMagnetScoped(scope, id, 'id, extracted_content, concept, user_id');
+  const leadMagnet = await leadMagnetsRepo.findLeadMagnetScoped(
+    scope,
+    id,
+    'id, extracted_content, concept, user_id'
+  );
   if (!leadMagnet) throw Object.assign(new Error('Lead magnet not found'), { statusCode: 404 });
   if (!leadMagnet.extracted_content) {
-    throw Object.assign(new Error('Lead magnet has no extracted content to polish'), { statusCode: 400 });
+    throw Object.assign(new Error('Lead magnet has no extracted content to polish'), {
+      statusCode: 400,
+    });
   }
   if (!leadMagnet.concept) {
     throw Object.assign(new Error('Lead magnet has no concept'), { statusCode: 400 });
@@ -306,7 +358,7 @@ export async function generateScreenshots(scope: DataScope, userId: string, id: 
   const leadMagnet = await leadMagnetsRepo.findLeadMagnetScoped(
     scope,
     id,
-    'id, user_id, polished_content, interactive_config, extracted_content',
+    'id, user_id, polished_content, interactive_config, extracted_content'
   );
   if (!leadMagnet) throw Object.assign(new Error('Lead magnet not found'), { statusCode: 404 });
 
@@ -318,23 +370,27 @@ export async function generateScreenshots(scope: DataScope, userId: string, id: 
   if (!hasPolished && !hasInteractive && !hasExtracted) {
     throw Object.assign(
       new Error('No content available to screenshot. Create content or an interactive tool first.'),
-      { statusCode: 400 },
+      { statusCode: 400 }
     );
   }
 
   const funnelPage = await leadMagnetsRepo.findPublishedFunnelPage(id);
   if (!funnelPage) {
     throw Object.assign(
-      new Error('No published funnel page found for this lead magnet. Publish a funnel page first.'),
-      { statusCode: 400 },
+      new Error(
+        'No published funnel page found for this lead magnet. Publish a funnel page first.'
+      ),
+      { statusCode: 400 }
     );
   }
 
   const username = await leadMagnetsRepo.getUsernameByUserId(funnelPage.user_id);
   if (!username) {
     throw Object.assign(
-      new Error('Username not set. Go to Settings to set your username before generating screenshots.'),
-      { statusCode: 400 },
+      new Error(
+        'Username not set. Go to Settings to set your username before generating screenshots.'
+      ),
+      { statusCode: 400 }
     );
   }
 
@@ -352,15 +408,17 @@ export async function generateScreenshots(scope: DataScope, userId: string, id: 
   const screenshotUrls: ScreenshotUrl[] = [];
   for (const result of screenshotResults) {
     const prefix = result.type === 'hero' ? 'hero' : `section-${result.sectionIndex}`;
-    const [url1200, url1080] = await Promise.all([
-      leadMagnetsRepo.uploadScreenshotToStorage(userId, id, prefix, '1200x627', result.buffer1200x627),
-      leadMagnetsRepo.uploadScreenshotToStorage(userId, id, prefix, '1080x1080', result.buffer1080x1080),
-    ]);
+    const url1080 = await leadMagnetsRepo.uploadScreenshotToStorage(
+      userId,
+      id,
+      prefix,
+      '1080x1080',
+      result.buffer1080x1080
+    );
     screenshotUrls.push({
       type: result.type,
       sectionIndex: result.sectionIndex,
       sectionName: result.sectionName,
-      url1200x627: url1200,
       url1080x1080: url1080,
     });
   }
@@ -408,7 +466,7 @@ export function getExtractionQuestionsForArchetype(archetype: LeadMagnetArchetyp
 export async function getContextualQuestions(
   archetype: LeadMagnetArchetype,
   concept: LeadMagnetConcept,
-  businessContext: BusinessContext,
+  businessContext: BusinessContext
 ) {
   const questions = await getContextAwareExtractionQuestions(archetype, concept, businessContext);
   return { questions };
@@ -416,12 +474,14 @@ export async function getContextualQuestions(
 
 export async function startExtraction(
   userId: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ): Promise<CreateJobResponse> {
   const { archetype, concept, answers, transcriptInsights, businessContext, leadMagnetId } = body;
 
   if (!archetype || !concept || !answers) {
-    throw Object.assign(new Error('Missing required fields: archetype, concept, answers'), { statusCode: 400 });
+    throw Object.assign(new Error('Missing required fields: archetype, concept, answers'), {
+      statusCode: 400,
+    });
   }
 
   if (leadMagnetId) {
@@ -436,7 +496,9 @@ export async function startExtraction(
     concept,
     answers,
     transcriptInsights,
-    ...(body.action === 'generate-interactive' ? { action: 'generate-interactive' as const, businessContext } : {}),
+    ...(body.action === 'generate-interactive'
+      ? { action: 'generate-interactive' as const, businessContext }
+      : {}),
   };
 
   const job = await leadMagnetsRepo.createBackgroundJob(userId, 'extraction', jobInput);
@@ -460,11 +522,13 @@ export async function generateFromExtraction(
     concept: LeadMagnetConcept;
     answers: Record<string, string>;
     leadMagnetId?: string;
-  },
+  }
 ) {
   const { archetype, concept, answers, leadMagnetId } = body;
   if (!archetype || !concept || !answers) {
-    throw Object.assign(new Error('Missing required fields: archetype, concept, and answers'), { statusCode: 400 });
+    throw Object.assign(new Error('Missing required fields: archetype, concept, and answers'), {
+      statusCode: 400,
+    });
   }
   const extractedContent = await processContentExtraction(archetype, concept, answers);
 
@@ -487,11 +551,17 @@ interface IdeateRequestBody extends BusinessContext {
   };
 }
 
-export async function startIdeation(userId: string, body: IdeateRequestBody): Promise<CreateJobResponse> {
+export async function startIdeation(
+  userId: string,
+  body: IdeateRequestBody
+): Promise<CreateJobResponse> {
   const { sources, ...context } = body;
 
   if (!context.businessDescription || !context.businessType) {
-    throw Object.assign(new Error('Missing required fields: businessDescription and businessType'), { statusCode: 400 });
+    throw Object.assign(
+      new Error('Missing required fields: businessDescription and businessType'),
+      { statusCode: 400 }
+    );
   }
 
   // Check usage limits
@@ -506,13 +576,16 @@ export async function startIdeation(userId: string, body: IdeateRequestBody): Pr
     } else if (canCreate === false) {
       throw Object.assign(
         new Error('Monthly lead magnet limit reached. Upgrade your plan for more.'),
-        { statusCode: 429 },
+        { statusCode: 429 }
       );
     }
   } catch (err) {
     // If it's our own statusCode error, rethrow
     if (err && typeof err === 'object' && 'statusCode' in err) throw err;
-    logApiError('lead-magnets.service/startIdeation/usage-check', err, { userId, note: 'RPC unavailable' });
+    logApiError('lead-magnets.service/startIdeation/usage-check', err, {
+      userId,
+      note: 'RPC unavailable',
+    });
   }
 
   // Save business context to brand_kit (non-critical)
@@ -546,14 +619,20 @@ export async function startIdeation(userId: string, body: IdeateRequestBody): Pr
       results: context.results || [],
       successExample: context.successExample,
     },
-    sources: sources ? {
-      callTranscriptInsights: sources.callTranscriptInsights,
-      competitorAnalysis: sources.competitorAnalysis,
-    } : undefined,
+    sources: sources
+      ? {
+          callTranscriptInsights: sources.callTranscriptInsights,
+          competitorAnalysis: sources.competitorAnalysis,
+        }
+      : undefined,
   };
 
   const job = await leadMagnetsRepo.createBackgroundJob(userId, 'ideation', jobInput);
-  const handle = await tasks.trigger('ideate-lead-magnet', { jobId: job.id, userId, input: jobInput });
+  const handle = await tasks.trigger('ideate-lead-magnet', {
+    jobId: job.id,
+    userId,
+    input: jobInput,
+  });
   await leadMagnetsRepo.updateJobTriggerId(job.id, handle.id);
 
   return { jobId: job.id, status: 'pending' };
@@ -564,12 +643,12 @@ export async function startIdeation(userId: string, body: IdeateRequestBody): Pr
 export async function startWritePost(
   userId: string,
   input: PostWriterInput,
-  leadMagnetId?: string,
+  leadMagnetId?: string
 ): Promise<CreateJobResponse> {
   if (!input.leadMagnetTitle || !input.contents || !input.problemSolved) {
     throw Object.assign(
       new Error('Missing required fields: leadMagnetTitle, contents, problemSolved'),
-      { statusCode: 400 },
+      { statusCode: 400 }
     );
   }
 
@@ -661,7 +740,7 @@ async function buildFunnelPage(
   headline: string,
   subline: string,
   socialProof: string,
-  format: string,
+  format: string
 ): Promise<{ id: string }> {
   let slug = generateSlug(title);
   let suffix = 0;
@@ -695,12 +774,19 @@ async function buildFunnelPage(
   }
 }
 
-export async function importLeadMagnet(scope: DataScope, userId: string, body: Record<string, unknown>) {
+export async function importLeadMagnet(
+  scope: DataScope,
+  userId: string,
+  body: Record<string, unknown>
+) {
   // Spreadsheet import path
   if (body.importType === 'spreadsheet') {
     const validation = validateBody(body, spreadsheetImportSchema);
     if (!validation.success) {
-      throw Object.assign(new Error(validation.error), { statusCode: 400, details: validation.details });
+      throw Object.assign(new Error(validation.error), {
+        statusCode: 400,
+        details: validation.details,
+      });
     }
 
     let parsed;
@@ -708,8 +794,10 @@ export async function importLeadMagnet(scope: DataScope, userId: string, body: R
       parsed = parseSpreadsheet(validation.data.spreadsheetData);
     } catch (parseError) {
       throw Object.assign(
-        new Error(parseError instanceof Error ? parseError.message : 'Failed to parse spreadsheet data'),
-        { statusCode: 400 },
+        new Error(
+          parseError instanceof Error ? parseError.message : 'Failed to parse spreadsheet data'
+        ),
+        { statusCode: 400 }
       );
     }
 
@@ -720,7 +808,9 @@ export async function importLeadMagnet(scope: DataScope, userId: string, body: R
         description: validation.data.description,
       });
     } catch {
-      throw Object.assign(new Error('Failed to generate calculator from spreadsheet'), { statusCode: 502 });
+      throw Object.assign(new Error('Failed to generate calculator from spreadsheet'), {
+        statusCode: 502,
+      });
     }
 
     const calcTitle = interactiveConfig.headline || validation.data.title || 'Imported Calculator';
@@ -741,7 +831,7 @@ export async function importLeadMagnet(scope: DataScope, userId: string, body: R
         },
         interactive_config: interactiveConfig,
       },
-      'id, title',
+      'id, title'
     );
 
     const funnelPage = await buildFunnelPage(
@@ -752,7 +842,7 @@ export async function importLeadMagnet(scope: DataScope, userId: string, body: R
       interactiveConfig.headline || 'Try Our Calculator',
       interactiveConfig.description || 'Get instant results',
       'Built from real spreadsheet calculations',
-      'Calculator',
+      'Calculator'
     );
 
     return {
@@ -767,7 +857,9 @@ export async function importLeadMagnet(scope: DataScope, userId: string, body: R
   // Text/URL import path
   const { url, content } = body as { url?: string; content?: string };
   if (!url && !content) {
-    throw Object.assign(new Error('Please provide either a URL or content to import'), { statusCode: 400 });
+    throw Object.assign(new Error('Please provide either a URL or content to import'), {
+      statusCode: 400,
+    });
   }
 
   let analysisContent = '';
@@ -790,7 +882,7 @@ export async function importLeadMagnet(scope: DataScope, userId: string, body: R
         isImported: true,
       },
     },
-    'id, title',
+    'id, title'
   );
 
   const funnelPage = await buildFunnelPage(
@@ -801,7 +893,7 @@ export async function importLeadMagnet(scope: DataScope, userId: string, body: R
     extracted.headline,
     extracted.subline,
     extracted.socialProof,
-    extracted.format,
+    extracted.format
   );
 
   return { success: true, leadMagnetId: leadMagnet.id, funnelPageId: funnelPage.id, extracted };
@@ -810,6 +902,7 @@ export async function importLeadMagnet(scope: DataScope, userId: string, body: R
 // ─── Error helper ─────────────────────────────────────────────────────────────
 
 export function getStatusCode(err: unknown): number {
-  if (err && typeof err === 'object' && 'statusCode' in err) return (err as { statusCode: number }).statusCode;
+  if (err && typeof err === 'object' && 'statusCode' in err)
+    return (err as { statusCode: number }).statusCode;
   return 500;
 }
