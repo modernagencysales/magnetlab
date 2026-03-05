@@ -12,14 +12,14 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 import * as emailSequenceRepo from '@/server/repositories/email-sequence.repo';
 
-export async function generate(leadMagnetId: string, useAI: boolean, userId: string) {
-  const { data: leadMagnet, error: lmError } = await emailSequenceRepo.getLeadMagnetForUser(leadMagnetId, userId);
+export async function generate(leadMagnetId: string, useAI: boolean, scope: DataScope) {
+  const { data: leadMagnet, error: lmError } = await emailSequenceRepo.getLeadMagnetByScope(leadMagnetId, scope);
   if (lmError || !leadMagnet) {
     return { success: false, error: 'not_found' as const, message: 'Lead magnet not found' };
   }
 
-  const brandKit = await emailSequenceRepo.getBrandKitForUser(userId);
-  const userName = await emailSequenceRepo.getUserName(userId);
+  const brandKit = await emailSequenceRepo.getBrandKitByScope(scope);
+  const userName = await emailSequenceRepo.getUserName(scope.userId);
   const senderName = brandKit?.sender_name || userName || 'Your Friend';
 
   const concept = leadMagnet.concept as { contents?: string; deliveryFormat?: string } | null;
@@ -52,7 +52,7 @@ export async function generate(leadMagnetId: string, useAI: boolean, userId: str
 
   const { data: emailSequence, error: upsertError } = await emailSequenceRepo.upsertEmailSequence({
     leadMagnetId,
-    userId,
+    userId: leadMagnet.user_id,
     teamId: leadMagnet.team_id ?? null,
     emails,
     status: 'draft',

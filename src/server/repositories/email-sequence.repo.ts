@@ -22,6 +22,18 @@ export async function getLeadMagnetForUser(leadMagnetId: string, userId: string)
   return { data, error: null };
 }
 
+export async function getLeadMagnetByScope(leadMagnetId: string, scope: DataScope) {
+  const supabase = createSupabaseAdminClient();
+  let q = supabase
+    .from('lead_magnets')
+    .select('id, user_id, team_id, title, archetype, concept, extracted_content')
+    .eq('id', leadMagnetId);
+  q = applyScope(q, scope);
+  const { data, error } = await q.single();
+  if (error || !data) return { data: null, error };
+  return { data, error: null };
+}
+
 export async function getBrandKitForUser(userId: string) {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
@@ -29,6 +41,16 @@ export async function getBrandKitForUser(userId: string) {
     .select('business_description, sender_name, best_video_url, best_video_title, content_links, community_url')
     .eq('user_id', userId)
     .single();
+  return data;
+}
+
+export async function getBrandKitByScope(scope: DataScope) {
+  const supabase = createSupabaseAdminClient();
+  let q = supabase
+    .from('brand_kits')
+    .select('business_description, sender_name, best_video_url, best_video_title, content_links, community_url');
+  q = applyScope(q, scope);
+  const { data } = await q.single();
   return data;
 }
 
