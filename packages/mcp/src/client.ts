@@ -201,8 +201,12 @@ export class MagnetLabClient {
   // Funnels
   // ============================================================
 
-  async listFunnels() {
-    return this.request<{ funnels: unknown[] }>('GET', `/funnel/all`)
+  async listFunnels(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams()
+    if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.offset) searchParams.set('offset', String(params.offset))
+    const qs = searchParams.toString()
+    return this.request<{ funnels: unknown[] }>('GET', `/funnel/all${qs ? `?${qs}` : ''}`)
   }
 
   async getFunnel(id: string) {
@@ -397,8 +401,12 @@ export class MagnetLabClient {
   // Email System — Flows
   // ============================================================
 
-  async listEmailFlows() {
-    return this.request<{ flows: unknown[] }>('GET', '/email/flows')
+  async listEmailFlows(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams()
+    if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.offset) searchParams.set('offset', String(params.offset))
+    const qs = searchParams.toString()
+    return this.request<{ flows: unknown[] }>('GET', `/email/flows${qs ? `?${qs}` : ''}`)
   }
 
   async getEmailFlow(id: string) {
@@ -445,8 +453,12 @@ export class MagnetLabClient {
   // Email System — Broadcasts
   // ============================================================
 
-  async listBroadcasts() {
-    return this.request<{ broadcasts: unknown[] }>('GET', '/email/broadcasts')
+  async listBroadcasts(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams()
+    if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.offset) searchParams.set('offset', String(params.offset))
+    const qs = searchParams.toString()
+    return this.request<{ broadcasts: unknown[] }>('GET', `/email/broadcasts${qs ? `?${qs}` : ''}`)
   }
 
   async getBroadcast(id: string) {
@@ -504,8 +516,12 @@ export class MagnetLabClient {
   // Content Pipeline - Transcripts
   // ============================================================
 
-  async listTranscripts() {
-    return this.request<{ transcripts: unknown[] }>('GET', `/content-pipeline/transcripts`)
+  async listTranscripts(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams()
+    if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.offset) searchParams.set('offset', String(params.offset))
+    const qs = searchParams.toString()
+    return this.request<{ transcripts: unknown[] }>('GET', `/content-pipeline/transcripts${qs ? `?${qs}` : ''}`)
   }
 
   async submitTranscript(params: { transcript: string; title?: string }) {
@@ -528,6 +544,8 @@ export class MagnetLabClient {
     topic?: string
     min_quality?: number
     since?: string
+    limit?: number
+    offset?: number
   }) {
     const searchParams = new URLSearchParams()
     if (params.query) searchParams.set('q', params.query)
@@ -537,6 +555,8 @@ export class MagnetLabClient {
     if (params.topic) searchParams.set('topic', params.topic)
     if (params.min_quality) searchParams.set('min_quality', String(params.min_quality))
     if (params.since) searchParams.set('since', params.since)
+    if (params.limit) searchParams.set('limit', String(params.limit))
+    if (params.offset) searchParams.set('offset', String(params.offset))
     return this.request<{ entries?: unknown[]; tags?: unknown[]; total_count?: number }>(
       'GET',
       `/content-pipeline/knowledge?${searchParams}`
@@ -584,11 +604,14 @@ export class MagnetLabClient {
     )
   }
 
-  async listKnowledgeTopics(params?: { limit?: number }) {
-    const searchParams = params?.limit ? `?limit=${params.limit}` : ''
+  async listKnowledgeTopics(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams()
+    if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.offset) searchParams.set('offset', String(params.offset))
+    const qs = searchParams.toString()
     return this.request<{ topics: unknown[] }>(
       'GET',
-      `/content-pipeline/knowledge/topics${searchParams}`
+      `/content-pipeline/knowledge/topics${qs ? `?${qs}` : ''}`
     )
   }
 
@@ -608,12 +631,14 @@ export class MagnetLabClient {
     pillar?: ContentPillar
     contentType?: ContentType
     limit?: number
+    offset?: number
   }) {
     const searchParams = new URLSearchParams()
     if (params?.status) searchParams.set('status', params.status)
     if (params?.pillar) searchParams.set('pillar', params.pillar)
     if (params?.contentType) searchParams.set('content_type', params.contentType)
     if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.offset) searchParams.set('offset', String(params.offset))
     return this.request<{ ideas: unknown[] }>('GET', `/content-pipeline/ideas?${searchParams}`)
   }
 
@@ -641,11 +666,13 @@ export class MagnetLabClient {
     status?: PipelinePostStatus
     isBuffer?: boolean
     limit?: number
+    offset?: number
   }) {
     const searchParams = new URLSearchParams()
     if (params?.status) searchParams.set('status', params.status)
     if (params?.isBuffer !== undefined) searchParams.set('is_buffer', String(params.isBuffer))
     if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.offset) searchParams.set('offset', String(params.offset))
     return this.request<{ posts: unknown[] }>('GET', `/content-pipeline/posts?${searchParams}`)
   }
 
@@ -740,9 +767,10 @@ export class MagnetLabClient {
     return this.request<{ style: unknown }>('GET', `/content-pipeline/styles/${id}`)
   }
 
-  async listTemplates(params?: { limit?: number }) {
+  async listTemplates(params?: { limit?: number; offset?: number }) {
     const searchParams = new URLSearchParams()
     if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.offset) searchParams.set('offset', String(params.offset))
     return this.request<{ templates: unknown[] }>('GET', `/content-pipeline/templates?${searchParams}`)
   }
 
@@ -853,8 +881,12 @@ export class MagnetLabClient {
   // Libraries
   // ============================================================
 
-  async listLibraries() {
-    return this.request<{ libraries: unknown[] }>('GET', `/libraries`)
+  async listLibraries(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams()
+    if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.offset) searchParams.set('offset', String(params.offset))
+    const qs = searchParams.toString()
+    return this.request<{ libraries: unknown[] }>('GET', `/libraries${qs ? `?${qs}` : ''}`)
   }
 
   async getLibrary(id: string) {

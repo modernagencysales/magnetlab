@@ -18,6 +18,45 @@ export type ToolResult = {
   content: Array<{ type: 'text'; text: string }>
 }
 
+// 800KB safety limit — well under the 1MB MCP tool response cap
+const MAX_RESPONSE_BYTES = 800_000
+
+/**
+ * If the serialized result exceeds MAX_RESPONSE_BYTES, find the first array
+ * property and truncate it to fit, appending pagination metadata.
+ */
+function truncateIfNeeded(result: unknown): unknown {
+  const json = JSON.stringify(result)
+  if (json.length <= MAX_RESPONSE_BYTES) return result
+
+  if (result && typeof result === 'object') {
+    const obj = result as Record<string, unknown>
+    for (const key of Object.keys(obj)) {
+      if (Array.isArray(obj[key]) && (obj[key] as unknown[]).length > 1) {
+        const arr = obj[key] as unknown[]
+        // Binary search for max items that fit under the size limit
+        let lo = 1
+        let hi = arr.length
+        while (lo < hi) {
+          const mid = Math.ceil((lo + hi) / 2)
+          const test = { ...obj, [key]: arr.slice(0, mid), _truncated: true, _total: arr.length }
+          if (JSON.stringify(test).length <= MAX_RESPONSE_BYTES) lo = mid
+          else hi = mid - 1
+        }
+        return {
+          ...obj,
+          [key]: arr.slice(0, lo),
+          _truncated: true,
+          _total: arr.length,
+          _returned: lo,
+          _hint: 'Use limit and offset parameters to paginate through results',
+        }
+      }
+    }
+  }
+  return result
+}
+
 /**
  * Main dispatcher for MCP tool calls.
  * Routes tool calls to the appropriate category handler based on tool name.
@@ -73,11 +112,14 @@ export async function handleToolCall(
       throw new Error(`Unknown tool: ${name}`)
     }
 
+    // Truncate if response exceeds size limit, then use compact JSON
+    const safeResult = truncateIfNeeded(result)
+
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(result, null, 2),
+          text: JSON.stringify(safeResult),
         },
       ],
     }

@@ -4,10 +4,13 @@ export const libraryTools: Tool[] = [
   {
     name: 'magnetlab_list_libraries',
     description:
-      'List all content libraries. Libraries are collections of resources (links, files, documents) that can be gated behind funnel pages.',
+      'List content libraries. Libraries are collections of resources (links, files, documents) that can be gated behind funnel pages. Paginated.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
+      },
     },
   },
   {

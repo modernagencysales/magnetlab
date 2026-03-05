@@ -4,10 +4,13 @@ export const funnelTools: Tool[] = [
   {
     name: 'magnetlab_list_funnels',
     description:
-      'List all funnel pages for the current user. Returns funnel ID, slug, headline, theme, publish status, and target (lead magnet, library, or external resource).',
+      'List funnel pages for the current user. Returns funnel ID, slug, headline, theme, publish status, and target (lead magnet, library, or external resource). Paginated.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
+      },
     },
   },
   {

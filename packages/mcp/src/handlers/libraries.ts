@@ -10,7 +10,10 @@ export async function handleLibraryTools(
 ): Promise<unknown> {
   switch (name) {
     case 'magnetlab_list_libraries':
-      return client.listLibraries()
+      return client.listLibraries({
+        limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
+      })
 
     case 'magnetlab_get_library':
       return client.getLibrary(args.id as string)

@@ -13,7 +13,7 @@ export const leadMagnetTools: Tool[] = [
           enum: ['draft', 'extracting', 'generating', 'content_ready', 'complete', 'published'],
           description: 'Filter by lead magnet status',
         },
-        limit: { type: 'number', default: 50, description: 'Max results to return (1-100)' },
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
         offset: { type: 'number', default: 0, description: 'Offset for pagination' },
       },
     },

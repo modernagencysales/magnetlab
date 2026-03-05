@@ -11,7 +11,10 @@ export async function handleFunnelTools(
 ): Promise<unknown> {
   switch (name) {
     case 'magnetlab_list_funnels':
-      return client.listFunnels()
+      return client.listFunnels({
+        limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
+      })
 
     case 'magnetlab_get_funnel':
       return client.getFunnel(args.id as string)

@@ -20,7 +20,10 @@ export async function handleContentPipelineTools(
   switch (name) {
     // Transcripts
     case 'magnetlab_list_transcripts':
-      return client.listTranscripts()
+      return client.listTranscripts({
+        limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
+      })
 
     case 'magnetlab_submit_transcript':
       return client.submitTranscript({
@@ -40,11 +43,15 @@ export async function handleContentPipelineTools(
         topic: args.topic as string | undefined,
         min_quality: args.min_quality as number | undefined,
         since: args.since as string | undefined,
+        limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
       })
 
     case 'magnetlab_browse_knowledge':
       return client.searchKnowledge({
         category: args.category as KnowledgeCategory | undefined,
+        limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
       })
 
     case 'magnetlab_get_knowledge_tags':
@@ -79,6 +86,7 @@ export async function handleContentPipelineTools(
     case 'magnetlab_list_topics':
       return client.listKnowledgeTopics({
         limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
       })
 
     case 'magnetlab_topic_detail':
@@ -91,6 +99,7 @@ export async function handleContentPipelineTools(
         pillar: args.pillar as ContentPillar | undefined,
         contentType: args.content_type as ContentType | undefined,
         limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
       })
 
     case 'magnetlab_get_idea':
@@ -111,6 +120,7 @@ export async function handleContentPipelineTools(
         status: args.status as PipelinePostStatus | undefined,
         isBuffer: args.is_buffer as boolean | undefined,
         limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
       })
 
     case 'magnetlab_get_post':
@@ -186,7 +196,10 @@ export async function handleContentPipelineTools(
       return client.getWritingStyle(args.id as string)
 
     case 'magnetlab_list_templates':
-      return client.listTemplates({ limit: args.limit as number | undefined })
+      return client.listTemplates({
+        limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
+      })
 
     case 'magnetlab_match_template':
       return client.matchTemplate({ ideaId: args.idea_id as string })

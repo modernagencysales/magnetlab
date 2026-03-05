@@ -7,10 +7,13 @@ export const contentPipelineTools: Tool[] = [
   {
     name: 'magnetlab_list_transcripts',
     description:
-      'List all call transcripts in the AI Brain. Shows source (paste/grain/fireflies), title, date, duration, and whether ideas/knowledge have been extracted from each transcript.',
+      'List call transcripts in the AI Brain. Shows source (paste/grain/fireflies), title, date, duration, and whether ideas/knowledge have been extracted. Paginated.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
+      },
     },
   },
   {
@@ -62,13 +65,15 @@ export const contentPipelineTools: Tool[] = [
         topic: { type: 'string', description: 'Filter by topic slug' },
         min_quality: { type: 'number', description: 'Minimum quality score (1-5)' },
         since: { type: 'string', description: 'Only entries after this ISO date' },
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
       },
     },
   },
   {
     name: 'magnetlab_browse_knowledge',
     description:
-      'Browse knowledge base entries by category. Returns recent entries without search. Use for exploring what the AI Brain contains.',
+      'Browse knowledge base entries by category. Returns recent entries without search. Use for exploring what the AI Brain contains. Paginated.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -77,6 +82,8 @@ export const contentPipelineTools: Tool[] = [
           enum: ['insight', 'question', 'pain_point', 'success_story', 'objection', 'framework', 'quote', 'market_intel'],
           description: 'Category to browse (default: insight)',
         },
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
       },
     },
   },
@@ -171,7 +178,8 @@ export const contentPipelineTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        limit: { type: 'number', description: 'Max topics to return (default: 50)' },
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
       },
     },
   },
@@ -213,7 +221,8 @@ export const contentPipelineTools: Tool[] = [
           enum: ['story', 'insight', 'tip', 'framework', 'case_study', 'question', 'listicle', 'contrarian'],
           description: 'Filter by content type',
         },
-        limit: { type: 'number', default: 50, description: 'Max results' },
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
       },
     },
   },
@@ -288,7 +297,8 @@ export const contentPipelineTools: Tool[] = [
           type: 'boolean',
           description: 'Filter for buffer posts only (true) or non-buffer (false)',
         },
-        limit: { type: 'number', default: 50, description: 'Max results' },
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
       },
     },
   },
@@ -522,7 +532,8 @@ export const contentPipelineTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        limit: { type: 'number', default: 50, description: 'Max results' },
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
       },
     },
   },
