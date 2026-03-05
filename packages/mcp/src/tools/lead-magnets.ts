@@ -95,6 +95,18 @@ export const leadMagnetTools: Tool[] = [
     },
   },
   {
+    name: 'magnetlab_generate_lead_magnet_posts',
+    description:
+      'Generate LinkedIn promotion posts (3 variations + DM template + CTA word) for an existing lead magnet that has content but is missing posts. The lead magnet must have polished_content or extracted_content.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lead_magnet_id: { type: 'string', description: 'Lead magnet UUID' },
+      },
+      required: ['lead_magnet_id'],
+    },
+  },
+  {
     name: 'magnetlab_analyze_transcript',
     description:
       'Analyze a sales call or podcast transcript to extract lead magnet ideas, pain points, and content themes.',

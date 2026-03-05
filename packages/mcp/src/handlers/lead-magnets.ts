@@ -36,6 +36,9 @@ export async function handleLeadMagnetTools(
     case 'magnetlab_analyze_competitor':
       return client.analyzeCompetitor({ url: args.url as string })
 
+    case 'magnetlab_generate_lead_magnet_posts':
+      return client.generateLeadMagnetPosts(args.lead_magnet_id as string)
+
     case 'magnetlab_analyze_transcript':
       return client.analyzeTranscript({ transcript: args.transcript as string })
 

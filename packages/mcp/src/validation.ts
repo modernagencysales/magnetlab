@@ -46,6 +46,9 @@ export const toolSchemas = {
   magnetlab_analyze_transcript: z.object({
     transcript: z.string().min(50, 'transcript must be at least 50 characters'),
   }),
+  magnetlab_generate_lead_magnet_posts: z.object({
+    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
+  }),
 
   // Ideation tools
   magnetlab_ideate_lead_magnets: z.object({

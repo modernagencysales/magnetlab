@@ -174,6 +174,10 @@ export class MagnetLabClient {
     return this.aiRequest<unknown>('POST', `/lead-magnet/write-post`, { ...params, leadMagnetId })
   }
 
+  async generateLeadMagnetPosts(leadMagnetId: string) {
+    return this.aiRequest<{ jobId: string; status: string }>('POST', `/lead-magnet/${leadMagnetId}/generate-posts`, {})
+  }
+
   async polishLeadMagnetContent(leadMagnetId: string) {
     return this.aiRequest<unknown>('POST', `/lead-magnet/${leadMagnetId}/polish`, {})
   }
