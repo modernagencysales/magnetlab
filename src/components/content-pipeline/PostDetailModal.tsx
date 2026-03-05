@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin, Users, Zap, MessageSquare, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostPreview } from './PostPreview';
+import { SaveIndicator } from './DetailPane';
 import { StyleFeedbackToast } from './StyleFeedbackToast';
 import type { PipelinePost, PostVariation, LinkedInAutomation, AutomationStatus } from '@/lib/types/content-pipeline';
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 interface PostDetailModalProps {
   post: PipelinePost;
@@ -18,9 +21,11 @@ interface PostDetailModalProps {
 
 export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }: PostDetailModalProps) {
   const [activeVariation, setActiveVariation] = useState<number | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [editContent, setEditContent] = useState(post.final_content || post.draft_content || '');
-  const [saving, setSaving] = useState(false);
+  const content = activeVariation !== null && post.variations?.[activeVariation]
+    ? post.variations[activeVariation].content
+    : post.final_content || post.draft_content || '';
+  const [editContent, setEditContent] = useState(content);
+  const [saveState, setSaveState] = useState<SaveState>('idle');
   const [copied, setCopied] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
@@ -29,6 +34,8 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const [publishError, setPublishError] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [feedbackEditId, setFeedbackEditId] = useState<string | null>(null);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Engagement scraping state
   const [engagementStats, setEngagementStats] = useState<{ comments: number; reactions: number; resolved: number; pushed: number } | null>(null);
@@ -56,6 +63,70 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
   const [templatesLoading, setTemplatesLoading] = useState(false);
 
   const isPublishedWithLinkedIn = post.status === 'published' && !!post.linkedin_post_id;
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      if (savedTimeout.current) clearTimeout(savedTimeout.current);
+    };
+  }, []);
+
+  // Reset when post or variation changes
+  useEffect(() => {
+    const newContent = activeVariation !== null && post.variations?.[activeVariation]
+      ? post.variations[activeVariation].content
+      : post.final_content || post.draft_content || '';
+    setEditContent(newContent);
+    setSaveState('idle');
+  }, [post.id, post.draft_content, post.final_content, activeVariation, post.variations]);
+
+  // Auto-save
+  const doSave = useCallback(async (text: string) => {
+    setSaveState('saving');
+    try {
+      const response = await fetch(`/api/content-pipeline/posts/${post.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draft_content: text, final_content: null }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSaveState('saved');
+        onUpdate();
+        if (savedTimeout.current) clearTimeout(savedTimeout.current);
+        savedTimeout.current = setTimeout(() => setSaveState('idle'), 2000);
+        if (data.editId) {
+          setFeedbackEditId(data.editId);
+        }
+      } else {
+        setSaveState('error');
+      }
+    } catch {
+      setSaveState('error');
+    }
+  }, [post.id, onUpdate]);
+
+  const handleChange = (value: string) => {
+    setEditContent(value);
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(() => doSave(value), 1500);
+  };
+
+  const handleBlur = () => {
+    if (editContent !== content) {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      doSave(editContent);
+    }
+  };
+
+  const handleClose = () => {
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+      doSave(editContent);
+    }
+    onClose();
+  };
 
   const fetchEngagementStats = useCallback(async () => {
     if (!isPublishedWithLinkedIn) return;
@@ -194,10 +265,6 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
     }
   };
 
-  const displayContent = activeVariation !== null && post.variations?.[activeVariation]
-    ? post.variations[activeVariation].content
-    : post.final_content || post.draft_content || '';
-
   const handleSchedule = async () => {
     setScheduling(true);
     setScheduleError(null);
@@ -245,49 +312,26 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
     }
   };
 
-  const canPublish = displayContent.trim().length > 0 &&
+  const canPublish = editContent.trim().length > 0 &&
     ['draft', 'reviewing', 'approved'].includes(post.status);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(displayContent);
+    await navigator.clipboard.writeText(editContent);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const response = await fetch(`/api/content-pipeline/posts/${post.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ final_content: editContent }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setEditing(false);
-        onUpdate();
-        // Show feedback toast if an edit was captured
-        if (data.editId) {
-          setFeedbackEditId(data.editId);
-        }
-      }
-    } catch {
-      // Silent failure
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Post Details">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
+        {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">Post Details</h2>
             <StatusBadge status={post.status} />
+            <SaveIndicator state={saveState} />
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
+          <button onClick={handleClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -350,51 +394,130 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
           </div>
         )}
 
-        {/* LinkedIn Preview */}
+        {/* Editable textarea — primary, always visible */}
         <div className="mb-4">
-          <PostPreview content={displayContent} />
+          <textarea
+            value={editContent}
+            onChange={(e) => handleChange(e.target.value)}
+            onBlur={handleBlur}
+            className="min-h-[60vh] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="Write your post content..."
+          />
         </div>
 
-        {/* Edit Mode */}
-        {editing ? (
-          <div className="mb-4 space-y-3">
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="h-48 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => setEditing(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-              </button>
-            </div>
+        {/* Action buttons */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              fetchTemplates();
+              setShowTemplatePicker(!showTemplatePicker);
+            }}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+              showTemplatePicker
+                ? "bg-primary text-primary-foreground"
+                : "border border-border hover:bg-muted"
+            )}
+            title="Insert template"
+          >
+            <FileText className="h-4 w-4" />
+            Templates
+          </button>
+          <button
+            onClick={() => onPolish(post.id)}
+            disabled={polishing}
+            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            {polishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Polish
+          </button>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+          >
+            {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <button
+            onClick={() => setShowSchedule(!showSchedule)}
+            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+          >
+            <Calendar className="h-4 w-4" />
+            Schedule
+          </button>
+          {canPublish && (
+            <button
+              onClick={handlePublish}
+              disabled={publishing}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Linkedin className="h-4 w-4" />}
+              Publish to LinkedIn
+            </button>
+          )}
+        </div>
+
+        {/* Template Picker */}
+        {showTemplatePicker && (
+          <div className="mb-4 rounded-lg border bg-card p-3 space-y-2 max-h-48 overflow-y-auto">
+            {templatesLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : templates.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2 text-center">
+                No templates yet. Create some in the Library tab.
+              </p>
+            ) : (
+              templates.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    const current = editContent.trim();
+                    if (current && !confirm('Replace current content with this template?')) return;
+                    handleChange(t.structure);
+                    setShowTemplatePicker(false);
+                  }}
+                  className="w-full text-left rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors"
+                >
+                  <span className="font-medium">{t.name}</span>
+                  {t.category && (
+                    <span className="ml-2 text-xs text-muted-foreground">{t.category}</span>
+                  )}
+                </button>
+              ))
+            )}
           </div>
-        ) : null}
+        )}
+
+        {/* LinkedIn Preview (collapsible) */}
+        <details className="mb-4">
+          <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+            LinkedIn Preview
+          </summary>
+          <div className="mt-2">
+            <PostPreview content={editContent} />
+          </div>
+        </details>
 
         {/* DM Template */}
         {post.dm_template && (
-          <div className="mb-4">
-            <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">DM Template</p>
-            <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">{post.dm_template}</p>
-          </div>
+          <details className="mb-4">
+            <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+              DM Template
+            </summary>
+            <p className="mt-2 rounded-lg bg-muted p-3 text-sm text-muted-foreground">{post.dm_template}</p>
+          </details>
         )}
 
         {/* Polish Notes */}
         {post.polish_notes && (
-          <div className="mb-4">
-            <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">Polish Notes</p>
-            <p className="text-sm text-muted-foreground">{post.polish_notes}</p>
-          </div>
+          <details className="mb-4">
+            <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+              Polish Notes
+            </summary>
+            <p className="mt-2 text-sm text-muted-foreground">{post.polish_notes}</p>
+          </details>
         )}
 
         {/* Engagement Scraping (published posts with LinkedIn ID only) */}
@@ -638,103 +761,9 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => {
-              fetchTemplates();
-              setShowTemplatePicker(!showTemplatePicker);
-            }}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-              showTemplatePicker
-                ? "bg-primary text-primary-foreground"
-                : "border border-border hover:bg-muted"
-            )}
-            title="Insert template"
-          >
-            <FileText className="h-4 w-4" />
-            Templates
-          </button>
-          {!editing && (
-            <button
-              onClick={() => setEditing(true)}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-            >
-              Edit
-            </button>
-          )}
-          <button
-            onClick={() => onPolish(post.id)}
-            disabled={polishing}
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
-          >
-            {polishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            Polish
-          </button>
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-          >
-            {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-          <button
-            onClick={() => setShowSchedule(!showSchedule)}
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-          >
-            <Calendar className="h-4 w-4" />
-            Schedule
-          </button>
-          {canPublish && (
-            <button
-              onClick={handlePublish}
-              disabled={publishing}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Linkedin className="h-4 w-4" />}
-              Publish to LinkedIn
-            </button>
-          )}
-        </div>
-
-        {/* Template Picker */}
-        {showTemplatePicker && (
-          <div className="mt-3 rounded-lg border bg-card p-3 space-y-2 max-h-48 overflow-y-auto">
-            {templatesLoading ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : templates.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-2 text-center">
-                No templates yet. Create some in the Library tab.
-              </p>
-            ) : (
-              templates.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    const current = editContent.trim();
-                    if (current && !confirm('Replace current content with this template?')) return;
-                    setEditContent(t.structure);
-                    setEditing(true);
-                    setShowTemplatePicker(false);
-                  }}
-                  className="w-full text-left rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors"
-                >
-                  <span className="font-medium">{t.name}</span>
-                  {t.category && (
-                    <span className="ml-2 text-xs text-muted-foreground">{t.category}</span>
-                  )}
-                </button>
-              ))
-            )}
-          </div>
-        )}
-
         {/* Publish Error */}
         {publishError && (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/50">
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/50">
             <p className="text-sm text-amber-800 dark:text-amber-200">{publishError}</p>
             {publishError.includes('Settings') && (
               <a
@@ -749,7 +778,7 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
 
         {/* Schedule Panel */}
         {showSchedule && (
-          <div className="mt-4 rounded-lg border bg-muted/50 p-4">
+          <div className="mb-4 rounded-lg border bg-muted/50 p-4">
             <div className="flex items-end gap-3">
               <div className="flex-1">
                 <label className="mb-1 block text-xs font-medium">Schedule Time</label>

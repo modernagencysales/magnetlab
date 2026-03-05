@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { X, Loader2, Check, AlertCircle, Sparkles, Copy, Calendar, ExternalLink, PenLine, ChevronDown, Linkedin } from 'lucide-react';
+import { X, Loader2, Check, AlertCircle, Sparkles, Copy, Calendar, Maximize2, PenLine, ChevronDown, Linkedin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PillarBadge } from './PillarBadge';
 import { StatusBadge } from './StatusBadge';
@@ -395,8 +395,8 @@ function PostDetail({
           onClick={() => onOpenModal(post)}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
         >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Full Editor
+          <Maximize2 className="h-3.5 w-3.5" />
+          Expand
         </button>
       </div>
       {/* Publish Error */}
@@ -419,7 +419,7 @@ function PostDetail({
 
 // ─── Save Indicator ───────────────────────────────────────
 
-function SaveIndicator({ state }: { state: SaveState }) {
+export function SaveIndicator({ state }: { state: SaveState }) {
   if (state === 'idle') return null;
 
   return (
