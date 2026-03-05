@@ -507,10 +507,14 @@ export async function getFilteredKnowledge(
     limit?: number;
     offset?: number;
     sort?: KnowledgeSortOption;
+    teamId?: string;
   }
 ): Promise<KnowledgeEntry[]> {
-  const { category, speaker, tag, limit = 30, offset = 0, sort = 'newest' } = filters;
+  const { category, speaker, tag, limit = 30, offset = 0, sort = 'newest', teamId } = filters;
   const supabase = createSupabaseAdminClient();
+
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
 
   const orderColumn = sort === 'quality' ? 'quality_score' : 'created_at';
   const ascending = sort === 'oldest';
@@ -518,7 +522,7 @@ export async function getFilteredKnowledge(
   let query = supabase
     .from('cp_knowledge_entries')
     .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .is('superseded_by', null)
     .order(orderColumn, { ascending })
     .range(offset, offset + limit - 1);
@@ -546,9 +550,13 @@ export async function getFilteredKnowledge(
 export async function getAllRecentKnowledge(
   userId: string,
   limit: number = 30,
-  sort: KnowledgeSortOption = 'newest'
+  sort: KnowledgeSortOption = 'newest',
+  teamId?: string
 ): Promise<KnowledgeEntry[]> {
   const supabase = createSupabaseAdminClient();
+
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
 
   const orderColumn = sort === 'quality' ? 'quality_score' : 'created_at';
   const ascending = sort === 'oldest';
@@ -556,7 +564,7 @@ export async function getAllRecentKnowledge(
   const { data, error } = await supabase
     .from('cp_knowledge_entries')
     .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .is('superseded_by', null)
     .order(orderColumn, { ascending })
     .limit(limit);
@@ -572,14 +580,18 @@ export async function getAllRecentKnowledge(
 export async function getKnowledgeByCategory(
   userId: string,
   category: KnowledgeCategory,
-  limit: number = 20
+  limit: number = 20,
+  teamId?: string
 ): Promise<KnowledgeEntry[]> {
   const supabase = createSupabaseAdminClient();
+
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
 
   const { data, error } = await supabase
     .from('cp_knowledge_entries')
     .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .eq('category', category)
     .is('superseded_by', null)
     .order('created_at', { ascending: false })
@@ -593,13 +605,16 @@ export async function getKnowledgeByCategory(
   return data || [];
 }
 
-export async function getKnowledgeTags(userId: string): Promise<Array<{ tag_name: string; usage_count: number; cluster_id: string | null }>> {
+export async function getKnowledgeTags(userId: string, teamId?: string): Promise<Array<{ tag_name: string; usage_count: number; cluster_id: string | null }>> {
   const supabase = createSupabaseAdminClient();
+
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
 
   const { data, error } = await supabase
     .from('cp_knowledge_tags')
     .select('tag_name, usage_count, cluster_id')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .order('usage_count', { ascending: false })
     .limit(100);
 
@@ -618,9 +633,10 @@ export interface TagCluster {
   tags: Array<{ tag_name: string; usage_count: number }>;
 }
 
-export async function getTagClusters(userId: string): Promise<TagCluster[]> {
+export async function getTagClusters(userId: string, teamId?: string): Promise<TagCluster[]> {
   const supabase = createSupabaseAdminClient();
 
+  // cp_tag_clusters has no team_id column — always filter by user_id
   const { data: clusters, error } = await supabase
     .from('cp_tag_clusters')
     .select('id, name, description')
@@ -629,10 +645,13 @@ export async function getTagClusters(userId: string): Promise<TagCluster[]> {
 
   if (error || !clusters?.length) return [];
 
+  const tagScopeFilter = teamId ? 'team_id' : 'user_id';
+  const tagScopeValue = teamId || userId;
+
   const { data: tags } = await supabase
     .from('cp_knowledge_tags')
     .select('tag_name, usage_count, cluster_id')
-    .eq('user_id', userId)
+    .eq(tagScopeFilter, tagScopeValue)
     .not('cluster_id', 'is', null)
     .order('usage_count', { ascending: false });
 

@@ -80,7 +80,7 @@ export async function listKnowledge(userId: string, params: KnowledgeListParams)
   const effectiveUserId = await resolveEffectiveUserId(userId, teamId);
 
   if (view === 'tags') {
-    return { tags: await getKnowledgeTags(effectiveUserId) };
+    return { tags: await getKnowledgeTags(effectiveUserId, teamId) };
   }
 
   const hasV2Filters = knowledgeType || topicSlug || minQuality || since;
@@ -113,11 +113,12 @@ export async function listKnowledge(userId: string, params: KnowledgeListParams)
       limit,
       offset,
       sort,
+      teamId,
     });
     return { entries, total_count: entries.length };
   }
 
-  const entries = await getAllRecentKnowledge(effectiveUserId, limit, sort);
+  const entries = await getAllRecentKnowledge(effectiveUserId, limit, sort, teamId);
   return { entries, total_count: entries.length };
 }
 
@@ -135,7 +136,7 @@ export async function getTopics(
   limit = 50,
 ) {
   const effectiveUserId = await resolveEffectiveUserId(userId, teamId);
-  return listKnowledgeTopics(effectiveUserId, { limit });
+  return listKnowledgeTopics(effectiveUserId, { teamId, limit });
 }
 
 export async function getTopicBySlug(
@@ -157,7 +158,7 @@ export async function getTopicSummary(
 
 export async function getClusters(userId: string, teamId?: string) {
   const effectiveUserId = await resolveEffectiveUserId(userId, teamId);
-  return getTagClusters(effectiveUserId);
+  return getTagClusters(effectiveUserId, teamId);
 }
 
 export async function triggerClustering(userId: string, teamId?: string) {
