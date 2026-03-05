@@ -19,15 +19,15 @@ export type ToolResult = {
 }
 
 // 800KB safety limit — well under the 1MB MCP tool response cap
-const MAX_RESPONSE_BYTES = 800_000
+const MAX_RESPONSE_CHARS = 800_000
 
 /**
- * If the serialized result exceeds MAX_RESPONSE_BYTES, find the first array
+ * If the serialized result exceeds MAX_RESPONSE_CHARS, find the first array
  * property and truncate it to fit, appending pagination metadata.
  */
 function truncateIfNeeded(result: unknown): unknown {
   const json = JSON.stringify(result)
-  if (json.length <= MAX_RESPONSE_BYTES) return result
+  if (json.length <= MAX_RESPONSE_CHARS) return result
 
   if (result && typeof result === 'object') {
     const obj = result as Record<string, unknown>
@@ -40,7 +40,7 @@ function truncateIfNeeded(result: unknown): unknown {
         while (lo < hi) {
           const mid = Math.ceil((lo + hi) / 2)
           const test = { ...obj, [key]: arr.slice(0, mid), _truncated: true, _total: arr.length }
-          if (JSON.stringify(test).length <= MAX_RESPONSE_BYTES) lo = mid
+          if (JSON.stringify(test).length <= MAX_RESPONSE_CHARS) lo = mid
           else hi = mid - 1
         }
         return {

@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getPostHogServerClient } from '@/lib/posthog';
+import { getDataScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import * as emailSequenceService from '@/server/services/email-sequence.service';
 
@@ -19,7 +20,8 @@ export async function POST(_request: Request, { params }: RouteParams) {
     }
 
     const { leadMagnetId } = await params;
-    const result = await emailSequenceService.activate(session.user.id, leadMagnetId);
+    const scope = await getDataScope(session.user.id);
+    const result = await emailSequenceService.activate(scope, leadMagnetId);
 
     if (!result.success) {
       if (result.error === 'not_found') return ApiErrors.notFound('Email sequence');

@@ -149,3 +149,14 @@ export async function setEmailSequenceStatusActive(sequenceId: string, userId: s
     .single();
   return { data, error };
 }
+
+export async function setEmailSequenceStatusActiveByScope(sequenceId: string, scope: DataScope) {
+  const supabase = createSupabaseAdminClient();
+  let q = supabase
+    .from('email_sequences')
+    .update({ status: 'active' })
+    .eq('id', sequenceId);
+  q = applyScope(q, scope);
+  const { data, error } = await q.select().single();
+  return { data, error };
+}

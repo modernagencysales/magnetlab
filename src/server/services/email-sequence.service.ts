@@ -164,8 +164,8 @@ export async function update(
   };
 }
 
-export async function activate(userId: string, leadMagnetId: string) {
-  const { data: sequenceData, error: seqError } = await emailSequenceRepo.getEmailSequenceByLeadMagnetIdForUser(leadMagnetId, userId);
+export async function activate(scope: DataScope, leadMagnetId: string) {
+  const { data: sequenceData, error: seqError } = await emailSequenceRepo.getEmailSequenceByLeadMagnetId(leadMagnetId, scope);
   if (seqError || !sequenceData) {
     return { success: false, error: 'not_found' as const, message: 'Email sequence not found' };
   }
@@ -175,7 +175,7 @@ export async function activate(userId: string, leadMagnetId: string) {
     return { success: false, error: 'validation' as const, message: 'No emails in sequence. Generate emails first.' };
   }
 
-  const { data: updatedSequence, error: updateError } = await emailSequenceRepo.setEmailSequenceStatusActive(sequence.id, userId);
+  const { data: updatedSequence, error: updateError } = await emailSequenceRepo.setEmailSequenceStatusActiveByScope(sequence.id, scope);
   if (updateError) {
     logApiError('email-sequence/activate', updateError, { leadMagnetId });
     return { success: false, error: 'database' as const, message: 'Failed to activate sequence' };
