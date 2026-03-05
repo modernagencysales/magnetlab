@@ -63,7 +63,7 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from auth routes
   if (isAuthenticated && authRoutes.some((route) => pathname.startsWith(route))) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/magnets', request.url));
   }
 
   // Root path: unauthenticated users go to marketing page
