@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { Loader2, Sparkles, FileText, CheckCircle2, Palette, LayoutGrid, PenLine, ClipboardList, Mail, Plug } from 'lucide-react';
+import { Loader2, Sparkles, FileText, CheckCircle2, Palette, LayoutGrid, PenLine, ClipboardList, Mail, Plug, Eye } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/index';
 import { OptinPageEditor } from './OptinPageEditor';
@@ -17,6 +17,7 @@ import { PublishControls } from './PublishControls';
 import { LeadDeliveryInfo } from './LeadDeliveryInfo';
 import { ABTestPanel } from './ABTestPanel';
 import { FunnelIntegrationsTab } from './FunnelIntegrationsTab';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle, RedirectTrigger, ThankyouLayout } from '@/lib/types/funnel';
 import type { LeadMagnet } from '@/lib/types/lead-magnet';
 import type { Library } from '@/lib/types/library';
@@ -69,6 +70,7 @@ export function FunnelBuilder({
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Form state for opt-in page
   const [optinHeadline, setOptinHeadline] = useState(existingFunnel?.optinHeadline || targetTitle);
@@ -324,6 +326,11 @@ export function FunnelBuilder({
   const activeGroup = navGroups.find(g => g.items.some(i => i.id === activeTab)) || navGroups[0];
   const isVisualTab = VISUAL_TABS.has(activeTab);
 
+  // Close preview sheet when switching to a non-visual tab
+  useEffect(() => {
+    if (!isVisualTab) setPreviewOpen(false);
+  }, [isVisualTab]);
+
   function isTabComplete(tabId: TabType): boolean {
     switch (tabId) {
       case 'optin': return !!optinHeadline && optinHeadline !== targetTitle;
@@ -352,6 +359,15 @@ export function FunnelBuilder({
           <h1 className="text-2xl font-semibold">Funnel Page Builder</h1>
         </div>
         <div className="flex items-center gap-3">
+          {isVisualTab && (
+            <button
+              onClick={() => setPreviewOpen(true)}
+              className="hidden lg:flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+            >
+              <Eye className="h-4 w-4" />
+              Preview
+            </button>
+          )}
           {!funnel && isLeadMagnetTarget && (
             <button
               onClick={handleGenerateContent}
@@ -608,11 +624,33 @@ export function FunnelBuilder({
               </div>
             )}
           </div>
-        </div>
 
-        {/* Preview panel - only for visual tabs, xl+ breakpoint */}
-        {isVisualTab && (
-          <div className="hidden xl:block w-[380px] shrink-0 space-y-6">
+          {/* Publish + Delivery controls — visible on all tabs */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {funnel && (
+              <PublishControls
+                funnel={funnel}
+                setFunnel={setFunnel}
+                username={username}
+              />
+            )}
+            <LeadDeliveryInfo />
+          </div>
+        </div>
+      </div>
+
+      {/* Preview Sheet */}
+      <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
+        <SheetContent side="right" className="sm:max-w-[520px] overflow-y-auto p-0">
+          <div className="p-6 pb-2">
+            <SheetHeader>
+              <SheetTitle>Page Preview</SheetTitle>
+              <SheetDescription className="sr-only">
+                Live preview of your funnel page
+              </SheetDescription>
+            </SheetHeader>
+          </div>
+          <div className="px-6 pb-6">
             <FunnelPreview
               headline={optinHeadline}
               subline={optinSubline}
@@ -629,19 +667,9 @@ export function FunnelBuilder({
               vslUrl={vslUrl}
               calendlyUrl={calendlyUrl}
             />
-
-            {funnel && (
-              <PublishControls
-                funnel={funnel}
-                setFunnel={setFunnel}
-                username={username}
-              />
-            )}
-
-            <LeadDeliveryInfo />
           </div>
-        )}
-      </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
