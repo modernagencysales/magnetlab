@@ -40,5 +40,8 @@ export {
 // Utilities
 export { cn } from './utils';
 
+// Hooks
+export { useIsMobile } from './hooks/use-mobile';
+
 // Components
 export * from './components';

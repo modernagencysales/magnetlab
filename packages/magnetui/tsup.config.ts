@@ -10,6 +10,6 @@ export default defineConfig({
   splitting: true,
   sourcemap: true,
   clean: true,
-  external: ['react', 'react-dom', 'tailwindcss'],
+  external: ['react', 'react-dom', 'tailwindcss', 'recharts'],
   treeshake: true,
 });

@@ -121,3 +121,4 @@ export {
   SheetTitle,
   SheetDescription,
 };
+export type { SheetContentProps };

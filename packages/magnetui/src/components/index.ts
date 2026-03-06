@@ -139,6 +139,198 @@ export { Toggle, toggleVariants } from './toggle';
 // Toggle Group
 export { ToggleGroup, ToggleGroupItem } from './toggle-group';
 
+// AlertDialog
+export {
+  AlertDialog,
+  AlertDialogPortal,
+  AlertDialogOverlay,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from './alert-dialog';
+
+// Collapsible
+export { Collapsible, CollapsibleTrigger, CollapsibleContent } from './collapsible';
+
+// Slider
+export { Slider } from './slider';
+
+// AspectRatio
+export { AspectRatio } from './aspect-ratio';
+
+// ContextMenu
+export {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuCheckboxItem,
+  ContextMenuRadioItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuGroup,
+  ContextMenuPortal,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuRadioGroup,
+} from './context-menu';
+
+// HoverCard
+export { HoverCard, HoverCardTrigger, HoverCardContent } from './hover-card';
+
+// Menubar
+export {
+  Menubar,
+  MenubarMenu,
+  MenubarTrigger,
+  MenubarContent,
+  MenubarItem,
+  MenubarSeparator,
+  MenubarLabel,
+  MenubarCheckboxItem,
+  MenubarRadioItem,
+  MenubarGroup,
+  MenubarPortal,
+  MenubarSub,
+  MenubarSubContent,
+  MenubarSubTrigger,
+  MenubarRadioGroup,
+  MenubarShortcut,
+} from './menubar';
+
+// NavigationMenu
+export {
+  navigationMenuTriggerStyle,
+  NavigationMenu,
+  NavigationMenuList,
+  NavigationMenuItem,
+  NavigationMenuContent,
+  NavigationMenuTrigger,
+  NavigationMenuLink,
+  NavigationMenuIndicator,
+  NavigationMenuViewport,
+} from './navigation-menu';
+
+// Alert
+export { Alert, AlertTitle, AlertDescription, alertVariants } from './alert';
+
+// Breadcrumb
+export {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  BreadcrumbEllipsis,
+} from './breadcrumb';
+
+// Pagination
+export {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from './pagination';
+
+// Command
+export {
+  Command,
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandShortcut,
+  CommandSeparator,
+} from './command';
+
+// Drawer
+export {
+  Drawer,
+  DrawerTrigger,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerFooter,
+  DrawerTitle,
+  DrawerDescription,
+} from './drawer';
+
+// CopyButton
+export { CopyButton } from './copy-button';
+export type { CopyButtonProps } from './copy-button';
+
+// Callout
+export { Callout, calloutVariants } from './callout';
+export type { CalloutProps } from './callout';
+
+// Toolbar
+export { Toolbar, ToolbarGroup, ToolbarSeparator } from './toolbar';
+
+// Chip
+export { Chip, chipVariants } from './chip';
+export type { ChipProps } from './chip';
+
+// Sidebar
+export {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInput,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar,
+  sidebarMenuButtonVariants,
+} from './sidebar';
+
+// Toaster
+export { Toaster, toast } from './toaster';
+
+// Chart
+export {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  ChartStyle,
+  useChart,
+} from './chart';
+export type { ChartConfig } from './chart';
+
+// ThemeProvider
+export { ThemeProvider, useTheme } from './theme-provider';
+export type { Theme, ThemeProviderProps } from './theme-provider';
+
 // ─── Custom Primitives ───────────────────────────────────────────────────────
 
 // NavItem
