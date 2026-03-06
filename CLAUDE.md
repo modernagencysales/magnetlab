@@ -17,6 +17,8 @@ MagnetLab is a SaaS platform for creating AI-powered LinkedIn lead magnets -- us
 - **Payments**: Stripe (checkout, webhooks, subscriptions: free/pro/unlimited)
 - **Email**: Resend (transactional)
 - **Jobs/Integrations**: Trigger.dev v4, user webhooks
+- **Design System**: `@magnetlab/magnetui` (packages/magnetui) — Radix + CVA + Tailwind
+- **Monorepo**: pnpm workspaces (`packages/*`)
 - **Testing**: Jest 29 + React Testing Library + Playwright
 - **Deploy**: Vercel
 
@@ -155,19 +157,31 @@ magnetlab  leadmagnet  copy-of-gtm-os
 
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `RESEND_API_KEY`, `TRIGGER_SECRET_KEY`, `GTM_SYSTEM_WEBHOOK_URL`, `GTM_SYSTEM_WEBHOOK_SECRET`, `GTM_SYSTEM_USER_ID`, `OPENAI_API_KEY`, `GRAIN_WEBHOOK_SECRET`, `FIREFLIES_WEBHOOK_SECRET`, `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`, `MAILCHIMP_CLIENT_ID`, `MAILCHIMP_CLIENT_SECRET`, `HARVEST_API_KEY`, `LEADMAGIC_API_KEY`, `PROSPEO_API_KEY`, `BLITZ_API_KEY`, `ZEROBOUNCE_API_KEY`, `BOUNCEBAN_API_KEY`, `PLUSVIBE_API_KEY`, `SUBSCRIBER_SYNC_WEBHOOK_SECRET`
 
+### Package Manager
+
+**pnpm only** — this is a pnpm workspace monorepo. Never use `npm` or `yarn`. Always use `pnpm`.
+
 ### Commands
 
 ```
-npm run dev              # Start dev server
-npm run build            # Production build
-npm run lint             # ESLint (flat config)
-npm run typecheck        # tsc --noEmit
-npm run test             # Run all Jest tests
-npm run test:watch       # Tests in watch mode
-npm run test:coverage    # Tests with coverage (50% min thresholds)
-npm run db:push          # Push Supabase migrations
-npm run db:reset         # Reset Supabase database
-npm run db:generate      # Regenerate TS types from DB schema
+pnpm dev                 # Start dev server
+pnpm build               # Production build
+pnpm lint                # ESLint (flat config)
+pnpm typecheck           # tsc --noEmit
+pnpm test                # Run all Jest tests
+pnpm test:watch          # Tests in watch mode
+pnpm test:coverage       # Tests with coverage (50% min thresholds)
+pnpm db:push             # Push Supabase migrations
+pnpm db:reset            # Reset Supabase database
+pnpm db:generate         # Regenerate TS types from DB schema
+```
+
+### Design System (packages/magnetui)
+
+```
+pnpm --filter @magnetlab/magnetui storybook       # Storybook dev (port 6006)
+pnpm --filter @magnetlab/magnetui build            # Build package
+pnpm --filter @magnetlab/magnetui build-storybook  # Static Storybook build
 ```
 
 Tests in `src/__tests__/` mirror source structure (api/, components/, lib/). Uses `jest-environment-jsdom`, `@/` mapped via `moduleNameMapper`.
@@ -186,7 +200,7 @@ Tests in `src/__tests__/` mirror source structure (api/, components/, lib/). Use
 ## Deployment
 
 - **Vercel**: `vercel --prod` (auto-deploy broken for private org repos)
-- **Trigger.dev**: `TRIGGER_SECRET_KEY=tr_prod_DB3vrdcduJYcXF19rrEB npx trigger.dev@4.3.3 deploy`
+- **Trigger.dev**: `TRIGGER_SECRET_KEY=tr_prod_DB3vrdcduJYcXF19rrEB pnpm dlx trigger.dev@4.3.3 deploy`
 - **DO NOT** add Trigger.dev deploy to Vercel build
 
 ## Related Repos
