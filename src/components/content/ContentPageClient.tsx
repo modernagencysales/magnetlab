@@ -45,6 +45,7 @@ interface ContentPageClientProps {
   hideBranding?: boolean;
   autoEdit?: boolean;
   iClosedWidgetId?: string | null;
+  onSaved?: (content: PolishedContent) => void;
 }
 
 export function ContentPageClient({
@@ -69,6 +70,7 @@ export function ContentPageClient({
   hideBranding,
   autoEdit = false,
   iClosedWidgetId,
+  onSaved,
 }: ContentPageClientProps) {
   const [isDark, setIsDark] = useState(initialTheme === 'dark');
   const [isEditing, setIsEditing] = useState(autoEdit && isOwner);
@@ -131,6 +133,7 @@ export function ContentPageClient({
       // Update local state so display reflects saved content
       setSavedContent(editContent);
       setIsEditing(false);
+      if (onSaved) onSaved(editContent);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
     } finally {

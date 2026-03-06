@@ -10,6 +10,7 @@ interface ContentPageTabProps {
   username: string | null;
   slug: string | null;
   onPolished: (polishedContent: PolishedContent, polishedAt: string, extractedContent?: ExtractedContent) => void;
+  onEditContent?: () => void;
 }
 
 interface ContentJobResult {
@@ -35,7 +36,7 @@ function createBlankContent(title: string): PolishedContent {
   };
 }
 
-export function ContentPageTab({ leadMagnet, username, slug, onPolished }: ContentPageTabProps) {
+export function ContentPageTab({ leadMagnet, username, slug, onPolished, onEditContent }: ContentPageTabProps) {
   const [error, setError] = useState<string | null>(null);
 
   const onComplete = useCallback((result: ContentJobResult) => {
@@ -135,10 +136,8 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
         }
         const { polishedContent: saved } = await response.json();
         onPolished(saved, now);
-        // Redirect to inline editor
-        if (contentUrl) {
-          window.open(`${contentUrl}?edit=true`, '_blank');
-        }
+        // Open inline editor
+        if (onEditContent) onEditContent();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create content');
       }
@@ -268,17 +267,15 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
         </div>
       )}
 
-      {/* Edit Content link → inline editor on live page */}
-      {polished && contentUrl && (
-        <a
-          href={`${contentUrl}?edit=true`}
-          target="_blank"
-          rel="noopener noreferrer"
+      {/* Edit Content → open inline full-page editor */}
+      {polished && onEditContent && (
+        <button
+          onClick={onEditContent}
           className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
         >
           <PenLine className="h-4 w-4" />
           Edit Content
-        </a>
+        </button>
       )}
 
       {/* Re-polish (only if extracted content exists) */}

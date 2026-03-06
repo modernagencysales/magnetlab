@@ -11,6 +11,7 @@ import { QuestionsManager } from './QuestionsManager';
 import { ThemeEditor } from './ThemeEditor';
 import { EmailSequenceTab } from './EmailSequenceTab';
 import { ContentPageTab } from './ContentPageTab';
+import { ContentEditorFullPage } from '@/components/content/ContentEditorFullPage';
 import { SectionsManager } from './SectionsManager';
 import { FunnelPreview } from './FunnelPreview';
 import { PublishControls } from './PublishControls';
@@ -19,7 +20,7 @@ import { ABTestPanel } from './ABTestPanel';
 import { FunnelIntegrationsTab } from './FunnelIntegrationsTab';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import type { FunnelPage, FunnelPageSection, QualificationQuestion, GeneratedOptinContent, FunnelTheme, FunnelTargetType, BackgroundStyle, RedirectTrigger, ThankyouLayout } from '@/lib/types/funnel';
-import type { LeadMagnet } from '@/lib/types/lead-magnet';
+import type { LeadMagnet, PolishedContent, ExtractedContent, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 import type { Library } from '@/lib/types/library';
 
 const VISUAL_TABS = new Set<TabType>(['optin', 'thankyou', 'theme', 'sections']);
@@ -105,6 +106,9 @@ export function FunnelBuilder({
 
   // Lead magnet state (for content tab updates)
   const [currentLeadMagnet, setCurrentLeadMagnet] = useState<LeadMagnet | undefined>(leadMagnet);
+
+  // Full-page content editor state
+  const [contentEditorOpen, setContentEditorOpen] = useState(false);
 
   // Sections state (shared between SectionsManager and FunnelPreview)
   const [sections, setSections] = useState<FunnelPageSection[]>([]);
@@ -589,6 +593,7 @@ export function FunnelBuilder({
                     ...(extractedContent ? { extractedContent } : {}),
                   });
                 }}
+                onEditContent={() => setContentEditorOpen(true)}
               />
             )}
 
@@ -670,6 +675,30 @@ export function FunnelBuilder({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Full-page content editor overlay */}
+      {contentEditorOpen && currentLeadMagnet && (
+        <ContentEditorFullPage
+          leadMagnetId={currentLeadMagnet.id}
+          title={currentLeadMagnet.title}
+          polishedContent={currentLeadMagnet.polishedContent as PolishedContent | null}
+          extractedContent={currentLeadMagnet.extractedContent as ExtractedContent | null}
+          concept={currentLeadMagnet.concept as LeadMagnetConcept | null}
+          theme={theme === 'custom' ? 'dark' : theme}
+          primaryColor={primaryColor}
+          logoUrl={logoUrl}
+          vslUrl={vslUrl}
+          onClose={() => setContentEditorOpen(false)}
+          onSaved={(content) => {
+            setCurrentLeadMagnet({
+              ...currentLeadMagnet,
+              polishedContent: content,
+              polishedAt: new Date().toISOString(),
+            });
+            setContentEditorOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
