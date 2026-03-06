@@ -224,19 +224,6 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished, onEditC
         </div>
       )}
 
-      {/* Primary action: Open content page (when polished) */}
-      {contentUrl && (
-        <a
-          href={contentUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-4 py-3 text-sm font-medium text-white hover:bg-violet-600 transition-colors w-full"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Open Content Page
-        </a>
-      )}
-
       {/* Polish status */}
       {polished && (
         <div className="rounded-lg border p-4 space-y-3">
@@ -267,32 +254,48 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished, onEditC
         </div>
       )}
 
-      {/* Edit Content → open inline full-page editor */}
+      {/* Edit Content → open inline full-page editor (primary action) */}
       {polished && onEditContent && (
         <button
           onClick={onEditContent}
-          className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+          className="flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-4 py-3 text-sm font-medium text-white hover:bg-violet-600 transition-colors w-full"
         >
           <PenLine className="h-4 w-4" />
           Edit Content
         </button>
       )}
 
-      {/* Re-polish (only if extracted content exists) */}
-      {hasExtracted && (
-        <button
-          onClick={handlePolish}
-          disabled={isAiLoading}
-          className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/50 disabled:opacity-50"
-        >
-          {isAiLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          Re-polish Content
-        </button>
-      )}
+      {/* Secondary actions row */}
+      <div className="flex items-center gap-3">
+        {/* Open content page in new tab */}
+        {contentUrl && (
+          <a
+            href={contentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open Content Page
+          </a>
+        )}
+
+        {/* Re-polish (only if extracted content exists) */}
+        {hasExtracted && (
+          <button
+            onClick={handlePolish}
+            disabled={isAiLoading}
+            className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/50 disabled:opacity-50"
+          >
+            {isAiLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Re-polish Content
+          </button>
+        )}
+      </div>
     </div>
   );
 }
