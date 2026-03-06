@@ -7,7 +7,7 @@ import { cn } from '../utils/cn';
 import { iconSize, iconStrokeWidth } from '../tokens/spacing';
 
 const calloutVariants = cva(
-  'flex gap-3 rounded-lg border p-4 text-sm',
+  'flex gap-3 rounded-lg border p-4 text-sm transition-colors',
   {
     variants: {
       variant: {
@@ -49,7 +49,7 @@ const Callout = React.forwardRef<HTMLDivElement, CalloutProps>(
       <div ref={ref} className={cn(calloutVariants({ variant }), className)} {...props}>
         <Icon size={iconSize.md} strokeWidth={iconStrokeWidth} className="mt-0.5 shrink-0" />
         <div className="flex-1">
-          {title && <p className="mb-1 font-medium leading-none">{title}</p>}
+          {title && <p className="mb-1 font-medium leading-none tracking-tight">{title}</p>}
           <div className="text-muted-foreground">{children}</div>
         </div>
       </div>

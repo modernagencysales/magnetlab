@@ -39,9 +39,11 @@ const PaginationLink = ({ className, isActive, size = 'icon', ...props }: Pagina
     aria-current={isActive ? 'page' : undefined}
     className={cn(
       buttonVariants({
-        variant: isActive ? 'outline' : 'ghost',
+        variant: isActive ? 'default' : 'ghost',
         size,
       }),
+      'transition-colors',
+      isActive && 'pointer-events-none',
       className
     )}
     {...props}
@@ -53,10 +55,10 @@ const PaginationPrevious = ({ className, ...props }: React.ComponentProps<typeof
   <PaginationLink
     aria-label="Go to previous page"
     size="default"
-    className={cn('gap-1 pl-2.5', className)}
+    className={cn('group gap-1 pl-2.5', className)}
     {...props}
   >
-    <ChevronLeft size={iconSize.md} strokeWidth={iconStrokeWidth} />
+    <ChevronLeft size={iconSize.md} strokeWidth={iconStrokeWidth} className="transition-transform group-hover:-translate-x-0.5" />
     <span>Previous</span>
   </PaginationLink>
 );
@@ -66,11 +68,11 @@ const PaginationNext = ({ className, ...props }: React.ComponentProps<typeof Pag
   <PaginationLink
     aria-label="Go to next page"
     size="default"
-    className={cn('gap-1 pr-2.5', className)}
+    className={cn('group gap-1 pr-2.5', className)}
     {...props}
   >
     <span>Next</span>
-    <ChevronRight size={iconSize.md} strokeWidth={iconStrokeWidth} />
+    <ChevronRight size={iconSize.md} strokeWidth={iconStrokeWidth} className="transition-transform group-hover:translate-x-0.5" />
   </PaginationLink>
 );
 PaginationNext.displayName = 'PaginationNext';

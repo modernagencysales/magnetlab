@@ -5,19 +5,19 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../utils/cn';
 
 const alertVariants = cva(
-  'relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7',
+  'relative w-full rounded-lg border border-l-4 px-4 py-3 text-sm transition-colors [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7',
   {
     variants: {
       variant: {
-        default: 'bg-background text-foreground',
+        default: 'border-border border-l-border bg-background text-foreground',
         destructive:
-          'border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive',
+          'border-destructive/30 border-l-destructive bg-destructive/5 text-foreground [&>svg]:text-destructive',
         warning:
-          'border-[rgba(210,155,70,0.3)] bg-[rgba(210,155,70,0.06)] text-foreground [&>svg]:text-[#A07840] dark:[&>svg]:text-[#D4B07A]',
+          'border-[rgba(210,155,70,0.3)] border-l-[#C4975A] bg-[rgba(210,155,70,0.06)] text-foreground [&>svg]:text-[#A07840] dark:[&>svg]:text-[#D4B07A]',
         success:
-          'border-[rgba(94,173,137,0.3)] bg-[rgba(94,173,137,0.06)] text-foreground [&>svg]:text-[#4A8E6E] dark:[&>svg]:text-[#7ECAA8]',
+          'border-[rgba(94,173,137,0.3)] border-l-[#6BB895] bg-[rgba(94,173,137,0.06)] text-foreground [&>svg]:text-[#4A8E6E] dark:[&>svg]:text-[#7ECAA8]',
         info:
-          'border-[rgba(107,159,212,0.3)] bg-[rgba(107,159,212,0.06)] text-foreground [&>svg]:text-[#5A85AE] dark:[&>svg]:text-[#8DB8E0]',
+          'border-[rgba(107,159,212,0.3)] border-l-[#7BAAD0] bg-[rgba(107,159,212,0.06)] text-foreground [&>svg]:text-[#5A85AE] dark:[&>svg]:text-[#8DB8E0]',
       },
     },
     defaultVariants: {

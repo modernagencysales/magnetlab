@@ -45,14 +45,18 @@ const CopyButton = React.forwardRef<HTMLButtonElement, CopyButtonProps>(
         ref={ref}
         variant={variant}
         size={size}
-        className={cn('shrink-0', className)}
+        className={cn(
+          'shrink-0 transition-all',
+          copied && 'text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400',
+          className
+        )}
         onClick={handleCopy}
         aria-label={copied ? 'Copied' : 'Copy to clipboard'}
         {...props}
       >
         {copied ? (
           <>
-            <Check size={iconSize.sm} strokeWidth={iconStrokeWidth} />
+            <Check size={iconSize.sm} strokeWidth={iconStrokeWidth} className="animate-in zoom-in-50 duration-200" />
             {copiedLabel && <span>{copiedLabel}</span>}
           </>
         ) : (

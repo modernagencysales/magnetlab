@@ -10,7 +10,7 @@ const Toolbar = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEle
       ref={ref}
       role="toolbar"
       className={cn(
-        'flex items-center gap-1 rounded-md border bg-background p-1',
+        'flex items-center gap-1 rounded-lg border bg-background p-1 shadow-sm',
         className
       )}
       {...props}

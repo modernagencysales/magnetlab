@@ -1,5 +1,6 @@
 import type { Config } from 'tailwindcss';
 import { magnetuiPreset } from './src/preset/tailwind-preset';
+import tailwindAnimate from 'tailwindcss-animate';
 
 const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
@@ -49,7 +50,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [tailwindAnimate],
 };
 
 export default config;

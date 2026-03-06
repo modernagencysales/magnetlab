@@ -7,21 +7,21 @@ import { cn } from '../utils/cn';
 import { iconStrokeWidth } from '../tokens/spacing';
 
 const chipVariants = cva(
-  'inline-flex items-center gap-1 rounded-full text-xs font-medium transition-colors',
+  'inline-flex cursor-default items-center gap-1 rounded-full text-xs font-medium transition-all',
   {
     variants: {
       variant: {
         default:
           'bg-secondary text-foreground hover:bg-secondary/80',
-        blue: 'bg-[rgba(107,159,212,0.12)] text-[#5A85AE] dark:bg-[rgba(107,159,212,0.15)] dark:text-[#8DB8E0]',
+        blue: 'bg-[rgba(107,159,212,0.12)] text-[#5A85AE] hover:bg-[rgba(107,159,212,0.18)] dark:bg-[rgba(107,159,212,0.15)] dark:text-[#8DB8E0] dark:hover:bg-[rgba(107,159,212,0.22)]',
         green:
-          'bg-[rgba(94,173,137,0.12)] text-[#4A8E6E] dark:bg-[rgba(94,173,137,0.15)] dark:text-[#7ECAA8]',
+          'bg-[rgba(94,173,137,0.12)] text-[#4A8E6E] hover:bg-[rgba(94,173,137,0.18)] dark:bg-[rgba(94,173,137,0.15)] dark:text-[#7ECAA8] dark:hover:bg-[rgba(94,173,137,0.22)]',
         orange:
-          'bg-[rgba(210,155,70,0.12)] text-[#A07840] dark:bg-[rgba(210,155,70,0.15)] dark:text-[#D4B07A]',
-        red: 'bg-[rgba(201,123,127,0.12)] text-[#9E5E62] dark:bg-[rgba(201,123,127,0.15)] dark:text-[#D4999C]',
+          'bg-[rgba(210,155,70,0.12)] text-[#A07840] hover:bg-[rgba(210,155,70,0.18)] dark:bg-[rgba(210,155,70,0.15)] dark:text-[#D4B07A] dark:hover:bg-[rgba(210,155,70,0.22)]',
+        red: 'bg-[rgba(201,123,127,0.12)] text-[#9E5E62] hover:bg-[rgba(201,123,127,0.18)] dark:bg-[rgba(201,123,127,0.15)] dark:text-[#D4999C] dark:hover:bg-[rgba(201,123,127,0.22)]',
         purple:
-          'bg-[rgba(148,130,206,0.12)] text-[#7A6BA8] dark:bg-[rgba(148,130,206,0.15)] dark:text-[#B0A0DA]',
-        outline: 'border border-border text-foreground bg-transparent',
+          'bg-[rgba(148,130,206,0.12)] text-[#7A6BA8] hover:bg-[rgba(148,130,206,0.18)] dark:bg-[rgba(148,130,206,0.15)] dark:text-[#B0A0DA] dark:hover:bg-[rgba(148,130,206,0.22)]',
+        outline: 'border border-border text-foreground bg-transparent hover:bg-secondary',
       },
       size: {
         sm: 'h-5 px-1.5 text-2xs',
@@ -53,7 +53,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
             e.stopPropagation();
             onRemove();
           }}
-          className="ml-0.5 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+          className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-foreground/10"
           aria-label="Remove"
         >
           <X className="h-3 w-3" strokeWidth={iconStrokeWidth} />

@@ -46,7 +46,7 @@ const DrawerContent = React.forwardRef<
     {...props}
   >
     {showHandle && (side === 'bottom' || side === 'top') && (
-      <div className="mx-auto mt-2 mb-4 h-1 w-10 rounded-full bg-muted-foreground/20" />
+      <div className="mx-auto mt-2 mb-4 h-1.5 w-12 rounded-full bg-muted-foreground/30 transition-colors" />
     )}
     {children}
   </SheetContent>
