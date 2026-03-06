@@ -8,6 +8,7 @@ import { TranscriptPasteModal } from './TranscriptPasteModal';
 import { ConnectRecorderGuide } from './ConnectRecorderGuide';
 import { TranscriptViewerModal } from './TranscriptViewerModal';
 import type { CallTranscript } from '@/lib/types/content-pipeline';
+import * as transcriptsApi from '@/frontend/api/content-pipeline/transcripts';
 
 const SOURCE_ICONS: Record<string, typeof Mic> = {
   grain: Radio,
@@ -36,11 +37,10 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
   const fetchTranscripts = useCallback(async (showLoader = false) => {
     if (showLoader) setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (profileId) params.append('speaker_profile_id', profileId);
-      const response = await fetch(`/api/content-pipeline/transcripts?${params}`);
-      const data = await response.json();
-      setTranscripts(data.transcripts || []);
+      const data = await transcriptsApi.listTranscripts({
+        speaker_profile_id: profileId ?? undefined,
+      });
+      setTranscripts((data.transcripts || []) as CallTranscript[]);
     } catch {
       // Silent failure
     } finally {
@@ -77,12 +77,8 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
     if (!confirm('This will delete existing knowledge entries and ideas for this transcript and re-process it. Continue?')) return;
     setReprocessingId(id);
     try {
-      const response = await fetch(`/api/content-pipeline/transcripts/${id}/reprocess`, {
-        method: 'POST',
-      });
-      if (response.ok) {
-        fetchTranscripts();
-      }
+      await transcriptsApi.reprocessTranscript(id);
+      fetchTranscripts();
     } catch {
       // Silent failure
     } finally {
@@ -93,12 +89,8 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
-      const response = await fetch(`/api/content-pipeline/transcripts?id=${id}`, {
-        method: 'DELETE',
-      });
-      if (response.ok) {
-        setTranscripts((prev) => prev.filter((t) => t.id !== id));
-      }
+      await transcriptsApi.deleteTranscript(id);
+      setTranscripts((prev) => prev.filter((t) => t.id !== id));
     } catch {
       // Silent failure
     } finally {

@@ -5,11 +5,17 @@ import { ArrowLeft, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
 import { KNOWLEDGE_TYPE_LABELS } from '@/lib/types/content-pipeline';
 import type { KnowledgeCategory } from '@/lib/types/content-pipeline';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 const KNOWLEDGE_TYPE_COLORS: Record<string, string> = {
-  how_to: 'bg-blue-500', insight: 'bg-purple-500', story: 'bg-green-500',
-  question: 'bg-yellow-500', objection: 'bg-red-500', mistake: 'bg-orange-500',
-  decision: 'bg-indigo-500', market_intel: 'bg-teal-500',
+  how_to: 'bg-blue-500',
+  insight: 'bg-purple-500',
+  story: 'bg-green-500',
+  question: 'bg-yellow-500',
+  objection: 'bg-red-500',
+  mistake: 'bg-orange-500',
+  decision: 'bg-indigo-500',
+  market_intel: 'bg-teal-500',
 };
 
 interface TopicDetailData {
@@ -25,15 +31,18 @@ interface TopicDetailData {
     last_seen: string;
   };
   type_breakdown: Record<string, number>;
-  top_entries: Record<string, Array<{
-    id: string;
-    category: KnowledgeCategory;
-    content: string;
-    context: string | null;
-    tags: string[];
-    knowledge_type?: string | null;
-    quality_score?: number | null;
-  }>>;
+  top_entries: Record<
+    string,
+    Array<{
+      id: string;
+      category: KnowledgeCategory;
+      content: string;
+      context: string | null;
+      tags: string[];
+      knowledge_type?: string | null;
+      quality_score?: number | null;
+    }>
+  >;
   corroboration_count: number;
 }
 
@@ -54,10 +63,10 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (teamId) params.append('team_id', teamId);
-      const res = await fetch(`/api/content-pipeline/knowledge/topics/${slug}?${params}`);
-      const detail = await res.json();
+      const detail = (await knowledgeApi.getTopicDetail(
+        slug,
+        teamId
+      )) as unknown as TopicDetailData;
       setData(detail);
       setSummary(detail.topic?.summary || null);
     } catch {
@@ -67,16 +76,16 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
     }
   }, [slug, teamId]);
 
-  useEffect(() => { fetchDetail(); }, [fetchDetail]);
+  useEffect(() => {
+    fetchDetail();
+  }, [fetchDetail]);
 
   const handleGenerateSummary = async (force: boolean = false) => {
     setGeneratingSummary(true);
     try {
-      const params = force ? '?force=true' : '';
-      const res = await fetch(`/api/content-pipeline/knowledge/topics/${slug}/summary${params}`, {
-        method: 'POST',
-      });
-      const result = await res.json();
+      const result = (await knowledgeApi.getTopicSummary(slug, { force, team_id: teamId })) as {
+        summary?: string;
+      };
       if (result.summary) {
         setSummary(result.summary);
       }
@@ -99,7 +108,12 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
         <p className="text-sm text-destructive">{error}</p>
-        <button onClick={() => fetchDetail()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Retry</button>
+        <button
+          onClick={() => fetchDetail()}
+          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -108,7 +122,9 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">Topic not found</p>
-        <button onClick={onBack} className="mt-2 text-sm text-primary hover:underline">Back to topics</button>
+        <button onClick={onBack} className="mt-2 text-sm text-primary hover:underline">
+          Back to topics
+        </button>
       </div>
     );
   }
@@ -116,9 +132,10 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
   const { topic, type_breakdown, top_entries, corroboration_count } = data;
 
   // Check if summary is stale
-  const isSummaryStale = topic.summary_generated_at && topic.last_seen
-    ? new Date(topic.last_seen) > new Date(topic.summary_generated_at)
-    : false;
+  const isSummaryStale =
+    topic.summary_generated_at && topic.last_seen
+      ? new Date(topic.last_seen) > new Date(topic.summary_generated_at)
+      : false;
 
   return (
     <div className="space-y-6">
@@ -157,7 +174,9 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
           <h3 className="text-sm font-semibold uppercase text-muted-foreground">Topic Summary</h3>
           <div className="flex items-center gap-2">
             {isSummaryStale && summary && (
-              <span className="text-xs text-yellow-600 dark:text-yellow-400">Stale — new entries available</span>
+              <span className="text-xs text-yellow-600 dark:text-yellow-400">
+                Stale — new entries available
+              </span>
             )}
             {summary ? (
               <button
@@ -165,7 +184,11 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
                 disabled={generatingSummary}
                 className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
               >
-                {generatingSummary ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                {generatingSummary ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3" />
+                )}
                 Regenerate
               </button>
             ) : (
@@ -174,7 +197,11 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
                 disabled={generatingSummary}
                 className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
-                {generatingSummary ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                {generatingSummary ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3" />
+                )}
                 Generate Summary
               </button>
             )}
@@ -183,14 +210,18 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
         {summary ? (
           <p className="text-sm leading-relaxed">{summary}</p>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No summary generated yet. Click &quot;Generate Summary&quot; to create one.</p>
+          <p className="text-sm text-muted-foreground italic">
+            No summary generated yet. Click &quot;Generate Summary&quot; to create one.
+          </p>
         )}
       </div>
 
       {/* Type breakdown bar */}
       {Object.keys(type_breakdown).length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Knowledge Types</h3>
+          <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Knowledge Types
+          </h3>
           <div className="flex h-3 rounded-full overflow-hidden">
             {Object.entries(type_breakdown).map(([type, count]) => {
               const total = Object.values(type_breakdown).reduce((s, c) => s + c, 0);
@@ -208,7 +239,9 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
           <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
             {Object.entries(type_breakdown).map(([type, count]) => (
               <span key={type} className="flex items-center gap-1">
-                <span className={`inline-block h-2 w-2 rounded-full ${KNOWLEDGE_TYPE_COLORS[type] || 'bg-gray-400'}`} />
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${KNOWLEDGE_TYPE_COLORS[type] || 'bg-gray-400'}`}
+                />
                 {KNOWLEDGE_TYPE_LABELS[type] || type} ({count})
               </span>
             ))}

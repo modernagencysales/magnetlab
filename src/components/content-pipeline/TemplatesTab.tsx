@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2, Upload, Wand2, X, Globe, User, Check } from 'lucide-react';
 import type { PostTemplate } from '@/lib/types/content-pipeline';
+import * as templatesApi from '@/frontend/api/content-pipeline/templates';
 import { CSVTemplateImporter } from './CSVTemplateImporter';
 import { ViralPostsSection } from './ViralPostsSection';
 import { StylesSection } from './StylesSection';
@@ -30,9 +31,8 @@ export function TemplatesTab() {
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const response = await fetch('/api/content-pipeline/templates?scope=mine');
-      const data = await response.json();
-      setTemplates(data.templates || []);
+      const list = await templatesApi.listTemplates('mine');
+      setTemplates((list || []) as PostTemplate[]);
     } catch {
       // Silent failure
     } finally {
@@ -47,7 +47,7 @@ export function TemplatesTab() {
   const handleSeed = async () => {
     setSeeding(true);
     try {
-      await fetch('/api/content-pipeline/templates/seed', { method: 'POST' });
+      await templatesApi.seedTemplates();
       await fetchTemplates();
     } catch {
       // Silent failure
@@ -85,20 +85,23 @@ export function TemplatesTab() {
         category: formCategory || null,
         description: formDescription || null,
         structure: formStructure,
-        tags: formTags ? formTags.split(',').map((t) => t.trim()).filter(Boolean) : null,
+        tags: formTags
+          ? formTags
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean)
+          : null,
       };
 
       if (editingTemplate) {
-        await fetch(`/api/content-pipeline/templates/${editingTemplate.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
+        await templatesApi.updateTemplate(editingTemplate.id, body);
       } else {
-        await fetch('/api/content-pipeline/templates', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+        await templatesApi.createTemplate({
+          name: formName,
+          category: formCategory || null,
+          description: formDescription || null,
+          structure: formStructure,
+          tags: body.tags ?? undefined,
         });
       }
 
@@ -113,7 +116,7 @@ export function TemplatesTab() {
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/content-pipeline/templates/${id}`, { method: 'DELETE' });
+      await templatesApi.deleteTemplate(id);
       await fetchTemplates();
     } catch {
       // Silent failure
@@ -132,7 +135,9 @@ export function TemplatesTab() {
     <div className="space-y-8">
       {/* Semantic Search */}
       <div>
-        <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">Find Templates</h3>
+        <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
+          Find Templates
+        </h3>
         <TemplateSearch />
       </div>
 
@@ -165,7 +170,9 @@ export function TemplatesTab() {
       {/* Global Library Section */}
       {activeSection === 'global' && (
         <div>
-          <h3 className="mb-4 text-sm font-semibold uppercase text-muted-foreground">Global Template Library</h3>
+          <h3 className="mb-4 text-sm font-semibold uppercase text-muted-foreground">
+            Global Template Library
+          </h3>
           <GlobalTemplateLibrary />
         </div>
       )}
@@ -182,7 +189,11 @@ export function TemplatesTab() {
                   disabled={seeding}
                   className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
                 >
-                  {seeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                  {seeding ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-3 w-3" />
+                  )}
                   Seed Defaults
                 </button>
               )}
@@ -205,7 +216,9 @@ export function TemplatesTab() {
 
           {templates.length === 0 ? (
             <div className="rounded-lg border border-dashed p-8 text-center">
-              <p className="text-sm text-muted-foreground">No templates yet. Seed defaults or create your own.</p>
+              <p className="text-sm text-muted-foreground">
+                No templates yet. Seed defaults or create your own.
+              </p>
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
@@ -231,7 +244,9 @@ export function TemplatesTab() {
                         className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                       >
                         {copiedId === template.id ? (
-                          <><Check className="h-3 w-3" /> Copied</>
+                          <>
+                            <Check className="h-3 w-3" /> Copied
+                          </>
                         ) : (
                           'Use This'
                         )}
@@ -277,11 +292,22 @@ export function TemplatesTab() {
 
       {/* Create/Edit Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Template Editor">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Template Editor"
+        >
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{editingTemplate ? 'Edit Template' : 'New Template'}</h2>
-              <button onClick={() => setShowCreate(false)} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
+              <h2 className="text-lg font-semibold">
+                {editingTemplate ? 'Edit Template' : 'New Template'}
+              </h2>
+              <button
+                onClick={() => setShowCreate(false)}
+                className="rounded-lg p-1.5 hover:bg-secondary"
+                aria-label="Close"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -323,7 +349,9 @@ export function TemplatesTab() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium">Structure * (use [PLACEHOLDER] format)</label>
+                <label className="mb-1 block text-xs font-medium">
+                  Structure * (use [PLACEHOLDER] format)
+                </label>
                 <textarea
                   value={formStructure}
                   onChange={(e) => setFormStructure(e.target.value)}

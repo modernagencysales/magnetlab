@@ -12,7 +12,7 @@ export async function list(userId: string, limit: number, offset: number) {
 
 export async function create(
   userId: string,
-  payload: { title: string; url: string; icon?: string },
+  payload: { title: string; url: string; icon?: string }
 ) {
   const row = await repo.create(userId, payload);
   return { resource: externalResourceFromRow(row as unknown as ExternalResourceRow) };
@@ -27,7 +27,7 @@ export async function getById(userId: string, id: string) {
 export async function updateById(
   userId: string,
   id: string,
-  updates: { title?: string; url?: string; icon?: string },
+  updates: { title?: string; url?: string; icon?: string }
 ) {
   const row = await repo.updateByIdAndUser(id, userId, updates);
   if (!row) return null;

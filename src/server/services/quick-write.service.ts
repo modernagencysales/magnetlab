@@ -3,10 +3,10 @@
  * Raw thought → AI post + polish → save as pipeline post.
  */
 
-import { quickWrite } from "@/lib/ai/content-pipeline/quick-writer";
-import * as postsRepo from "@/server/repositories/posts.repo";
-import * as teamRepo from "@/server/repositories/team.repo";
-import type { PipelinePost } from "@/lib/types/content-pipeline";
+import { quickWrite } from '@/lib/ai/content-pipeline/quick-writer';
+import * as postsRepo from '@/server/repositories/posts.repo';
+import * as teamRepo from '@/server/repositories/team.repo';
+import type { PipelinePost } from '@/lib/types/content-pipeline';
 
 export interface QuickWriteInput {
   raw_thought: string;
@@ -18,12 +18,18 @@ export interface QuickWriteInput {
 
 export interface QuickWriteResult {
   post: PipelinePost;
-  synthetic_idea: { title?: string; core_insight?: string; full_context?: string; why_post_worthy?: string; content_type?: string };
+  synthetic_idea: {
+    title?: string;
+    core_insight?: string;
+    full_context?: string;
+    why_post_worthy?: string;
+    content_type?: string;
+  };
 }
 
 export async function executeQuickWrite(
   userId: string,
-  input: QuickWriteInput,
+  input: QuickWriteInput
 ): Promise<QuickWriteResult> {
   let voiceOptions: {
     voiceProfile?: Record<string, unknown>;
@@ -54,15 +60,22 @@ export async function executeQuickWrite(
     dm_template: result.post.dm_template ?? null,
     cta_word: result.post.cta_word ?? null,
     variations: result.post.variations ?? null,
-    status: "draft",
+    status: 'draft',
     hook_score: result.polish.hookScore?.score ?? null,
-    polish_status: "polished",
-    polish_notes: result.polish.changes.join("; "),
+    polish_status: 'polished',
+    polish_notes: result.polish.changes.join('; '),
     team_profile_id: input.profileId ?? null,
   });
 
+  const si = result.syntheticIdea;
   return {
     post,
-    synthetic_idea: result.syntheticIdea,
+    synthetic_idea: {
+      title: si?.title,
+      core_insight: si?.core_insight ?? undefined,
+      full_context: si?.full_context ?? undefined,
+      why_post_worthy: si?.why_post_worthy ?? undefined,
+      content_type: si?.content_type ?? undefined,
+    },
   };
 }

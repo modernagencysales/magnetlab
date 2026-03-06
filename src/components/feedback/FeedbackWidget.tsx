@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageSquarePlus, Bug, Lightbulb, MessageCircle, X, Check, Loader2 } from 'lucide-react';
-import type { FeedbackType, BugSeverity, FeedbackPayload, FeedbackResponse } from './types';
+import type { FeedbackType, BugSeverity, FeedbackPayload } from './types';
+import { submitFeedback } from '@/frontend/api/feedback';
 
 interface FeedbackWidgetProps {
   userEmail: string | null;
@@ -31,18 +32,21 @@ function getBrowserInfo(): string {
   if (ua.includes('Firefox/')) return `Firefox ${ua.split('Firefox/')[1]?.split(' ')[0]}`;
   if (ua.includes('Edg/')) return `Edge ${ua.split('Edg/')[1]?.split(' ')[0]}`;
   if (ua.includes('Chrome/')) return `Chrome ${ua.split('Chrome/')[1]?.split(' ')[0]}`;
-  if (ua.includes('Safari/') && !ua.includes('Chrome')) return `Safari ${ua.split('Version/')[1]?.split(' ')[0] ?? ''}`;
+  if (ua.includes('Safari/') && !ua.includes('Chrome'))
+    return `Safari ${ua.split('Version/')[1]?.split(' ')[0] ?? ''}`;
   return ua.slice(0, 50);
 }
 
 function getOSInfo(): string {
   if (typeof navigator === 'undefined') return 'Unknown';
   const ua = navigator.userAgent;
-  if (ua.includes('Mac OS X')) return `macOS ${ua.match(/Mac OS X ([0-9_]+)/)?.[1]?.replace(/_/g, '.') ?? ''}`;
+  if (ua.includes('Mac OS X'))
+    return `macOS ${ua.match(/Mac OS X ([0-9_]+)/)?.[1]?.replace(/_/g, '.') ?? ''}`;
   if (ua.includes('Windows NT')) return `Windows ${ua.match(/Windows NT ([0-9.]+)/)?.[1] ?? ''}`;
   if (ua.includes('Linux')) return 'Linux';
   if (ua.includes('Android')) return `Android ${ua.match(/Android ([0-9.]+)/)?.[1] ?? ''}`;
-  if (ua.includes('iPhone') || ua.includes('iPad')) return `iOS ${ua.match(/OS ([0-9_]+)/)?.[1]?.replace(/_/g, '.') ?? ''}`;
+  if (ua.includes('iPhone') || ua.includes('iPad'))
+    return `iOS ${ua.match(/OS ([0-9_]+)/)?.[1]?.replace(/_/g, '.') ?? ''}`;
   return 'Unknown';
 }
 
@@ -145,30 +149,25 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
     };
 
     try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      await submitFeedback({
+        type: payload.type,
+        severity: payload.severity,
+        title: payload.title,
+        description: payload.description,
+        metadata: {
+          ...payload.metadata,
+          url: payload.metadata.url,
+          userEmail: payload.metadata.userEmail,
+          userId: payload.metadata.userId,
+          browser: payload.metadata.browser,
+        },
       });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setStatus('error');
-        setErrorMessage(data?.error ?? 'Something went wrong. Please try again.');
-        return;
-      }
-
-      const data: FeedbackResponse = await res.json();
-
-      if (data.success) {
-        setStatus('success');
-      } else {
-        setStatus('error');
-        setErrorMessage(data.error ?? 'Something went wrong. Please try again.');
-      }
-    } catch {
+      setStatus('success');
+    } catch (err) {
       setStatus('error');
-      setErrorMessage('Failed to send feedback. Please try again.');
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Failed to send feedback. Please try again.'
+      );
     }
   };
 

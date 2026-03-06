@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Video, Copy, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
+import * as integrationsApi from '@/frontend/api/integrations';
 
 interface FathomSettingsProps {
   isConnected: boolean;
@@ -32,9 +33,7 @@ export function FathomSettings({ isConnected }: FathomSettingsProps) {
 
     const fetchUrl = async () => {
       try {
-        const res = await fetch('/api/integrations/fathom/webhook-url');
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await integrationsApi.getFathomWebhookUrl();
         if (data.configured && data.webhook_url) {
           setWebhookUrl(data.webhook_url);
           setConfigured(true);
@@ -53,9 +52,7 @@ export function FathomSettings({ isConnected }: FathomSettingsProps) {
     setLoading(true);
     setFeedback(null);
     try {
-      const res = await fetch('/api/integrations/fathom/webhook-url', { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to generate webhook URL');
-      const data = await res.json();
+      const data = await integrationsApi.createFathomWebhookUrl();
       setWebhookUrl(data.webhook_url);
       setConfigured(true);
       setFeedback({ type: 'success', message: 'Webhook URL generated. Paste it into your Fathom settings.' });
@@ -76,8 +73,7 @@ export function FathomSettings({ isConnected }: FathomSettingsProps) {
     setLoading(true);
     setFeedback(null);
     try {
-      const res = await fetch('/api/integrations/fathom/webhook-url', { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to disconnect');
+      await integrationsApi.deleteFathomWebhookUrl();
       setWebhookUrl(null);
       setConfigured(false);
       setFeedback({ type: 'success', message: 'Fathom disconnected.' });

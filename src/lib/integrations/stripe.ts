@@ -10,7 +10,7 @@ function getStripeClient(): Stripe {
     throw new Error('STRIPE_SECRET_KEY is not set');
   }
   return new Stripe(secretKey, {
-    apiVersion: '2026-01-28.clover',
+    apiVersion: '2026-02-25.clover',
   });
 }
 
@@ -127,9 +127,7 @@ export async function createCheckoutSession(
 // SUBSCRIPTION MANAGEMENT
 // =============================================================================
 
-export async function getSubscription(
-  subscriptionId: string
-): Promise<Stripe.Subscription | null> {
+export async function getSubscription(subscriptionId: string): Promise<Stripe.Subscription | null> {
   const stripe = getStripeClient();
 
   try {
@@ -154,9 +152,7 @@ export async function cancelSubscription(
   });
 }
 
-export async function reactivateSubscription(
-  subscriptionId: string
-): Promise<Stripe.Subscription> {
+export async function reactivateSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
   const stripe = getStripeClient();
 
   return stripe.subscriptions.update(subscriptionId, {
@@ -208,10 +204,7 @@ export async function createBillingPortalSession(
 // WEBHOOK HANDLING
 // =============================================================================
 
-export function constructWebhookEvent(
-  payload: string | Buffer,
-  signature: string
-): Stripe.Event {
+export function constructWebhookEvent(payload: string | Buffer, signature: string): Stripe.Event {
   const stripe = getStripeClient();
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -241,9 +234,7 @@ export interface SubscriptionWebhookData {
   cancelAtPeriodEnd: boolean;
 }
 
-export function parseSubscriptionEvent(
-  subscription: Stripe.Subscription
-): SubscriptionWebhookData {
+export function parseSubscriptionEvent(subscription: Stripe.Subscription): SubscriptionWebhookData {
   const firstItem = subscription.items.data[0];
   const priceId = firstItem?.price.id || '';
 

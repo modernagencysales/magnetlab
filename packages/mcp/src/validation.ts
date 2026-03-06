@@ -1,26 +1,18 @@
-import { z } from 'zod'
+import { z } from 'zod';
 import {
   ARCHETYPES,
   IDEA_STATUS,
-  PIPELINE_POST_STATUS,
   KNOWLEDGE_CATEGORIES,
   KNOWLEDGE_TYPES,
   READINESS_GOALS,
-  CONTENT_PILLARS,
-  CONTENT_TYPES,
-  EXTRACT_CONTENT_TYPES,
-} from './constants.js'
+} from './constants.js';
 
 // Convert readonly tuples to mutable arrays for z.enum compatibility
-const archetypeValues = [...ARCHETYPES] as [string, ...string[]]
-const ideaStatusValues = [...IDEA_STATUS] as [string, ...string[]]
-const postStatusValues = [...PIPELINE_POST_STATUS] as [string, ...string[]]
-const knowledgeCategoryValues = [...KNOWLEDGE_CATEGORIES] as [string, ...string[]]
-const knowledgeTypeValues = [...KNOWLEDGE_TYPES] as [string, ...string[]]
-const readinessGoalValues = [...READINESS_GOALS] as [string, ...string[]]
-const pillarValues = [...CONTENT_PILLARS] as [string, ...string[]]
-const contentTypeValues = [...CONTENT_TYPES] as [string, ...string[]]
-const extractContentTypeValues = [...EXTRACT_CONTENT_TYPES] as [string, ...string[]]
+const archetypeValues = [...ARCHETYPES] as [string, ...string[]];
+const ideaStatusValues = [...IDEA_STATUS] as [string, ...string[]];
+const knowledgeCategoryValues = [...KNOWLEDGE_CATEGORIES] as [string, ...string[]];
+const knowledgeTypeValues = [...KNOWLEDGE_TYPES] as [string, ...string[]];
+const readinessGoalValues = [...READINESS_GOALS] as [string, ...string[]];
 
 // Schemas for tools that require strict argument validation
 export const toolSchemas = {
@@ -304,36 +296,31 @@ export const toolSchemas = {
     question_text: z.string().min(1, 'question_text is required'),
     question_type: z.enum(['text', 'single_choice', 'multi_choice']),
   }),
-} as const
+} as const;
 
-export type ToolName = keyof typeof toolSchemas
+export type ToolName = keyof typeof toolSchemas;
 
-export type ValidationResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+export type ValidationResult<T> = { success: true; data: T } | { success: false; error: string };
 
 /**
  * Validate tool arguments against the schema for the given tool.
  * Returns success with parsed data if valid, or failure with error message.
  * Tools without schemas pass through unchanged.
  */
-export function validateToolArgs<T>(
-  toolName: string,
-  args: unknown
-): ValidationResult<T> {
-  const schema = toolSchemas[toolName as ToolName]
+export function validateToolArgs<T>(toolName: string, args: unknown): ValidationResult<T> {
+  const schema = toolSchemas[toolName as ToolName];
 
   // Tools without explicit schemas pass through
   if (!schema) {
-    return { success: true, data: args as T }
+    return { success: true, data: args as T };
   }
 
-  const result = schema.safeParse(args)
+  const result = schema.safeParse(args);
   if (!result.success) {
-    const issues = result.error.issues || []
-    const errors = issues.map((e: { message: string }) => e.message).join(', ')
-    return { success: false, error: errors || 'Validation failed' }
+    const issues = result.error.issues || [];
+    const errors = issues.map((e: { message: string }) => e.message).join(', ');
+    return { success: false, error: errors || 'Validation failed' };
   }
 
-  return { success: true, data: result.data as T }
+  return { success: true, data: result.data as T };
 }

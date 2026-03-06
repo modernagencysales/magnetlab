@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { Globe, ExternalLink, Edit, Plus, Loader2, Upload, Trash2 } from 'lucide-react';
 import PagesListClient from '@/components/pages/PagesListClient';
 import type { PageListItem } from '@/components/pages/PagesListClient';
+import * as funnelApi from '@/frontend/api/funnel';
+import * as userApi from '@/frontend/api/user';
+import * as librariesApi from '@/frontend/api/libraries';
+import * as externalResourcesApi from '@/frontend/api/external-resources';
 
 interface FunnelPage {
   id: string;
@@ -92,38 +96,28 @@ export default function PagesPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [pagesRes, userRes, statsRes, librariesRes, resourcesRes] = await Promise.all([
-          fetch('/api/funnel/all'),
-          fetch('/api/user/username'),
-          fetch('/api/funnel/stats'),
-          fetch('/api/libraries'),
-          fetch('/api/external-resources'),
+        const [pagesData, userData, statsData, librariesData, resourcesData] = await Promise.all([
+          funnelApi.getAllFunnels().catch(() => ({ funnels: [] })),
+          userApi.getUsername().catch(() => ({ username: null })),
+          funnelApi.getFunnelStats().catch(() => ({ stats: {} })),
+          librariesApi.listLibraries().catch(() => ({ libraries: [] })),
+          externalResourcesApi.listExternalResources().catch(() => ({ resources: [] })),
         ]);
 
-        if (pagesRes.ok) {
-          const data = await pagesRes.json();
-          setPages(data.funnels || []);
-        }
-        if (userRes.ok) {
-          const data = await userRes.json();
-          setUser(data);
-        }
-        if (statsRes.ok) {
-          const data = await statsRes.json();
-          setStats(data.stats || {});
-        }
-        if (librariesRes.ok) {
-          const data = await librariesRes.json();
-          setLibraries((data.libraries || []).map((lib: { id: string; name: string; icon: string; slug: string }) => ({
-            ...lib,
-            itemCount: 0,
-            hasFunnel: false,
-          })));
-        }
-        if (resourcesRes.ok) {
-          const data = await resourcesRes.json();
-          setResources(data.resources || []);
-        }
+        setPages((pagesData.funnels || []) as FunnelPage[]);
+        setUser(userData as User);
+        setStats(
+          statsData.stats && typeof statsData.stats === 'object'
+            ? (statsData.stats as FunnelStats)
+            : {}
+        );
+        setLibraries(
+          (librariesData.libraries || []).map((lib: unknown) => {
+            const l = lib as { id: string; name: string; icon: string; slug: string };
+            return { ...l, itemCount: 0, hasFunnel: false };
+          })
+        );
+        setResources((resourcesData.resources || []) as typeof resources);
       } catch {
         // Silently handle errors
       } finally {
@@ -136,10 +130,8 @@ export default function PagesPage() {
   async function handleDeleteResource(id: string) {
     setDeletingResource(id);
     try {
-      const res = await fetch(`/api/external-resources/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setResources(resources.filter(r => r.id !== id));
-      }
+      await externalResourcesApi.deleteExternalResource(id);
+      setResources(resources.filter((r) => r.id !== id));
     } catch {
       // ignore
     } finally {
@@ -325,7 +317,8 @@ export default function PagesPage() {
               <span className="mx-auto block text-5xl mb-4">📚</span>
               <h3 className="text-lg font-medium">No libraries yet</h3>
               <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-                Libraries let you group multiple lead magnets and external resources into a single shareable page.
+                Libraries let you group multiple lead magnets and external resources into a single
+                shareable page.
               </p>
               <Link
                 href="/assets/libraries/new"
@@ -348,9 +341,7 @@ export default function PagesPage() {
                     </div>
                     <div>
                       <h3 className="font-medium">{lib.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        /{lib.slug}
-                      </p>
+                      <p className="text-sm text-muted-foreground">/{lib.slug}</p>
                     </div>
                   </div>
 
@@ -378,7 +369,8 @@ export default function PagesPage() {
               <span className="mx-auto block text-5xl mb-4">🔗</span>
               <h3 className="text-lg font-medium">No external resources yet</h3>
               <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-                Add links to external content like YouTube videos, tools, or guides. Track clicks when used in libraries.
+                Add links to external content like YouTube videos, tools, or guides. Track clicks
+                when used in libraries.
               </p>
               <Link
                 href="/assets/external/new"

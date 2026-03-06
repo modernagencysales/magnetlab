@@ -101,13 +101,13 @@ describe('Plan limits', () => {
   });
 
   describe('PLAN_LIMITS constants', () => {
-    it('defines free plan with limited resources', () => {
-      expect(PLAN_LIMITS.free.maxLeadMagnets).toBe(3);
-      expect(PLAN_LIMITS.free.maxFunnelPages).toBe(3);
-      expect(PLAN_LIMITS.free.maxEmailSequences).toBe(1);
-      expect(PLAN_LIMITS.free.features.customDomain).toBe(false);
-      expect(PLAN_LIMITS.free.features.teamMembers).toBe(false);
-      expect(PLAN_LIMITS.free.features.apiAccess).toBe(false);
+    it('defines free plan with unlimited resources and all features', () => {
+      expect(PLAN_LIMITS.free.maxLeadMagnets).toBe(Infinity);
+      expect(PLAN_LIMITS.free.maxFunnelPages).toBe(Infinity);
+      expect(PLAN_LIMITS.free.maxEmailSequences).toBe(Infinity);
+      expect(PLAN_LIMITS.free.features.customDomain).toBe(true);
+      expect(PLAN_LIMITS.free.features.teamMembers).toBe(true);
+      expect(PLAN_LIMITS.free.features.apiAccess).toBe(true);
     });
 
     it('defines pro plan with higher limits and all features', () => {
@@ -159,75 +159,75 @@ describe('Plan limits', () => {
   });
 
   describe('checkResourceLimit', () => {
-    it('returns allowed=true when under limit', async () => {
-      // getUserPlanLimits call — no subscription (free plan)
-      singleResults.push({ data: null, error: { code: 'PGRST116' } });
+    it('returns allowed=true when under limit (pro plan)', async () => {
+      // pro plan subscription
+      singleResults.push({ data: { plan: 'pro' }, error: null });
       // count query result
       selectResults.push({ count: 1, error: null });
 
       const result = await checkResourceLimit('user-1', 'lead_magnets');
       expect(result.allowed).toBe(true);
       expect(result.current).toBe(1);
-      expect(result.limit).toBe(3);
+      expect(result.limit).toBe(25);
     });
 
-    it('returns allowed=false when at limit', async () => {
-      // free plan
-      singleResults.push({ data: null, error: { code: 'PGRST116' } });
+    it('returns allowed=false when at limit (pro plan)', async () => {
+      // pro plan
+      singleResults.push({ data: { plan: 'pro' }, error: null });
       // at limit
-      selectResults.push({ count: 3, error: null });
+      selectResults.push({ count: 25, error: null });
 
       const result = await checkResourceLimit('user-1', 'lead_magnets');
       expect(result.allowed).toBe(false);
-      expect(result.current).toBe(3);
-      expect(result.limit).toBe(3);
+      expect(result.current).toBe(25);
+      expect(result.limit).toBe(25);
     });
 
-    it('returns allowed=true for pro plan with more resources', async () => {
-      // pro plan subscription
-      singleResults.push({ data: { plan: 'pro' }, error: null });
-      // 10 resources used (under pro limit of 25)
+    it('returns allowed=true for free plan (unlimited)', async () => {
+      // free plan (no subscription)
+      singleResults.push({ data: null, error: { code: 'PGRST116' } });
+      // 10 resources used
       selectResults.push({ count: 10, error: null });
 
       const result = await checkResourceLimit('user-1', 'lead_magnets');
       expect(result.allowed).toBe(true);
       expect(result.current).toBe(10);
-      expect(result.limit).toBe(25);
+      expect(result.limit).toBe(Infinity);
     });
 
     it('handles null count as zero', async () => {
-      // free plan
-      singleResults.push({ data: null, error: { code: 'PGRST116' } });
+      // pro plan
+      singleResults.push({ data: { plan: 'pro' }, error: null });
       // null count
       selectResults.push({ count: null, error: null });
 
       const result = await checkResourceLimit('user-1', 'lead_magnets');
       expect(result.allowed).toBe(true);
       expect(result.current).toBe(0);
-      expect(result.limit).toBe(3);
+      expect(result.limit).toBe(25);
     });
 
-    it('checks funnel_pages limit correctly', async () => {
-      // free plan
-      singleResults.push({ data: null, error: { code: 'PGRST116' } });
+    it('checks funnel_pages limit correctly (pro plan)', async () => {
+      // pro plan
+      singleResults.push({ data: { plan: 'pro' }, error: null });
       // at limit
-      selectResults.push({ count: 3, error: null });
+      selectResults.push({ count: 25, error: null });
 
       const result = await checkResourceLimit('user-1', 'funnel_pages');
       expect(result.allowed).toBe(false);
-      expect(result.limit).toBe(3);
+      expect(result.limit).toBe(25);
     });
 
-    it('checks email_sequences limit correctly', async () => {
-      // free plan (limit: 1)
-      singleResults.push({ data: null, error: { code: 'PGRST116' } });
-      // 1 already exists
-      selectResults.push({ count: 1, error: null });
+    it('checks email_sequences limit correctly (pro plan)', async () => {
+      // pro plan (limit: 10)
+      singleResults.push({ data: { plan: 'pro' }, error: null });
+      // 10 already exists
+      selectResults.push({ count: 10, error: null });
 
       const result = await checkResourceLimit('user-1', 'email_sequences');
       expect(result.allowed).toBe(false);
-      expect(result.current).toBe(1);
-      expect(result.limit).toBe(1);
+      expect(result.current).toBe(10);
+      expect(result.limit).toBe(10);
     });
   });
 

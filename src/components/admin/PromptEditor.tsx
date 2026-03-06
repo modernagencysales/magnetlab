@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { VersionTimeline } from './VersionTimeline';
+import * as adminPromptsApi from '@/frontend/api/admin/prompts';
 
 interface Variable {
   name: string;
@@ -97,20 +98,10 @@ export function PromptEditor({ prompt, versions }: Props) {
       if (maxTokens !== prompt.max_tokens) updates.max_tokens = maxTokens;
       if (isActive !== prompt.is_active) updates.is_active = isActive;
 
-      const res = await fetch(`/api/admin/prompts/${prompt.slug}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          updates,
-          change_note: changeNote.trim() || undefined,
-        }),
+      await adminPromptsApi.updatePrompt(prompt.slug, {
+        updates,
+        change_note: changeNote.trim() || undefined,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to save');
-      }
-
       setSaveMessage('Saved!');
       setChangeNote('');
       setTimeout(() => setSaveMessage(null), 3000);
@@ -145,25 +136,21 @@ export function PromptEditor({ prompt, versions }: Props) {
         exampleVars[v.name] = v.example;
       }
 
-      const res = await fetch(`/api/admin/prompts/${prompt.slug}/test`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_prompt: systemPrompt,
-          user_prompt: userPrompt,
-          model,
-          temperature,
-          max_tokens: maxTokens,
-          variables: exampleVars,
-        }),
+      const data = await adminPromptsApi.testPrompt(prompt.slug, {
+        system_prompt: systemPrompt,
+        user_prompt: userPrompt,
+        model,
+        temperature,
+        max_tokens: maxTokens,
+        variables: exampleVars,
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Test failed');
-      }
-
-      setTestResult(data.result ?? data.output ?? JSON.stringify(data, null, 2));
+      setTestResult(
+        (data.result as string) ??
+          (data.output as string) ??
+          (data.interpolated_system || data.interpolated_user
+            ? `System: ${data.interpolated_system ?? ''}\n\nUser: ${data.interpolated_user ?? ''}`
+            : JSON.stringify(data, null, 2))
+      );
     } catch (err) {
       setTestError(err instanceof Error ? err.message : 'Test failed');
     } finally {
@@ -178,17 +165,7 @@ export function PromptEditor({ prompt, versions }: Props) {
       }
 
       try {
-        const res = await fetch(`/api/admin/prompts/${prompt.slug}/restore`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ version_id: versionId }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Restore failed');
-        }
-
+        await adminPromptsApi.restorePrompt(prompt.slug, versionId);
         router.refresh();
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Restore failed');

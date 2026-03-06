@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Loader2, Brain } from 'lucide-react';
+import * as transcriptsApi from '@/frontend/api/content-pipeline/transcripts';
 
 interface ManualKnowledgeModalProps {
   onClose: () => void;
@@ -24,25 +25,15 @@ export function ManualKnowledgeModal({ onClose, onSuccess }: ManualKnowledgeModa
     setError('');
 
     try {
-      const res = await fetch('/api/content-pipeline/transcripts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transcript: content.trim(),
-          title: title.trim() || 'Manual Entry',
-          source: 'manual',
-        }),
+      await transcriptsApi.createTranscript({
+        transcript: content.trim(),
+        title: title.trim() || 'Manual Entry',
+        source: 'manual',
       });
-
-      if (res.ok) {
-        onSuccess();
-        onClose();
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to save');
-      }
-    } catch {
-      setError('Something went wrong');
+      onSuccess();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save');
     } finally {
       setSaving(false);
     }

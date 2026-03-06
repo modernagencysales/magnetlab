@@ -29,14 +29,17 @@ function renderRichText(text: string) {
 
 // ---- Callout ----
 
-const calloutConfig: Record<CalloutStyle, {
-  icon: typeof Info;
-  darkBg: string;
-  lightBg: string;
-  borderColor: string;
-  darkText: string;
-  lightText: string;
-}> = {
+const calloutConfig: Record<
+  CalloutStyle,
+  {
+    icon: typeof Info;
+    darkBg: string;
+    lightBg: string;
+    borderColor: string;
+    darkText: string;
+    lightText: string;
+  }
+> = {
   info: {
     icon: Info,
     darkBg: 'rgba(59,130,246,0.1)',
@@ -112,13 +115,7 @@ export function Callout({
 
 // ---- RichParagraph ----
 
-export function RichParagraph({
-  content,
-  colors,
-}: {
-  content: string;
-  colors: ThemeColors;
-}) {
+export function RichParagraph({ content, colors }: { content: string; colors: ThemeColors }) {
   return (
     <p
       style={{
@@ -137,13 +134,7 @@ export function RichParagraph({
 
 // ---- BulletList ----
 
-export function BulletList({
-  content,
-  colors,
-}: {
-  content: string;
-  colors: ThemeColors;
-}) {
+export function BulletList({ content, colors }: { content: string; colors: ThemeColors }) {
   const items = content
     .split('\n')
     .map((line) => line.replace(/^[-•]\s*/, '').trim())
@@ -247,10 +238,13 @@ export function CodeBlock({ block, isDark }: { block: PolishedBlock; isDark: boo
 
   if (!html) {
     return (
-      <pre className="rounded-lg border p-4 text-sm overflow-x-auto" style={{
-        backgroundColor: isDark ? '#1a1a2e' : '#f5f5f5',
-        color: 'var(--ds-body)',
-      }}>
+      <pre
+        className="rounded-lg border p-4 text-sm overflow-x-auto"
+        style={{
+          backgroundColor: isDark ? '#1a1a2e' : '#f5f5f5',
+          color: 'var(--ds-body)',
+        }}
+      >
         <code>{block.content}</code>
       </pre>
     );
@@ -259,10 +253,13 @@ export function CodeBlock({ block, isDark }: { block: PolishedBlock; isDark: boo
   return (
     <div className="rounded-lg border overflow-hidden text-sm [&_pre]:p-4 [&_pre]:m-0 [&_pre]:overflow-x-auto">
       {block.language && (
-        <div className="px-4 py-1.5 text-xs font-mono border-b" style={{
-          backgroundColor: isDark ? '#1a1a2e' : '#f0f0f0',
-          color: 'var(--ds-muted)',
-        }}>
+        <div
+          className="px-4 py-1.5 text-xs font-mono border-b"
+          style={{
+            backgroundColor: isDark ? '#1a1a2e' : '#f0f0f0',
+            color: 'var(--ds-muted)',
+          }}
+        >
           {block.language}
         </div>
       )}
@@ -282,7 +279,11 @@ export function TableBlock({ block, isDark }: { block: PolishedBlock; isDark: bo
         <thead>
           <tr style={{ backgroundColor: isDark ? '#1a1a2e' : '#f5f5f5' }}>
             {block.headers.map((header, i) => (
-              <th key={i} className="px-4 py-3 text-left font-semibold" style={{ color: 'var(--ds-text)' }}>
+              <th
+                key={i}
+                className="px-4 py-3 text-left font-semibold"
+                style={{ color: 'var(--ds-text)' }}
+              >
                 {header}
               </th>
             ))}
@@ -290,9 +291,14 @@ export function TableBlock({ block, isDark }: { block: PolishedBlock; isDark: bo
         </thead>
         <tbody>
           {block.rows.map((row, rowIdx) => (
-            <tr key={rowIdx} className="border-t" style={{
-              backgroundColor: rowIdx % 2 === 1 ? (isDark ? '#0d0d1a' : '#fafafa') : 'transparent',
-            }}>
+            <tr
+              key={rowIdx}
+              className="border-t"
+              style={{
+                backgroundColor:
+                  rowIdx % 2 === 1 ? (isDark ? '#0d0d1a' : '#fafafa') : 'transparent',
+              }}
+            >
               {row.map((cell, cellIdx) => (
                 <td key={cellIdx} className="px-4 py-3" style={{ color: 'var(--ds-body)' }}>
                   {renderRichText(cell)}
@@ -321,7 +327,9 @@ export function AccordionBlock({ block }: { block: PolishedBlock }) {
         <span>{block.title || 'Details'}</span>
         <svg
           className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
@@ -342,12 +350,8 @@ export function ImageBlock({ block }: { block: PolishedBlock }) {
 
   return (
     <figure className="my-2">
-      <img
-        src={block.src}
-        alt={block.alt || ''}
-        className="w-full rounded-lg"
-        loading="lazy"
-      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={block.src} alt={block.alt || ''} className="w-full rounded-lg" loading="lazy" />
       {block.caption && (
         <figcaption className="mt-2 text-center text-sm" style={{ color: 'var(--ds-muted)' }}>
           {block.caption}
@@ -399,11 +403,13 @@ const categoryColors: Record<string, { bg: string; text: string; border: string 
 };
 
 function getCategoryColor(category: string) {
-  return categoryColors[category.toLowerCase()] || {
-    bg: 'rgba(161,161,170,0.1)',
-    text: '#a1a1aa',
-    border: '#a1a1aa',
-  };
+  return (
+    categoryColors[category.toLowerCase()] || {
+      bg: 'rgba(161,161,170,0.1)',
+      text: '#a1a1aa',
+      border: '#a1a1aa',
+    }
+  );
 }
 
 export function NumberedItem({
@@ -560,10 +566,14 @@ export function StatCard({
   isDark: boolean;
   primaryColor: string;
 }) {
-  const accentColor = block.style === 'warning' ? '#f59e0b'
-    : block.style === 'success' ? '#22c55e'
-    : block.style === 'info' ? '#3b82f6'
-    : primaryColor;
+  const accentColor =
+    block.style === 'warning'
+      ? '#f59e0b'
+      : block.style === 'success'
+        ? '#22c55e'
+        : block.style === 'info'
+          ? '#3b82f6'
+          : primaryColor;
 
   return (
     <div

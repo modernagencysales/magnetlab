@@ -6,8 +6,14 @@ import { cn } from '@/lib/utils';
 import { BufferQueueCard } from './BufferQueueCard';
 import { PlannerView } from './PlannerView';
 import { BusinessContextModal } from './BusinessContextModal';
-import type { PipelinePost, PostingSlot, PillarDistribution, ContentPillar } from '@/lib/types/content-pipeline';
+import type {
+  PipelinePost,
+  PostingSlot,
+  PillarDistribution,
+  ContentPillar,
+} from '@/lib/types/content-pipeline';
 import { CONTENT_PILLAR_LABELS } from '@/lib/types/content-pipeline';
+import * as scheduleApi from '@/frontend/api/content-pipeline/schedule';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -44,14 +50,23 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
     setLoading(true);
     try {
       const [bufferResult, slotsResult, statusResult] = await Promise.allSettled([
-        fetch('/api/content-pipeline/schedule/buffer').then((r) => r.json()),
-        fetch('/api/content-pipeline/schedule/slots').then((r) => r.json()),
-        fetch('/api/content-pipeline/schedule/autopilot').then((r) => r.json()),
+        scheduleApi.getBuffer(),
+        scheduleApi.getSlots(),
+        scheduleApi.getAutopilotStatus(),
       ]);
 
-      if (bufferResult.status === 'fulfilled') setBuffer(bufferResult.value.buffer || []);
-      if (slotsResult.status === 'fulfilled') setSlots(slotsResult.value.slots || []);
-      if (statusResult.status === 'fulfilled') setAutopilotStatus(statusResult.value);
+      if (bufferResult.status === 'fulfilled')
+        setBuffer((bufferResult.value.buffer || []) as PipelinePost[]);
+      if (slotsResult.status === 'fulfilled')
+        setSlots((slotsResult.value.slots || []) as PostingSlot[]);
+      if (statusResult.status === 'fulfilled')
+        setAutopilotStatus(
+          statusResult.value as unknown as {
+            bufferSize: number;
+            nextScheduledSlot: string;
+            pillarCounts: PillarDistribution;
+          }
+        );
     } catch {
       // Silent failure
     } finally {
@@ -67,14 +82,8 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
     setActionId(postId);
     setActionType(action);
     try {
-      const response = await fetch('/api/content-pipeline/schedule/buffer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId, action }),
-      });
-      if (response.ok) {
-        await fetchAll();
-      }
+      await scheduleApi.bufferAction(postId, action);
+      await fetchAll();
     } catch {
       // Silent failure
     } finally {
@@ -86,10 +95,10 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
   const handleRunAutopilot = async () => {
     setRunningAutopilot(true);
     try {
-      await fetch('/api/content-pipeline/schedule/autopilot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postsPerBatch, autoPublish, profileId: profileId || undefined }),
+      await scheduleApi.triggerAutopilot({
+        postsPerBatch,
+        autoPublish,
+        profileId: profileId ?? undefined,
       });
       // Refresh after a short delay to let the task start
       setTimeout(() => fetchAll(), 2000);
@@ -103,21 +112,15 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
   const handleAddSlot = async () => {
     setAddingSlot(true);
     try {
-      const response = await fetch('/api/content-pipeline/schedule/slots', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          time_of_day: newSlotTime,
-          day_of_week: newSlotDay ? parseInt(newSlotDay) : null,
-          timezone: newSlotTimezone,
-        }),
+      await scheduleApi.createSlot({
+        time_of_day: newSlotTime,
+        day_of_week: newSlotDay ? parseInt(newSlotDay) : null,
+        timezone: newSlotTimezone,
       });
-      if (response.ok) {
-        setShowAddSlot(false);
-        setNewSlotTime('09:00');
-        setNewSlotDay('');
-        await fetchAll();
-      }
+      setShowAddSlot(false);
+      setNewSlotTime('09:00');
+      setNewSlotDay('');
+      await fetchAll();
     } catch {
       // Silent failure
     } finally {
@@ -127,11 +130,7 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
 
   const handleToggleSlot = async (slot: PostingSlot) => {
     try {
-      await fetch(`/api/content-pipeline/schedule/slots/${slot.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !slot.is_active }),
-      });
+      await scheduleApi.updateSlot(slot.id, { is_active: !slot.is_active });
       await fetchAll();
     } catch {
       // Silent failure
@@ -140,9 +139,7 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
 
   const handleDeleteSlot = async (slotId: string) => {
     try {
-      await fetch(`/api/content-pipeline/schedule/slots/${slotId}`, {
-        method: 'DELETE',
-      });
+      await scheduleApi.deleteSlot(slotId);
       await fetchAll();
     } catch {
       // Silent failure
@@ -191,7 +188,9 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border bg-card p-4">
           <p className="text-sm text-muted-foreground">Buffer Size</p>
-          <p className="mt-1 text-2xl font-semibold">{autopilotStatus?.bufferSize || 0} posts ready</p>
+          <p className="mt-1 text-2xl font-semibold">
+            {autopilotStatus?.bufferSize || 0} posts ready
+          </p>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <p className="text-sm text-muted-foreground">Next Post</p>
@@ -204,14 +203,16 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
         <div className="rounded-lg border bg-card p-4">
           <p className="text-sm text-muted-foreground">Pillar Balance</p>
           <div className="mt-1 flex items-center gap-2 flex-wrap">
-            {autopilotStatus?.pillarCounts && Object.entries(autopilotStatus.pillarCounts).map(([pillar, count]) => (
-              count > 0 ? (
-                <span key={pillar} className="text-xs text-muted-foreground">
-                  {CONTENT_PILLAR_LABELS[pillar as ContentPillar]?.split(' ')[0]}: {count}
-                </span>
-              ) : null
-            ))}
-            {!autopilotStatus?.pillarCounts || Object.values(autopilotStatus.pillarCounts).every((v) => v === 0) ? (
+            {autopilotStatus?.pillarCounts &&
+              Object.entries(autopilotStatus.pillarCounts).map(([pillar, count]) =>
+                count > 0 ? (
+                  <span key={pillar} className="text-xs text-muted-foreground">
+                    {CONTENT_PILLAR_LABELS[pillar as ContentPillar]?.split(' ')[0]}: {count}
+                  </span>
+                ) : null
+              )}
+            {!autopilotStatus?.pillarCounts ||
+            Object.values(autopilotStatus.pillarCounts).every((v) => v === 0) ? (
               <span className="text-sm text-muted-foreground">No posts yet</span>
             ) : null}
           </div>
@@ -223,7 +224,9 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
         <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">Buffer Queue</h3>
         {buffer.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-sm text-muted-foreground">Buffer is empty. Run autopilot to fill it.</p>
+            <p className="text-sm text-muted-foreground">
+              Buffer is empty. Run autopilot to fill it.
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -245,7 +248,9 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
       {/* Posting Schedule */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase text-muted-foreground">Posting Schedule</h3>
+          <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+            Posting Schedule
+          </h3>
           <button
             onClick={() => setShowAddSlot(!showAddSlot)}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
@@ -275,7 +280,11 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
                   className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Any day</option>
-                  {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                  {DAYS.map((d, i) => (
+                    <option key={i} value={i}>
+                      {d}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -312,13 +321,17 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
         ) : (
           <div className="grid gap-2 md:grid-cols-2">
             {slots.map((slot) => (
-              <div key={slot.id} className="flex items-center justify-between rounded-lg border bg-card p-3">
+              <div
+                key={slot.id}
+                className="flex items-center justify-between rounded-lg border bg-card p-3"
+              >
                 <div className="flex items-center gap-3">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">{slot.time_of_day}</p>
                     <p className="text-xs text-muted-foreground">
-                      {slot.day_of_week !== null ? DAYS[slot.day_of_week] : 'Every day'} · {slot.timezone}
+                      {slot.day_of_week !== null ? DAYS[slot.day_of_week] : 'Every day'} ·{' '}
+                      {slot.timezone}
                     </p>
                   </div>
                 </div>

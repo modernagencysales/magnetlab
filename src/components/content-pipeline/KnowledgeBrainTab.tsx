@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
 import { ManualKnowledgeModal } from './ManualKnowledgeModal';
 import type { KnowledgeCategory, KnowledgeSpeaker } from '@/lib/types/content-pipeline';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 const CATEGORIES: { value: KnowledgeCategory | ''; label: string }[] = [
   { value: '', label: 'All' },
@@ -71,16 +72,14 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
   const fetchEntries = useCallback(async (searchQuery: string, cat: string, spk: string = '', tag: string = '', sortBy: SortOption = 'newest') => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (searchQuery) params.append('q', searchQuery);
-      if (cat) params.append('category', cat);
-      if (spk) params.append('speaker', spk);
-      if (tag) params.append('tag', tag);
-      if (sortBy !== 'newest') params.append('sort', sortBy);
-      if (teamId) params.append('team_id', teamId);
-
-      const response = await fetch(`/api/content-pipeline/knowledge?${params}`);
-      const data = await response.json();
+      const data = await knowledgeApi.listKnowledge({
+        q: searchQuery || undefined,
+        category: cat || undefined,
+        speaker: spk || undefined,
+        tag: tag || undefined,
+        sort: sortBy !== 'newest' ? sortBy : undefined,
+        team_id: teamId,
+      }) as { entries?: KnowledgeEntryResult[]; total_count?: number };
       setEntries(data.entries || []);
       setTotalCount(data.total_count || 0);
     } catch {
@@ -92,10 +91,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
 
   const fetchTags = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ view: 'tags' });
-      if (teamId) params.append('team_id', teamId);
-      const response = await fetch(`/api/content-pipeline/knowledge?${params}`);
-      const data = await response.json();
+      const data = await knowledgeApi.listKnowledge({ view: 'tags', team_id: teamId }) as { tags?: { tag_name: string; usage_count: number }[] };
       setTags(data.tags || []);
     } catch {
       // Silent failure
@@ -104,10 +100,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
 
   const fetchClusters = useCallback(async () => {
     try {
-      const params = new URLSearchParams();
-      if (teamId) params.append('team_id', teamId);
-      const response = await fetch(`/api/content-pipeline/knowledge/clusters?${params}`);
-      const data = await response.json();
+      const data = await knowledgeApi.getClusters({ team_id: teamId }) as { clusters?: TagCluster[] };
       setClusters(data.clusters || []);
     } catch {
       // Silent failure
@@ -159,7 +152,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
   const handleOrganizeTags = async () => {
     setClustering(true);
     try {
-      await fetch('/api/content-pipeline/knowledge/clusters', { method: 'POST' });
+      await knowledgeApi.triggerClustering({ team_id: teamId });
       await fetchClusters();
       await fetchTags();
     } catch {

@@ -13,6 +13,13 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
+// Mock next/headers cookies
+jest.mock('next/headers', () => ({
+  cookies: jest.fn().mockResolvedValue({
+    get: jest.fn().mockReturnValue(undefined),
+  }),
+}));
+
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
   logError: jest.fn(),
@@ -21,34 +28,27 @@ jest.mock('@/lib/utils/logger', () => ({
   logDebug: jest.fn(),
 }));
 
-// Mock knowledge-brain service
-const mockListKnowledgeTopics = jest.fn();
-const mockGetTopicDetail = jest.fn();
-const mockGenerateAndCacheTopicSummary = jest.fn();
-const mockGetRecentKnowledgeDigest = jest.fn();
-const mockExportTopicKnowledge = jest.fn();
-const mockVerifyTeamMembership = jest.fn();
+// Mock knowledge service
+const mockGetTopics = jest.fn();
+const mockGetTopicBySlug = jest.fn();
+const mockGetTopicSummary = jest.fn();
+const mockGetKnowledgeDigest = jest.fn();
+const mockExportKnowledge = jest.fn();
+const mockGetKnowledgeGaps = jest.fn();
+const mockAssessKnowledgeReadiness = jest.fn();
+const mockAssertTeamMembership = jest.fn();
+const mockGetStatusCode = jest.fn().mockReturnValue(500);
 
-jest.mock('@/lib/services/knowledge-brain', () => ({
-  listKnowledgeTopics: (...args: unknown[]) => mockListKnowledgeTopics(...args),
-  getTopicDetail: (...args: unknown[]) => mockGetTopicDetail(...args),
-  generateAndCacheTopicSummary: (...args: unknown[]) => mockGenerateAndCacheTopicSummary(...args),
-  getRecentKnowledgeDigest: (...args: unknown[]) => mockGetRecentKnowledgeDigest(...args),
-  exportTopicKnowledge: (...args: unknown[]) => mockExportTopicKnowledge(...args),
-  searchKnowledgeV2: jest.fn(),
-  verifyTeamMembership: (...args: unknown[]) => mockVerifyTeamMembership(...args),
-}));
-
-// Mock knowledge-readiness
-const mockAssessReadiness = jest.fn();
-jest.mock('@/lib/ai/content-pipeline/knowledge-readiness', () => ({
-  assessReadiness: (...args: unknown[]) => mockAssessReadiness(...args),
-}));
-
-// Mock knowledge-gap-analyzer
-const mockAnalyzeTopicGaps = jest.fn();
-jest.mock('@/lib/ai/content-pipeline/knowledge-gap-analyzer', () => ({
-  analyzeTopicGaps: (...args: unknown[]) => mockAnalyzeTopicGaps(...args),
+jest.mock('@/server/services/knowledge.service', () => ({
+  getTopics: (...args: unknown[]) => mockGetTopics(...args),
+  getTopicBySlug: (...args: unknown[]) => mockGetTopicBySlug(...args),
+  getTopicSummary: (...args: unknown[]) => mockGetTopicSummary(...args),
+  getKnowledgeDigest: (...args: unknown[]) => mockGetKnowledgeDigest(...args),
+  exportKnowledge: (...args: unknown[]) => mockExportKnowledge(...args),
+  getKnowledgeGaps: (...args: unknown[]) => mockGetKnowledgeGaps(...args),
+  assessKnowledgeReadiness: (...args: unknown[]) => mockAssessKnowledgeReadiness(...args),
+  assertTeamMembership: (...args: unknown[]) => mockAssertTeamMembership(...args),
+  getStatusCode: (...args: unknown[]) => mockGetStatusCode(...args),
 }));
 
 import { auth } from '@/lib/auth';
@@ -63,7 +63,7 @@ function makeRequest(url: string, options?: RequestInit) {
 
 function mockAuthenticated(userId = 'user-123') {
   (auth as jest.Mock).mockResolvedValue({ user: { id: userId } });
-  mockVerifyTeamMembership.mockResolvedValue(true);
+  mockAssertTeamMembership.mockResolvedValue(undefined);
 }
 
 function mockUnauthenticated() {
@@ -99,7 +99,7 @@ describe('Knowledge API — Topics list', () => {
       { slug: 'sales', display_name: 'Sales', entry_count: 12, avg_quality: 4.1 },
       { slug: 'ai', display_name: 'AI', entry_count: 8, avg_quality: 3.8 },
     ];
-    mockListKnowledgeTopics.mockResolvedValue(topics);
+    mockGetTopics.mockResolvedValue(topics);
 
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/topics'));
     expect(res.status).toBe(200);
@@ -108,33 +108,34 @@ describe('Knowledge API — Topics list', () => {
     expect(data.topics).toHaveLength(2);
     expect(data.topics[0].slug).toBe('sales');
 
-    // Verify default limit passed
-    expect(mockListKnowledgeTopics).toHaveBeenCalledWith('user-123', { teamId: undefined, limit: 50 });
+    // Service is called with userId, teamId, limit
+    expect(mockGetTopics).toHaveBeenCalledWith('user-123', undefined, 50);
   });
 
   it('passes team_id to service when provided', async () => {
     mockAuthenticated();
-    mockListKnowledgeTopics.mockResolvedValue([]);
+    mockGetTopics.mockResolvedValue([]);
 
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/topics?team_id=team-abc'));
     expect(res.status).toBe(200);
 
-    expect(mockListKnowledgeTopics).toHaveBeenCalledWith('user-123', { teamId: 'team-abc', limit: 50 });
+    expect(mockGetTopics).toHaveBeenCalledWith('user-123', 'team-abc', 50);
   });
 
   it('passes custom limit when provided', async () => {
     mockAuthenticated();
-    mockListKnowledgeTopics.mockResolvedValue([]);
+    mockGetTopics.mockResolvedValue([]);
 
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/topics?limit=10'));
     expect(res.status).toBe(200);
 
-    expect(mockListKnowledgeTopics).toHaveBeenCalledWith('user-123', { teamId: undefined, limit: 10 });
+    expect(mockGetTopics).toHaveBeenCalledWith('user-123', undefined, 10);
   });
 
   it('returns 500 when service throws', async () => {
     mockAuthenticated();
-    mockListKnowledgeTopics.mockRejectedValue(new Error('DB timeout'));
+    mockGetTopics.mockRejectedValue(new Error('DB timeout'));
+    mockGetStatusCode.mockReturnValue(500);
 
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/topics'));
     expect(res.status).toBe(500);
@@ -177,7 +178,7 @@ describe('Knowledge API — Topic detail', () => {
       top_entries: {},
       corroboration_count: 2,
     };
-    mockGetTopicDetail.mockResolvedValue(detail);
+    mockGetTopicBySlug.mockResolvedValue(detail);
 
     const res = await callGET('sales');
     expect(res.status).toBe(200);
@@ -185,12 +186,12 @@ describe('Knowledge API — Topic detail', () => {
     const data = await res.json();
     expect(data.topic.slug).toBe('sales');
     expect(data.type_breakdown).toEqual({ how_to: 5, insight: 3 });
-    expect(mockGetTopicDetail).toHaveBeenCalledWith('user-123', 'sales', undefined);
+    expect(mockGetTopicBySlug).toHaveBeenCalledWith('user-123', 'sales', undefined);
   });
 
   it('returns 404 when topic not found', async () => {
     mockAuthenticated();
-    mockGetTopicDetail.mockResolvedValue({
+    mockGetTopicBySlug.mockResolvedValue({
       topic: null,
       type_breakdown: {},
       top_entries: {},
@@ -234,7 +235,7 @@ describe('Knowledge API — Topic summary', () => {
 
   it('returns summary from service', async () => {
     mockAuthenticated();
-    mockGenerateAndCacheTopicSummary.mockResolvedValue({
+    mockGetTopicSummary.mockResolvedValue({
       summary: 'Sales is about closing deals.',
       cached: false,
     });
@@ -245,12 +246,12 @@ describe('Knowledge API — Topic summary', () => {
     const data = await res.json();
     expect(data.summary).toBe('Sales is about closing deals.');
     expect(data.cached).toBe(false);
-    expect(mockGenerateAndCacheTopicSummary).toHaveBeenCalledWith('user-123', 'sales', false, undefined);
+    expect(mockGetTopicSummary).toHaveBeenCalledWith('user-123', 'sales', false, undefined);
   });
 
   it('passes force=true when query param set', async () => {
     mockAuthenticated();
-    mockGenerateAndCacheTopicSummary.mockResolvedValue({
+    mockGetTopicSummary.mockResolvedValue({
       summary: 'Refreshed summary.',
       cached: false,
     });
@@ -258,12 +259,13 @@ describe('Knowledge API — Topic summary', () => {
     const res = await callPOST('sales', '?force=true');
     expect(res.status).toBe(200);
 
-    expect(mockGenerateAndCacheTopicSummary).toHaveBeenCalledWith('user-123', 'sales', true, undefined);
+    expect(mockGetTopicSummary).toHaveBeenCalledWith('user-123', 'sales', true, undefined);
   });
 
   it('returns 404 when topic not found', async () => {
     mockAuthenticated();
-    mockGenerateAndCacheTopicSummary.mockRejectedValue(new Error('Topic not found: bogus'));
+    mockGetTopicSummary.mockRejectedValue(new Error('Topic not found: bogus'));
+    mockGetStatusCode.mockReturnValue(500);
 
     const res = await callPOST('bogus');
     expect(res.status).toBe(404);
@@ -301,7 +303,7 @@ describe('Knowledge API — Recent digest', () => {
       most_active_topics: [{ slug: 'ai', display_name: 'AI', count: 8 }],
       highlights: [],
     };
-    mockGetRecentKnowledgeDigest.mockResolvedValue(digest);
+    mockGetKnowledgeDigest.mockResolvedValue(digest);
 
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/recent'));
     expect(res.status).toBe(200);
@@ -310,13 +312,12 @@ describe('Knowledge API — Recent digest', () => {
     expect(data.entries_added).toBe(15);
     expect(data.new_topics).toEqual(['AI Agents']);
 
-    // Default 7 days, clamped to min(7, 90) = 7
-    expect(mockGetRecentKnowledgeDigest).toHaveBeenCalledWith('user-123', 7, undefined);
+    expect(mockGetKnowledgeDigest).toHaveBeenCalledWith('user-123', 7, undefined);
   });
 
-  it('respects custom days param clamped to 90', async () => {
+  it('respects custom days param', async () => {
     mockAuthenticated();
-    mockGetRecentKnowledgeDigest.mockResolvedValue({
+    mockGetKnowledgeDigest.mockResolvedValue({
       entries_added: 0,
       new_topics: [],
       most_active_topics: [],
@@ -326,8 +327,8 @@ describe('Knowledge API — Recent digest', () => {
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/recent?days=120'));
     expect(res.status).toBe(200);
 
-    // 120 clamped to 90
-    expect(mockGetRecentKnowledgeDigest).toHaveBeenCalledWith('user-123', 90, undefined);
+    // Days passed as 120, clamping happens inside the service
+    expect(mockGetKnowledgeDigest).toHaveBeenCalledWith('user-123', 120, undefined);
   });
 });
 
@@ -370,6 +371,13 @@ describe('Knowledge API — Readiness', () => {
 
   it('returns 400 for invalid goal value', async () => {
     mockAuthenticated();
+    const err = Object.assign(
+      new Error('goal must be one of: lead_magnet, blog_post, course, sop, content_week'),
+      { statusCode: 400 },
+    );
+    mockAssessKnowledgeReadiness.mockRejectedValue(err);
+    mockGetStatusCode.mockReturnValue(400);
+
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/readiness?topic=sales&goal=invalid_goal'));
     expect(res.status).toBe(400);
     const data = await res.json();
@@ -387,7 +395,7 @@ describe('Knowledge API — Readiness', () => {
       verdict: 'Ready to create a lead magnet',
       suggestions: [],
     };
-    mockAssessReadiness.mockResolvedValue(readiness);
+    mockAssessKnowledgeReadiness.mockResolvedValue(readiness);
 
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/readiness?topic=sales&goal=lead_magnet'));
     expect(res.status).toBe(200);
@@ -396,19 +404,19 @@ describe('Knowledge API — Readiness', () => {
     expect(data.readiness.ready).toBe(true);
     expect(data.readiness.score).toBe(82);
 
-    expect(mockAssessReadiness).toHaveBeenCalledWith('user-123', 'sales', 'lead_magnet', undefined);
+    expect(mockAssessKnowledgeReadiness).toHaveBeenCalledWith('user-123', 'sales', 'lead_magnet', undefined);
   });
 
   it('accepts all valid goal values', async () => {
     mockAuthenticated();
-    mockAssessReadiness.mockResolvedValue({ ready: false, score: 20, suggestions: [] });
+    mockAssessKnowledgeReadiness.mockResolvedValue({ ready: false, score: 20, suggestions: [] });
 
     const goals = ['lead_magnet', 'blog_post', 'course', 'sop', 'content_week'];
     for (const goal of goals) {
       const res = await GET(makeRequest(`/api/content-pipeline/knowledge/readiness?topic=t&goal=${goal}`));
       expect(res.status).toBe(200);
     }
-    expect(mockAssessReadiness).toHaveBeenCalledTimes(goals.length);
+    expect(mockAssessKnowledgeReadiness).toHaveBeenCalledTimes(goals.length);
   });
 });
 
@@ -433,35 +441,17 @@ describe('Knowledge API — Gaps', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns gaps sorted by coverage score ascending', async () => {
+  it('returns gaps from service', async () => {
     mockAuthenticated();
 
-    const topics = [
-      { slug: 'sales', display_name: 'Sales', avg_quality: 4.0, last_seen: '2026-02-19' },
-      { slug: 'ai', display_name: 'AI', avg_quality: 3.5, last_seen: '2026-02-18' },
-    ];
-    mockListKnowledgeTopics.mockResolvedValue(topics);
-
-    mockGetTopicDetail
-      .mockResolvedValueOnce({ type_breakdown: { how_to: 5, insight: 3 } })
-      .mockResolvedValueOnce({ type_breakdown: { insight: 2 } });
-
-    // Sales has better coverage than AI
-    mockAnalyzeTopicGaps
-      .mockReturnValueOnce({
-        topic_slug: 'sales',
-        topic_name: 'Sales',
-        coverage_score: 0.75,
-        missing_types: ['story'],
-        patterns: [],
-      })
-      .mockReturnValueOnce({
-        topic_slug: 'ai',
-        topic_name: 'AI',
-        coverage_score: 0.25,
-        missing_types: ['how_to', 'story', 'question'],
-        patterns: ['Thin but trending'],
-      });
+    const gapsResult = {
+      gaps: [
+        { topic_slug: 'ai', topic_name: 'AI', coverage_score: 0.25, missing_types: ['how_to'], patterns: [] },
+        { topic_slug: 'sales', topic_name: 'Sales', coverage_score: 0.75, missing_types: ['story'], patterns: [] },
+      ],
+      total_topics: 2,
+    };
+    mockGetKnowledgeGaps.mockResolvedValue(gapsResult);
 
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/gaps'));
     expect(res.status).toBe(200);
@@ -469,39 +459,11 @@ describe('Knowledge API — Gaps', () => {
     const data = await res.json();
     expect(data.total_topics).toBe(2);
     expect(data.gaps).toHaveLength(2);
-
-    // Worst coverage first
     expect(data.gaps[0].topic_slug).toBe('ai');
     expect(data.gaps[0].coverage_score).toBe(0.25);
     expect(data.gaps[1].topic_slug).toBe('sales');
-    expect(data.gaps[1].coverage_score).toBe(0.75);
-  });
 
-  it('calls analyzeTopicGaps with correct params from topic + detail', async () => {
-    mockAuthenticated();
-
-    const topics = [
-      { slug: 'marketing', display_name: 'Marketing', avg_quality: 3.2, last_seen: '2026-01-15' },
-    ];
-    mockListKnowledgeTopics.mockResolvedValue(topics);
-    mockGetTopicDetail.mockResolvedValue({ type_breakdown: { insight: 4, story: 1 } });
-    mockAnalyzeTopicGaps.mockReturnValue({
-      topic_slug: 'marketing',
-      topic_name: 'Marketing',
-      coverage_score: 0.5,
-      missing_types: [],
-      patterns: [],
-    });
-
-    await GET(makeRequest('/api/content-pipeline/knowledge/gaps'));
-
-    expect(mockAnalyzeTopicGaps).toHaveBeenCalledWith(
-      'marketing',
-      'Marketing',
-      { insight: 4, story: 1 },
-      3.2,
-      '2026-01-15'
-    );
+    expect(mockGetKnowledgeGaps).toHaveBeenCalledWith('user-123', undefined, 20);
   });
 });
 
@@ -536,25 +498,28 @@ describe('Knowledge API — Export', () => {
 
   it('returns 404 when topic not found', async () => {
     mockAuthenticated();
-    mockExportTopicKnowledge.mockResolvedValue({ topic: null, entries_by_type: {}, total_count: 0 });
+    const err = Object.assign(new Error('Topic not found'), { statusCode: 404 });
+    mockExportKnowledge.mockRejectedValue(err);
+    mockGetStatusCode.mockReturnValue(404);
 
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/export?topic=bogus'));
     expect(res.status).toBe(404);
-    const data = await res.json();
-    expect(data.error).toBe('Topic not found');
   });
 
   it('returns structured format by default', async () => {
     mockAuthenticated();
     const exportData = {
-      topic: { slug: 'sales', display_name: 'Sales' },
-      entries_by_type: {
-        how_to: [{ content: 'Step 1: Qualify the lead' }],
-        insight: [{ content: 'Buyers care about ROI' }],
+      export: {
+        topic: { slug: 'sales', display_name: 'Sales' },
+        entries_by_type: {
+          how_to: [{ content: 'Step 1: Qualify the lead' }],
+          insight: [{ content: 'Buyers care about ROI' }],
+        },
+        total_count: 2,
       },
-      total_count: 2,
+      format: 'structured',
     };
-    mockExportTopicKnowledge.mockResolvedValue(exportData);
+    mockExportKnowledge.mockResolvedValue(exportData);
 
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/export?topic=sales'));
     expect(res.status).toBe(200);
@@ -568,13 +533,11 @@ describe('Knowledge API — Export', () => {
   it('returns markdown format when requested', async () => {
     mockAuthenticated();
     const exportData = {
-      topic: { slug: 'sales', display_name: 'Sales' },
-      entries_by_type: {
-        how_to: [{ content: 'Step 1: Qualify the lead' }],
-      },
+      export: '# Sales\n\n## how_to (1)\n\n- Step 1: Qualify the lead\n',
+      format: 'markdown',
       total_count: 1,
     };
-    mockExportTopicKnowledge.mockResolvedValue(exportData);
+    mockExportKnowledge.mockResolvedValue(exportData);
 
     const res = await GET(makeRequest('/api/content-pipeline/knowledge/export?topic=sales&format=markdown'));
     expect(res.status).toBe(200);

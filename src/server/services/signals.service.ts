@@ -25,16 +25,28 @@ export async function listKeywords(userId: string) {
 export async function createKeyword(userId: string, keyword: string) {
   const trimmed = keyword?.trim();
   if (!trimmed || trimmed.length < 2) {
-    return { success: false as const, error: 'validation' as const, message: 'Keyword must be at least 2 characters' };
+    return {
+      success: false as const,
+      error: 'validation' as const,
+      message: 'Keyword must be at least 2 characters',
+    };
   }
   const { count } = await signalsRepo.countKeywordMonitors(userId);
   if (count >= MAX_KEYWORDS) {
-    return { success: false as const, error: 'limit' as const, message: `Maximum ${MAX_KEYWORDS} keyword monitors allowed` };
+    return {
+      success: false as const,
+      error: 'limit' as const,
+      message: `Maximum ${MAX_KEYWORDS} keyword monitors allowed`,
+    };
   }
   const { data, error } = await signalsRepo.createKeywordMonitor(userId, trimmed);
   if (error) {
     if (error.code === '23505') {
-      return { success: false as const, error: 'conflict' as const, message: 'Keyword already being monitored' };
+      return {
+        success: false as const,
+        error: 'conflict' as const,
+        message: 'Keyword already being monitored',
+      };
     }
     logError('api/signals/keywords', error);
     return { success: false as const, error: 'database' as const };
@@ -43,7 +55,9 @@ export async function createKeyword(userId: string, keyword: string) {
 }
 
 export async function updateKeyword(userId: string, id: string, body: { is_active?: boolean }) {
-  const { data, error } = await signalsRepo.updateKeywordMonitor(id, userId, { is_active: body.is_active });
+  const { data, error } = await signalsRepo.updateKeywordMonitor(id, userId, {
+    is_active: body.is_active,
+  });
   if (error) {
     if (error.code === 'PGRST116') {
       return { success: false as const, error: 'not_found' as const };
@@ -81,16 +95,31 @@ export async function createCompany(
 ) {
   const url = payload.linkedin_company_url?.trim();
   if (!url || !url.includes('linkedin.com/company/')) {
-    return { success: false as const, error: 'validation' as const, message: 'Must be a LinkedIn company URL (must contain linkedin.com/company/)' };
+    return {
+      success: false as const,
+      error: 'validation' as const,
+      message: 'Must be a LinkedIn company URL (must contain linkedin.com/company/)',
+    };
   }
   const { count } = await signalsRepo.countCompanyMonitors(userId);
   if (count >= MAX_COMPANIES) {
-    return { success: false as const, error: 'limit' as const, message: `Maximum ${MAX_COMPANIES} company monitors allowed` };
+    return {
+      success: false as const,
+      error: 'limit' as const,
+      message: `Maximum ${MAX_COMPANIES} company monitors allowed`,
+    };
   }
-  const { data, error } = await signalsRepo.createCompanyMonitor(userId, { linkedin_company_url: url, heyreach_campaign_id: payload.heyreach_campaign_id ?? null });
+  const { data, error } = await signalsRepo.createCompanyMonitor(userId, {
+    linkedin_company_url: url,
+    heyreach_campaign_id: payload.heyreach_campaign_id ?? null,
+  });
   if (error) {
     if (error.code === '23505') {
-      return { success: false as const, error: 'conflict' as const, message: 'Company already being monitored' };
+      return {
+        success: false as const,
+        error: 'conflict' as const,
+        message: 'Company already being monitored',
+      };
     }
     logError('api/signals/companies', error);
     return { success: false as const, error: 'database' as const };
@@ -105,9 +134,14 @@ export async function updateCompany(
 ) {
   const updates: { is_active?: boolean; heyreach_campaign_id?: string | null } = {};
   if ('is_active' in body) updates.is_active = body.is_active;
-  if ('heyreach_campaign_id' in body) updates.heyreach_campaign_id = body.heyreach_campaign_id ?? null;
+  if ('heyreach_campaign_id' in body)
+    updates.heyreach_campaign_id = body.heyreach_campaign_id ?? null;
   if (Object.keys(updates).length === 0) {
-    return { success: false as const, error: 'validation' as const, message: 'No valid fields provided' };
+    return {
+      success: false as const,
+      error: 'validation' as const,
+      message: 'No valid fields provided',
+    };
   }
   const { data, error } = await signalsRepo.updateCompanyMonitor(id, userId, updates);
   if (error) {
@@ -147,7 +181,11 @@ export async function listLeads(
   const limitClamped = Math.min(100, Math.max(1, limit));
   const minScoreNum = filters.minScore != null ? parseInt(filters.minScore, 10) : undefined;
 
-  const { data: leads, error, count } = await signalsRepo.listSignalLeads(
+  const {
+    data: leads,
+    error,
+    count,
+  } = await signalsRepo.listSignalLeads(
     userId,
     {
       status: filters.status ?? undefined,
@@ -168,7 +206,9 @@ export async function listLeads(
 
   if (filters.signalType) {
     filteredLeads = filteredLeads.filter((lead) => {
-      const events = (lead as Record<string, unknown>).signal_events as Array<{ signal_type: string }> | undefined;
+      const events = (lead as Record<string, unknown>).signal_events as
+        | Array<{ signal_type: string }>
+        | undefined;
       return events?.some((e) => e.signal_type === filters.signalType) ?? false;
     });
     total = filteredLeads.length;
@@ -192,18 +232,18 @@ export async function bulkExcludeLeads(userId: string, leadIds: string[]) {
   return { success: true as const, excluded: leadIds.length };
 }
 
-export async function bulkPushLeads(
-  userId: string,
-  leadIds: string[],
-  campaignId: string
-) {
+export async function bulkPushLeads(userId: string, leadIds: string[], campaignId: string) {
   const { data: leads, error: fetchError } = await signalsRepo.getLeadsByIds(leadIds, userId);
   if (fetchError) {
     logError('api/signals/leads/push-fetch', fetchError, { userId });
     return { success: false as const, error: 'database' as const };
   }
   if (!leads || leads.length === 0) {
-    return { success: false as const, error: 'not_found' as const, message: 'No matching leads found' };
+    return {
+      success: false as const,
+      error: 'not_found' as const,
+      message: 'No matching leads found',
+    };
   }
 
   const heyreachLeads = leads.map((lead) => ({
@@ -220,7 +260,11 @@ export async function bulkPushLeads(
   const result = await pushLeadsToHeyReach(campaignId, heyreachLeads);
 
   if (result.success) {
-    await signalsRepo.updateLeadsPushed(leads.map((l) => l.id), userId, campaignId);
+    await signalsRepo.updateLeadsPushed(
+      leads.map((l) => l.id),
+      userId,
+      campaignId
+    );
     return { success: true as const, added: result.added };
   }
 

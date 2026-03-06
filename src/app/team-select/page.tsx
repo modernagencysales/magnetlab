@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Users, Loader2, Magnet, ArrowRight, UsersRound } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import { getTeamMemberships } from '@/frontend/api/team';
 
 interface TeamMembership {
   id: string;
@@ -22,15 +23,12 @@ export default function TeamSelectPage() {
   useEffect(() => {
     const fetchMemberships = async () => {
       try {
-        const res = await fetch('/api/team/memberships');
-        if (res.ok) {
-          const data = await res.json();
-          setMemberships(data);
+        const data = await getTeamMemberships();
+        setMemberships(data as TeamMembership[]);
 
-          // Auto-redirect if only one team
-          if (data.length === 1) {
-            selectTeam(data[0].teamId);
-          }
+        // Auto-redirect if only one team
+        if (data.length === 1) {
+          selectTeam((data[0] as TeamMembership).teamId);
         }
       } catch (err) {
         logError('dashboard/team-select', err, { step: 'failed_to_fetch_memberships' });
@@ -40,7 +38,7 @@ export default function TeamSelectPage() {
     };
 
     fetchMemberships();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectTeam = (teamId: string) => {
@@ -70,9 +68,7 @@ export default function TeamSelectPage() {
           <Users className="h-6 w-6 text-primary" />
         </div>
         <h1 className="text-2xl font-semibold mb-2">Switch Team</h1>
-        <p className="text-sm text-muted-foreground">
-          Choose which team to work in
-        </p>
+        <p className="text-sm text-muted-foreground">Choose which team to work in</p>
       </div>
 
       <div className="space-y-3">
@@ -113,7 +109,9 @@ export default function TeamSelectPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{m.teamName}</p>
-              <p className="text-xs text-muted-foreground">{m.role === 'owner' ? 'Owner' : 'Member'}</p>
+              <p className="text-xs text-muted-foreground">
+                {m.role === 'owner' ? 'Owner' : 'Member'}
+              </p>
             </div>
             <ArrowRight size={16} className="text-muted-foreground shrink-0" />
           </button>

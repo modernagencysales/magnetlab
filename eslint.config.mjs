@@ -10,7 +10,7 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...compat.extends("next/core-web-vitals", "next/typescript", "prettier"),
   {
     ignores: [
       "node_modules/**",
@@ -27,6 +27,39 @@ const eslintConfig = [
     files: ["jest.config.js", "jest.setup.js"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
+  // Enforce server/client boundary: client files must not import from src/server/
+  {
+    files: [
+      "src/components/**/*.{ts,tsx}",
+      "src/frontend/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["*/server/*", "@/server/*"],
+              message:
+                "Client files must not import from src/server/. Use @/frontend/api/* instead.",
+            },
+          ],
+        },
+      ],
     },
   },
 ];

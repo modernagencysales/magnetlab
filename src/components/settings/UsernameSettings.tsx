@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Loader2, AlertCircle } from 'lucide-react';
+import * as userApi from '@/frontend/api/user';
 
 interface UsernameSettingsProps {
   currentUsername: string | null;
@@ -22,17 +23,7 @@ export function UsernameSettings({ currentUsername }: UsernameSettingsProps) {
     setSaved(false);
 
     try {
-      const response = await fetch('/api/user/username', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim() }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update username');
-      }
-
+      await userApi.updateUsername(username.trim());
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {

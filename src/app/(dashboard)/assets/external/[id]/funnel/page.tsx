@@ -5,6 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { FunnelBuilder } from '@/components/funnel';
 import type { FunnelPage, QualificationQuestion } from '@/lib/types/funnel';
+import * as funnelApi from '@/frontend/api/funnel';
+import * as externalResourcesApi from '@/frontend/api/external-resources';
+import * as userApi from '@/frontend/api/user';
+import * as integrationsApi from '@/frontend/api/integrations';
 
 interface ExternalResource {
   id: string;
@@ -28,43 +32,35 @@ export default function ExternalResourceFunnelPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [resourceRes, userRes, funnelRes, emailProvidersRes] = await Promise.all([
-          fetch(`/api/external-resources/${resourceId}`),
-          fetch('/api/user/username'),
-          fetch(`/api/funnel?externalResourceId=${resourceId}`),
-          fetch('/api/integrations/email-marketing/connected'),
+        const [resourceData, userData, funnelData, emailProvidersData] = await Promise.all([
+          externalResourcesApi.getExternalResource(resourceId).catch(() => null),
+          userApi.getUsername().catch(() => ({ username: null })),
+          funnelApi
+            .getFunnelByTarget({ externalResourceId: resourceId })
+            .catch(() => ({ funnel: null })),
+          integrationsApi.getEmailMarketingConnected().catch(() => ({ providers: [] })),
         ]);
 
-        if (!resourceRes.ok) {
+        if (!resourceData) {
           router.push('/pages');
           return;
         }
 
-        const resourceData = await resourceRes.json();
-        setResource(resourceData.resource);
+        setResource(resourceData as ExternalResource);
+        setUsername(userData.username);
+        setConnectedEmailProviders(emailProvidersData.providers || []);
 
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setUsername(userData.username);
-        }
+        if (funnelData.funnel) {
+          setFunnel(funnelData.funnel as FunnelPage);
 
-        if (funnelRes.ok) {
-          const funnelData = await funnelRes.json();
-          if (funnelData.funnel) {
-            setFunnel(funnelData.funnel);
-
-            // Fetch questions if funnel exists
-            const questionsRes = await fetch(`/api/funnel/${funnelData.funnel.id}/questions`);
-            if (questionsRes.ok) {
-              const questionsData = await questionsRes.json();
-              setQuestions(questionsData.questions || []);
-            }
+          try {
+            const questionsData = await funnelApi.getQuestions(
+              (funnelData.funnel as { id: string }).id
+            );
+            setQuestions((questionsData.questions || []) as QualificationQuestion[]);
+          } catch {
+            // ignore
           }
-        }
-
-        if (emailProvidersRes.ok) {
-          const emailData = await emailProvidersRes.json();
-          setConnectedEmailProviders(emailData.providers || []);
         }
       } catch {
         // ignore

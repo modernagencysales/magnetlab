@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronDown, ChevronUp, Lightbulb, ExternalLink, ThumbsUp, Users } from 'lucide-react';
 import Link from 'next/link';
+import * as swipeFileApi from '@/frontend/api/swipe-file';
 
 interface SwipePost {
   id: string;
@@ -41,22 +42,16 @@ export function SwipeFileInspiration({
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        featured: 'true',
-        limit: limit.toString(),
-      });
-      if (niche) params.append('niche', niche);
+      const baseParams = { featured: true, limit };
 
       if (type === 'posts' || type === 'both') {
-        const postRes = await fetch(`/api/swipe-file/posts?${params}`);
-        const postData = await postRes.json();
-        setPosts(postData.posts || []);
+        const postData = await swipeFileApi.listPosts({ ...baseParams, niche: niche || undefined });
+        setPosts((postData.posts || []) as SwipePost[]);
       }
 
       if (type === 'lead-magnets' || type === 'both') {
-        const lmRes = await fetch(`/api/swipe-file/lead-magnets?${params}`);
-        const lmData = await lmRes.json();
-        setLeadMagnets(lmData.leadMagnets || []);
+        const lmData = await swipeFileApi.listLeadMagnets({ ...baseParams, niche: niche || undefined });
+        setLeadMagnets((lmData.leadMagnets || []) as SwipeLeadMagnet[]);
       }
     } catch {
       // Error handled silently - data will be empty

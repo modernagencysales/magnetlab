@@ -6,6 +6,7 @@ import { Webhook, AlertTriangle, CheckCircle, ExternalLink, Loader2, Settings } 
 import type { WebhookConfig } from '@/lib/types/funnel';
 
 import { logError } from '@/lib/utils/logger';
+import * as webhooksApi from '@/frontend/api/webhooks';
 
 export function LeadDeliveryInfo() {
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
@@ -14,11 +15,8 @@ export function LeadDeliveryInfo() {
   useEffect(() => {
     async function fetchWebhooks() {
       try {
-        const response = await fetch('/api/webhooks');
-        if (response.ok) {
-          const data = await response.json();
-          setWebhooks(data.webhooks || []);
-        }
+        const data = await webhooksApi.getWebhooks();
+        setWebhooks((data.webhooks || []) as WebhookConfig[]);
       } catch (err) {
         logError('funnel/lead-delivery', err, { step: 'failed_to_fetch_webhooks' });
       } finally {

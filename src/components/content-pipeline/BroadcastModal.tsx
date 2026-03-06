@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, Loader2, Radio, Check, Linkedin, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PipelinePost, TeamProfileWithConnection } from '@/lib/types/content-pipeline';
+import * as broadcastApi from '@/frontend/api/content-pipeline/broadcast';
 
 interface BroadcastModalProps {
   post: PipelinePost;
@@ -50,21 +51,11 @@ export function BroadcastModal({ post, profiles, onClose, onBroadcast }: Broadca
     setError(null);
 
     try {
-      const res = await fetch('/api/content-pipeline/broadcast', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source_post_id: post.id,
-          target_profile_ids: Array.from(selectedIds),
-          stagger_days: staggerDays,
-        }),
+      await broadcastApi.triggerBroadcast({
+        source_post_id: post.id,
+        target_profile_ids: Array.from(selectedIds),
+        stagger_days: staggerDays,
       });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to start broadcast');
-      }
-
       onBroadcast();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');

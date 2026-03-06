@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Globe, TrendingUp } from 'lucide-react';
+import * as templatesApi from '@/frontend/api/content-pipeline/templates';
 
 interface GlobalTemplate {
   id: string;
@@ -54,9 +55,8 @@ export function GlobalTemplateLibrary() {
 
   const fetchGlobalTemplates = useCallback(async () => {
     try {
-      const response = await fetch('/api/content-pipeline/templates?scope=global');
-      const data = await response.json();
-      setTemplates(data.templates || []);
+      const list = await templatesApi.listTemplates('global');
+      setTemplates((list || []) as GlobalTemplate[]);
     } catch {
       // Silent failure
     } finally {
@@ -69,9 +69,7 @@ export function GlobalTemplateLibrary() {
   }, [fetchGlobalTemplates]);
 
   const filtered =
-    activeCategory === 'all'
-      ? templates
-      : templates.filter((t) => t.category === activeCategory);
+    activeCategory === 'all' ? templates : templates.filter((t) => t.category === activeCategory);
 
   if (loading) {
     return (
@@ -87,9 +85,7 @@ export function GlobalTemplateLibrary() {
       <div className="mb-4 flex flex-wrap gap-1.5">
         {CATEGORIES.map((cat) => {
           const count =
-            cat === 'all'
-              ? templates.length
-              : templates.filter((t) => t.category === cat).length;
+            cat === 'all' ? templates.length : templates.filter((t) => t.category === cat).length;
           if (cat !== 'all' && count === 0) return null;
           return (
             <button
@@ -111,9 +107,7 @@ export function GlobalTemplateLibrary() {
       {filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
           <Globe className="mx-auto h-8 w-8 text-muted-foreground/50" />
-          <p className="mt-2 text-sm text-muted-foreground">
-            No global templates available yet.
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">No global templates available yet.</p>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
@@ -135,9 +129,7 @@ export function GlobalTemplateLibrary() {
                       </span>
                     )}
                     {template.source && (
-                      <span className="text-xs text-muted-foreground">
-                        {template.source}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{template.source}</span>
                     )}
                   </div>
                 </div>
@@ -155,7 +147,9 @@ export function GlobalTemplateLibrary() {
               >
                 <pre
                   className={`rounded bg-muted p-2 text-xs text-muted-foreground whitespace-pre-wrap ${
-                    expandedId === template.id ? 'max-h-64 overflow-auto' : 'max-h-24 overflow-hidden'
+                    expandedId === template.id
+                      ? 'max-h-64 overflow-auto'
+                      : 'max-h-24 overflow-hidden'
                   }`}
                 >
                   {template.structure}
@@ -183,9 +177,7 @@ export function GlobalTemplateLibrary() {
                   Used {template.usage_count} times
                 </span>
                 {template.avg_engagement_score != null && template.avg_engagement_score > 0 && (
-                  <span>
-                    Avg engagement: {template.avg_engagement_score.toFixed(1)}
-                  </span>
+                  <span>Avg engagement: {template.avg_engagement_score.toFixed(1)}</span>
                 )}
               </div>
             </div>

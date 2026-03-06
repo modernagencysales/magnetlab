@@ -6,6 +6,7 @@ import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { FunnelTemplateSettings } from '@/components/settings/FunnelTemplateSettings';
 import { WhiteLabelSettings } from '@/components/settings/WhiteLabelSettings';
 import { logError } from '@/lib/utils/logger';
+import * as userApi from '@/frontend/api/user';
 
 interface BrandingPageProps {
   brandKit: {
@@ -33,12 +34,9 @@ export function BrandingPage({ brandKit, plan }: BrandingPageProps) {
   useEffect(() => {
     const fetchUserDefaults = async () => {
       try {
-        const response = await fetch('/api/user/defaults');
-        if (response.ok) {
-          const data = await response.json();
-          setDefaultVslUrl(data.defaultVslUrl || '');
-          setDefaultFunnelTemplate(data.defaultFunnelTemplate || 'social_proof');
-        }
+        const data = await userApi.getDefaults();
+        setDefaultVslUrl(data.defaultVslUrl || '');
+        setDefaultFunnelTemplate(data.defaultFunnelTemplate || 'social_proof');
       } catch (error) {
         logError('settings/branding', error, { step: 'failed_to_fetch_user_defaults' });
       } finally {
@@ -54,14 +52,7 @@ export function BrandingPage({ brandKit, plan }: BrandingPageProps) {
     setDefaultVslUrlSaved(false);
 
     try {
-      const response = await fetch('/api/user/defaults', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ defaultVslUrl: defaultVslUrl.trim() }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to save');
-
+      await userApi.updateDefaults({ defaultVslUrl: defaultVslUrl.trim() });
       setDefaultVslUrlSaved(true);
       setTimeout(() => setDefaultVslUrlSaved(false), 3000);
     } catch (error) {

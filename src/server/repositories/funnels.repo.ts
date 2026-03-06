@@ -20,7 +20,10 @@ import {
   type QualificationQuestion,
 } from '@/lib/types/funnel';
 import { resolveQuestionsForFunnel } from '@/lib/services/qualification';
-import { normalizeImageUrl, normalizeSectionConfigImageUrls } from '@/lib/utils/normalize-image-url';
+import {
+  normalizeImageUrl,
+  normalizeSectionConfigImageUrls,
+} from '@/lib/utils/normalize-image-url';
 
 // ─── Re-export types ───────────────────────────────────────────────────────
 export type { FunnelPage, FunnelPageSection, QualificationQuestion };
@@ -58,7 +61,7 @@ export async function assertFunnelAccess(scope: DataScope, id: string): Promise<
   const supabase = createSupabaseAdminClient();
   const { data } = await applyScope(
     supabase.from('funnel_pages').select('id').eq('id', id),
-    scope,
+    scope
   ).single();
   return data?.id ?? null;
 }
@@ -67,17 +70,19 @@ export async function assertFunnelAccess(scope: DataScope, id: string): Promise<
 
 export async function findFunnelByTarget(
   scope: DataScope,
-  filter: { leadMagnetId?: string; libraryId?: string; externalResourceId?: string },
+  filter: { leadMagnetId?: string; libraryId?: string; externalResourceId?: string }
 ): Promise<FunnelPage | null> {
   const supabase = createSupabaseAdminClient();
   let query = applyScope(supabase.from('funnel_pages').select(FUNNEL_COLUMNS), scope);
 
   if (filter.leadMagnetId) query = query.eq('lead_magnet_id', filter.leadMagnetId);
   else if (filter.libraryId) query = query.eq('library_id', filter.libraryId);
-  else if (filter.externalResourceId) query = query.eq('external_resource_id', filter.externalResourceId);
+  else if (filter.externalResourceId)
+    query = query.eq('external_resource_id', filter.externalResourceId);
 
   const { data, error } = await query.single();
-  if (error && error.code !== 'PGRST116') throw new Error(`funnels.findFunnelByTarget: ${error.message}`);
+  if (error && error.code !== 'PGRST116')
+    throw new Error(`funnels.findFunnelByTarget: ${error.message}`);
   if (!data) return null;
   return funnelPageFromRow(data as FunnelPageRow);
 }
@@ -86,7 +91,7 @@ export async function findFunnelById(scope: DataScope, id: string): Promise<Funn
   const supabase = createSupabaseAdminClient();
   const { data, error } = await applyScope(
     supabase.from('funnel_pages').select(FUNNEL_FULL_COLUMNS).eq('id', id),
-    scope,
+    scope
   ).single();
   if (error || !data) return null;
   return funnelPageFromRow(data as FunnelPageRow);
@@ -95,7 +100,7 @@ export async function findFunnelById(scope: DataScope, id: string): Promise<Funn
 /** Find funnel page by id and user_id (for external API ownership check). */
 export async function findFunnelPageByIdAndUserId(
   id: string,
-  userId: string,
+  userId: string
 ): Promise<{ id: string; user_id: string } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -111,7 +116,7 @@ export async function findFunnelPageByIdAndUserId(
 /** Update funnel page by id only (for external API — no scope). */
 export async function updateFunnelPageByIdUnscoped(
   id: string,
-  updates: Record<string, unknown>,
+  updates: Record<string, unknown>
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase.from('funnel_pages').update(updates).eq('id', id);
@@ -121,7 +126,7 @@ export async function updateFunnelPageByIdUnscoped(
 /** Find funnel page by lead_magnet_id and user_id (for external GET funnel). */
 export async function findFunnelByLeadMagnetIdAndUserId(
   leadMagnetId: string,
-  userId: string,
+  userId: string
 ): Promise<FunnelPage | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -130,7 +135,8 @@ export async function findFunnelByLeadMagnetIdAndUserId(
     .eq('lead_magnet_id', leadMagnetId)
     .eq('user_id', userId)
     .single();
-  if (error && error.code !== 'PGRST116') throw new Error(`funnels.findFunnelByLeadMagnetIdAndUserId: ${error.message}`);
+  if (error && error.code !== 'PGRST116')
+    throw new Error(`funnels.findFunnelByLeadMagnetIdAndUserId: ${error.message}`);
   if (!data) return null;
   return funnelPageFromRow(data as FunnelPageRow);
 }
@@ -138,7 +144,7 @@ export async function findFunnelByLeadMagnetIdAndUserId(
 /** Find funnel by id and user_id with lead_magnets join (for external publish). */
 export async function findFunnelByIdAndUserIdWithLeadMagnet(
   id: string,
-  userId: string,
+  userId: string
 ): Promise<(FunnelPageRow & { lead_magnets?: { id: string } }) | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -187,9 +193,11 @@ export async function findAllFunnels(scope: DataScope) {
   const { data, error } = await applyScope(
     supabase
       .from('funnel_pages')
-      .select(`id, slug, optin_headline, is_published, published_at, created_at, target_type, lead_magnet_id, library_id, external_resource_id, users(username), lead_magnets(title), libraries(name, icon), external_resources(title, icon)`)
+      .select(
+        `id, slug, optin_headline, is_published, published_at, created_at, target_type, lead_magnet_id, library_id, external_resource_id, users(username), lead_magnets(title), libraries(name, icon), external_resources(title, icon)`
+      )
       .eq('is_variant', false),
-    scope,
+    scope
   ).order('created_at', { ascending: false });
   if (error) throw new Error(`funnels.findAllFunnels: ${error.message}`);
   return data ?? [];
@@ -200,16 +208,13 @@ export async function findFunnelForPublish(scope: DataScope, id: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await applyScope(
     supabase.from('funnel_pages').select('*, lead_magnets(id)').eq('id', id),
-    scope,
+    scope
   ).single();
   if (error || !data) return null;
   return data;
 }
 
-export async function findExistingSlug(
-  userId: string,
-  slug: string,
-): Promise<Set<string>> {
+export async function findExistingSlug(userId: string, slug: string): Promise<Set<string>> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('funnel_pages')
@@ -222,13 +227,10 @@ export async function findExistingSlug(
 export async function checkSlugCollision(
   scope: DataScope,
   slug: string,
-  excludeId?: string,
+  excludeId?: string
 ): Promise<boolean> {
   const supabase = createSupabaseAdminClient();
-  let query = applyScope(
-    supabase.from('funnel_pages').select('id').eq('slug', slug),
-    scope,
-  );
+  let query = applyScope(supabase.from('funnel_pages').select('id').eq('slug', slug), scope);
   if (excludeId) query = query.neq('id', excludeId);
   const { data } = await query.single();
   return !!data;
@@ -255,12 +257,12 @@ export async function createFunnel(row: Record<string, unknown>): Promise<Funnel
 export async function updateFunnel(
   scope: DataScope,
   id: string,
-  updates: Record<string, unknown>,
+  updates: Record<string, unknown>
 ): Promise<FunnelPage> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await applyScope(
     supabase.from('funnel_pages').update(updates).eq('id', id),
-    scope,
+    scope
   )
     .select()
     .single();
@@ -276,10 +278,7 @@ export async function deleteFunnel(scope: DataScope, id: string): Promise<void> 
     supabase.from('funnel_leads').delete().eq('funnel_page_id', id),
     supabase.from('page_views').delete().eq('funnel_page_id', id),
   ]);
-  const { error } = await applyScope(
-    supabase.from('funnel_pages').delete().eq('id', id),
-    scope,
-  );
+  const { error } = await applyScope(supabase.from('funnel_pages').delete().eq('id', id), scope);
   if (error) throw new Error(`funnels.deleteFunnel: ${error.message}`);
 }
 
@@ -287,7 +286,7 @@ export async function deleteFunnel(scope: DataScope, id: string): Promise<void> 
 
 export async function verifyLeadMagnetOwnership(
   userId: string,
-  leadMagnetId: string,
+  leadMagnetId: string
 ): Promise<{ id: string; title: string } | null> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
@@ -301,7 +300,7 @@ export async function verifyLeadMagnetOwnership(
 
 export async function verifyLibraryOwnership(
   userId: string,
-  libraryId: string,
+  libraryId: string
 ): Promise<{ id: string; name: string } | null> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
@@ -315,7 +314,7 @@ export async function verifyLibraryOwnership(
 
 export async function verifyExternalResourceOwnership(
   userId: string,
-  externalResourceId: string,
+  externalResourceId: string
 ): Promise<{ id: string; title: string } | null> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
@@ -336,7 +335,8 @@ export async function checkFunnelExistsForTarget(filter: {
   let query = supabase.from('funnel_pages').select('id');
   if (filter.leadMagnetId) query = query.eq('lead_magnet_id', filter.leadMagnetId);
   else if (filter.libraryId) query = query.eq('library_id', filter.libraryId);
-  else if (filter.externalResourceId) query = query.eq('external_resource_id', filter.externalResourceId);
+  else if (filter.externalResourceId)
+    query = query.eq('external_resource_id', filter.externalResourceId);
   const { data } = await query.single();
   return !!data;
 }
@@ -347,7 +347,9 @@ export async function getUserFunnelDefaults(userId: string) {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('users')
-    .select('default_theme, default_primary_color, default_background_style, default_logo_url, default_vsl_url, default_funnel_template')
+    .select(
+      'default_theme, default_primary_color, default_background_style, default_logo_url, default_vsl_url, default_funnel_template'
+    )
     .eq('id', userId)
     .single();
   return data;
@@ -363,7 +365,9 @@ export async function getUserProfileForBulk(userId: string) {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('users')
-    .select('default_theme, default_primary_color, default_background_style, default_logo_url, default_vsl_url, username')
+    .select(
+      'default_theme, default_primary_color, default_background_style, default_logo_url, default_vsl_url, username'
+    )
     .eq('id', userId)
     .single();
   return data;
@@ -374,8 +378,10 @@ export async function getBrandKit(scope: DataScope) {
   const { data } = await applyScope(
     supabase
       .from('brand_kits')
-      .select('logos, default_testimonial, default_steps, default_theme, default_primary_color, default_background_style, logo_url, font_family, font_url'),
-    scope,
+      .select(
+        'logos, default_testimonial, default_steps, default_theme, default_primary_color, default_background_style, logo_url, font_family, font_url'
+      ),
+    scope
   ).single();
   return data;
 }
@@ -384,7 +390,7 @@ export async function getBrandKitForContentGen(scope: DataScope) {
   const supabase = createSupabaseAdminClient();
   const { data } = await applyScope(
     supabase.from('brand_kits').select('credibility_markers'),
-    scope,
+    scope
   ).single();
   return data;
 }
@@ -393,7 +399,7 @@ export async function getQualificationForm(scope: DataScope, formId: string) {
   const supabase = createSupabaseAdminClient();
   const { data } = await applyScope(
     supabase.from('qualification_forms').select('id').eq('id', formId),
-    scope,
+    scope
   ).single();
   return data;
 }
@@ -413,7 +419,7 @@ export async function getLeadMagnetForPublish(userId: string, leadMagnetId: stri
 
 export async function updateLeadMagnetPolished(
   leadMagnetId: string,
-  polishedContent: unknown,
+  polishedContent: unknown
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
   await supabase
@@ -425,8 +431,11 @@ export async function updateLeadMagnetPolished(
 export async function getLeadMagnetForContentGen(scope: DataScope, leadMagnetId: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await applyScope(
-    supabase.from('lead_magnets').select('title, concept, extracted_content').eq('id', leadMagnetId),
-    scope,
+    supabase
+      .from('lead_magnets')
+      .select('title, concept, extracted_content')
+      .eq('id', leadMagnetId),
+    scope
   ).single();
   if (error || !data) return null;
   return data;
@@ -487,10 +496,7 @@ export async function createSection(row: {
   is_visible: boolean;
   config: Record<string, unknown>;
 }): Promise<FunnelPageSection> {
-  const normalizedConfig = normalizeSectionConfigImageUrls(
-    row.section_type,
-    row.config,
-  );
+  const normalizedConfig = normalizeSectionConfigImageUrls(row.section_type, row.config);
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('funnel_page_sections')
@@ -504,7 +510,7 @@ export async function createSection(row: {
 export async function updateSection(
   sectionId: string,
   funnelId: string,
-  updates: Record<string, unknown>,
+  updates: Record<string, unknown>
 ): Promise<FunnelPageSection> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -528,21 +534,26 @@ export async function deleteSection(sectionId: string, funnelId: string): Promis
   if (error) throw new Error(`funnels.deleteSection: ${error.message}`);
 }
 
-export async function insertSections(rows: {
-  funnel_page_id: string;
-  section_type: string;
-  page_location: string;
-  sort_order: number;
-  is_visible: boolean;
-  config: Record<string, unknown>;
-}[]): Promise<FunnelPageSection[]> {
+export async function insertSections(
+  rows: {
+    funnel_page_id: string;
+    section_type: string;
+    page_location: string;
+    sort_order: number;
+    is_visible: boolean;
+    config: Record<string, unknown>;
+  }[]
+): Promise<FunnelPageSection[]> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase.from('funnel_page_sections').insert(rows).select();
   if (error) throw new Error(`funnels.insertSections: ${error.message}`);
   return (data as FunnelPageSectionRow[]).map(funnelPageSectionFromRow);
 }
 
-export async function deleteSectionsByLocation(funnelId: string, pageLocation: string): Promise<void> {
+export async function deleteSectionsByLocation(
+  funnelId: string,
+  pageLocation: string
+): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase
     .from('funnel_page_sections')
@@ -552,7 +563,10 @@ export async function deleteSectionsByLocation(funnelId: string, pageLocation: s
   if (error) throw new Error(`funnels.deleteSectionsByLocation: ${error.message}`);
 }
 
-export async function updateSectionConfig(sectionId: string, config: Record<string, unknown>): Promise<void> {
+export async function updateSectionConfig(
+  sectionId: string,
+  config: Record<string, unknown>
+): Promise<void> {
   const supabase = createSupabaseAdminClient();
   await supabase.from('funnel_page_sections').update({ config }).eq('id', sectionId);
 }
@@ -567,12 +581,12 @@ export async function findQuestionsForFunnel(funnelId: string, formId: string | 
 
 export async function findFunnelFormId(
   scope: DataScope,
-  funnelId: string,
+  funnelId: string
 ): Promise<{ id: string; qualification_form_id: string | null } | null> {
   const supabase = createSupabaseAdminClient();
   const { data } = await applyScope(
     supabase.from('funnel_pages').select('id, qualification_form_id').eq('id', funnelId),
-    scope,
+    scope
   ).single();
   return data ?? null;
 }
@@ -604,7 +618,7 @@ export async function updateQuestion(
   questionId: string,
   funnelId: string,
   formId: string | null,
-  updates: Record<string, unknown>,
+  updates: Record<string, unknown>
 ): Promise<QualificationQuestion> {
   const supabase = createSupabaseAdminClient();
   let query = supabase.from('qualification_questions').update(updates).eq('id', questionId);
@@ -618,7 +632,7 @@ export async function updateQuestion(
 export async function deleteQuestion(
   questionId: string,
   funnelId: string,
-  formId: string | null,
+  formId: string | null
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
   let query = supabase.from('qualification_questions').delete().eq('id', questionId);
@@ -628,17 +642,14 @@ export async function deleteQuestion(
   if (error) throw new Error(`funnels.deleteQuestion: ${error.message}`);
 }
 
-export async function reorderQuestions(
-  questionIds: string[],
-  funnelId: string,
-): Promise<void> {
+export async function reorderQuestions(questionIds: string[], funnelId: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const updates = questionIds.map((qId, idx) =>
     supabase
       .from('qualification_questions')
       .update({ question_order: idx })
       .eq('id', qId)
-      .eq('funnel_page_id', funnelId),
+      .eq('funnel_page_id', funnelId)
   );
   const results = await Promise.all(updates);
   const failed = results.find((r) => r.error);
@@ -710,7 +721,7 @@ export async function upsertFunnelIntegration(row: {
 export async function deleteFunnelIntegration(
   userId: string,
   funnelPageId: string,
-  provider: string,
+  provider: string
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase

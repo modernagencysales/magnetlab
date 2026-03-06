@@ -14,40 +14,21 @@ jest.mock('@/lib/utils/team-context', () => ({
   applyScope: jest.fn((query: unknown) => query),
 }));
 
-// Mock Supabase
-const mockSingle = jest.fn();
-const mockEq = jest.fn().mockReturnThis();
-const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
-const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-const mockFrom = jest.fn().mockReturnValue({
-  select: mockSelect,
-  update: mockUpdate,
-});
+// Mock the service module — this is what the route handler actually imports
+const mockGenerateAndPolishContent = jest.fn();
+const mockGetStatusCode = jest.fn();
 
-jest.mock('@/lib/utils/supabase-server', () => ({
-  createSupabaseAdminClient: () => ({ from: mockFrom }),
+jest.mock('@/server/services/lead-magnets.service', () => ({
+  generateAndPolishContent: (...args: unknown[]) => mockGenerateAndPolishContent(...args),
+  getStatusCode: (...args: unknown[]) => mockGetStatusCode(...args),
 }));
 
-// Mock AI modules
-const mockGenerateFullContent = jest.fn();
-jest.mock('@/lib/ai/generate-lead-magnet-content', () => ({
-  generateFullContent: (...args: unknown[]) => mockGenerateFullContent(...args),
-}));
-
-const mockPolishLeadMagnetContent = jest.fn();
-jest.mock('@/lib/ai/lead-magnet-generator', () => ({
-  polishLeadMagnetContent: (...args: unknown[]) => mockPolishLeadMagnetContent(...args),
-}));
-
-// Mock knowledge brain
-const mockGetRelevantContext = jest.fn();
-jest.mock('@/lib/services/knowledge-brain', () => ({
-  getRelevantContext: (...args: unknown[]) => mockGetRelevantContext(...args),
-}));
-
-// Mock PostHog
-jest.mock('@/lib/posthog', () => ({
-  getPostHogServerClient: () => ({ capture: jest.fn() }),
+// Mock api errors (imported by route)
+jest.mock('@/lib/api/errors', () => ({
+  ApiErrors: {
+    unauthorized: jest.fn(() => new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })),
+  },
+  logApiError: jest.fn(),
 }));
 
 import { POST } from '@/app/api/lead-magnet/[id]/generate-content/route';
@@ -89,25 +70,13 @@ describe('POST /api/lead-magnet/[id]/generate-content', () => {
     jest.clearAllMocks();
     mockSessionValue = { user: { id: 'test-user-id' } };
 
-    // Default: lead magnet exists with concept but no extracted content
-    mockEq.mockReturnThis();
-    mockSingle.mockResolvedValue({
-      data: {
-        id: TEST_LM_ID,
-        title: 'Test Guide',
-        concept: { painSolved: 'Pain', contents: 'Contents', deliveryFormat: 'Digital Guide' },
-        user_id: 'test-user-id',
-      },
-      error: null,
+    // Default: service returns success
+    mockGenerateAndPolishContent.mockResolvedValue({
+      extractedContent: mockExtracted,
+      polishedContent: mockPolished,
+      polishedAt: '2026-01-01T00:00:00.000Z',
     });
-    // Chain: from().select().eq() returns { eq: mockEq } which has .single()
-    mockSelect.mockReturnValue({ eq: jest.fn().mockReturnValue({ single: mockSingle }) });
-    // Chain: from().update().eq() returns { eq: mockEq } which resolves
-    mockUpdate.mockReturnValue({ eq: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }) });
-
-    mockGetRelevantContext.mockResolvedValue({ entries: [] });
-    mockGenerateFullContent.mockResolvedValue(mockExtracted);
-    mockPolishLeadMagnetContent.mockResolvedValue(mockPolished);
+    mockGetStatusCode.mockReturnValue(500);
   });
 
   it('returns 401 if not authenticated', async () => {
@@ -117,25 +86,20 @@ describe('POST /api/lead-magnet/[id]/generate-content', () => {
   });
 
   it('returns 404 if lead magnet not found', async () => {
-    mockSelect.mockReturnValue({
-      eq: jest.fn().mockReturnValue({
-        single: jest.fn().mockResolvedValue({ data: null, error: { message: 'Not found', code: 'PGRST116' } }),
-      }),
-    });
+    mockGenerateAndPolishContent.mockRejectedValue(
+      Object.assign(new Error('Lead magnet not found'), { statusCode: 404 })
+    );
+    mockGetStatusCode.mockReturnValue(404);
 
     const res = await POST(makeRequest(), makeParams());
     expect(res.status).toBe(404);
   });
 
   it('returns 400 if concept is null', async () => {
-    mockSelect.mockReturnValue({
-      eq: jest.fn().mockReturnValue({
-        single: jest.fn().mockResolvedValue({
-          data: { id: TEST_LM_ID, title: 'Test', concept: null, user_id: 'test-user-id' },
-          error: null,
-        }),
-      }),
-    });
+    mockGenerateAndPolishContent.mockRejectedValue(
+      Object.assign(new Error('Lead magnet has no concept — cannot generate content'), { statusCode: 400 })
+    );
+    mockGetStatusCode.mockReturnValue(400);
 
     const res = await POST(makeRequest(), makeParams());
     expect(res.status).toBe(400);
@@ -153,29 +117,21 @@ describe('POST /api/lead-magnet/[id]/generate-content', () => {
     expect(body.polishedAt).toBeDefined();
   });
 
-  it('calls generateFullContent with correct arguments', async () => {
+  it('calls generateAndPolishContent with correct arguments', async () => {
     await POST(makeRequest(), makeParams());
-    expect(mockGenerateFullContent).toHaveBeenCalledWith(
-      'Test Guide',
-      expect.objectContaining({ painSolved: 'Pain' }),
-      '' // no knowledge context since entries is empty
+    expect(mockGenerateAndPolishContent).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'user', userId: 'test-user-id' }),
+      TEST_LM_ID
     );
   });
 
-  it('continues when knowledge context fetch fails', async () => {
-    mockGetRelevantContext.mockRejectedValue(new Error('Knowledge DB down'));
-
-    const res = await POST(makeRequest(), makeParams());
-    expect(res.status).toBe(200);
-    expect(mockGenerateFullContent).toHaveBeenCalledWith('Test Guide', expect.any(Object), '');
-  });
-
   it('returns 500 when AI generation fails', async () => {
-    mockGenerateFullContent.mockRejectedValue(new Error('Claude timeout'));
+    mockGenerateAndPolishContent.mockRejectedValue(new Error('Claude timeout'));
+    mockGetStatusCode.mockReturnValue(500);
 
     const res = await POST(makeRequest(), makeParams());
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toMatch(/failed to generate/i);
+    expect(body.error).toContain('Claude timeout');
   });
 });

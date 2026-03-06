@@ -27,6 +27,7 @@ import {
 import { AudienceFilterBuilder } from '@/components/email/AudienceFilterBuilder';
 import { formatDateTime } from '@/lib/utils';
 import type { EmailBroadcast, AudienceFilter, BroadcastStatus } from '@/lib/types/email-system';
+import * as broadcastsApi from '@/frontend/api/email/broadcasts';
 
 interface BroadcastEditorProps {
   broadcastId: string;
@@ -83,14 +84,7 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
   useEffect(() => {
     async function fetchBroadcast() {
       try {
-        const response = await fetch(`/api/email/broadcasts/${broadcastId}`);
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error('Broadcast not found');
-          }
-          throw new Error('Failed to load broadcast');
-        }
-        const data = await response.json();
+        const data = await broadcastsApi.getBroadcast(broadcastId);
         const b = data.broadcast as EmailBroadcast;
         setBroadcast(b);
         setSubject(b.subject || '');
@@ -121,23 +115,12 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
 
     setSaving(true);
     try {
-      const response = await fetch(`/api/email/broadcasts/${broadcastId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject,
-          body,
-          audience_filter: audienceFilter,
-        }),
+      const data = await broadcastsApi.updateBroadcast(broadcastId, {
+        subject,
+        body,
+        audience_filter: audienceFilter,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save broadcast');
-      }
-
-      const data = await response.json();
-      setBroadcast(data.broadcast);
+      setBroadcast(data.broadcast as EmailBroadcast);
       setHasUnsavedChanges(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save');
@@ -180,18 +163,12 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
       saveTimeoutRef.current = setTimeout(async () => {
         setSaving(true);
         try {
-          const response = await fetch(`/api/email/broadcasts/${broadcastId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              subject,
-              body,
-              audience_filter: newFilter,
-            }),
+          const data = await broadcastsApi.updateBroadcast(broadcastId, {
+            subject,
+            body,
+            audience_filter: newFilter,
           });
-          if (!response.ok) throw new Error('Failed to save');
-          const data = await response.json();
-          setBroadcast(data.broadcast);
+          setBroadcast(data.broadcast as EmailBroadcast);
           setHasUnsavedChanges(false);
         } catch {
           toast.error('Failed to save audience filter');
@@ -214,9 +191,7 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
         await saveDraft();
       }
 
-      const response = await fetch(`/api/email/broadcasts/${broadcastId}/preview-count`);
-      if (!response.ok) throw new Error('Failed to get recipient count');
-      const data = await response.json();
+      const data = await broadcastsApi.getBroadcastPreviewCount(broadcastId);
       setPreviewCount(data.count);
     } catch {
       setPreviewCount(null);
@@ -229,16 +204,7 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
   const handleSend = async () => {
     setSending(true);
     try {
-      const response = await fetch(`/api/email/broadcasts/${broadcastId}/send`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to send broadcast');
-      }
-
-      const data = await response.json();
+      const data = await broadcastsApi.sendBroadcast(broadcastId);
       toast.success(`Broadcast queued for sending to ${data.recipient_count} subscribers`);
       setSendDialogOpen(false);
 
@@ -257,27 +223,13 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
   const handleRetry = async () => {
     setSaving(true);
     try {
-      const response = await fetch(`/api/email/broadcasts/${broadcastId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject,
-          body,
-          audience_filter: audienceFilter,
-        }),
+      await broadcastsApi.updateBroadcast(broadcastId, {
+        subject,
+        body,
+        audience_filter: audienceFilter,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to reset broadcast');
-      }
-
-      // Refresh from server
-      const getResponse = await fetch(`/api/email/broadcasts/${broadcastId}`);
-      if (getResponse.ok) {
-        const data = await getResponse.json();
-        setBroadcast(data.broadcast);
-      }
-
+      const data = await broadcastsApi.getBroadcast(broadcastId);
+      setBroadcast(data.broadcast as EmailBroadcast);
       toast.success('Broadcast reset to draft');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to retry');

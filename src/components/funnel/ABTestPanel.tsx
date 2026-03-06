@@ -13,6 +13,7 @@ import {
   X,
   Check,
 } from 'lucide-react';
+import * as abExperimentsApi from '@/frontend/api/ab-experiments';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -116,12 +117,20 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
 
   // ─── Fetch experiments list ────────────────────────────────
 
+  const fetchExperimentDetail = useCallback(async (expId: string) => {
+    try {
+      const data = await abExperimentsApi.getExperiment(expId);
+      setActiveExperiment(data.experiment as Experiment);
+      setVariants((data.variants || []) as VariantStat[]);
+    } catch {
+      // Silently fail on poll errors
+    }
+  }, []);
+
   const fetchExperiments = useCallback(async () => {
     try {
-      const res = await fetch(`/api/ab-experiments?funnelPageId=${funnelPageId}`);
-      if (!res.ok) throw new Error('Failed to fetch experiments');
-      const data = await res.json();
-      const exps: Experiment[] = data.experiments || [];
+      const data = await abExperimentsApi.listExperiments(funnelPageId);
+      const exps: Experiment[] = (data.experiments || []) as Experiment[];
       setExperiments(exps);
 
       // Pick the latest active (running/paused) or most recent experiment
@@ -138,19 +147,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [funnelPageId]);
-
-  const fetchExperimentDetail = useCallback(async (expId: string) => {
-    try {
-      const res = await fetch(`/api/ab-experiments/${expId}`);
-      if (!res.ok) throw new Error('Failed to fetch experiment details');
-      const data = await res.json();
-      setActiveExperiment(data.experiment);
-      setVariants(data.variants || []);
-    } catch {
-      // Silently fail on poll errors
-    }
-  }, []);
+  }, [funnelPageId, fetchExperimentDetail]);
 
   // Initial load
   useEffect(() => {
@@ -191,15 +188,12 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     setLoadingSuggestions(true);
 
     try {
-      const res = await fetch('/api/ab-experiments/suggest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ funnelPageId, testField: field }),
-      });
-
-      if (!res.ok) throw new Error('Failed to get suggestions');
-      const data = await res.json();
-      setSuggestions(data.suggestions || []);
+      const data = await abExperimentsApi.suggestVariants({ funnelPageId, testField: field });
+      setSuggestions(
+        ((data.suggestions || []) as { value: string; label: string; rationale?: string }[]).map(
+          (s) => ({ ...s, rationale: s.rationale ?? '' })
+        )
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get suggestions');
     } finally {
@@ -218,9 +212,10 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
       variantLabel = 'Variant B';
     } else if (selectedSuggestionIdx !== null && suggestions[selectedSuggestionIdx]) {
       const suggestion = suggestions[selectedSuggestionIdx];
-      variantValue = editValues[selectedSuggestionIdx] !== undefined
-        ? editValues[selectedSuggestionIdx]
-        : suggestion.value;
+      variantValue =
+        editValues[selectedSuggestionIdx] !== undefined
+          ? editValues[selectedSuggestionIdx]
+          : suggestion.value;
       variantLabel = suggestion.label;
     } else {
       return;
@@ -230,23 +225,15 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     setError(null);
 
     try {
-      const fieldLabel = TEST_FIELD_OPTIONS.find((o) => o.field === selectedField)?.label || selectedField;
-      const res = await fetch('/api/ab-experiments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          funnelPageId,
-          name: `${fieldLabel} Test`,
-          testField: selectedField,
-          variantValue,
-          variantLabel,
-        }),
+      const fieldLabel =
+        TEST_FIELD_OPTIONS.find((o) => o.field === selectedField)?.label || selectedField;
+      await abExperimentsApi.createExperiment({
+        funnelPageId,
+        name: `${fieldLabel} Test`,
+        testField: selectedField,
+        variantValue,
+        variantLabel,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to create experiment');
-      }
 
       // Reset creation flow and refetch
       setCreating(false);
@@ -271,12 +258,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     if (!activeExperiment) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/ab-experiments/${activeExperiment.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'pause' }),
-      });
-      if (!res.ok) throw new Error('Failed to pause');
+      await abExperimentsApi.patchExperiment(activeExperiment.id, 'pause');
       await fetchExperiments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to pause test');
@@ -289,12 +271,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     if (!activeExperiment) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/ab-experiments/${activeExperiment.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'resume' }),
-      });
-      if (!res.ok) throw new Error('Failed to resume');
+      await abExperimentsApi.patchExperiment(activeExperiment.id, 'resume');
       await fetchExperiments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resume test');
@@ -308,12 +285,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     setActionLoading(true);
     setDeclareOpen(false);
     try {
-      const res = await fetch(`/api/ab-experiments/${activeExperiment.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'declare_winner', winnerId }),
-      });
-      if (!res.ok) throw new Error('Failed to declare winner');
+      await abExperimentsApi.patchExperiment(activeExperiment.id, 'declare_winner', winnerId);
       await fetchExperiments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to declare winner');
@@ -327,10 +299,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     if (!window.confirm('Delete this experiment? This cannot be undone.')) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/ab-experiments/${activeExperiment.id}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Failed to delete');
+      await abExperimentsApi.deleteExperiment(activeExperiment.id);
       await fetchExperiments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete test');
@@ -342,7 +311,9 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
   // ─── Helpers ───────────────────────────────────────────────
 
   const completedExperiments = experiments.filter((e) => e.status === 'completed');
-  const hasActiveOrPaused = !!activeExperiment && (activeExperiment.status === 'running' || activeExperiment.status === 'paused');
+  const hasActiveOrPaused =
+    !!activeExperiment &&
+    (activeExperiment.status === 'running' || activeExperiment.status === 'paused');
   const isCompleted = !!activeExperiment && activeExperiment.status === 'completed';
 
   // For showing a completed experiment's detail, load on demand
@@ -547,7 +518,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                   <div className="flex items-center gap-2 mb-1">
                     <input
                       type="text"
-                      value={editValues[idx] ?? (suggestion.value ?? '')}
+                      value={editValues[idx] ?? suggestion.value ?? ''}
                       onChange={(e) => {
                         e.stopPropagation();
                         setEditValues((prev) => ({ ...prev, [idx]: e.target.value }));
@@ -567,7 +538,11 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                   </div>
                 ) : (
                   <p className="text-sm">
-                    &ldquo;{editValues[idx] !== undefined ? editValues[idx] : (suggestion.value ?? '(empty)')}&rdquo;
+                    &ldquo;
+                    {editValues[idx] !== undefined
+                      ? editValues[idx]
+                      : (suggestion.value ?? '(empty)')}
+                    &rdquo;
                   </p>
                 )}
 
@@ -606,10 +581,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
             <div className="flex items-center gap-3 pt-2">
               <button
                 onClick={handleLaunch}
-                disabled={
-                  launching ||
-                  (!useCustom && selectedSuggestionIdx === null)
-                }
+                disabled={launching || (!useCustom && selectedSuggestionIdx === null)}
                 className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {launching && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -640,9 +612,10 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
     const isPaused = activeExperiment.status === 'paused';
     const isDone = activeExperiment.status === 'completed';
 
-    const confidence = activeExperiment.significance != null
-      ? Math.round((1 - activeExperiment.significance) * 1000) / 10
-      : null;
+    const confidence =
+      activeExperiment.significance != null
+        ? Math.round((1 - activeExperiment.significance) * 1000) / 10
+        : null;
 
     return (
       <div className="rounded-xl border bg-card p-6 space-y-4">
@@ -733,9 +706,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
 
         {/* Confidence (completed) */}
         {isDone && confidence !== null && (
-          <p className="text-sm text-muted-foreground text-center">
-            {confidence}% confidence
-          </p>
+          <p className="text-sm text-muted-foreground text-center">{confidence}% confidence</p>
         )}
 
         {/* Progress bar (running/paused) */}
@@ -743,7 +714,9 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Progress</span>
-              <span>{minViews} / {minSampleSize} minimum views</span>
+              <span>
+                {minViews} / {minSampleSize} minimum views
+              </span>
             </div>
             <div className="h-2 w-full rounded-full bg-muted">
               <div
@@ -780,7 +753,9 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                 >
                   <Trophy className="h-4 w-4" />
                   Declare Winner
-                  <ChevronDown className={`h-3 w-3 transition-transform ${declareOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`h-3 w-3 transition-transform ${declareOpen ? 'rotate-180' : ''}`}
+                  />
                 </button>
                 {declareOpen && (
                   <div className="absolute top-full left-0 mt-1 z-10 w-48 rounded-lg border bg-card shadow-lg">
@@ -895,7 +870,9 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                     >
                       <span className="font-medium">{exp.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {exp.completed_at ? formatDate(exp.completed_at) : formatDate(exp.created_at)}
+                        {exp.completed_at
+                          ? formatDate(exp.completed_at)
+                          : formatDate(exp.created_at)}
                       </span>
                     </button>
                   ))}

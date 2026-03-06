@@ -50,51 +50,49 @@ const ALLOWED_UPDATE_FIELDS: (keyof PostUpdateInput)[] = [
 ];
 
 const VALID_POST_STATUSES: PostStatus[] = [
-  'draft', 'reviewing', 'approved', 'scheduled', 'published', 'failed', 'publish_failed',
+  'draft',
+  'reviewing',
+  'approved',
+  'scheduled',
+  'published',
+  'failed',
+  'publish_failed',
 ];
 
 // ─── Read operations ───────────────────────────────────────────────────────
 
 export async function getPosts(
   scope: DataScope,
-  filters: PostFilters = {},
+  filters: PostFilters = {}
 ): Promise<PostWithProfile[]> {
   const posts = await postsRepo.findPosts(scope, filters);
 
   // Enrich with profile display names for team mode
-  const profileIds = [
-    ...new Set(posts.map((p) => p.team_profile_id).filter(Boolean)),
-  ] as string[];
+  const profileIds = [...new Set(posts.map((p) => p.team_profile_id).filter(Boolean))] as string[];
 
-  const profileMap =
-    profileIds.length > 0 ? await postsRepo.getProfileNameMap(profileIds) : {};
+  const profileMap = profileIds.length > 0 ? await postsRepo.getProfileNameMap(profileIds) : {};
 
   return posts.map((p) => ({
     ...p,
-    profile_name: p.team_profile_id
-      ? (profileMap[p.team_profile_id]?.full_name ?? null)
-      : null,
+    profile_name: p.team_profile_id ? (profileMap[p.team_profile_id]?.full_name ?? null) : null,
   }));
 }
 
 export async function getPostsByDateRange(
   scope: DataScope,
   start: string,
-  end: string,
+  end: string
 ): Promise<PipelinePost[]> {
   return postsRepo.findPostsByDateRange(scope, start, end);
 }
 
-export async function getPostById(
-  userId: string,
-  id: string,
-): Promise<PipelinePost | null> {
+export async function getPostById(userId: string, id: string): Promise<PipelinePost | null> {
   return postsRepo.findPostById(userId, id);
 }
 
 export async function getPostEngagement(
   userId: string,
-  postId: string,
+  postId: string
 ): Promise<PostEngagementData> {
   const config = await postsRepo.findPostEngagementConfig(userId, postId);
   if (!config) throw new Error('Post not found');
@@ -110,7 +108,7 @@ export async function updatePost(
   userId: string,
   postId: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  body: Record<string, any>,
+  body: Record<string, any>
 ): Promise<{ post: PipelinePost; editId: string | null }> {
   // Filter to only allowed fields
   const updates: Record<string, unknown> = {};
@@ -129,9 +127,7 @@ export async function updatePost(
 
   // Read snapshot before update if text content is changing (for edit diff)
   const hasTextChanges = 'draft_content' in updates || 'final_content' in updates;
-  const snapshot = hasTextChanges
-    ? await postsRepo.findPostSnapshot(userId, postId)
-    : null;
+  const snapshot = hasTextChanges ? await postsRepo.findPostSnapshot(userId, postId) : null;
 
   const post = await postsRepo.updatePost(userId, postId, updates);
 
@@ -178,7 +174,7 @@ export async function deletePost(userId: string, postId: string): Promise<void> 
 export async function schedulePost(
   userId: string,
   postId: string,
-  scheduledTime?: string,
+  scheduledTime?: string
 ): Promise<void> {
   const post = await postsRepo.findPostForSchedule(userId, postId);
   if (!post) throw Object.assign(new Error('Post not found'), { statusCode: 404 });
@@ -196,10 +192,7 @@ export async function schedulePost(
   });
 }
 
-export async function polishPost(
-  userId: string,
-  postId: string,
-): Promise<PolishResult> {
+export async function polishPost(userId: string, postId: string): Promise<PolishResult> {
   const post = await postsRepo.findPostForPolish(userId, postId);
   if (!post) throw Object.assign(new Error('Post not found'), { statusCode: 404 });
 
@@ -221,8 +214,7 @@ export async function polishPost(
     final_content: result.polished,
     hook_score: result.hookScore.score,
     polish_status: result.changes.length > 0 ? 'polished' : 'skipped',
-    polish_notes:
-      result.changes.length > 0 ? result.changes.join('; ') : 'No changes needed',
+    polish_notes: result.changes.length > 0 ? result.changes.join('; ') : 'No changes needed',
   });
 
   if (!updated) {
@@ -236,10 +228,7 @@ export async function polishPost(
   };
 }
 
-export async function publishPost(
-  userId: string,
-  postId: string,
-): Promise<PublishResult> {
+export async function publishPost(userId: string, postId: string): Promise<PublishResult> {
   const post = await postsRepo.findPostForPublish(userId, postId);
   if (!post) throw Object.assign(new Error('Post not found'), { statusCode: 404 });
 
@@ -251,8 +240,10 @@ export async function publishPost(
   const publisher = await getUserLinkedInPublisher(userId);
   if (!publisher) {
     throw Object.assign(
-      new Error('No LinkedIn publisher configured. Go to Settings → Integrations to connect your account.'),
-      { statusCode: 400 },
+      new Error(
+        'No LinkedIn publisher configured. Go to Settings → Integrations to connect your account.'
+      ),
+      { statusCode: 400 }
     );
   }
 
@@ -287,10 +278,7 @@ export async function retryPost(userId: string, postId: string): Promise<void> {
   if (!post) throw Object.assign(new Error('Post not found'), { statusCode: 404 });
 
   if (post.status !== 'publish_failed') {
-    throw Object.assign(
-      new Error('Only failed posts can be retried'),
-      { statusCode: 400 },
-    );
+    throw Object.assign(new Error('Only failed posts can be retried'), { statusCode: 400 });
   }
 
   await postsRepo.updatePost(userId, postId, {
@@ -303,7 +291,7 @@ export async function retryPost(userId: string, postId: string): Promise<void> {
 export async function updatePostEngagementConfig(
   userId: string,
   postId: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ): Promise<{ id: string; scrape_engagement: boolean; heyreach_campaign_id: string | null }> {
   const updates: EngagementConfigUpdate = {};
 
@@ -313,10 +301,9 @@ export async function updatePostEngagementConfig(
   if ('heyreach_campaign_id' in body) {
     const val = body.heyreach_campaign_id;
     if (val && (typeof val !== 'string' || !/^\d+$/.test(val as string))) {
-      throw Object.assign(
-        new Error('heyreach_campaign_id must be a numeric string'),
-        { statusCode: 400 },
-      );
+      throw Object.assign(new Error('heyreach_campaign_id must be a numeric string'), {
+        statusCode: 400,
+      });
     }
     updates.heyreach_campaign_id = (val as string) || null;
   }

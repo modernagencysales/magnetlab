@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { X, Upload, Loader2, FileText } from 'lucide-react';
+import * as templatesApi from '@/frontend/api/content-pipeline/templates';
 
 interface CSVTemplateImporterProps {
   onClose: () => void;
@@ -29,31 +30,40 @@ function parseCSV(csvText: string): ParsedTemplate[] {
 
   if (nameIdx === -1 || structIdx === -1) return [];
 
-  return lines.slice(1).map((line) => {
-    // Simple CSV parsing (handles quoted fields)
-    const fields: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (const char of line) {
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        fields.push(current.trim());
-        current = '';
-      } else {
-        current += char;
+  return lines
+    .slice(1)
+    .map((line) => {
+      // Simple CSV parsing (handles quoted fields)
+      const fields: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      for (const char of line) {
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          fields.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
       }
-    }
-    fields.push(current.trim());
+      fields.push(current.trim());
 
-    return {
-      name: fields[nameIdx] || '',
-      category: categoryIdx >= 0 ? fields[categoryIdx] || '' : '',
-      description: descIdx >= 0 ? fields[descIdx] || '' : '',
-      structure: fields[structIdx] || '',
-      tags: tagsIdx >= 0 ? (fields[tagsIdx] || '').split(';').map((t) => t.trim()).filter(Boolean) : [],
-    };
-  }).filter((t) => t.name && t.structure);
+      return {
+        name: fields[nameIdx] || '',
+        category: categoryIdx >= 0 ? fields[categoryIdx] || '' : '',
+        description: descIdx >= 0 ? fields[descIdx] || '' : '',
+        structure: fields[structIdx] || '',
+        tags:
+          tagsIdx >= 0
+            ? (fields[tagsIdx] || '')
+                .split(';')
+                .map((t) => t.trim())
+                .filter(Boolean)
+            : [],
+      };
+    })
+    .filter((t) => t.name && t.structure);
 }
 
 export function CSVTemplateImporter({ onClose, onImported }: CSVTemplateImporterProps) {
@@ -89,17 +99,13 @@ export function CSVTemplateImporter({ onClose, onImported }: CSVTemplateImporter
   const handleImport = async () => {
     setImporting(true);
     try {
-      const response = await fetch('/api/content-pipeline/templates/bulk-import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templates: parsed }),
+      await templatesApi.bulkImportTemplates({
+        templates: parsed as unknown as {
+          name: string;
+          structure: string;
+          [key: string]: unknown;
+        }[],
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Import failed');
-      }
-
       onImported();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import failed');
@@ -109,18 +115,30 @@ export function CSVTemplateImporter({ onClose, onImported }: CSVTemplateImporter
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Import Templates from CSV">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Import Templates from CSV"
+    >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Import Templates from CSV</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 hover:bg-secondary"
+            aria-label="Close"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {parsed.length === 0 ? (
           <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => fileRef.current?.click()}
@@ -129,7 +147,9 @@ export function CSVTemplateImporter({ onClose, onImported }: CSVTemplateImporter
             <Upload className="mx-auto h-8 w-8 text-muted-foreground/50" />
             <p className="mt-2 text-sm text-muted-foreground">Drop a CSV file or click to browse</p>
             <p className="mt-1 text-xs text-muted-foreground">Required columns: name, structure</p>
-            <p className="text-xs text-muted-foreground">Optional: category, description, tags (semicolon-separated)</p>
+            <p className="text-xs text-muted-foreground">
+              Optional: category, description, tags (semicolon-separated)
+            </p>
             <input
               ref={fileRef}
               type="file"
@@ -179,7 +199,11 @@ export function CSVTemplateImporter({ onClose, onImported }: CSVTemplateImporter
                 disabled={importing}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
-                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {importing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
                 Import {parsed.length}
               </button>
             </div>

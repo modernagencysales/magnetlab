@@ -26,8 +26,19 @@ import * as qualificationFormsRepo from '@/server/repositories/qualification-for
 import * as brandKitRepo from '@/server/repositories/brand-kit.repo';
 import { normalizeImageUrl } from '@/lib/utils/normalize-image-url';
 import { polishLeadMagnetContent } from '@/lib/ai/lead-magnet-generator';
-import { processContentExtraction, generatePostVariations, generateLeadMagnetIdeasParallel } from '@/lib/ai/lead-magnet-generator';
-import type { ExtractedContent, LeadMagnetConcept, PostWriterInput } from '@/lib/types/lead-magnet';
+import {
+  processContentExtraction,
+  generatePostVariations,
+  generateLeadMagnetIdeasParallel,
+} from '@/lib/ai/lead-magnet-generator';
+import type {
+  BusinessContext,
+  CallTranscriptInsights,
+  CompetitorAnalysis,
+  ExtractedContent,
+  LeadMagnetConcept,
+  PostWriterInput,
+} from '@/lib/types/lead-magnet';
 
 /** List lead magnets for external API. */
 export async function listLeadMagnets(
@@ -40,7 +51,13 @@ export async function listLeadMagnets(
       limit: opts.limit ?? 50,
       offset: opts.offset ?? 0,
     });
-    return { success: true as const, leadMagnets: data, total: count, limit: opts.limit ?? 50, offset: opts.offset ?? 0 };
+    return {
+      success: true as const,
+      leadMagnets: data,
+      total: count,
+      limit: opts.limit ?? 50,
+      offset: opts.offset ?? 0,
+    };
   } catch (error) {
     logApiError('external/lead-magnets/list', error, { userId });
     return { success: false as const, error: 'database' as const };
@@ -60,10 +77,7 @@ export async function getLeadMagnet(userId: string, id: string) {
 }
 
 /** Create lead magnet for external API (with usage limit check). */
-export async function createLeadMagnetExternal(
-  userId: string,
-  body: Record<string, unknown>
-) {
+export async function createLeadMagnetExternal(userId: string, body: Record<string, unknown>) {
   try {
     const { data: canCreate, error: rpcError } = await leadMagnetsRepo.checkUsageLimitRpc(
       userId,
@@ -134,12 +148,22 @@ export async function createLeadMagnetPipelineRun(input: CreateLeadMagnetPipelin
       status: 'draft',
     });
 
+    const bc = input.businessContext;
     await createLeadMagnetPipeline.trigger({
       userId: input.userId,
       userName: user.name,
       username: user.username,
       archetype: input.archetype,
-      businessContext: input.businessContext,
+      businessContext: {
+        businessDescription: bc.businessDescription,
+        credibilityMarkers: bc.credibilityMarkers ?? [],
+        urgentPains: bc.urgentPains ?? [],
+        processes: bc.processes ?? [],
+        tools: bc.tools ?? [],
+        results: bc.results ?? [],
+        frequentQuestions: bc.frequentQuestions ?? [],
+        successExample: bc.successExample,
+      },
       topic: input.topic,
       autoPublishFunnel: input.autoPublishFunnel ?? true,
       autoSchedulePost: input.autoSchedulePost ?? false,
@@ -180,9 +204,9 @@ export async function createAccount(input: CreateAccountInput) {
     await subscriptionRepo.insertProSubscription(user.id);
 
     if (input.linkedin_url || input.company) {
-      const team = await teamRepo.createTeam(user.id, {
+      const team = (await teamRepo.createTeam(user.id, {
         name: input.company || `${input.full_name}'s Team`,
-      }) as { id: string };
+      })) as { id: string };
       await teamRepo.insertOwnerProfileForExternal({
         team_id: team.id,
         user_id: user.id,
@@ -217,7 +241,9 @@ export interface SetupThankyouResult {
   hasLogoBar: boolean;
 }
 
-export async function setupThankyou(input: SetupThankyouInput): Promise<
+export async function setupThankyou(
+  input: SetupThankyouInput
+): Promise<
   | SetupThankyouResult
   | { success: false; error: 'user_not_found' | 'funnel_not_found' | 'database' }
 > {
@@ -301,7 +327,7 @@ export async function setupThankyou(input: SetupThankyouInput): Promise<
       });
     }
 
-    const hasTestimonial = !!(brandKit?.default_testimonial?.quote);
+    const hasTestimonial = !!brandKit?.default_testimonial?.quote;
     if (hasTestimonial) {
       sections.push({
         funnel_page_id: input.funnelPageId,
@@ -336,8 +362,10 @@ export async function setupThankyou(input: SetupThankyouInput): Promise<
     const funnelUpdate: Record<string, unknown> = { send_resource_email: true };
     if (brandKit) {
       if (brandKit.default_theme) funnelUpdate.theme = brandKit.default_theme;
-      if (brandKit.default_primary_color) funnelUpdate.primary_color = brandKit.default_primary_color;
-      if (brandKit.default_background_style) funnelUpdate.background_style = brandKit.default_background_style;
+      if (brandKit.default_primary_color)
+        funnelUpdate.primary_color = brandKit.default_primary_color;
+      if (brandKit.default_background_style)
+        funnelUpdate.background_style = brandKit.default_background_style;
       if (brandKit.logo_url) funnelUpdate.logo_url = brandKit.logo_url;
       if (brandKit.font_family) funnelUpdate.font_family = brandKit.font_family;
       if (brandKit.font_url) funnelUpdate.font_url = brandKit.font_url;
@@ -345,7 +373,9 @@ export async function setupThankyou(input: SetupThankyouInput): Promise<
     try {
       await funnelsRepo.updateFunnelPageByIdUnscoped(input.funnelPageId, funnelUpdate);
     } catch (err) {
-      logApiError('external/setup-thankyou/update-funnel', err, { funnelPageId: input.funnelPageId });
+      logApiError('external/setup-thankyou/update-funnel', err, {
+        funnelPageId: input.funnelPageId,
+      });
     }
 
     return {
@@ -471,10 +501,7 @@ export interface IngestKnowledgeEntry {
   source_label?: string;
 }
 
-export async function ingestKnowledge(input: {
-  user_id: string;
-  entries: IngestKnowledgeEntry[];
-}) {
+export async function ingestKnowledge(input: { user_id: string; entries: IngestKnowledgeEntry[] }) {
   try {
     const BATCH_SIZE = 5;
     const embeddings: number[][] = [];
@@ -548,7 +575,9 @@ export async function generateQuiz(input: {
           profileId: input.profileId || undefined,
         });
         if (result.entries.length > 0) {
-          contextParts.push(`${knowledgeType}:\n- ${result.entries.map((e) => e.content).join('\n- ')}`);
+          contextParts.push(
+            `${knowledgeType}:\n- ${result.entries.map((e) => e.content).join('\n- ')}`
+          );
         }
       }
       if (contextParts.length > 0) knowledgeContext = contextParts.join('\n\n');
@@ -562,9 +591,12 @@ export async function generateQuiz(input: {
       const brandKit = await resolveBrandKit(supabase, input.userId, input.teamId);
       if (brandKit) {
         const parts: string[] = [];
-        if (brandKit.urgent_pains?.length) parts.push(`Urgent pains: ${brandKit.urgent_pains.join(', ')}`);
-        if (brandKit.frequent_questions?.length) parts.push(`Frequent questions: ${brandKit.frequent_questions.join(', ')}`);
-        if (brandKit.credibility_markers?.length) parts.push(`Credibility markers: ${brandKit.credibility_markers.join(', ')}`);
+        if (brandKit.urgent_pains?.length)
+          parts.push(`Urgent pains: ${brandKit.urgent_pains.join(', ')}`);
+        if (brandKit.frequent_questions?.length)
+          parts.push(`Frequent questions: ${brandKit.frequent_questions.join(', ')}`);
+        if (brandKit.credibility_markers?.length)
+          parts.push(`Credibility markers: ${brandKit.credibility_markers.join(', ')}`);
         if (parts.length > 0) brandContext = parts.join('\n');
       }
     } catch (err) {
@@ -584,7 +616,10 @@ export async function generateQuiz(input: {
       return { success: false as const, error: 'no_questions' as const };
     }
 
-    const form = await qualificationFormsRepo.createForm(input.userId, `Quiz for ${resolvedClientName}`) as { id: string };
+    const form = (await qualificationFormsRepo.createForm(
+      input.userId,
+      `Quiz for ${resolvedClientName}`
+    )) as { id: string };
     const questionRows = questions.map((q, index) => ({
       form_id: form.id,
       funnel_page_id: null,
@@ -598,7 +633,9 @@ export async function generateQuiz(input: {
       is_required: q.is_required,
     }));
     await qualificationFormsRepo.insertQuestionsBulk(questionRows);
-    await funnelsRepo.updateFunnelPageByIdUnscoped(input.funnelPageId, { qualification_form_id: form.id });
+    await funnelsRepo.updateFunnelPageByIdUnscoped(input.funnelPageId, {
+      qualification_form_id: form.id,
+    });
 
     return {
       success: true as const,
@@ -623,7 +660,10 @@ export async function reviewContent(input: {
     const user = await userRepo.findUserByIdForExternal(input.userId);
     if (!user) return { success: false as const, error: 'user_not_found' as const };
 
-    const posts = await postsRepo.findDraftPostsForReview(input.userId, input.teamProfileId ?? undefined);
+    const posts = await postsRepo.findDraftPostsForReview(
+      input.userId,
+      input.teamProfileId ?? undefined
+    );
     if (posts.length === 0) {
       return {
         success: true as const,
@@ -684,7 +724,8 @@ export async function reviewContent(input: {
 
     return {
       success: true as const,
-      reviewed: summary.excellent + summary.good_with_edits + summary.needs_rewrite + summary.deleted,
+      reviewed:
+        summary.excellent + summary.good_with_edits + summary.needs_rewrite + summary.deleted,
       summary,
       deletedPostIds,
     };
@@ -724,12 +765,30 @@ export async function applyBranding(input: {
 
     const appliedFields: string[] = [];
     const funnelUpdate: Record<string, unknown> = {};
-    if (brandKit.default_theme) { funnelUpdate.theme = brandKit.default_theme; appliedFields.push('theme'); }
-    if (brandKit.default_primary_color) { funnelUpdate.primary_color = brandKit.default_primary_color; appliedFields.push('primary_color'); }
-    if (brandKit.default_background_style) { funnelUpdate.background_style = brandKit.default_background_style; appliedFields.push('background_style'); }
-    if (brandKit.logo_url) { funnelUpdate.logo_url = brandKit.logo_url; appliedFields.push('logo_url'); }
-    if (brandKit.font_family) { funnelUpdate.font_family = brandKit.font_family; appliedFields.push('font_family'); }
-    if (brandKit.font_url) { funnelUpdate.font_url = brandKit.font_url; appliedFields.push('font_url'); }
+    if (brandKit.default_theme) {
+      funnelUpdate.theme = brandKit.default_theme;
+      appliedFields.push('theme');
+    }
+    if (brandKit.default_primary_color) {
+      funnelUpdate.primary_color = brandKit.default_primary_color;
+      appliedFields.push('primary_color');
+    }
+    if (brandKit.default_background_style) {
+      funnelUpdate.background_style = brandKit.default_background_style;
+      appliedFields.push('background_style');
+    }
+    if (brandKit.logo_url) {
+      funnelUpdate.logo_url = brandKit.logo_url;
+      appliedFields.push('logo_url');
+    }
+    if (brandKit.font_family) {
+      funnelUpdate.font_family = brandKit.font_family;
+      appliedFields.push('font_family');
+    }
+    if (brandKit.font_url) {
+      funnelUpdate.font_url = brandKit.font_url;
+      appliedFields.push('font_url');
+    }
 
     if (Object.keys(funnelUpdate).length > 0) {
       await funnelsRepo.updateFunnelPageByIdUnscoped(input.funnelPageId, funnelUpdate);
@@ -748,7 +807,8 @@ export async function applyBranding(input: {
         if (section.section_type === 'testimonial' && brandKit.default_testimonial?.quote) {
           config = { ...config, ...brandKit.default_testimonial };
           updated = true;
-          if (!appliedFields.includes('default_testimonial')) appliedFields.push('default_testimonial');
+          if (!appliedFields.includes('default_testimonial'))
+            appliedFields.push('default_testimonial');
         }
         if (section.section_type === 'steps' && brandKit.default_steps?.steps?.length) {
           config = { ...config, ...brandKit.default_steps };
@@ -808,7 +868,10 @@ export async function createFunnelExternal(input: {
   try {
     const lm = await leadMagnetsRepo.findLeadMagnetByIdAndUser(input.leadMagnetId, input.userId);
     if (!lm) return { success: false as const, error: 'lead_magnet_not_found' as const };
-    const existing = await funnelsRepo.findFunnelByLeadMagnetIdAndUserId(input.leadMagnetId, input.userId);
+    const existing = await funnelsRepo.findFunnelByLeadMagnetIdAndUserId(
+      input.leadMagnetId,
+      input.userId
+    );
     if (existing) return { success: false as const, error: 'funnel_exists' as const };
 
     const profile = await userRepo.getFunnelDefaults(input.userId);
@@ -843,7 +906,10 @@ export async function createFunnelExternal(input: {
     const funnel = await funnelsRepo.createFunnel(funnelInsertData);
     return { success: true as const, funnel };
   } catch (error) {
-    logApiError('external/funnels/create', error, { userId: input.userId, leadMagnetId: input.leadMagnetId });
+    logApiError('external/funnels/create', error, {
+      userId: input.userId,
+      leadMagnetId: input.leadMagnetId,
+    });
     return { success: false as const, error: 'database' as const };
   }
 }
@@ -858,7 +924,8 @@ export async function publishFunnel(id: string, userId: string, publish: boolean
     if (publish) {
       const user = await userRepo.findUserByIdForExternal(userId);
       if (!user?.username) return { success: false as const, error: 'username_required' as const };
-      if (!funnel.optin_headline) return { success: false as const, error: 'optin_headline_required' as const };
+      if (!funnel.optin_headline)
+        return { success: false as const, error: 'optin_headline_required' as const };
     }
 
     if (publish && funnel.lead_magnets?.id) {
@@ -867,7 +934,7 @@ export async function publishFunnel(id: string, userId: string, publish: boolean
         if (lm?.extracted_content && !lm.polished_content && lm.concept) {
           const polished = await polishLeadMagnetContent(
             lm.extracted_content as ExtractedContent,
-            lm.concept as LeadMagnetConcept,
+            lm.concept as LeadMagnetConcept
           );
           await leadMagnetsRepo.updateLeadMagnetByOwner(userId, lm.id, {
             polished_content: polished,
@@ -883,11 +950,14 @@ export async function publishFunnel(id: string, userId: string, publish: boolean
     if (publish && !funnel.published_at) updateData.published_at = new Date().toISOString();
     await funnelsRepo.updateFunnelPageByIdUnscoped(id, updateData);
 
-    const updated = await funnelsRepo.findFunnelByLeadMagnetIdAndUserId(funnel.lead_magnet_id, userId);
-    const user = await userRepo.findUserByIdForExternal(userId);
-    const publicUrl = publish && user?.username
-      ? `${process.env.NEXT_PUBLIC_APP_URL || ''}/p/${user.username}/${funnel.slug}`
+    const updated = funnel.lead_magnet_id
+      ? await funnelsRepo.findFunnelByLeadMagnetIdAndUserId(funnel.lead_magnet_id, userId)
       : null;
+    const user = await userRepo.findUserByIdForExternal(userId);
+    const publicUrl =
+      publish && user?.username
+        ? `${process.env.NEXT_PUBLIC_APP_URL || ''}/p/${user.username}/${funnel.slug}`
+        : null;
 
     return {
       success: true as const,
@@ -902,12 +972,21 @@ export async function publishFunnel(id: string, userId: string, publish: boolean
 
 // ─── external/lead-magnets/[id]/extract, generate, write-posts ──────────────
 
-export async function leadMagnetExtract(id: string, userId: string, archetype: LeadMagnetArchetype, concept: LeadMagnetConcept, answers: Record<string, string>) {
+export async function leadMagnetExtract(
+  id: string,
+  userId: string,
+  archetype: LeadMagnetArchetype,
+  concept: LeadMagnetConcept,
+  answers: Record<string, string>
+) {
   try {
     const lm = await leadMagnetsRepo.findLeadMagnetByOwner(userId, id);
     if (!lm) return { success: false as const, error: 'not_found' as const };
     const extractedContent = await processContentExtraction(archetype, concept, answers);
-    await leadMagnetsRepo.updateLeadMagnetByOwner(userId, id, { extracted_content: extractedContent, updated_at: new Date().toISOString() });
+    await leadMagnetsRepo.updateLeadMagnetByOwner(userId, id, {
+      extracted_content: extractedContent,
+      updated_at: new Date().toISOString(),
+    });
     return { success: true as const, data: extractedContent };
   } catch (error) {
     logApiError('external/lead-magnets/extract', error, { userId, leadMagnetId: id });
@@ -915,7 +994,13 @@ export async function leadMagnetExtract(id: string, userId: string, archetype: L
   }
 }
 
-export async function leadMagnetGenerate(id: string, userId: string, archetype: LeadMagnetArchetype, concept: LeadMagnetConcept, answers: Record<string, string>) {
+export async function leadMagnetGenerate(
+  id: string,
+  userId: string,
+  archetype: LeadMagnetArchetype,
+  concept: LeadMagnetConcept,
+  answers: Record<string, string>
+) {
   try {
     const lm = await leadMagnetsRepo.findLeadMagnetByOwner(userId, id);
     if (!lm) return { success: false as const, error: 'not_found' as const };
@@ -937,7 +1022,10 @@ export async function leadMagnetWritePosts(id: string, userId: string, input: Po
     const lm = await leadMagnetsRepo.findLeadMagnetByOwner(userId, id);
     if (!lm) return { success: false as const, error: 'not_found' as const };
     const result = await generatePostVariations(input);
-    await leadMagnetsRepo.updateLeadMagnetByOwner(userId, id, { post_variations: result.variations, updated_at: new Date().toISOString() });
+    await leadMagnetsRepo.updateLeadMagnetByOwner(userId, id, {
+      post_variations: result.variations,
+      updated_at: new Date().toISOString(),
+    });
     return { success: true as const, data: result };
   } catch (error) {
     logApiError('external/lead-magnets/write-posts', error, { userId, leadMagnetId: id });
@@ -975,13 +1063,29 @@ export async function leadMagnetStats(leadMagnetId: string) {
 
 // ─── external/lead-magnets/ideate ───────────────────────────────────────────
 
-export async function leadMagnetIdeate(userId: string, businessContext: Record<string, unknown>, sources?: { callTranscriptInsights?: unknown; competitorAnalysis?: unknown }) {
+export async function leadMagnetIdeate(
+  userId: string,
+  businessContext: Record<string, unknown>,
+  sources?: { callTranscriptInsights?: unknown; competitorAnalysis?: unknown }
+) {
   try {
-    const { data: canCreate, error: rpcError } = await leadMagnetsRepo.checkUsageLimitRpc(userId, 'lead_magnets');
+    const { data: canCreate, error: rpcError } = await leadMagnetsRepo.checkUsageLimitRpc(
+      userId,
+      'lead_magnets'
+    );
     if (rpcError) logApiError('external/lead-magnets/ideate/usage-check', rpcError, { userId });
     else if (canCreate === false) return { success: false as const, error: 'usage_limit' as const };
 
-    const result = await generateLeadMagnetIdeasParallel(businessContext, sources, userId);
+    const result = await generateLeadMagnetIdeasParallel(
+      businessContext as unknown as BusinessContext,
+      sources as
+        | {
+            callTranscriptInsights?: CallTranscriptInsights;
+            competitorAnalysis?: CompetitorAnalysis;
+          }
+        | undefined,
+      userId
+    );
     try {
       await brandKitRepo.updateSavedIdeationByUserId(userId, {
         saved_ideation_result: result,

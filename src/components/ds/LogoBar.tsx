@@ -16,13 +16,16 @@ const LogoBar: React.FC<LogoBarProps> = ({ logos, className = '' }) => {
 
   return (
     <div className={`py-8 ${className}`}>
-      <p className="text-xs font-medium uppercase tracking-widest text-center mb-6"
-         style={{ color: 'var(--ds-muted)' }}>
+      <p
+        className="text-xs font-medium uppercase tracking-widest text-center mb-6"
+        style={{ color: 'var(--ds-muted)' }}
+      >
         Trusted by leaders at
       </p>
       <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-10">
         {validLogos.map((logo, i) => (
           <div key={i} className="flex-shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logo.imageUrl}
               alt={logo.name}

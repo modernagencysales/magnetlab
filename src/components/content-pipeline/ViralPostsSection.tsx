@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Wand2, ThumbsUp, MessageSquare, Eye } from 'lucide-react';
 import type { ViralPost } from '@/lib/types/content-pipeline';
+import * as scraperApi from '@/frontend/api/content-pipeline/scraper';
 
 interface ViralPostsSectionProps {
   onTemplateExtracted: () => void;
@@ -19,9 +20,8 @@ export function ViralPostsSection({ onTemplateExtracted }: ViralPostsSectionProp
 
   const fetchPosts = useCallback(async () => {
     try {
-      const response = await fetch('/api/content-pipeline/scraper');
-      const data = await response.json();
-      setPosts(data.posts || []);
+      const data = await scraperApi.getScraperRunsAndPosts();
+      setPosts((data.posts || []) as ViralPost[]);
     } catch {
       // Silent failure
     } finally {
@@ -37,12 +37,8 @@ export function ViralPostsSection({ onTemplateExtracted }: ViralPostsSectionProp
     if (!pasteContent.trim()) return;
     setPasting(true);
     try {
-      await fetch('/api/content-pipeline/scraper', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          posts: [{ content: pasteContent, author_name: pasteAuthor || null }],
-        }),
+      await scraperApi.importPosts({
+        posts: [{ content: pasteContent, author_name: pasteAuthor || null }],
       });
       setShowPaste(false);
       setPasteContent('');
@@ -58,11 +54,7 @@ export function ViralPostsSection({ onTemplateExtracted }: ViralPostsSectionProp
   const handleExtractTemplate = async (post: ViralPost) => {
     setExtractingId(post.id);
     try {
-      await fetch('/api/content-pipeline/scraper/extract-template', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: post.content, viral_post_id: post.id }),
-      });
+      await scraperApi.extractTemplate({ content: post.content, viral_post_id: post.id });
       onTemplateExtracted();
       await fetchPosts();
     } catch {

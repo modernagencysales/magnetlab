@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
+import * as businessContextApi from '@/frontend/api/content-pipeline/business-context';
 
 interface BusinessContextModalProps {
   onClose: () => void;
@@ -21,18 +22,18 @@ export function BusinessContextModal({ onClose }: BusinessContextModalProps) {
   });
 
   useEffect(() => {
-    fetch('/api/content-pipeline/business-context')
-      .then((r) => r.json())
+    businessContextApi.getBusinessContext()
       .then((data) => {
-        if (data.context) {
+        if (data.context && typeof data.context === 'object' && 'company_name' in data.context) {
+          const ctx = data.context as Record<string, unknown>;
           setForm({
-            company_name: data.context.company_name || '',
-            industry: data.context.industry || '',
-            company_description: data.context.company_description || '',
-            icp_title: data.context.icp_title || '',
-            icp_industry: data.context.icp_industry || '',
-            icp_pain_points: (data.context.icp_pain_points || []).join('\n'),
-            target_audience: data.context.target_audience || '',
+            company_name: (ctx.company_name as string) || '',
+            industry: (ctx.industry as string) || '',
+            company_description: (ctx.company_description as string) || '',
+            icp_title: (ctx.icp_title as string) || '',
+            icp_industry: (ctx.icp_industry as string) || '',
+            icp_pain_points: ((ctx.icp_pain_points as string[]) || []).join('\n'),
+            target_audience: (ctx.target_audience as string) || '',
           });
         }
       })
@@ -43,16 +44,12 @@ export function BusinessContextModal({ onClose }: BusinessContextModalProps) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch('/api/content-pipeline/business-context', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          icp_pain_points: form.icp_pain_points
-            .split('\n')
-            .map((s) => s.trim())
-            .filter(Boolean),
-        }),
+      await businessContextApi.upsertBusinessContext({
+        ...form,
+        icp_pain_points: form.icp_pain_points
+          .split('\n')
+          .map((s) => s.trim())
+          .filter(Boolean),
       });
       onClose();
     } catch {

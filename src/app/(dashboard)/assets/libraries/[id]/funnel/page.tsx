@@ -6,6 +6,10 @@ import { Loader2 } from 'lucide-react';
 import { FunnelBuilder } from '@/components/funnel';
 import type { FunnelPage, QualificationQuestion } from '@/lib/types/funnel';
 import type { Library } from '@/lib/types/library';
+import * as funnelApi from '@/frontend/api/funnel';
+import * as librariesApi from '@/frontend/api/libraries';
+import * as userApi from '@/frontend/api/user';
+import * as integrationsApi from '@/frontend/api/integrations';
 
 export default function LibraryFunnelPage() {
   const params = useParams();
@@ -23,56 +27,48 @@ export default function LibraryFunnelPage() {
     async function fetchData() {
       try {
         // Fetch library, user, existing funnel, and connected email providers
-        const [libraryRes, userRes, funnelsRes, emailProvidersRes] = await Promise.all([
-          fetch(`/api/libraries/${libraryId}`),
-          fetch('/api/user/username'),
-          fetch('/api/funnel/all'),
-          fetch('/api/integrations/email-marketing/connected'),
+        const [libraryData, userData, funnelsData, emailProvidersData] = await Promise.all([
+          librariesApi.getLibrary(libraryId).catch(() => null),
+          userApi.getUsername().catch(() => ({ username: null })),
+          funnelApi.getAllFunnels().catch(() => ({ funnels: [] })),
+          integrationsApi.getEmailMarketingConnected().catch(() => ({ providers: [] })),
         ]);
 
-        if (!libraryRes.ok) {
+        if (!libraryData || !(libraryData as { library?: unknown }).library) {
           router.push('/pages');
           return;
         }
 
-        const libraryData = await libraryRes.json();
-        setLibrary(libraryData.library);
+        setLibrary((libraryData as { library: Library }).library);
 
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setUsername(userData.username);
-        }
+        setUsername(userData.username);
+
+        setConnectedEmailProviders(emailProvidersData.providers || []);
 
         // Find existing funnel targeting this library
-        if (funnelsRes.ok) {
-          const funnelsData = await funnelsRes.json();
-          const existingFunnel = (funnelsData.funnels || []).find(
-            (f: { library_id: string | null; target_type: string }) =>
-              f.library_id === libraryId && f.target_type === 'library'
-          );
+        const funnelsList = funnelsData.funnels || [];
+        const existingFunnel = (
+          funnelsList as { id: string; library_id: string | null; target_type: string }[]
+        ).find((f) => f.library_id === libraryId && f.target_type === 'library');
 
-          if (existingFunnel) {
-            // Fetch full funnel data with the funnel API
-            const funnelRes = await fetch(`/api/funnel/${existingFunnel.id}`);
-            if (funnelRes.ok) {
-              const funnelData = await funnelRes.json();
-              setFunnel(funnelData.funnel);
+        if (existingFunnel) {
+          try {
+            const funnelData = await funnelApi.getFunnel(existingFunnel.id);
+            setFunnel(funnelData.funnel as FunnelPage);
 
-              // Fetch questions if funnel exists
-              if (funnelData.funnel?.id) {
-                const questionsRes = await fetch(`/api/funnel/${funnelData.funnel.id}/questions`);
-                if (questionsRes.ok) {
-                  const questionsData = await questionsRes.json();
-                  setQuestions(questionsData.questions || []);
-                }
-              }
+            if (
+              funnelData.funnel &&
+              typeof funnelData.funnel === 'object' &&
+              'id' in funnelData.funnel
+            ) {
+              const questionsData = await funnelApi.getQuestions(
+                (funnelData.funnel as { id: string }).id
+              );
+              setQuestions((questionsData.questions || []) as QualificationQuestion[]);
             }
+          } catch {
+            // ignore
           }
-        }
-
-        if (emailProvidersRes.ok) {
-          const emailData = await emailProvidersRes.json();
-          setConnectedEmailProviders(emailData.providers || []);
         }
       } catch {
         // ignore
@@ -98,9 +94,7 @@ export default function LibraryFunnelPage() {
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
       <div className="mb-6">
-        <div className="mb-2 text-sm font-medium text-muted-foreground">
-          Library Funnel
-        </div>
+        <div className="mb-2 text-sm font-medium text-muted-foreground">Library Funnel</div>
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <span className="text-2xl">{library.icon}</span>
           {library.name}

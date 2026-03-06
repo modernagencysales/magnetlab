@@ -1,0 +1,24 @@
+# Dependencies and build
+node_modules
+.next
+out
+build
+dist
+*.tsbuildinfo
+
+# Lockfiles and generated
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Env and secrets
+.env
+.env.*
+
+# Generated types (often from DB)
+src/lib/types/database.ts
+
+# Misc
+coverage
+.vercel
+public

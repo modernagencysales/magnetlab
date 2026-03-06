@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import type { Team, TeamProfile, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
 import { logError } from '@/lib/utils/logger';
+import { getTeamMemberships, getTeam } from '@/frontend/api/team';
+import * as teamsApi from '@/frontend/api/teams';
 
 interface TeamMembership {
   id: string;
@@ -64,11 +67,8 @@ export default function TeamPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/team/memberships');
-      if (res.ok) {
-        const data = await res.json();
-        setMemberships(data);
-      }
+      const data = await getTeamMemberships();
+      setMemberships(data as TeamMembership[]);
     } catch (err) {
       logError('dashboard/team', err, { step: 'failed_to_fetch_team_data' });
     } finally {
@@ -76,7 +76,9 @@ export default function TeamPage() {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const enterTeam = (teamId: string) => {
     document.cookie = `ml-team-context=${teamId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
@@ -88,28 +90,19 @@ export default function TeamPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch('/api/teams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newTeamName,
-          industry: newTeamIndustry || undefined,
-          shared_goal: newTeamGoal || undefined,
-        }),
+      await teamsApi.createTeam({
+        name: newTeamName,
+        industry: newTeamIndustry || undefined,
+        shared_goal: newTeamGoal || undefined,
       });
-      if (res.ok) {
-        setSuccess('Team created successfully');
-        setShowCreateForm(false);
-        setNewTeamName('');
-        setNewTeamIndustry('');
-        setNewTeamGoal('');
-        await fetchData();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || 'Failed to create team');
-      }
-    } catch {
-      setError('Failed to create team');
+      setSuccess('Team created successfully');
+      setShowCreateForm(false);
+      setNewTeamName('');
+      setNewTeamIndustry('');
+      setNewTeamGoal('');
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create team');
     } finally {
       setSaving(false);
     }
@@ -119,24 +112,21 @@ export default function TeamPage() {
     setError(null);
     setSuccess(null);
     try {
-      const [teamRes, profilesRes] = await Promise.all([
-        fetch(`/api/team/${teamId}`),
-        fetch('/api/teams/profiles'),
+      const [teamData, profilesList] = await Promise.all([
+        getTeam(teamId),
+        teamsApi.listProfiles(),
       ]);
-      const teamData = await teamRes.json();
-      const profilesData = await profilesRes.json();
-
-      if (teamData.team) {
-        setManagingTeam(teamData.team);
-        setTeamName(teamData.team.name);
-        setTeamIndustry(teamData.team.industry || '');
-        setTeamGoal(teamData.team.shared_goal || '');
+      const team = teamData as { team?: Team };
+      if (team.team) {
+        setManagingTeam(team.team);
+        setTeamName(team.team.name);
+        setTeamIndustry(team.team.industry || '');
+        setTeamGoal(team.team.shared_goal || '');
       }
-      // Filter profiles for this team
-      const teamProfiles = (profilesData.profiles || []).filter(
-        (p: TeamProfile) => p.team_id === teamId
+      const teamProfiles = (profilesList || []).filter(
+        (p: unknown) => (p as TeamProfile).team_id === teamId
       );
-      setProfiles(teamProfiles);
+      setProfiles(teamProfiles as TeamProfile[]);
     } catch (err) {
       logError('dashboard/team', err, { step: 'failed_to_open_manage' });
       setError('Failed to load team details');
@@ -149,25 +139,16 @@ export default function TeamPage() {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch('/api/teams', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          team_id: managingTeam.id,
-          name: teamName,
-          industry: teamIndustry || undefined,
-          shared_goal: teamGoal || undefined,
-        }),
+      await teamsApi.updateTeam({
+        team_id: managingTeam.id,
+        name: teamName,
+        industry: teamIndustry || undefined,
+        shared_goal: teamGoal || undefined,
       });
-      if (res.ok) {
-        setSuccess('Settings saved');
-        await fetchData();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || 'Failed to save settings');
-      }
-    } catch {
-      setError('Failed to save settings');
+      setSuccess('Settings saved');
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -199,28 +180,19 @@ export default function TeamPage() {
     setError(null);
     setSuccess(null);
     try {
-      const res = editingProfile
-        ? await fetch(`/api/teams/profiles/${editingProfile.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(profileForm),
-          })
-        : await fetch('/api/teams/profiles', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(profileForm),
-          });
-
-      if (res.ok) {
-        setSuccess(editingProfile ? 'Profile updated' : 'Profile added');
-        setShowProfileModal(false);
-        if (managingTeam) await openManage(managingTeam.id);
+      if (editingProfile) {
+        await teamsApi.updateProfile(
+          editingProfile.id,
+          profileForm as unknown as Record<string, unknown>
+        );
       } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || 'Failed to save profile');
+        await teamsApi.createProfile(profileForm as teamsApi.CreateProfileBody);
       }
-    } catch {
-      setError('Failed to save profile');
+      setSuccess(editingProfile ? 'Profile updated' : 'Profile added');
+      setShowProfileModal(false);
+      if (managingTeam) await openManage(managingTeam.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -228,7 +200,7 @@ export default function TeamPage() {
 
   const removeProfile = async (id: string) => {
     if (!confirm('Remove this team member?')) return;
-    await fetch(`/api/teams/profiles/${id}`, { method: 'DELETE' });
+    await teamsApi.deleteProfile(id);
     if (managingTeam) await openManage(managingTeam.id);
   };
 
@@ -239,7 +211,9 @@ export default function TeamPage() {
           <div className="h-8 bg-muted rounded w-48" />
           <div className="h-4 bg-muted rounded w-96" />
           <div className="grid grid-cols-3 gap-4 mt-8">
-            {[1, 2, 3].map(i => <div key={i} className="h-48 bg-muted rounded-lg" />)}
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-48 bg-muted rounded-lg" />
+            ))}
           </div>
         </div>
       </div>
@@ -248,7 +222,7 @@ export default function TeamPage() {
 
   // ── Managing a specific team ──
   if (managingTeam) {
-    const isOwner = memberships.find(m => m.teamId === managingTeam.id)?.role === 'owner';
+    const isOwner = memberships.find((m) => m.teamId === managingTeam.id)?.role === 'owner';
 
     return (
       <div className="p-8 max-w-5xl mx-auto">
@@ -275,13 +249,20 @@ export default function TeamPage() {
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 p-3 text-sm text-red-700 dark:text-red-400 flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">&times;</button>
+            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
+              &times;
+            </button>
           </div>
         )}
         {success && (
           <div className="mb-4 rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950 p-3 text-sm text-green-700 dark:text-green-400 flex items-center justify-between">
             <span>{success}</span>
-            <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700">&times;</button>
+            <button
+              onClick={() => setSuccess(null)}
+              className="text-green-500 hover:text-green-700"
+            >
+              &times;
+            </button>
           </div>
         )}
 
@@ -296,7 +277,7 @@ export default function TeamPage() {
                   type="text"
                   className="w-full px-3 py-2 border rounded-lg bg-background"
                   value={teamName}
-                  onChange={e => setTeamName(e.target.value)}
+                  onChange={(e) => setTeamName(e.target.value)}
                 />
               </div>
               <div>
@@ -305,7 +286,7 @@ export default function TeamPage() {
                   type="text"
                   className="w-full px-3 py-2 border rounded-lg bg-background"
                   value={teamIndustry}
-                  onChange={e => setTeamIndustry(e.target.value)}
+                  onChange={(e) => setTeamIndustry(e.target.value)}
                 />
               </div>
               <div>
@@ -314,7 +295,7 @@ export default function TeamPage() {
                   type="text"
                   className="w-full px-3 py-2 border rounded-lg bg-background"
                   value={teamGoal}
-                  onChange={e => setTeamGoal(e.target.value)}
+                  onChange={(e) => setTeamGoal(e.target.value)}
                 />
               </div>
             </div>
@@ -342,7 +323,7 @@ export default function TeamPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {profiles.map(profile => (
+          {profiles.map((profile) => (
             <div key={profile.id} className="border rounded-lg p-4 relative">
               {profile.is_default && (
                 <span className="absolute top-2 right-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
@@ -352,7 +333,13 @@ export default function TeamPage() {
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
                   {profile.avatar_url ? (
-                    <img src={profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                    <Image
+                      src={profile.avatar_url}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="rounded-full object-cover"
+                    />
                   ) : (
                     profile.full_name.charAt(0).toUpperCase()
                   )}
@@ -365,7 +352,9 @@ export default function TeamPage() {
               <div className="text-xs text-muted-foreground mb-3">
                 {profile.email || 'No email'}
                 <span className="mx-1.5">·</span>
-                <span className={profile.status === 'active' ? 'text-green-600' : 'text-yellow-600'}>
+                <span
+                  className={profile.status === 'active' ? 'text-green-600' : 'text-yellow-600'}
+                >
                   {profile.status}
                 </span>
               </div>
@@ -403,7 +392,10 @@ export default function TeamPage() {
                   <h3 className="text-lg font-semibold">
                     {editingProfile ? 'Edit Profile' : 'Add Team Member'}
                   </h3>
-                  <button onClick={() => setShowProfileModal(false)} className="text-muted-foreground hover:text-foreground">
+                  <button
+                    onClick={() => setShowProfileModal(false)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     &times;
                   </button>
                 </div>
@@ -428,66 +420,227 @@ export default function TeamPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">Full Name *</label>
-                      <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" value={profileForm.full_name} onChange={e => setProfileForm(f => ({ ...f, full_name: e.target.value }))} />
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        value={profileForm.full_name}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({ ...f, full_name: e.target.value }))
+                        }
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Email</label>
-                      <input type="email" className="w-full px-3 py-2 border rounded-lg bg-background" value={profileForm.email} onChange={e => setProfileForm(f => ({ ...f, email: e.target.value }))} />
+                      <input
+                        type="email"
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        value={profileForm.email}
+                        onChange={(e) => setProfileForm((f) => ({ ...f, email: e.target.value }))}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Title</label>
-                      <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. CEO, Head of Sales" value={profileForm.title} onChange={e => setProfileForm(f => ({ ...f, title: e.target.value }))} />
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        placeholder="e.g. CEO, Head of Sales"
+                        value={profileForm.title}
+                        onChange={(e) => setProfileForm((f) => ({ ...f, title: e.target.value }))}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">LinkedIn URL</label>
-                      <input type="url" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="https://linkedin.com/in/..." value={profileForm.linkedin_url} onChange={e => setProfileForm(f => ({ ...f, linkedin_url: e.target.value }))} />
+                      <input
+                        type="url"
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        placeholder="https://linkedin.com/in/..."
+                        value={profileForm.linkedin_url}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({ ...f, linkedin_url: e.target.value }))
+                        }
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Bio</label>
-                      <textarea className="w-full px-3 py-2 border rounded-lg bg-background" rows={3} placeholder="Background, expertise, what they're known for..." value={profileForm.bio} onChange={e => setProfileForm(f => ({ ...f, bio: e.target.value }))} />
+                      <textarea
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        rows={3}
+                        placeholder="Background, expertise, what they're known for..."
+                        value={profileForm.bio}
+                        onChange={(e) => setProfileForm((f) => ({ ...f, bio: e.target.value }))}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Expertise Areas</label>
-                      <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Comma separated: Sales, Marketing, AI" value={profileForm.expertise_areas.join(', ')} onChange={e => setProfileForm(f => ({ ...f, expertise_areas: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))} />
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        placeholder="Comma separated: Sales, Marketing, AI"
+                        value={profileForm.expertise_areas.join(', ')}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            expertise_areas: e.target.value
+                              .split(',')
+                              .map((s) => s.trim())
+                              .filter(Boolean),
+                          }))
+                        }
+                      />
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">First-Person Context</label>
-                      <textarea className="w-full px-3 py-2 border rounded-lg bg-background" rows={3} placeholder="I'm a 15-year agency veteran who's scaled 3 businesses..." value={profileForm.voice_profile.first_person_context || ''} onChange={e => setProfileForm(f => ({ ...f, voice_profile: { ...f.voice_profile, first_person_context: e.target.value } }))} />
-                      <p className="text-xs text-muted-foreground mt-1">The AI will use this as the &quot;I&quot; perspective when writing posts.</p>
+                      <textarea
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        rows={3}
+                        placeholder="I'm a 15-year agency veteran who's scaled 3 businesses..."
+                        value={profileForm.voice_profile.first_person_context || ''}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            voice_profile: {
+                              ...f.voice_profile,
+                              first_person_context: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        The AI will use this as the &quot;I&quot; perspective when writing posts.
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Perspective Notes</label>
-                      <textarea className="w-full px-3 py-2 border rounded-lg bg-background" rows={2} placeholder="Speaks from hands-on experience building sales teams" value={profileForm.voice_profile.perspective_notes || ''} onChange={e => setProfileForm(f => ({ ...f, voice_profile: { ...f.voice_profile, perspective_notes: e.target.value } }))} />
+                      <textarea
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        rows={2}
+                        placeholder="Speaks from hands-on experience building sales teams"
+                        value={profileForm.voice_profile.perspective_notes || ''}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            voice_profile: {
+                              ...f.voice_profile,
+                              perspective_notes: e.target.value,
+                            },
+                          }))
+                        }
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Tone</label>
-                      <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Direct, warm, slightly irreverent" value={profileForm.voice_profile.tone || ''} onChange={e => setProfileForm(f => ({ ...f, voice_profile: { ...f.voice_profile, tone: e.target.value } }))} />
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        placeholder="Direct, warm, slightly irreverent"
+                        value={profileForm.voice_profile.tone || ''}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            voice_profile: { ...f.voice_profile, tone: e.target.value },
+                          }))
+                        }
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Signature Phrases</label>
-                      <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Comma separated phrases this person naturally uses" value={(profileForm.voice_profile.signature_phrases || []).join(', ')} onChange={e => setProfileForm(f => ({ ...f, voice_profile: { ...f.voice_profile, signature_phrases: e.target.value.split(',').map(s => s.trim()).filter(Boolean) } }))} />
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        placeholder="Comma separated phrases this person naturally uses"
+                        value={(profileForm.voice_profile.signature_phrases || []).join(', ')}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            voice_profile: {
+                              ...f.voice_profile,
+                              signature_phrases: e.target.value
+                                .split(',')
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            },
+                          }))
+                        }
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Banned Phrases</label>
-                      <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Phrases to avoid for this person" value={(profileForm.voice_profile.banned_phrases || []).join(', ')} onChange={e => setProfileForm(f => ({ ...f, voice_profile: { ...f.voice_profile, banned_phrases: e.target.value.split(',').map(s => s.trim()).filter(Boolean) } }))} />
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        placeholder="Phrases to avoid for this person"
+                        value={(profileForm.voice_profile.banned_phrases || []).join(', ')}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            voice_profile: {
+                              ...f.voice_profile,
+                              banned_phrases: e.target.value
+                                .split(',')
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            },
+                          }))
+                        }
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Industry Jargon</label>
-                      <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="Domain-specific terms they use" value={(profileForm.voice_profile.industry_jargon || []).join(', ')} onChange={e => setProfileForm(f => ({ ...f, voice_profile: { ...f.voice_profile, industry_jargon: e.target.value.split(',').map(s => s.trim()).filter(Boolean) } }))} />
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        placeholder="Domain-specific terms they use"
+                        value={(profileForm.voice_profile.industry_jargon || []).join(', ')}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            voice_profile: {
+                              ...f.voice_profile,
+                              industry_jargon: e.target.value
+                                .split(',')
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            },
+                          }))
+                        }
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Storytelling Style</label>
-                      <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. Case studies from client work" value={profileForm.voice_profile.storytelling_style || ''} onChange={e => setProfileForm(f => ({ ...f, voice_profile: { ...f.voice_profile, storytelling_style: e.target.value } }))} />
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-lg bg-background"
+                        placeholder="e.g. Case studies from client work"
+                        value={profileForm.voice_profile.storytelling_style || ''}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            voice_profile: {
+                              ...f.voice_profile,
+                              storytelling_style: e.target.value,
+                            },
+                          }))
+                        }
+                      />
                     </div>
                   </div>
                 )}
 
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                  <button onClick={() => setShowProfileModal(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-                  <button onClick={saveProfile} disabled={!profileForm.full_name.trim() || saving} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50">
+                  <button
+                    onClick={() => setShowProfileModal(false)}
+                    className="px-4 py-2 border rounded-lg text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveProfile}
+                    disabled={!profileForm.full_name.trim() || saving}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
+                  >
                     {saving ? 'Saving...' : editingProfile ? 'Save Changes' : 'Add Member'}
                   </button>
                 </div>
@@ -500,8 +653,8 @@ export default function TeamPage() {
   }
 
   // ── Team list view ──
-  const ownedTeams = memberships.filter(m => m.role === 'owner');
-  const memberTeams = memberships.filter(m => m.role === 'member');
+  const ownedTeams = memberships.filter((m) => m.role === 'owner');
+  const memberTeams = memberships.filter((m) => m.role === 'member');
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
@@ -521,13 +674,17 @@ export default function TeamPage() {
       {error && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 p-3 text-sm text-red-700 dark:text-red-400 flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">&times;</button>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
+            &times;
+          </button>
         </div>
       )}
       {success && (
         <div className="mb-4 rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950 p-3 text-sm text-green-700 dark:text-green-400 flex items-center justify-between">
           <span>{success}</span>
-          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700">&times;</button>
+          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700">
+            &times;
+          </button>
         </div>
       )}
 
@@ -538,22 +695,49 @@ export default function TeamPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Team Name *</label>
-              <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. Client A" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} />
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg bg-background"
+                placeholder="e.g. Client A"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Industry</label>
-              <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. B2B SaaS" value={newTeamIndustry} onChange={e => setNewTeamIndustry(e.target.value)} />
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg bg-background"
+                placeholder="e.g. B2B SaaS"
+                value={newTeamIndustry}
+                onChange={(e) => setNewTeamIndustry(e.target.value)}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Shared Goal</label>
-              <input type="text" className="w-full px-3 py-2 border rounded-lg bg-background" placeholder="e.g. Build thought leadership" value={newTeamGoal} onChange={e => setNewTeamGoal(e.target.value)} />
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg bg-background"
+                placeholder="e.g. Build thought leadership"
+                value={newTeamGoal}
+                onChange={(e) => setNewTeamGoal(e.target.value)}
+              />
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <button onClick={createTeam} disabled={!newTeamName.trim() || saving} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50">
+            <button
+              onClick={createTeam}
+              disabled={!newTeamName.trim() || saving}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
+            >
               {saving ? 'Creating...' : 'Create Team'}
             </button>
-            <button onClick={() => setShowCreateForm(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+            <button
+              onClick={() => setShowCreateForm(false)}
+              className="px-4 py-2 border rounded-lg text-sm"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -563,7 +747,7 @@ export default function TeamPage() {
         <>
           <h2 className="text-sm font-medium text-muted-foreground mb-3">Your Teams</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-            {ownedTeams.map(t => (
+            {ownedTeams.map((t) => (
               <div key={t.teamId} className="border rounded-lg p-4">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-lg bg-violet-500 flex items-center justify-center text-white font-medium text-sm shrink-0">
@@ -599,7 +783,7 @@ export default function TeamPage() {
         <>
           <h2 className="text-sm font-medium text-muted-foreground mb-3">Teams You Belong To</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {memberTeams.map(t => (
+            {memberTeams.map((t) => (
               <div key={t.teamId} className="border rounded-lg p-4">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-medium text-sm shrink-0">

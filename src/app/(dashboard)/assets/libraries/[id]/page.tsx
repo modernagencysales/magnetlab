@@ -2,11 +2,25 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, Plus, Trash2, GripVertical, ExternalLink, FileText, Search, Save, Globe } from 'lucide-react';
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  GripVertical,
+  ExternalLink,
+  FileText,
+  Search,
+  Save,
+  Globe,
+} from 'lucide-react';
 import Link from 'next/link';
 import { BackLink, FormError, IconPicker, LIBRARY_ICONS } from '@/components/assets';
 
 import { logError } from '@/lib/utils/logger';
+import * as librariesApi from '@/frontend/api/libraries';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
+import * as externalResourcesApi from '@/frontend/api/external-resources';
+import { isApiError } from '@/frontend/api/errors';
 
 interface LibraryItem {
   id: string;
@@ -63,21 +77,20 @@ export default function LibraryEditorPage() {
 
   const fetchLibrary = useCallback(async () => {
     try {
-      const response = await fetch(`/api/libraries/${libraryId}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          router.push('/pages');
-          return;
-        }
-        throw new Error('Failed to fetch library');
-      }
-      const data = await response.json();
+      const data = (await librariesApi.getLibrary(libraryId)) as {
+        library: Library;
+        items?: LibraryItem[];
+      };
       setLibrary(data.library);
       setItems(data.items || []);
       setName(data.library.name);
       setDescription(data.library.description || '');
       setIcon(data.library.icon);
     } catch (err) {
+      if (isApiError(err) && err.status === 404) {
+        router.push('/pages');
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to load library');
     } finally {
       setIsLoading(false);
@@ -86,26 +99,25 @@ export default function LibraryEditorPage() {
 
   const fetchAvailableAssets = useCallback(async () => {
     try {
-      const [leadMagnetsRes, externalResourcesRes] = await Promise.all([
-        fetch('/api/lead-magnet'),
-        fetch('/api/external-resources'),
+      const [leadMagnets, externalData] = await Promise.all([
+        leadMagnetApi.listLeadMagnets(),
+        externalResourcesApi.listExternalResources(),
       ]);
 
-      const leadMagnets = leadMagnetsRes.ok ? await leadMagnetsRes.json() : { leadMagnets: [] };
-      const externalResources = externalResourcesRes.ok ? await externalResourcesRes.json() : { resources: [] };
-
       const assets: AvailableAsset[] = [
-        ...(leadMagnets.leadMagnets || []).map((lm: { id: string; title: string }) => ({
+        ...((leadMagnets.leadMagnets || []) as { id: string; title: string }[]).map((lm) => ({
           id: lm.id,
           title: lm.title,
           type: 'lead_magnet' as const,
         })),
-        ...(externalResources.resources || []).map((er: { id: string; title: string; icon: string }) => ({
-          id: er.id,
-          title: er.title,
-          type: 'external_resource' as const,
-          icon: er.icon,
-        })),
+        ...((externalData.resources || []) as { id: string; title: string; icon: string }[]).map(
+          (er) => ({
+            id: er.id,
+            title: er.title,
+            type: 'external_resource' as const,
+            icon: er.icon,
+          })
+        ),
       ];
 
       setAvailableAssets(assets);
@@ -124,19 +136,12 @@ export default function LibraryEditorPage() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/libraries/${libraryId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description: description || null, icon }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save library');
-      }
-
-      const { library: updated } = await response.json();
-      setLibrary(updated);
+      const result = (await librariesApi.updateLibrary(libraryId, {
+        name,
+        description: description || null,
+        icon,
+      })) as { library: Library };
+      setLibrary(result.library);
       setHasChanges(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save library');
@@ -147,23 +152,12 @@ export default function LibraryEditorPage() {
 
   async function handleAddItem(asset: AvailableAsset): Promise<void> {
     try {
-      const response = await fetch(`/api/libraries/${libraryId}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assetType: asset.type,
-          leadMagnetId: asset.type === 'lead_magnet' ? asset.id : undefined,
-          externalResourceId: asset.type === 'external_resource' ? asset.id : undefined,
-          sortOrder: items.length,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to add item');
-      }
-
-      const { item } = await response.json();
+      const item = (await librariesApi.addLibraryItem(libraryId, {
+        assetType: asset.type,
+        leadMagnetId: asset.type === 'lead_magnet' ? asset.id : undefined,
+        externalResourceId: asset.type === 'external_resource' ? asset.id : undefined,
+        sortOrder: items.length,
+      })) as LibraryItem;
       setItems([...items, { ...item, assetTitle: asset.title }]);
       setShowAddModal(false);
     } catch (err) {
@@ -173,14 +167,7 @@ export default function LibraryEditorPage() {
 
   async function handleRemoveItem(itemId: string): Promise<void> {
     try {
-      const response = await fetch(`/api/libraries/${libraryId}/items/${itemId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to remove item');
-      }
-
+      await librariesApi.deleteLibraryItem(libraryId, itemId);
       setItems(items.filter((item) => item.id !== itemId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove item');
@@ -189,17 +176,10 @@ export default function LibraryEditorPage() {
 
   async function handleToggleFeatured(itemId: string, isFeatured: boolean): Promise<void> {
     try {
-      const response = await fetch(`/api/libraries/${libraryId}/items/${itemId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isFeatured: !isFeatured }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update item');
-      }
-
-      setItems(items.map((item) => (item.id === itemId ? { ...item, isFeatured: !isFeatured } : item)));
+      await librariesApi.updateLibraryItem(libraryId, itemId, { isFeatured: !isFeatured });
+      setItems(
+        items.map((item) => (item.id === itemId ? { ...item, isFeatured: !isFeatured } : item))
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update item');
     }
@@ -270,11 +250,7 @@ export default function LibraryEditorPage() {
             />
           </div>
 
-          <IconPicker
-            value={icon}
-            onChange={handleFieldChange(setIcon)}
-            options={LIBRARY_ICONS}
-          />
+          <IconPicker value={icon} onChange={handleFieldChange(setIcon)} options={LIBRARY_ICONS} />
 
           {hasChanges && (
             <button
@@ -370,10 +346,7 @@ export default function LibraryEditorPage() {
       {/* Add Item Modal */}
       {showAddModal && (
         <>
-          <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setShowAddModal(false)}
-          />
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowAddModal(false)} />
           <div className="fixed inset-x-4 top-[10%] max-w-lg mx-auto bg-background border rounded-lg shadow-lg z-50 max-h-[80vh] flex flex-col">
             <div className="p-4 border-b">
               <h3 className="font-semibold">Add Item to Library</h3>
@@ -381,7 +354,10 @@ export default function LibraryEditorPage() {
 
             <div className="p-4 border-b">
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
                 <input
                   type="text"
                   value={searchTerm}
