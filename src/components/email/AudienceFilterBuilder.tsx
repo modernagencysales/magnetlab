@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Users, Loader2 } from 'lucide-react';
 import type { AudienceFilter } from '@/lib/types/email-system';
+import * as broadcastsApi from '@/frontend/api/email/broadcasts';
 
 interface AudienceFilterBuilderProps {
   filter: AudienceFilter | null;
@@ -44,9 +45,7 @@ export function AudienceFilterBuilder({
   const fetchPreviewCount = useCallback(async () => {
     setLoadingCount(true);
     try {
-      const response = await fetch(`/api/email/broadcasts/${broadcastId}/preview-count`);
-      if (!response.ok) throw new Error('Failed to get count');
-      const data = await response.json();
+      const data = await broadcastsApi.getBroadcastPreviewCount(broadcastId);
       setCount(data.count);
       setTotal(data.total);
     } catch {

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Globe, Loader2 } from 'lucide-react';
+import * as landingPageApi from '@/frontend/api/landing-page';
 
 export default function QuickCreatePage() {
   const router = useRouter();
@@ -19,21 +20,10 @@ export default function QuickCreatePage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/landing-page/quick-create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || undefined,
-        }),
+      const data = await landingPageApi.quickCreate({
+        title: title.trim(),
+        description: description.trim() || undefined,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to create landing page');
-      }
-
-      const data = await res.json();
       router.push(`/magnets/${data.leadMagnetId}?tab=funnel`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');

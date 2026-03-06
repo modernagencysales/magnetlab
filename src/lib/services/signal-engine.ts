@@ -6,9 +6,14 @@
  * and batch processing of post engagers.
  */
 
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError } from '@/lib/utils/logger';
 import type { SignalType, SentimentScore } from '@/lib/types/signals';
+import {
+  upsertSignalLeadRecord,
+  upsertSignalEventRecord,
+  findSignalEventsByLead,
+  updateSignalLeadScores,
+} from '@/server/repositories/signals.repo';
 
 // ============================================
 // PURE HELPERS
@@ -116,38 +121,21 @@ export async function upsertSignalLead(lead: {
   company?: string;
   country?: string;
 }): Promise<{ id: string | null; error: string | null }> {
-  const supabase = createSupabaseAdminClient();
-
   const normalizedUrl = normalizeLinkedInUrl(lead.linkedin_url);
 
-  const { data, error } = await supabase
-    .from('signal_leads')
-    .upsert(
-      {
-        user_id: lead.user_id,
-        linkedin_url: normalizedUrl,
-        first_name: lead.first_name || null,
-        last_name: lead.last_name || null,
-        headline: lead.headline || null,
-        job_title: lead.job_title || null,
-        company: lead.company || null,
-        country: lead.country || null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id,linkedin_url' }
-    )
-    .select('id')
-    .single();
+  const result = await upsertSignalLeadRecord({
+    ...lead,
+    linkedin_url: normalizedUrl,
+  });
 
-  if (error) {
+  if (result.error) {
     logError('services/signal-engine', new Error('Failed to upsert signal lead'), {
-      detail: error.message,
+      detail: result.error,
       linkedin_url: normalizedUrl,
     });
-    return { id: null, error: error.message };
   }
 
-  return { id: data?.id ?? null, error: null };
+  return result;
 }
 
 /**
@@ -165,59 +153,29 @@ export async function recordSignalEvent(event: {
   engagement_type?: 'comment' | 'reaction' | 'post_author';
   metadata?: Record<string, unknown>;
 }): Promise<{ error: string | null }> {
-  const supabase = createSupabaseAdminClient();
+  const result = await upsertSignalEventRecord(event);
 
-  const { error } = await supabase
-    .from('signal_events')
-    .upsert(
-      {
-        user_id: event.user_id,
-        lead_id: event.lead_id,
-        signal_type: event.signal_type,
-        source_url: event.source_url || null,
-        source_monitor_id: event.source_monitor_id || null,
-        comment_text: event.comment_text || null,
-        sentiment: event.sentiment || null,
-        keyword_matched: event.keyword_matched || null,
-        engagement_type: event.engagement_type || null,
-        metadata: event.metadata || {},
-        detected_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id,lead_id,signal_type,source_url', ignoreDuplicates: true }
-    );
-
-  if (error) {
+  if (result.error) {
     logError('services/signal-engine', new Error('Failed to record signal event'), {
-      detail: error.message,
+      detail: result.error,
       lead_id: event.lead_id,
       signal_type: event.signal_type,
     });
-    return { error: error.message };
   }
 
-  return { error: null };
+  return result;
 }
 
 /**
  * Recompute signal_count, compound_score, and sentiment_score
  * for a given lead based on all their signal_events.
  */
-export async function updateSignalCounts(
-  userId: string,
-  leadId: string
-): Promise<void> {
-  const supabase = createSupabaseAdminClient();
-
-  // Fetch all signal events for this lead
-  const { data: events, error } = await supabase
-    .from('signal_events')
-    .select('signal_type, sentiment')
-    .eq('user_id', userId)
-    .eq('lead_id', leadId);
+export async function updateSignalCounts(userId: string, leadId: string): Promise<void> {
+  const { data: events, error } = await findSignalEventsByLead(userId, leadId);
 
   if (error) {
     logError('services/signal-engine', new Error('Failed to fetch signal events for scoring'), {
-      detail: error.message,
+      detail: error,
       leadId,
     });
     return;
@@ -236,19 +194,16 @@ export async function updateSignalCounts(
   for (const event of events) {
     const signalType = event.signal_type as SignalType;
 
-    // Only count weight for each signal type once
     if (!distinctTypes.has(signalType)) {
       distinctTypes.add(signalType);
       compoundScore += SIGNAL_TYPE_WEIGHTS[signalType] || 0;
     }
 
-    // Sentiment bonus (add for each event that has sentiment)
     const sentiment = event.sentiment as SentimentScore | null;
     if (sentiment && SENTIMENT_BONUS[sentiment]) {
       compoundScore += SENTIMENT_BONUS[sentiment];
     }
 
-    // Track best sentiment
     if (sentiment && SENTIMENT_RANK[sentiment]) {
       const rank = SENTIMENT_RANK[sentiment];
       if (rank > bestSentimentRank) {
@@ -258,24 +213,17 @@ export async function updateSignalCounts(
     }
   }
 
-  // Cap at 100
   compoundScore = Math.min(compoundScore, 100);
 
-  // Update the lead
-  const { error: updateError } = await supabase
-    .from('signal_leads')
-    .update({
-      signal_count: distinctTypes.size,
-      compound_score: compoundScore,
-      sentiment_score: bestSentiment,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', leadId)
-    .eq('user_id', userId);
+  const { error: updateError } = await updateSignalLeadScores(userId, leadId, {
+    signal_count: distinctTypes.size,
+    compound_score: compoundScore,
+    sentiment_score: bestSentiment,
+  });
 
   if (updateError) {
     logError('services/signal-engine', new Error('Failed to update signal counts'), {
-      detail: updateError.message,
+      detail: updateError,
       leadId,
     });
   }

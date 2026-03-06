@@ -45,11 +45,13 @@ function createMockSupabase() {
   // select() returns the chain
   chain.select = jest.fn(() => chain);
 
-  // update() switches to "update mode" -- subsequent eq() calls resolve with updateResult
+  // update() switches to "update mode" -- subsequent eq()/select()/single() calls resolve with updateResult
   chain.update = jest.fn(() => {
     // Create a separate chain for updates
     const updateChain: Record<string, jest.Mock> = {};
     updateChain.eq = jest.fn(() => updateChain);
+    updateChain.select = jest.fn(() => updateChain);
+    updateChain.single = jest.fn(() => Promise.resolve(updateResult));
     updateChain.then = jest.fn((onFulfilled?: (value: unknown) => unknown) => {
       return Promise.resolve(updateResult).then(onFulfilled);
     }) as jest.Mock;
@@ -173,6 +175,6 @@ describe('POST /api/content-pipeline/posts/[id]/retry', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toBe('Failed to retry post');
+    expect(data.error).toContain('DB write failed');
   });
 });

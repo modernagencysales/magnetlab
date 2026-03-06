@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Users, Plus, Trash2, ExternalLink, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import * as creatorsApi from '@/frontend/api/content-pipeline/creators';
 
 interface Creator {
   id: string;
@@ -25,11 +26,8 @@ export function TrackedCreators() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/content-pipeline/creators');
-      if (res.ok) {
-        const data = await res.json();
-        setCreators(data.creators || []);
-      }
+      const data = await creatorsApi.getCreators();
+      setCreators((data.creators || []) as Creator[]);
     } finally {
       setLoading(false);
     }
@@ -43,23 +41,20 @@ export function TrackedCreators() {
     if (!newUrl.trim()) return;
     setAdding(true);
     try {
-      const res = await fetch('/api/content-pipeline/creators', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ linkedin_url: newUrl.trim(), name: newName.trim() || undefined }),
+      await creatorsApi.addCreator({
+        linkedin_url: newUrl.trim(),
+        name: newName.trim() || undefined,
       });
-      if (res.ok) {
-        setNewUrl('');
-        setNewName('');
-        load();
-      }
+      setNewUrl('');
+      setNewName('');
+      load();
     } finally {
       setAdding(false);
     }
   };
 
   const removeCreator = async (id: string) => {
-    await fetch(`/api/content-pipeline/creators/${id}`, { method: 'DELETE' });
+    await creatorsApi.deleteCreator(id);
     setCreators((prev) => prev.filter((c) => c.id !== id));
   };
 

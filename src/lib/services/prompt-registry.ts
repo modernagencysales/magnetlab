@@ -1,5 +1,11 @@
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { PROMPT_DEFAULTS } from '@/lib/ai/content-pipeline/prompt-defaults';
+import {
+  getActivePromptBySlug,
+  getPromptBySlug,
+  updatePromptTemplate,
+  getLatestPromptVersion,
+  insertPromptVersion,
+} from '@/server/repositories/admin.repo';
 
 export interface PromptTemplate {
   slug: string;
@@ -33,25 +39,19 @@ export async function getPrompt(slug: string): Promise<PromptTemplate> {
 
   // Try DB
   try {
-    const supabase = createSupabaseAdminClient();
-    const { data } = await supabase
-      .from('ai_prompt_templates')
-      .select('*')
-      .eq('slug', slug)
-      .eq('is_active', true)
-      .single();
+    const data = await getActivePromptBySlug(slug);
 
     if (data) {
       const template: PromptTemplate = {
-        slug: data.slug,
-        name: data.name,
-        category: data.category,
-        description: data.description,
-        system_prompt: data.system_prompt,
-        user_prompt: data.user_prompt,
-        model: data.model,
-        temperature: data.temperature,
-        max_tokens: data.max_tokens,
+        slug: data.slug as string,
+        name: data.name as string,
+        category: data.category as string,
+        description: data.description as string,
+        system_prompt: data.system_prompt as string,
+        user_prompt: data.user_prompt as string,
+        model: data.model as string,
+        temperature: data.temperature as number,
+        max_tokens: data.max_tokens as number,
         variables: data.variables as PromptTemplate['variables'],
         is_active: true,
         source: 'db',
@@ -78,10 +78,7 @@ export async function getPrompt(slug: string): Promise<PromptTemplate> {
  * Replace {{variable}} placeholders with values.
  * Unreplaced placeholders are removed (replaced with empty string).
  */
-export function interpolatePrompt(
-  template: string,
-  variables: Record<string, string>
-): string {
+export function interpolatePrompt(template: string, variables: Record<string, string>): string {
   let result = template;
   for (const [key, value] of Object.entries(variables)) {
     result = result.replaceAll(`{{${key}}}`, value);
@@ -111,58 +108,29 @@ export async function savePrompt(
   changedBy: string,
   changeNote?: string
 ): Promise<number> {
-  const supabase = createSupabaseAdminClient();
-
-  // Get current prompt
-  const { data: current, error: fetchError } = await supabase
-    .from('ai_prompt_templates')
-    .select('*')
-    .eq('slug', slug)
-    .single();
-
-  if (fetchError || !current) {
+  // Get current prompt (any state, not just active)
+  const current = await getPromptBySlug(slug);
+  if (!current) {
     throw new Error(`Prompt not found: ${slug}`);
   }
 
-  // Update the template
-  const { error: updateError } = await supabase
-    .from('ai_prompt_templates')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('slug', slug);
+  await updatePromptTemplate(slug, updates);
 
-  if (updateError) throw new Error(`Failed to update prompt: ${updateError.message}`);
-
-  // Get next version number
-  const { data: latestVersion } = await supabase
-    .from('ai_prompt_versions')
-    .select('version')
-    .eq('prompt_id', current.id)
-    .order('version', { ascending: false })
-    .limit(1)
-    .single();
-
+  const latestVersion = await getLatestPromptVersion(current.id as string);
   const nextVersion = (latestVersion?.version ?? 0) + 1;
 
-  // Snapshot the NEW state (after update)
   const merged = { ...current, ...updates };
-  const { error: versionError } = await supabase
-    .from('ai_prompt_versions')
-    .insert({
-      prompt_id: current.id,
-      version: nextVersion,
-      system_prompt: merged.system_prompt ?? current.system_prompt,
-      user_prompt: merged.user_prompt ?? current.user_prompt,
-      model: merged.model ?? current.model,
-      temperature: merged.temperature ?? current.temperature,
-      max_tokens: merged.max_tokens ?? current.max_tokens,
-      change_note: changeNote ?? null,
-      changed_by: changedBy,
-    });
-
-  if (versionError) throw new Error(`Failed to create version: ${versionError.message}`);
+  await insertPromptVersion({
+    prompt_id: current.id as string,
+    version: nextVersion,
+    system_prompt: (merged.system_prompt ?? current.system_prompt) as string,
+    user_prompt: (merged.user_prompt ?? current.user_prompt) as string,
+    model: (merged.model ?? current.model) as string,
+    temperature: (merged.temperature ?? current.temperature) as number,
+    max_tokens: (merged.max_tokens ?? current.max_tokens) as number,
+    change_note: changeNote ?? null,
+    changed_by: changedBy,
+  });
 
   // Invalidate cache
   cache.delete(slug);

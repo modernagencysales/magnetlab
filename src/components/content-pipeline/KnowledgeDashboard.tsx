@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Brain, Layers, AlertTriangle, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import * as teamsApi from '@/frontend/api/teams';
 import { KnowledgeOverview } from './KnowledgeOverview';
 import { TopicBrowser } from './TopicBrowser';
 import { GapAnalysis } from './GapAnalysis';
@@ -16,7 +17,7 @@ const SUBTABS = [
   { id: 'search', label: 'Search', icon: Search },
 ] as const;
 
-type SubtabId = typeof SUBTABS[number]['id'];
+type SubtabId = (typeof SUBTABS)[number]['id'];
 
 function getActiveTeamFromCookie(): string | undefined {
   const match = document.cookie.match(/(?:^|;\s*)ml-team-context=([^;]*)/);
@@ -37,13 +38,16 @@ export function KnowledgeDashboard() {
       setTeamId(cookieTeamId);
     } else {
       // Personal mode — check if user has any teams for the toggle
-      fetch('/api/teams')
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (!data) return;
-          const firstTeam =
-            data.owned?.[0]?.team_id ?? data.member?.[0]?.team_id ?? undefined;
-          setUserTeamId(firstTeam);
+      teamsApi
+        .listTeams()
+        .then((data: unknown) => {
+          const d = data as {
+            owned?: Array<{ team_id?: string }>;
+            member?: Array<{ team_id?: string }>;
+          };
+          if (!d) return;
+          const firstTeam = d.owned?.[0]?.team_id ?? d.member?.[0]?.team_id ?? undefined;
+          setUserTeamId(firstTeam ?? undefined);
         })
         .catch(() => {});
     }

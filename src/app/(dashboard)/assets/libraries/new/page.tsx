@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { BackLink, FormError, IconPicker, LIBRARY_ICONS } from '@/components/assets';
+import * as librariesApi from '@/frontend/api/libraries';
 
 export default function NewLibraryPage() {
   const router = useRouter();
@@ -25,23 +26,12 @@ export default function NewLibraryPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/libraries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || null,
-          icon,
-        }),
+      const data = await librariesApi.createLibrary({
+        name: name.trim(),
+        description: description.trim() || null,
+        icon,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create library');
-      }
-
-      const { library } = await response.json();
-      router.push(`/assets/libraries/${library.id}`);
+      router.push(`/assets/libraries/${data.library.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create library');
       setIsSubmitting(false);

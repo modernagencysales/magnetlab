@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Upload, Loader2, Link as LinkIcon, FileText } from 'lucide-react';
+import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 export default function ImportLeadMagnetPage() {
   const router = useRouter();
@@ -22,24 +23,11 @@ export default function ImportLeadMagnetPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/lead-magnet/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: url.trim() || undefined,
-          content: content.trim() || undefined,
-        }),
+      const data = await leadMagnetApi.importLeadMagnet({
+        url: url.trim() || undefined,
+        content: content.trim() || undefined,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to import');
-      }
-
-      const { leadMagnetId } = await response.json();
-
-      // Redirect to the funnel editor
-      router.push(`/magnets/${leadMagnetId}?tab=funnel`);
+      router.push(`/magnets/${data.leadMagnetId}?tab=funnel`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to import lead magnet');
       setLoading(false);

@@ -167,7 +167,7 @@ describe('POST /api/admin/import-subscribers', () => {
   // Team ownership
   // =========================================================================
 
-  it('returns 404 when team does not exist', async () => {
+  it('returns 403 when team does not exist', async () => {
     (auth as jest.Mock).mockResolvedValue(authenticatedSession());
 
     const mock = createMockSupabase([
@@ -184,8 +184,8 @@ describe('POST /api/admin/import-subscribers', () => {
     const response = await POST(request);
     const json = await response.json();
 
-    expect(response.status).toBe(404);
-    expect(json.code).toBe('NOT_FOUND');
+    expect(response.status).toBe(403);
+    expect(json.code).toBe('FORBIDDEN');
   });
 
   it('returns 403 when user does not own the team', async () => {

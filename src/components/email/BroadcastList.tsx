@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import type { EmailBroadcast, BroadcastStatus } from '@/lib/types/email-system';
+import * as broadcastsApi from '@/frontend/api/email/broadcasts';
 
 const STATUS_STYLES: Record<BroadcastStatus, string> = {
   draft: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400',
@@ -39,12 +40,8 @@ export function BroadcastList() {
   useEffect(() => {
     async function fetchBroadcasts() {
       try {
-        const response = await fetch('/api/email/broadcasts');
-        if (!response.ok) {
-          throw new Error('Failed to load broadcasts');
-        }
-        const data = await response.json();
-        setBroadcasts(data.broadcasts || []);
+        const data = await broadcastsApi.listBroadcasts();
+        setBroadcasts((data.broadcasts || []) as EmailBroadcast[]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load broadcasts');
       } finally {
@@ -59,19 +56,9 @@ export function BroadcastList() {
     setError(null);
 
     try {
-      const response = await fetch('/api/email/broadcasts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create broadcast');
-      }
-
-      const data = await response.json();
-      router.push(`/email/broadcasts/${data.broadcast.id}`);
+      const data = await broadcastsApi.createBroadcast({});
+      const broadcast = data.broadcast as { id: string };
+      router.push(`/email/broadcasts/${broadcast.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create broadcast');
       setCreating(false);

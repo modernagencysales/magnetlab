@@ -1,451 +1,43 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { toast } from 'sonner';
 import { Loader2, CheckSquare, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { PipelinePost, ContentIdea, PostStatus } from '@/lib/types/content-pipeline';
-import type { CardItem } from './KanbanCard';
+import type { PipelinePost, ContentIdea } from '@/lib/types/content-pipeline';
 import { FocusedCard } from './KanbanCard';
 import { COLUMN_STYLES, type ColumnId } from './KanbanColumn';
 import { BulkSelectionBar } from './BulkSelectionBar';
 import { DetailPane } from './DetailPane';
 import { PostDetailModal } from './PostDetailModal';
+import { useKanban, type KanbanBoardProps } from '@/frontend/hooks/useKanban';
 
-// ─── Component ────────────────────────────────────────────
+export type { KanbanBoardProps };
 
-export function KanbanBoard({ onRefresh, profileId }: { onRefresh?: () => void; profileId?: string | null }) {
-  // Data
-  const [ideas, setIdeas] = useState<ContentIdea[]>([]);
-  const [posts, setPosts] = useState<PipelinePost[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Focused column
-  const [focusedColumn, setFocusedColumn] = useState<ColumnId>('ideas');
-
-  // Selection
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const lastSelectedId = useRef<string | null>(null);
-
-  // Preview
-  const [previewItem, setPreviewItem] = useState<{ item: CardItem; idea?: ContentIdea } | null>(null);
-
-  // Modal
-  const [modalPost, setModalPost] = useState<PipelinePost | null>(null);
-  const [polishing, setPolishing] = useState(false);
-
-  // Processing (kept for BulkSelectionBar prop — always false with optimistic updates)
-  const [isProcessing] = useState(false);
-
-  // ─── Data fetching ────────────────────────────────────────
-
-  const fetchData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const profileParam = profileId ? `&team_profile_id=${profileId}` : '';
-      const [ideasRes, postsRes] = await Promise.all([
-        fetch(`/api/content-pipeline/ideas?status=extracted&limit=200${profileParam}`),
-        fetch(`/api/content-pipeline/posts?limit=200${profileParam}`),
-      ]);
-      const [ideasData, postsData] = await Promise.all([
-        ideasRes.json(),
-        postsRes.json(),
-      ]);
-      setIdeas(ideasData.ideas || []);
-      setPosts(postsData.posts || []);
-    } catch {
-      // Silent
-    } finally {
-      setLoading(false);
-    }
-  }, [profileId]);
-
-  useEffect(() => {
-    fetchData(false);
-  }, [fetchData]);
-
-  const refresh = useCallback(() => {
-    fetchData(true);
-    onRefresh?.();
-  }, [fetchData, onRefresh]);
-
-  // ─── Column data ──────────────────────────────────────────
-
-  const getColumnItems = useCallback((columnId: ColumnId): CardItem[] => {
-    switch (columnId) {
-      case 'ideas':
-        return ideas
-          .slice()
-          .sort((a, b) => (b.composite_score ?? 0) - (a.composite_score ?? 0))
-          .map((idea) => ({ type: 'idea' as const, data: idea }));
-      case 'written':
-        return posts
-          .filter((p) => p.status === 'draft' || p.status === 'reviewing')
-          .map((post) => ({ type: 'post' as const, data: post }));
-      case 'review':
-        return posts
-          .filter((p) => p.status === 'approved')
-          .map((post) => ({ type: 'post' as const, data: post }));
-      case 'scheduled':
-        return posts
-          .filter((p) => p.status === 'scheduled' || p.status === 'published')
-          .map((post) => ({ type: 'post' as const, data: post }));
-      default:
-        return [];
-    }
-  }, [ideas, posts]);
-
-  // ─── Column switching ─────────────────────────────────────
-
-  const handleColumnSwitch = useCallback((col: ColumnId) => {
-    setFocusedColumn(col);
-    setSelectedIds(new Set());
-    lastSelectedId.current = null;
-    setPreviewItem(null);
-  }, []);
-
-  // ─── Selection ────────────────────────────────────────────
-
-  const handleToggleSelect = useCallback((id: string, e: React.MouseEvent) => {
-    const items = getColumnItems(focusedColumn);
-
-    if (e.shiftKey && lastSelectedId.current) {
-      const lastIdx = items.findIndex((i) => i.data.id === lastSelectedId.current);
-      const currIdx = items.findIndex((i) => i.data.id === id);
-      if (lastIdx !== -1 && currIdx !== -1) {
-        const start = Math.min(lastIdx, currIdx);
-        const end = Math.max(lastIdx, currIdx);
-        setSelectedIds((prev) => {
-          const next = new Set(prev);
-          for (let i = start; i <= end; i++) next.add(items[i].data.id);
-          return next;
-        });
-        lastSelectedId.current = id;
-        return;
-      }
-    }
-
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-    lastSelectedId.current = id;
-  }, [focusedColumn, getColumnItems]);
-
-  const selectAll = useCallback(() => {
-    const items = getColumnItems(focusedColumn);
-    setSelectedIds(new Set(items.map((i) => i.data.id)));
-  }, [focusedColumn, getColumnItems]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedIds(new Set());
-    lastSelectedId.current = null;
-  }, []);
-
-  // ─── Keyboard shortcuts ───────────────────────────────────
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        clearSelection();
-        setPreviewItem(null);
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
-        e.preventDefault();
-        selectAll();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [clearSelection, selectAll]);
-
-  // ─── Card click → preview ─────────────────────────────────
-
-  const handleCardClick = useCallback((item: CardItem) => {
-    if (previewItem && previewItem.item.data.id === item.data.id) {
-      setPreviewItem(null);
-    } else {
-      const idea = item.type === 'post' && item.data.idea_id
-        ? ideas.find((i) => i.id === item.data.idea_id)
-        : undefined;
-      setPreviewItem({ item, idea });
-    }
-  }, [previewItem, ideas]);
-
-  // ─── Card actions ─────────────────────────────────────────
-
-  const handleCardAction = useCallback(async (item: CardItem, action: string) => {
-    try {
-      if (item.type === 'idea') {
-        const idea = item.data as ContentIdea;
-        if (action === 'write') {
-          // Optimistic: remove idea from list immediately
-          setIdeas((prev) => prev.filter((i) => i.id !== idea.id));
-          if (previewItem?.item.data.id === idea.id) setPreviewItem(null);
-          fetch(`/api/content-pipeline/ideas/${idea.id}/write`, { method: 'POST' })
-            .then((res) => {
-              if (res.ok) fetchData(true);
-              else { setIdeas((prev) => [...prev, idea]); toast.error('Failed to write post'); }
-            })
-            .catch(() => {
-              setIdeas((prev) => [...prev, idea]);
-              toast.error('Failed to write post');
-            });
-          return;
-        } else if (action === 'archive') {
-          // Optimistic: remove idea from list immediately
-          setIdeas((prev) => prev.filter((i) => i.id !== idea.id));
-          if (previewItem?.item.data.id === idea.id) setPreviewItem(null);
-          fetch(`/api/content-pipeline/ideas/${idea.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'archived' }),
-          }).then((res) => {
-            if (!res.ok) {
-              setIdeas((prev) => [...prev, idea]);
-              toast.error('Failed to archive idea');
-            }
-          }).catch(() => {
-            setIdeas((prev) => [...prev, idea]);
-            toast.error('Failed to archive idea');
-          });
-          return;
-        } else if (action === 'delete') {
-          // Optimistic: remove idea from list immediately
-          setIdeas((prev) => prev.filter((i) => i.id !== idea.id));
-          if (previewItem?.item.data.id === idea.id) setPreviewItem(null);
-          fetch(`/api/content-pipeline/ideas/${idea.id}`, { method: 'DELETE' })
-            .then((res) => {
-              if (!res.ok) {
-                setIdeas((prev) => [...prev, idea]);
-                toast.error('Failed to delete idea');
-              }
-            })
-            .catch(() => {
-              setIdeas((prev) => [...prev, idea]);
-              toast.error('Failed to delete idea');
-            });
-          return;
-        }
-      } else {
-        const post = item.data as PipelinePost;
-        if (action === 'edit') {
-          setModalPost(post);
-        } else if (action === 'publish') {
-          // Optimistic: update status to published immediately
-          const oldStatus = post.status;
-          setPosts((prev) => prev.map((p) =>
-            p.id === post.id ? { ...p, status: 'published' as PostStatus } : p
-          ));
-          fetch(`/api/content-pipeline/posts/${post.id}/publish`, { method: 'POST' })
-            .then(async (res) => {
-              if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                setPosts((prev) => prev.map((p) =>
-                  p.id === post.id ? { ...p, status: oldStatus } : p
-                ));
-                toast.error(data.error?.includes('Settings') ? data.error : 'Failed to publish');
-              }
-            })
-            .catch(() => {
-              setPosts((prev) => prev.map((p) =>
-                p.id === post.id ? { ...p, status: oldStatus } : p
-              ));
-              toast.error('Failed to publish');
-            });
-          return;
-        } else if (action === 'delete') {
-          // Optimistic: remove post from list immediately
-          setPosts((prev) => prev.filter((p) => p.id !== post.id));
-          if (previewItem?.item.data.id === post.id) setPreviewItem(null);
-          fetch(`/api/content-pipeline/posts/${post.id}`, { method: 'DELETE' })
-            .then((res) => {
-              if (!res.ok) {
-                setPosts((prev) => [...prev, post]);
-                toast.error('Failed to delete post');
-              }
-            })
-            .catch(() => {
-              setPosts((prev) => [...prev, post]);
-              toast.error('Failed to delete post');
-            });
-          return;
-        }
-      }
-    } catch {
-      // Silent
-    }
-  }, [fetchData, previewItem]);
-
-  // ─── Bulk actions ─────────────────────────────────────────
-
-  const handleBulkPrimary = useCallback(() => {
-    if (selectedIds.size === 0) return;
-
-    const ids = [...selectedIds];
-
-    if (focusedColumn === 'ideas') {
-      // Optimistic: remove all selected ideas immediately
-      const removedIdeas = ideas.filter((i) => selectedIds.has(i.id));
-      setIdeas((prev) => prev.filter((i) => !selectedIds.has(i.id)));
-      if (previewItem && selectedIds.has(previewItem.item.data.id)) setPreviewItem(null);
-      setSelectedIds(new Set());
-
-      Promise.allSettled(ids.map((id) =>
-        fetch(`/api/content-pipeline/ideas/${id}/write`, { method: 'POST' })
-      )).then((results) => {
-        const failed = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok));
-        if (failed.length > 0) {
-          toast.error(`Failed to write ${failed.length} post(s)`);
-        }
-        fetchData(true);
-      }).catch(() => {
-        setIdeas((prev) => [...prev, ...removedIdeas]);
-        toast.error('Failed to write posts');
-      });
-
-    } else if (focusedColumn === 'written') {
-      // Optimistic: update selected posts to approved immediately
-      setPosts((prev) => prev.map((p) =>
-        ids.includes(p.id) ? { ...p, status: 'approved' as PostStatus } : p
-      ));
-      setSelectedIds(new Set());
-
-      Promise.allSettled(ids.map((id) =>
-        fetch(`/api/content-pipeline/posts/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'approved' }),
-        })
-      )).then((results) => {
-        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
-          fetchData(true);
-          toast.error('Some posts failed to approve');
-        }
-      }).catch(() => { fetchData(true); toast.error('Failed to approve posts'); });
-
-    } else if (focusedColumn === 'review') {
-      // Optimistic: update selected posts to scheduled immediately
-      setPosts((prev) => prev.map((p) =>
-        ids.includes(p.id) ? { ...p, status: 'scheduled' as PostStatus } : p
-      ));
-      setSelectedIds(new Set());
-
-      Promise.allSettled(ids.map((id) =>
-        fetch('/api/content-pipeline/posts/schedule', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ post_id: id }),
-        })
-      )).then((results) => {
-        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
-          fetchData(true);
-          toast.error('Some posts failed to schedule');
-        }
-      }).catch(() => { fetchData(true); toast.error('Failed to schedule posts'); });
-
-    } else if (focusedColumn === 'scheduled') {
-      // Optimistic: update selected posts to approved immediately
-      setPosts((prev) => prev.map((p) =>
-        ids.includes(p.id) ? { ...p, status: 'approved' as PostStatus } : p
-      ));
-      setSelectedIds(new Set());
-
-      Promise.allSettled(ids.map((id) =>
-        fetch(`/api/content-pipeline/posts/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'approved' }),
-        })
-      )).then((results) => {
-        if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
-          fetchData(true);
-          toast.error('Some posts failed to move');
-        }
-      }).catch(() => { fetchData(true); toast.error('Failed to move posts'); });
-    }
-  }, [focusedColumn, selectedIds, ideas, previewItem, fetchData]);
-
-  const handleBulkDelete = useCallback(() => {
-    if (selectedIds.size === 0) return;
-
-    const ids = [...selectedIds];
-    const ideaIds = new Set(ideas.map((i) => i.id));
-
-    // Optimistic: remove all selected items from local state immediately
-    const removedIdeas = ideas.filter((i) => selectedIds.has(i.id));
-    const removedPosts = posts.filter((p) => selectedIds.has(p.id));
-    setIdeas((prev) => prev.filter((i) => !selectedIds.has(i.id)));
-    setPosts((prev) => prev.filter((p) => !selectedIds.has(p.id)));
-    if (previewItem && selectedIds.has(previewItem.item.data.id)) setPreviewItem(null);
-    setSelectedIds(new Set());
-
-    Promise.allSettled(ids.map((id) => {
-      const endpoint = ideaIds.has(id)
-        ? `/api/content-pipeline/ideas/${id}`
-        : `/api/content-pipeline/posts/${id}`;
-      return fetch(endpoint, { method: 'DELETE' });
-    })).then((results) => {
-      if (results.some((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))) {
-        fetchData(true);
-        toast.error('Some items failed to delete');
-      }
-    }).catch(() => {
-      setIdeas((prev) => [...prev, ...removedIdeas]);
-      setPosts((prev) => [...prev, ...removedPosts]);
-      toast.error('Failed to delete items');
-    });
-  }, [selectedIds, ideas, posts, previewItem, fetchData]);
-
-  // ─── Detail pane callbacks ────────────────────────────────
-
-  const handleWritePost = useCallback(async (ideaId: string) => {
-    // Optimistic: remove idea from list immediately
-    const removedIdea = ideas.find((i) => i.id === ideaId);
-    setIdeas((prev) => prev.filter((i) => i.id !== ideaId));
-    setPreviewItem(null);
-    fetch(`/api/content-pipeline/ideas/${ideaId}/write`, { method: 'POST' })
-      .then((res) => {
-        if (res.ok) fetchData(true);
-        else {
-          if (removedIdea) setIdeas((prev) => [...prev, removedIdea]);
-          toast.error('Failed to write post');
-        }
-      })
-      .catch(() => {
-        if (removedIdea) setIdeas((prev) => [...prev, removedIdea]);
-        toast.error('Failed to write post');
-      });
-  }, [fetchData, ideas]);
-
-  const handleContentUpdate = useCallback((postId: string, content: string) => {
-    setPosts((prev) =>
-      prev.map((p) => p.id === postId ? { ...p, draft_content: content, final_content: null } : p)
-    );
-  }, []);
-
-  const handleOpenModal = useCallback((post: PipelinePost) => {
-    setModalPost(post);
-  }, []);
-
-  // ─── Modal callbacks ─────────────────────────────────────
-
-  const handlePolish = useCallback(async (postId: string) => {
-    setPolishing(true);
-    try {
-      await fetch(`/api/content-pipeline/posts/${postId}/polish`, { method: 'POST' });
-      refresh();
-    } catch {
-      // Silent
-    } finally {
-      setPolishing(false);
-    }
-  }, [refresh]);
-
-  // ─── Render ───────────────────────────────────────────────
+export function KanbanBoard(props: KanbanBoardProps) {
+  const {
+    loading,
+    focusedColumn,
+    selectedIds,
+    previewItem,
+    modalPost,
+    polishing,
+    isProcessing,
+    setPreviewItem,
+    setModalPost,
+    getColumnItems,
+    refresh,
+    handleColumnSwitch,
+    handleToggleSelect,
+    selectAll,
+    clearSelection,
+    handleCardClick,
+    handleCardAction,
+    handleBulkPrimary,
+    handleBulkDelete,
+    handleWritePost,
+    handleContentUpdate,
+    handleOpenModal,
+    handlePolish,
+  } = useKanban(props);
 
   if (loading) {
     return (
@@ -457,7 +49,8 @@ export function KanbanBoard({ onRefresh, profileId }: { onRefresh?: () => void; 
 
   const columns: ColumnId[] = ['ideas', 'written', 'review', 'scheduled'];
   const currentItems = getColumnItems(focusedColumn);
-  const allSelected = currentItems.length > 0 && currentItems.every((i) => selectedIds.has(i.data.id));
+  const allSelected =
+    currentItems.length > 0 && currentItems.every((i) => selectedIds.has(i.data.id));
 
   return (
     <div>
@@ -480,10 +73,12 @@ export function KanbanBoard({ onRefresh, profileId }: { onRefresh?: () => void; 
             >
               <span className={cn('h-2 w-2 rounded-full shrink-0', config.dotColor)} />
               <span>{config.label}</span>
-              <span className={cn(
-                'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-                active ? config.badgeColor : 'text-muted-foreground'
-              )}>
+              <span
+                className={cn(
+                  'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                  active ? config.badgeColor : 'text-muted-foreground'
+                )}
+              >
                 {items.length}
               </span>
             </button>
@@ -551,7 +146,11 @@ export function KanbanBoard({ onRefresh, profileId }: { onRefresh?: () => void; 
                 item={
                   previewItem.item.type === 'idea'
                     ? { type: 'idea', data: previewItem.item.data as ContentIdea }
-                    : { type: 'post', data: previewItem.item.data as PipelinePost, idea: previewItem.idea }
+                    : {
+                        type: 'post',
+                        data: previewItem.item.data as PipelinePost,
+                        idea: previewItem.idea,
+                      }
                 }
                 onClose={() => setPreviewItem(null)}
                 onWritePost={handleWritePost}

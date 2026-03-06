@@ -1,5 +1,9 @@
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError } from '@/lib/utils/logger';
+import {
+  matchKnowledgeEntriesForDedup,
+  supersedeKnowledgeEntry,
+  upsertKnowledgeCorroboration,
+} from '@/server/repositories/knowledge.repo';
 
 interface DedupResult {
   action: 'insert' | 'supersede' | 'corroborate';
@@ -18,23 +22,16 @@ export async function checkForDuplicate(
   embedding: number[],
   speaker: string
 ): Promise<DedupResult> {
-  const supabase = createSupabaseAdminClient();
+  const matches = await matchKnowledgeEntriesForDedup(userId, embedding);
 
-  const { data, error } = await supabase.rpc('cp_match_knowledge_entries', {
-    query_embedding: JSON.stringify(embedding),
-    p_user_id: userId,
-    threshold: 0.85,
-    match_count: 5,
-  });
-
-  if (error || !data?.length) {
+  if (!matches.length) {
     return { action: 'insert' };
   }
 
-  const topMatch = data[0];
+  const topMatch = matches[0];
   const similarity = topMatch.similarity;
 
-  if (similarity > 0.90) {
+  if (similarity > 0.9) {
     if (topMatch.speaker === speaker) {
       return { action: 'supersede', existingEntryId: topMatch.id };
     }
@@ -53,15 +50,10 @@ export async function supersedeEntry(
   oldEntryId: string,
   newEntryId: string
 ): Promise<void> {
-  const supabase = createSupabaseAdminClient();
-  const { error } = await supabase
-    .from('cp_knowledge_entries')
-    .update({ superseded_by: newEntryId })
-    .eq('id', oldEntryId)
-    .eq('user_id', userId);
-
-  if (error) {
-    logError('services/knowledge-dedup', new Error('Failed to supersede'), { oldEntryId, newEntryId });
+  try {
+    await supersedeKnowledgeEntry(userId, oldEntryId, newEntryId);
+  } catch (err) {
+    logError('services/knowledge-dedup', err, { oldEntryId, newEntryId });
   }
 }
 
@@ -73,26 +65,9 @@ export async function recordCorroboration(
   entryId: string,
   corroboratedById: string
 ): Promise<void> {
-  const supabase = createSupabaseAdminClient();
-
-  // Verify entry belongs to user before recording corroboration
-  const { data: entry } = await supabase
-    .from('cp_knowledge_entries')
-    .select('id')
-    .eq('id', entryId)
-    .eq('user_id', userId)
-    .single();
-
-  if (!entry) return;
-
-  const { error } = await supabase
-    .from('cp_knowledge_corroborations')
-    .upsert(
-      { entry_id: entryId, corroborated_by: corroboratedById },
-      { onConflict: 'entry_id,corroborated_by' }
-    );
-
-  if (error) {
-    logError('services/knowledge-dedup', new Error('Failed to record corroboration'), { entryId, corroboratedById });
+  try {
+    await upsertKnowledgeCorroboration(userId, entryId, corroboratedById);
+  } catch (err) {
+    logError('services/knowledge-dedup', err, { entryId, corroboratedById });
   }
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Loader2, Plus, Trash2, Eye, EyeOff, GripVertical, ChevronDown } from 'lucide-react';
 import type { FunnelPageSection, SectionType, PageLocation, LogoBarConfig, StepsConfig, TestimonialConfig, MarketingBlockConfig, SectionBridgeConfig } from '@/lib/types/funnel';
+import * as funnelApi from '@/frontend/api/funnel';
 
 interface SectionsManagerProps {
   funnelId: string | null;
@@ -75,21 +76,15 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
     if (!funnelId || !addingType) return;
     setAdding(true);
     try {
-      const res = await fetch(`/api/funnel/${funnelId}/sections`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sectionType: addingType,
-          pageLocation: activeLocation,
-          config: getDefaultConfig(addingType),
-        }),
+      const data = await funnelApi.createSection(funnelId, {
+        sectionType: addingType,
+        pageLocation: activeLocation,
+        config: getDefaultConfig(addingType),
       });
-      if (res.ok) {
-        const data = await res.json();
-        onSectionsChange([...sections, data.section]);
-        setAddingType(null);
-        setExpandedId(data.section.id);
-      }
+      const section = data.section as FunnelPageSection;
+      onSectionsChange([...sections, section]);
+      setAddingType(null);
+      setExpandedId(section.id);
     } catch {
       // ignore
     } finally {
@@ -101,15 +96,8 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
     if (!funnelId) return;
     setSavingId(section.id);
     try {
-      const res = await fetch(`/api/funnel/${funnelId}/sections/${section.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isVisible: !section.isVisible }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        onSectionsChange(sections.map(s => s.id === section.id ? data.section : s));
-      }
+      const data = await funnelApi.updateSection(funnelId, section.id, { isVisible: !section.isVisible });
+      onSectionsChange(sections.map(s => s.id === section.id ? (data.section as FunnelPageSection) : s));
     } catch {
       // ignore
     } finally {
@@ -121,13 +109,9 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
     if (!funnelId) return;
     setDeletingId(sectionId);
     try {
-      const res = await fetch(`/api/funnel/${funnelId}/sections/${sectionId}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        onSectionsChange(sections.filter(s => s.id !== sectionId));
-        if (expandedId === sectionId) setExpandedId(null);
-      }
+      await funnelApi.deleteSection(funnelId, sectionId);
+      onSectionsChange(sections.filter(s => s.id !== sectionId));
+      if (expandedId === sectionId) setExpandedId(null);
     } catch {
       // ignore
     } finally {
@@ -139,15 +123,8 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
     if (!funnelId) return;
     setSavingId(section.id);
     try {
-      const res = await fetch(`/api/funnel/${funnelId}/sections/${section.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: newConfig }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        onSectionsChange(sections.map(s => s.id === section.id ? data.section : s));
-      }
+      const data = await funnelApi.updateSection(funnelId, section.id, { config: newConfig });
+      onSectionsChange(sections.map(s => s.id === section.id ? (data.section as FunnelPageSection) : s));
     } catch {
       // ignore
     } finally {
@@ -161,17 +138,9 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
 
     setResetting(true);
     try {
-      const res = await fetch(`/api/funnel/${funnelId}/sections/reset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageLocation: activeLocation }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const otherSections = sections.filter(s => s.pageLocation !== activeLocation);
-        onSectionsChange([...otherSections, ...data.sections]);
-      }
+      const data = await funnelApi.resetSections(funnelId, activeLocation);
+      const otherSections = sections.filter(s => s.pageLocation !== activeLocation);
+      onSectionsChange([...otherSections, ...(data.sections as FunnelPageSection[])]);
     } catch {
       // ignore
     } finally {

@@ -1,0 +1,2 @@
+# Lint staged files, then typecheck and build to validate frontend before commit
+npx lint-staged && npm run typecheck && npm run build

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Key, Copy, Trash2, Plus, Loader2, Check, CheckCircle, XCircle } from 'lucide-react';
 import { WebhookSettings } from '@/components/settings/WebhookSettings';
 import { logError } from '@/lib/utils/logger';
+import * as keysApi from '@/frontend/api/keys';
 
 interface ApiKey {
   id: string;
@@ -28,11 +29,8 @@ export function DeveloperSettings() {
   useEffect(() => {
     const fetchApiKeys = async () => {
       try {
-        const response = await fetch('/api/keys');
-        if (response.ok) {
-          const data = await response.json();
-          setApiKeys(data.keys || []);
-        }
+        const data = await keysApi.listKeys();
+        setApiKeys((data.keys || []) as ApiKey[]);
       } catch (error) {
         logError('settings/developer', error, { step: 'failed_to_fetch_api_keys' });
       } finally {
@@ -49,14 +47,13 @@ export function DeveloperSettings() {
     setNewlyCreatedKey(null);
 
     try {
-      const response = await fetch('/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newKeyName.trim() }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to create API key');
-
+      const data = await keysApi.createKey(newKeyName.trim()) as {
+        id: string;
+        key: string;
+        name: string;
+        prefix: string;
+        createdAt: string;
+      };
       setNewlyCreatedKey(data.key);
       setNewKeyName('');
       setApiKeys((prev) => [
@@ -81,8 +78,7 @@ export function DeveloperSettings() {
     if (!confirm(`Revoke API key "${keyName}"? This cannot be undone.`)) return;
     setLoading(`revoke-${keyId}`);
     try {
-      const response = await fetch(`/api/keys/${keyId}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Failed to revoke API key');
+      await keysApi.deleteKey(keyId);
       setApiKeys((prev) => prev.map((k) => (k.id === keyId ? { ...k, isActive: false } : k)));
     } catch (error) {
       logError('settings/developer', error, { step: 'revoke_error' });

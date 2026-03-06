@@ -6,6 +6,7 @@ import { Globe, Copy, Check, ExternalLink, Loader2, AlertCircle, Users } from 'l
 import type { FunnelPage } from '@/lib/types/funnel';
 
 import { logError } from '@/lib/utils/logger';
+import * as funnelApi from '@/frontend/api/funnel';
 
 interface FunnelStats {
   total: number;
@@ -42,12 +43,9 @@ export function PublishControls({
   useEffect(() => {
     async function fetchStats() {
       try {
-        const response = await fetch('/api/funnel/stats');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.stats && data.stats[funnel.id]) {
-            setStats(data.stats[funnel.id]);
-          }
+        const data = await funnelApi.getFunnelStats();
+        if (data.stats && typeof data.stats === 'object' && funnel.id in data.stats) {
+          setStats((data.stats as Record<string, FunnelStats>)[funnel.id]);
         }
       } catch (err) {
         logError('funnel/publish', err, { step: 'failed_to_fetch_stats' });
@@ -65,19 +63,8 @@ export function PublishControls({
     setError(null);
 
     try {
-      const response = await fetch(`/api/funnel/${funnel.id}/publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publish: !funnel.isPublished }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update publish status');
-      }
-
-      const { funnel: updatedFunnel } = await response.json();
-      setFunnel(updatedFunnel);
+      const result = await funnelApi.publishFunnel(funnel.id, !funnel.isPublished) as { funnel: FunnelPage };
+      setFunnel(result.funnel);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update publish status');
     } finally {

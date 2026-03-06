@@ -5,6 +5,7 @@ import { X, Loader2, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import type { PipelinePost } from '@/lib/types/content-pipeline';
 import { StatusBadge } from './StatusBadge';
+import { updatePost } from '@/frontend/api/content-pipeline/posts';
 
 interface DayPostsModalProps {
   day: Date;
@@ -24,11 +25,7 @@ export function DayPostsModal({ day, posts, onClose, onUpdate }: DayPostsModalPr
     setSaving(true);
     try {
       const scheduledTime = new Date(`${newDate}T${newTime}:00`).toISOString();
-      await fetch(`/api/content-pipeline/posts/${postId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduled_time: scheduledTime }),
-      });
+      await updatePost(postId, { scheduled_time: scheduledTime });
       setRescheduling(null);
       onUpdate();
     } catch {

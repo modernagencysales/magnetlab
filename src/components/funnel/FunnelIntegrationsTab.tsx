@@ -2,9 +2,27 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Loader2, Plus, Trash2, CheckCircle, XCircle, ChevronDown, Mail, Settings, MessageSquare, Copy, Check, BookOpen } from 'lucide-react';
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  ChevronDown,
+  Mail,
+  Settings,
+  MessageSquare,
+  Copy,
+  Check,
+} from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as funnelIntegrationsApi from '@/frontend/api/funnel-integrations';
+import {
+  getEmailMarketingLists,
+  getEmailMarketingTags,
+  getHeyReachCampaigns,
+} from '@/frontend/api/integrations';
 
 const PROVIDER_LABELS: Record<string, string> = {
   kit: 'Kit (ConvertKit)',
@@ -13,14 +31,10 @@ const PROVIDER_LABELS: Record<string, string> = {
   activecampaign: 'ActiveCampaign',
   gohighlevel: 'GoHighLevel',
   heyreach: 'HeyReach',
-  kajabi: 'Kajabi',
 };
 
 // MailerLite has groups (not tags per list), so we skip tag selection for it
 const PROVIDERS_WITH_TAGS = ['kit', 'mailchimp', 'activecampaign'];
-
-// Providers rendered via their own toggle component (not the email marketing section)
-const STANDALONE_PROVIDERS = new Set(['gohighlevel', 'heyreach', 'kajabi']);
 
 interface FunnelIntegration {
   id: string;
@@ -50,17 +64,11 @@ interface HeyReachCampaign {
   name: string;
 }
 
-interface KajabiTag {
-  id: string;
-  name: string;
-}
-
 interface FunnelIntegrationsTabProps {
   funnelPageId: string;
   connectedProviders: string[];
   ghlConnected?: boolean;
   heyreachConnected?: boolean;
-  kajabiConnected?: boolean;
   funnelUrl?: string;
 }
 
@@ -81,21 +89,14 @@ function IntegrationRow({
   const handleToggle = async () => {
     setToggling(true);
     try {
-      const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: integration.provider,
-          list_id: integration.list_id,
-          list_name: integration.list_name,
-          tag_id: integration.tag_id,
-          tag_name: integration.tag_name,
-          is_active: !integration.is_active,
-        }),
+      await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+        provider: integration.provider,
+        list_id: integration.list_id,
+        list_name: integration.list_name,
+        tag_id: integration.tag_id,
+        tag_name: integration.tag_name,
+        is_active: !integration.is_active,
       });
-
-      if (!response.ok) throw new Error('Failed to update');
-
       onToggled(integration.provider, !integration.is_active);
     } catch (error) {
       logError('funnel-integrations', error, { step: 'toggle_error' });
@@ -105,19 +106,17 @@ function IntegrationRow({
   };
 
   const handleRemove = async () => {
-    if (!confirm(`Remove ${PROVIDER_LABELS[integration.provider] || integration.provider} from this funnel?`)) {
+    if (
+      !confirm(
+        `Remove ${PROVIDER_LABELS[integration.provider] || integration.provider} from this funnel?`
+      )
+    ) {
       return;
     }
 
     setRemoving(true);
     try {
-      const response = await fetch(
-        `/api/funnels/${funnelPageId}/integrations/${integration.provider}`,
-        { method: 'DELETE' }
-      );
-
-      if (!response.ok) throw new Error('Failed to remove');
-
+      await funnelIntegrationsApi.deleteFunnelIntegration(funnelPageId, integration.provider);
       onRemoved(integration.provider);
     } catch (error) {
       logError('funnel-integrations', error, { step: 'remove_error' });
@@ -169,11 +168,7 @@ function IntegrationRow({
           disabled={removing}
           className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
         >
-          {removing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
+          {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
         </button>
       </div>
     </div>
@@ -208,13 +203,7 @@ function AddIntegrationForm({
   useEffect(() => {
     async function fetchLists() {
       try {
-        const response = await fetch(
-          `/api/integrations/email-marketing/lists?provider=${provider}`
-        );
-
-        if (!response.ok) throw new Error('Failed to fetch lists');
-
-        const data = await response.json();
+        const data = await getEmailMarketingLists(provider);
         setLists(data.lists || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch lists');
@@ -227,31 +216,29 @@ function AddIntegrationForm({
   }, [provider]);
 
   // Fetch tags when list is selected (for providers that support tags)
-  const fetchTags = useCallback(async (listId: string) => {
-    if (!hasTags || !listId) {
-      setTags([]);
-      return;
-    }
+  const fetchTags = useCallback(
+    async (listId: string) => {
+      if (!hasTags || !listId) {
+        setTags([]);
+        return;
+      }
 
-    setLoadingTags(true);
-    setSelectedTagId('');
-    setSelectedTagName('');
+      setLoadingTags(true);
+      setSelectedTagId('');
+      setSelectedTagName('');
 
-    try {
-      const url = `/api/integrations/email-marketing/tags?provider=${provider}&listId=${listId}`;
-      const response = await fetch(url);
-
-      if (!response.ok) throw new Error('Failed to fetch tags');
-
-      const data = await response.json();
-      setTags(data.tags || []);
-    } catch (err) {
-      logError('funnel-integrations', err, { step: 'fetch_tags_error' });
-      setTags([]);
-    } finally {
-      setLoadingTags(false);
-    }
-  }, [provider, hasTags]);
+      try {
+        const data = await getEmailMarketingTags(provider, listId);
+        setTags(data.tags || []);
+      } catch (err) {
+        logError('funnel-integrations', err, { step: 'fetch_tags_error' });
+        setTags([]);
+      } finally {
+        setLoadingTags(false);
+      }
+    },
+    [provider, hasTags]
+  );
 
   const handleListChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const listId = e.target.value;
@@ -282,26 +269,15 @@ function AddIntegrationForm({
     setError(null);
 
     try {
-      const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          list_id: selectedListId,
-          list_name: selectedListName || null,
-          tag_id: selectedTagId || null,
-          tag_name: selectedTagName || null,
-          is_active: true,
-        }),
+      const data = await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+        provider,
+        list_id: selectedListId,
+        list_name: selectedListName || null,
+        tag_id: selectedTagId || null,
+        tag_name: selectedTagName || null,
+        is_active: true,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to save integration');
-      }
-
-      onAdded(data.integration);
+      onAdded(data.integration as FunnelIntegration);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
@@ -312,9 +288,7 @@ function AddIntegrationForm({
   return (
     <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">
-          Add {PROVIDER_LABELS[provider] || provider}
-        </p>
+        <p className="text-sm font-medium">Add {PROVIDER_LABELS[provider] || provider}</p>
         <button
           onClick={onCancel}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -422,13 +396,9 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
   useEffect(() => {
     async function loadGHL() {
       try {
-        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const ghl = (data.integrations || []).find(
-          (i: FunnelIntegration) => i.provider === 'gohighlevel'
-        );
+        const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
+        const integrations = (data.integrations || []) as FunnelIntegration[];
+        const ghl = integrations.find((i) => i.provider === 'gohighlevel');
 
         if (ghl) {
           setEnabled(ghl.is_active);
@@ -454,24 +424,15 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'gohighlevel',
-        list_id: 'n/a',
-        list_name: null,
-        tag_id: null,
-        tag_name: null,
-        is_active: isActive,
-        settings: { custom_tags: customTagsArray },
-      }),
+    await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+      provider: 'gohighlevel',
+      list_id: 'n/a',
+      list_name: null,
+      tag_id: null,
+      tag_name: null,
+      is_active: isActive,
+      settings: { custom_tags: customTagsArray },
     });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to save');
-    }
   };
 
   const handleToggle = async () => {
@@ -621,13 +582,9 @@ function HeyReachFunnelToggle({
   useEffect(() => {
     async function loadHeyReach() {
       try {
-        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const hr = (data.integrations || []).find(
-          (i: FunnelIntegration) => i.provider === 'heyreach'
-        );
+        const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
+        const integrations = (data.integrations || []) as FunnelIntegration[];
+        const hr = integrations.find((i) => i.provider === 'heyreach');
 
         if (hr) {
           setEnabled(hr.is_active);
@@ -651,11 +608,8 @@ function HeyReachFunnelToggle({
     async function fetchCampaigns() {
       setLoadingCampaigns(true);
       try {
-        const response = await fetch('/api/integrations/heyreach/campaigns');
-        if (response.ok) {
-          const data = await response.json();
-          setCampaigns(data.campaigns || []);
-        }
+        const data = await getHeyReachCampaigns();
+        setCampaigns((data.campaigns || []) as HeyReachCampaign[]);
       } catch (err) {
         logError('heyreach-funnel-toggle', err, { step: 'fetch_campaigns_error' });
       } finally {
@@ -669,24 +623,15 @@ function HeyReachFunnelToggle({
   const saveHeyReach = async (isActive: boolean, campaignId?: number | null) => {
     const idToSave = campaignId !== undefined ? campaignId : selectedCampaignId;
 
-    const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'heyreach',
-        list_id: 'n/a',
-        list_name: null,
-        tag_id: null,
-        tag_name: null,
-        is_active: isActive,
-        settings: { campaign_id: idToSave },
-      }),
+    await funnelIntegrationsApi.upsertFunnelIntegration(funnelPageId, {
+      provider: 'heyreach',
+      list_id: 'n/a',
+      list_name: null,
+      tag_id: null,
+      tag_name: null,
+      is_active: isActive,
+      settings: { campaign_id: idToSave },
     });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to save');
-    }
   };
 
   const handleToggle = async () => {
@@ -871,295 +816,6 @@ function HeyReachFunnelToggle({
   );
 }
 
-// ---------- Kajabi Per-Funnel Toggle ----------
-
-function KajabiFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
-  const [enabled, setEnabled] = useState(false);
-  const [availableTags, setAvailableTags] = useState<KajabiTag[]>([]);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingTags, setLoadingTags] = useState(false);
-  const [toggling, setToggling] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [tagsOpen, setTagsOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Load existing Kajabi integration for this funnel
-  useEffect(() => {
-    async function loadKajabi() {
-      try {
-        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const kajabi = (data.integrations || []).find(
-          (i: FunnelIntegration) => i.provider === 'kajabi'
-        );
-
-        if (kajabi) {
-          setEnabled(kajabi.is_active);
-          const tagIds = (kajabi.settings as Record<string, unknown>)?.tag_ids;
-          if (Array.isArray(tagIds)) {
-            setSelectedTagIds(tagIds);
-          }
-        }
-      } catch (err) {
-        logError('kajabi-funnel-toggle', err, { step: 'load_error' });
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadKajabi();
-  }, [funnelPageId]);
-
-  // Fetch tags when enabled
-  const fetchTags = useCallback(async () => {
-    setLoadingTags(true);
-    try {
-      const response = await fetch('/api/integrations/kajabi/tags');
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableTags(data.tags || []);
-      }
-    } catch (err) {
-      logError('kajabi-funnel-toggle', err, { step: 'fetch_tags_error' });
-    } finally {
-      setLoadingTags(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (enabled && availableTags.length === 0) {
-      fetchTags();
-    }
-  }, [enabled, availableTags.length, fetchTags]);
-
-  const saveKajabi = async (isActive: boolean, tagIds?: string[]) => {
-    const idsToSave = tagIds !== undefined ? tagIds : selectedTagIds;
-
-    const response = await fetch(`/api/funnels/${funnelPageId}/integrations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'kajabi',
-        list_id: 'n/a',
-        list_name: null,
-        tag_id: null,
-        tag_name: null,
-        is_active: isActive,
-        settings: { tag_ids: idsToSave },
-      }),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to save');
-    }
-  };
-
-  const handleToggle = async () => {
-    setToggling(true);
-    setError(null);
-    const newValue = !enabled;
-
-    try {
-      await saveKajabi(newValue);
-      setEnabled(newValue);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to toggle');
-      logError('kajabi-funnel-toggle', err, { step: 'toggle_error' });
-    } finally {
-      setToggling(false);
-    }
-  };
-
-  const handleTagToggle = (tagId: string) => {
-    setSelectedTagIds((prev) => {
-      const next = prev.includes(tagId)
-        ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId];
-      return next;
-    });
-  };
-
-  const handleSaveTags = async () => {
-    setSaving(true);
-    setError(null);
-    setSaved(false);
-
-    try {
-      await saveKajabi(enabled, selectedTagIds);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save tags');
-      logError('kajabi-funnel-toggle', err, { step: 'save_tags_error' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 py-2">
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Loading...</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {/* Toggle row */}
-      <div className="flex items-center justify-between rounded-lg border p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
-            <BookOpen className="h-4 w-4 text-purple-500" />
-          </div>
-          <div>
-            <p className="text-sm font-medium">Kajabi</p>
-            <p className="text-xs text-muted-foreground">
-              {enabled ? 'Leads pushed to Kajabi as contacts' : 'Disabled for this funnel'}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleToggle}
-          disabled={toggling}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-          }`}
-        >
-          {toggling ? (
-            <Loader2 className="h-3 w-3 animate-spin mx-auto text-white" />
-          ) : (
-            <span
-              className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-                enabled ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          )}
-        </button>
-      </div>
-
-      {/* Tag picker (shown when enabled) */}
-      {enabled && (
-        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-          <label className="text-xs font-medium">Tags (optional)</label>
-          <p className="text-xs text-muted-foreground">
-            Select tags to apply to contacts added from this funnel.
-          </p>
-
-          {loadingTags ? (
-            <div className="flex items-center gap-2 py-2">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Loading tags...</span>
-            </div>
-          ) : availableTags.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic py-1">
-              No tags found in your Kajabi account.
-            </p>
-          ) : (
-            <>
-              {/* Multi-select dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setTagsOpen(!tagsOpen)}
-                  className="w-full flex items-center justify-between rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <span className={selectedTagIds.length === 0 ? 'text-muted-foreground' : ''}>
-                    {selectedTagIds.length === 0
-                      ? 'Select tags...'
-                      : `${selectedTagIds.length} tag${selectedTagIds.length === 1 ? '' : 's'} selected`}
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 text-muted-foreground transition-transform ${
-                      tagsOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-
-                {tagsOpen && (
-                  <div className="absolute z-10 mt-1 w-full rounded-lg border bg-background shadow-lg max-h-48 overflow-y-auto">
-                    {availableTags.map((tag) => (
-                      <label
-                        key={tag.id}
-                        className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedTagIds.includes(tag.id)}
-                          onChange={() => handleTagToggle(tag.id)}
-                          className="h-4 w-4 rounded border-gray-300 text-purple-500 focus:ring-purple-500"
-                        />
-                        {tag.name}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Selected tag badges */}
-              {selectedTagIds.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {selectedTagIds.map((tagId) => {
-                    const tag = availableTags.find((t) => t.id === tagId);
-                    return tag ? (
-                      <span
-                        key={tagId}
-                        className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2 py-0.5 text-xs text-purple-700 dark:text-purple-300"
-                      >
-                        {tag.name}
-                        <button
-                          onClick={() => handleTagToggle(tagId)}
-                          className="hover:text-purple-900 dark:hover:text-purple-100"
-                        >
-                          <XCircle className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ) : null;
-                  })}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Save button */}
-          <button
-            onClick={handleSaveTags}
-            disabled={saving}
-            className="rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            {saving ? (
-              <span className="flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Saving...
-              </span>
-            ) : saved ? (
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" />
-                Saved
-              </span>
-            ) : (
-              'Save Tags'
-            )}
-          </button>
-        </div>
-      )}
-
-      {error && (
-        <p className="flex items-center gap-2 text-xs text-red-500">
-          <XCircle className="h-3 w-3" />
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
 // ---------- Main Component ----------
 
 export function FunnelIntegrationsTab({
@@ -1167,7 +823,6 @@ export function FunnelIntegrationsTab({
   connectedProviders,
   ghlConnected,
   heyreachConnected,
-  kajabiConnected,
   funnelUrl,
 }: FunnelIntegrationsTabProps) {
   const [integrations, setIntegrations] = useState<FunnelIntegration[]>([]);
@@ -1178,11 +833,8 @@ export function FunnelIntegrationsTab({
   useEffect(() => {
     async function fetchIntegrations() {
       try {
-        const response = await fetch(`/api/funnels/${funnelPageId}/integrations`);
-        if (response.ok) {
-          const data = await response.json();
-          setIntegrations(data.integrations || []);
-        }
+        const data = await funnelIntegrationsApi.getFunnelIntegrations(funnelPageId);
+        setIntegrations((data.integrations || []) as FunnelIntegration[]);
       } catch (error) {
         logError('funnel-integrations', error, { step: 'fetch_error' });
       } finally {
@@ -1222,7 +874,7 @@ export function FunnelIntegrationsTab({
   const unmappedProviders = connectedProviders.filter((p) => !mappedProviders.has(p));
 
   const hasNoEmailProviders = connectedProviders.length === 0;
-  const hasNothingToShow = hasNoEmailProviders && !ghlConnected && !heyreachConnected && !kajabiConnected;
+  const hasNothingToShow = hasNoEmailProviders && !ghlConnected && !heyreachConnected;
 
   if (hasNothingToShow) {
     return (
@@ -1263,15 +915,16 @@ export function FunnelIntegrationsTab({
           <div>
             <h3 className="text-sm font-semibold">Email Marketing Integrations</h3>
             <p className="text-xs text-muted-foreground">
-              When a lead opts in to this funnel, they will be automatically added to the lists you configure below.
+              When a lead opts in to this funnel, they will be automatically added to the lists you
+              configure below.
             </p>
           </div>
 
           {/* Existing integrations */}
-          {integrations.filter((i) => !STANDALONE_PROVIDERS.has(i.provider)).length > 0 && (
+          {integrations.filter((i) => i.provider !== 'gohighlevel').length > 0 && (
             <div className="space-y-2">
               {integrations
-                .filter((i) => !STANDALONE_PROVIDERS.has(i.provider))
+                .filter((i) => i.provider !== 'gohighlevel')
                 .map((integration) => (
                   <IntegrationRow
                     key={integration.id}
@@ -1295,13 +948,16 @@ export function FunnelIntegrationsTab({
           )}
 
           {/* Reminder when no integrations are mapped yet */}
-          {integrations.filter((i) => !STANDALONE_PROVIDERS.has(i.provider)).length === 0 && unmappedProviders.length > 0 && !addingProvider && (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
-              <p className="text-sm text-amber-700 dark:text-amber-400">
-                Leads from this funnel are <strong>not being synced</strong> to your email provider yet. Add a list below to start syncing.
-              </p>
-            </div>
-          )}
+          {integrations.filter((i) => i.provider !== 'gohighlevel').length === 0 &&
+            unmappedProviders.length > 0 &&
+            !addingProvider && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  Leads from this funnel are <strong>not being synced</strong> to your email
+                  provider yet. Add a list below to start syncing.
+                </p>
+              </div>
+            )}
 
           {/* Add buttons for unmapped providers */}
           {unmappedProviders.length > 0 && !addingProvider && (
@@ -1320,30 +976,25 @@ export function FunnelIntegrationsTab({
           )}
 
           {/* All connected providers are mapped */}
-          {integrations.filter((i) => !STANDALONE_PROVIDERS.has(i.provider)).length > 0 && unmappedProviders.length === 0 && !addingProvider && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <CheckCircle className="h-3 w-3 text-green-500" />
-              All connected providers are configured for this funnel.
-            </p>
-          )}
+          {integrations.filter((i) => i.provider !== 'gohighlevel').length > 0 &&
+            unmappedProviders.length === 0 &&
+            !addingProvider && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <CheckCircle className="h-3 w-3 text-green-500" />
+                All connected providers are configured for this funnel.
+              </p>
+            )}
         </>
       )}
 
       {/* CRM section */}
-      {(ghlConnected || kajabiConnected) && (
+      {ghlConnected && (
         <div className="mt-6 pt-4 border-t">
           <h3 className="text-sm font-semibold mb-1">CRM</h3>
           <p className="text-xs text-muted-foreground mb-3">
             Push leads to your CRM when they opt in.
           </p>
-          {ghlConnected && (
-            <GHLFunnelToggle funnelPageId={funnelPageId} />
-          )}
-          {kajabiConnected && (
-            <div className={ghlConnected ? 'mt-3' : ''}>
-              <KajabiFunnelToggle funnelPageId={funnelPageId} />
-            </div>
-          )}
+          <GHLFunnelToggle funnelPageId={funnelPageId} />
         </div>
       )}
 

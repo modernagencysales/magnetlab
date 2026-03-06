@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import type { EmailFlow } from '@/lib/types/email-system';
+import * as flowsApi from '@/frontend/api/email/flows';
 
 interface FlowWithCount extends EmailFlow {
   step_count: number;
@@ -39,12 +40,8 @@ export function FlowList() {
   useEffect(() => {
     async function fetchFlows() {
       try {
-        const response = await fetch('/api/email/flows');
-        if (!response.ok) {
-          throw new Error('Failed to load flows');
-        }
-        const data = await response.json();
-        setFlows(data.flows || []);
+        const data = await flowsApi.listFlows();
+        setFlows((data.flows || []) as FlowWithCount[]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load flows');
       } finally {
@@ -59,19 +56,12 @@ export function FlowList() {
     setError(null);
 
     try {
-      const response = await fetch('/api/email/flows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Untitled Flow', trigger_type: 'manual' }),
+      const data = await flowsApi.createFlow({
+        name: 'Untitled Flow',
+        trigger_type: 'manual',
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create flow');
-      }
-
-      const data = await response.json();
-      router.push(`/email/flows/${data.flow.id}`);
+      const flow = data.flow as { id: string };
+      router.push(`/email/flows/${flow.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create flow');
       setCreating(false);

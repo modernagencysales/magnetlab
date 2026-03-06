@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import * as analyticsApi from '@/frontend/api/analytics';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Mail, CheckCircle, Eye, MousePointer, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
@@ -103,9 +104,7 @@ function RateCard({
     <Card>
       <CardContent className="p-6">
         <p className="text-sm text-muted-foreground">{label}</p>
-        <p className={`mt-1 text-2xl font-bold tabular-nums ${colorClasses[variant]}`}>
-          {value}%
-        </p>
+        <p className={`mt-1 text-2xl font-bold tabular-nums ${colorClasses[variant]}`}>{value}%</p>
       </CardContent>
     </Card>
   );
@@ -121,12 +120,8 @@ export function EmailAnalytics() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/analytics/email?range=${selectedRange}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch email analytics');
-      }
-      const json = await response.json();
-      setData(json);
+      const json = await analyticsApi.getEmailAnalytics(selectedRange);
+      setData(json as EmailAnalyticsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load email analytics');
     } finally {
@@ -185,22 +180,46 @@ export function EmailAnalytics() {
                 <RateCard
                   label="Delivery Rate"
                   value={data.rates.deliveryRate}
-                  variant={data.rates.deliveryRate >= 95 ? 'good' : data.rates.deliveryRate >= 85 ? 'neutral' : 'bad'}
+                  variant={
+                    data.rates.deliveryRate >= 95
+                      ? 'good'
+                      : data.rates.deliveryRate >= 85
+                        ? 'neutral'
+                        : 'bad'
+                  }
                 />
                 <RateCard
                   label="Open Rate"
                   value={data.rates.openRate}
-                  variant={data.rates.openRate >= 30 ? 'good' : data.rates.openRate >= 15 ? 'neutral' : 'bad'}
+                  variant={
+                    data.rates.openRate >= 30
+                      ? 'good'
+                      : data.rates.openRate >= 15
+                        ? 'neutral'
+                        : 'bad'
+                  }
                 />
                 <RateCard
                   label="Click Rate"
                   value={data.rates.clickRate}
-                  variant={data.rates.clickRate >= 5 ? 'good' : data.rates.clickRate >= 2 ? 'neutral' : 'bad'}
+                  variant={
+                    data.rates.clickRate >= 5
+                      ? 'good'
+                      : data.rates.clickRate >= 2
+                        ? 'neutral'
+                        : 'bad'
+                  }
                 />
                 <RateCard
                   label="Bounce Rate"
                   value={data.rates.bounceRate}
-                  variant={data.rates.bounceRate <= 2 ? 'good' : data.rates.bounceRate <= 5 ? 'neutral' : 'bad'}
+                  variant={
+                    data.rates.bounceRate <= 2
+                      ? 'good'
+                      : data.rates.bounceRate <= 5
+                        ? 'neutral'
+                        : 'bad'
+                  }
                 />
               </div>
 
@@ -308,18 +327,10 @@ export function EmailAnalytics() {
                               key={magnet.leadMagnetId}
                               className="border-b last:border-0 hover:bg-muted/50 transition-colors"
                             >
-                              <td className="py-3 pr-4 font-medium line-clamp-1">
-                                {magnet.title}
-                              </td>
-                              <td className="py-3 pr-4 text-right tabular-nums">
-                                {magnet.sent}
-                              </td>
-                              <td className="py-3 pr-4 text-right tabular-nums">
-                                {magnet.opened}
-                              </td>
-                              <td className="py-3 text-right tabular-nums">
-                                {magnet.clicked}
-                              </td>
+                              <td className="py-3 pr-4 font-medium line-clamp-1">{magnet.title}</td>
+                              <td className="py-3 pr-4 text-right tabular-nums">{magnet.sent}</td>
+                              <td className="py-3 pr-4 text-right tabular-nums">{magnet.opened}</td>
+                              <td className="py-3 text-right tabular-nums">{magnet.clicked}</td>
                             </tr>
                           ))}
                         </tbody>

@@ -23,7 +23,13 @@ jest.mock('@/lib/utils/logger', () => ({
   logDebug: jest.fn(),
 }));
 
+// Mock team context (scope from cookie/headers)
+jest.mock('@/lib/utils/team-context', () => ({
+  getDataScope: jest.fn(),
+}));
+
 import { auth } from '@/lib/auth';
+import { getDataScope } from '@/lib/utils/team-context';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
 /**
@@ -81,6 +87,11 @@ describe('Content Pipeline — Posts API', () => {
     jest.clearAllMocks();
     mock = createMockSupabase();
     (createSupabaseAdminClient as jest.Mock).mockReturnValue(mock.client);
+    // Default: user scope (no team)
+    (getDataScope as jest.Mock).mockImplementation(async (userId: string) => ({
+      type: 'user',
+      userId,
+    }));
   });
 
   describe('GET /api/content-pipeline/posts', () => {

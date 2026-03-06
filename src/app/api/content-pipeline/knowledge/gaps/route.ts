@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { listKnowledgeTopics, getTopicDetail, verifyTeamMembership } from '@/lib/services/knowledge-brain';
-import { analyzeTopicGaps } from '@/lib/ai/content-pipeline/knowledge-gap-analyzer';
+import * as knowledgeService from '@/server/services/knowledge.service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,31 +13,13 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
     const teamId = searchParams.get('team_id') || undefined;
 
-    if (teamId) {
-      const isMember = await verifyTeamMembership(session.user.id, teamId);
-      if (!isMember) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    if (teamId) await knowledgeService.assertTeamMembership(session.user.id, teamId);
 
-    const topics = await listKnowledgeTopics(session.user.id, { teamId, limit });
-
-    const gaps = await Promise.all(
-      topics.map(async (topic) => {
-        const detail = await getTopicDetail(session.user.id, topic.slug, teamId);
-        return analyzeTopicGaps(
-          topic.slug,
-          topic.display_name,
-          detail.type_breakdown,
-          topic.avg_quality,
-          topic.last_seen
-        );
-      })
-    );
-
-    // Sort by coverage score ascending (worst gaps first)
-    gaps.sort((a, b) => a.coverage_score - b.coverage_score);
-
-    return NextResponse.json({ gaps, total_topics: topics.length });
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const result = await knowledgeService.getKnowledgeGaps(session.user.id, teamId, limit);
+    return NextResponse.json(result);
+  } catch (error) {
+    const status = knowledgeService.getStatusCode(error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
   }
 }

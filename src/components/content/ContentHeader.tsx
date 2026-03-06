@@ -12,7 +12,14 @@ interface ContentHeaderProps {
   onToggleEdit?: () => void;
 }
 
-export function ContentHeader({ logoUrl, isDark, onToggleTheme, isOwner, isEditing, onToggleEdit }: ContentHeaderProps) {
+export function ContentHeader({
+  logoUrl,
+  isDark,
+  onToggleTheme,
+  isOwner,
+  isEditing,
+  onToggleEdit,
+}: ContentHeaderProps) {
   const bgColor = isDark ? 'rgba(9,9,11,0.8)' : 'rgba(250,250,250,0.8)';
   const borderColor = isDark ? '#27272A' : '#E4E4E7';
   const iconColor = isDark ? '#A1A1AA' : '#71717A';
@@ -41,6 +48,7 @@ export function ContentHeader({ logoUrl, isDark, onToggleTheme, isOwner, isEditi
         {/* Logo */}
         <div>
           {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt="Logo" style={{ height: '2rem', width: 'auto' }} />
           ) : (
             <div style={{ height: '2rem' }} />

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, Pencil, Trash2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { KnowledgeCategory, KnowledgeSpeaker } from '@/lib/types/content-pipeline';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 const CATEGORY_STYLES: Record<KnowledgeCategory, { label: string; className: string }> = {
   insight: { label: 'Insight', className: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' },
@@ -73,20 +74,14 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
         .map((t) => t.trim())
         .filter(Boolean);
 
-      const res = await fetch(`/api/content-pipeline/knowledge/${entry.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: editContent,
-          category: editCategory,
-          speaker: editSpeaker,
-          context: editContext || null,
-          tags,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
+      const data = await knowledgeApi.updateKnowledgeEntry(entry.id, {
+        content: editContent,
+        category: editCategory,
+        speaker: editSpeaker,
+        context: editContext || null,
+        tags,
+      }) as { entry?: Record<string, unknown> };
+      if (data.entry) {
         setEditing(false);
         onUpdate?.(entry.id, data.entry);
       }
@@ -98,12 +93,8 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
   const handleDelete = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/content-pipeline/knowledge/${entry.id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        onDelete?.(entry.id);
-      }
+      await knowledgeApi.deleteKnowledgeEntry(entry.id);
+      onDelete?.(entry.id);
     } finally {
       setSaving(false);
       setConfirmDelete(false);

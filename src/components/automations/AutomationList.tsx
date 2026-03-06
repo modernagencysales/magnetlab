@@ -15,31 +15,11 @@ import {
 } from '@/components/ui/dialog';
 import { AutomationEditor } from './AutomationEditor';
 import { AutomationEventsDrawer } from './AutomationEventsDrawer';
+import * as automationsApi from '@/frontend/api/linkedin/automations';
 
 // ─── Types ──────────────────────────────────────────────
 
-export interface Automation {
-  id: string;
-  user_id: string;
-  name: string;
-  post_id: string | null;
-  post_social_id: string | null;
-  keywords: string[];
-  dm_template: string | null;
-  auto_connect: boolean;
-  auto_like: boolean;
-  comment_reply_template: string | null;
-  enable_follow_up: boolean;
-  follow_up_template: string | null;
-  follow_up_delay_minutes: number;
-  status: 'draft' | 'running' | 'paused';
-  unipile_account_id: string | null;
-  leads_captured: number;
-  plusvibe_campaign_id: string | null;
-  opt_in_url: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type Automation = automationsApi.Automation;
 
 // ─── Status badge ───────────────────────────────────────
 
@@ -69,11 +49,7 @@ export function AutomationList() {
   const fetchAutomations = useCallback(async () => {
     try {
       setError(null);
-      const res = await fetch('/api/linkedin/automations');
-      if (!res.ok) {
-        throw new Error('Failed to fetch automations');
-      }
-      const data = await res.json();
+      const data = await automationsApi.listAutomations();
       setAutomations(data.automations || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load automations');
@@ -92,13 +68,7 @@ export function AutomationList() {
     const newStatus = automation.status === 'running' ? 'paused' : 'running';
     setTogglingId(automation.id);
     try {
-      const res = await fetch(`/api/linkedin/automations/${automation.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (!res.ok) throw new Error('Failed to update status');
-      const data = await res.json();
+      const data = await automationsApi.updateAutomation(automation.id, { status: newStatus });
       setAutomations((prev) =>
         prev.map((a) => (a.id === automation.id ? data.automation : a))
       );
@@ -115,10 +85,7 @@ export function AutomationList() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/linkedin/automations/${deleteTarget.id}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Failed to delete');
+      await automationsApi.deleteAutomation(deleteTarget.id);
       setAutomations((prev) => prev.filter((a) => a.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch {

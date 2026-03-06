@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Loader2, CheckCircle, XCircle, Linkedin } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as linkedInApi from '@/frontend/api/linkedin';
 
 interface LinkedInSettingsProps {
   isConnected: boolean;
@@ -37,14 +38,7 @@ export function LinkedInSettings({ isConnected, accountName }: LinkedInSettingsP
 
     setLoading(true);
     try {
-      const response = await fetch('/api/linkedin/disconnect', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to disconnect');
-      }
-
+      await linkedInApi.disconnectLinkedIn();
       window.location.reload();
     } catch (error) {
       logError('settings/linkedin', error, { step: 'disconnect_error' });

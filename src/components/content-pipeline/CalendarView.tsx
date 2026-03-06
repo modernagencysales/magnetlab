@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { PipelinePost } from '@/lib/types/content-pipeline';
 import { DayPostsModal } from './DayPostsModal';
+import { getPostsByDateRange } from '@/frontend/api/content-pipeline/posts';
 
 interface CalendarViewProps {
   onCreatePost?: (date: Date) => void;
@@ -40,11 +41,9 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
     if (!currentMonth) return;
     const start = startOfWeek(startOfMonth(currentMonth)).toISOString();
     const end = endOfWeek(endOfMonth(currentMonth)).toISOString();
-
     try {
-      const response = await fetch(`/api/content-pipeline/posts/by-date-range?start=${start}&end=${end}`);
-      const data = await response.json();
-      setPosts(data.posts || []);
+      const list = await getPostsByDateRange(start, end);
+      setPosts(list);
     } catch {
       // Silent failure
     } finally {

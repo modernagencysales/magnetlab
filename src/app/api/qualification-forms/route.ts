@@ -1,89 +1,42 @@
-// API Route: Qualification Forms
-// GET /api/qualification-forms - List user's forms
-// POST /api/qualification-forms - Create a new form
-
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import {
-  qualificationFormFromRow,
-  type QualificationFormRow,
-} from '@/lib/types/funnel';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
+import * as qualificationFormsService from '@/server/services/qualification-forms.service';
 
-// GET - List all qualification forms for the current user
 export async function GET(request: Request) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return ApiErrors.unauthorized();
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '100', 10), 500);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from('qualification_forms')
-      .select('id, user_id, name, created_at, updated_at')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      logApiError('qualification-forms/list', error, { userId: session.user.id });
-      return ApiErrors.databaseError('Failed to fetch forms');
-    }
-
-    const forms = (data as QualificationFormRow[]).map(qualificationFormFromRow);
-    const response = NextResponse.json({ forms });
+    const result = await qualificationFormsService.listForms(session.user.id, limit, offset);
+    const response = NextResponse.json(result);
     response.headers.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=120');
     return response;
   } catch (error) {
-    logApiError('qualification-forms/list', error);
-    return ApiErrors.internalError('Failed to fetch forms');
+    logApiError('qualification-forms/list', error, { userId: (await auth())?.user?.id });
+    return ApiErrors.databaseError('Failed to fetch forms');
   }
 }
 
-// POST - Create a new qualification form
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return ApiErrors.unauthorized();
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const body = await request.json();
-    const { name } = body;
-
+    const name = body.name;
     if (!name || typeof name !== 'string' || !name.trim()) {
       return ApiErrors.validationError('name is required');
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from('qualification_forms')
-      .insert({
-        user_id: session.user.id,
-        name: name.trim(),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      logApiError('qualification-forms/create', error, { userId: session.user.id });
-      return ApiErrors.databaseError('Failed to create form');
-    }
-
-    return NextResponse.json(
-      { form: qualificationFormFromRow(data as QualificationFormRow) },
-      { status: 201 }
-    );
+    const result = await qualificationFormsService.createForm(session.user.id, name);
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    logApiError('qualification-forms/create', error);
-    return ApiErrors.internalError('Failed to create form');
+    logApiError('qualification-forms/create', error, { userId: (await auth())?.user?.id });
+    return ApiErrors.databaseError('Failed to create form');
   }
 }

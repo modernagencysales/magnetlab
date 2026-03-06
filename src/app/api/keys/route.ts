@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
-import { generateApiKey } from '@/lib/auth/api-key';
+import * as keysService from '@/server/services/keys.service';
 
 export async function POST(request: Request) {
   try {
@@ -15,32 +14,11 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('name is required (max 100 chars)');
     }
 
-    const { rawKey, keyHash, keyPrefix } = generateApiKey();
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from('api_keys')
-      .insert({
-        user_id: session.user.id,
-        key_hash: keyHash,
-        key_prefix: keyPrefix,
-        name,
-      })
-      .select('id, name, created_at')
-      .single();
-
-    if (error) {
-      logApiError('keys/create', error, { userId: session.user.id });
-      return ApiErrors.databaseError('Failed to create API key');
-    }
-
-    return NextResponse.json(
-      { id: data.id, key: rawKey, name: data.name, prefix: keyPrefix, createdAt: data.created_at },
-      { status: 201 }
-    );
+    const result = await keysService.createKey(session.user.id, name);
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    logApiError('keys/create', error);
-    return ApiErrors.internalError();
+    logApiError('keys/create', error, { userId: (await auth())?.user?.id });
+    return ApiErrors.internalError('Failed to create API key');
   }
 }
 
@@ -49,30 +27,10 @@ export async function GET() {
     const session = await auth();
     if (!session?.user?.id) return ApiErrors.unauthorized();
 
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
-      .from('api_keys')
-      .select('id, name, key_prefix, is_active, last_used_at, created_at')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      logApiError('keys/list', error, { userId: session.user.id });
-      return ApiErrors.databaseError('Failed to list API keys');
-    }
-
-    const keys = (data || []).map((k) => ({
-      id: k.id,
-      name: k.name,
-      prefix: k.key_prefix,
-      isActive: k.is_active,
-      lastUsedAt: k.last_used_at,
-      createdAt: k.created_at,
-    }));
-
-    return NextResponse.json({ keys });
+    const result = await keysService.listKeys(session.user.id);
+    return NextResponse.json(result);
   } catch (error) {
-    logApiError('keys/list', error);
-    return ApiErrors.internalError();
+    logApiError('keys/list', error, { userId: (await auth())?.user?.id });
+    return ApiErrors.internalError('Failed to list API keys');
   }
 }

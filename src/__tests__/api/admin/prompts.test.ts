@@ -7,29 +7,29 @@
 
 // --- Mocks (must be before imports) ---
 
-const mockAuth = jest.fn();
-const mockIsSuperAdmin = jest.fn();
-const mockSelect = jest.fn();
-const mockFrom = jest.fn(() => ({
-  select: mockSelect,
-}));
-
+// Use inline jest.fn() to avoid hoisting issues with const declarations
 jest.mock('@/lib/auth', () => ({
-  auth: mockAuth,
+  auth: jest.fn(),
 }));
 
 jest.mock('@/lib/auth/super-admin', () => ({
-  isSuperAdmin: mockIsSuperAdmin,
+  isSuperAdmin: jest.fn(),
 }));
 
-jest.mock('@/lib/utils/supabase-server', () => ({
-  createSupabaseAdminClient: jest.fn(() => ({
-    from: mockFrom,
-  })),
+// Mock adminService.listPrompts() — the route now delegates to it
+jest.mock('@/server/services/admin.service', () => ({
+  listPrompts: jest.fn(),
 }));
 
 // Import after mocks are set up
 import { GET } from '@/app/api/admin/prompts/route';
+import { auth } from '@/lib/auth';
+import { isSuperAdmin } from '@/lib/auth/super-admin';
+import * as adminService from '@/server/services/admin.service';
+
+const mockAuth = auth as jest.Mock;
+const mockIsSuperAdmin = isSuperAdmin as jest.Mock;
+const mockListPrompts = adminService.listPrompts as jest.Mock;
 
 // --- Tests ---
 
@@ -90,38 +90,24 @@ describe('Admin Prompts API', () => {
         user: { id: 'admin-1', email: 'admin@test.com' },
       });
       mockIsSuperAdmin.mockResolvedValue(true);
-
-      // Chain: from('ai_prompt_templates').select(...).order(...).order(...)
-      const secondOrder = jest.fn().mockResolvedValue({ data: mockPrompts, error: null });
-      const firstOrder = jest.fn(() => ({ order: secondOrder }));
-      mockSelect.mockReturnValue({ order: firstOrder });
+      mockListPrompts.mockResolvedValue(mockPrompts);
 
       const response = await GET();
 
       expect(response.status).toBe(200);
       const body = await response.json();
       expect(body).toEqual(mockPrompts);
-      expect(mockFrom).toHaveBeenCalledWith('ai_prompt_templates');
+      expect(mockListPrompts).toHaveBeenCalledTimes(1);
     });
 
-    it('returns 500 when database query fails', async () => {
+    it('throws when service throws (no try/catch in route)', async () => {
       mockAuth.mockResolvedValue({
         user: { id: 'admin-1', email: 'admin@test.com' },
       });
       mockIsSuperAdmin.mockResolvedValue(true);
+      mockListPrompts.mockRejectedValue(new Error('Database error'));
 
-      const secondOrder = jest.fn().mockResolvedValue({
-        data: null,
-        error: { message: 'Database error' },
-      });
-      const firstOrder = jest.fn(() => ({ order: secondOrder }));
-      mockSelect.mockReturnValue({ order: firstOrder });
-
-      const response = await GET();
-
-      expect(response.status).toBe(500);
-      const body = await response.json();
-      expect(body.error).toBe('Database error');
+      await expect(GET()).rejects.toThrow('Database error');
     });
   });
 });

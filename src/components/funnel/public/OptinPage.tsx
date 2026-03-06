@@ -9,6 +9,7 @@ import { CTAButton, SectionRenderer } from '@/components/ds';
 import { PixelScripts, fireClientLeadEvent, type PixelConfig } from './PixelScripts';
 import { FontLoader, getFontStyle } from './FontLoader';
 import type { FunnelPageSection } from '@/lib/types/funnel';
+import * as publicApi from '@/frontend/api/public';
 
 interface OptinPageProps {
   funnelId: string;
@@ -82,11 +83,7 @@ export function OptinPage({
 
   // Track page view on mount
   useEffect(() => {
-    fetch('/api/public/view', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ funnelPageId: funnelId }),
-    }).catch(() => {});
+    publicApi.trackView({ funnelPageId: funnelId }).catch(() => {});
   }, [funnelId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,27 +101,16 @@ export function OptinPage({
         return acc;
       }, {} as Record<string, string>);
 
-      const response = await fetch('/api/public/lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          funnelPageId: funnelId,
-          email,
-          utmSource: searchParams.get('utm_source') || undefined,
-          utmMedium: searchParams.get('utm_medium') || undefined,
-          utmCampaign: searchParams.get('utm_campaign') || undefined,
-          linkedinUrl: searchParams.get('li') || undefined,
-          fbc: cookies['_fbc'] || undefined,
-          fbp: cookies['_fbp'] || undefined,
-        }),
+      const { leadId } = await publicApi.captureLead({
+        funnelPageId: funnelId,
+        email,
+        utmSource: searchParams.get('utm_source') || undefined,
+        utmMedium: searchParams.get('utm_medium') || undefined,
+        utmCampaign: searchParams.get('utm_campaign') || undefined,
+        linkedinUrl: searchParams.get('li') || undefined,
+        fbc: cookies['_fbc'] || undefined,
+        fbp: cookies['_fbp'] || undefined,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to submit');
-      }
-
-      const { leadId } = await response.json();
 
       // Fire client-side lead event for dedup with server-side CAPI
       if (pixelConfig) {

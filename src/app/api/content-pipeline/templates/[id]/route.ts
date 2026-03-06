@@ -1,37 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-
-import { logError } from '@/lib/utils/logger';
+import { ApiErrors, logApiError } from '@/lib/api/errors';
+import * as cpTemplatesService from '@/server/services/cp-templates.service';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id } = await params;
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from('cp_post_templates')
-      .select('id, user_id, name, category, description, structure, example_posts, use_cases, tags, usage_count, avg_engagement_score, is_active, is_global, source, created_at, updated_at')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (error || !data) {
-      return NextResponse.json({ error: 'Template not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ template: data });
+    const result = await cpTemplatesService.getById(session.user.id, id);
+    if (!result.success) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+    return NextResponse.json({ template: result.template });
   } catch (error) {
-    logError('cp/templates', error, { step: 'template_get_error' });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logApiError('cp/templates', error);
+    return ApiErrors.internalError('Failed to fetch template');
   }
 }
 
@@ -41,69 +27,36 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id } = await params;
     const body = await request.json();
-    const supabase = createSupabaseAdminClient();
-
-    const allowedFields = ['name', 'category', 'description', 'structure', 'example_posts', 'use_cases', 'tags', 'is_active'];
-    const updates: Record<string, unknown> = {};
-    for (const field of allowedFields) {
-      if (field in body) updates[field] = body[field];
+    const result = await cpTemplatesService.update(session.user.id, id, body);
+    if (!result.success) {
+      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'No valid fields to update');
+      return ApiErrors.databaseError('Failed to update template');
     }
-
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
-    }
-
-    const { data, error } = await supabase
-      .from('cp_post_templates')
-      .update(updates)
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .select('id, user_id, name, category, description, structure, example_posts, use_cases, tags, usage_count, avg_engagement_score, is_active, is_global, source, created_at, updated_at')
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ template: data });
+    return NextResponse.json({ template: result.template });
   } catch (error) {
-    logError('cp/templates', error, { step: 'template_update_error' });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logApiError('cp/templates', error);
+    return ApiErrors.internalError('Failed to update template');
   }
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id } = await params;
-    const supabase = createSupabaseAdminClient();
-
-    const { error } = await supabase
-      .from('cp_post_templates')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', session.user.id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    const result = await cpTemplatesService.deleteTemplate(session.user.id, id);
+    if (!result.success) return ApiErrors.databaseError('Failed to delete template');
     return NextResponse.json({ success: true });
   } catch (error) {
-    logError('cp/templates', error, { step: 'template_delete_error' });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logApiError('cp/templates', error);
+    return ApiErrors.internalError('Failed to delete template');
   }
 }

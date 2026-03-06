@@ -1,87 +1,38 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Loader2, Sparkles, PenLine, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-type TabMode = 'ai' | 'manual';
+import { X, Loader2, Sparkles } from 'lucide-react';
+import * as quickWriteApi from '@/frontend/api/content-pipeline/quick-write';
 
 interface QuickWriteModalProps {
   onClose: () => void;
   onPostCreated: () => void;
   profileId?: string | null;
-  scheduledDate?: Date | null;
 }
 
-export function QuickWriteModal({ onClose, onPostCreated, profileId, scheduledDate }: QuickWriteModalProps) {
-  const [mode, setMode] = useState<TabMode>('manual');
+export function QuickWriteModal({ onClose, onPostCreated, profileId }: QuickWriteModalProps) {
   const [rawThought, setRawThought] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
-  const [manualContent, setManualContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [manualSaved, setManualSaved] = useState(false);
   const [result, setResult] = useState<{
     post: { draft_content: string; final_content: string | null; dm_template: string | null };
     synthetic_idea: { title: string; content_type: string };
   } | null>(null);
 
-  const handleAISubmit = async () => {
+  const handleSubmit = async () => {
     if (!rawThought.trim()) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/content-pipeline/quick-write', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          raw_thought: rawThought,
-          target_audience: targetAudience || undefined,
-          profileId: profileId || undefined,
-        }),
+      const data = await quickWriteApi.quickWrite({
+        raw_thought: rawThought,
+        target_audience: targetAudience || undefined,
+        profileId: profileId ?? undefined,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to generate post');
-      }
-
-      const data = await response.json();
-      setResult(data);
-      onPostCreated();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleManualSubmit = async () => {
-    if (!manualContent.trim()) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/content-pipeline/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          draft_content: manualContent,
-          status: 'draft',
-          profileId: profileId || undefined,
-          scheduled_time: scheduledDate?.toISOString() || undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save post');
-      }
-
-      setManualSaved(true);
+      setResult(data as typeof result);
       onPostCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -94,119 +45,16 @@ export function QuickWriteModal({ onClose, onPostCreated, profileId, scheduledDa
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Quick Write">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">New Post</h2>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Quick Write</h2>
+          </div>
           <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Tab switcher — hidden during results/success */}
-        {!result && !manualSaved && (
-          <div className="mb-4 flex rounded-lg border bg-muted/30 p-0.5">
-            <button
-              onClick={() => setMode('manual')}
-              className={cn(
-                'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                mode === 'manual' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <PenLine className="h-4 w-4" />
-              Write Manually
-            </button>
-            <button
-              onClick={() => setMode('ai')}
-              className={cn(
-                'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                mode === 'ai' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Sparkles className="h-4 w-4" />
-              AI Draft
-            </button>
-          </div>
-        )}
-
-        {scheduledDate && !result && !manualSaved && (
-          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 px-3 py-2">
-            <p className="text-xs text-blue-700 dark:text-blue-300">
-              Scheduling for {scheduledDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-            </p>
-          </div>
-        )}
-
-        {/* Manual Write tab */}
-        {mode === 'manual' && !result && !manualSaved && (
-          <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Write your post</label>
-              <textarea
-                value={manualContent}
-                onChange={(e) => setManualContent(e.target.value)}
-                placeholder="Write your LinkedIn post here..."
-                className="h-48 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                autoFocus
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {manualContent.length} characters
-              </p>
-            </div>
-
-            {error && <p className="text-sm text-red-500">{error}</p>}
-
-            <button
-              onClick={handleManualSubmit}
-              disabled={loading || !manualContent.trim()}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <PenLine className="h-4 w-4" />
-                  Save as Draft
-                </>
-              )}
-            </button>
-          </div>
-        )}
-
-        {/* Manual save success */}
-        {manualSaved && (
-          <div className="space-y-4">
-            <div className="flex flex-col items-center py-4">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-950/40">
-                <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <p className="text-sm font-medium">Post saved as draft</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Find it in your Pipeline tab under &ldquo;Written&rdquo;
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setManualSaved(false);
-                  setManualContent('');
-                }}
-                className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-              >
-                Write Another
-              </button>
-              <button
-                onClick={onClose}
-                className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* AI Draft tab */}
-        {mode === 'ai' && !result && !manualSaved && (
+        {!result ? (
           <div className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium">What do you want to post about?</label>
@@ -228,37 +76,29 @@ export function QuickWriteModal({ onClose, onPostCreated, profileId, scheduledDa
               />
             </div>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
-
-            {loading ? (
-              <div className="rounded-lg border bg-muted/30 p-4 text-center">
-                <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
-                <p className="mt-2 text-sm font-medium">Writing your post with AI...</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  This takes 20-40 seconds (writing, polishing, scoring)
-                </p>
-                <button
-                  onClick={onClose}
-                  className="mt-3 text-xs text-muted-foreground hover:text-foreground underline transition-colors"
-                >
-                  Close &mdash; post will still save in background
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleAISubmit}
-                disabled={!rawThought.trim()}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
-                <Sparkles className="h-4 w-4" />
-                Generate Post
-              </button>
+            {error && (
+              <p className="text-sm text-red-500">{error}</p>
             )}
-          </div>
-        )}
 
-        {/* AI Result view */}
-        {result && (
+            <button
+              onClick={handleSubmit}
+              disabled={loading || !rawThought.trim()}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Generate Post
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
           <div className="space-y-4">
             <div>
               <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">Generated Topic</p>
@@ -271,7 +111,7 @@ export function QuickWriteModal({ onClose, onPostCreated, profileId, scheduledDa
                 {result.post.final_content || result.post.draft_content}
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Post saved to your Pipeline tab.</p>
+            <p className="text-xs text-muted-foreground">Post saved to your Posts tab.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => {

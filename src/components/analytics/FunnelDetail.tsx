@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import * as analyticsApi from '@/frontend/api/analytics';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatCards } from '@/components/analytics/StatCards';
 import { TimeSeriesChart } from '@/components/analytics/TimeSeriesChart';
@@ -134,24 +135,11 @@ export function FunnelDetail({ funnelId }: FunnelDetailProps) {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(
-          `/api/analytics/funnel/${funnelId}?range=${selectedRange}`
-        );
-        if (response.status === 403) {
-          throw new Error('You do not have access to this funnel.');
-        }
-        if (response.status === 404) {
-          throw new Error('Funnel not found.');
-        }
-        if (!response.ok) {
-          throw new Error('Failed to fetch funnel analytics.');
-        }
-        const json = await response.json();
-        setData(json);
+        const json = await analyticsApi.getFunnelDetail(funnelId, selectedRange);
+        setData(json as FunnelData);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to load funnel analytics'
-        );
+        const msg = err instanceof Error ? err.message : 'Failed to load funnel analytics';
+        setError(msg);
       } finally {
         setLoading(false);
       }
@@ -166,8 +154,7 @@ export function FunnelDetail({ funnelId }: FunnelDetailProps) {
   // Sort leads by date descending
   const sortedLeads = data
     ? [...data.leads].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )
     : [];
 
@@ -187,9 +174,7 @@ export function FunnelDetail({ funnelId }: FunnelDetailProps) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold">{data.funnel.title || data.funnel.slug}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              /{data.funnel.slug}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">/{data.funnel.slug}</p>
           </div>
           <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit">
             {RANGE_OPTIONS.map((option) => (
@@ -231,9 +216,7 @@ export function FunnelDetail({ funnelId }: FunnelDetailProps) {
       {/* Error state */}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm font-medium text-red-800 dark:text-red-200">
-            {error}
-          </p>
+          <p className="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
           <Link
             href="/analytics"
             className="mt-3 inline-block text-sm text-red-600 underline hover:text-red-500 dark:text-red-400"
@@ -289,9 +272,7 @@ export function FunnelDetail({ funnelId }: FunnelDetailProps) {
           {/* Lead table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">
-                Leads ({sortedLeads.length})
-              </CardTitle>
+              <CardTitle className="text-base">Leads ({sortedLeads.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {sortedLeads.length === 0 ? (
@@ -312,16 +293,9 @@ export function FunnelDetail({ funnelId }: FunnelDetailProps) {
                     </thead>
                     <tbody>
                       {sortedLeads.map((lead) => (
-                        <tr
-                          key={lead.id}
-                          className="border-b last:border-0"
-                        >
+                        <tr key={lead.id} className="border-b last:border-0">
                           <td className="py-3">
-                            {lead.name || (
-                              <span className="text-muted-foreground">
-                                &mdash;
-                              </span>
-                            )}
+                            {lead.name || <span className="text-muted-foreground">&mdash;</span>}
                           </td>
                           <td className="py-3">{lead.email}</td>
                           <td className="py-3">
@@ -329,14 +303,10 @@ export function FunnelDetail({ funnelId }: FunnelDetailProps) {
                           </td>
                           <td className="py-3">
                             {lead.utmSource || (
-                              <span className="text-muted-foreground">
-                                &mdash;
-                              </span>
+                              <span className="text-muted-foreground">&mdash;</span>
                             )}
                           </td>
-                          <td className="py-3 whitespace-nowrap">
-                            {formatDate(lead.createdAt)}
-                          </td>
+                          <td className="py-3 whitespace-nowrap">{formatDate(lead.createdAt)}</td>
                         </tr>
                       ))}
                     </tbody>

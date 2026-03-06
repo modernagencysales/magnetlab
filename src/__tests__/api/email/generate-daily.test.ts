@@ -378,7 +378,7 @@ describe('POST /api/email/generate-daily', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toContain('Failed to save email draft');
+    expect(data.error).toContain('Failed to generate daily email');
   });
 
   // ----------------------------------------

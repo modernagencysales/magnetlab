@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { Loader2, Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import * as subscribersApi from '@/frontend/api/email/subscribers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -78,20 +79,11 @@ export function CsvImportDialog({ open, onOpenChange, onSuccess }: CsvImportDial
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/email/subscribers/import', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to parse CSV');
-      }
+      const data = await subscribersApi.importSubscribersPreview(formData);
 
       setPreview({
-        valid: data.valid,
-        invalid: data.invalid,
+        valid: data.valid as ValidRow[],
+        invalid: data.invalid as InvalidRow[],
         total: data.total,
         file,
       });
@@ -114,16 +106,7 @@ export function CsvImportDialog({ open, onOpenChange, onSuccess }: CsvImportDial
       const formData = new FormData();
       formData.append('file', preview.file);
 
-      const response = await fetch('/api/email/subscribers/import?confirm=true', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to import subscribers');
-      }
+      const data = await subscribersApi.importSubscribersConfirm(formData);
 
       setResult({
         imported: data.imported,

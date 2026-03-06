@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { Search, Loader2 } from 'lucide-react';
+import * as templatesApi from '@/frontend/api/content-pipeline/templates';
 
 interface MatchedTemplate {
   id: string;
@@ -30,13 +31,12 @@ export function TemplateSearch({ onSelect }: TemplateSearchProps) {
     setSearching(true);
     setHasSearched(true);
     try {
-      const response = await fetch('/api/content-pipeline/templates/match', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: query.trim(), count: 5, minSimilarity: 0.2 }),
+      const data = await templatesApi.matchTemplates({
+        topic: query.trim(),
+        count: 5,
+        minSimilarity: 0.2,
       });
-      const data = await response.json();
-      setResults(data.matches || []);
+      setResults((data.matches || []) as MatchedTemplate[]);
     } catch {
       // Silent failure
       setResults([]);
@@ -81,7 +81,9 @@ export function TemplateSearch({ onSelect }: TemplateSearchProps) {
 
       {!searching && hasSearched && results.length === 0 && (
         <div className="mt-4 rounded-lg border border-dashed p-6 text-center">
-          <p className="text-sm text-muted-foreground">No matching templates found. Try a different topic.</p>
+          <p className="text-sm text-muted-foreground">
+            No matching templates found. Try a different topic.
+          </p>
         </div>
       )}
 
@@ -132,7 +134,9 @@ export function TemplateSearch({ onSelect }: TemplateSearchProps) {
                   />
                 </div>
                 {template.description && (
-                  <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">{template.description}</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">
+                    {template.description}
+                  </p>
                 )}
                 {expandedId === template.id && (
                   <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted p-2 text-xs text-muted-foreground whitespace-pre-wrap">
@@ -147,7 +151,9 @@ export function TemplateSearch({ onSelect }: TemplateSearchProps) {
                       </span>
                     ))}
                     {template.tags.length > 4 && (
-                      <span className="text-xs text-muted-foreground">+{template.tags.length - 4}</span>
+                      <span className="text-xs text-muted-foreground">
+                        +{template.tags.length - 4}
+                      </span>
                     )}
                   </div>
                 )}

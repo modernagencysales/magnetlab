@@ -1,23 +1,13 @@
-// API Route: Lead Magnets List and Create
-// GET /api/lead-magnet - List all
-// POST /api/lead-magnet - Create new
-
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { ApiErrors, logApiError } from '@/lib/api/errors';
-import { validateBody, createLeadMagnetSchema } from '@/lib/validations/api';
-import { getPostHogServerClient } from '@/lib/posthog';
-import { checkResourceLimit } from '@/lib/auth/plan-limits';
-import { getDataScope, applyScope } from '@/lib/utils/team-context';
+import { ApiErrors } from '@/lib/api/errors';
+import { getDataScope } from '@/lib/utils/team-context';
+import * as leadMagnetsService from '@/server/services/lead-magnets.service';
 
-// GET - List all lead magnets for current user
 export async function GET(request: Request) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return ApiErrors.unauthorized();
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -25,99 +15,27 @@ export async function GET(request: Request) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     const scope = await getDataScope(session.user.id);
-    const supabase = createSupabaseAdminClient();
-
-    let query = supabase
-      .from('lead_magnets')
-      .select('*', { count: 'exact' });
-    query = applyScope(query, scope);
-    query = query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    const { data, error, count } = await query;
-
-    if (error) {
-      logApiError('lead-magnet/list', error, { userId: session.user.id });
-      return ApiErrors.databaseError('Failed to fetch lead magnets');
-    }
-
-    return NextResponse.json({
-      leadMagnets: data,
-      total: count,
-      limit,
-      offset,
-    });
+    const result = await leadMagnetsService.listLeadMagnets(scope, { status, limit, offset });
+    return NextResponse.json(result);
   } catch (error) {
-    logApiError('lead-magnet/list', error);
-    return ApiErrors.internalError('Failed to fetch lead magnets');
+    const status = leadMagnetsService.getStatusCode(error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
-// POST - Create a new lead magnet
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return ApiErrors.unauthorized();
-    }
+    if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const scope = await getDataScope(session.user.id);
-
-    // Check plan-based resource limit
-    const limitCheck = await checkResourceLimit(scope, 'lead_magnets');
-    if (!limitCheck.allowed) {
-      return NextResponse.json({
-        error: 'Plan limit reached',
-        current: limitCheck.current,
-        limit: limitCheck.limit,
-        upgrade: '/settings#billing',
-      }, { status: 403 });
-    }
-
     const body = await request.json();
-    const validation = validateBody(body, createLeadMagnetSchema);
-    if (!validation.success) {
-      return ApiErrors.validationError(validation.error, validation.details);
-    }
-
-    const supabase = createSupabaseAdminClient();
-
-    // Create the lead magnet
-    const validated = validation.data;
-    const { data, error } = await supabase
-      .from('lead_magnets')
-      .insert({
-        user_id: session.user.id,
-        team_id: scope.teamId || null,
-        title: validated.title,
-        archetype: validated.archetype,
-        concept: validated.concept,
-        extracted_content: validated.extractedContent,
-        interactive_config: validated.interactiveConfig,
-        linkedin_post: validated.linkedinPost,
-        post_variations: validated.postVariations,
-        dm_template: validated.dmTemplate,
-        cta_word: validated.ctaWord,
-        status: 'draft',
-      })
-      .select()
-      .single();
-
-    if (error) {
-      logApiError('lead-magnet/create', error, { userId: session.user.id });
-      return ApiErrors.databaseError('Failed to create lead magnet');
-    }
-
-    try { getPostHogServerClient()?.capture({ distinctId: session.user.id, event: 'lead_magnet_created', properties: { lead_magnet_id: data.id, title: validated.title, archetype: validated.archetype } }); } catch {}
-
+    const data = await leadMagnetsService.createLeadMagnet(scope, body);
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    logApiError('lead-magnet/create', error);
-    return ApiErrors.internalError('Failed to create lead magnet');
+    const status = leadMagnetsService.getStatusCode(error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
   }
 }

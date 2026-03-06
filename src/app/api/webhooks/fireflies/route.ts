@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { tasks } from '@trigger.dev/sdk/v3';
-import type { processTranscript } from '@/trigger/process-transcript';
-
-import { logError, logWarn } from '@/lib/utils/logger';
-
-interface FirefliesWebhookPayload {
-  meeting_id: string;
-  title?: string;
-  date?: string;
-  duration_minutes?: number;
-  participants?: string[];
-  transcript: string;
-  user_id: string;
-}
+import { logError } from '@/lib/utils/logger';
+import * as webhooksIncomingService from '@/server/services/webhooks-incoming.service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,8 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const payload: FirefliesWebhookPayload = await request.json();
-
+    const payload = await request.json();
     if (!payload.meeting_id || !payload.transcript || !payload.user_id) {
       return NextResponse.json(
         { error: 'Missing required fields: meeting_id, transcript, user_id' },
@@ -31,58 +17,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseAdminClient();
-    const externalId = `fireflies:${payload.meeting_id}`;
+    const result = await webhooksIncomingService.handleFireflies(payload);
 
-    // Deduplicate
-    const { data: existing } = await supabase
-      .from('cp_call_transcripts')
-      .select('id')
-      .eq('external_id', externalId)
-      .eq('user_id', payload.user_id)
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json({
-        success: true,
-        duplicate: true,
-        transcript_id: existing.id,
-      });
-    }
-
-    // Insert
-    const { data: transcript, error: insertError } = await supabase
-      .from('cp_call_transcripts')
-      .insert({
-        user_id: payload.user_id,
-        source: 'fireflies',
-        external_id: externalId,
-        title: payload.title || null,
-        call_date: payload.date || null,
-        duration_minutes: payload.duration_minutes || null,
-        participants: payload.participants || null,
-        raw_transcript: payload.transcript,
-      })
-      .select()
-      .single();
-
-    if (insertError || !transcript) {
-      logError('webhooks/fireflies', new Error(String(insertError?.message)), { step: 'failed_to_insert_fireflies_transcript' });
-      return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 });
-    }
-
-    try {
-      await tasks.trigger<typeof processTranscript>('process-transcript', {
-        userId: payload.user_id,
-        transcriptId: transcript.id,
-      });
-    } catch (triggerError) {
-      logWarn('webhooks/fireflies', 'Failed to trigger process-transcript', { detail: String(triggerError) });
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      transcript_id: transcript.id,
+      ...(result.duplicate && { duplicate: true }),
+      transcript_id: result.transcript_id,
     });
   } catch (error) {
     logError('webhooks/fireflies', error, { step: 'fireflies_webhook_error' });

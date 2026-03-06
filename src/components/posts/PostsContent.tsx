@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, Suspense, useEffect, useCallback } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Lightbulb, LayoutGrid, Sparkles, Loader2, BookOpen, Calendar, PenLine } from 'lucide-react';
+import { Lightbulb, LayoutGrid, Sparkles, Loader2, BookOpen, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProfileSwitcher, useProfileSelection } from '@/components/content-pipeline/ProfileSwitcher';
+import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
 
 const IdeasTab = dynamic(
   () => import('@/components/content-pipeline/IdeasTab').then((m) => ({ default: m.IdeasTab })),
@@ -50,7 +51,17 @@ function TabLoader() {
   );
 }
 
-export function PostsContent() {
+interface PostsContentProps {
+  initialBufferLow: boolean;
+  initialIdeas: ContentIdea[];
+  initialPosts: PipelinePost[];
+}
+
+export function PostsContent({
+  initialBufferLow,
+  initialIdeas,
+  initialPosts,
+}: PostsContentProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -59,32 +70,9 @@ export function PostsContent() {
     tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'pipeline'
   );
   const [showQuickWrite, setShowQuickWrite] = useState(false);
-  const [quickWriteDate, setQuickWriteDate] = useState<Date | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const { selectedProfileId, onProfileChange } = useProfileSelection();
-  const [bufferLow, setBufferLow] = useState(false);
-
-  // Auto-open Quick Write when navigated with ?quick_write=1
-  useEffect(() => {
-    if (searchParams.get('quick_write') === '1') {
-      setShowQuickWrite(true);
-      // Clean up the URL param
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete('quick_write');
-      const qs = params.toString();
-      router.replace(`${pathname}${qs ? '?' + qs : ''}`, { scroll: false });
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    fetch('/api/content-pipeline/schedule/buffer')
-      .then((r) => r.json())
-      .then((data) => {
-        const count = data.buffer?.length ?? 0;
-        setBufferLow(count < 3);
-      })
-      .catch(() => {});
-  }, []);
+  const bufferLow = initialBufferLow;
 
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam)) {
@@ -103,16 +91,6 @@ export function PostsContent() {
     const qs = params.toString();
     router.replace(`${pathname}${qs ? '?' + qs : ''}`, { scroll: false });
   }
-
-  const openQuickWrite = useCallback((date?: Date) => {
-    setQuickWriteDate(date || null);
-    setShowQuickWrite(true);
-  }, []);
-
-  const closeQuickWrite = useCallback(() => {
-    setShowQuickWrite(false);
-    setQuickWriteDate(null);
-  }, []);
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -158,41 +136,37 @@ export function PostsContent() {
           <PipelineView
             key={refreshKey}
             profileId={selectedProfileId}
-            onRefresh={() => setRefreshKey((k) => k + 1)}
-            onNewPost={() => openQuickWrite()}
+            onRefresh={() => {
+              router.refresh();
+              setRefreshKey((k) => k + 1);
+            }}
+            initialIdeas={initialIdeas}
+            initialPosts={initialPosts}
           />
         )}
-        {activeTab === 'calendar' && (
-          <CalendarView onCreatePost={(date) => openQuickWrite(date)} />
-        )}
-        {activeTab === 'ideas' && (
-          <IdeasTab
-            profileId={selectedProfileId}
-            onNewPost={() => openQuickWrite()}
-          />
-        )}
+        {activeTab === 'calendar' && <CalendarView />}
+        {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
         {activeTab === 'library' && <LibraryTab />}
         {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}
       </Suspense>
 
       {/* Quick Write FAB */}
       <button
-        onClick={() => openQuickWrite()}
-        className="fixed bottom-6 right-6 z-30 flex h-auto items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
-        title="New Post"
+        onClick={() => setShowQuickWrite(true)}
+        className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+        title="Quick Write"
       >
-        <PenLine className="h-5 w-5" />
-        <span className="text-sm font-medium">New Post</span>
+        <Sparkles className="h-5 w-5" />
       </button>
       {showQuickWrite && (
         <QuickWriteModal
-          onClose={closeQuickWrite}
+          onClose={() => setShowQuickWrite(false)}
           onPostCreated={() => {
+            // Switch to pipeline tab and refresh it
             handleTabChange('pipeline');
             setRefreshKey((k) => k + 1);
           }}
           profileId={selectedProfileId}
-          scheduledDate={quickWriteDate}
         />
       )}
     </div>

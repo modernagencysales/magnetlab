@@ -1,12 +1,8 @@
-// API Route: Generate Thumbnail
-// POST /api/thumbnail/generate
-
-import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { generateBrandedThumbnail } from '@/lib/services/thumbnail';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { getDataScope, applyScope } from '@/lib/utils/team-context';
-import { ApiErrors, logApiError } from '@/lib/api/errors';
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { getDataScope } from "@/lib/utils/team-context";
+import { ApiErrors, logApiError } from "@/lib/api/errors";
+import * as thumbnailService from "@/server/services/thumbnail.service";
 
 export async function POST(request: Request) {
   try {
@@ -23,51 +19,24 @@ export async function POST(request: Request) {
     };
 
     if (!leadMagnetId) {
-      return ApiErrors.validationError('leadMagnetId is required');
+      return ApiErrors.validationError("leadMagnetId is required");
     }
-
     if (!title) {
-      return ApiErrors.validationError('title must be provided');
+      return ApiErrors.validationError("title must be provided");
     }
 
-    // Generate branded thumbnail
-    const thumbnail = await generateBrandedThumbnail(title, subtitle);
-
-    // Upload to Supabase Storage
-    const supabase = createSupabaseAdminClient();
     const scope = await getDataScope(session.user.id);
-    const fileName = `thumbnails/${session.user.id}/${leadMagnetId}.png`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('magnetlab')
-      .upload(fileName, thumbnail, {
-        contentType: 'image/png',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      logApiError('thumbnail/generate/upload', uploadError, { leadMagnetId });
-      return ApiErrors.databaseError('Failed to upload thumbnail');
-    }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('magnetlab')
-      .getPublicUrl(fileName);
-
-    const thumbnailUrl = urlData.publicUrl;
-
-    // Update lead magnet
-    let updateQuery = supabase
-      .from('lead_magnets')
-      .update({ thumbnail_url: thumbnailUrl })
-      .eq('id', leadMagnetId);
-    updateQuery = applyScope(updateQuery, scope);
-    await updateQuery;
+    const thumbnailUrl = await thumbnailService.generateAndSaveThumbnail(
+      scope,
+      session.user.id,
+      leadMagnetId,
+      title,
+      subtitle,
+    );
 
     return NextResponse.json({ thumbnailUrl });
   } catch (error) {
-    logApiError('thumbnail/generate', error);
-    return ApiErrors.internalError('Failed to generate thumbnail');
+    logApiError("thumbnail/generate", error);
+    return ApiErrors.internalError("Failed to generate thumbnail");
   }
 }

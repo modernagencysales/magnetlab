@@ -6,6 +6,7 @@ import { format, startOfWeek, addWeeks, subWeeks } from 'date-fns';
 import type { WeekPlan, PillarDistribution } from '@/lib/types/content-pipeline';
 import { PillarDistributionSlider } from './PillarDistributionSlider';
 import { WeekGrid } from './WeekGrid';
+import * as plannerApi from '@/frontend/api/content-pipeline/planner';
 
 export function PlannerView() {
   const [currentWeek, setCurrentWeek] = useState<Date | null>(null);
@@ -31,10 +32,9 @@ export function PlannerView() {
     setLoading(true);
     try {
       const weekDate = format(currentWeek, 'yyyy-MM-dd');
-      const response = await fetch(`/api/content-pipeline/planner?week=${weekDate}`);
-      const data = await response.json();
-      const plans = data.plans || [];
-      const match = plans.find((p: WeekPlan) => p.week_start_date === weekDate);
+      const data = await plannerApi.listPlans({ week: weekDate });
+      const plans = (data.plans || []) as WeekPlan[];
+      const match = plans.find((p) => p.week_start_date === weekDate);
       setPlan(match || null);
       if (match) {
         setPostsPerWeek(match.posts_per_week);
@@ -60,19 +60,12 @@ export function PlannerView() {
     if (!currentWeek) return;
     setGenerating(true);
     try {
-      const response = await fetch('/api/content-pipeline/planner/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          week_start_date: format(currentWeek, 'yyyy-MM-dd'),
-          posts_per_week: postsPerWeek,
-          pillar_distribution: pillarDistribution,
-        }),
+      const data = await plannerApi.generatePlan({
+        week_start_date: format(currentWeek, 'yyyy-MM-dd'),
+        posts_per_week: postsPerWeek,
+        pillar_distribution: pillarDistribution as unknown as Record<string, number>,
       });
-      if (response.ok) {
-        const data = await response.json();
-        setPlan(data.plan);
-      }
+      if (data.plan) setPlan(data.plan as WeekPlan);
     } catch {
       // Silent failure
     } finally {
@@ -84,14 +77,8 @@ export function PlannerView() {
     if (!plan) return;
     setApproving(true);
     try {
-      const response = await fetch('/api/content-pipeline/planner/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan_id: plan.id }),
-      });
-      if (response.ok) {
-        await fetchPlan();
-      }
+      await plannerApi.approvePlan(plan.id);
+      await fetchPlan();
     } catch {
       // Silent failure
     } finally {
@@ -120,9 +107,7 @@ export function PlannerView() {
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm font-medium">
-            Week of {format(currentWeek, 'MMM d')}
-          </span>
+          <span className="text-sm font-medium">Week of {format(currentWeek, 'MMM d')}</span>
           <button
             onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}
             className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
@@ -178,9 +163,13 @@ export function PlannerView() {
               className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {generating ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Generating...
+                </>
               ) : (
-                <><Zap className="h-4 w-4" /> {plan ? 'Regenerate Plan' : 'Generate Plan'}</>
+                <>
+                  <Zap className="h-4 w-4" /> {plan ? 'Regenerate Plan' : 'Generate Plan'}
+                </>
               )}
             </button>
 
@@ -191,9 +180,13 @@ export function PlannerView() {
                 className="flex items-center gap-2 rounded-lg border border-green-300 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950 disabled:opacity-50 transition-colors"
               >
                 {approving ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</>
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Approving...
+                  </>
                 ) : (
-                  <><Check className="h-4 w-4" /> Approve Plan</>
+                  <>
+                    <Check className="h-4 w-4" /> Approve Plan
+                  </>
                 )}
               </button>
             )}

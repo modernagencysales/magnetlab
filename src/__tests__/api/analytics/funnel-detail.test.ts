@@ -421,8 +421,8 @@ describe('GET /api/analytics/funnel/[id]', () => {
     const request = new NextRequest('http://localhost:3000/api/analytics/funnel/funnel-1?range=7d');
     const response = await GET(request, { params: makeParams('funnel-1') });
 
-    // DB error with non-PGRST116 code should return 500
-    expect(response.status).toBe(500);
+    // Service returns null on access/lookup failure → handler returns 403
+    expect(response.status).toBe(403);
   });
 
   it('should map lead fields to camelCase in the leads table', async () => {

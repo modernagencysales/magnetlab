@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Users, Plus, Loader2, Trash2, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
+import * as teamApi from '@/frontend/api/team';
 
 interface TeamMember {
   id: string;
@@ -26,11 +27,8 @@ export function TeamMembersSettings() {
 
   const fetchMembers = async () => {
     try {
-      const res = await fetch('/api/team');
-      if (res.ok) {
-        const data = await res.json();
-        setMembers(data);
-      }
+      const data = await teamApi.listTeamMembers();
+      setMembers(data as TeamMember[]);
     } catch (err) {
       logError('settings/team-members', err, { step: 'failed_to_fetch_team_members' });
     } finally {
@@ -51,18 +49,7 @@ export function TeamMembersSettings() {
     setSuccess(null);
 
     try {
-      const res = await fetch('/api/team', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to invite');
-      }
-
+      const data = await teamApi.inviteTeamMember(email.trim()) as { autoLinked?: boolean };
       setEmail('');
       setSuccess(data.autoLinked
         ? `${email.trim()} added to your team (existing account linked automatically)`
@@ -82,10 +69,7 @@ export function TeamMembersSettings() {
 
     setRemoving(memberId);
     try {
-      const res = await fetch(`/api/team/${memberId}`, { method: 'DELETE' });
-      if (!res.ok) {
-        throw new Error('Failed to remove');
-      }
+      await teamApi.removeTeamMember(memberId);
       setMembers(prev => prev.filter(m => m.id !== memberId));
     } catch (err) {
       logError('settings/team-members', err, { step: 'remove_error' });

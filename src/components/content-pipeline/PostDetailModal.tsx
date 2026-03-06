@@ -1,17 +1,25 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Loader2, Copy, Check, Sparkles, Calendar, Send, Linkedin, Users, Zap, MessageSquare, FileText } from 'lucide-react';
+import {
+  X,
+  Loader2,
+  Copy,
+  Check,
+  Sparkles,
+  Calendar,
+  Send,
+  Linkedin,
+  Users,
+  Zap,
+  MessageSquare,
+  FileText,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
+import { PostPreview } from './PostPreview';
 import { StyleFeedbackToast } from './StyleFeedbackToast';
-import { TipTapTextBlock } from '@/components/content/inline-editor/TipTapTextBlock';
-import { LinkedInPreview, type DeviceMode } from './LinkedInPreview';
-import { DeviceToggle } from './DeviceToggle';
-import { HookOnlyToggle } from './HookOnlyToggle';
-import { HookScorePanel } from './HookScorePanel';
-import type { PipelinePost, PostVariation, LinkedInAutomation, AutomationStatus, TeamProfile } from '@/lib/types/content-pipeline';
-import { useCopilotContext } from '@/components/copilot/useCopilotContext';
+import type { PipelinePost, PostVariation } from '@/lib/types/content-pipeline';
+import { usePostDetail } from '@/frontend/hooks/usePostDetail';
 
 interface PostDetailModalProps {
   post: PipelinePost;
@@ -21,316 +29,92 @@ interface PostDetailModalProps {
   polishing: boolean;
 }
 
-export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }: PostDetailModalProps) {
-  const [activeVariation, setActiveVariation] = useState<number | null>(null);
-  const [editContent, setEditContent] = useState(post.final_content || post.draft_content || '');
-  const [copied, setCopied] = useState(false);
-  const [scheduling, setScheduling] = useState(false);
-  const [showSchedule, setShowSchedule] = useState(false);
-  const [scheduleTime, setScheduleTime] = useState('');
-  const [publishing, setPublishing] = useState(false);
-  const [publishError, setPublishError] = useState<string | null>(null);
-  const [scheduleError, setScheduleError] = useState<string | null>(null);
-  const [feedbackEditId, setFeedbackEditId] = useState<string | null>(null);
-
-  // Split-pane editor state
-  const [device, setDevice] = useState<DeviceMode>('desktop');
-  const [hookOnly, setHookOnly] = useState(false);
-  const [charCount, setCharCount] = useState(0);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [profileData, setProfileData] = useState<{ name: string; headline: string; avatarUrl: string | null }>({
-    name: 'You', headline: '', avatarUrl: null,
-  });
-  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Engagement scraping state
-  const [engagementStats, setEngagementStats] = useState<{ comments: number; reactions: number; resolved: number; pushed: number } | null>(null);
-  const [scrapeEnabled, setScrapeEnabled] = useState(post.scrape_engagement || false);
-  const [campaignId, setCampaignId] = useState(post.heyreach_campaign_id || '');
-  const [engagementLoading, setEngagementLoading] = useState(false);
-  const [engagementSaving, setEngagementSaving] = useState(false);
-
-  // Automation state
-  const [automation, setAutomation] = useState<LinkedInAutomation | null>(null);
-  const [automationLoading, setAutomationLoading] = useState(false);
-  const [automationSaving, setAutomationSaving] = useState(false);
-  const [showAutomationSetup, setShowAutomationSetup] = useState(false);
-  const [autoKeywords, setAutoKeywords] = useState('');
-  const [autoDmTemplate, setAutoDmTemplate] = useState(post.dm_template || '');
-  const [autoConnect, setAutoConnect] = useState(false);
-  const [autoLike, setAutoLike] = useState(true);
-  const [autoFollowUp, setAutoFollowUp] = useState(false);
-  const [autoFollowUpTemplate, setAutoFollowUpTemplate] = useState('');
-  const [automationEventCount, setAutomationEventCount] = useState(0);
-
-  // Register co-pilot page context
-  useCopilotContext({
-    page: '/content-pipeline',
-    entityType: 'post',
-    entityId: post.id,
-    entityTitle: (post.final_content || post.draft_content || '').slice(0, 60),
-  });
-
-  // Template picker state
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const [templates, setTemplates] = useState<{ id: string; name: string; structure: string; category: string | null }[]>([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
-
-  const isPublishedWithLinkedIn = post.status === 'published' && !!post.linkedin_post_id;
-
-  const fetchEngagementStats = useCallback(async () => {
-    if (!isPublishedWithLinkedIn) return;
-    setEngagementLoading(true);
-    try {
-      const res = await fetch(`/api/content-pipeline/posts/${post.id}/engagement`);
-      if (res.ok) {
-        const data = await res.json();
-        setEngagementStats(data.stats);
-        setScrapeEnabled(data.config.scrape_engagement);
-        setCampaignId(data.config.heyreach_campaign_id || '');
-      }
-    } catch { /* silent */ } finally {
-      setEngagementLoading(false);
-    }
-  }, [post.id, isPublishedWithLinkedIn]);
-
-  useEffect(() => {
-    fetchEngagementStats();
-  }, [fetchEngagementStats]);
-
-  const handleEngagementSave = async (updates: { scrape_engagement?: boolean; heyreach_campaign_id?: string }) => {
-    setEngagementSaving(true);
-    try {
-      const res = await fetch(`/api/content-pipeline/posts/${post.id}/engagement`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-      if (res.ok) {
-        await fetchEngagementStats();
-      }
-    } catch { /* silent */ } finally {
-      setEngagementSaving(false);
-    }
-  };
-
-  // Fetch automation for this post
-  const fetchAutomation = useCallback(async () => {
-    if (!isPublishedWithLinkedIn) return;
-    setAutomationLoading(true);
-    try {
-      const res = await fetch('/api/linkedin/automations');
-      if (res.ok) {
-        const data = await res.json();
-        const existing = (data.automations || []).find(
-          (a: LinkedInAutomation) => a.post_id === post.id || a.post_social_id === post.linkedin_post_id
-        );
-        if (existing) {
-          setAutomation(existing);
-          setAutoKeywords((existing.keywords || []).join(', '));
-          setAutoDmTemplate(existing.dm_template || post.dm_template || '');
-          setAutoConnect(existing.auto_connect);
-          setAutoLike(existing.auto_like);
-          setAutoFollowUp(existing.enable_follow_up);
-          setAutoFollowUpTemplate(existing.follow_up_template || '');
-
-          // Get event count
-          const evtRes = await fetch(`/api/linkedin/automations/${existing.id}`);
-          if (evtRes.ok) {
-            const evtData = await evtRes.json();
-            setAutomationEventCount((evtData.events || []).length);
-          }
-        }
-      }
-    } catch { /* silent */ } finally {
-      setAutomationLoading(false);
-    }
-  }, [post.id, post.linkedin_post_id, post.dm_template, isPublishedWithLinkedIn]);
-
-  useEffect(() => {
-    fetchAutomation();
-  }, [fetchAutomation]);
-
-  // Fetch team profile for LinkedIn preview
-  useEffect(() => {
-    fetch('/api/teams/profiles')
-      .then(r => r.json())
-      .then(data => {
-        const profiles: TeamProfile[] = data.profiles || [];
-        const profile = post.team_profile_id
-          ? profiles.find(p => p.id === post.team_profile_id)
-          : profiles.find(p => p.is_default) || profiles[0];
-        if (profile) {
-          setProfileData({
-            name: profile.full_name,
-            headline: profile.title || '',
-            avatarUrl: profile.avatar_url,
-          });
-        }
-      })
-      .catch(() => {});
-  }, [post.team_profile_id]);
-
-  // Debounced auto-save
-  const debouncedSave = useCallback((content: string) => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    setSaveStatus('idle');
-    saveTimerRef.current = setTimeout(async () => {
-      setSaveStatus('saving');
-      try {
-        const response = await fetch(`/api/content-pipeline/posts/${post.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ final_content: content }),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setSaveStatus('saved');
-          onUpdate();
-          if (data.editId) setFeedbackEditId(data.editId);
-          setTimeout(() => setSaveStatus('idle'), 2000);
-        } else {
-          setSaveStatus('idle');
-        }
-      } catch {
-        setSaveStatus('idle');
-      }
-    }, 1500);
-  }, [post.id, onUpdate]);
-
-  const fetchTemplates = useCallback(async () => {
-    if (templates.length > 0) return;
-    setTemplatesLoading(true);
-    try {
-      const res = await fetch('/api/content-pipeline/templates?scope=mine');
-      const data = await res.json();
-      setTemplates(data.templates || []);
-    } catch {
-      // Silent
-    } finally {
-      setTemplatesLoading(false);
-    }
-  }, [templates.length]);
-
-  const handleCreateAutomation = async () => {
-    setAutomationSaving(true);
-    try {
-      const keywords = autoKeywords.split(',').map(k => k.trim()).filter(Boolean);
-      const body = {
-        name: `Auto: ${(post.final_content || post.draft_content || '').substring(0, 30)}...`,
-        postId: post.id,
-        postSocialId: post.linkedin_post_id,
-        keywords,
-        dmTemplate: autoDmTemplate || null,
-        autoConnect,
-        autoLike,
-        enableFollowUp: autoFollowUp,
-        followUpTemplate: autoFollowUpTemplate || null,
-      };
-
-      const res = await fetch('/api/linkedin/automations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setAutomation(data.automation);
-        setShowAutomationSetup(false);
-      }
-    } catch { /* silent */ } finally {
-      setAutomationSaving(false);
-    }
-  };
-
-  const handleToggleAutomation = async (newStatus: AutomationStatus) => {
-    if (!automation) return;
-    setAutomationSaving(true);
-    try {
-      const res = await fetch(`/api/linkedin/automations/${automation.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAutomation(data.automation);
-      }
-    } catch { /* silent */ } finally {
-      setAutomationSaving(false);
-    }
-  };
-
-  const displayContent = activeVariation !== null && post.variations?.[activeVariation]
-    ? post.variations[activeVariation].content
-    : editContent;
-
-  const handleSchedule = async () => {
-    setScheduling(true);
-    setScheduleError(null);
-    try {
-      const response = await fetch('/api/content-pipeline/posts/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          post_id: post.id,
-          scheduled_time: scheduleTime || undefined,
-        }),
-      });
-      if (response.ok) {
-        onUpdate();
-        onClose();
-      } else {
-        const data = await response.json();
-        setScheduleError(data.error || 'Failed to schedule');
-      }
-    } catch {
-      setScheduleError('Network error. Please try again.');
-    } finally {
-      setScheduling(false);
-    }
-  };
-
-  const handlePublish = async () => {
-    setPublishing(true);
-    setPublishError(null);
-    try {
-      const response = await fetch(`/api/content-pipeline/posts/${post.id}/publish`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (response.ok) {
-        onUpdate();
-        onClose();
-      } else {
-        setPublishError(data.error || 'Failed to publish');
-      }
-    } catch {
-      setPublishError('Network error. Please try again.');
-    } finally {
-      setPublishing(false);
-    }
-  };
-
-  const canPublish = displayContent.trim().length > 0 &&
-    ['draft', 'reviewing', 'approved'].includes(post.status);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(displayContent);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+export function PostDetailModal({
+  post,
+  onClose,
+  onPolish,
+  onUpdate,
+  polishing,
+}: PostDetailModalProps) {
+  const {
+    activeVariation,
+    setActiveVariation,
+    editing,
+    setEditing,
+    editContent,
+    setEditContent,
+    saving,
+    handleSave,
+    copied,
+    handleCopy,
+    scheduling,
+    showSchedule,
+    setShowSchedule,
+    scheduleTime,
+    setScheduleTime,
+    scheduleError,
+    handleSchedule,
+    publishing,
+    publishError,
+    handlePublish,
+    canPublish,
+    feedbackEditId,
+    setFeedbackEditId,
+    engagementStats,
+    scrapeEnabled,
+    setScrapeEnabled,
+    campaignId,
+    setCampaignId,
+    engagementLoading,
+    engagementSaving,
+    handleEngagementSave,
+    automation,
+    automationLoading,
+    automationSaving,
+    showAutomationSetup,
+    setShowAutomationSetup,
+    autoKeywords,
+    setAutoKeywords,
+    autoDmTemplate,
+    setAutoDmTemplate,
+    autoConnect,
+    setAutoConnect,
+    autoLike,
+    setAutoLike,
+    autoFollowUp,
+    setAutoFollowUp,
+    autoFollowUpTemplate,
+    setAutoFollowUpTemplate,
+    automationEventCount,
+    handleCreateAutomation,
+    handleToggleAutomation,
+    showTemplatePicker,
+    setShowTemplatePicker,
+    templates,
+    templatesLoading,
+    fetchTemplates,
+    isPublishedWithLinkedIn,
+    displayContent,
+  } = usePostDetail(post, { onClose, onUpdate });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Post Details">
-      <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Post Details"
+    >
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">Post Details</h2>
             <StatusBadge status={post.status} />
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 hover:bg-secondary"
+            aria-label="Close"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -339,12 +123,16 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
         {post.hook_score !== null && post.hook_score !== undefined && (
           <div className="mb-4 flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Hook Score:</span>
-            <span className={cn(
-              'rounded-full px-2 py-0.5 text-sm font-semibold',
-              post.hook_score >= 8 ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
-              post.hook_score >= 5 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
-              'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-            )}>
+            <span
+              className={cn(
+                'rounded-full px-2 py-0.5 text-sm font-semibold',
+                post.hook_score >= 8
+                  ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                  : post.hook_score >= 5
+                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
+                    : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+              )}
+            >
               {post.hook_score}/10
             </span>
           </div>
@@ -370,13 +158,12 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
         {post.variations && post.variations.length > 0 && (
           <div className="mb-4 flex gap-2 flex-wrap">
             <button
-              onClick={() => {
-                setActiveVariation(null);
-                setEditContent(post.final_content || post.draft_content || '');
-              }}
+              onClick={() => setActiveVariation(null)}
               className={cn(
                 'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                activeVariation === null ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'
+                activeVariation === null
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary hover:bg-secondary/80'
               )}
             >
               Original
@@ -384,13 +171,12 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
             {post.variations.map((v: PostVariation, i: number) => (
               <button
                 key={v.id}
-                onClick={() => {
-                  setActiveVariation(i);
-                  setEditContent(v.content);
-                }}
+                onClick={() => setActiveVariation(i)}
                 className={cn(
                   'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                  activeVariation === i ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'
+                  activeVariation === i
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary hover:bg-secondary/80'
                 )}
               >
                 {v.hook_type || `Variation ${i + 1}`}
@@ -399,67 +185,44 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
           </div>
         )}
 
-        {/* Split Pane: Editor + Preview */}
-        <div className="mb-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Left: Editor */}
-          <div className="flex flex-col">
-            <div className="flex-1 rounded-lg border border-border bg-background">
-              <TipTapTextBlock
-                content={editContent}
-                onChange={(content) => {
-                  setEditContent(content);
-                  debouncedSave(content);
-                }}
-                onCharacterCount={setCharCount}
-                placeholder="Write your LinkedIn post..."
-                className="min-h-[300px] p-3"
-              />
-            </div>
-            {/* Footer: char count + save status */}
-            <div className="flex items-center justify-between px-1 pt-1.5 text-xs text-muted-foreground">
-              <span>{charCount} characters</span>
-              <div className="flex items-center gap-2">
-                {charCount > 210 && (
-                  <span className="text-amber-600">Will be truncated</span>
-                )}
-                {saveStatus === 'saving' && <span className="text-muted-foreground">Saving...</span>}
-                {saveStatus === 'saved' && <span className="text-green-600">Saved</span>}
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Preview + Controls */}
-          <div className="flex flex-col gap-3">
-            {/* Device + Hook toggles */}
-            <div className="flex items-center justify-between">
-              <DeviceToggle device={device} onChange={setDevice} />
-              <HookOnlyToggle enabled={hookOnly} onChange={setHookOnly} />
-            </div>
-
-            {/* LinkedIn Preview */}
-            <LinkedInPreview
-              content={editContent}
-              authorName={profileData.name}
-              authorHeadline={profileData.headline}
-              authorAvatarUrl={profileData.avatarUrl}
-              device={device}
-              hookOnly={hookOnly}
-            />
-
-            {/* Hook Score Panel */}
-            <HookScorePanel
-              postId={post.id}
-              initialScore={post.hook_score}
-              onVariantsGenerated={onUpdate}
-            />
-          </div>
+        {/* LinkedIn Preview */}
+        <div className="mb-4">
+          <PostPreview content={displayContent} />
         </div>
+
+        {/* Edit Mode */}
+        {editing ? (
+          <div className="mb-4 space-y-3">
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="h-48 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditing(false)}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {/* DM Template */}
         {post.dm_template && (
           <div className="mb-4">
             <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">DM Template</p>
-            <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">{post.dm_template}</p>
+            <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+              {post.dm_template}
+            </p>
           </div>
         )}
 
@@ -477,7 +240,9 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
             <div className="mb-3 flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm font-medium">Engagement Scraping</p>
-              {engagementLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              {engagementLoading && (
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              )}
             </div>
 
             {/* Stats */}
@@ -524,7 +289,9 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
             {/* Campaign ID */}
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">HeyReach Campaign ID</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  HeyReach Campaign ID
+                </label>
                 <input
                   type="text"
                   value={campaignId}
@@ -551,17 +318,21 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-muted-foreground" />
                 <p className="text-sm font-medium">Comment→DM Automation</p>
-                {automationLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                {automationLoading && (
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                )}
               </div>
               {automation && (
-                <span className={cn(
-                  'rounded-full px-2 py-0.5 text-xs font-medium',
-                  automation.status === 'running'
-                    ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-                    : automation.status === 'paused'
-                      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
-                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                )}>
+                <span
+                  className={cn(
+                    'rounded-full px-2 py-0.5 text-xs font-medium',
+                    automation.status === 'running'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                      : automation.status === 'paused'
+                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                  )}
+                >
                   {automation.status}
                 </span>
               )}
@@ -593,7 +364,11 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
                       disabled={automationSaving}
                       className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
                     >
-                      {automationSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                      {automationSaving ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Zap className="h-3 w-3" />
+                      )}
                       Start
                     </button>
                   )}
@@ -629,13 +404,19 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
                         type="text"
                         value={autoKeywords}
                         onChange={(e) => setAutoKeywords(e.target.value)}
-                        placeholder={post.cta_word ? `e.g. ${post.cta_word}, guide, yes, send` : 'e.g. guide, yes, send, interested'}
+                        placeholder={
+                          post.cta_word
+                            ? `e.g. ${post.cta_word}, guide, yes, send`
+                            : 'e.g. guide, yes, send, interested'
+                        }
                         className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-muted-foreground">DM Template</label>
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                        DM Template
+                      </label>
                       <textarea
                         value={autoDmTemplate}
                         onChange={(e) => setAutoDmTemplate(e.target.value)}
@@ -643,7 +424,9 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
                         placeholder="Hey {{name}}! Thanks for your interest..."
                         className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                       />
-                      <p className="mt-1 text-xs text-muted-foreground">Variables: {'{{name}}'}, {'{{full_name}}'}, {'{{comment}}'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Variables: {'{{name}}'}, {'{{full_name}}'}, {'{{comment}}'}
+                      </p>
                     </div>
 
                     <div className="flex flex-wrap gap-4">
@@ -678,7 +461,9 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
 
                     {autoFollowUp && (
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-muted-foreground">Follow-up Template (sent after 24h)</label>
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                          Follow-up Template (sent after 24h)
+                        </label>
                         <textarea
                           value={autoFollowUpTemplate}
                           onChange={(e) => setAutoFollowUpTemplate(e.target.value)}
@@ -701,7 +486,11 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
                         disabled={automationSaving || !autoKeywords.trim()}
                         className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                       >
-                        {automationSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                        {automationSaving ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Zap className="h-3 w-3" />
+                        )}
                         Create Automation
                       </button>
                     </div>
@@ -720,22 +509,34 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
               setShowTemplatePicker(!showTemplatePicker);
             }}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
               showTemplatePicker
-                ? "bg-primary text-primary-foreground"
-                : "border border-border hover:bg-muted"
+                ? 'bg-primary text-primary-foreground'
+                : 'border border-border hover:bg-muted'
             )}
             title="Insert template"
           >
             <FileText className="h-4 w-4" />
             Templates
           </button>
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Edit
+            </button>
+          )}
           <button
             onClick={() => onPolish(post.id)}
             disabled={polishing}
             className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
           >
-            {polishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {polishing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
             Polish
           </button>
           <button
@@ -758,7 +559,11 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
               disabled={publishing}
               className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Linkedin className="h-4 w-4" />}
+              {publishing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Linkedin className="h-4 w-4" />
+              )}
               Publish to LinkedIn
             </button>
           )}
@@ -783,6 +588,7 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
                     const current = editContent.trim();
                     if (current && !confirm('Replace current content with this template?')) return;
                     setEditContent(t.structure);
+                    setEditing(true);
                     setShowTemplatePicker(false);
                   }}
                   className="w-full text-left rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors"
@@ -830,7 +636,11 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
                 disabled={scheduling}
                 className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
-                {scheduling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {scheduling ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
                 Schedule to LinkedIn
               </button>
             </div>
@@ -853,10 +663,7 @@ export function PostDetailModal({ post, onClose, onPolish, onUpdate, polishing }
 
       {/* Style Feedback Toast */}
       {feedbackEditId && (
-        <StyleFeedbackToast
-          editId={feedbackEditId}
-          onDismiss={() => setFeedbackEditId(null)}
-        />
+        <StyleFeedbackToast editId={feedbackEditId} onDismiss={() => setFeedbackEditId(null)} />
       )}
     </div>
   );

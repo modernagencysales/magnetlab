@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, TrendingUp, Hash, Star, FileText } from 'lucide-react';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
+import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 interface OverviewStats {
   entries_added: number;
@@ -29,20 +30,12 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (teamId) params.append('team_id', teamId);
-
-      const [digestRes, topicsRes] = await Promise.all([
-        fetch(`/api/content-pipeline/knowledge/recent?days=7&${params}`),
-        // We fetch topics to get total count — limit is generous but bounded
-        fetch(`/api/content-pipeline/knowledge/topics?limit=200&${params}`),
+      const [digest, topicsData] = await Promise.all([
+        knowledgeApi.getRecentKnowledge({ days: 7, team_id: teamId }),
+        knowledgeApi.getTopics({ limit: 200, team_id: teamId }),
       ]);
-
-      const digest = await digestRes.json();
-      const topics = await topicsRes.json();
-
-      setStats(digest);
-      setTopicCount(topics.topics?.length || 0);
+      setStats(digest as unknown as OverviewStats);
+      setTopicCount((topicsData.topics?.length as number) || 0);
     } catch {
       setError('Failed to load data. Please try again.');
     } finally {
@@ -50,7 +43,9 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
     }
   }, [teamId]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -64,7 +59,12 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
         <p className="text-sm text-destructive">{error}</p>
-        <button onClick={() => fetchData()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Retry</button>
+        <button
+          onClick={() => fetchData()}
+          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -84,13 +84,12 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
       {/* Most active topics */}
       {stats.most_active_topics.length > 0 && (
         <div>
-          <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">Most Active Topics</h3>
+          <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
+            Most Active Topics
+          </h3>
           <div className="flex flex-wrap gap-2">
             {stats.most_active_topics.map((topic) => (
-              <span
-                key={topic.slug}
-                className="rounded-full border bg-card px-3 py-1.5 text-sm"
-              >
+              <span key={topic.slug} className="rounded-full border bg-card px-3 py-1.5 text-sm">
                 {topic.display_name}
                 <span className="ml-1.5 text-xs text-muted-foreground">({topic.count})</span>
               </span>
@@ -102,7 +101,9 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
       {/* Recent highlights */}
       {stats.highlights.length > 0 && (
         <div>
-          <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">High-Quality Highlights</h3>
+          <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
+            High-Quality Highlights
+          </h3>
           <div className="space-y-3">
             {stats.highlights.slice(0, 5).map((entry) => (
               <KnowledgeEntryCard key={entry.id} entry={entry} />
@@ -114,7 +115,15 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+}) {
   return (
     <div className="rounded-lg border bg-card p-4">
       <div className="flex items-center gap-2 text-muted-foreground">

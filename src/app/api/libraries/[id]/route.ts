@@ -5,15 +5,13 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { libraryFromRow, type LibraryRow } from '@/lib/types/library';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
+import * as librariesService from '@/server/services/libraries.service';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// GET - Get single library with items
 export async function GET(_request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
@@ -26,59 +24,18 @@ export async function GET(_request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('Invalid library ID');
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from('libraries')
-      .select('id, user_id, name, description, icon, slug, auto_feature_days, created_at, updated_at')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (error || !data) {
+    const result = await librariesService.getById(session.user.id, id);
+    if (!result.success) {
       return ApiErrors.notFound('Library');
     }
 
-    // Fetch items with joined asset data
-    const { data: itemsData } = await supabase
-      .from('library_items')
-      .select(`
-        id,
-        asset_type,
-        lead_magnet_id,
-        external_resource_id,
-        icon_override,
-        sort_order,
-        is_featured,
-        lead_magnets:lead_magnet_id(id, title),
-        external_resources:external_resource_id(id, title, icon)
-      `)
-      .eq('library_id', id)
-      .order('sort_order', { ascending: true });
-
-    // Transform items for the frontend
-    const items = (itemsData || []).map((item: Record<string, unknown>) => {
-      const lm = item.lead_magnets as { id: string; title: string } | null;
-      const er = item.external_resources as { id: string; title: string; icon: string } | null;
-      return {
-        id: item.id,
-        assetType: item.asset_type,
-        assetId: lm?.id || er?.id || '',
-        assetTitle: lm?.title || er?.title || 'Unknown',
-        iconOverride: item.icon_override,
-        sortOrder: item.sort_order,
-        isFeatured: item.is_featured,
-      };
-    });
-
-    return NextResponse.json({ library: libraryFromRow(data as LibraryRow), items });
+    return NextResponse.json({ library: result.library, items: result.items });
   } catch (error) {
     logApiError('libraries/get', error);
     return ApiErrors.internalError('Failed to fetch library');
   }
 }
 
-// PUT - Update library
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
@@ -94,68 +51,29 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const body = await request.json();
     const { name, description, icon, slug, autoFeatureDays } = body;
 
-    const supabase = createSupabaseAdminClient();
+    const result = await librariesService.update(session.user.id, id, {
+      name,
+      description,
+      icon,
+      slug,
+      autoFeatureDays,
+    });
 
-    // Verify ownership
-    const { data: existing } = await supabase
-      .from('libraries')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (!existing) {
-      return ApiErrors.notFound('Library');
-    }
-
-    // Build update object
-    const updateData: Record<string, unknown> = {};
-    if (name !== undefined) updateData.name = name;
-    if (description !== undefined) updateData.description = description;
-    if (icon !== undefined) updateData.icon = icon;
-    if (autoFeatureDays !== undefined) updateData.auto_feature_days = autoFeatureDays;
-
-    // Handle slug change with collision check
-    if (slug !== undefined) {
-      const { data: slugExists } = await supabase
-        .from('libraries')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .eq('slug', slug)
-        .neq('id', id)
-        .single();
-
-      if (slugExists) {
-        return ApiErrors.conflict('Slug already in use');
-      }
-      updateData.slug = slug;
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return ApiErrors.validationError('No fields to update');
-    }
-
-    const { data, error } = await supabase
-      .from('libraries')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      logApiError('libraries/update', error, { userId: session.user.id, libraryId: id });
+    if (!result.success) {
+      if (result.error === 'not_found') return ApiErrors.notFound('Library');
+      if (result.error === 'conflict') return ApiErrors.conflict(result.message ?? 'Slug already in use');
+      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'No fields to update');
       return ApiErrors.databaseError('Failed to update library');
     }
 
-    return NextResponse.json({ library: libraryFromRow(data as LibraryRow) });
+    return NextResponse.json({ library: result.library });
   } catch (error) {
     logApiError('libraries/update', error);
     return ApiErrors.internalError('Failed to update library');
   }
 }
 
-// DELETE - Delete library
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(_request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -167,27 +85,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return ApiErrors.validationError('Invalid library ID');
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    // Verify ownership
-    const { data: existing } = await supabase
-      .from('libraries')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (!existing) {
-      return ApiErrors.notFound('Library');
-    }
-
-    const { error } = await supabase
-      .from('libraries')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      logApiError('libraries/delete', error, { userId: session.user.id, libraryId: id });
+    const result = await librariesService.deleteLibrary(session.user.id, id);
+    if (!result.success) {
+      if (result.error === 'not_found') return ApiErrors.notFound('Library');
       return ApiErrors.databaseError('Failed to delete library');
     }
 

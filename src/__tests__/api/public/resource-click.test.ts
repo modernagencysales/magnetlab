@@ -76,6 +76,7 @@ describe('POST /api/public/resource-click', () => {
     expect(mockInsert).toHaveBeenCalledWith({
       external_resource_id: resourceId,
       funnel_page_id: null,
+      library_id: null,
     });
   });
 
