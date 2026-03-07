@@ -402,6 +402,9 @@ export default function HomePage() {
               <Link href="/privacy" className="hover:text-foreground">
                 Privacy
               </Link>
+              <Link href="/trust" className="hover:text-foreground">
+                Trust
+              </Link>
               <a href="mailto:support@magnetlab.app" className="hover:text-foreground">
                 Support
               </a>
