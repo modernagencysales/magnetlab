@@ -50,7 +50,12 @@ export async function quickCreate(userId: string, title: string, description?: s
     'id, title'
   );
 
-  let optinContent: { headline: string; subline: string; socialProof: string; buttonText: string };
+  let optinContent: {
+    headline: string;
+    subline: string;
+    socialProof: string | null;
+    buttonText: string;
+  };
   try {
     optinContent = await generateOptinContent({
       leadMagnetTitle: title.trim(),
@@ -63,7 +68,7 @@ export async function quickCreate(userId: string, title: string, description?: s
     optinContent = {
       headline: title.trim(),
       subline: description || 'Get instant access to proven strategies',
-      socialProof: 'Join thousands of professionals using this resource',
+      socialProof: null,
       buttonText: 'Get Free Access',
     };
   }

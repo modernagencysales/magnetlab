@@ -387,7 +387,7 @@ export interface UpdateWebhookPayload {
 export interface GeneratedOptinContent {
   headline: string;
   subline: string;
-  socialProof: string;
+  socialProof: string | null;
   buttonText: string;
 }
 

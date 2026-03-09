@@ -123,13 +123,10 @@ export function generateDefaultOptinContent(
   const painSolved = concept?.painSolved || 'Get instant access to proven strategies';
 
   return {
-    headline: leadMagnetTitle.length > 60
-      ? leadMagnetTitle.substring(0, 57) + '...'
-      : leadMagnetTitle,
-    subline: painSolved.length > 100
-      ? painSolved.substring(0, 97) + '...'
-      : painSolved,
-    socialProof: 'Join thousands of professionals using this resource',
+    headline:
+      leadMagnetTitle.length > 60 ? leadMagnetTitle.substring(0, 57) + '...' : leadMagnetTitle,
+    subline: painSolved.length > 100 ? painSolved.substring(0, 97) + '...' : painSolved,
+    socialProof: null,
     buttonText: 'Get Free Access',
   };
 }
