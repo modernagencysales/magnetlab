@@ -1,3 +1,4 @@
+/** SectionsManager. CRUD + config editing for funnel page sections. Editors extracted to section-editors/. */
 'use client';
 
 import { useState } from 'react';
@@ -17,7 +18,21 @@ import type {
   FeatureGridConfig,
   SocialProofWallConfig,
 } from '@/lib/types/funnel';
+import { SECTION_VARIANTS } from '@/lib/types/funnel';
 import * as funnelApi from '@/frontend/api/funnel';
+import {
+  LogoBarEditor,
+  StepsEditor,
+  TestimonialEditor,
+  MarketingBlockEditor,
+  SectionBridgeEditor,
+  HeroEditor,
+  StatsBarEditor,
+  FeatureGridEditor,
+  SocialProofWallEditor,
+} from './section-editors';
+
+// ─── Constants ─────────────────────────────────────────
 
 interface SectionsManagerProps {
   funnelId: string | null;
@@ -31,6 +46,10 @@ const SECTION_TYPES: { value: SectionType; label: string }[] = [
   { value: 'testimonial', label: 'Testimonial Quote' },
   { value: 'marketing_block', label: 'Marketing Block' },
   { value: 'section_bridge', label: 'Section Bridge' },
+  { value: 'hero', label: 'Hero' },
+  { value: 'stats_bar', label: 'Stats Bar' },
+  { value: 'feature_grid', label: 'Feature Grid' },
+  { value: 'social_proof_wall', label: 'Social Proof Wall' },
 ];
 
 const PAGE_LOCATIONS: { value: PageLocation; label: string }[] = [
@@ -38,6 +57,8 @@ const PAGE_LOCATIONS: { value: PageLocation; label: string }[] = [
   { value: 'thankyou', label: 'Thank You' },
   { value: 'content', label: 'Content' },
 ];
+
+// ─── Default Configs ───────────────────────────────────
 
 function getDefaultConfig(type: SectionType): SectionConfig {
   switch (type) {
@@ -87,6 +108,8 @@ function getDefaultConfig(type: SectionType): SectionConfig {
       } satisfies SocialProofWallConfig;
   }
 }
+
+// ─── Main Component ────────────────────────────────────
 
 export function SectionsManager({ funnelId, sections, onSectionsChange }: SectionsManagerProps) {
   const [activeLocation, setActiveLocation] = useState<PageLocation>('optin');
@@ -160,6 +183,21 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
     setSavingId(section.id);
     try {
       const data = await funnelApi.updateSection(funnelId, section.id, { config: newConfig });
+      onSectionsChange(
+        sections.map((s) => (s.id === section.id ? (data.section as FunnelPageSection) : s))
+      );
+    } catch {
+      // ignore
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleUpdateVariant = async (section: FunnelPageSection, variant: string) => {
+    if (!funnelId) return;
+    setSavingId(section.id);
+    try {
+      const data = await funnelApi.updateSection(funnelId, section.id, { variant });
       onSectionsChange(
         sections.map((s) => (s.id === section.id ? (data.section as FunnelPageSection) : s))
       );
@@ -278,6 +316,7 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
                   section={section}
                   saving={savingId === section.id}
                   onSave={(config) => handleUpdateConfig(section, config)}
+                  onVariantChange={(variant) => handleUpdateVariant(section, variant)}
                 />
               </div>
             )}
@@ -322,23 +361,52 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
   );
 }
 
-// --- Config editors per section type ---
+// ─── Config Editor Wrapper ─────────────────────────────
 
 interface SectionConfigEditorProps {
   section: FunnelPageSection;
   saving: boolean;
   onSave: (config: Record<string, unknown>) => void;
+  onVariantChange: (variant: string) => void;
 }
 
-function SectionConfigEditor({ section, saving, onSave }: SectionConfigEditorProps) {
+function SectionConfigEditor({
+  section,
+  saving,
+  onSave,
+  onVariantChange,
+}: SectionConfigEditorProps) {
   const [config, setConfig] = useState<Record<string, unknown>>(
     section.config as unknown as Record<string, unknown>
   );
 
   const handleSave = () => onSave(config);
+  const variants = SECTION_VARIANTS[section.sectionType as SectionType] || [];
 
   return (
     <div className="space-y-3">
+      {/* Variant selector */}
+      {variants.length > 0 && (
+        <div>
+          <label className="text-xs text-muted-foreground">Variant</label>
+          <select
+            value={section.variant || variants[0]}
+            onChange={(e) => onVariantChange(e.target.value)}
+            className="w-full rounded border bg-background px-2 py-1 text-sm"
+          >
+            {variants.map((v) => (
+              <option key={v} value={v}>
+                {v
+                  .split('-')
+                  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                  .join(' ')}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Type-specific config editor */}
       {section.sectionType === 'logo_bar' && (
         <LogoBarEditor config={config as unknown as LogoBarConfig} onChange={setConfig} />
       )}
@@ -357,6 +425,21 @@ function SectionConfigEditor({ section, saving, onSave }: SectionConfigEditorPro
       {section.sectionType === 'section_bridge' && (
         <SectionBridgeEditor
           config={config as unknown as SectionBridgeConfig}
+          onChange={setConfig}
+        />
+      )}
+      {section.sectionType === 'hero' && (
+        <HeroEditor config={config as unknown as HeroConfig} onChange={setConfig} />
+      )}
+      {section.sectionType === 'stats_bar' && (
+        <StatsBarEditor config={config as unknown as StatsBarConfig} onChange={setConfig} />
+      )}
+      {section.sectionType === 'feature_grid' && (
+        <FeatureGridEditor config={config as unknown as FeatureGridConfig} onChange={setConfig} />
+      )}
+      {section.sectionType === 'social_proof_wall' && (
+        <SocialProofWallEditor
+          config={config as unknown as SocialProofWallConfig}
           onChange={setConfig}
         />
       )}
@@ -384,245 +467,5 @@ function SectionConfigEditor({ section, saving, onSave }: SectionConfigEditorPro
         Save Config
       </button>
     </div>
-  );
-}
-
-// --- Per-type config editors ---
-
-function FieldInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-  multiline,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  multiline?: boolean;
-}) {
-  return (
-    <div>
-      <label className="text-xs text-muted-foreground">{label}</label>
-      {multiline ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          rows={3}
-          className="w-full rounded border bg-background px-2 py-1 text-sm resize-none"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full rounded border bg-background px-2 py-1 text-sm"
-        />
-      )}
-    </div>
-  );
-}
-
-function LogoBarEditor({
-  config,
-  onChange,
-}: {
-  config: LogoBarConfig;
-  onChange: (c: Record<string, unknown>) => void;
-}) {
-  return (
-    <div>
-      <label className="text-xs text-muted-foreground">Logos (one per line: name | imageUrl)</label>
-      <textarea
-        value={(config.logos || []).map((l) => `${l.name}|${l.imageUrl}`).join('\n')}
-        onChange={(e) => {
-          const logos = e.target.value
-            .split('\n')
-            .filter(Boolean)
-            .map((line) => {
-              const [name, imageUrl] = line.split('|').map((s) => s.trim());
-              return { name: name || '', imageUrl: imageUrl || '' };
-            });
-          onChange({ ...config, logos });
-        }}
-        rows={4}
-        className="w-full rounded border bg-background px-2 py-1 text-sm font-mono resize-none"
-        placeholder="Company Name | https://logo-url.com/logo.svg"
-      />
-    </div>
-  );
-}
-
-function StepsEditor({
-  config,
-  onChange,
-}: {
-  config: StepsConfig;
-  onChange: (c: Record<string, unknown>) => void;
-}) {
-  const steps = config.steps || [];
-  const updateStep = (idx: number, field: string, value: string) => {
-    const newSteps = steps.map((s, i) => (i === idx ? { ...s, [field]: value } : s));
-    onChange({ ...config, steps: newSteps });
-  };
-
-  return (
-    <>
-      <FieldInput
-        label="Heading"
-        value={config.heading || ''}
-        onChange={(v) => onChange({ ...config, heading: v })}
-        placeholder="What Happens Next"
-      />
-      <FieldInput
-        label="Subheading"
-        value={config.subheading || ''}
-        onChange={(v) => onChange({ ...config, subheading: v })}
-        placeholder="Optional subheading"
-      />
-      {steps.map((step, i) => (
-        <div key={i} className="rounded border p-2 space-y-1">
-          <FieldInput
-            label={`Step ${i + 1} Title`}
-            value={step.title}
-            onChange={(v) => updateStep(i, 'title', v)}
-          />
-          <FieldInput
-            label="Description"
-            value={step.description}
-            onChange={(v) => updateStep(i, 'description', v)}
-          />
-        </div>
-      ))}
-    </>
-  );
-}
-
-function TestimonialEditor({
-  config,
-  onChange,
-}: {
-  config: TestimonialConfig;
-  onChange: (c: Record<string, unknown>) => void;
-}) {
-  return (
-    <>
-      <FieldInput
-        label="Quote"
-        value={config.quote}
-        onChange={(v) => onChange({ ...config, quote: v })}
-        multiline
-      />
-      <FieldInput
-        label="Author"
-        value={config.author || ''}
-        onChange={(v) => onChange({ ...config, author: v })}
-      />
-      <FieldInput
-        label="Role"
-        value={config.role || ''}
-        onChange={(v) => onChange({ ...config, role: v })}
-        placeholder="CEO at Company"
-      />
-      <FieldInput
-        label="Result"
-        value={config.result || ''}
-        onChange={(v) => onChange({ ...config, result: v })}
-        placeholder="2x revenue in 3 months"
-      />
-    </>
-  );
-}
-
-function MarketingBlockEditor({
-  config,
-  onChange,
-}: {
-  config: MarketingBlockConfig;
-  onChange: (c: Record<string, unknown>) => void;
-}) {
-  return (
-    <>
-      <div>
-        <label className="text-xs text-muted-foreground">Block Type</label>
-        <select
-          value={config.blockType}
-          onChange={(e) => onChange({ ...config, blockType: e.target.value })}
-          className="w-full rounded border bg-background px-2 py-1 text-sm"
-        >
-          {['testimonial', 'case_study', 'feature', 'benefit', 'faq', 'pricing', 'cta'].map((t) => (
-            <option key={t} value={t}>
-              {t.replace('_', ' ')}
-            </option>
-          ))}
-        </select>
-      </div>
-      <FieldInput
-        label="Title"
-        value={config.title || ''}
-        onChange={(v) => onChange({ ...config, title: v })}
-      />
-      <FieldInput
-        label="Content"
-        value={config.content || ''}
-        onChange={(v) => onChange({ ...config, content: v })}
-        multiline
-      />
-      {config.blockType === 'cta' && (
-        <>
-          <FieldInput
-            label="CTA Text"
-            value={config.ctaText || ''}
-            onChange={(v) => onChange({ ...config, ctaText: v })}
-            placeholder="Get Started"
-          />
-          <FieldInput
-            label="CTA URL"
-            value={config.ctaUrl || ''}
-            onChange={(v) => onChange({ ...config, ctaUrl: v })}
-            placeholder="https://..."
-          />
-        </>
-      )}
-    </>
-  );
-}
-
-function SectionBridgeEditor({
-  config,
-  onChange,
-}: {
-  config: SectionBridgeConfig;
-  onChange: (c: Record<string, unknown>) => void;
-}) {
-  return (
-    <>
-      <FieldInput
-        label="Text"
-        value={config.text}
-        onChange={(v) => onChange({ ...config, text: v })}
-      />
-      <div>
-        <label className="text-xs text-muted-foreground">Variant</label>
-        <select
-          value={config.variant || 'default'}
-          onChange={(e) => onChange({ ...config, variant: e.target.value })}
-          className="w-full rounded border bg-background px-2 py-1 text-sm"
-        >
-          <option value="default">Default</option>
-          <option value="accent">Accent</option>
-          <option value="gradient">Gradient</option>
-        </select>
-      </div>
-      <FieldInput
-        label="Step Label"
-        value={config.stepLabel || ''}
-        onChange={(v) => onChange({ ...config, stepLabel: v })}
-        placeholder="Step 2"
-      />
-    </>
   );
 }
