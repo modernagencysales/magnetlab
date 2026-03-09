@@ -10,6 +10,32 @@ export type FunnelTargetType = 'lead_magnet' | 'library' | 'external_resource';
 export type RedirectTrigger = 'none' | 'immediate' | 'after_qualification';
 export type ThankyouLayout = 'survey_first' | 'video_first' | 'side_by_side';
 
+// ============================================
+// RESTYLE PLAN (ephemeral, not DB-backed)
+// ============================================
+
+export interface RestyleFieldChange {
+  field: 'theme' | 'primaryColor' | 'backgroundStyle' | 'fontFamily' | 'fontUrl';
+  from: string | null;
+  to: string;
+  reason: string;
+}
+
+export interface RestyleSectionChange {
+  action: 'add' | 'remove' | 'reorder';
+  sectionType: SectionType;
+  pageLocation?: PageLocation;
+  position?: number;
+  reason: string;
+}
+
+export interface RestylePlan {
+  styleDirection: string;
+  reasoning: string;
+  changes: RestyleFieldChange[];
+  sectionChanges: RestyleSectionChange[];
+}
+
 export interface FunnelPage {
   id: string;
   leadMagnetId: string | null; // Now nullable for library/external_resource targets
