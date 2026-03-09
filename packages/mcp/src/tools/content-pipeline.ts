@@ -1,4 +1,4 @@
-import { Tool } from '@modelcontextprotocol/sdk/types.js'
+import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 export const contentPipelineTools: Tool[] = [
   // ============================================================
@@ -31,7 +31,8 @@ export const contentPipelineTools: Tool[] = [
   },
   {
     name: 'magnetlab_delete_transcript',
-    description: 'Delete a transcript and all its extracted knowledge entries and content ideas (cascading delete).',
+    description:
+      'Delete a transcript and all its extracted knowledge entries and content ideas (cascading delete).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -51,15 +52,36 @@ export const contentPipelineTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Natural language search query (optional — omit to browse/filter)' },
+        query: {
+          type: 'string',
+          description: 'Natural language search query (optional — omit to browse/filter)',
+        },
         category: {
           type: 'string',
-          enum: ['insight', 'question', 'pain_point', 'success_story', 'objection', 'framework', 'quote', 'market_intel'],
+          enum: [
+            'insight',
+            'question',
+            'pain_point',
+            'success_story',
+            'objection',
+            'framework',
+            'quote',
+            'market_intel',
+          ],
           description: 'Filter by knowledge category',
         },
         type: {
           type: 'string',
-          enum: ['how_to', 'insight', 'story', 'question', 'objection', 'mistake', 'decision', 'market_intel'],
+          enum: [
+            'how_to',
+            'insight',
+            'story',
+            'question',
+            'objection',
+            'mistake',
+            'decision',
+            'market_intel',
+          ],
           description: 'Filter by knowledge type',
         },
         topic: { type: 'string', description: 'Filter by topic slug' },
@@ -79,7 +101,16 @@ export const contentPipelineTools: Tool[] = [
       properties: {
         category: {
           type: 'string',
-          enum: ['insight', 'question', 'pain_point', 'success_story', 'objection', 'framework', 'quote', 'market_intel'],
+          enum: [
+            'insight',
+            'question',
+            'pain_point',
+            'success_story',
+            'objection',
+            'framework',
+            'quote',
+            'market_intel',
+          ],
           description: 'Category to browse (default: insight)',
         },
         limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
@@ -112,7 +143,10 @@ export const contentPipelineTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        question: { type: 'string', description: 'Natural language question about the knowledge base' },
+        question: {
+          type: 'string',
+          description: 'Natural language question about the knowledge base',
+        },
       },
       required: ['question'],
     },
@@ -197,6 +231,42 @@ export const contentPipelineTools: Tool[] = [
   },
 
   // ============================================================
+  // Position Synthesis
+  // ============================================================
+  {
+    name: 'magnetlab_synthesize_position',
+    description:
+      "Synthesize the user's overall position on a topic from their AI Brain knowledge entries. " +
+      'Returns a structured Position object with: thesis (core stance), stance_type (contrarian/conventional/nuanced/experiential), ' +
+      'key arguments, unique data points with evidence strength, extractable stories with narrative hooks, ' +
+      'specific recommendations, voice markers, differentiators from generic advice, contradictions, and coverage gaps. ' +
+      'Positions are cached — set force_fresh=true to re-synthesize. Requires at least 3 knowledge entries on the topic.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'Topic slug (from magnetlab_list_topics)' },
+        force_fresh: {
+          type: 'boolean',
+          default: false,
+          description:
+            'Force re-synthesis even if cached position exists (slower, costs an LLM call)',
+        },
+      },
+      required: ['topic'],
+    },
+  },
+  {
+    name: 'magnetlab_list_positions',
+    description:
+      'List all synthesized positions for the user. Shows which topics have cached position synthesis, their stance type, confidence score, and whether they are stale. ' +
+      'Use this to see what the AI Brain has synthesized so far, then use magnetlab_synthesize_position to get full details.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+
+  // ============================================================
   // Content Ideas
   // ============================================================
   {
@@ -208,17 +278,39 @@ export const contentPipelineTools: Tool[] = [
       properties: {
         status: {
           type: 'string',
-          enum: ['extracted', 'selected', 'writing', 'written', 'scheduled', 'published', 'archived'],
+          enum: [
+            'extracted',
+            'selected',
+            'writing',
+            'written',
+            'scheduled',
+            'published',
+            'archived',
+          ],
           description: 'Filter by idea status',
         },
         pillar: {
           type: 'string',
-          enum: ['moments_that_matter', 'teaching_promotion', 'human_personal', 'collaboration_social_proof'],
+          enum: [
+            'moments_that_matter',
+            'teaching_promotion',
+            'human_personal',
+            'collaboration_social_proof',
+          ],
           description: 'Filter by content pillar',
         },
         content_type: {
           type: 'string',
-          enum: ['story', 'insight', 'tip', 'framework', 'case_study', 'question', 'listicle', 'contrarian'],
+          enum: [
+            'story',
+            'insight',
+            'tip',
+            'framework',
+            'case_study',
+            'question',
+            'listicle',
+            'contrarian',
+          ],
           description: 'Filter by content type',
         },
         limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
@@ -228,7 +320,8 @@ export const contentPipelineTools: Tool[] = [
   },
   {
     name: 'magnetlab_get_idea',
-    description: 'Get full details of a content idea including its transcript context and writing status.',
+    description:
+      'Get full details of a content idea including its transcript context and writing status.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -247,7 +340,15 @@ export const contentPipelineTools: Tool[] = [
         idea_id: { type: 'string', description: 'Content idea UUID' },
         status: {
           type: 'string',
-          enum: ['extracted', 'selected', 'writing', 'written', 'scheduled', 'published', 'archived'],
+          enum: [
+            'extracted',
+            'selected',
+            'writing',
+            'written',
+            'scheduled',
+            'published',
+            'archived',
+          ],
           description: 'New status',
         },
       },
@@ -268,7 +369,7 @@ export const contentPipelineTools: Tool[] = [
   {
     name: 'magnetlab_write_post_from_idea',
     description:
-      'Generate a LinkedIn post draft from a content idea using AI. The idea\'s insight, context, and pillar are used to write an engaging post.',
+      "Generate a LinkedIn post draft from a content idea using AI. The idea's insight, context, and pillar are used to write an engaging post.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -304,7 +405,8 @@ export const contentPipelineTools: Tool[] = [
   },
   {
     name: 'magnetlab_get_post',
-    description: 'Get full details of a pipeline post including draft and final content, hook score, polish notes, and scheduling info.',
+    description:
+      'Get full details of a pipeline post including draft and final content, hook score, polish notes, and scheduling info.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -357,7 +459,8 @@ export const contentPipelineTools: Tool[] = [
   },
   {
     name: 'magnetlab_publish_post',
-    description: 'Publish a pipeline post immediately (marks as published, triggers LeadShark if connected).',
+    description:
+      'Publish a pipeline post immediately (marks as published, triggers LeadShark if connected).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -384,7 +487,8 @@ export const contentPipelineTools: Tool[] = [
   },
   {
     name: 'magnetlab_get_posts_by_date_range',
-    description: 'Get all pipeline posts within a date range. Useful for viewing the content calendar.',
+    description:
+      'Get all pipeline posts within a date range. Useful for viewing the content calendar.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -414,7 +518,8 @@ export const contentPipelineTools: Tool[] = [
   // ============================================================
   {
     name: 'magnetlab_list_posting_slots',
-    description: 'List all posting time slots. These define when autopilot publishes posts (day of week + time).',
+    description:
+      'List all posting time slots. These define when autopilot publishes posts (day of week + time).',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -502,7 +607,7 @@ export const contentPipelineTools: Tool[] = [
   {
     name: 'magnetlab_extract_writing_style',
     description:
-      'Extract a writing style profile from a LinkedIn creator\'s URL. Analyzes their posts to capture tone, formatting, hook patterns, and voice characteristics.',
+      "Extract a writing style profile from a LinkedIn creator's URL. Analyzes their posts to capture tone, formatting, hook patterns, and voice characteristics.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -516,7 +621,8 @@ export const contentPipelineTools: Tool[] = [
   },
   {
     name: 'magnetlab_get_writing_style',
-    description: 'Get full details of a writing style profile including analyzed posts and style characteristics.',
+    description:
+      'Get full details of a writing style profile including analyzed posts and style characteristics.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -540,7 +646,7 @@ export const contentPipelineTools: Tool[] = [
   {
     name: 'magnetlab_match_template',
     description:
-      'Find the best matching templates for a content idea. Uses semantic similarity to suggest templates that fit the idea\'s topic and style.',
+      "Find the best matching templates for a content idea. Uses semantic similarity to suggest templates that fit the idea's topic and style.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -555,7 +661,8 @@ export const contentPipelineTools: Tool[] = [
   // ============================================================
   {
     name: 'magnetlab_get_plan',
-    description: 'Get the current content plan. Shows the planned content calendar with assigned ideas, templates, and statuses.',
+    description:
+      'Get the current content plan. Shows the planned content calendar with assigned ideas, templates, and statuses.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -574,7 +681,8 @@ export const contentPipelineTools: Tool[] = [
   },
   {
     name: 'magnetlab_approve_plan',
-    description: 'Approve a generated content plan. Converts planned items into pipeline posts ready for writing.',
+    description:
+      'Approve a generated content plan. Converts planned items into pipeline posts ready for writing.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -610,4 +718,4 @@ export const contentPipelineTools: Tool[] = [
       required: ['context'],
     },
   },
-]
+];

@@ -171,6 +171,11 @@ The brand kit is for VISUAL styling only (colors, fonts) — never use it for co
    → magnetlab_execute({tool: "magnetlab_search_knowledge", arguments: {query: "<topic>"}})
    → magnetlab_execute({tool: "magnetlab_ask_knowledge", arguments: {question: "What are the key insights about <topic>?"}})
 
+1b. SYNTHESIZE — Get or build the user's position on the topic
+   → magnetlab_execute({tool: "magnetlab_synthesize_position", arguments: {topic: "<topic-slug>"}})
+   Returns thesis, stance type, key arguments, stories, data points, and differentiators.
+   Use this structured position to guide all content generation — it's far richer than raw search results.
+
 2. ASSESS — Check if there's enough knowledge
    → magnetlab_execute({tool: "magnetlab_knowledge_readiness", arguments: {topic: "<topic>", goal: "lead_magnet"}})
 
@@ -198,14 +203,23 @@ The brand kit is for VISUAL styling only (colors, fonts) — never use it for co
    This generates 2000+ word structured content from the concept and AI Brain.
    Slow call (30-90s). Saves to extracted_content and polished_content.
 
-6. REVIEW & PUBLISH
+6. EMAIL SEQUENCE (optional but recommended)
+   → magnetlab_execute({tool: "magnetlab_generate_email_sequence", arguments: {lead_magnet_id: "..."}})
+   → Review emails for placeholder text like "[INSERT TIP]" — replace via magnetlab_update_email_sequence
+   → magnetlab_execute({tool: "magnetlab_activate_email_sequence", arguments: {lead_magnet_id: "..."}})
+   Activation will FAIL if placeholders remain. Fix them first.
+
+7. REVIEW & PUBLISH
    → magnetlab_execute({tool: "magnetlab_publish_funnel", arguments: {funnel_id: "..."}})
+   WARNING: Publishing does NOT auto-activate the email sequence.
+   If you skip step 6, leads will NOT receive welcome emails.
 
 ## Important
 - A lead magnet without a funnel is NOT publicly accessible
 - A lead magnet without content is an empty shell — always generate content
 - Never fabricate social proof — use real data or omit it
-- The lead magnet should use the user's actual language from the AI Brain`,
+- The lead magnet should use the user's actual language from the AI Brain
+- Email sequences must be explicitly activated — publishing a funnel does NOT start sending emails`,
 
   write_linkedin_post: `# Writing a LinkedIn Post — Workflow
 
@@ -214,6 +228,10 @@ The brand kit is for VISUAL styling only (colors, fonts) — never use it for co
 1. RESEARCH — Pull relevant knowledge
    → magnetlab_execute({tool: "magnetlab_search_knowledge", arguments: {query: "<topic>"}})
    → magnetlab_execute({tool: "magnetlab_ask_knowledge", arguments: {question: "..."}})
+
+1b. SYNTHESIZE — Get the user's structured position on the topic
+   → magnetlab_execute({tool: "magnetlab_synthesize_position", arguments: {topic: "<topic-slug>"}})
+   Use this to ground the post in their actual thesis, stories, data points, and voice markers.
 
 2. CHECK IDEAS — See if there are existing content ideas on this topic
    → magnetlab_execute({tool: "magnetlab_list_ideas", arguments: {status: "extracted"}})
@@ -256,15 +274,21 @@ Always ground posts in real insights from the AI Brain. The user's actual storie
 4. QUALIFICATION (optional)
    → magnetlab_execute({tool: "magnetlab_create_qualification_form", arguments: {funnel_page_id: "...", questions: [...]}})
 
-5. EMAIL SEQUENCE (optional)
-   → magnetlab_execute({tool: "magnetlab_create_email_sequence", arguments: {funnel_page_id: "...", ...}})
+5. EMAIL SEQUENCE (optional but recommended)
+   → magnetlab_execute({tool: "magnetlab_generate_email_sequence", arguments: {lead_magnet_id: "..."}})
+   → Review emails for placeholder text like "[INSERT TIP]" — replace via magnetlab_update_email_sequence
+   → magnetlab_execute({tool: "magnetlab_activate_email_sequence", arguments: {lead_magnet_id: "..."}})
+   State machine: generate → draft, activate → active. Only "active" sequences send emails.
+   Activation FAILS if emails contain template placeholders — fix them first.
 
 6. PUBLISH
    → magnetlab_execute({tool: "magnetlab_publish_funnel", arguments: {funnel_id: "..."}})
+   WARNING: Publishing does NOT activate the email sequence. Do step 5 first.
 
 ## Key rules
 - Never fabricate social proof — omit it or use real data
 - Use magnetlab_generate_funnel_content to AI-generate copy from lead magnet content
+- Email sequences must be activated BEFORE publishing — publish does not auto-activate
 - Use magnetlab_restyle_funnel for AI-powered visual design`,
 
   analyze_content_gaps: `# Analyzing Content Gaps — Workflow

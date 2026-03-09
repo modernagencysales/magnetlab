@@ -1,16 +1,16 @@
-import { Tool } from '@modelcontextprotocol/sdk/types.js'
-import { leadMagnetTools } from './lead-magnets.js'
-import { ideationTools } from './ideation.js'
-import { funnelTools } from './funnels.js'
-import { leadTools } from './leads.js'
-import { analyticsTools } from './analytics.js'
-import { brandKitTools } from './brand-kit.js'
-import { emailSequenceTools } from './email-sequences.js'
-import { contentPipelineTools } from './content-pipeline.js'
-import { swipeFileTools } from './swipe-file.js'
-import { libraryTools } from './libraries.js'
-import { qualificationFormTools } from './qualification-forms.js'
-import { emailSystemTools } from './email-system.js'
+import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { leadMagnetTools } from './lead-magnets.js';
+import { ideationTools } from './ideation.js';
+import { funnelTools } from './funnels.js';
+import { leadTools } from './leads.js';
+import { analyticsTools } from './analytics.js';
+import { brandKitTools } from './brand-kit.js';
+import { emailSequenceTools } from './email-sequences.js';
+import { contentPipelineTools } from './content-pipeline.js';
+import { swipeFileTools } from './swipe-file.js';
+import { libraryTools } from './libraries.js';
+import { qualificationFormTools } from './qualification-forms.js';
+import { emailSystemTools } from './email-system.js';
 
 export const tools: Tool[] = [
   ...leadMagnetTools,
@@ -25,24 +25,24 @@ export const tools: Tool[] = [
   ...swipeFileTools,
   ...libraryTools,
   ...qualificationFormTools,
-]
+];
 
 // Re-export individual tool arrays for selective imports
-export { leadMagnetTools } from './lead-magnets.js'
-export { ideationTools } from './ideation.js'
-export { funnelTools } from './funnels.js'
-export { leadTools } from './leads.js'
-export { analyticsTools } from './analytics.js'
-export { brandKitTools } from './brand-kit.js'
-export { emailSequenceTools } from './email-sequences.js'
-export { emailSystemTools } from './email-system.js'
-export { contentPipelineTools } from './content-pipeline.js'
-export { swipeFileTools } from './swipe-file.js'
-export { libraryTools } from './libraries.js'
-export { qualificationFormTools } from './qualification-forms.js'
+export { leadMagnetTools } from './lead-magnets.js';
+export { ideationTools } from './ideation.js';
+export { funnelTools } from './funnels.js';
+export { leadTools } from './leads.js';
+export { analyticsTools } from './analytics.js';
+export { brandKitTools } from './brand-kit.js';
+export { emailSequenceTools } from './email-sequences.js';
+export { emailSystemTools } from './email-system.js';
+export { contentPipelineTools } from './content-pipeline.js';
+export { swipeFileTools } from './swipe-file.js';
+export { libraryTools } from './libraries.js';
+export { qualificationFormTools } from './qualification-forms.js';
 
 // Tool lookup by name for handler routing
-export const toolsByName = new Map<string, Tool>(tools.map((tool) => [tool.name, tool]))
+export const toolsByName = new Map<string, Tool>(tools.map((tool) => [tool.name, tool]));
 
 // Content pipeline sub-groups (split the 44 tools into focused categories)
 const knowledgeToolNames = [
@@ -60,7 +60,9 @@ const knowledgeToolNames = [
   'magnetlab_export_knowledge',
   'magnetlab_list_topics',
   'magnetlab_topic_detail',
-]
+  'magnetlab_synthesize_position',
+  'magnetlab_list_positions',
+];
 
 const contentWritingToolNames = [
   'magnetlab_list_ideas',
@@ -82,7 +84,7 @@ const contentWritingToolNames = [
   'magnetlab_match_template',
   'magnetlab_get_business_context',
   'magnetlab_update_business_context',
-]
+];
 
 const contentSchedulingToolNames = [
   'magnetlab_schedule_post',
@@ -96,7 +98,7 @@ const contentSchedulingToolNames = [
   'magnetlab_get_plan',
   'magnetlab_generate_plan',
   'magnetlab_approve_plan',
-]
+];
 
 // Get tool names by category — used by handlers and category-tools
 export const toolCategories = {
@@ -113,7 +115,7 @@ export const toolCategories = {
   libraries: libraryTools.map((t) => t.name),
   qualificationForms: qualificationFormTools.map((t) => t.name),
   emailSystem: emailSystemTools.map((t) => t.name),
-}
+};
 
 // Discovery categories — what the user-facing category tools expose
 // These are reorganized for better discoverability and smaller context footprint
@@ -134,4 +136,4 @@ export const discoveryCategories = {
   swipeFile: swipeFileTools.map((t) => t.name),
   libraries: libraryTools.map((t) => t.name),
   qualificationForms: qualificationFormTools.map((t) => t.name),
-}
+};

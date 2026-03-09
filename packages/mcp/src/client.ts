@@ -734,6 +734,23 @@ export class MagnetLabClient {
     return this.request<{ topic: unknown }>('GET', `/content-pipeline/knowledge/topics/${slug}`);
   }
 
+  async synthesizePosition(params: { topic: string; force_fresh?: boolean }) {
+    if (params.force_fresh) {
+      return this.aiRequest<{ position: unknown }>('POST', `/content-pipeline/knowledge/position`, {
+        topic: params.topic,
+      });
+    }
+    const searchParams = new URLSearchParams({ topic: params.topic });
+    return this.request<{ position: unknown }>(
+      'GET',
+      `/content-pipeline/knowledge/position?${searchParams}`
+    );
+  }
+
+  async listPositions() {
+    return this.request<{ positions: unknown[] }>('GET', `/content-pipeline/knowledge/position`);
+  }
+
   // ============================================================
   // Content Pipeline - Ideas
   // ============================================================

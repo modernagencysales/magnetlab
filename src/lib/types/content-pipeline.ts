@@ -62,7 +62,15 @@ export type KnowledgeCategory = 'insight' | 'question' | 'product_intel';
 
 export type KnowledgeSpeaker = 'host' | 'participant' | 'unknown';
 
-export type TranscriptType = 'coaching' | 'sales' | 'external' | 'blueprint_analysis' | 'dfy_content_call' | 'interview' | 'webinar' | 'other';
+export type TranscriptType =
+  | 'coaching'
+  | 'sales'
+  | 'external'
+  | 'blueprint_analysis'
+  | 'dfy_content_call'
+  | 'interview'
+  | 'webinar'
+  | 'other';
 
 export const KNOWLEDGE_CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
   insight: 'Insight',
@@ -281,6 +289,73 @@ export interface KnowledgeReadiness {
   gaps_that_would_improve: string[];
   suggested_archetypes: string[];
   topic_coverage: Record<string, number>;
+}
+
+// ============================================
+// POSITION SYNTHESIS
+// ============================================
+
+export type StanceType = 'contrarian' | 'conventional' | 'nuanced' | 'experiential';
+
+export type EvidenceStrength = 'anecdotal' | 'observed' | 'measured';
+
+export interface PositionDataPoint {
+  claim: string;
+  evidence_strength: EvidenceStrength;
+  source_entry_id: string;
+}
+
+export interface PositionStory {
+  hook: string;
+  arc: string;
+  lesson: string;
+  source_entry_id: string;
+}
+
+export interface PositionRecommendation {
+  recommendation: string;
+  reasoning: string;
+  source_entry_id: string;
+}
+
+export interface PositionContradiction {
+  tension: string;
+  resolution?: string;
+}
+
+export interface Position {
+  topic: string;
+  topic_slug: string;
+  thesis: string;
+  stance_type: StanceType;
+  confidence: number;
+  key_arguments: string[];
+  unique_data_points: PositionDataPoint[];
+  stories: PositionStory[];
+  specific_recommendations: PositionRecommendation[];
+  voice_markers: string[];
+  differentiators: string[];
+  contradictions: PositionContradiction[];
+  related_topics: string[];
+  coverage_gaps: string[];
+  supporting_entry_ids: string[];
+  entry_count: number;
+  synthesized_at: string;
+}
+
+/** Row shape from cp_positions table. */
+export interface PositionRow {
+  id: string;
+  user_id: string;
+  topic_slug: string;
+  topic_label: string;
+  position: Position;
+  entry_ids: string[];
+  entry_count: number;
+  is_stale: boolean;
+  synthesized_at: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface KnowledgeTag {
@@ -521,6 +596,8 @@ export interface ContentBrief {
   suggestedAngles: string[];
   topicReadiness?: number;
   topKnowledgeTypes?: KnowledgeType[];
+  /** Synthesized position for this topic (null if insufficient entries or not yet cached). */
+  position?: Position | null;
 }
 
 // ============================================
