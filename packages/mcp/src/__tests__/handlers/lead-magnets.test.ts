@@ -189,3 +189,28 @@ describe('handleLeadMagnetTools — funnel_config', () => {
     expect(resultObj.public_url).toBeUndefined();
   });
 });
+
+// ── Generate content tests ────────────────────────────────
+
+const MOCK_GENERATED_CONTENT = {
+  extractedContent: { title: 'Test', structure: [] },
+  polishedContent: { sections: [], heroSummary: 'Test summary' },
+  polishedAt: '2026-03-08T00:00:00Z',
+};
+
+describe('handleLeadMagnetTools — magnetlab_generate_lead_magnet_content', () => {
+  it('calls generateLeadMagnetContent with the lead_magnet_id', async () => {
+    const client = {
+      generateLeadMagnetContent: vi.fn().mockResolvedValue(MOCK_GENERATED_CONTENT),
+    } as unknown as MagnetLabClient;
+
+    const result = await handleLeadMagnetTools(
+      'magnetlab_generate_lead_magnet_content',
+      { lead_magnet_id: 'lm-789' },
+      client
+    );
+
+    expect(client.generateLeadMagnetContent).toHaveBeenCalledWith('lm-789');
+    expect(result).toEqual(MOCK_GENERATED_CONTENT);
+  });
+});

@@ -191,6 +191,14 @@ export class MagnetLabClient {
     );
   }
 
+  async generateLeadMagnetContent(leadMagnetId: string) {
+    return this.aiRequest<{
+      extractedContent: unknown;
+      polishedContent: unknown;
+      polishedAt: string;
+    }>('POST', `/lead-magnet/${leadMagnetId}/generate-content`, {});
+  }
+
   async polishLeadMagnetContent(leadMagnetId: string) {
     return this.aiRequest<unknown>('POST', `/lead-magnet/${leadMagnetId}/polish`, {});
   }

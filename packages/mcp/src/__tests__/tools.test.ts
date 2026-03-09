@@ -13,8 +13,8 @@ import {
 } from '../tools/category-tools.js';
 
 describe('Tool Registration', () => {
-  it('exports exactly 113 tools', () => {
-    expect(tools).toHaveLength(113);
+  it('exports exactly 114 tools', () => {
+    expect(tools).toHaveLength(114);
   });
 
   it('all tools have unique names', () => {
@@ -70,7 +70,7 @@ describe('Tool Registration', () => {
 
   describe('handler category sizes', () => {
     const expectedCounts: Record<string, number> = {
-      leadMagnets: 8,
+      leadMagnets: 9,
       ideation: 6,
       funnels: 15,
       leads: 2,
@@ -157,8 +157,8 @@ describe('Discovery Categories', () => {
     expect(discoveryCategories.leadMagnets).toContain('magnetlab_list_leads');
     expect(discoveryCategories.leadMagnets).toContain('magnetlab_export_leads');
     expect(discoveryCategories.leadMagnets).toContain('magnetlab_get_funnel_stats');
-    // 8 lead magnet tools + 2 leads + 1 analytics = 11
-    expect(discoveryCategories.leadMagnets.length).toBe(11);
+    // 9 lead magnet tools + 2 leads + 1 analytics = 12
+    expect(discoveryCategories.leadMagnets.length).toBe(12);
   });
 
   describe('discovery category sizes', () => {
@@ -166,7 +166,7 @@ describe('Discovery Categories', () => {
       knowledge: 14,
       contentWriting: 19,
       contentScheduling: 11,
-      leadMagnets: 11,
+      leadMagnets: 12,
       ideation: 6,
       funnels: 15,
       brandKit: 3,

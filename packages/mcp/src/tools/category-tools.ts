@@ -193,11 +193,17 @@ The brand kit is for VISUAL styling only (colors, fonts) — never use it for co
    → magnetlab_execute({tool: "magnetlab_create_lead_magnet", arguments: {title: "...", archetype: "..."}})
    → magnetlab_execute({tool: "magnetlab_create_funnel", arguments: {lead_magnet_id: "...", slug: "..."}})
 
-5. REVIEW & PUBLISH
+5. GENERATE CONTENT — Fill the lead magnet with actual deliverable content
+   → magnetlab_execute({tool: "magnetlab_generate_lead_magnet_content", arguments: {lead_magnet_id: "..."}})
+   This generates 2000+ word structured content from the concept and AI Brain.
+   Slow call (30-90s). Saves to extracted_content and polished_content.
+
+6. REVIEW & PUBLISH
    → magnetlab_execute({tool: "magnetlab_publish_funnel", arguments: {funnel_id: "..."}})
 
 ## Important
 - A lead magnet without a funnel is NOT publicly accessible
+- A lead magnet without content is an empty shell — always generate content
 - Never fabricate social proof — use real data or omit it
 - The lead magnet should use the user's actual language from the AI Brain`,
 

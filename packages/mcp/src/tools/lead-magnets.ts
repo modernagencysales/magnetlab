@@ -128,6 +128,25 @@ export const leadMagnetTools: Tool[] = [
     },
   },
   {
+    name: 'magnetlab_generate_lead_magnet_content',
+    description:
+      'Generate the actual deliverable content for a lead magnet. The lead magnet must have a concept ' +
+      'set (from ideation or create_lead_magnet). Generates 2000+ word structured content appropriate ' +
+      'to the archetype, then polishes it into a block-based format ready for the content page. ' +
+      'Uses the AI Brain automatically if the user has knowledge entries. ' +
+      'Saves to extracted_content and polished_content fields. This is a slow AI call (30-90s).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lead_magnet_id: {
+          type: 'string',
+          description: 'Lead magnet UUID — must have a concept set',
+        },
+      },
+      required: ['lead_magnet_id'],
+    },
+  },
+  {
     name: 'magnetlab_delete_lead_magnet',
     description:
       'Permanently delete a lead magnet. This also removes associated funnel pages and leads.',

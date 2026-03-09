@@ -108,6 +108,9 @@ export async function handleLeadMagnetTools(
       }
     }
 
+    case 'magnetlab_generate_lead_magnet_content':
+      return client.generateLeadMagnetContent(args.lead_magnet_id as string);
+
     case 'magnetlab_delete_lead_magnet':
       return client.deleteLeadMagnet(args.id as string);
 
