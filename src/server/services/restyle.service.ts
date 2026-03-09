@@ -47,14 +47,13 @@ const AI_MAX_TOKENS = 2048;
 export async function generateRestylePlan(
   scope: DataScope,
   funnelId: string,
-  input: RestyleInput,
+  input: RestyleInput
 ): Promise<{ plan: RestylePlan }> {
   // 1. Validate input
   if (!input.prompt && (!input.urls || input.urls.length === 0)) {
-    throw Object.assign(
-      new Error('Either a style prompt or reference URLs are required'),
-      { statusCode: 400 },
-    );
+    throw Object.assign(new Error('Either a style prompt or reference URLs are required'), {
+      statusCode: 400,
+    });
   }
 
   // 2. Load funnel
@@ -116,8 +115,11 @@ export async function generateRestylePlan(
 export async function applyRestylePlan(
   scope: DataScope,
   funnelId: string,
-  input: ApplyRestyleInput,
-): Promise<{ success: boolean; applied: { fieldChanges: number; sectionChanges: number } }> {
+  input: ApplyRestyleInput
+): Promise<{
+  success: boolean;
+  applied: { fieldChanges: number; sectionChanges: number; variantChanges: number };
+}> {
   const { plan } = input;
 
   // 1. Load funnel (verify access)
@@ -150,10 +152,7 @@ export async function applyRestylePlan(
   for (const sectionChange of plan.sectionChanges) {
     try {
       if (sectionChange.action === 'add' && sectionChange.pageLocation) {
-        const sortOrder = await funnelsRepo.getMaxSortOrder(
-          funnelId,
-          sectionChange.pageLocation,
-        );
+        const sortOrder = await funnelsRepo.getMaxSortOrder(funnelId, sectionChange.pageLocation);
         await funnelsRepo.createSection({
           funnel_page_id: funnelId,
           section_type: sectionChange.sectionType,
@@ -191,7 +190,24 @@ export async function applyRestylePlan(
     }
   }
 
-  return { success: true, applied: { fieldChanges, sectionChanges } };
+  // 4. Apply variant changes
+  let variantChanges = 0;
+  for (const variantChange of plan.sectionVariantChanges || []) {
+    try {
+      await funnelsRepo.updateSection(variantChange.sectionId, funnelId, {
+        variant: variantChange.toVariant,
+      });
+      variantChanges++;
+    } catch (err) {
+      logApiError('restyle.service/applyRestylePlan/variantChange', err, {
+        sectionId: variantChange.sectionId,
+        toVariant: variantChange.toVariant,
+        funnelId,
+      });
+    }
+  }
+
+  return { success: true, applied: { fieldChanges, sectionChanges, variantChanges } };
 }
 
 // ─── Vision Analysis (private) ──────────────────────────────────────

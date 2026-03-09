@@ -8,8 +8,10 @@ import type {
   RestylePlan,
   RestyleFieldChange,
   RestyleSectionChange,
+  RestyleVariantChange,
   SectionType,
 } from '@/lib/types/funnel';
+import { SECTION_VARIANTS } from '@/lib/types/funnel';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -116,6 +118,10 @@ export function buildRestylePrompt(input: RestylePromptInput): RestylePromptOutp
     .map((s) => `  - ${s}`)
     .join('\n');
 
+  const variantList = Object.entries(SECTION_VARIANTS)
+    .map(([type, variants]) => `  - ${type}: ${(variants as readonly string[]).join(', ')}`)
+    .join('\n');
+
   const currentSectionsDesc =
     currentSections.length > 0
       ? currentSections
@@ -148,6 +154,9 @@ You may also suggest any Google Font by name.
 ## Available Section Types
 ${sectionDescriptions}
 
+## Available Section Variants
+${variantList}
+
 ## Current Funnel State
   - theme: ${currentFunnel.theme}
   - primaryColor: ${currentFunnel.primaryColor}
@@ -175,6 +184,9 @@ Respond with a single JSON object (no markdown, no explanation):
   ],
   "sectionChanges": [
     { "action": "add", "sectionType": "logo_bar", "pageLocation": "optin", "reason": "Adds credibility" }
+  ],
+  "sectionVariantChanges": [
+    { "sectionId": "...", "fromVariant": "inline", "toVariant": "grid", "reason": "Grid layout better suits corporate feel" }
   ]
 }`;
 
@@ -245,10 +257,17 @@ export function parseRestylePlan(raw: string): RestylePlan {
       )
     : [];
 
+  // Filter variant changes — require sectionId, toVariant, and reason
+  const sectionVariantChanges: RestyleVariantChange[] = (parsed.sectionVariantChanges || []).filter(
+    (c: Record<string, unknown>) =>
+      c && typeof c === 'object' && c.sectionId && c.toVariant && c.reason
+  );
+
   return {
     styleDirection: parsed.styleDirection,
     reasoning: parsed.reasoning,
     changes,
     sectionChanges,
+    sectionVariantChanges,
   };
 }

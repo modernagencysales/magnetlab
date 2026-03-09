@@ -29,11 +29,19 @@ export interface RestyleSectionChange {
   reason: string;
 }
 
+export interface RestyleVariantChange {
+  sectionId: string;
+  fromVariant: string;
+  toVariant: string;
+  reason: string;
+}
+
 export interface RestylePlan {
   styleDirection: string;
   reasoning: string;
   changes: RestyleFieldChange[];
   sectionChanges: RestyleSectionChange[];
+  sectionVariantChanges?: RestyleVariantChange[];
 }
 
 export interface FunnelPage {
