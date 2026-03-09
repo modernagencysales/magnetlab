@@ -7,6 +7,9 @@ import type {
   MarketingBlockConfig,
   SectionBridgeConfig,
   HeroConfig,
+  StatsBarConfig,
+  FeatureGridConfig,
+  SocialProofWallConfig,
 } from '@/lib/types/funnel';
 import LogoBar from './LogoBar';
 import SimpleSteps from './SimpleSteps';
@@ -14,6 +17,9 @@ import TestimonialQuote from './TestimonialQuote';
 import MarketingBlock from './MarketingBlock';
 import SectionBridge from './SectionBridge';
 import HeroSection from './HeroSection';
+import StatsBar from './StatsBar';
+import FeatureGrid from './FeatureGrid';
+import SocialProofWall from './SocialProofWall';
 
 interface SectionRendererProps {
   section: FunnelPageSection;
@@ -77,6 +83,33 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({ section, primaryColor
         <HeroSection
           config={config}
           variant={section.variant || 'centered'}
+          primaryColor={primaryColor || '#6366f1'}
+        />
+      );
+    }
+    case 'stats_bar': {
+      return (
+        <StatsBar
+          config={section.config as StatsBarConfig}
+          variant={section.variant || 'inline'}
+          primaryColor={primaryColor || '#6366f1'}
+        />
+      );
+    }
+    case 'feature_grid': {
+      return (
+        <FeatureGrid
+          config={section.config as FeatureGridConfig}
+          variant={section.variant || 'icon-top'}
+          primaryColor={primaryColor || '#6366f1'}
+        />
+      );
+    }
+    case 'social_proof_wall': {
+      return (
+        <SocialProofWall
+          config={section.config as SocialProofWallConfig}
+          variant={section.variant || 'grid'}
           primaryColor={primaryColor || '#6366f1'}
         />
       );
