@@ -1,0 +1,288 @@
+'use client';
+
+import { useState } from 'react';
+import { Loader2, Eye, EyeOff, CheckCircle, XCircle, BookOpen } from 'lucide-react';
+
+import { logError } from '@/lib/utils/logger';
+
+interface KajabiSettingsProps {
+  isConnected: boolean;
+  lastVerifiedAt: string | null;
+}
+
+export function KajabiSettings({ isConnected, lastVerifiedAt }: KajabiSettingsProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [siteId, setSiteId] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  const handleConnect = async () => {
+    if (!apiKey.trim() || !siteId.trim()) return;
+
+    setConnecting(true);
+    setFeedback(null);
+
+    try {
+      const response = await fetch('/api/integrations/kajabi/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey, site_id: siteId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setFeedback({
+          type: 'error',
+          message: data.error || 'Failed to connect Kajabi',
+        });
+        return;
+      }
+
+      setFeedback({ type: 'success', message: 'Connected successfully! Refreshing...' });
+      setApiKey('');
+      setSiteId('');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (error) {
+      logError('settings/kajabi', error, { step: 'connect_error' });
+      setFeedback({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to connect',
+      });
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    setVerifying(true);
+    setFeedback(null);
+
+    try {
+      const response = await fetch('/api/integrations/kajabi/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+
+      if (data.verified) {
+        setFeedback({ type: 'success', message: 'Connection verified successfully' });
+      } else {
+        setFeedback({
+          type: 'error',
+          message: 'Connection could not be verified. Your API key may have been revoked.',
+        });
+      }
+    } catch (error) {
+      logError('settings/kajabi', error, { step: 'verify_error' });
+      setFeedback({
+        type: 'error',
+        message: 'Failed to verify connection',
+      });
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect Kajabi? Leads will no longer be pushed to your Kajabi site.')) {
+      return;
+    }
+
+    setDisconnecting(true);
+    setFeedback(null);
+
+    try {
+      await fetch('/api/integrations/kajabi/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      window.location.reload();
+    } catch (error) {
+      logError('settings/kajabi', error, { step: 'disconnect_error' });
+      setFeedback({
+        type: 'error',
+        message: 'Failed to disconnect',
+      });
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-lg border p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
+            <BookOpen className="h-5 w-5 text-purple-500" />
+          </div>
+          <div>
+            <p className="font-medium">Kajabi</p>
+            <p className="text-xs text-muted-foreground">
+              Push leads to Kajabi as contacts when they opt in
+            </p>
+          </div>
+        </div>
+        {isConnected && (
+          <span className="flex items-center gap-1 text-xs text-green-600">
+            <CheckCircle className="h-3 w-3" />
+            Connected
+          </span>
+        )}
+      </div>
+
+      {isConnected ? (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Your Kajabi account is connected. New funnel leads will be automatically created as contacts in your Kajabi site.
+          </p>
+
+          {lastVerifiedAt && (
+            <p className="text-xs text-muted-foreground">
+              Last verified: {new Date(lastVerifiedAt).toLocaleDateString()}
+            </p>
+          )}
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleVerify}
+              disabled={verifying}
+              className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {verifying ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Testing...
+                </span>
+              ) : (
+                'Test Connection'
+              )}
+            </button>
+
+            <button
+              onClick={handleDisconnect}
+              disabled={disconnecting}
+              className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+            >
+              {disconnecting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Disconnecting...
+                </span>
+              ) : (
+                'Disconnect'
+              )}
+            </button>
+          </div>
+        </div>
+      ) : expanded ? (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Enter your Kajabi API key and Site ID to connect your account.
+          </p>
+
+          <div className="relative">
+            <label className="text-xs text-muted-foreground">API Key</label>
+            <div className="relative mt-1">
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="kbjb_..."
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground">Site ID</label>
+            <div className="mt-1">
+              <input
+                type="text"
+                value={siteId}
+                onChange={(e) => setSiteId(e.target.value)}
+                placeholder="your-site-id"
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleConnect}
+              disabled={connecting || !apiKey.trim() || !siteId.trim()}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {connecting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Connecting...
+                </span>
+              ) : (
+                'Connect'
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                setExpanded(false);
+                setApiKey('');
+                setSiteId('');
+                setFeedback(null);
+              }}
+              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Find your API key in Kajabi Admin &gt; User API Keys. Your Site ID is in the URL when logged in.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Connect Kajabi to automatically push funnel leads as contacts to your Kajabi site.
+          </p>
+
+          <button
+            onClick={() => setExpanded(true)}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Connect Kajabi
+          </button>
+        </div>
+      )}
+
+      {feedback?.type === 'success' && (
+        <p className="mt-3 flex items-center gap-2 text-sm text-green-600">
+          <CheckCircle className="h-4 w-4" />
+          {feedback.message}
+        </p>
+      )}
+
+      {feedback?.type === 'error' && (
+        <p className="mt-3 flex items-center gap-2 text-sm text-red-500">
+          <XCircle className="h-4 w-4" />
+          {feedback.message}
+        </p>
+      )}
+    </div>
+  );
+}

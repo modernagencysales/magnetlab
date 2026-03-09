@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { Mic, Brain, Lightbulb, FileText, Zap, Loader2, LayoutGrid, LayoutTemplate, Sparkles, CalendarRange } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProfileSwitcher, useProfileSelection } from './ProfileSwitcher';
+import { useCopilotContext } from '@/components/copilot/useCopilotContext';
 
 // Dynamic imports for code splitting — each tab loads only when selected
 const TranscriptsTab = dynamic(() => import('./TranscriptsTab').then((m) => ({ default: m.TranscriptsTab })), { ssr: false });
@@ -50,6 +51,8 @@ export function ContentPipelineContent() {
   const { selectedProfileId, onProfileChange } = useProfileSelection();
   const [teamId, setTeamId] = useState<string | undefined>();
   const [teamContextReady, setTeamContextReady] = useState(false);
+
+  useCopilotContext({ page: 'content-pipeline' });
 
   useEffect(() => {
     setTeamId(getTeamFromCookie());

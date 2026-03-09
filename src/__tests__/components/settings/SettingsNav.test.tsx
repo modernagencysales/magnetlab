@@ -15,13 +15,14 @@ describe('SettingsNav', () => {
     mockPathname.mockReturnValue('/settings/account');
   });
 
-  it('renders all 5 section group headers', () => {
+  it('renders all 6 section group headers', () => {
     render(<SettingsNav />);
     // Each group appears in both desktop heading and mobile pill
     expect(screen.getAllByText('Account').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Integrations').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Signal Engine').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Branding').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('AI Co-pilot').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Developer').length).toBeGreaterThanOrEqual(2);
   });
 

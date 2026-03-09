@@ -2,8 +2,11 @@
 
 import { Radio } from 'lucide-react';
 import { SignalLeadsTable } from '@/components/signals/SignalLeadsTable';
+import { useCopilotContext } from '@/components/copilot/useCopilotContext';
 
 export default function SignalsPage() {
+  useCopilotContext({ page: 'signals' });
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}

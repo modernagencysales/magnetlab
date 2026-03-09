@@ -6,7 +6,7 @@ import type { Email, EmailGenerationContext } from '@/lib/types/email';
 
 // Lazy initialization to ensure env vars are loaded
 function getAnthropicClient() {
-  return createAnthropicClient('email-sequence-generator', { timeout: 30_000 });
+  return createAnthropicClient('email-sequence-generator', { timeout: 120_000 });
 }
 
 const EMAIL_SEQUENCE_SYSTEM_PROMPT = `You are an expert email copywriter creating a 5-email welcome sequence for someone who just downloaded a lead magnet. Your emails:
@@ -27,7 +27,7 @@ const EMAIL_SEQUENCE_SYSTEM_PROMPT = `You are an expert email copywriter creatin
 ## EMAIL SEQUENCE (5 emails)
 
 ### Email 1: Immediate Delivery (Day 0)
-- Deliver the lead magnet (clear download/access link)
+- Deliver the lead magnet using the RESOURCE URL provided in the context (this is the actual download link — use it directly, do not make up a URL)
 - Quick intro: who you are, why this will help
 - Reply trigger: Ask them to reply with one word to confirm they got it
 - Very short - they want the content, not a novel
@@ -83,6 +83,10 @@ export async function generateEmailSequence(
   contextParts.push(`CONTENTS: ${context.leadMagnetContents}`);
   contextParts.push(`SENDER NAME: ${context.senderName}`);
   contextParts.push(`BUSINESS DESCRIPTION: ${context.businessDescription}`);
+
+  if (context.resourceUrl) {
+    contextParts.push(`RESOURCE URL (use this as the download link in Email 1): ${context.resourceUrl}`);
+  }
 
   if (context.bestVideoUrl && context.bestVideoTitle) {
     contextParts.push(`BEST VIDEO TO LINK (Email 2): ${context.bestVideoTitle} - ${context.bestVideoUrl}`);
@@ -170,8 +174,10 @@ IMPORTANT:
 // Generate default email sequence without AI (fallback)
 export function generateDefaultEmailSequence(
   leadMagnetTitle: string,
-  senderName: string
+  senderName: string,
+  resourceUrl?: string
 ): Email[] {
+  const downloadLink = resourceUrl || '[DOWNLOAD LINK]';
   return [
     {
       day: 0,
@@ -180,7 +186,7 @@ export function generateDefaultEmailSequence(
 
 ${senderName} here - your ${leadMagnetTitle} is ready!
 
-[DOWNLOAD LINK]
+${downloadLink}
 
 Let me know you got it by replying with "got it" - I read every reply.
 

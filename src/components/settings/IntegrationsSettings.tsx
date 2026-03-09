@@ -7,6 +7,7 @@ import { ConductorSettings } from '@/components/settings/ConductorSettings';
 import { FathomSettings } from '@/components/settings/FathomSettings';
 import { EmailMarketingSettings } from '@/components/settings/EmailMarketingSettings';
 import { GoHighLevelSettings } from '@/components/settings/GoHighLevelSettings';
+import { KajabiSettings } from '@/components/settings/KajabiSettings';
 import { HeyReachSettings } from '@/components/settings/HeyReachSettings';
 import { TrackingPixelSettings } from '@/components/settings/TrackingPixelSettings';
 import { IClosedWidgetSettings } from '@/components/settings/IClosedWidgetSettings';
@@ -28,6 +29,7 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
   const fathomIntegration = integrations.find((i) => i.service === 'fathom');
   const unipileIntegration = integrations.find((i) => i.service === 'unipile');
   const gohighlevelIntegration = integrations.find((i) => i.service === 'gohighlevel');
+  const kajabiIntegration = integrations.find((i) => i.service === 'kajabi');
   const heyreachIntegration = integrations.find((i) => i.service === 'heyreach');
 
   return (
@@ -77,6 +79,10 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
           <GoHighLevelSettings
             isConnected={gohighlevelIntegration?.is_active ?? false}
             lastVerifiedAt={gohighlevelIntegration?.last_verified_at ?? null}
+          />
+          <KajabiSettings
+            isConnected={kajabiIntegration?.is_active ?? false}
+            lastVerifiedAt={kajabiIntegration?.last_verified_at ?? null}
           />
         </div>
 

@@ -12,7 +12,7 @@ export interface PromptVariable {
 export interface PromptDefault {
   slug: string;
   name: string;
-  category: 'content_writing' | 'knowledge' | 'learning' | 'email' | 'scoring';
+  category: 'content_writing' | 'knowledge' | 'learning' | 'email' | 'scoring' | 'copilot';
   description: string;
   system_prompt: string;
   user_prompt: string;
@@ -1237,5 +1237,94 @@ For multiple_choice: qualifying_answer is an array of qualifying option strings,
     { name: 'icp_json', description: 'Processed intake ICP data (industry, job_titles, pain_points, buying_triggers)', example: '{"industry":"tech","job_titles":["CTO","VP Eng"]}' },
     { name: 'knowledge_context', description: 'Relevant knowledge base entries (market_intel, objection, question types)', example: 'Market Intel: Most CTOs struggle with...' },
     { name: 'brand_context', description: 'Brand kit positioning data (urgent_pains, frequent_questions, credibility_markers)', example: 'Urgent pains: scaling engineering teams...' },
+  ],
+};
+
+// ============================================
+// copilot-system
+// Source: src/lib/ai/copilot/system-prompt.ts → buildCopilotSystemPrompt()
+// ============================================
+
+PROMPT_DEFAULTS['copilot-system'] = {
+  slug: 'copilot-system',
+  name: 'Co-pilot System Prompt',
+  category: 'copilot',
+  description: 'Base system prompt for the AI co-pilot. Dynamic sections (voice profile, memories, knowledge readiness, page context) are appended at runtime.',
+  system_prompt: `You are an AI co-pilot embedded in MagnetLab, a LinkedIn content and lead generation platform. You help users create posts, manage their content pipeline, search their knowledge base, and optimize their LinkedIn presence.
+
+You have access to tools that let you search knowledge, write posts, polish content, manage templates, check analytics, and schedule publishing. Use these tools proactively — don't just describe what you could do, actually do it.
+
+Key behaviors:
+- Always search the knowledge base before writing content to ground it in real expertise
+- Use the user's voice profile and writing style — never write generic LinkedIn content
+- Be concise and action-oriented. Do things, don't just talk about doing them.
+- When asked to write multiple posts, use different angles and formats for variety
+- Proactively suggest improvements based on analytics data when relevant
+- If a task requires multiple steps, show your plan first, then execute step by step
+
+You are NOT a generic chatbot. You are a specialized content operations assistant with deep access to the user's knowledge base, writing history, and publishing pipeline.`,
+  user_prompt: '',
+  model: 'claude-sonnet-4-20250514',
+  temperature: 0.7,
+  max_tokens: 4096,
+  variables: [],
+};
+
+// ============================================
+// copilot-memory-extractor
+// Source: src/lib/ai/copilot/system-prompt.ts (memory injection)
+// ============================================
+
+PROMPT_DEFAULTS['copilot-memory-extractor'] = {
+  slug: 'copilot-memory-extractor',
+  name: 'Co-pilot Memory Extractor',
+  category: 'copilot',
+  description: 'Extracts preference rules from user corrections and feedback during co-pilot conversations.',
+  system_prompt: `You extract user preferences and rules from conversation context. When a user corrects the AI or provides feedback about output quality, extract the underlying preference as a short, actionable rule.
+
+Output JSON array of extracted rules:
+[{"rule": "...", "category": "tone|structure|vocabulary|content|general", "confidence": 0.0-1.0}]
+
+Only extract clear, specific preferences. Do not extract vague or situational feedback. If no clear preference is expressed, return an empty array.`,
+  user_prompt: `Here is the conversation context where the user provided feedback or corrections:
+
+{{conversation_context}}
+
+Extract any preferences or rules the user is expressing. Return a JSON array.`,
+  model: 'claude-haiku-4-5-20251001',
+  temperature: 0.3,
+  max_tokens: 1024,
+  variables: [
+    { name: 'conversation_context', description: 'Recent conversation messages showing user corrections', example: 'User: "No, make it shorter and more direct. I never use bullet points."' },
+  ],
+};
+
+// ============================================
+// copilot-plan-generator
+// Source: src/lib/ai/copilot/system-prompt.ts (plan generation)
+// ============================================
+
+PROMPT_DEFAULTS['copilot-plan-generator'] = {
+  slug: 'copilot-plan-generator',
+  name: 'Co-pilot Plan Generator',
+  category: 'copilot',
+  description: 'Generates step-by-step execution plans for multi-step copilot tasks.',
+  system_prompt: `You are a planning assistant for a LinkedIn content platform. Given a user request, break it into numbered steps that the AI co-pilot will execute. Each step should map to a single tool call.
+
+Output a JSON object:
+{"steps": [{"description": "...", "tool": "tool_name", "reasoning": "..."}], "summary": "..."}
+
+Keep plans concise (3-8 steps). Only include steps that require tool calls — don't add steps for "thinking" or "analyzing".`,
+  user_prompt: `User request: {{user_request}}
+
+Available tools: {{available_tools}}
+
+Generate an execution plan.`,
+  model: 'claude-haiku-4-5-20251001',
+  temperature: 0.3,
+  max_tokens: 1024,
+  variables: [
+    { name: 'user_request', description: 'The user message requesting a multi-step task', example: 'Write 3 posts about pricing, one thought leadership, one story, one how-to' },
+    { name: 'available_tools', description: 'Comma-separated list of available tool names', example: 'search_knowledge, write_post, polish_post, list_posts' },
   ],
 };

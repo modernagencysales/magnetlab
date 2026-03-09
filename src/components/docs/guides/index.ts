@@ -13,6 +13,11 @@ import Troubleshooting from './troubleshooting';
 import McpSetup from './mcp-setup';
 import McpTools from './mcp-tools';
 import McpWorkflows from './mcp-workflows';
+import TeamSetup from './team-setup';
+import TeamCommandCenter from './team-command-center';
+import TeamBroadcasting from './team-broadcasting';
+import TeamPostingSlots from './team-posting-slots';
+import TeamLinkedInVoices from './team-linkedin-voices';
 
 export interface GuideMetadata {
   title: string;
@@ -131,4 +136,44 @@ guides['mcp-workflows'] = {
     description: 'Real examples of what you can build with the MagnetLab MCP server.',
   },
   component: McpWorkflows,
+};
+
+guides['team-setup'] = {
+  metadata: {
+    title: 'Setting Up Your Team',
+    description: 'Create a team, add profiles, and invite members.',
+  },
+  component: TeamSetup,
+};
+
+guides['team-command-center'] = {
+  metadata: {
+    title: 'Using the Command Center',
+    description: 'Weekly calendar view for managing team LinkedIn posts.',
+  },
+  component: TeamCommandCenter,
+};
+
+guides['team-broadcasting'] = {
+  metadata: {
+    title: 'Broadcasting Posts to Your Team',
+    description: 'AI voice-adapted variations and content collision detection.',
+  },
+  component: TeamBroadcasting,
+};
+
+guides['team-posting-slots'] = {
+  metadata: {
+    title: 'Managing Posting Slots',
+    description: 'Set up per-profile posting schedules and assign content.',
+  },
+  component: TeamPostingSlots,
+};
+
+guides['team-linkedin-voices'] = {
+  metadata: {
+    title: 'LinkedIn Connections & Voice Profiles',
+    description: 'Connect LinkedIn accounts and configure AI voice profiles.',
+  },
+  component: TeamLinkedInVoices,
 };

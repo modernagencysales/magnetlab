@@ -21,6 +21,7 @@ export interface EditRecordInput {
   editedText: string;
   editTags?: string[];
   ceoNote?: string;
+  source?: 'manual' | 'copilot';
 }
 
 export interface EditRecord {
@@ -34,6 +35,7 @@ export interface EditRecord {
   edit_diff: EditDiff;
   edit_tags: string[];
   ceo_note: string | null;
+  source?: string;
 }
 
 const SIGNIFICANCE_THRESHOLD = 0.05;
@@ -106,6 +108,7 @@ export function buildEditRecord(input: EditRecordInput): EditRecord | null {
     edit_diff: editDiff,
     edit_tags: input.editTags || [],
     ceo_note: input.ceoNote || null,
+    ...(input.source ? { source: input.source } : {}),
   };
 }
 

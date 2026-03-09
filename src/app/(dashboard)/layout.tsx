@@ -4,10 +4,11 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { checkTeamRole } from '@/lib/auth/rbac';
 import { isSuperAdmin } from '@/lib/auth/super-admin';
-import { DashboardNav } from '@/components/dashboard/DashboardNav';
+import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { PostHogIdentify } from '@/components/providers/PostHogIdentify';
+import { CopilotShell } from '@/components/copilot/CopilotShell';
 
 export default async function DashboardLayout({
   children,
@@ -80,6 +81,8 @@ export default async function DashboardLayout({
     // Non-critical — don't crash the layout if admin check fails
   }
 
+  const sidebarOpen = cookieStore.get('sidebar_state')?.value !== 'false';
+
   return (
     <div className="min-h-screen bg-background">
       <a
@@ -93,12 +96,16 @@ export default async function DashboardLayout({
         email={session.user.email}
         name={session.user.name}
       />
-      <DashboardNav
+      <DashboardShell
         user={session.user}
         teamContext={teamContext}
         isSuperAdmin={isAdmin}
-      />
-      <main id="main-content" className="lg:pl-64"><ErrorBoundary>{children}</ErrorBoundary></main>
+        defaultOpen={sidebarOpen}
+      >
+        <CopilotShell>
+          <div id="main-content"><ErrorBoundary>{children}</ErrorBoundary></div>
+        </CopilotShell>
+      </DashboardShell>
       <FeedbackWidget
         userEmail={session.user.email ?? null}
         userId={session.user.id ?? null}

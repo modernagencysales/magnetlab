@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import {
   format,
   startOfMonth,
@@ -19,7 +19,11 @@ import type { PipelinePost } from '@/lib/types/content-pipeline';
 import { DayPostsModal } from './DayPostsModal';
 import { getPostsByDateRange } from '@/frontend/api/content-pipeline/posts';
 
-export function CalendarView() {
+interface CalendarViewProps {
+  onCreatePost?: (date: Date) => void;
+}
+
+export function CalendarView({ onCreatePost }: CalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
   const [posts, setPosts] = useState<PipelinePost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +66,15 @@ export function CalendarView() {
   const getPostsForDay = (day: Date) =>
     posts.filter((p) => p.scheduled_time && isSameDay(new Date(p.scheduled_time), day));
 
+  const handleDayClick = (day: Date) => {
+    const dayPosts = getPostsForDay(day);
+    if (dayPosts.length > 0) {
+      setSelectedDay(day);
+    } else if (onCreatePost) {
+      onCreatePost(day);
+    }
+  };
+
   if (!currentMonth) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -97,6 +110,13 @@ export function CalendarView() {
         </div>
       </div>
 
+      {/* Empty state hint */}
+      {!loading && posts.length === 0 && onCreatePost && (
+        <div className="mb-4 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 text-center">
+          <p className="text-sm text-muted-foreground">Click any date to create a post</p>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -118,25 +138,31 @@ export function CalendarView() {
               const dayPosts = getPostsForDay(day);
               const isToday = today ? isSameDay(day, today) : false;
               const isCurrentMonth = isSameMonth(day, currentMonth);
+              const isEmpty = dayPosts.length === 0;
 
               return (
                 <button
                   key={day.toISOString()}
-                  onClick={() => dayPosts.length > 0 && setSelectedDay(day)}
+                  onClick={() => handleDayClick(day)}
                   className={cn(
-                    'min-h-[80px] p-1.5 text-left transition-colors',
+                    'group min-h-[80px] p-1.5 text-left transition-colors cursor-pointer',
                     isCurrentMonth ? 'bg-card' : 'bg-muted/30',
-                    dayPosts.length > 0 && 'cursor-pointer hover:bg-muted/50',
+                    isEmpty ? 'hover:bg-primary/5' : 'hover:bg-muted/50',
                     isToday && 'ring-1 ring-inset ring-primary'
                   )}
                 >
-                  <span className={cn(
-                    'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs',
-                    isToday && 'bg-primary text-primary-foreground font-medium',
-                    !isCurrentMonth && 'text-muted-foreground/50'
-                  )}>
-                    {format(day, 'd')}
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className={cn(
+                      'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs',
+                      isToday && 'bg-primary text-primary-foreground font-medium',
+                      !isCurrentMonth && 'text-muted-foreground/50'
+                    )}>
+                      {format(day, 'd')}
+                    </span>
+                    {isEmpty && isCurrentMonth && onCreatePost && (
+                      <Plus className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors" />
+                    )}
+                  </div>
                   {dayPosts.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-0.5">
                       {dayPosts.slice(0, 3).map((post) => (

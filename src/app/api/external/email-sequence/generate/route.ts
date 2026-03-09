@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     // Step 3: Get the lead magnet (include team_id so we can propagate it)
     const { data: leadMagnet, error: lmError } = await supabase
       .from('lead_magnets')
-      .select('id, user_id, team_id, title, archetype, concept, extracted_content')
+      .select('id, user_id, team_id, title, archetype, concept, extracted_content, external_url, polished_content')
       .eq('id', leadMagnetId)
       .eq('user_id', userId)
       .single();
@@ -62,14 +62,33 @@ export async function POST(request: Request) {
       .eq('user_id', userId)
       .single();
 
-    // Step 5: Get user name as fallback for sender name
+    // Step 5: Get user name + username as fallback for sender name and content URL
     const { data: user } = await supabase
       .from('users')
-      .select('name')
+      .select('name, username')
       .eq('id', userId)
       .single();
 
     const senderName = brandKit?.sender_name || user?.name || 'Your Friend';
+
+    // Step 5b: Resolve resource URL: external_url > hosted content page > undefined
+    let resourceUrl: string | undefined;
+    const externalUrl = (leadMagnet as Record<string, unknown>).external_url as string | null;
+    const polishedContent = (leadMagnet as Record<string, unknown>).polished_content;
+    if (externalUrl && /^https?:\/\/.+/.test(externalUrl)) {
+      resourceUrl = externalUrl;
+    } else if (user?.username && (polishedContent || leadMagnet.extracted_content)) {
+      const { data: funnelPage } = await supabase
+        .from('funnel_pages')
+        .select('slug')
+        .eq('lead_magnet_id', leadMagnetId)
+        .eq('user_id', userId)
+        .limit(1)
+        .single();
+      if (funnelPage?.slug) {
+        resourceUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.magnetlab.app'}/p/${user.username}/${funnelPage.slug}/content`;
+      }
+    }
 
     // Step 6: Build generation context
     const concept = leadMagnet.concept as { contents?: string; deliveryFormat?: string } | null;
@@ -86,6 +105,7 @@ export async function POST(request: Request) {
       contentLinks: brandKit?.content_links as Array<{ title: string; url: string }> | undefined,
       communityUrl: brandKit?.community_url || undefined,
       audienceStyle: 'casual-direct',
+      resourceUrl,
     };
 
     // Step 7: Generate emails (AI with fallback)
@@ -96,13 +116,26 @@ export async function POST(request: Request) {
         emails = await generateEmailSequence({ context });
       } catch (aiError) {
         logApiError('external/email-sequence/generate/ai', aiError, { leadMagnetId, note: 'Falling back to default' });
-        emails = generateDefaultEmailSequence(leadMagnet.title, senderName);
+        emails = generateDefaultEmailSequence(leadMagnet.title, senderName, resourceUrl);
       }
     } else {
-      emails = generateDefaultEmailSequence(leadMagnet.title, senderName);
+      emails = generateDefaultEmailSequence(leadMagnet.title, senderName, resourceUrl);
     }
 
-    // Step 8: Upsert email sequence
+    // Post-generation: ensure Email 1 (day 0) has the resource URL
+    let autoActivated = false;
+    if (resourceUrl) {
+      const email1 = emails.find((e) => e.day === 0);
+      if (email1 && !email1.body.includes(resourceUrl)) {
+        const lines = email1.body.split('\n');
+        const lastNonEmptyIdx = lines.reduce((acc, line, i) => (line.trim() ? i : acc), 0);
+        lines.splice(lastNonEmptyIdx, 0, '', resourceUrl, '');
+        email1.body = lines.join('\n');
+      }
+      autoActivated = true;
+    }
+
+    // Step 8: Upsert email sequence (auto-activate when resource URL is available)
     const { data: emailSequence, error: upsertError } = await supabase
       .from('email_sequences')
       .upsert(
@@ -111,7 +144,7 @@ export async function POST(request: Request) {
           user_id: userId,
           team_id: leadMagnet.team_id || null,
           emails,
-          status: 'draft',
+          status: autoActivated ? 'active' : 'draft',
         },
         {
           onConflict: 'lead_magnet_id',
@@ -128,6 +161,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       emailSequence: emailSequenceFromRow(emailSequence as EmailSequenceRow),
       generated: true,
+      autoActivated,
     });
   } catch (error) {
     logApiError('external/email-sequence/generate', error);
