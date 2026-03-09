@@ -1,4 +1,5 @@
 export { default as CTAButton } from './CTAButton';
+export { default as HeroSection } from './HeroSection';
 export { default as LogoBar } from './LogoBar';
 export { default as MarketingBlock } from './MarketingBlock';
 export { default as SectionBridge } from './SectionBridge';

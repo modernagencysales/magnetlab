@@ -6,18 +6,21 @@ import type {
   TestimonialConfig,
   MarketingBlockConfig,
   SectionBridgeConfig,
+  HeroConfig,
 } from '@/lib/types/funnel';
 import LogoBar from './LogoBar';
 import SimpleSteps from './SimpleSteps';
 import TestimonialQuote from './TestimonialQuote';
 import MarketingBlock from './MarketingBlock';
 import SectionBridge from './SectionBridge';
+import HeroSection from './HeroSection';
 
 interface SectionRendererProps {
   section: FunnelPageSection;
+  primaryColor?: string;
 }
 
-const SectionRenderer: React.FC<SectionRendererProps> = ({ section }) => {
+const SectionRenderer: React.FC<SectionRendererProps> = ({ section, primaryColor }) => {
   if (!section.isVisible) return null;
 
   switch (section.sectionType) {
@@ -28,11 +31,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({ section }) => {
     case 'steps': {
       const config = section.config as StepsConfig;
       return (
-        <SimpleSteps
-          heading={config.heading}
-          subheading={config.subheading}
-          steps={config.steps}
-        />
+        <SimpleSteps heading={config.heading} subheading={config.subheading} steps={config.steps} />
       );
     }
     case 'testimonial': {
@@ -69,6 +68,16 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({ section }) => {
           variant={config.variant}
           stepNumber={config.stepNumber}
           stepLabel={config.stepLabel}
+        />
+      );
+    }
+    case 'hero': {
+      const config = section.config as HeroConfig;
+      return (
+        <HeroSection
+          config={config}
+          variant={section.variant || 'centered'}
+          primaryColor={primaryColor || '#6366f1'}
         />
       );
     }
