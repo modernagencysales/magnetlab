@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Loader2, Sparkles, ExternalLink, CheckCircle2, Clock, FileText, PenLine } from 'lucide-react';
 import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
-import { useBackgroundJob } from '@/lib/hooks/useBackgroundJob';
+import { useBackgroundJob } from '@/frontend/hooks/useBackgroundJob';
 
 interface ContentPageTabProps {
   leadMagnet: LeadMagnet;
