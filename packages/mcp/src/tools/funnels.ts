@@ -1,4 +1,4 @@
-import { Tool } from '@modelcontextprotocol/sdk/types.js'
+import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 export const funnelTools: Tool[] = [
   {
@@ -32,7 +32,10 @@ export const funnelTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        lead_magnet_id: { type: 'string', description: 'Lead magnet UUID (for lead_magnet target)' },
+        lead_magnet_id: {
+          type: 'string',
+          description: 'Lead magnet UUID (for lead_magnet target)',
+        },
         library_id: { type: 'string', description: 'Library UUID (for library target)' },
         external_resource_id: {
           type: 'string',
@@ -44,11 +47,19 @@ export const funnelTools: Tool[] = [
   {
     name: 'magnetlab_create_funnel',
     description:
-      'Create a new funnel/opt-in page. Must target a lead magnet, library, or external resource. Provide a slug (URL-safe name) and optionally customize headline, subline, button text, thank-you copy, theme (light/dark), colors, and VSL/Calendly URLs.',
+      'Create a new funnel/opt-in page. Must target a lead magnet, library, or external resource. ' +
+      'Defaults when fields are omitted: headline=target title, subline=null, ' +
+      'button_text="Get Free Access", social_proof=null (do NOT fabricate — use real data or omit), ' +
+      'thankyou_headline="Thanks! Check your email.", theme=brand kit or "dark", ' +
+      'color=brand kit or "#8b5cf6", background=brand kit or "solid". ' +
+      "Sections are auto-populated from the user's default template and brand kit.",
     inputSchema: {
       type: 'object',
       properties: {
-        lead_magnet_id: { type: 'string', description: 'Lead magnet UUID (for lead_magnet target)' },
+        lead_magnet_id: {
+          type: 'string',
+          description: 'Lead magnet UUID (for lead_magnet target)',
+        },
         library_id: { type: 'string', description: 'Library UUID (for library target)' },
         external_resource_id: {
           type: 'string',
@@ -66,7 +77,10 @@ export const funnelTools: Tool[] = [
           type: 'string',
           description: 'CTA button text (default: "Get Free Access")',
         },
-        optin_social_proof: { type: 'string', description: 'Social proof line (e.g. "500+ downloads")' },
+        optin_social_proof: {
+          type: 'string',
+          description: 'Social proof line (e.g. "500+ downloads")',
+        },
         thankyou_headline: {
           type: 'string',
           description: 'Thank you page headline (default: "Thanks! Check your email.")',
@@ -74,8 +88,15 @@ export const funnelTools: Tool[] = [
         thankyou_subline: { type: 'string', description: 'Thank you page subheadline' },
         vsl_url: { type: 'string', description: 'Video URL to embed on thank-you page' },
         calendly_url: { type: 'string', description: 'Calendly URL for booking on thank-you page' },
-        theme: { type: 'string', enum: ['light', 'dark'], description: 'Page theme (default: dark)' },
-        primary_color: { type: 'string', description: 'Primary accent color hex (default: #8b5cf6)' },
+        theme: {
+          type: 'string',
+          enum: ['light', 'dark'],
+          description: 'Page theme (default: dark)',
+        },
+        primary_color: {
+          type: 'string',
+          description: 'Primary accent color hex (default: #8b5cf6)',
+        },
         background_style: {
           type: 'string',
           enum: ['solid', 'gradient', 'pattern'],
@@ -112,14 +133,33 @@ export const funnelTools: Tool[] = [
         background_style: { type: 'string', enum: ['solid', 'gradient', 'pattern'] },
         logo_url: { type: 'string' },
         qualification_form_id: { type: ['string', 'null'] },
-        qualification_pass_message: { type: ['string', 'null'], description: 'Message shown to qualified leads' },
-        qualification_fail_message: { type: ['string', 'null'], description: 'Message shown to unqualified leads' },
-        redirect_trigger: { type: 'string', enum: ['none', 'immediate', 'after_qualification'], description: 'When to redirect after opt-in' },
-        redirect_url: { type: ['string', 'null'], description: 'URL to redirect qualified leads to' },
-        redirect_fail_url: { type: ['string', 'null'], description: 'URL to redirect unqualified leads to' },
+        qualification_pass_message: {
+          type: ['string', 'null'],
+          description: 'Message shown to qualified leads',
+        },
+        qualification_fail_message: {
+          type: ['string', 'null'],
+          description: 'Message shown to unqualified leads',
+        },
+        redirect_trigger: {
+          type: 'string',
+          enum: ['none', 'immediate', 'after_qualification'],
+          description: 'When to redirect after opt-in',
+        },
+        redirect_url: {
+          type: ['string', 'null'],
+          description: 'URL to redirect qualified leads to',
+        },
+        redirect_fail_url: {
+          type: ['string', 'null'],
+          description: 'URL to redirect unqualified leads to',
+        },
         homepage_url: { type: ['string', 'null'], description: 'Homepage URL link' },
         homepage_label: { type: ['string', 'null'], description: 'Homepage link label text' },
-        send_resource_email: { type: 'boolean', description: 'Whether to auto-send resource delivery email on opt-in' },
+        send_resource_email: {
+          type: 'boolean',
+          description: 'Whether to auto-send resource delivery email on opt-in',
+        },
       },
       required: ['id'],
     },
@@ -166,7 +206,10 @@ export const funnelTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        lead_magnet_id: { type: 'string', description: 'Lead magnet UUID to generate funnel copy for' },
+        lead_magnet_id: {
+          type: 'string',
+          description: 'Lead magnet UUID to generate funnel copy for',
+        },
       },
       required: ['lead_magnet_id'],
     },
@@ -179,7 +222,11 @@ export const funnelTools: Tool[] = [
       type: 'object',
       properties: {
         funnel_id: { type: 'string', description: 'Funnel page UUID to restyle' },
-        prompt: { type: 'string', description: 'Style direction (e.g. "make it more corporate", "luxury feel", "clean and minimal")' },
+        prompt: {
+          type: 'string',
+          description:
+            'Style direction (e.g. "make it more corporate", "luxury feel", "clean and minimal")',
+        },
         urls: {
           type: 'array',
           items: { type: 'string' },
@@ -199,10 +246,11 @@ export const funnelTools: Tool[] = [
         funnel_id: { type: 'string', description: 'Funnel page UUID' },
         plan: {
           type: 'object',
-          description: 'The RestylePlan object (from magnetlab_restyle_funnel output, possibly modified)',
+          description:
+            'The RestylePlan object (from magnetlab_restyle_funnel output, possibly modified)',
         },
       },
       required: ['funnel_id', 'plan'],
     },
   },
-]
+];

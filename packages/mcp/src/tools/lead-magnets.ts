@@ -1,4 +1,4 @@
-import { Tool } from '@modelcontextprotocol/sdk/types.js'
+import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 export const leadMagnetTools: Tool[] = [
   {
@@ -33,7 +33,11 @@ export const leadMagnetTools: Tool[] = [
   {
     name: 'magnetlab_create_lead_magnet',
     description:
-      'Create a new lead magnet. Choose an archetype (e.g. single-breakdown, focused-toolkit, assessment) and provide a title. Optionally include concept data, extracted content, or post variations if pre-generated.',
+      'Create a new lead magnet. Choose an archetype and provide a title. ' +
+      'A lead magnet alone is NOT publicly accessible — you must also create a funnel page. ' +
+      'Two options: (1) pass funnel_config here to create both in one call, or ' +
+      '(2) call magnetlab_create_funnel separately after. ' +
+      'Without a funnel, the lead magnet exists only as a draft in the library.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -55,13 +59,78 @@ export const leadMagnetTools: Tool[] = [
           description: 'Content archetype/format',
         },
         concept: { type: 'object', description: 'Concept data (optional, from ideation)' },
+        funnel_config: {
+          type: 'object',
+          description:
+            'Optional. Creates a funnel page for this lead magnet in the same call. ' +
+            'If omitted, no funnel is created — use magnetlab_create_funnel separately. ' +
+            'Defaults: headline=lead magnet title, button="Get Free Access", theme="dark", ' +
+            'color="#8b5cf6", social_proof=null (do NOT fabricate).',
+          properties: {
+            slug: {
+              type: 'string',
+              description: 'URL slug (e.g. "my-free-guide"). Auto-generated from title if omitted.',
+            },
+            optin_headline: {
+              type: 'string',
+              description: 'Main headline (default: lead magnet title)',
+            },
+            optin_subline: { type: 'string', description: 'Subheadline text (default: null)' },
+            optin_button_text: {
+              type: 'string',
+              description: 'CTA button text (default: "Get Free Access")',
+            },
+            optin_social_proof: {
+              type: 'string',
+              description:
+                'Social proof line. Null if omitted — use real data only, never fabricate.',
+            },
+            thankyou_headline: {
+              type: 'string',
+              description: 'Thank you page headline (default: "Thanks! Check your email.")',
+            },
+            thankyou_subline: {
+              type: 'string',
+              description: 'Thank you page subheadline (default: null)',
+            },
+            theme: {
+              type: 'string',
+              enum: ['light', 'dark'],
+              description: 'Page theme (default: dark or brand kit)',
+            },
+            primary_color: {
+              type: 'string',
+              description: 'Accent color hex (default: #8b5cf6 or brand kit)',
+            },
+            background_style: {
+              type: 'string',
+              enum: ['solid', 'gradient', 'pattern'],
+              description: 'Background style (default: solid)',
+            },
+            vsl_url: { type: 'string', description: 'Video URL for thank-you page' },
+            calendly_url: {
+              type: 'string',
+              description: 'Calendly URL for booking on thank-you page',
+            },
+            logo_url: { type: 'string', description: 'Logo image URL' },
+            qualification_form_id: {
+              type: 'string',
+              description: 'Qualification form UUID to attach',
+            },
+            publish: {
+              type: 'boolean',
+              description: 'Publish immediately after creation (default: false)',
+            },
+          },
+        },
       },
       required: ['title', 'archetype'],
     },
   },
   {
     name: 'magnetlab_delete_lead_magnet',
-    description: 'Permanently delete a lead magnet. This also removes associated funnel pages and leads.',
+    description:
+      'Permanently delete a lead magnet. This also removes associated funnel pages and leads.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -118,4 +187,4 @@ export const leadMagnetTools: Tool[] = [
       required: ['transcript'],
     },
   },
-]
+];
