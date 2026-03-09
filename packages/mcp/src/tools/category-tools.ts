@@ -1,7 +1,7 @@
-import { Tool } from '@modelcontextprotocol/sdk/types.js'
-import { discoveryCategories } from './index.js'
+import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { discoveryCategories } from './index.js';
 
-export type DiscoveryCategoryKey = keyof typeof discoveryCategories
+export type DiscoveryCategoryKey = keyof typeof discoveryCategories;
 
 /**
  * Category discovery tools + execute gateway + tool help.
@@ -73,7 +73,7 @@ const categoryDescriptions: Record<DiscoveryCategoryKey, { label: string; descri
     description:
       'Lead qualification surveys. Use this to create and manage the survey questions shown on thank-you pages to qualify and segment leads.',
   },
-}
+};
 
 export const categoryTools: Tool[] = Object.entries(categoryDescriptions).map(
   ([key, { description }]) => ({
@@ -84,7 +84,7 @@ export const categoryTools: Tool[] = Object.entries(categoryDescriptions).map(
       properties: {},
     },
   })
-)
+);
 
 /**
  * The gateway tool that executes any real tool by name.
@@ -107,7 +107,7 @@ export const executeGatewayTool: Tool = {
     },
     required: ['tool'],
   },
-}
+};
 
 /**
  * On-demand schema lookup for a single tool.
@@ -126,7 +126,7 @@ export const toolHelpTool: Tool = {
     },
     required: ['tool'],
   },
-}
+};
 
 /**
  * Workflow guide tool — returns step-by-step recipes for common tasks.
@@ -154,7 +154,7 @@ export const guideTool: Tool = {
     },
     required: ['task'],
   },
-}
+};
 
 /**
  * Workflow recipes keyed by task name.
@@ -170,28 +170,36 @@ The brand kit is for VISUAL styling only (colors, fonts) — never use it for co
 1. RESEARCH — Search the AI Brain for expertise on the topic
    → magnetlab_execute({tool: "magnetlab_search_knowledge", arguments: {query: "<topic>"}})
    → magnetlab_execute({tool: "magnetlab_ask_knowledge", arguments: {question: "What are the key insights about <topic>?"}})
-   → magnetlab_execute({tool: "magnetlab_list_topics", arguments: {}})
 
-2. ASSESS — Check if there's enough knowledge for this lead magnet
+2. ASSESS — Check if there's enough knowledge
    → magnetlab_execute({tool: "magnetlab_knowledge_readiness", arguments: {topic: "<topic>", goal: "lead_magnet"}})
-   If readiness is low, tell the user they may need to add more transcripts first.
 
-3. IDEATE — Present research findings to the user, discuss the angle
-   Share what you found in the AI Brain. Let the user confirm the direction.
-   Use specific insights, stories, and frameworks from step 1.
+3. IDEATE — Present findings, discuss the angle with the user
 
-4. CREATE — Build the lead magnet with research-informed input
+4. CREATE + FUNNEL (one call)
    → magnetlab_execute({tool: "magnetlab_create_lead_magnet", arguments: {
        title: "...",
-       archetype: "...",  // e.g. single-breakdown, focused-toolkit, assessment
-       business_context: "..."  // Include specific insights from the AI Brain here
+       archetype: "...",
+       concept: {...},
+       funnel_config: {
+         slug: "my-guide",
+         optin_headline: "...",
+         optin_subline: "...",
+         publish: false
+       }
      }})
 
-5. POLISH — Review and refine the content
-   → magnetlab_execute({tool: "magnetlab_get_lead_magnet", arguments: {id: "..."}})
+   OR CREATE then FUNNEL separately:
+   → magnetlab_execute({tool: "magnetlab_create_lead_magnet", arguments: {title: "...", archetype: "..."}})
+   → magnetlab_execute({tool: "magnetlab_create_funnel", arguments: {lead_magnet_id: "...", slug: "..."}})
 
-## Key principle
-The lead magnet should sound like the user — use their actual language, stories, and frameworks from the AI Brain. Never generate generic content when real expertise is available.`,
+5. REVIEW & PUBLISH
+   → magnetlab_execute({tool: "magnetlab_publish_funnel", arguments: {funnel_id: "..."}})
+
+## Important
+- A lead magnet without a funnel is NOT publicly accessible
+- Never fabricate social proof — use real data or omit it
+- The lead magnet should use the user's actual language from the AI Brain`,
 
   write_linkedin_post: `# Writing a LinkedIn Post — Workflow
 
@@ -223,23 +231,35 @@ Always ground posts in real insights from the AI Brain. The user's actual storie
 
 ## Steps
 
-1. Ensure a lead magnet exists (create one first if needed — use create_lead_magnet workflow)
+1. Ensure a lead magnet, library, or external resource exists
 
-2. CREATE FUNNEL
-   → magnetlab_execute({tool: "magnetlab_create_funnel", arguments: {lead_magnet_id: "...", title: "..."}})
+2. CREATE FUNNEL — provide a slug and target
+   → magnetlab_execute({tool: "magnetlab_create_funnel", arguments: {
+       lead_magnet_id: "...",
+       slug: "my-guide",
+       optin_headline: "...",
+       optin_subline: "...",
+       optin_social_proof: null
+     }})
+   Defaults: headline=target title, button="Get Free Access", theme=dark, color=#8b5cf6
 
-3. CUSTOMIZE PAGES — Edit sections, apply theme
-   → magnetlab_execute({tool: "magnetlab_list_funnel_sections", arguments: {funnel_id: "..."}})
-   → magnetlab_execute({tool: "magnetlab_update_funnel_section", arguments: {id: "...", ...}})
+3. CUSTOMIZE — Edit sections, apply theme/restyle
+   → magnetlab_execute({tool: "magnetlab_restyle_funnel", arguments: {funnel_id: "...", prompt: "..."}})
+   → magnetlab_execute({tool: "magnetlab_apply_restyle", arguments: {funnel_id: "...", plan: {...}}})
 
-4. SET UP QUALIFICATION (optional)
+4. QUALIFICATION (optional)
    → magnetlab_execute({tool: "magnetlab_create_qualification_form", arguments: {funnel_page_id: "...", questions: [...]}})
 
-5. SET UP EMAIL SEQUENCE (optional)
+5. EMAIL SEQUENCE (optional)
    → magnetlab_execute({tool: "magnetlab_create_email_sequence", arguments: {funnel_page_id: "...", ...}})
 
 6. PUBLISH
-   → magnetlab_execute({tool: "magnetlab_publish_funnel", arguments: {funnel_id: "..."}})`,
+   → magnetlab_execute({tool: "magnetlab_publish_funnel", arguments: {funnel_id: "..."}})
+
+## Key rules
+- Never fabricate social proof — omit it or use real data
+- Use magnetlab_generate_funnel_content to AI-generate copy from lead magnet content
+- Use magnetlab_restyle_funnel for AI-powered visual design`,
 
   analyze_content_gaps: `# Analyzing Content Gaps — Workflow
 
@@ -297,7 +317,7 @@ Call magnetlab_guide with one of these tasks:
 - plan_content_week — Plan and schedule a week of content
 
 For any task: the AI Brain (magnetlab_knowledge category) contains the user's real expertise from call transcripts. ALWAYS search it before creating content.`,
-}
+};
 
 /**
  * Maps category tool names back to their discovery category key.
@@ -307,18 +327,18 @@ export const categoryToolToKey = new Map<string, DiscoveryCategoryKey>(
     `magnetlab_${key.replace(/([A-Z])/g, '_$1').toLowerCase()}`,
     key as DiscoveryCategoryKey,
   ])
-)
+);
 
 /**
  * Get human-readable label for a category.
  */
 export function getCategoryLabel(key: DiscoveryCategoryKey): string {
-  return categoryDescriptions[key].label
+  return categoryDescriptions[key].label;
 }
 
 /**
  * Get the count of real tools in a discovery category.
  */
 export function getCategoryToolCount(key: DiscoveryCategoryKey): number {
-  return discoveryCategories[key].length
+  return discoveryCategories[key].length;
 }
