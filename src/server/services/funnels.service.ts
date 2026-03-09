@@ -488,6 +488,7 @@ export async function updateSection(
   if (validation.data.isVisible !== undefined) update.is_visible = validation.data.isVisible;
   if (validation.data.pageLocation !== undefined)
     update.page_location = validation.data.pageLocation;
+  if (validation.data.variant !== undefined) update.variant = validation.data.variant;
 
   if (validation.data.config !== undefined) {
     const existingType = await funnelsRepo.getSectionType(sectionId, funnelId);

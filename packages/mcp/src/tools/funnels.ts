@@ -215,6 +215,108 @@ export const funnelTools: Tool[] = [
     },
   },
   {
+    name: 'magnetlab_list_sections',
+    description:
+      'List all sections for a funnel page. Returns section type, variant, page location, sort order, visibility, and config for each section.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        funnel_id: { type: 'string', description: 'Funnel page UUID' },
+      },
+      required: ['funnel_id'],
+    },
+  },
+  {
+    name: 'magnetlab_create_section',
+    description:
+      'Add a new section to a funnel page. Sections are building blocks like hero, logo_bar, steps, testimonial, marketing_block, section_bridge, stats_bar, feature_grid, or social_proof_wall. ' +
+      'Each section type has its own config schema. Variant controls the layout style (e.g. "centered", "timeline", "grid").',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        funnel_id: { type: 'string', description: 'Funnel page UUID' },
+        section_type: {
+          type: 'string',
+          enum: [
+            'logo_bar',
+            'steps',
+            'testimonial',
+            'marketing_block',
+            'section_bridge',
+            'hero',
+            'stats_bar',
+            'feature_grid',
+            'social_proof_wall',
+          ],
+          description: 'Type of section to create',
+        },
+        page_location: {
+          type: 'string',
+          enum: ['optin', 'thankyou', 'content'],
+          description: 'Which page this section appears on',
+        },
+        variant: {
+          type: 'string',
+          description:
+            "Layout variant for the section (e.g. 'centered', 'timeline', 'grid'). Defaults to 'default'.",
+        },
+        sort_order: {
+          type: 'number',
+          description: 'Position order (0-999). Auto-assigned if omitted.',
+        },
+        is_visible: {
+          type: 'boolean',
+          description: 'Whether section is visible (default: true)',
+        },
+        config: {
+          type: 'object',
+          description: 'Section-specific configuration (varies by section_type)',
+        },
+      },
+      required: ['funnel_id', 'section_type', 'page_location', 'config'],
+    },
+  },
+  {
+    name: 'magnetlab_update_section',
+    description:
+      'Update an existing funnel section. Change its config, variant, visibility, sort order, or page location. Only provided fields are updated.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        funnel_id: { type: 'string', description: 'Funnel page UUID' },
+        section_id: { type: 'string', description: 'Section UUID' },
+        variant: {
+          type: 'string',
+          description: "Layout variant for the section (e.g. 'centered', 'timeline', 'grid')",
+        },
+        sort_order: { type: 'number', description: 'Position order (0-999)' },
+        is_visible: { type: 'boolean', description: 'Whether section is visible' },
+        page_location: {
+          type: 'string',
+          enum: ['optin', 'thankyou', 'content'],
+          description: 'Move section to a different page',
+        },
+        config: {
+          type: 'object',
+          description: 'Section-specific configuration (varies by section_type)',
+        },
+      },
+      required: ['funnel_id', 'section_id'],
+    },
+  },
+  {
+    name: 'magnetlab_delete_section',
+    description: 'Remove a section from a funnel page. This is permanent.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        funnel_id: { type: 'string', description: 'Funnel page UUID' },
+        section_id: { type: 'string', description: 'Section UUID' },
+      },
+      required: ['funnel_id', 'section_id'],
+    },
+  },
+  {
     name: 'magnetlab_restyle_funnel',
     description:
       'Generate an AI-powered branding plan for a funnel. Provide a style prompt (e.g. "more corporate", "clean and minimal") and/or example URLs. Returns a structured plan with proposed theme, color, font, background, and section changes that you can review before applying.',
