@@ -289,3 +289,43 @@ User input (prompt + optional URLs)
 
 - `magnetlab_restyle_funnel` — generate plan: `{ funnel_id, prompt?, urls? }`
 - `magnetlab_apply_restyle` — apply plan: `{ funnel_id, plan }`
+
+## Enhanced Page Builder (Mar 2026)
+
+9 section types with named layout variants, position rules engine, and scroll animations. AI picks sections/variants on creation; user refines via restyler.
+
+### Section Types & Variants
+
+| Type | Variants | Max Per Page |
+|------|----------|-------------|
+| hero | centered, split-image, full-bleed-gradient | 1 (optin only) |
+| logo_bar | inline, grid | 1 (optin only) |
+| stats_bar | inline, cards, animated-counters | 1 |
+| steps | numbered, timeline, icon-cards | 1 |
+| feature_grid | icon-top, icon-left, minimal | 1 |
+| testimonial | quote-card, highlight, avatar | 2 |
+| social_proof_wall | grid, carousel, stacked | 1 |
+| section_bridge | divider, accent-bar, gradient-fade | 3 |
+| marketing_block | feature-card, benefit, faq-accordion, cta-banner | 3 |
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/types/funnel.ts` | SECTION_VARIANTS, new config interfaces |
+| `src/lib/validations/section-rules.ts` | Position rules engine |
+| `src/lib/validations/api.ts` | Variant-specific Zod schemas |
+| `src/lib/ai/funnel-generation/section-generator.ts` | AI section generation prompts |
+| `src/components/funnel/animations/` | ScrollReveal, useCountUp hooks |
+| `src/components/ds/HeroSection.tsx` | Hero renderer (3 variants) |
+| `src/components/ds/StatsBar.tsx` | Stats bar renderer (3 variants) |
+| `src/components/ds/FeatureGrid.tsx` | Feature grid renderer (3 variants) |
+| `src/components/ds/SocialProofWall.tsx` | Social proof wall renderer (3 variants) |
+| `src/components/funnel/section-editors/` | Config editors for each section type |
+
+### MCP Tools
+
+- `magnetlab_list_sections` — list sections for a funnel
+- `magnetlab_create_section` — create with type, variant, config
+- `magnetlab_update_section` — update variant, config, visibility
+- `magnetlab_delete_section` — remove section
