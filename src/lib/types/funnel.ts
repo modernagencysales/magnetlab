@@ -176,8 +176,31 @@ export interface WebhookConfig {
 // FUNNEL PAGE SECTIONS (Design System)
 // ============================================
 
-export type SectionType = 'logo_bar' | 'steps' | 'testimonial' | 'marketing_block' | 'section_bridge';
+export type SectionType =
+  | 'logo_bar'
+  | 'steps'
+  | 'testimonial'
+  | 'marketing_block'
+  | 'section_bridge'
+  | 'hero'
+  | 'stats_bar'
+  | 'feature_grid'
+  | 'social_proof_wall';
 export type PageLocation = 'optin' | 'thankyou' | 'content';
+
+export const SECTION_VARIANTS = {
+  logo_bar: ['inline', 'grid'] as const,
+  steps: ['numbered', 'timeline', 'icon-cards'] as const,
+  testimonial: ['quote-card', 'highlight', 'avatar'] as const,
+  marketing_block: ['feature-card', 'benefit', 'faq-accordion', 'cta-banner'] as const,
+  section_bridge: ['divider', 'accent-bar', 'gradient-fade'] as const,
+  hero: ['centered', 'split-image', 'full-bleed-gradient'] as const,
+  stats_bar: ['inline', 'cards', 'animated-counters'] as const,
+  feature_grid: ['icon-top', 'icon-left', 'minimal'] as const,
+  social_proof_wall: ['grid', 'carousel', 'stacked'] as const,
+} as const;
+
+export type SectionVariant<T extends SectionType> = (typeof SECTION_VARIANTS)[T][number];
 
 export interface LogoBarConfig {
   logos: Array<{ name: string; imageUrl: string }>;
@@ -212,7 +235,37 @@ export interface SectionBridgeConfig {
   stepLabel?: string;
 }
 
-export type SectionConfig = LogoBarConfig | StepsConfig | TestimonialConfig | MarketingBlockConfig | SectionBridgeConfig;
+export interface HeroConfig {
+  headline: string;
+  subline?: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  backgroundImageUrl?: string;
+  gradientConfig?: { from: string; to: string; direction?: string };
+}
+
+export interface StatsBarConfig {
+  items: Array<{ value: string; label: string }>;
+}
+
+export interface FeatureGridConfig {
+  features: Array<{ icon: string; title: string; description: string }>;
+}
+
+export interface SocialProofWallConfig {
+  testimonials: Array<{ quote: string; author: string; role?: string; avatar?: string }>;
+}
+
+export type SectionConfig =
+  | LogoBarConfig
+  | StepsConfig
+  | TestimonialConfig
+  | MarketingBlockConfig
+  | SectionBridgeConfig
+  | HeroConfig
+  | StatsBarConfig
+  | FeatureGridConfig
+  | SocialProofWallConfig;
 
 export interface FunnelPageSection {
   id: string;
@@ -221,6 +274,7 @@ export interface FunnelPageSection {
   pageLocation: PageLocation;
   sortOrder: number;
   isVisible: boolean;
+  variant: string;
   config: SectionConfig;
   createdAt: string;
   updatedAt: string;
@@ -233,6 +287,7 @@ export interface FunnelPageSectionRow {
   page_location: string;
   sort_order: number;
   is_visible: boolean;
+  variant: string;
   config: SectionConfig;
   created_at: string;
   updated_at: string;
@@ -604,6 +659,7 @@ export function funnelPageSectionFromRow(row: FunnelPageSectionRow): FunnelPageS
     pageLocation: row.page_location as PageLocation,
     sortOrder: row.sort_order,
     isVisible: row.is_visible,
+    variant: row.variant || 'default',
     config: row.config,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
