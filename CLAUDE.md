@@ -1139,6 +1139,51 @@ process_intake -> select_and_finish_posts -> review_and_polish_content -> [admin
 | `src/lib/ai/content-pipeline/prompt-defaults.ts`          | Prompt defaults (content-review, quiz-generator slugs) |
 | `supabase/migrations/20260226100000_post_review_data.sql` | review_data column migration                           |
 
+## Funnel Restyler (Mar 2026)
+
+AI-powered funnel restyling — takes text prompts ("make it more corporate") and/or example URLs, generates a structured branding plan, user reviews/tweaks individual items, then applies.
+
+### Architecture
+
+```
+User input (prompt + optional URLs)
+  → POST /api/funnel/[id]/restyle
+  → restyle.service.ts
+    → If URLs: Claude Vision analyzes screenshots for style signals
+    → Builds prompt with current funnel state + style intent
+    → Claude generates structured branding plan (JSON)
+  → Returns plan to caller (MCP or UI)
+  → User reviews, removes items they don't want
+  → POST /api/funnel/[id]/apply-restyle
+    → Updates funnel fields (theme, color, font, background)
+    → Adds/removes/reorders sections
+```
+
+### What Changes
+
+- **Field changes:** theme (dark/light), primaryColor, backgroundStyle, fontFamily, fontUrl
+- **Section changes:** add/remove/reorder logo_bar, steps, testimonial, marketing_block, section_bridge
+- **Does NOT change:** text content, qualification questions, integrations
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/ai/restyle/plan-generator.ts` | Prompt builder, vision prompt, plan parser |
+| `src/server/services/restyle.service.ts` | Orchestrates plan generation and application |
+| `src/app/api/funnel/[id]/restyle/route.ts` | Generate plan API |
+| `src/app/api/funnel/[id]/apply-restyle/route.ts` | Apply plan API |
+| `src/components/funnel/RestylePanel.tsx` | UI panel (Restyle with AI section) |
+| `src/components/funnel/ThemeEditor.tsx` | Hosts RestylePanel in theme tab |
+| `packages/mcp/src/tools/funnels.ts` | MCP tool definitions |
+| `packages/mcp/src/handlers/funnels.ts` | MCP handler wiring |
+| `packages/mcp/src/client.ts` | MCP client methods |
+
+### MCP Tools
+
+- `magnetlab_restyle_funnel` — generate plan: `{ funnel_id, prompt?, urls? }`
+- `magnetlab_apply_restyle` — apply plan: `{ funnel_id, plan }`
+
 ## Engagement Cold Email Pipeline (Feb 2026)
 
 Auto-enrich and push leads who engage with lead magnet posts to PlusVibe cold email campaigns. Also provides manual comment reply with opt-in link.
