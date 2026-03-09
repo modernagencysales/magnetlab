@@ -1,8 +1,9 @@
 /**
- * Funnel API (client): CRUD, sections, publish, theme, generate-content.
+ * Funnel API (client): CRUD, sections, publish, theme, generate-content, restyle.
  */
 
 import { apiClient } from '../client';
+import type { RestylePlan } from '@/lib/types/funnel';
 
 export interface GetFunnelByTargetParams {
   leadMagnetId?: string;
@@ -104,4 +105,18 @@ export async function deleteQuestion(funnelId: string, questionId: string): Prom
 
 export async function reorderQuestions(funnelId: string, questionIds: string[]): Promise<{ success: boolean }> {
   return apiClient.patch<{ success: boolean }>(`/funnel/${funnelId}/questions`, { questionIds });
+}
+
+export async function generateRestylePlan(
+  funnelId: string,
+  input: { prompt?: string; urls?: string[] },
+): Promise<{ plan: RestylePlan }> {
+  return apiClient.post<{ plan: RestylePlan }>(`/funnel/${funnelId}/restyle`, input);
+}
+
+export async function applyRestylePlan(
+  funnelId: string,
+  plan: RestylePlan,
+): Promise<Record<string, unknown>> {
+  return apiClient.post<Record<string, unknown>>(`/funnel/${funnelId}/apply-restyle`, { plan });
 }
