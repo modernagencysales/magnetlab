@@ -171,4 +171,38 @@ export const funnelTools: Tool[] = [
       required: ['lead_magnet_id'],
     },
   },
+  {
+    name: 'magnetlab_restyle_funnel',
+    description:
+      'Generate an AI-powered branding plan for a funnel. Provide a style prompt (e.g. "more corporate", "clean and minimal") and/or example URLs. Returns a structured plan with proposed theme, color, font, background, and section changes that you can review before applying.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        funnel_id: { type: 'string', description: 'Funnel page UUID to restyle' },
+        prompt: { type: 'string', description: 'Style direction (e.g. "make it more corporate", "luxury feel", "clean and minimal")' },
+        urls: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Up to 3 example URLs — AI analyzes their visual style via screenshots',
+        },
+      },
+      required: ['funnel_id'],
+    },
+  },
+  {
+    name: 'magnetlab_apply_restyle',
+    description:
+      'Apply a reviewed restyle plan to a funnel. Pass the plan object (from magnetlab_restyle_funnel) after reviewing and optionally modifying it. Updates theme, colors, fonts, background, and adds/removes/reorders sections.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        funnel_id: { type: 'string', description: 'Funnel page UUID' },
+        plan: {
+          type: 'object',
+          description: 'The RestylePlan object (from magnetlab_restyle_funnel output, possibly modified)',
+        },
+      },
+      required: ['funnel_id', 'plan'],
+    },
+  },
 ]

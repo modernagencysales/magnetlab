@@ -86,6 +86,17 @@ export async function handleFunnelTools(
     case 'magnetlab_generate_funnel_content':
       return client.generateFunnelContent({ leadMagnetId: args.lead_magnet_id as string })
 
+    case 'magnetlab_restyle_funnel':
+      return client.restyleFunnel(args.funnel_id as string, {
+        prompt: args.prompt as string | undefined,
+        urls: args.urls as string[] | undefined,
+      })
+
+    case 'magnetlab_apply_restyle':
+      return client.applyRestyle(args.funnel_id as string, {
+        plan: args.plan as unknown,
+      })
+
     default:
       throw new Error(`Unknown funnel tool: ${name}`)
   }

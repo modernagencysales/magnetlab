@@ -299,6 +299,16 @@ export class MagnetLabClient {
     return this.aiRequest<unknown>('POST', `/funnel/generate-content`, params)
   }
 
+  async restyleFunnel(funnelId: string, params: { prompt?: string; urls?: string[] }) {
+    return this.aiRequest<{ plan: unknown }>('POST', `/funnel/${funnelId}/restyle`, params)
+  }
+
+  async applyRestyle(funnelId: string, params: { plan: unknown }) {
+    return this.request<{ success: boolean; applied: { fieldChanges: number; sectionChanges: number } }>(
+      'POST', `/funnel/${funnelId}/apply-restyle`, params
+    )
+  }
+
   // ============================================================
   // Leads
   // ============================================================

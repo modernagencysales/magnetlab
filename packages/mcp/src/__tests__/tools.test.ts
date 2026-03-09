@@ -13,8 +13,8 @@ import {
 } from '../tools/category-tools.js'
 
 describe('Tool Registration', () => {
-  it('exports exactly 106 tools', () => {
-    expect(tools).toHaveLength(106)
+  it('exports exactly 109 tools', () => {
+    expect(tools).toHaveLength(109)
   })
 
   it('all tools have unique names', () => {
@@ -70,9 +70,9 @@ describe('Tool Registration', () => {
 
   describe('handler category sizes', () => {
     const expectedCounts: Record<string, number> = {
-      leadMagnets: 7,
+      leadMagnets: 8,
       ideation: 6,
-      funnels: 9,
+      funnels: 11,
       leads: 2,
       analytics: 1,
       brandKit: 3,
@@ -158,8 +158,8 @@ describe('Discovery Categories', () => {
     expect(discoveryCategories.leadMagnets).toContain('magnetlab_list_leads')
     expect(discoveryCategories.leadMagnets).toContain('magnetlab_export_leads')
     expect(discoveryCategories.leadMagnets).toContain('magnetlab_get_funnel_stats')
-    // Original 7 lead magnet tools + 2 leads + 1 analytics = 10
-    expect(discoveryCategories.leadMagnets.length).toBe(10)
+    // 8 lead magnet tools + 2 leads + 1 analytics = 11
+    expect(discoveryCategories.leadMagnets.length).toBe(11)
   })
 
   describe('discovery category sizes', () => {
@@ -167,9 +167,9 @@ describe('Discovery Categories', () => {
       knowledge: 14,
       contentWriting: 19,
       contentScheduling: 11,
-      leadMagnets: 10,
+      leadMagnets: 11,
       ideation: 6,
-      funnels: 9,
+      funnels: 11,
       brandKit: 3,
       emailSequences: 4,
       emailSystem: 15,
