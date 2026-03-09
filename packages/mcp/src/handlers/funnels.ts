@@ -77,8 +77,38 @@ export async function handleFunnelTools(
     case 'magnetlab_delete_funnel':
       return client.deleteFunnel(args.id as string);
 
-    case 'magnetlab_publish_funnel':
-      return client.publishFunnel(args.id as string);
+    case 'magnetlab_publish_funnel': {
+      const publishResult = await client.publishFunnel(args.id as string);
+
+      // Check for draft email sequence and warn
+      try {
+        const funnelData = publishResult as { funnel?: Record<string, unknown> };
+        const leadMagnetId =
+          (funnelData.funnel?.lead_magnet_id as string) ||
+          (funnelData.funnel?.leadMagnetId as string);
+
+        if (leadMagnetId) {
+          const seqResult = (await client.getEmailSequence(leadMagnetId)) as {
+            emailSequence?: { status?: string } | null;
+          };
+
+          if (seqResult?.emailSequence && seqResult.emailSequence.status !== 'active') {
+            return {
+              ...(publishResult as Record<string, unknown>),
+              warning:
+                'This funnel has an email sequence in "' +
+                (seqResult.emailSequence.status || 'draft') +
+                '" state. Leads who opt in will NOT receive sequence emails. ' +
+                'Call magnetlab_activate_email_sequence to start sending.',
+            };
+          }
+        }
+      } catch {
+        // Don't block publish if sequence check fails
+      }
+
+      return publishResult;
+    }
 
     case 'magnetlab_unpublish_funnel':
       return client.unpublishFunnel(args.id as string);
