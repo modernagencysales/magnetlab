@@ -165,7 +165,7 @@ export function OptinPage({
         {/* Above-form sections */}
         {aboveSections.length > 0 && (
           <div className="space-y-6 text-left">
-            {aboveSections.map(s => <SectionRenderer key={s.id} section={s} />)}
+            {aboveSections.map(s => <SectionRenderer key={s.id} section={s} primaryColor={primaryColor} />)}
           </div>
         )}
 
@@ -216,7 +216,7 @@ export function OptinPage({
         {/* Below-form sections */}
         {belowSections.length > 0 && (
           <div className="space-y-6 text-left">
-            {belowSections.map(s => <SectionRenderer key={s.id} section={s} />)}
+            {belowSections.map(s => <SectionRenderer key={s.id} section={s} primaryColor={primaryColor} />)}
           </div>
         )}
 
