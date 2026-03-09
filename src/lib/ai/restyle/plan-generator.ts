@@ -4,7 +4,12 @@
  * Never imports Next.js HTTP layer.
  */
 
-import type { RestylePlan, RestyleFieldChange, RestyleSectionChange, SectionType, PageLocation } from '@/lib/types/funnel';
+import type {
+  RestylePlan,
+  RestyleFieldChange,
+  RestyleSectionChange,
+  SectionType,
+} from '@/lib/types/funnel';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -38,11 +43,19 @@ export interface RestylePromptOutput {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const VALID_FIELDS: RestyleFieldChange['field'][] = [
-  'theme', 'primaryColor', 'backgroundStyle', 'fontFamily', 'fontUrl',
+  'theme',
+  'primaryColor',
+  'backgroundStyle',
+  'fontFamily',
+  'fontUrl',
 ];
 
 const VALID_SECTION_TYPES: SectionType[] = [
-  'logo_bar', 'steps', 'testimonial', 'marketing_block', 'section_bridge',
+  'logo_bar',
+  'steps',
+  'testimonial',
+  'marketing_block',
+  'section_bridge',
 ];
 
 const VALID_ACTIONS: RestyleSectionChange['action'][] = ['add', 'remove', 'reorder'];
@@ -65,9 +78,21 @@ const PRESET_COLORS = [
 ];
 
 const GOOGLE_FONTS_SUGGESTIONS = [
-  'Inter', 'Roboto', 'Open Sans', 'Montserrat', 'Lato', 'Poppins',
-  'Playfair Display', 'Merriweather', 'Raleway', 'Source Sans 3',
-  'Nunito', 'Work Sans', 'DM Sans', 'Space Grotesk', 'Outfit',
+  'Inter',
+  'Roboto',
+  'Open Sans',
+  'Montserrat',
+  'Lato',
+  'Poppins',
+  'Playfair Display',
+  'Merriweather',
+  'Raleway',
+  'Source Sans 3',
+  'Nunito',
+  'Work Sans',
+  'DM Sans',
+  'Space Grotesk',
+  'Outfit',
 ];
 
 // ─── Prompt Builders ────────────────────────────────────────────────
@@ -78,8 +103,8 @@ const GOOGLE_FONTS_SUGGESTIONS = [
 export function buildRestylePrompt(input: RestylePromptInput): RestylePromptOutput {
   const { stylePrompt, currentFunnel, currentSections, visionAnalysis } = input;
 
-  const colorList = PRESET_COLORS.map(c => `  - ${c.name}: ${c.hex}`).join('\n');
-  const fontList = GOOGLE_FONTS_SUGGESTIONS.map(f => `  - ${f}`).join('\n');
+  const colorList = PRESET_COLORS.map((c) => `  - ${c.name}: ${c.hex}`).join('\n');
+  const fontList = GOOGLE_FONTS_SUGGESTIONS.map((f) => `  - ${f}`).join('\n');
 
   const sectionDescriptions = [
     'logo_bar — Row of client/partner logos for social proof',
@@ -87,11 +112,16 @@ export function buildRestylePrompt(input: RestylePromptInput): RestylePromptOutp
     'testimonial — Customer quote with author and result',
     'marketing_block — Flexible block (case study, feature, benefit, FAQ, pricing, CTA)',
     'section_bridge — Transition text between sections with optional step number',
-  ].map(s => `  - ${s}`).join('\n');
+  ]
+    .map((s) => `  - ${s}`)
+    .join('\n');
 
-  const currentSectionsDesc = currentSections.length > 0
-    ? currentSections.map(s => `  - ${s.sectionType} on ${s.pageLocation} (order: ${s.sortOrder})`).join('\n')
-    : '  (none)';
+  const currentSectionsDesc =
+    currentSections.length > 0
+      ? currentSections
+          .map((s) => `  - ${s.sectionType} on ${s.pageLocation} (order: ${s.sortOrder})`)
+          .join('\n')
+      : '  (none)';
 
   const systemMessage = `You are a funnel design expert. Given a user's style request, suggest changes to a funnel page's visual styling.
 

@@ -1,7 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Loader2, Copy, Check, Sparkles, Trash2, Eye, List, LayoutGrid } from 'lucide-react';
+import {
+  FileText,
+  Loader2,
+  Copy,
+  Check,
+  Sparkles,
+  Trash2,
+  Eye,
+  List,
+  LayoutGrid,
+} from 'lucide-react';
 import { cn, truncate, formatDateTime } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostDetailModal } from './PostDetailModal';
@@ -9,7 +19,7 @@ import { BatchView } from './BatchView';
 import type { PipelinePost, PostStatus, ReviewData } from '@/lib/types/content-pipeline';
 import { usePosts } from '@/frontend/hooks/api/usePosts';
 import { usePolishPost, useDeletePost } from '@/frontend/hooks/api/usePostsMutations';
-import { getPostById } from '@/frontend/api/content-pipeline/posts';
+import { getPostById, updatePost } from '@/frontend/api/content-pipeline/posts';
 
 const STATUS_FILTERS: { value: PostStatus | ''; label: string }[] = [
   { value: '', label: 'All' },
@@ -69,6 +79,15 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
     await fetchPosts(true);
   });
   const { mutate: deleteMutate } = useDeletePost(() => fetchPosts(true));
+
+  const handleStatusChange = async (postId: string, newStatus: PostStatus) => {
+    try {
+      await updatePost(postId, { status: newStatus });
+      await fetchPosts(true);
+    } catch {
+      // Silent failure
+    }
+  };
 
   const handlePolish = async (postId: string) => {
     setPolishingId(postId);
