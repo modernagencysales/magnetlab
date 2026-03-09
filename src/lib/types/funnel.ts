@@ -80,6 +80,8 @@ export interface FunnelPage {
   theme: FunnelTheme;
   primaryColor: string;
   backgroundStyle: BackgroundStyle;
+  fontFamily: string | null;
+  fontUrl: string | null;
   logoUrl: string | null;
 
   // Shared qualification form
@@ -430,6 +432,8 @@ export interface FunnelPageRow {
   theme: string;
   primary_color: string;
   background_style: string;
+  font_family: string | null;
+  font_url: string | null;
   logo_url: string | null;
   qualification_form_id: string | null;
   is_published: boolean;
@@ -514,6 +518,8 @@ export function funnelPageFromRow(row: FunnelPageRow): FunnelPage {
     theme: (row.theme || 'dark') as FunnelTheme,
     primaryColor: row.primary_color || '#8b5cf6',
     backgroundStyle: (row.background_style || 'solid') as BackgroundStyle,
+    fontFamily: row.font_family || null,
+    fontUrl: row.font_url || null,
     logoUrl: row.logo_url,
     isPublished: row.is_published,
     publishedAt: row.published_at,
