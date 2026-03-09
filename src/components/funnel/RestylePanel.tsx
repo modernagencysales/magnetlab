@@ -90,6 +90,14 @@ export function RestylePanel({ funnelId, onApplied }: RestylePanelProps) {
     setPlan({ ...plan, sectionChanges: plan.sectionChanges.filter((_, i) => i !== index) });
   };
 
+  const handleRemoveVariantChange = (index: number) => {
+    if (!plan || !plan.sectionVariantChanges) return;
+    setPlan({
+      ...plan,
+      sectionVariantChanges: plan.sectionVariantChanges.filter((_, i) => i !== index),
+    });
+  };
+
   const handleDiscard = () => {
     setPlan(null);
     setError(null);
@@ -161,9 +169,7 @@ export function RestylePanel({ funnelId, onApplied }: RestylePanelProps) {
       )}
 
       {/* Error display */}
-      {error && (
-        <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-      )}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
       {/* Plan review */}
       {plan && (
@@ -181,10 +187,7 @@ export function RestylePanel({ funnelId, onApplied }: RestylePanelProps) {
                 Theme Changes
               </p>
               {plan.changes.map((change, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 rounded-md border p-2 text-xs"
-                >
+                <div key={i} className="flex items-center gap-2 rounded-md border p-2 text-xs">
                   <span className="font-medium min-w-[90px]">{change.field}</span>
                   <span className="text-muted-foreground truncate">{change.from ?? 'none'}</span>
                   <ArrowRight className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
@@ -211,10 +214,7 @@ export function RestylePanel({ funnelId, onApplied }: RestylePanelProps) {
                 Section Changes
               </p>
               {plan.sectionChanges.map((sc, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 rounded-md border p-2 text-xs"
-                >
+                <div key={i} className="flex items-center gap-2 rounded-md border p-2 text-xs">
                   <span className="font-medium min-w-[50px] capitalize">{sc.action}</span>
                   <span className="font-mono">{sc.sectionType}</span>
                   {sc.pageLocation && (
@@ -235,12 +235,46 @@ export function RestylePanel({ funnelId, onApplied }: RestylePanelProps) {
             </div>
           )}
 
+          {/* Variant changes */}
+          {(plan.sectionVariantChanges ?? []).length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Variant Changes
+              </p>
+              {plan.sectionVariantChanges!.map((vc, i) => (
+                <div key={i} className="flex items-center gap-2 rounded-md border p-2 text-xs">
+                  <span className="font-medium min-w-[70px] font-mono truncate">
+                    {vc.sectionId.slice(0, 8)}
+                  </span>
+                  <span className="text-muted-foreground truncate">{vc.fromVariant}</span>
+                  <ArrowRight className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                  <span className="font-mono truncate">{vc.toVariant}</span>
+                  <span className="ml-auto text-muted-foreground hidden sm:inline truncate max-w-[120px]">
+                    {vc.reason}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveVariantChange(i)}
+                    className="flex-shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Apply / Discard */}
           <div className="flex gap-2">
             <Button
               type="button"
               onClick={handleApplyPlan}
-              disabled={isApplying || (plan.changes.length === 0 && plan.sectionChanges.length === 0)}
+              disabled={
+                isApplying ||
+                (plan.changes.length === 0 &&
+                  plan.sectionChanges.length === 0 &&
+                  (plan.sectionVariantChanges ?? []).length === 0)
+              }
               className="flex-1"
             >
               {isApplying ? (
