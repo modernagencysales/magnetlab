@@ -36,6 +36,7 @@ import type {
   SectionType,
   PageLocation,
 } from '@/lib/types/funnel';
+import { SECTION_VARIANTS } from '@/lib/types/funnel';
 import type { ExtractedContent, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 import type { BulkPageItemInput } from '@/lib/validations/api';
 
@@ -405,7 +406,9 @@ export async function publishFunnel(
         event: 'funnel_published',
         properties: { funnel_id: id, slug: funnel.slug, has_public_url: !!publicUrl },
       });
-    } catch {}
+    } catch (err) {
+      logApiError('funnel/publish-posthog', err);
+    }
   }
 
   return { funnel: updated, publicUrl };
@@ -431,6 +434,18 @@ export async function createSection(
   if (!validation.success) throw Object.assign(new Error(validation.error), { statusCode: 400 });
 
   const { sectionType, pageLocation, sortOrder, isVisible, config: rawConfig } = validation.data;
+
+  // Validate variant against SECTION_VARIANTS whitelist
+  const variant = validation.data.variant || 'default';
+  const allowedVariants = SECTION_VARIANTS[sectionType as keyof typeof SECTION_VARIANTS];
+  if (allowedVariants && !allowedVariants.includes(variant as never)) {
+    throw Object.assign(
+      new Error(
+        `Invalid variant "${variant}" for section type "${sectionType}". Allowed: ${allowedVariants.join(', ')}`
+      ),
+      { statusCode: 400 }
+    );
+  }
 
   const configSchema = sectionConfigSchemas[sectionType as keyof typeof sectionConfigSchemas];
   if (configSchema) {
@@ -490,7 +505,24 @@ export async function updateSection(
   if (validation.data.isVisible !== undefined) update.is_visible = validation.data.isVisible;
   if (validation.data.pageLocation !== undefined)
     update.page_location = validation.data.pageLocation;
-  if (validation.data.variant !== undefined) update.variant = validation.data.variant;
+
+  // Validate variant against SECTION_VARIANTS whitelist
+  if (validation.data.variant !== undefined) {
+    const existingTypeForVariant = await funnelsRepo.getSectionType(sectionId, funnelId);
+    if (existingTypeForVariant) {
+      const allowedVariants =
+        SECTION_VARIANTS[existingTypeForVariant as keyof typeof SECTION_VARIANTS];
+      if (allowedVariants && !allowedVariants.includes(validation.data.variant as never)) {
+        throw Object.assign(
+          new Error(
+            `Invalid variant "${validation.data.variant}" for section type "${existingTypeForVariant}". Allowed: ${allowedVariants.join(', ')}`
+          ),
+          { statusCode: 400 }
+        );
+      }
+    }
+    update.variant = validation.data.variant;
+  }
 
   if (validation.data.config !== undefined) {
     const existingType = await funnelsRepo.getSectionType(sectionId, funnelId);

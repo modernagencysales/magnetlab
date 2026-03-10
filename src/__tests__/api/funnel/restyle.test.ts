@@ -173,10 +173,9 @@ describe('POST /api/funnel/[id]/apply-restyle', () => {
     mockApplyRestylePlan.mockResolvedValueOnce(mockResult);
 
     const plan = {
-      summary: 'Blue theme',
       changes: [
-        { field: 'primaryColor', from: '#8b5cf6', to: '#3b82f6', reason: 'Blue' },
-        { field: 'theme', from: 'dark', to: 'light', reason: 'Lighter' },
+        { field: 'primaryColor', from: '#8b5cf6', to: '#3b82f6' },
+        { field: 'theme', from: 'dark', to: 'light' },
       ],
       sectionChanges: [
         { action: 'add', sectionType: 'logo_bar', pageLocation: 'optin', reason: 'Add logos' },
@@ -193,7 +192,13 @@ describe('POST /api/funnel/[id]/apply-restyle', () => {
     expect(data.success).toBe(true);
     expect(data.applied.fieldChanges).toBe(2);
     expect(data.applied.sectionChanges).toBe(1);
-    expect(mockApplyRestylePlan).toHaveBeenCalledWith(mockScope, validUUID, { plan });
+    // Zod adds defaults for styleDirection, reasoning, sectionVariantChanges
+    expect(mockApplyRestylePlan).toHaveBeenCalledWith(mockScope, validUUID, {
+      plan: expect.objectContaining({
+        changes: plan.changes,
+        sectionChanges: plan.sectionChanges,
+      }),
+    });
   });
 
   it('returns service error status on failure', async () => {
@@ -202,7 +207,7 @@ describe('POST /api/funnel/[id]/apply-restyle', () => {
     const err = Object.assign(new Error('Funnel not found'), { statusCode: 404 });
     mockApplyRestylePlan.mockRejectedValueOnce(err);
 
-    const plan = { summary: 'Test', changes: [], sectionChanges: [] };
+    const plan = { changes: [], sectionChanges: [] };
     const request = makeRequest(`http://localhost:3000/api/funnel/${validUUID}/apply-restyle`, {
       plan,
     });

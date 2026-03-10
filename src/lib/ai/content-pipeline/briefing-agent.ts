@@ -101,8 +101,8 @@ export async function buildContentBrief(
   try {
     const topicSlug = allEntries[0]?.topics?.[0] || topic.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     position = await getCachedPosition(userId, topicSlug, { teamId, profileId });
-  } catch {
-    // Position synthesis not critical for brief
+  } catch (err) {
+    logWarn('briefing-agent/cached-position', 'Failed to fetch cached position', { err });
   }
 
   return {

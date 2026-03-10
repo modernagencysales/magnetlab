@@ -16,6 +16,7 @@ import { logApiError } from '@/lib/api/errors';
 
 import type { DataScope } from '@/lib/utils/team-context';
 import type { RestylePlan } from '@/lib/types/funnel';
+import { SECTION_VARIANTS } from '@/lib/types/funnel';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -41,6 +42,72 @@ const ALLOWED_FIELD_UPDATES: Record<string, string> = {
 const MAX_VISION_URLS = 3;
 const AI_MODEL = 'claude-sonnet-4-5-20250514';
 const AI_MAX_TOKENS = 2048;
+
+/**
+ * Private IP ranges and loopback addresses that must be blocked to prevent SSRF.
+ * Each entry: [start, end] as 32-bit integers for fast range comparison.
+ */
+const BLOCKED_IP_RANGES: Array<[number, number]> = [
+  [ipToInt('10.0.0.0'), ipToInt('10.255.255.255')], // 10.0.0.0/8
+  [ipToInt('172.16.0.0'), ipToInt('172.31.255.255')], // 172.16.0.0/12
+  [ipToInt('192.168.0.0'), ipToInt('192.168.255.255')], // 192.168.0.0/16
+  [ipToInt('127.0.0.0'), ipToInt('127.255.255.255')], // 127.0.0.0/8
+  [ipToInt('169.254.0.0'), ipToInt('169.254.255.255')], // 169.254.0.0/16 (link-local)
+  [ipToInt('0.0.0.0'), ipToInt('0.255.255.255')], // 0.0.0.0/8
+];
+
+/** Convert dotted IPv4 string to a 32-bit integer for range checks. */
+function ipToInt(ip: string): number {
+  const parts = ip.split('.').map(Number);
+  return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
+}
+
+/** Returns true if the hostname looks like a raw IPv4 address in a blocked range. */
+function isBlockedIp(hostname: string): boolean {
+  const ipv4 = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname);
+  if (!ipv4) return false;
+  const asInt = ipToInt(hostname);
+  return BLOCKED_IP_RANGES.some(([start, end]) => asInt >= start && asInt <= end);
+}
+
+/**
+ * Validate that a URL is safe to fetch externally (anti-SSRF).
+ * Returns true when the URL passes all checks; false otherwise.
+ *
+ * Rules:
+ *  1. Must parse via `new URL()`
+ *  2. Only `https:` protocol allowed
+ *  3. Hostname must be a fully-qualified domain name (contains a dot)
+ *  4. Rejects `localhost`, `0.0.0.0`, and other bare hostnames
+ *  5. Rejects private/internal IPv4 ranges
+ */
+function validateExternalUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+
+  // Only HTTPS allowed
+  if (parsed.protocol !== 'https:') return false;
+
+  const hostname = parsed.hostname.toLowerCase();
+
+  // Reject localhost and common non-FQDN names
+  if (hostname === 'localhost' || hostname === '0.0.0.0') return false;
+
+  // Reject IPv6 loopback (browsers normalise [::1])
+  if (hostname === '[::1]' || hostname === '::1') return false;
+
+  // Must contain a dot — bare hostnames (e.g. "intranet") are not FQDNs
+  if (!hostname.includes('.')) return false;
+
+  // Reject private/internal IPv4 ranges
+  if (isBlockedIp(hostname)) return false;
+
+  return true;
+}
 
 // ─── Generate Restyle Plan ──────────────────────────────────────────
 
@@ -194,6 +261,22 @@ export async function applyRestylePlan(
   let variantChanges = 0;
   for (const variantChange of plan.sectionVariantChanges || []) {
     try {
+      // Validate variant against SECTION_VARIANTS whitelist
+      const sectionType = await funnelsRepo.getSectionType(variantChange.sectionId, funnelId);
+      if (sectionType) {
+        const allowedVariants = SECTION_VARIANTS[sectionType as keyof typeof SECTION_VARIANTS];
+        if (allowedVariants && !allowedVariants.includes(variantChange.toVariant as never)) {
+          logApiError(
+            'restyle.service/applyRestylePlan/variantChange',
+            new Error(
+              `Invalid variant "${variantChange.toVariant}" for section type "${sectionType}". Allowed: ${allowedVariants.join(', ')}`
+            ),
+            { sectionId: variantChange.sectionId, toVariant: variantChange.toVariant, funnelId }
+          );
+          continue;
+        }
+      }
+
       await funnelsRepo.updateSection(variantChange.sectionId, funnelId, {
         variant: variantChange.toVariant,
       });
@@ -217,7 +300,19 @@ async function analyzeUrls(urls: string[]): Promise<string> {
   const visionPrompt = buildVisionPrompt();
   const analyses: string[] = [];
 
-  const urlsToProcess = urls.slice(0, MAX_VISION_URLS);
+  // Filter out unsafe URLs before processing (SSRF prevention)
+  const safeUrls = urls.filter((url) => {
+    const safe = validateExternalUrl(url);
+    if (!safe) {
+      logApiError('restyle.service/analyzeUrls/urlValidation', new Error('Rejected unsafe URL'), {
+        url,
+        reason: 'SSRF prevention: URL failed external validation',
+      });
+    }
+    return safe;
+  });
+
+  const urlsToProcess = safeUrls.slice(0, MAX_VISION_URLS);
 
   for (const url of urlsToProcess) {
     try {

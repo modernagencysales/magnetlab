@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, Eye, EyeOff, GripVertical, ChevronDown } from 'lucide-react';
 import type {
   FunnelPageSection,
@@ -96,15 +97,36 @@ function getDefaultConfig(type: SectionType): SectionConfig {
       } satisfies HeroConfig;
     case 'stats_bar':
       return {
-        items: [{ value: '100+', label: 'Clients' }],
+        items: [
+          { value: '100+', label: 'Clients' },
+          { value: '50+', label: 'Projects' },
+          { value: '99%', label: 'Satisfaction' },
+        ],
       } satisfies StatsBarConfig;
     case 'feature_grid':
       return {
-        features: [{ icon: 'star', title: 'Feature', description: 'Description' }],
+        features: [
+          { icon: 'star', title: 'Feature One', description: 'Description of the first feature' },
+          { icon: 'zap', title: 'Feature Two', description: 'Description of the second feature' },
+          {
+            icon: 'shield',
+            title: 'Feature Three',
+            description: 'Description of the third feature',
+          },
+        ],
       } satisfies FeatureGridConfig;
     case 'social_proof_wall':
       return {
-        testimonials: [{ quote: 'Amazing!', author: 'Jane Doe' }],
+        testimonials: [
+          {
+            quote: 'This completely changed how I approach my business. Highly recommend.',
+            author: 'Jane Doe',
+          },
+          {
+            quote: 'The results speak for themselves. Worth every minute invested.',
+            author: 'John Smith',
+          },
+        ],
       } satisfies SocialProofWallConfig;
   }
 }
@@ -137,8 +159,9 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
       onSectionsChange([...sections, section]);
       setAddingType(null);
       setExpandedId(section.id);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('SectionsManager.handleAdd', err);
+      toast.error('Failed to add section');
     } finally {
       setAdding(false);
     }
@@ -154,8 +177,9 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
       onSectionsChange(
         sections.map((s) => (s.id === section.id ? (data.section as FunnelPageSection) : s))
       );
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('SectionsManager.handleToggleVisibility', err);
+      toast.error('Failed to update section visibility');
     } finally {
       setSavingId(null);
     }
@@ -168,8 +192,9 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
       await funnelApi.deleteSection(funnelId, sectionId);
       onSectionsChange(sections.filter((s) => s.id !== sectionId));
       if (expandedId === sectionId) setExpandedId(null);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('SectionsManager.handleDelete', err);
+      toast.error('Failed to delete section');
     } finally {
       setDeletingId(null);
     }
@@ -186,8 +211,9 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
       onSectionsChange(
         sections.map((s) => (s.id === section.id ? (data.section as FunnelPageSection) : s))
       );
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('SectionsManager.handleUpdateConfig', err);
+      toast.error('Failed to save section config');
     } finally {
       setSavingId(null);
     }
@@ -201,8 +227,9 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
       onSectionsChange(
         sections.map((s) => (s.id === section.id ? (data.section as FunnelPageSection) : s))
       );
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('SectionsManager.handleUpdateVariant', err);
+      toast.error('Failed to update section variant');
     } finally {
       setSavingId(null);
     }
@@ -222,8 +249,9 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
       const data = await funnelApi.resetSections(funnelId, activeLocation);
       const otherSections = sections.filter((s) => s.pageLocation !== activeLocation);
       onSectionsChange([...otherSections, ...(data.sections as FunnelPageSection[])]);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('SectionsManager.handleResetToTemplate', err);
+      toast.error('Failed to reset sections to template');
     } finally {
       setResetting(false);
     }

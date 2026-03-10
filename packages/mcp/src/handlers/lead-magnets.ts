@@ -155,8 +155,8 @@ async function enrichFromBrain(
       entries?: BrainEntry[];
     };
     entries = searchResult?.entries || [];
-  } catch {
-    // Brain search failed — continue without
+  } catch (err) {
+    console.warn('Brain search enrichment failed:', err);
   }
 
   // Step 2: Extract dominant topic slug from entries
@@ -184,8 +184,8 @@ async function enrichFromBrain(
         position?: Position;
       };
       position = posResult?.position || null;
-    } catch {
-      // Position synthesis failed — fall back to raw entries
+    } catch (err) {
+      console.warn('Position synthesis enrichment failed:', err);
     }
   }
 

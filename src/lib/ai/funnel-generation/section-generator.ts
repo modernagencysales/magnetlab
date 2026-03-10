@@ -30,7 +30,8 @@ export interface SectionPlan {
 
 const VALID_SECTION_TYPES = new Set<string>(Object.keys(SECTION_VARIANTS));
 
-/** Which section types are allowed on each page location */
+/** Which section types are allowed on each page location.
+ *  Keep in sync with the authoritative rules in src/lib/validations/section-rules.ts. */
 const PAGE_LOCATION_RULES: Record<PageLocation, SectionType[]> = {
   optin: [
     'hero',
@@ -43,8 +44,22 @@ const PAGE_LOCATION_RULES: Record<PageLocation, SectionType[]> = {
     'feature_grid',
     'social_proof_wall',
   ],
-  thankyou: ['steps', 'testimonial', 'marketing_block', 'section_bridge', 'stats_bar'],
-  content: ['testimonial', 'marketing_block', 'section_bridge'],
+  thankyou: [
+    'steps',
+    'testimonial',
+    'marketing_block',
+    'section_bridge',
+    'stats_bar',
+    'social_proof_wall',
+  ],
+  content: [
+    'steps',
+    'testimonial',
+    'marketing_block',
+    'section_bridge',
+    'feature_grid',
+    'social_proof_wall',
+  ],
 };
 
 /** Max instances of each section type per page */

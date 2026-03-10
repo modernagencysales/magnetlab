@@ -290,8 +290,8 @@ export const processTranscript = task({
           p_user_id: userId,
           p_topic_slugs: Array.from(topicSlugsToUpdate),
         });
-      } catch {
-        // Non-critical — positions will be refreshed on next cron or on-demand
+      } catch (err) {
+        console.warn('Failed to mark positions stale:', err);
       }
     }
 

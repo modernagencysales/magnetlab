@@ -103,8 +103,8 @@ export async function handleFunnelTools(
             };
           }
         }
-      } catch {
-        // Don't block publish if sequence check fails
+      } catch (err) {
+        console.warn('Sequence check failed during publish:', err);
       }
 
       return publishResult;

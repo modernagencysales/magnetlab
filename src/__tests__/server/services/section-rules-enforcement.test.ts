@@ -69,6 +69,7 @@ describe('createSection — position rules enforcement', () => {
       await createSection(mockScope, funnelId, {
         sectionType: 'hero',
         pageLocation: 'thankyou',
+        variant: 'centered',
         config: { headline: 'Welcome' },
       });
       throw new Error('Should have thrown');
@@ -80,13 +81,19 @@ describe('createSection — position rules enforcement', () => {
 
   it('rejects second hero on same page (400 with "max" message)', async () => {
     mockFindSections.mockResolvedValue([
-      makeMockSection({ id: 'sec-hero', sectionType: 'hero', pageLocation: 'optin' }),
+      makeMockSection({
+        id: 'sec-hero',
+        sectionType: 'hero',
+        pageLocation: 'optin',
+        variant: 'centered',
+      }),
     ]);
 
     try {
       await createSection(mockScope, funnelId, {
         sectionType: 'hero',
         pageLocation: 'optin',
+        variant: 'centered',
         config: { headline: 'Another hero' },
       });
       throw new Error('Should have thrown');

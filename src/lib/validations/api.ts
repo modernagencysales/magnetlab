@@ -530,6 +530,42 @@ export const updateSectionSchema = z.object({
 export type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
 
 // ============================================
+// RESTYLE PLAN SCHEMAS
+// ============================================
+
+const restyleFieldChangeSchema = z.object({
+  field: z.string().min(1),
+  from: z.unknown(),
+  to: z.unknown(),
+});
+
+const restyleSectionChangeSchema = z.object({
+  action: z.enum(['add', 'remove', 'reorder']),
+  sectionType: z.string().min(1),
+  pageLocation: z.enum(pageLocations).optional(),
+  position: z.number().int().min(0).optional(),
+  reason: z.string().optional(),
+  config: z.record(z.unknown()).optional(),
+});
+
+const restyleVariantChangeSchema = z.object({
+  sectionId: z.string().min(1),
+  fromVariant: z.string().min(1),
+  toVariant: z.string().min(1),
+  reason: z.string().min(1),
+});
+
+export const restylePlanSchema = z.object({
+  styleDirection: z.string().default(''),
+  reasoning: z.string().default(''),
+  changes: z.array(restyleFieldChangeSchema),
+  sectionChanges: z.array(restyleSectionChangeSchema),
+  sectionVariantChanges: z.array(restyleVariantChangeSchema).optional().default([]),
+});
+
+export type RestylePlanInput = z.infer<typeof restylePlanSchema>;
+
+// ============================================
 // BULK IMPORT SCHEMAS
 // ============================================
 

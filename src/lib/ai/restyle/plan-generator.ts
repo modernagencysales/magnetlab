@@ -52,10 +52,15 @@ const VALID_FIELDS: RestyleFieldChange['field'][] = [
   'fontUrl',
 ];
 
+/** Whitelist of section types the AI restyler can add, remove, or modify. */
 const VALID_SECTION_TYPES: SectionType[] = [
+  'hero',
   'logo_bar',
+  'stats_bar',
   'steps',
+  'feature_grid',
   'testimonial',
+  'social_proof_wall',
   'marketing_block',
   'section_bridge',
 ];
