@@ -21,26 +21,49 @@ export interface IdeaWithProfile extends ContentIdea {
 // ─── Validation constants ──────────────────────────────────────────────────
 
 const VALID_STATUSES: IdeaStatus[] = [
-  'extracted', 'selected', 'writing', 'written', 'scheduled', 'published', 'archived',
+  'extracted',
+  'selected',
+  'writing',
+  'written',
+  'scheduled',
+  'published',
+  'archived',
 ];
 
 const VALID_PILLARS = [
-  'moments_that_matter', 'teaching_promotion', 'human_personal', 'collaboration_social_proof',
+  'moments_that_matter',
+  'teaching_promotion',
+  'human_personal',
+  'collaboration_social_proof',
 ];
 
 const VALID_CONTENT_TYPES = [
-  'story', 'insight', 'tip', 'framework', 'case_study', 'question', 'listicle', 'contrarian',
+  'story',
+  'insight',
+  'tip',
+  'framework',
+  'case_study',
+  'question',
+  'listicle',
+  'contrarian',
+  'lead_magnet',
 ];
 
 const ALLOWED_UPDATE_FIELDS: (keyof IdeaUpdateInput)[] = [
-  'status', 'title', 'content_pillar', 'content_type', 'core_insight', 'why_post_worthy', 'full_context',
+  'status',
+  'title',
+  'content_pillar',
+  'content_type',
+  'core_insight',
+  'why_post_worthy',
+  'full_context',
 ];
 
 // ─── Read operations ───────────────────────────────────────────────────────
 
 export async function getIdeas(
   scope: DataScope,
-  filters: IdeaFilters = {},
+  filters: IdeaFilters = {}
 ): Promise<IdeaWithProfile[]> {
   const { status, pillar, contentType } = filters;
 
@@ -56,9 +79,7 @@ export async function getIdeas(
 
   const ideas = await ideasRepo.findIdeas(scope, filters);
 
-  const profileIds = [
-    ...new Set(ideas.map((i) => i.team_profile_id).filter(Boolean)),
-  ] as string[];
+  const profileIds = [...new Set(ideas.map((i) => i.team_profile_id).filter(Boolean))] as string[];
 
   const profileMap =
     profileIds.length > 0 ? await ideasRepo.getProfileNameMapForIdeas(profileIds) : {};
@@ -69,10 +90,7 @@ export async function getIdeas(
   }));
 }
 
-export async function getIdeaById(
-  scope: DataScope,
-  id: string,
-): Promise<ContentIdea | null> {
+export async function getIdeaById(scope: DataScope, id: string): Promise<ContentIdea | null> {
   return ideasRepo.findIdeaById(scope, id);
 }
 
@@ -81,7 +99,7 @@ export async function getIdeaById(
 export async function updateIdea(
   scope: DataScope,
   id: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ): Promise<ContentIdea> {
   const updates: Record<string, unknown> = {};
   for (const field of ALLOWED_UPDATE_FIELDS) {
@@ -112,7 +130,7 @@ export async function deleteIdea(scope: DataScope, id: string): Promise<void> {
 export async function triggerWritePost(
   scope: DataScope,
   ideaId: string,
-  profileId?: string,
+  profileId?: string
 ): Promise<void> {
   const idea = await ideasRepo.findIdeaForWrite(scope, ideaId);
   if (!idea) throw Object.assign(new Error('Idea not found'), { statusCode: 404 });

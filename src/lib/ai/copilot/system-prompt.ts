@@ -104,7 +104,9 @@ export async function buildCopilotSystemPrompt(
   }
 
   if (profile?.full_name) {
-    sections.push(`\n## User Info\nName: ${profile.full_name}${profile.title ? `, ${profile.title}` : ''}`);
+    sections.push(
+      `\n## User Info\nName: ${profile.full_name}${profile.title ? `, ${profile.title}` : ''}`
+    );
   }
 
   // 3. Active memories
@@ -136,7 +138,7 @@ export async function buildCopilotSystemPrompt(
     .order('published_at', { ascending: false })
     .limit(5);
 
-  const performanceSection = buildPerformanceSection(topPosts as TopPost[] || []);
+  const performanceSection = buildPerformanceSection((topPosts as TopPost[]) || []);
   if (performanceSection) {
     sections.push('\n' + performanceSection);
   }
@@ -158,8 +160,8 @@ export async function buildCopilotSystemPrompt(
       .gte('created_at', thirtyDaysAgo);
 
     const negativeNotes = ((negFeedback as { feedback: FeedbackPayload }[]) || [])
-      .filter(m => m.feedback?.rating === 'down' && m.feedback?.note)
-      .map(m => m.feedback.note as string);
+      .filter((m) => m.feedback?.rating === 'down' && m.feedback?.note)
+      .map((m) => m.feedback.note as string);
 
     const feedbackSection = buildFeedbackSection(negativeNotes);
     if (feedbackSection) {
@@ -172,9 +174,32 @@ export async function buildCopilotSystemPrompt(
     sections.push(`\n## Current Page Context`);
     sections.push(`The user is on: ${pageContext.page}`);
     if (pageContext.entityType && pageContext.entityId) {
-      sections.push(`Viewing ${pageContext.entityType}: ${pageContext.entityTitle || pageContext.entityId}`);
+      sections.push(
+        `Viewing ${pageContext.entityType}: ${pageContext.entityTitle || pageContext.entityId}`
+      );
     }
   }
+
+  // 7. Lead magnet creation guidance
+  sections.push(`
+## Lead Magnet Creation
+
+You can create lead magnets through conversation. When a user wants to create one:
+
+1. Call start_lead_magnet_creation with their topic (and archetype if they specified one)
+2. You'll receive gap-filling questions — the Brain has already answered some questions automatically
+3. Ask the remaining questions conversationally — one at a time or in natural groups of 2-3
+4. After collecting answers, call submit_extraction_answers
+5. The content review panel will open automatically for them to review and edit
+6. After they approve, call save_lead_magnet to save as a draft
+7. Offer next steps: generate posts, set up funnel, or they can find it in their library
+
+KEY BEHAVIORS:
+- Always let the user know how many questions the Brain pre-answered ("I found X relevant insights from your calls, so I only need to ask Y questions")
+- If they paste content (transcript, blog post), pass it as pasted_content — this reduces questions further
+- If they mention a specific archetype/format, use it. If not, recommend one based on their topic.
+- Never skip the extraction questions — they're what makes the content high-quality and unique
+- After saving, offer to generate LinkedIn posts (separate step, not forced)`);
 
   const assembled = sections.join('\n\n');
   promptCache.set(cacheKey, { prompt: assembled, expires: Date.now() + CACHE_TTL });
