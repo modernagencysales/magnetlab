@@ -479,7 +479,7 @@ async function main(): Promise<void> {
 
   // Load reference documents
   let codingStandards = '';
-  const standardsPath = join(process.cwd(), CODING_STANDARDS_PATH);
+  const standardsPath = `${process.cwd()}/${CODING_STANDARDS_PATH}`;
   if (existsSync(standardsPath)) {
     codingStandards = readFileSync(standardsPath, 'utf-8');
     core.info(`Loaded ${CODING_STANDARDS_PATH} (${codingStandards.length} chars)`);
@@ -490,7 +490,7 @@ async function main(): Promise<void> {
   }
 
   let claudeMd = '';
-  const claudeMdPath = join(process.cwd(), 'CLAUDE.md');
+  const claudeMdPath = `${process.cwd()}/CLAUDE.md`;
   if (existsSync(claudeMdPath)) {
     claudeMd = readFileSync(claudeMdPath, 'utf-8');
     core.info(`Loaded CLAUDE.md (${claudeMd.length} chars)`);
