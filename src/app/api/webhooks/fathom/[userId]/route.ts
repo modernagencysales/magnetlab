@@ -17,24 +17,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const payload = await request.json();
 
-    const result = await webhooksIncomingService.handleFathom(userId, secret, payload);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any = await webhooksIncomingService.handleFathom(userId, secret, payload);
 
-    if (!result.success && 'error' in result && result.error) {
+    if (!result.success && result.error) {
       return NextResponse.json(
         { error: result.error },
         { status: result.error === 'Unauthorized' ? 401 : 400 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      ...('skipped' in result && result.skipped && { skipped: true, reason: result.reason }),
-      ...('duplicate' in result &&
-        result.duplicate && { duplicate: true, transcript_id: result.transcript_id }),
-      ...('transcript_id' in result &&
-        result.transcript_id &&
-        !('duplicate' in result && result.duplicate) && { transcript_id: result.transcript_id }),
-    });
+    const response: Record<string, unknown> = { success: true };
+    if (result.skipped) { response.skipped = true; response.reason = result.reason; }
+    if (result.duplicate) { response.duplicate = true; response.transcript_id = result.transcript_id; }
+    if (result.transcript_id && !result.duplicate) { response.transcript_id = result.transcript_id; }
+    return NextResponse.json(response);
   } catch (error) {
     logError('webhooks/fathom', error, { step: 'fathom_webhook_error' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -6,7 +6,7 @@
 function createChain(resolveData: unknown = []) {
   const chain: Record<string, jest.Mock> = {};
   const methods = ['select', 'insert', 'update', 'eq', 'not', 'is', 'neq', 'order', 'limit'];
-  methods.forEach(m => {
+  methods.forEach((m) => {
     chain[m] = jest.fn().mockReturnValue(chain);
   });
   chain.single = jest.fn().mockResolvedValue({ data: resolveData, error: null });
@@ -42,7 +42,30 @@ jest.mock('@/lib/ai/content-pipeline/post-writer', () => ({
 }));
 
 jest.mock('@/lib/ai/content-pipeline/post-polish', () => ({
-  polishPost: jest.fn().mockResolvedValue({ original: '', polished: '', changes: [], hookScore: 0 }),
+  polishPost: jest
+    .fn()
+    .mockResolvedValue({ original: '', polished: '', changes: [], hookScore: 0 }),
+}));
+
+jest.mock('@/lib/ai/copilot/lead-magnet-creation', () => ({
+  analyzeContextGaps: jest
+    .fn()
+    .mockResolvedValue({
+      questions: [],
+      preAnsweredCount: 0,
+      knowledgeContext: '',
+      gapSummary: '',
+      brainEntries: [],
+    }),
+  generateContent: jest.fn().mockResolvedValue({}),
+  generatePosts: jest.fn().mockResolvedValue({ variations: [] }),
+}));
+
+jest.mock('@/lib/utils/logger', () => ({
+  logError: jest.fn(),
+  logWarn: jest.fn(),
+  logInfo: jest.fn(),
+  logDebug: jest.fn(),
 }));
 
 import { executeAction, actionRequiresConfirmation } from '@/lib/actions/executor';
@@ -65,8 +88,22 @@ describe('Lead Magnet Actions', () => {
   describe('list_lead_magnets', () => {
     it('returns lead magnets array with expected shape', async () => {
       const mockMagnets = [
-        { id: 'lm1', title: 'Growth Guide', status: 'published', archetype: 'guide', created_at: '2026-02-20T10:00:00Z', updated_at: '2026-02-25T10:00:00Z' },
-        { id: 'lm2', title: 'Sales Checklist', status: 'draft', archetype: 'checklist', created_at: '2026-02-21T10:00:00Z', updated_at: '2026-02-26T10:00:00Z' },
+        {
+          id: 'lm1',
+          title: 'Growth Guide',
+          status: 'published',
+          archetype: 'guide',
+          created_at: '2026-02-20T10:00:00Z',
+          updated_at: '2026-02-25T10:00:00Z',
+        },
+        {
+          id: 'lm2',
+          title: 'Sales Checklist',
+          status: 'draft',
+          archetype: 'checklist',
+          created_at: '2026-02-21T10:00:00Z',
+          updated_at: '2026-02-26T10:00:00Z',
+        },
       ];
 
       mockState.fromFn.mockReturnValueOnce(createChain(mockMagnets));
@@ -185,52 +222,44 @@ describe('Lead Magnet Actions', () => {
     });
   });
 
-  describe('create_lead_magnet', () => {
+  describe('save_lead_magnet', () => {
     it('requires confirmation', () => {
-      expect(actionRequiresConfirmation('create_lead_magnet')).toBe(true);
+      expect(actionRequiresConfirmation('save_lead_magnet')).toBe(true);
     });
 
-    it('creates a lead magnet with default archetype', async () => {
-      const mockCreated = { id: 'lm-new', title: 'My Guide', archetype: 'guide', status: 'draft' };
+    it('saves a lead magnet with content blocks', async () => {
+      const mockCreated = {
+        id: 'lm-new',
+        title: 'My Guide',
+        archetype: 'single-system',
+        status: 'draft',
+        created_at: '2026-03-10',
+      };
       const chain = createChain(mockCreated);
       mockState.fromFn.mockReturnValueOnce(chain);
 
-      const result = await executeAction(testCtx, 'create_lead_magnet', { title: 'My Guide' });
+      const result = await executeAction(testCtx, 'save_lead_magnet', {
+        title: 'My Guide',
+        archetype: 'single-system',
+        content_blocks: { structure: [] },
+      });
 
       expect(result.success).toBe(true);
       expect(result.displayHint).toBe('text');
-      expect(result.data).toEqual(mockCreated);
-      expect(chain.insert).toHaveBeenCalledWith({
-        user_id: 'user-test-123',
-        title: 'My Guide',
-        archetype: 'guide',
-        status: 'draft',
-      });
-    });
-
-    it('creates a lead magnet with custom archetype', async () => {
-      const mockCreated = { id: 'lm-new', title: 'My Checklist', archetype: 'checklist', status: 'draft' };
-      const chain = createChain(mockCreated);
-      mockState.fromFn.mockReturnValueOnce(chain);
-
-      const result = await executeAction(testCtx, 'create_lead_magnet', { title: 'My Checklist', archetype: 'checklist' });
-
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockCreated);
-      expect(chain.insert).toHaveBeenCalledWith({
-        user_id: 'user-test-123',
-        title: 'My Checklist',
-        archetype: 'checklist',
-        status: 'draft',
-      });
     });
 
     it('returns error on supabase failure', async () => {
       const chain = createChain(null);
-      chain.single = jest.fn().mockResolvedValue({ data: null, error: { message: 'Insert failed' } });
+      chain.single = jest
+        .fn()
+        .mockResolvedValue({ data: null, error: { message: 'Insert failed' } });
       mockState.fromFn.mockReturnValueOnce(chain);
 
-      const result = await executeAction(testCtx, 'create_lead_magnet', { title: 'Test' });
+      const result = await executeAction(testCtx, 'save_lead_magnet', {
+        title: 'Test',
+        archetype: 'single-system',
+        content_blocks: {},
+      });
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Insert failed');

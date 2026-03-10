@@ -1,8 +1,8 @@
 <!-- Extracted from CLAUDE.md — see main file for architecture overview -->
 
-## AI Co-pilot (Phase 2a+2b+2c -- Feb 2026)
+## AI Co-pilot (Phase 2a+2b+2c+2d -- Feb-Mar 2026)
 
-In-app conversational AI assistant with a shared action layer, Claude tool_use agent loop, rich result cards, confirmation dialogs, entity-scoped conversations, global sidebar UI, and self-learning memory system.
+In-app conversational AI assistant with a shared action layer, Claude tool_use agent loop, rich result cards, confirmation dialogs, entity-scoped conversations, global sidebar UI, self-learning memory system, and copilot-driven lead magnet creation.
 
 ### Architecture
 
@@ -15,19 +15,20 @@ User message → CopilotProvider (SSE fetch) → POST /api/copilot/chat
     → recent post performance (last 30 days engagement)
     → negative feedback patterns (aggregated corrections)
     → page context (entity type/id)
+    → lead magnet creation instructions (section 7)
   → Claude Sonnet tool_use loop (max 15 iterations)
-    → getToolDefinitions() → 22 actions as Claude tools
+    → getToolDefinitions() → 25 actions as Claude tools
     → executeAction(ctx, name, args) → ActionResult
-    → Confirmation dialog for destructive actions (schedule, publish, create)
+    → Confirmation dialog for destructive actions (schedule, publish, save)
     → SSE events: text_delta, tool_call, tool_result, confirmation_required, done, error
   → Persist: copilot_conversations + copilot_messages
-  → Rich result cards: PostPreviewCard, KnowledgeResultCard, IdeaListCard
+  → Rich result cards: PostPreviewCard, KnowledgeResultCard, IdeaListCard, ContentReviewPanel
   → Memory extraction (fire-and-forget on correction signals + negative feedback)
 ```
 
 ### Shared Action Layer
 
-Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 22 registered actions across 8 modules:
+Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 25 registered actions across 8 modules:
 
 | Module | Actions |
 |--------|---------|
@@ -36,13 +37,13 @@ Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 22
 | `templates.ts` | `list_templates`, `list_writing_styles` |
 | `analytics.ts` | `get_post_performance`, `get_top_posts` |
 | `scheduling.ts` | `schedule_post` (confirmation), `get_autopilot_status` |
-| `lead-magnets.ts` | `list_lead_magnets`, `get_lead_magnet`, `create_lead_magnet` (confirmation) |
+| `lead-magnets.ts` | `list_lead_magnets`, `get_lead_magnet`, `start_lead_magnet_creation`, `submit_extraction_answers`, `save_lead_magnet` (confirmation), `generate_lead_magnet_posts` |
 | `funnels.ts` | `list_funnels`, `get_funnel`, `publish_funnel` (confirmation) |
 | `email.ts` | `list_email_sequences`, `get_subscriber_count`, `generate_newsletter_email` |
 
 ### Confirmation Dialog System
 
-Actions with `requiresConfirmation: true` (schedule_post, publish_funnel, create_lead_magnet):
+Actions with `requiresConfirmation: true` (schedule_post, publish_funnel, save_lead_magnet):
 1. Chat route sends `confirmation_required` SSE event but does NOT execute the action
 2. CopilotProvider sets `pendingConfirmation` state, ConfirmationDialog renders inline
 3. User clicks Confirm/Cancel → `POST /api/copilot/confirm-action`
@@ -56,6 +57,7 @@ Tool results render specialized cards based on `displayHint`:
 - `post_preview` → **PostPreviewCard**: content preview, Apply to editor + Copy buttons, variation count
 - `knowledge_list` → **KnowledgeResultCard**: quality stars, knowledge_type badges, collapsible entries, Use in post
 - `idea_list` → **IdeaListCard**: selectable ideas, content_type badges, hook previews, Write This action
+- `content_review` → **ContentReviewPanel**: full-screen overlay for reviewing extracted lead magnet content
 
 ### Entity-Scoped Conversations
 
@@ -63,7 +65,7 @@ Conversations optionally bind to entities via `entity_type`/`entity_id`. When th
 
 ### Page Context Registration
 
-`useCopilotContext` registered on: content pipeline, knowledge dashboard, funnel builder (entity-scoped), analytics, signals, and post editor (entity-scoped).
+`useCopilotContext` registered on: content pipeline, knowledge dashboard, funnel builder (entity-scoped), analytics, signals, post editor (entity-scoped), and lead magnet creation wizard.
 
 ### Database Tables
 
@@ -95,7 +97,7 @@ Conversations optionally bind to entities via `entity_type`/`entity_id`. When th
 
 | Component | Purpose |
 |-----------|---------|
-| `CopilotProvider` | React context — state, SSE, conversations, confirmation, applyToPage |
+| `CopilotProvider` | React context — state, SSE, conversations, confirmation, applyToPage, contentReview |
 | `CopilotShell` | Client wrapper mounted in dashboard layout |
 | `CopilotSidebar` | 400px slide-in panel (conversation list + chat view) |
 | `CopilotToggleButton` | Floating button (bottom-right) |
@@ -103,6 +105,7 @@ Conversations optionally bind to entities via `entity_type`/`entity_id`. When th
 | `ConversationInput` | Textarea + send/stop button |
 | `ConversationHeader` | Title + entity badge (icon + entity name) + nav buttons |
 | `ConfirmationDialog` | Inline amber card for destructive action approval |
+| `ContentReviewPanel` | Full-screen overlay for lead magnet content review + editing |
 | `PostPreviewCard` | Post content preview + Apply/Copy buttons |
 | `KnowledgeResultCard` | Knowledge entries with quality stars + collapsible |
 | `IdeaListCard` | Selectable ideas with Write This action |
@@ -113,16 +116,63 @@ Conversations optionally bind to entities via `entity_type`/`entity_id`. When th
 ### Key Files
 
 - `src/lib/actions/` — types, registry, executor, 8 action modules, barrel import
-- `src/lib/ai/copilot/system-prompt.ts` — `buildCopilotSystemPrompt()` (5-min cache, performance + feedback sections)
+- `src/lib/ai/copilot/system-prompt.ts` — `buildCopilotSystemPrompt()` (5-min cache, performance + feedback + LM creation sections)
+- `src/lib/ai/copilot/lead-magnet-creation.ts` — orchestrator: `analyzeContextGaps()`, `generateContent()`, `generatePosts()`
 - `src/app/api/copilot/chat/route.ts` — streaming agent loop with confirmation blocking
 - `src/app/api/copilot/conversations/` — CRUD + feedback + entity filtering
 - `src/app/api/copilot/confirm-action/` — confirmation decision endpoint
 - `src/lib/ai/copilot/memory-extractor.ts` — `detectCorrectionSignal()` + `extractMemories()` (Haiku)
-- `src/components/copilot/` — 14 components (Provider, Shell, Sidebar, Toggle, Message, Input, Header, ConfirmationDialog, FeedbackWidget, PostPreviewCard, KnowledgeResultCard, IdeaListCard, useCopilotContext)
+- `src/components/copilot/` — 15 components (Provider, Shell, Sidebar, Toggle, Message, Input, Header, ConfirmationDialog, ContentReviewPanel, FeedbackWidget, PostPreviewCard, KnowledgeResultCard, IdeaListCard, useCopilotContext)
 - `src/components/settings/CopilotMemorySettings.tsx` — memory management UI
 - `src/app/(dashboard)/settings/copilot/page.tsx` — settings page
 - `src/lib/ai/content-pipeline/prompt-defaults.ts` — 3 copilot prompt slugs
 - `src/app/(dashboard)/layout.tsx` — CopilotShell integration
+
+### Copilot-Driven Lead Magnet Creation (Phase 2d — Mar 2026)
+
+Conversational lead magnet creation through the copilot, decoupling ideation, creation, and distribution. The copilot drives a 4-step creation flow with Brain-aware adaptive questions.
+
+**Flow:**
+```
+User says "Create a lead magnet about X"
+  → start_lead_magnet_creation(topic, archetype?)
+    → Load brand kit, search AI Brain (15 entries)
+    → Gap analysis: Claude Haiku determines which extraction questions
+      the Brain already answers (confidence ≥ 0.7)
+    → Return filtered questions (only gaps)
+  → Copilot asks questions conversationally
+  → submit_extraction_answers(archetype, answers)
+    → processContentExtraction() from lead-magnet-generator
+    → Returns extracted content with displayHint: 'content_review'
+    → ContentReviewPanel opens (full-screen overlay)
+  → User reviews/edits, approves
+  → save_lead_magnet(title, archetype, content_blocks) [confirmation]
+    → Creates draft in DB
+  → generate_lead_magnet_posts(lead_magnet_id) [optional]
+    → generatePostVariations() with Brain context
+```
+
+**Key Files:**
+- `src/lib/ai/copilot/lead-magnet-creation.ts` — Orchestrator: `analyzeContextGaps()`, `generateContent()`, `generatePosts()`
+- `src/components/copilot/ContentReviewPanel.tsx` — Full-screen content review overlay (z-[60], backdrop-blur)
+- `src/lib/actions/lead-magnets.ts` — 6 actions (list, get, start, submit, save, generate)
+
+**Entry Points:**
+- Wizard page: "Create with AI Assistant" banner → opens copilot with creation prompt
+- Ideas tab: "Create Lead Magnet" button on extracted/selected ideas → opens copilot with idea context
+- Library: "Generate Posts" button per lead magnet → opens copilot with post generation prompt
+
+**Brain Integration:**
+- `getRelevantContext()` searches 15 Brain entries for the topic
+- Gap analysis uses Claude Haiku to determine pre-answered questions (confidence threshold 0.7)
+- Minimum 3 Brain entries required before gap analysis runs
+- Non-breaking: Brain failures return empty, all questions are asked as fallback
+
+**ContentReviewPanel Features:**
+- Full-screen overlay with sections: Title, Format, Key Insight, Sections (collapsible with add/remove/edit), Personal Experience, Proof, Common Mistakes, Differentiation
+- EditableField sub-component with display/edit modes and keyboard shortcuts
+- Request Changes flow sends feedback to copilot for regeneration
+- Approve flow calls `save_lead_magnet` action
 
 ### Learning & Memory (Phase 2c)
 
@@ -151,10 +201,10 @@ Manual entry → Settings UI → POST /api/copilot/memories
 
 **Edit Tracking:** `EditRecordInput.source` optional field (`'manual' | 'copilot'`) tags co-pilot-generated content so `evolve-writing-style` can learn from AI-generated edits.
 
-### Tests (225 passing)
+### Tests (271 passing)
 
-- `src/__tests__/lib/actions/` — executor (5), knowledge (3), content (4), supporting (25), lead-magnets (14), funnels (13), email (17)
-- `src/__tests__/api/copilot/` — chat (6), conversations (23), confirm-action (7), memories (19)
+- `src/__tests__/lib/actions/` — executor (5), knowledge (3), content (4), supporting (25), lead-magnets (12), funnels (13), email (17)
+- `src/__tests__/api/copilot/` — chat (6), conversations (23), confirm-action (7), memories (19), lead-magnet-creation (33)
 - `src/__tests__/lib/ai/copilot/` — system-prompt (7), memory-extractor (10)
 - `src/__tests__/components/copilot/` — CopilotMessage (13), ConversationInput (10), ConfirmationDialog (8), ConversationHeader (12), PostPreviewCard (10), KnowledgeResultCard (12), IdeaListCard (12), FeedbackWidget (9)
 - `src/__tests__/components/settings/` — CopilotMemorySettings (6)

@@ -5,7 +5,11 @@ import { extractKnowledgeFromTranscript } from '@/lib/ai/content-pipeline/knowle
 import { extractIdeasFromTranscript } from '@/lib/ai/content-pipeline/content-extractor';
 import { generateEmbedding } from '@/lib/ai/embeddings';
 import { normalizeTopics, upsertTopics } from '@/lib/ai/content-pipeline/topic-normalizer';
-import { checkForDuplicate, supersedeEntry, recordCorroboration } from '@/lib/services/knowledge-dedup';
+import {
+  checkForDuplicate,
+  supersedeEntry,
+  recordCorroboration,
+} from '@/lib/services/knowledge-dedup';
 
 interface ProcessTranscriptPayload {
   userId: string;
@@ -27,7 +31,9 @@ export const processTranscript = task({
     // Fetch transcript (including speaker_map for attribution)
     const { data: transcript, error: fetchError } = await supabase
       .from('cp_call_transcripts')
-      .select('id, user_id, source, external_id, title, call_date, duration_minutes, participants, raw_transcript, summary, extracted_topics, transcript_type, ideas_extracted_at, knowledge_extracted_at, speaker_map, created_at')
+      .select(
+        'id, user_id, source, external_id, title, call_date, duration_minutes, participants, raw_transcript, summary, extracted_topics, transcript_type, ideas_extracted_at, knowledge_extracted_at, speaker_map, created_at'
+      )
       .eq('id', transcriptId)
       .eq('user_id', userId)
       .single();
@@ -95,12 +101,17 @@ export const processTranscript = task({
     }
 
     // Derive speaker_company from speaker_map
-    const speakerMap = transcript.speaker_map as Record<string, { role: string; company: string }> | null;
+    const speakerMap = transcript.speaker_map as Record<
+      string,
+      { role: string; company: string }
+    > | null;
     const hostCompany = speakerMap
-      ? Object.values(speakerMap).find(v => v.role === 'host')?.company || null
+      ? Object.values(speakerMap).find((v) => v.role === 'host')?.company || null
       : null;
     const participantCompanies = speakerMap
-      ? Object.values(speakerMap).filter(v => v.role !== 'host' && v.company).map(v => v.company)
+      ? Object.values(speakerMap)
+          .filter((v) => v.role !== 'host' && v.company)
+          .map((v) => v.company)
       : [];
 
     // Normalize topics for all entries
@@ -116,7 +127,10 @@ export const processTranscript = task({
       const normalized = await normalizeTopics(
         userId,
         Array.from(allSuggestedTopics),
-        knowledgeResult.entries.map(e => e.content).join('\n').slice(0, 2000)
+        knowledgeResult.entries
+          .map((e) => e.content)
+          .join('\n')
+          .slice(0, 2000)
       );
       await upsertTopics(userId, normalized);
       for (const n of normalized) {
@@ -139,7 +153,7 @@ export const processTranscript = task({
       }
 
       const entryTopics = (entry.suggested_topics || [])
-        .map(t => topicSlugsMap.get(t.toLowerCase()) || topicSlugsMap.get(t))
+        .map((t) => topicSlugsMap.get(t.toLowerCase()) || topicSlugsMap.get(t))
         .filter((s): s is string => !!s);
 
       return {
@@ -231,7 +245,11 @@ export const processTranscript = task({
       }
 
       if (supersededCount > 0 || corroboratedCount > 0) {
-        logger.info('Dedup results', { supersededCount, corroboratedCount, newInserts: toInsert.length });
+        logger.info('Dedup results', {
+          supersededCount,
+          corroboratedCount,
+          newInserts: toInsert.length,
+        });
       }
     }
 
@@ -253,15 +271,29 @@ export const processTranscript = task({
     // Increment tag counts atomically via RPC (parallel)
     await Promise.allSettled(
       Array.from(tagCounts).map(([tagName, count]) =>
-        supabase.rpc('cp_increment_tag_count', {
-          p_user_id: userId,
-          p_tag_name: tagName,
-          p_count: count,
-        }).then(({ error }) => {
-          if (error) logger.warn('Failed to increment tag', { tagName, error: error.message });
-        })
+        supabase
+          .rpc('cp_increment_tag_count', {
+            p_user_id: userId,
+            p_tag_name: tagName,
+            p_count: count,
+          })
+          .then(({ error }) => {
+            if (error) logger.warn('Failed to increment tag', { tagName, error: error.message });
+          })
       )
     );
+
+    // Mark affected positions as stale for re-synthesis
+    if (topicSlugsToUpdate.size > 0) {
+      try {
+        await supabase.rpc('cp_mark_positions_stale', {
+          p_user_id: userId,
+          p_topic_slugs: Array.from(topicSlugsToUpdate),
+        });
+      } catch (err) {
+        console.warn('Failed to mark positions stale:', err);
+      }
+    }
 
     // Mark knowledge extracted
     await supabase
@@ -271,15 +303,12 @@ export const processTranscript = task({
 
     // Step 4: Extract content ideas
     logger.info('Step 4: Extracting content ideas');
-    const ideasResult = await extractIdeasFromTranscript(
-      transcript.raw_transcript,
-      {
-        callTitle: transcript.title,
-        participants: transcript.participants,
-        callDate: transcript.call_date,
-        speakerMap: transcript.speaker_map,
-      }
-    );
+    const ideasResult = await extractIdeasFromTranscript(transcript.raw_transcript, {
+      callTitle: transcript.title,
+      participants: transcript.participants,
+      callDate: transcript.call_date,
+      speakerMap: transcript.speaker_map,
+    });
 
     logger.info('Extracted content ideas', {
       count: ideasResult.total_count,
@@ -302,9 +331,7 @@ export const processTranscript = task({
         team_profile_id: speakerProfileId || null,
       }));
 
-      const { error: ideasError } = await supabase
-        .from('cp_content_ideas')
-        .insert(ideaInserts);
+      const { error: ideasError } = await supabase.from('cp_content_ideas').insert(ideaInserts);
 
       if (ideasError) {
         logger.error('Failed to insert content ideas', {

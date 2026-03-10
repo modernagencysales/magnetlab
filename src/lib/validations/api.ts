@@ -25,18 +25,25 @@ export const uuidSchema = z.string({ required_error: 'ID is required' }).uuid('I
 // ============================================
 
 export const leadCaptureSchema = z.object({
-  funnelPageId: z.string({ required_error: 'funnelPageId is required' }).uuid('Invalid funnelPageId format'),
-  email: z.string({ required_error: 'Email is required' })
+  funnelPageId: z
+    .string({ required_error: 'funnelPageId is required' })
+    .uuid('Invalid funnelPageId format'),
+  email: z
+    .string({ required_error: 'Email is required' })
     .email('Invalid email format')
     .max(255)
     .transform((email) => email.toLowerCase().trim()),
-  name: z.string().max(100).transform((n) => n.trim()).optional(),
+  name: z
+    .string()
+    .max(100)
+    .transform((n) => n.trim())
+    .optional(),
   utmSource: z.string().max(100).optional(),
   utmMedium: z.string().max(100).optional(),
   utmCampaign: z.string().max(100).optional(),
   linkedinUrl: z.string().url().max(500).optional(),
-  fbc: z.string().max(500).optional(),  // Meta _fbc click cookie
-  fbp: z.string().max(500).optional(),  // Meta _fbp browser cookie
+  fbc: z.string().max(500).optional(), // Meta _fbc click cookie
+  fbp: z.string().max(500).optional(), // Meta _fbp browser cookie
 });
 
 export type LeadCaptureInput = z.infer<typeof leadCaptureSchema>;
@@ -54,57 +61,71 @@ export type LeadQualificationInput = z.infer<typeof leadQualificationSchema>;
 
 export const leadMagnetArchetypes = LEAD_MAGNET_ARCHETYPES;
 
-const conceptSchema = z.object({
-  archetype: z.string().optional(),
-  archetypeName: z.string().optional(),
-  title: z.string().default(''),
-  painSolved: z.string().default(''),
-  whyNowHook: z.string().optional(),
-  linkedinPost: z.string().optional(),
-  contents: z.string().optional(),
-  deliveryFormat: z.string().default(''),
-  viralCheck: z.object({
-    highValue: z.boolean().default(false),
-    urgentPain: z.boolean().default(false),
-    actionableUnder1h: z.boolean().default(false),
-    simple: z.boolean().default(false),
-    authorityBoosting: z.boolean().default(false),
-  }).nullable().optional(),
-  creationTimeEstimate: z.string().optional(),
-  bundlePotential: z.union([
-    z.array(z.string()),
-    z.string().transform((s) => s ? [s] : []),
-    z.null(),
-  ]).optional().transform((v) => v ?? []),
-  isImported: z.boolean().optional(),
-  isQuickCreate: z.boolean().optional(),
-}).passthrough();
+const conceptSchema = z
+  .object({
+    archetype: z.string().optional(),
+    archetypeName: z.string().optional(),
+    title: z.string().default(''),
+    painSolved: z.string().default(''),
+    whyNowHook: z.string().optional(),
+    linkedinPost: z.string().optional(),
+    contents: z.string().optional(),
+    deliveryFormat: z.string().default(''),
+    viralCheck: z
+      .object({
+        highValue: z.boolean().default(false),
+        urgentPain: z.boolean().default(false),
+        actionableUnder1h: z.boolean().default(false),
+        simple: z.boolean().default(false),
+        authorityBoosting: z.boolean().default(false),
+      })
+      .nullable()
+      .optional(),
+    creationTimeEstimate: z.string().optional(),
+    bundlePotential: z
+      .union([z.array(z.string()), z.string().transform((s) => (s ? [s] : [])), z.null()])
+      .optional()
+      .transform((v) => v ?? []),
+    isImported: z.boolean().optional(),
+    isQuickCreate: z.boolean().optional(),
+  })
+  .passthrough();
 
 // AI may return contents as strings OR objects with headline/summary/detail.
 // Accept both and normalize objects to strings at validation time.
 const contentItemSchema = z.union([
   z.string(),
   z.record(z.unknown()).transform((obj) => {
-    const values = Object.values(obj).filter((v): v is string => typeof v === 'string' && v.length > 0);
+    const values = Object.values(obj).filter(
+      (v): v is string => typeof v === 'string' && v.length > 0
+    );
     if (values.length >= 2) return `${values[0]}: ${values[1]}`;
     if (values.length === 1) return values[0];
     return JSON.stringify(obj);
   }),
 ]);
 
-const extractedContentSchema = z.object({
-  title: z.string().default(''),
-  format: z.string().default(''),
-  structure: z.array(z.object({
-    sectionName: z.string(),
-    contents: z.array(contentItemSchema),
-  }).passthrough()).optional(),
-  nonObviousInsight: z.string().default(''),
-  personalExperience: z.string().optional(),
-  proof: z.string().optional(),
-  commonMistakes: z.array(contentItemSchema).optional(),
-  differentiation: z.string().default(''),
-}).passthrough();
+const extractedContentSchema = z
+  .object({
+    title: z.string().default(''),
+    format: z.string().default(''),
+    structure: z
+      .array(
+        z
+          .object({
+            sectionName: z.string(),
+            contents: z.array(contentItemSchema),
+          })
+          .passthrough()
+      )
+      .optional(),
+    nonObviousInsight: z.string().default(''),
+    personalExperience: z.string().optional(),
+    proof: z.string().optional(),
+    commonMistakes: z.array(contentItemSchema).optional(),
+    differentiation: z.string().default(''),
+  })
+  .passthrough();
 
 // ============================================
 // INTERACTIVE CONFIG SCHEMAS
@@ -193,12 +214,16 @@ export const createLeadMagnetSchema = z.object({
   extractedContent: extractedContentSchema.nullable().optional(),
   interactiveConfig: interactiveConfigSchema.nullable().optional(),
   linkedinPost: z.string().nullable().optional(),
-  postVariations: z.array(z.object({
-    hookType: z.string().default(''),
-    post: z.string().default(''),
-    whyThisAngle: z.string().default(''),
-    evaluation: z.record(z.unknown()).nullable().optional(),
-  })).optional(),
+  postVariations: z
+    .array(
+      z.object({
+        hookType: z.string().default(''),
+        post: z.string().default(''),
+        whyThisAngle: z.string().default(''),
+        evaluation: z.record(z.unknown()).nullable().optional(),
+      })
+    )
+    .optional(),
   dmTemplate: z.string().optional(),
   ctaWord: z.string().optional(),
 });
@@ -210,7 +235,8 @@ export type CreateLeadMagnetInput = z.infer<typeof createLeadMagnetSchema>;
 // ============================================
 
 export const spreadsheetImportSchema = z.object({
-  spreadsheetData: z.string()
+  spreadsheetData: z
+    .string()
     .min(10, 'Spreadsheet data is too short')
     .max(100_000, 'Spreadsheet data is too large (max 100KB)'),
   importType: z.literal('spreadsheet'),
@@ -224,9 +250,12 @@ export type SpreadsheetImportInput = z.infer<typeof spreadsheetImportSchema>;
 // FUNNEL SCHEMAS
 // ============================================
 
-
 export const updateFunnelSchema = z.object({
-  slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens').max(100).optional(),
+  slug: z
+    .string()
+    .regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens')
+    .max(100)
+    .optional(),
   optinHeadline: z.string().max(500).nullable().optional(),
   optinSubline: z.string().max(1000).nullable().optional(),
   optinButtonText: z.string().max(100).nullable().optional(),
@@ -238,7 +267,10 @@ export const updateFunnelSchema = z.object({
   qualificationPassMessage: z.string().max(1000).nullable().optional(),
   qualificationFailMessage: z.string().max(1000).nullable().optional(),
   theme: z.enum(['dark', 'light', 'custom']).optional(),
-  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color').optional(),
+  primaryColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color')
+    .optional(),
   backgroundStyle: z.enum(['solid', 'gradient', 'pattern']).optional(),
   logoUrl: z.string().url().max(2000).nullable().optional(),
   qualificationFormId: z.string().uuid().nullable().optional(),
@@ -264,30 +296,38 @@ export type QualificationQuestionInput = z.infer<typeof qualificationQuestionSch
 // POLISHED CONTENT SCHEMAS
 // ============================================
 
-const polishedBlockSchema = z.object({
-  type: z.string(),
-  content: z.string().optional(),
-  items: z.array(z.union([z.string(), z.record(z.unknown())])).optional(),
-}).passthrough();
+const polishedBlockSchema = z
+  .object({
+    type: z.string(),
+    content: z.string().optional(),
+    items: z.array(z.union([z.string(), z.record(z.unknown())])).optional(),
+  })
+  .passthrough();
 
-const polishedSectionSchema = z.object({
-  sectionName: z.string(),
-  introduction: z.string().optional().default(''),
-  keyTakeaway: z.string().optional().default(''),
-  blocks: z.array(polishedBlockSchema),
-}).passthrough();
+const polishedSectionSchema = z
+  .object({
+    sectionName: z.string(),
+    introduction: z.string().optional().default(''),
+    keyTakeaway: z.string().optional().default(''),
+    blocks: z.array(polishedBlockSchema),
+  })
+  .passthrough();
 
-export const polishedContentSchema = z.object({
-  version: z.number().optional(),
-  polishedAt: z.string().optional(),
-  title: z.string().optional().default(''),
-  heroSummary: z.string().optional().default(''),
-  sections: z.array(polishedSectionSchema).min(1),
-  metadata: z.object({
-    wordCount: z.number().optional(),
-    readingTimeMinutes: z.number().optional(),
-  }).optional(),
-}).passthrough();
+export const polishedContentSchema = z
+  .object({
+    version: z.number().optional(),
+    polishedAt: z.string().optional(),
+    title: z.string().optional().default(''),
+    heroSummary: z.string().optional().default(''),
+    sections: z.array(polishedSectionSchema).min(1),
+    metadata: z
+      .object({
+        wordCount: z.number().optional(),
+        readingTimeMinutes: z.number().optional(),
+      })
+      .optional(),
+  })
+  .passthrough();
 
 export const updateContentBodySchema = z.object({
   polishedContent: polishedContentSchema,
@@ -310,24 +350,43 @@ export type CreateWebhookInput = z.infer<typeof createWebhookSchema>;
 // FUNNEL PAGE SECTION SCHEMAS
 // ============================================
 
-export const sectionTypes = ['logo_bar', 'steps', 'testimonial', 'marketing_block', 'section_bridge'] as const;
+export const sectionTypes = [
+  'logo_bar',
+  'steps',
+  'testimonial',
+  'marketing_block',
+  'section_bridge',
+  'hero',
+  'stats_bar',
+  'feature_grid',
+  'social_proof_wall',
+] as const;
 export const pageLocations = ['optin', 'thankyou', 'content'] as const;
 
 const logoBarConfigSchema = z.object({
-  logos: z.array(z.object({
-    name: z.string().min(1).max(100),
-    imageUrl: z.string().url(),
-  })).max(20),
+  logos: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(100),
+        imageUrl: z.string().url(),
+      })
+    )
+    .max(20),
 });
 
 const stepsConfigSchema = z.object({
   heading: z.string().max(200).optional(),
   subheading: z.string().max(500).optional(),
-  steps: z.array(z.object({
-    title: z.string().min(1).max(200),
-    description: z.string().min(1).max(500),
-    icon: z.string().max(50).optional(),
-  })).min(1).max(6),
+  steps: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(200),
+        description: z.string().min(1).max(500),
+        icon: z.string().max(50).optional(),
+      })
+    )
+    .min(1)
+    .max(6),
 });
 
 const testimonialConfigSchema = z.object({
@@ -337,7 +396,15 @@ const testimonialConfigSchema = z.object({
   result: z.string().max(200).optional(),
 });
 
-const marketingBlockTypes = ['testimonial', 'case_study', 'feature', 'benefit', 'faq', 'pricing', 'cta'] as const;
+const marketingBlockTypes = [
+  'testimonial',
+  'case_study',
+  'feature',
+  'benefit',
+  'faq',
+  'pricing',
+  'cta',
+] as const;
 
 const marketingBlockConfigSchema = z.object({
   blockType: z.enum(marketingBlockTypes),
@@ -355,13 +422,79 @@ const sectionBridgeConfigSchema = z.object({
   stepLabel: z.string().max(100).optional(),
 });
 
-export const sectionConfigSchemas = {
+export const heroConfigSchema = z.object({
+  headline: z.string().min(1).max(200),
+  subline: z.string().max(500).optional(),
+  ctaText: z.string().max(50).optional(),
+  ctaUrl: z.string().url().optional(),
+  backgroundImageUrl: z.string().url().optional(),
+  gradientConfig: z
+    .object({
+      from: z.string(),
+      to: z.string(),
+      direction: z.string().optional(),
+    })
+    .optional(),
+});
+
+export const statsBarConfigSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        value: z.string().min(1).max(10),
+        label: z.string().min(1).max(50),
+      })
+    )
+    .min(3)
+    .max(4),
+});
+
+export const featureGridConfigSchema = z.object({
+  features: z
+    .array(
+      z.object({
+        icon: z.string().min(1).max(50),
+        title: z.string().min(1).max(100),
+        description: z.string().min(1).max(300),
+      })
+    )
+    .min(3)
+    .max(6),
+});
+
+export const socialProofWallConfigSchema = z.object({
+  testimonials: z
+    .array(
+      z.object({
+        quote: z.string().min(20).max(2000),
+        author: z.string().min(1).max(100),
+        role: z.string().max(100).optional(),
+        avatar: z.string().url().optional(),
+      })
+    )
+    .min(2)
+    .max(6),
+});
+
+export const sectionConfigSchemas: Record<string, z.ZodType> = {
   logo_bar: logoBarConfigSchema,
   steps: stepsConfigSchema,
   testimonial: testimonialConfigSchema,
   marketing_block: marketingBlockConfigSchema,
   section_bridge: sectionBridgeConfigSchema,
-} as const;
+  hero: heroConfigSchema,
+  stats_bar: statsBarConfigSchema,
+  feature_grid: featureGridConfigSchema,
+  social_proof_wall: socialProofWallConfigSchema,
+};
+
+/**
+ * Look up the Zod config schema for a given section type.
+ * Returns null if the type is unknown.
+ */
+export function getVariantConfigSchema(sectionType: string): z.ZodType | null {
+  return sectionConfigSchemas[sectionType] ?? null;
+}
 
 const sectionConfigSchema = z.union([
   logoBarConfigSchema,
@@ -369,6 +502,10 @@ const sectionConfigSchema = z.union([
   testimonialConfigSchema,
   marketingBlockConfigSchema,
   sectionBridgeConfigSchema,
+  heroConfigSchema,
+  statsBarConfigSchema,
+  featureGridConfigSchema,
+  socialProofWallConfigSchema,
 ]);
 
 export const createSectionSchema = z.object({
@@ -376,6 +513,7 @@ export const createSectionSchema = z.object({
   pageLocation: z.enum(pageLocations),
   sortOrder: z.number().int().min(0).max(999).optional(),
   isVisible: z.boolean().optional(),
+  variant: z.string().max(50).optional(),
   config: sectionConfigSchema,
 });
 
@@ -385,10 +523,47 @@ export const updateSectionSchema = z.object({
   sortOrder: z.number().int().min(0).max(999).optional(),
   isVisible: z.boolean().optional(),
   pageLocation: z.enum(pageLocations).optional(),
+  variant: z.string().max(50).optional(),
   config: sectionConfigSchema.optional(),
 });
 
 export type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
+
+// ============================================
+// RESTYLE PLAN SCHEMAS
+// ============================================
+
+const restyleFieldChangeSchema = z.object({
+  field: z.string().min(1),
+  from: z.unknown(),
+  to: z.unknown(),
+});
+
+const restyleSectionChangeSchema = z.object({
+  action: z.enum(['add', 'remove', 'reorder']),
+  sectionType: z.string().min(1),
+  pageLocation: z.enum(pageLocations).optional(),
+  position: z.number().int().min(0).optional(),
+  reason: z.string().optional(),
+  config: z.record(z.unknown()).optional(),
+});
+
+const restyleVariantChangeSchema = z.object({
+  sectionId: z.string().min(1),
+  fromVariant: z.string().min(1),
+  toVariant: z.string().min(1),
+  reason: z.string().min(1),
+});
+
+export const restylePlanSchema = z.object({
+  styleDirection: z.string().default(''),
+  reasoning: z.string().default(''),
+  changes: z.array(restyleFieldChangeSchema),
+  sectionChanges: z.array(restyleSectionChangeSchema),
+  sectionVariantChanges: z.array(restyleVariantChangeSchema).optional().default([]),
+});
+
+export type RestylePlanInput = z.infer<typeof restylePlanSchema>;
 
 // ============================================
 // BULK IMPORT SCHEMAS
@@ -396,7 +571,11 @@ export type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
 
 export const bulkPageItemSchema = z.object({
   title: z.string().min(1, 'title is required').max(200),
-  slug: z.string().max(50).regex(/^[a-z0-9-]+$/, 'slug must be lowercase alphanumeric with hyphens').optional(),
+  slug: z
+    .string()
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, 'slug must be lowercase alphanumeric with hyphens')
+    .optional(),
   optinHeadline: z.string().min(1, 'optinHeadline is required').max(500),
   optinSubline: z.string().max(1000).optional(),
   optinButtonText: z.string().max(100).optional(),
@@ -409,7 +588,10 @@ export const bulkPageItemSchema = z.object({
 export type BulkPageItemInput = z.infer<typeof bulkPageItemSchema>;
 
 export const bulkCreatePagesSchema = z.object({
-  pages: z.array(bulkPageItemSchema).min(1, 'At least one page is required').max(100, 'Maximum 100 pages per request'),
+  pages: z
+    .array(bulkPageItemSchema)
+    .min(1, 'At least one page is required')
+    .max(100, 'Maximum 100 pages per request'),
 });
 
 export type BulkCreatePagesInput = z.infer<typeof bulkCreatePagesSchema>;
@@ -426,10 +608,7 @@ export type ValidationResult<T> =
  * Validate request body against a Zod schema
  * Returns discriminated union for type-safe access to data
  */
-export function validateBody<T>(
-  body: unknown,
-  schema: z.ZodSchema<T>
-): ValidationResult<T> {
+export function validateBody<T>(body: unknown, schema: z.ZodSchema<T>): ValidationResult<T> {
   const result = schema.safeParse(body);
 
   if (!result.success) {

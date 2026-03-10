@@ -14,7 +14,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const callbackError = searchParams.get('error');
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const callbackUrl = searchParams.get('callbackUrl') || '/magnets';
   const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
 

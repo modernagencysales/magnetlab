@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, ArrowUpDown, Eye, Users, Globe, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
+import { useCopilot } from '@/components/copilot/CopilotProvider';
 
 export interface MagnetListItem {
   id: string;
@@ -62,6 +63,7 @@ export default function MagnetsListClient({
   items: MagnetListItem[];
   totalCount: number;
 }) {
+  const { open, sendMessage, startNewConversation } = useCopilot();
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortOption>('newest');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -164,6 +166,7 @@ export default function MagnetsListClient({
                 <th className="px-4 py-3 text-right">Leads</th>
                 <th className="px-4 py-3 text-right">Conv.</th>
                 <th className="px-4 py-3 text-right">Created</th>
+                <th className="px-4 py-3 text-right"></th>
               </tr>
             </thead>
             <tbody>
@@ -239,6 +242,20 @@ export default function MagnetsListClient({
                       {formatShortDate(item.createdAt)}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        startNewConversation();
+                        open();
+                        sendMessage(`Generate LinkedIn posts for my lead magnet "${item.title}" (ID: ${item.id})`);
+                      }}
+                      className="rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
+                    >
+                      Generate Posts
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -255,54 +272,70 @@ export default function MagnetsListClient({
       {/* Mobile compact cards */}
       <div className="flex flex-col gap-2 md:hidden">
         {filtered.map((item) => (
-          <Link
+          <div
             key={item.id}
-            href={`/magnets/${item.id}`}
-            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 transition-colors hover:border-primary"
+            className="rounded-lg border bg-card px-4 py-3 transition-colors hover:border-primary"
           >
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{item.title}</p>
-              <div className="mt-1 flex items-center gap-2">
+            <Link
+              href={`/magnets/${item.id}`}
+              className="flex items-center justify-between"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{item.title}</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                      item.isLive
+                        ? 'bg-emerald-500/10 text-emerald-600'
+                        : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                    )}
+                  >
+                    {item.isLive && <Globe className="h-3 w-3" />}
+                    {item.isLive ? 'Live' : 'Draft'}
+                  </span>
+                  {item.leads > 0 && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Users className="h-3 w-3" />
+                      {item.leads}
+                    </span>
+                  )}
+                  {item.views > 0 && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Eye className="h-3 w-3" />
+                      {item.views}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {item.conversionRate !== null && (
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-                    item.isLive
+                    'ml-3 shrink-0 rounded-md px-2 py-0.5 text-xs font-medium',
+                    item.conversionRate >= 20
                       ? 'bg-emerald-500/10 text-emerald-600'
+                      : item.conversionRate >= 10
+                      ? 'bg-yellow-500/10 text-yellow-600'
                       : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
                   )}
                 >
-                  {item.isLive && <Globe className="h-3 w-3" />}
-                  {item.isLive ? 'Live' : 'Draft'}
+                  {item.conversionRate.toFixed(1)}%
                 </span>
-                {item.leads > 0 && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    {item.leads}
-                  </span>
-                )}
-                {item.views > 0 && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Eye className="h-3 w-3" />
-                    {item.views}
-                  </span>
-                )}
-              </div>
-            </div>
-            {item.conversionRate !== null && (
-              <span
-                className={cn(
-                  'ml-3 shrink-0 rounded-md px-2 py-0.5 text-xs font-medium',
-                  item.conversionRate >= 20
-                    ? 'bg-emerald-500/10 text-emerald-600'
-                    : item.conversionRate >= 10
-                    ? 'bg-yellow-500/10 text-yellow-600'
-                    : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
-                )}
+              )}
+            </Link>
+            <div className="mt-2 flex justify-end">
+              <button
+                onClick={() => {
+                  startNewConversation();
+                  open();
+                  sendMessage(`Generate LinkedIn posts for my lead magnet "${item.title}" (ID: ${item.id})`);
+                }}
+                className="rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
               >
-                {item.conversionRate.toFixed(1)}%
-              </span>
-            )}
-          </Link>
+                Generate Posts
+              </button>
+            </div>
+          </div>
         ))}
 
         {filtered.length === 0 && (

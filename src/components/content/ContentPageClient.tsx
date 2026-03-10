@@ -51,6 +51,7 @@ interface ContentPageClientProps {
   hideBranding?: boolean;
   autoEdit?: boolean;
   iClosedWidgetId?: string | null;
+  onSaved?: (content: PolishedContent) => void;
 }
 
 export function ContentPageClient({
@@ -75,10 +76,12 @@ export function ContentPageClient({
   hideBranding,
   autoEdit = false,
   iClosedWidgetId,
+  onSaved,
 }: ContentPageClientProps) {
   const [isDark, setIsDark] = useState(initialTheme === 'dark');
   const [isEditing, setIsEditing] = useState(autoEdit && isOwner);
   const [editContent, setEditContent] = useState<PolishedContent | null>(polishedContent);
+  const [savedContent, setSavedContent] = useState<PolishedContent | null>(polishedContent);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -94,7 +97,7 @@ export function ContentPageClient({
   const belowSections = sections.filter((s) => s.sortOrder >= 50);
 
   // The content to display (edited or original)
-  const displayContent = isEditing ? editContent : polishedContent;
+  const displayContent = isEditing ? editContent : savedContent;
 
   // Build TOC sections
   const tocSections = displayContent
@@ -110,11 +113,11 @@ export function ContentPageClient({
   const handleToggleEdit = useCallback(() => {
     if (isEditing) {
       // Discard changes
-      setEditContent(polishedContent);
+      setEditContent(savedContent);
     }
     setIsEditing(!isEditing);
     setSaveError(null);
-  }, [isEditing, polishedContent]);
+  }, [isEditing, savedContent]);
 
   const handleSave = async () => {
     if (!editContent || !leadMagnetId) return;
@@ -123,7 +126,9 @@ export function ContentPageClient({
 
     try {
       await leadMagnetApi.updateLeadMagnetContent(leadMagnetId, { polishedContent: editContent });
+      setSavedContent(editContent);
       setIsEditing(false);
+      if (onSaved) onSaved(editContent);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
@@ -177,7 +182,7 @@ export function ContentPageClient({
         onToggleTheme={() => setIsDark(!isDark)}
         isOwner={isOwner}
         isEditing={isEditing}
-        onToggleEdit={polishedContent ? handleToggleEdit : undefined}
+        onToggleEdit={savedContent ? handleToggleEdit : undefined}
       />
 
       <div

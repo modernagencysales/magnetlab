@@ -3,12 +3,15 @@ import { generateEmbedding } from '@/lib/ai/embeddings';
 import { clusterTags } from '@/lib/ai/content-pipeline/tag-clusterer';
 import { generateTopicSummary } from '@/lib/ai/content-pipeline/topic-summarizer';
 import { logError } from '@/lib/utils/logger';
+import { synthesizePosition } from '@/lib/ai/content-pipeline/position-synthesizer';
 import type {
   KnowledgeEntry,
   KnowledgeEntryWithSimilarity,
   KnowledgeCategory,
   KnowledgeType,
   KnowledgeTopic,
+  Position,
+  PositionRow,
 } from '@/lib/types/content-pipeline';
 
 export async function verifyTeamMembership(userId: string, teamId: string): Promise<boolean> {
@@ -31,7 +34,7 @@ export async function verifyTeamMembership(userId: string, teamId: string): Prom
     .eq('id', teamId)
     .eq('owner_id', userId)
     .limit(1);
-  return (owned !== null && owned.length > 0);
+  return owned !== null && owned.length > 0;
 }
 
 export interface SearchKnowledgeResult {
@@ -79,7 +82,9 @@ export async function searchKnowledge(
   }
 
   if (error) {
-    logError('services/knowledge-brain', new Error('Knowledge search failed'), { detail: error.message });
+    logError('services/knowledge-brain', new Error('Knowledge search failed'), {
+      detail: error.message,
+    });
     return { entries: [], error: error.message };
   }
 
@@ -92,9 +97,7 @@ export async function searchKnowledge(
 
   // Filter by tags if specified
   if (tags && tags.length > 0) {
-    results = results.filter((entry) =>
-      tags.some((tag) => entry.tags?.includes(tag))
-    );
+    results = results.filter((entry) => tags.some((tag) => entry.tags?.includes(tag)));
   }
 
   return { entries: results };
@@ -166,7 +169,9 @@ export async function searchKnowledgeV2(
     }
 
     if (error) {
-      logError('services/knowledge-brain', new Error('Enhanced search failed'), { detail: error.message });
+      logError('services/knowledge-brain', new Error('Enhanced search failed'), {
+        detail: error.message,
+      });
       return { entries: [], error: error.message };
     }
 
@@ -174,15 +179,15 @@ export async function searchKnowledgeV2(
 
     // Client-side filtering for team results (team RPC lacks type/quality/since filters)
     if (teamId) {
-      if (knowledgeType) results = results.filter(e => e.knowledge_type === knowledgeType);
-      if (topicSlug) results = results.filter(e => (e.topics || []).includes(topicSlug));
-      if (minQuality) results = results.filter(e => (e.quality_score || 0) >= minQuality);
-      if (since) results = results.filter(e => e.source_date && e.source_date >= since);
+      if (knowledgeType) results = results.filter((e) => e.knowledge_type === knowledgeType);
+      if (topicSlug) results = results.filter((e) => (e.topics || []).includes(topicSlug));
+      if (minQuality) results = results.filter((e) => (e.quality_score || 0) >= minQuality);
+      if (since) results = results.filter((e) => e.source_date && e.source_date >= since);
       results = results.slice(0, limit);
     }
 
-    if (category) results = results.filter(e => e.category === category);
-    if (tags?.length) results = results.filter(e => tags.some(t => e.tags?.includes(t)));
+    if (category) results = results.filter((e) => e.category === category);
+    if (tags?.length) results = results.filter((e) => tags.some((t) => e.tags?.includes(t)));
 
     return { entries: results };
   }
@@ -194,7 +199,9 @@ export async function searchKnowledgeV2(
   const ascending = sort === 'oldest';
   let dbQuery = supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
+    .select(
+      'id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at'
+    )
     .eq(userFilter, userValue)
     .is('superseded_by', null)
     .order(orderColumn, { ascending })
@@ -214,7 +221,10 @@ export async function searchKnowledgeV2(
   }
 
   // Browse path has no similarity score — add default 0
-  const entries = (data || []).map(e => ({ ...e, similarity: 0 })) as KnowledgeEntryWithSimilarity[];
+  const entries = (data || []).map((e) => ({
+    ...e,
+    similarity: 0,
+  })) as KnowledgeEntryWithSimilarity[];
   return { entries };
 }
 
@@ -227,7 +237,9 @@ export async function listKnowledgeTopics(
 
   let query = supabase
     .from('cp_knowledge_topics')
-    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at')
+    .select(
+      'id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at'
+    )
     .order('entry_count', { ascending: false })
     .limit(limit);
 
@@ -240,7 +252,9 @@ export async function listKnowledgeTopics(
   const { data, error } = await query;
 
   if (error) {
-    logError('services/knowledge-brain', new Error('Failed to list topics'), { detail: error.message });
+    logError('services/knowledge-brain', new Error('Failed to list topics'), {
+      detail: error.message,
+    });
     return [];
   }
 
@@ -264,7 +278,9 @@ export async function getTopicDetail(
 
   const { data: topic } = await supabase
     .from('cp_knowledge_topics')
-    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at')
+    .select(
+      'id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at'
+    )
     .eq(scopeFilter, scopeValue)
     .eq('slug', topicSlug)
     .single();
@@ -273,7 +289,9 @@ export async function getTopicDetail(
 
   const { data: entries } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
+    .select(
+      'id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at'
+    )
     .eq(scopeFilter, scopeValue)
     .contains('topics', [topicSlug])
     .is('superseded_by', null)
@@ -292,7 +310,7 @@ export async function getTopicDetail(
     if (top_entries[kt].length < 3) top_entries[kt].push(entry);
   }
 
-  const entryIds = allEntries.map(e => e.id);
+  const entryIds = allEntries.map((e) => e.id);
   let corroboration_count = 0;
   if (entryIds.length > 0) {
     const { count } = await supabase
@@ -337,7 +355,9 @@ export async function getRecentKnowledgeDigest(
   // Quality 4+ highlights
   const { data: highlights } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
+    .select(
+      'id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at'
+    )
     .eq(scopeFilter, scopeValue)
     .gte('created_at', since)
     .gte('quality_score', 4)
@@ -371,9 +391,12 @@ export async function getRecentKnowledgeDigest(
       .from('cp_knowledge_topics')
       .select('slug, display_name')
       .eq(scopeFilter, scopeValue)
-      .in('slug', topicSlugs.map(t => t[0]));
+      .in(
+        'slug',
+        topicSlugs.map((t) => t[0])
+      );
 
-    const nameMap = new Map((topicNames || []).map(t => [t.slug, t.display_name]));
+    const nameMap = new Map((topicNames || []).map((t) => [t.slug, t.display_name]));
     for (const [slug, count] of topicSlugs) {
       mostActiveTopics.push({ slug, display_name: nameMap.get(slug) || slug, count });
     }
@@ -381,7 +404,7 @@ export async function getRecentKnowledgeDigest(
 
   return {
     entries_added: entriesAdded || 0,
-    new_topics: (newTopics || []).map(t => t.display_name),
+    new_topics: (newTopics || []).map((t) => t.display_name),
     most_active_topics: mostActiveTopics,
     highlights: (highlights || []) as KnowledgeEntry[],
   };
@@ -402,7 +425,9 @@ export async function exportTopicKnowledge(
 
   const { data: topic } = await supabase
     .from('cp_knowledge_topics')
-    .select('id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at')
+    .select(
+      'id, user_id, team_id, slug, display_name, description, entry_count, avg_quality, first_seen, last_seen, parent_id, summary, summary_generated_at, created_at'
+    )
     .eq(scopeFilter, scopeValue)
     .eq('slug', topicSlug)
     .single();
@@ -411,7 +436,9 @@ export async function exportTopicKnowledge(
 
   const { data: entries } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
+    .select(
+      'id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at'
+    )
     .eq(scopeFilter, scopeValue)
     .contains('topics', [topicSlug])
     .is('superseded_by', null)
@@ -467,7 +494,10 @@ export async function generateAndCacheTopicSummary(
     .is('superseded_by', null)
     .order('quality_score', { ascending: false });
 
-  const entriesByType: Record<string, Array<{ content: string; quality_score?: number | null }>> = {};
+  const entriesByType: Record<
+    string,
+    Array<{ content: string; quality_score?: number | null }>
+  > = {};
   for (const entry of entries || []) {
     const kt = entry.knowledge_type || 'unknown';
     if (!entriesByType[kt]) entriesByType[kt] = [];
@@ -507,18 +537,24 @@ export async function getFilteredKnowledge(
     limit?: number;
     offset?: number;
     sort?: KnowledgeSortOption;
+    teamId?: string;
   }
 ): Promise<KnowledgeEntry[]> {
-  const { category, speaker, tag, limit = 30, offset = 0, sort = 'newest' } = filters;
+  const { category, speaker, tag, limit = 30, offset = 0, sort = 'newest', teamId } = filters;
   const supabase = createSupabaseAdminClient();
+
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
 
   const orderColumn = sort === 'quality' ? 'quality_score' : 'created_at';
   const ascending = sort === 'oldest';
 
   let query = supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
-    .eq('user_id', userId)
+    .select(
+      'id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at'
+    )
+    .eq(scopeFilter, scopeValue)
     .is('superseded_by', null)
     .order(orderColumn, { ascending })
     .range(offset, offset + limit - 1);
@@ -536,7 +572,9 @@ export async function getFilteredKnowledge(
   const { data, error } = await query;
 
   if (error) {
-    logError('services/knowledge-brain', new Error('Failed to fetch filtered knowledge'), { detail: error.message });
+    logError('services/knowledge-brain', new Error('Failed to fetch filtered knowledge'), {
+      detail: error.message,
+    });
     return [];
   }
 
@@ -546,23 +584,31 @@ export async function getFilteredKnowledge(
 export async function getAllRecentKnowledge(
   userId: string,
   limit: number = 30,
-  sort: KnowledgeSortOption = 'newest'
+  sort: KnowledgeSortOption = 'newest',
+  teamId?: string
 ): Promise<KnowledgeEntry[]> {
   const supabase = createSupabaseAdminClient();
+
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
 
   const orderColumn = sort === 'quality' ? 'quality_score' : 'created_at';
   const ascending = sort === 'oldest';
 
   const { data, error } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
-    .eq('user_id', userId)
+    .select(
+      'id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at'
+    )
+    .eq(scopeFilter, scopeValue)
     .is('superseded_by', null)
     .order(orderColumn, { ascending })
     .limit(limit);
 
   if (error) {
-    logError('services/knowledge-brain', new Error('Failed to fetch recent knowledge'), { detail: error.message });
+    logError('services/knowledge-brain', new Error('Failed to fetch recent knowledge'), {
+      detail: error.message,
+    });
     return [];
   }
 
@@ -572,39 +618,55 @@ export async function getAllRecentKnowledge(
 export async function getKnowledgeByCategory(
   userId: string,
   category: KnowledgeCategory,
-  limit: number = 20
+  limit: number = 20,
+  teamId?: string
 ): Promise<KnowledgeEntry[]> {
   const supabase = createSupabaseAdminClient();
 
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
+
   const { data, error } = await supabase
     .from('cp_knowledge_entries')
-    .select('id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at')
-    .eq('user_id', userId)
+    .select(
+      'id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, knowledge_type, topics, quality_score, specificity, actionability, source_date, speaker_company, team_id, source_profile_id, superseded_by, created_at, updated_at'
+    )
+    .eq(scopeFilter, scopeValue)
     .eq('category', category)
     .is('superseded_by', null)
     .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) {
-    logError('services/knowledge-brain', new Error('Failed to fetch knowledge by category'), { detail: error.message });
+    logError('services/knowledge-brain', new Error('Failed to fetch knowledge by category'), {
+      detail: error.message,
+    });
     return [];
   }
 
   return data || [];
 }
 
-export async function getKnowledgeTags(userId: string): Promise<Array<{ tag_name: string; usage_count: number; cluster_id: string | null }>> {
+export async function getKnowledgeTags(
+  userId: string,
+  teamId?: string
+): Promise<Array<{ tag_name: string; usage_count: number; cluster_id: string | null }>> {
   const supabase = createSupabaseAdminClient();
+
+  const scopeFilter = teamId ? 'team_id' : 'user_id';
+  const scopeValue = teamId || userId;
 
   const { data, error } = await supabase
     .from('cp_knowledge_tags')
     .select('tag_name, usage_count, cluster_id')
-    .eq('user_id', userId)
+    .eq(scopeFilter, scopeValue)
     .order('usage_count', { ascending: false })
     .limit(100);
 
   if (error) {
-    logError('services/knowledge-brain', new Error('Failed to fetch knowledge tags'), { detail: error.message });
+    logError('services/knowledge-brain', new Error('Failed to fetch knowledge tags'), {
+      detail: error.message,
+    });
     return [];
   }
 
@@ -618,9 +680,10 @@ export interface TagCluster {
   tags: Array<{ tag_name: string; usage_count: number }>;
 }
 
-export async function getTagClusters(userId: string): Promise<TagCluster[]> {
+export async function getTagClusters(userId: string, teamId?: string): Promise<TagCluster[]> {
   const supabase = createSupabaseAdminClient();
 
+  // cp_tag_clusters has no team_id column — always filter by user_id
   const { data: clusters, error } = await supabase
     .from('cp_tag_clusters')
     .select('id, name, description')
@@ -629,10 +692,13 @@ export async function getTagClusters(userId: string): Promise<TagCluster[]> {
 
   if (error || !clusters?.length) return [];
 
+  const tagScopeFilter = teamId ? 'team_id' : 'user_id';
+  const tagScopeValue = teamId || userId;
+
   const { data: tags } = await supabase
     .from('cp_knowledge_tags')
     .select('tag_name, usage_count, cluster_id')
-    .eq('user_id', userId)
+    .eq(tagScopeFilter, tagScopeValue)
     .not('cluster_id', 'is', null)
     .order('usage_count', { ascending: false });
 
@@ -642,7 +708,9 @@ export async function getTagClusters(userId: string): Promise<TagCluster[]> {
   }));
 }
 
-export async function consolidateOrphanTags(userId: string): Promise<{ merged: number; kept: number }> {
+export async function consolidateOrphanTags(
+  userId: string
+): Promise<{ merged: number; kept: number }> {
   const supabase = createSupabaseAdminClient();
 
   // Fetch orphan tags (usage_count <= 2)
@@ -666,19 +734,23 @@ export async function consolidateOrphanTags(userId: string): Promise<{ merged: n
   }
 
   // Use Claude Haiku to map orphans → established tags
-  const { getAnthropicClient, parseJsonResponse } = await import('@/lib/ai/content-pipeline/anthropic-client');
+  const { getAnthropicClient, parseJsonResponse } =
+    await import('@/lib/ai/content-pipeline/anthropic-client');
   const { CLAUDE_HAIKU_MODEL } = await import('@/lib/ai/content-pipeline/model-config');
   const client = getAnthropicClient('knowledge-brain');
 
-  const orphanList = orphanTags.map(t => `"${t.tag_name}" (${t.usage_count}x)`).join(', ');
-  const establishedList = establishedTags.map(t => `"${t.tag_name}" (${t.usage_count}x)`).join(', ');
+  const orphanList = orphanTags.map((t) => `"${t.tag_name}" (${t.usage_count}x)`).join(', ');
+  const establishedList = establishedTags
+    .map((t) => `"${t.tag_name}" (${t.usage_count}x)`)
+    .join(', ');
 
   const response = await client.messages.create({
     model: CLAUDE_HAIKU_MODEL,
     max_tokens: 2000,
-    messages: [{
-      role: 'user',
-      content: `Map each orphan tag to the closest established tag, or "keep" if it's truly unique.
+    messages: [
+      {
+        role: 'user',
+        content: `Map each orphan tag to the closest established tag, or "keep" if it's truly unique.
 
 ORPHAN TAGS (low usage): ${orphanList}
 
@@ -691,7 +763,8 @@ Rules:
 
 Respond with ONLY valid JSON:
 {"mappings": {"orphan_tag_name": "established_tag_name_or_keep", ...}}`,
-    }],
+      },
+    ],
   });
 
   const text = response.content[0].type === 'text' ? response.content[0].text : '';
@@ -712,7 +785,7 @@ Respond with ONLY valid JSON:
     }
 
     // Verify target is an actual established tag
-    const targetTag = establishedTags.find(t => t.tag_name === target);
+    const targetTag = establishedTags.find((t) => t.tag_name === target);
     if (!targetTag) {
       kept++;
       continue;
@@ -727,13 +800,10 @@ Respond with ONLY valid JSON:
 
     for (const entry of entries || []) {
       const updatedTags = (entry.tags as string[])
-        .map(t => t === orphan.tag_name ? target : t)
+        .map((t) => (t === orphan.tag_name ? target : t))
         .filter((t, i, arr) => arr.indexOf(t) === i); // dedupe
 
-      await supabase
-        .from('cp_knowledge_entries')
-        .update({ tags: updatedTags })
-        .eq('id', entry.id);
+      await supabase.from('cp_knowledge_entries').update({ tags: updatedTags }).eq('id', entry.id);
     }
 
     // Update usage counts (mutate in-memory count to handle multiple orphans → same target)
@@ -744,10 +814,7 @@ Respond with ONLY valid JSON:
       .eq('id', targetTag.id);
 
     // Delete orphan tag row
-    await supabase
-      .from('cp_knowledge_tags')
-      .delete()
-      .eq('id', orphan.id);
+    await supabase.from('cp_knowledge_tags').delete().eq('id', orphan.id);
 
     merged++;
   }
@@ -755,7 +822,9 @@ Respond with ONLY valid JSON:
   return { merged, kept };
 }
 
-export async function runTagClustering(userId: string): Promise<{ clustersCreated: number; orphansMerged?: number }> {
+export async function runTagClustering(
+  userId: string
+): Promise<{ clustersCreated: number; orphansMerged?: number }> {
   const supabase = createSupabaseAdminClient();
 
   // Step 1: Consolidate orphan tags before clustering
@@ -764,7 +833,11 @@ export async function runTagClustering(userId: string): Promise<{ clustersCreate
     const consolidation = await consolidateOrphanTags(userId);
     orphansMerged = consolidation.merged;
   } catch (err) {
-    logError('services/knowledge-brain', err instanceof Error ? err : new Error('Orphan consolidation failed'), { userId });
+    logError(
+      'services/knowledge-brain',
+      err instanceof Error ? err : new Error('Orphan consolidation failed'),
+      { userId }
+    );
   }
 
   // Step 2: Get all remaining tags for clustering
@@ -784,10 +857,7 @@ export async function runTagClustering(userId: string): Promise<{ clustersCreate
   await supabase.from('cp_tag_clusters').delete().eq('user_id', userId);
 
   // Reset cluster_id on all tags
-  await supabase
-    .from('cp_knowledge_tags')
-    .update({ cluster_id: null })
-    .eq('user_id', userId);
+  await supabase.from('cp_knowledge_tags').update({ cluster_id: null }).eq('user_id', userId);
 
   // Create new clusters and assign tags
   for (const cluster of result.clusters) {
@@ -814,4 +884,133 @@ export async function runTagClustering(userId: string): Promise<{ clustersCreate
   }
 
   return { clustersCreated: result.clusters.length, orphansMerged };
+}
+
+// ─── Position Synthesis Cache ─────────────────────────────
+
+const POSITION_SELECT =
+  'id, user_id, topic_slug, topic_label, position, entry_ids, entry_count, is_stale, synthesized_at, created_at, updated_at';
+
+/**
+ * Get a cached Position for a topic. If stale or missing, synthesizes on demand.
+ * Returns null if there aren't enough entries to synthesize (< 3).
+ */
+export async function getCachedPosition(
+  userId: string,
+  topicSlug: string,
+  options: { forceFresh?: boolean; teamId?: string; profileId?: string } = {}
+): Promise<Position | null> {
+  const supabase = createSupabaseAdminClient();
+
+  // Check cache first (unless forceFresh)
+  if (!options.forceFresh) {
+    const { data: cached } = await supabase
+      .from('cp_positions')
+      .select(POSITION_SELECT)
+      .eq('user_id', userId)
+      .eq('topic_slug', topicSlug)
+      .single();
+
+    if (cached && !cached.is_stale) {
+      return cached.position as Position;
+    }
+  }
+
+  // Synthesize fresh position
+  return synthesizeAndCachePosition(userId, topicSlug, options);
+}
+
+/**
+ * Synthesize a fresh position and cache it. Called by getCachedPosition and nightly cron.
+ */
+export async function synthesizeAndCachePosition(
+  userId: string,
+  topicSlug: string,
+  options: { teamId?: string; profileId?: string } = {}
+): Promise<Position | null> {
+  const supabase = createSupabaseAdminClient();
+
+  // Get topic display name
+  const { data: topicRow } = await supabase
+    .from('cp_knowledge_topics')
+    .select('display_name')
+    .eq('user_id', userId)
+    .eq('slug', topicSlug)
+    .single();
+
+  const topicLabel = topicRow?.display_name || topicSlug;
+
+  // Retrieve entries for this topic
+  const searchResult = await searchKnowledgeV2(userId, {
+    topicSlug,
+    limit: 30,
+    threshold: 0.4,
+    minQuality: 2,
+    sort: 'quality',
+    teamId: options.teamId,
+    profileId: options.profileId,
+  });
+
+  if (searchResult.entries.length < 3) {
+    return null;
+  }
+
+  const position = await synthesizePosition(searchResult.entries, topicLabel, topicSlug);
+  if (!position) return null;
+
+  // Upsert into cache
+  const entryIds = searchResult.entries.map((e) => e.id);
+  await supabase.from('cp_positions').upsert(
+    {
+      user_id: userId,
+      topic_slug: topicSlug,
+      topic_label: topicLabel,
+      position: position as unknown as Record<string, unknown>,
+      entry_ids: entryIds,
+      entry_count: searchResult.entries.length,
+      is_stale: false,
+      synthesized_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id,topic_slug' }
+  );
+
+  return position;
+}
+
+/**
+ * Mark positions stale for given topic slugs. Called after transcript processing.
+ */
+export async function markPositionsStale(userId: string, topicSlugs: string[]): Promise<number> {
+  if (topicSlugs.length === 0) return 0;
+
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase.rpc('cp_mark_positions_stale', {
+    p_user_id: userId,
+    p_topic_slugs: topicSlugs,
+  });
+
+  return (data as number) || 0;
+}
+
+/**
+ * List all cached positions for a user.
+ */
+export async function listPositions(
+  userId: string,
+  options: { includeStale?: boolean } = {}
+): Promise<PositionRow[]> {
+  const supabase = createSupabaseAdminClient();
+  let query = supabase
+    .from('cp_positions')
+    .select(POSITION_SELECT)
+    .eq('user_id', userId)
+    .order('synthesized_at', { ascending: false });
+
+  if (!options.includeStale) {
+    query = query.eq('is_stale', false);
+  }
+
+  const { data } = await query;
+  return (data as PositionRow[]) || [];
 }

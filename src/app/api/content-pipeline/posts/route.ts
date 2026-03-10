@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') ?? undefined;
     const isBufferParam = searchParams.get('is_buffer');
     const teamProfileId = searchParams.get('team_profile_id') ?? undefined;
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const parsed = parseInt(searchParams.get('limit') || '50', 10);
+    const limit = Math.min(Number.isNaN(parsed) ? 50 : parsed, 200);
 
     const isBuffer =
       isBufferParam === 'true' ? true : isBufferParam === 'false' ? false : undefined;

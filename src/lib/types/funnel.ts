@@ -10,6 +10,40 @@ export type FunnelTargetType = 'lead_magnet' | 'library' | 'external_resource';
 export type RedirectTrigger = 'none' | 'immediate' | 'after_qualification';
 export type ThankyouLayout = 'survey_first' | 'video_first' | 'side_by_side';
 
+// ============================================
+// RESTYLE PLAN (ephemeral, not DB-backed)
+// ============================================
+
+export interface RestyleFieldChange {
+  field: 'theme' | 'primaryColor' | 'backgroundStyle' | 'fontFamily' | 'fontUrl';
+  from: string | null;
+  to: string;
+  reason: string;
+}
+
+export interface RestyleSectionChange {
+  action: 'add' | 'remove' | 'reorder';
+  sectionType: SectionType;
+  pageLocation?: PageLocation;
+  position?: number;
+  reason: string;
+}
+
+export interface RestyleVariantChange {
+  sectionId: string;
+  fromVariant: string;
+  toVariant: string;
+  reason: string;
+}
+
+export interface RestylePlan {
+  styleDirection: string;
+  reasoning: string;
+  changes: RestyleFieldChange[];
+  sectionChanges: RestyleSectionChange[];
+  sectionVariantChanges?: RestyleVariantChange[];
+}
+
 export interface FunnelPage {
   id: string;
   leadMagnetId: string | null; // Now nullable for library/external_resource targets
@@ -54,6 +88,8 @@ export interface FunnelPage {
   theme: FunnelTheme;
   primaryColor: string;
   backgroundStyle: BackgroundStyle;
+  fontFamily: string | null;
+  fontUrl: string | null;
   logoUrl: string | null;
 
   // Shared qualification form
@@ -148,8 +184,31 @@ export interface WebhookConfig {
 // FUNNEL PAGE SECTIONS (Design System)
 // ============================================
 
-export type SectionType = 'logo_bar' | 'steps' | 'testimonial' | 'marketing_block' | 'section_bridge';
+export type SectionType =
+  | 'logo_bar'
+  | 'steps'
+  | 'testimonial'
+  | 'marketing_block'
+  | 'section_bridge'
+  | 'hero'
+  | 'stats_bar'
+  | 'feature_grid'
+  | 'social_proof_wall';
 export type PageLocation = 'optin' | 'thankyou' | 'content';
+
+export const SECTION_VARIANTS = {
+  logo_bar: ['inline', 'grid'] as const,
+  steps: ['numbered', 'timeline', 'icon-cards'] as const,
+  testimonial: ['quote-card', 'highlight', 'avatar'] as const,
+  marketing_block: ['feature-card', 'benefit', 'faq-accordion', 'cta-banner'] as const,
+  section_bridge: ['divider', 'accent-bar', 'gradient-fade'] as const,
+  hero: ['centered', 'split-image', 'full-bleed-gradient'] as const,
+  stats_bar: ['inline', 'cards', 'animated-counters'] as const,
+  feature_grid: ['icon-top', 'icon-left', 'minimal'] as const,
+  social_proof_wall: ['grid', 'carousel', 'stacked'] as const,
+} as const;
+
+export type SectionVariant<T extends SectionType> = (typeof SECTION_VARIANTS)[T][number];
 
 export interface LogoBarConfig {
   logos: Array<{ name: string; imageUrl: string }>;
@@ -184,7 +243,37 @@ export interface SectionBridgeConfig {
   stepLabel?: string;
 }
 
-export type SectionConfig = LogoBarConfig | StepsConfig | TestimonialConfig | MarketingBlockConfig | SectionBridgeConfig;
+export interface HeroConfig {
+  headline: string;
+  subline?: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  backgroundImageUrl?: string;
+  gradientConfig?: { from: string; to: string; direction?: string };
+}
+
+export interface StatsBarConfig {
+  items: Array<{ value: string; label: string }>;
+}
+
+export interface FeatureGridConfig {
+  features: Array<{ icon: string; title: string; description: string }>;
+}
+
+export interface SocialProofWallConfig {
+  testimonials: Array<{ quote: string; author: string; role?: string; avatar?: string }>;
+}
+
+export type SectionConfig =
+  | LogoBarConfig
+  | StepsConfig
+  | TestimonialConfig
+  | MarketingBlockConfig
+  | SectionBridgeConfig
+  | HeroConfig
+  | StatsBarConfig
+  | FeatureGridConfig
+  | SocialProofWallConfig;
 
 export interface FunnelPageSection {
   id: string;
@@ -193,6 +282,7 @@ export interface FunnelPageSection {
   pageLocation: PageLocation;
   sortOrder: number;
   isVisible: boolean;
+  variant: string;
   config: SectionConfig;
   createdAt: string;
   updatedAt: string;
@@ -205,6 +295,7 @@ export interface FunnelPageSectionRow {
   page_location: string;
   sort_order: number;
   is_visible: boolean;
+  variant: string;
   config: SectionConfig;
   created_at: string;
   updated_at: string;
@@ -304,8 +395,9 @@ export interface UpdateWebhookPayload {
 export interface GeneratedOptinContent {
   headline: string;
   subline: string;
-  socialProof: string;
+  socialProof: string | null;
   buttonText: string;
+  thankyouSubline?: string | null;
 }
 
 // ============================================
@@ -404,6 +496,8 @@ export interface FunnelPageRow {
   theme: string;
   primary_color: string;
   background_style: string;
+  font_family: string | null;
+  font_url: string | null;
   logo_url: string | null;
   qualification_form_id: string | null;
   is_published: boolean;
@@ -488,6 +582,8 @@ export function funnelPageFromRow(row: FunnelPageRow): FunnelPage {
     theme: (row.theme || 'dark') as FunnelTheme,
     primaryColor: row.primary_color || '#8b5cf6',
     backgroundStyle: (row.background_style || 'solid') as BackgroundStyle,
+    fontFamily: row.font_family || null,
+    fontUrl: row.font_url || null,
     logoUrl: row.logo_url,
     isPublished: row.is_published,
     publishedAt: row.published_at,
@@ -572,6 +668,7 @@ export function funnelPageSectionFromRow(row: FunnelPageSectionRow): FunnelPageS
     pageLocation: row.page_location as PageLocation,
     sortOrder: row.sort_order,
     isVisible: row.is_visible,
+    variant: row.variant || 'default',
     config: row.config,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

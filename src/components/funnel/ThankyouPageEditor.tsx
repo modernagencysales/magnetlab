@@ -28,6 +28,8 @@ interface ThankyouPageEditorProps {
   setHomepageLabel: (value: string) => void;
   sendResourceEmail: boolean;
   setSendResourceEmail: (value: boolean) => void;
+  bootcampInviteCode: string;
+  setBootcampInviteCode: (value: string) => void;
   layout: ThankyouLayout;
   setLayout: (value: ThankyouLayout) => void;
 }
@@ -57,6 +59,8 @@ export function ThankyouPageEditor({
   setHomepageLabel,
   sendResourceEmail,
   setSendResourceEmail,
+  bootcampInviteCode,
+  setBootcampInviteCode,
   layout,
   setLayout,
 }: ThankyouPageEditorProps) {
@@ -132,6 +136,31 @@ export function ThankyouPageEditor({
         {!sendResourceEmail && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
             Resource will be shown directly on the thank-you page instead
+          </p>
+        )}
+      </div>
+
+      {/* Bootcamp Auto-Enrollment */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          <h3 className="text-sm font-medium text-white">Bootcamp Auto-Enrollment</h3>
+        </div>
+        <p className="text-xs text-gray-400">
+          Automatically create a bootcamp account and send a magic link when someone opts in.
+        </p>
+        <input
+          type="text"
+          value={bootcampInviteCode}
+          onChange={(e) => setBootcampInviteCode(e.target.value)}
+          placeholder="Enter invite code (e.g., LM-FREE-2026)"
+          className="w-full rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+        />
+        {bootcampInviteCode && (
+          <p className="text-xs text-green-400">
+            Leads will get auto-enrolled with this invite code and receive a magic link email.
           </p>
         )}
       </div>

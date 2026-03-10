@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -12,6 +12,7 @@ import {
   FileText,
   Users,
   BarChart3,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FunnelBuilder } from '@/components/funnel';
@@ -299,8 +300,73 @@ function PostTab({
   leadMagnet: LeadMagnet;
   hasPublishedFunnel: boolean;
 }) {
+  const router = useRouter();
   const variations = leadMagnet.postVariations || [];
   const mainPost = leadMagnet.linkedinPost;
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  const pollRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const hasContent = !!(leadMagnet.polishedContent || leadMagnet.extractedContent);
+
+  const cleanup = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => cleanup, [cleanup]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const res = await fetch(`/api/lead-magnet/${leadMagnet.id}/generate-posts`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to start post generation');
+      }
+      const { jobId } = await res.json();
+
+      // Poll for completion
+      pollRef.current = setInterval(async () => {
+        try {
+          const jobRes = await fetch(`/api/jobs/${jobId}`);
+          if (!jobRes.ok) return;
+          const jobData = await jobRes.json();
+          if (jobData.status === 'completed') {
+            cleanup();
+            setGenerating(false);
+            router.refresh();
+          } else if (jobData.status === 'failed') {
+            cleanup();
+            setGenerating(false);
+            setGenError(jobData.error || 'Post generation failed');
+          }
+        } catch {
+          // Retry on network error
+        }
+      }, 2000);
+
+      // Stop polling after 2 minutes
+      timeoutRef.current = setTimeout(() => {
+        cleanup();
+        setGenerating(false);
+        setGenError('Post generation is taking longer than expected. Check back shortly.');
+      }, 120_000);
+    } catch (err) {
+      setGenerating(false);
+      setGenError(err instanceof Error ? err.message : 'Something went wrong');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -349,9 +415,32 @@ function PostTab({
         <div className="rounded-xl border bg-card p-12 text-center">
           <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
           <h3 className="mb-2 text-lg font-semibold">No posts yet</h3>
-          <p className="text-muted-foreground">
-            Complete the lead magnet wizard to generate LinkedIn posts.
-          </p>
+          {hasContent ? (
+            <>
+              <p className="mb-4 text-muted-foreground">
+                Generate LinkedIn promotion posts from your lead magnet content.
+              </p>
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {generating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {generating ? 'Generating...' : 'Generate Posts'}
+              </button>
+              {genError && (
+                <p className="mt-3 text-sm text-red-600 dark:text-red-400">{genError}</p>
+              )}
+            </>
+          ) : (
+            <p className="text-muted-foreground">
+              Generate content for your lead magnet first, then come back to create LinkedIn posts.
+            </p>
+          )}
         </div>
       )}
     </div>

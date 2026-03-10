@@ -31,15 +31,24 @@ export type { FunnelPage, FunnelPageSection, QualificationQuestion };
 // ─── Column sets ───────────────────────────────────────────────────────────
 
 const FUNNEL_COLUMNS =
-  'id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, send_resource_email';
+  'id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, font_family, font_url, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, send_resource_email';
 
 const FUNNEL_FULL_COLUMNS = FUNNEL_COLUMNS + ', homepage_url, homepage_label';
 
 const SECTION_COLUMNS =
-  'id, funnel_page_id, section_type, page_location, sort_order, is_visible, config, created_at, updated_at';
+  'id, funnel_page_id, section_type, page_location, sort_order, is_visible, variant, config, created_at, updated_at';
 
 const INTEGRATION_COLUMNS =
   'id, provider, list_id, list_name, tag_id, tag_name, is_active, settings, created_at, updated_at';
+
+// ─── Unscoped lookups (for cross-team scope resolution) ──────────────────
+
+/** Get a funnel's team_id by ID, without scope filtering. Used to resolve cross-team scope. */
+export async function getFunnelTeamId(id: string): Promise<string | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase.from('funnel_pages').select('team_id').eq('id', id).maybeSingle();
+  return data?.team_id ?? null;
+}
 
 // ─── Internal helpers ──────────────────────────────────────────────────────
 
@@ -481,13 +490,14 @@ export async function createSection(row: {
   page_location: string;
   sort_order: number;
   is_visible: boolean;
+  variant?: string;
   config: Record<string, unknown>;
 }): Promise<FunnelPageSection> {
   const normalizedConfig = normalizeSectionConfigImageUrls(row.section_type, row.config);
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('funnel_page_sections')
-    .insert({ ...row, config: normalizedConfig })
+    .insert({ ...row, variant: row.variant || 'default', config: normalizedConfig })
     .select()
     .single();
   if (error) throw new Error(`funnels.createSection: ${error.message}`);
@@ -528,11 +538,16 @@ export async function insertSections(
     page_location: string;
     sort_order: number;
     is_visible: boolean;
+    variant?: string;
     config: Record<string, unknown>;
   }[]
 ): Promise<FunnelPageSection[]> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase.from('funnel_page_sections').insert(rows).select();
+  const rowsWithVariant = rows.map((r) => ({ ...r, variant: r.variant || 'default' }));
+  const { data, error } = await supabase
+    .from('funnel_page_sections')
+    .insert(rowsWithVariant)
+    .select();
   if (error) throw new Error(`funnels.insertSections: ${error.message}`);
   return (data as FunnelPageSectionRow[]).map(funnelPageSectionFromRow);
 }

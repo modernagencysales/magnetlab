@@ -203,7 +203,7 @@ export function useFunnelBuilder({
       };
       setOptinHeadline(content.headline);
       setOptinSubline(content.subline);
-      setOptinSocialProof(content.socialProof);
+      setOptinSocialProof(content.socialProof || '');
       setOptinButtonText(content.buttonText);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate content');

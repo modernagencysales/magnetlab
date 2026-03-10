@@ -1,0 +1,73 @@
+name: Standards Review
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  standards-review:
+    name: Standards Review
+    runs-on: ubuntu-latest
+    if: >
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'early-users/')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for Claude co-authored commits
+        id: claude-check
+        run: |
+          CLAUDE_COMMITS=$(git log ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.merge_commit_sha }} --format="%b" | grep -ci "Co-Authored-By.*Claude" || true)
+          echo "claude_commits=$CLAUDE_COMMITS" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install analysis script dependencies
+        working-directory: .github/scripts
+        run: npm install
+
+      - name: Build analysis script
+        working-directory: .github/scripts
+        run: npm run build
+
+      - name: Run standards analysis
+        id: run-analysis
+        working-directory: .github/scripts
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_STANDARDS }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node dist/index.js
+
+      - name: Post results as PR comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const output = '${{ steps.run-analysis.outputs.comment }}';
+            if (output) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ github.event.pull_request.number }},
+                body: output
+              });
+            }

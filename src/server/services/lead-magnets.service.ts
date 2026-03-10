@@ -739,7 +739,7 @@ async function buildFunnelPage(
   title: string,
   headline: string,
   subline: string,
-  socialProof: string,
+  socialProof: string | null,
   format: string
 ): Promise<{ id: string }> {
   let slug = generateSlug(title);
@@ -841,7 +841,7 @@ export async function importLeadMagnet(
       calcTitle,
       interactiveConfig.headline || 'Try Our Calculator',
       interactiveConfig.description || 'Get instant results',
-      'Built from real spreadsheet calculations',
+      null,
       'Calculator'
     );
 

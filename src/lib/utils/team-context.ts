@@ -143,6 +143,42 @@ async function resolveTeamForApiKey(userId: string): Promise<DataScope | null> {
 }
 
 /**
+ * Resolve scope for a specific resource's team. Used when the cookie-based
+ * scope (getDataScope) doesn't match the resource being modified — e.g. a
+ * DFY manager editing a client team's funnel.
+ *
+ * Falls back to cookie-based scope when the resource has no team_id or the
+ * user's scope already matches. Throws if the user has no access.
+ */
+export async function getScopeForResource(
+  userId: string,
+  resourceTeamId: string | null | undefined,
+): Promise<DataScope> {
+  const scope = await getDataScope(userId);
+
+  // No team on resource — use cookie scope as-is
+  if (!resourceTeamId) return scope;
+
+  // Cookie scope already matches the resource's team
+  if (scope.type === 'team' && scope.teamId === resourceTeamId) return scope;
+
+  // Cookie scope doesn't match — check if user has access to the resource's team
+  const role = await checkTeamRole(userId, resourceTeamId);
+  if (role) {
+    const supabase = createSupabaseAdminClient();
+    const { data: team } = await supabase
+      .from('teams')
+      .select('owner_id')
+      .eq('id', resourceTeamId)
+      .single();
+    return { type: 'team', userId, teamId: resourceTeamId, ownerId: team?.owner_id ?? userId };
+  }
+
+  // No cross-team access — fall back to cookie scope (will likely 404 at query level)
+  return scope;
+}
+
+/**
  * Apply the current data scope to a Supabase query builder.
  * - Team mode: filter by team_id
  * - Personal mode: filter by user_id (includes team-owned resources)

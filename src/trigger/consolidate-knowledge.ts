@@ -16,7 +16,7 @@ export const consolidateKnowledge = schedules.task({
       .is('superseded_by', null)
       .limit(1000);
 
-    const uniqueUsers = [...new Set((userRows || []).map(u => u.user_id))];
+    const uniqueUsers = [...new Set((userRows || []).map((u) => u.user_id))];
     logger.info(`Processing ${uniqueUsers.length} users`);
 
     let topicsUpdated = 0;
@@ -45,9 +45,10 @@ export const consolidateKnowledge = schedules.task({
 
           // Find similar entries using the existing RPC
           const { data: matches } = await supabase.rpc('cp_match_knowledge_entries', {
-            query_embedding: typeof entry.embedding === 'string'
-              ? entry.embedding
-              : JSON.stringify(entry.embedding),
+            query_embedding:
+              typeof entry.embedding === 'string'
+                ? entry.embedding
+                : JSON.stringify(entry.embedding),
             p_user_id: userId,
             threshold: 0.92,
             match_count: 5,
@@ -113,13 +114,39 @@ export const consolidateKnowledge = schedules.task({
       }
     }
 
+    // Phase 3: Mark all positions stale for weekly full refresh
+    // The nightly cron will re-synthesize them over the next few days
+    let positionsMarkedStale = 0;
+    for (const userId of uniqueUsers) {
+      const { data: positionTopics } = await supabase
+        .from('cp_positions')
+        .select('topic_slug')
+        .eq('user_id', userId)
+        .eq('is_stale', false);
+
+      if (positionTopics && positionTopics.length > 0) {
+        await supabase.rpc('cp_mark_positions_stale', {
+          p_user_id: userId,
+          p_topic_slugs: positionTopics.map((p: { topic_slug: string }) => p.topic_slug),
+        });
+        positionsMarkedStale += positionTopics.length;
+      }
+    }
+
     logger.info('Weekly consolidation complete', {
       usersProcessed: uniqueUsers.length,
       topicsUpdated,
       entriesSuperseded,
       corroborationsCreated,
+      positionsMarkedStale,
     });
 
-    return { usersProcessed: uniqueUsers.length, topicsUpdated, entriesSuperseded, corroborationsCreated };
+    return {
+      usersProcessed: uniqueUsers.length,
+      topicsUpdated,
+      entriesSuperseded,
+      corroborationsCreated,
+      positionsMarkedStale,
+    };
   },
 });

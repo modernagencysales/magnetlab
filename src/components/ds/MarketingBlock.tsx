@@ -1,7 +1,12 @@
+/** MarketingBlock — Marketing block renderer. Variant prop maps to internal blockType.
+ * Uses DS CSS vars for theming. Never imports Next.js server modules. */
 'use client';
 
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { ScrollReveal } from '@/components/funnel/animations/ScrollReveal';
+
+// ─── Types ─────────────────────────────────────────────────────────
 
 type ContentBlockType =
   | 'testimonial'
@@ -23,6 +28,8 @@ interface ContentBlock {
 
 interface MarketingBlockProps {
   block: ContentBlock | null | undefined;
+  variant?: string;
+  primaryColor?: string;
   className?: string;
 }
 
@@ -36,6 +43,17 @@ interface ContentWithItems {
   body?: string;
   items?: FAQItem[];
 }
+
+// ─── Variant → blockType mapping ───────────────────────────────────
+
+const VARIANT_TO_BLOCK_TYPE: Record<string, ContentBlockType> = {
+  'feature-card': 'feature',
+  benefit: 'benefit',
+  'faq-accordion': 'faq',
+  'cta-banner': 'cta',
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────
 
 function parsePlainTextFAQ(content: string): FAQItem[] | null {
   const blocks = content.split(/\n\n+/).filter((b) => b.trim());
@@ -143,7 +161,11 @@ function renderSimpleMarkdown(text: string): React.ReactNode[] {
         .map((line) => line.trim().replace(/^[-*]\s+/, ''));
 
       return (
-        <ul key={pIndex} className="list-disc list-inside space-y-2 mb-4" style={{ color: 'var(--ds-muted)' }}>
+        <ul
+          key={pIndex}
+          className="list-disc list-inside space-y-2 mb-4"
+          style={{ color: 'var(--ds-muted)' }}
+        >
           {listItems.map((item, lIndex) => (
             <li key={lIndex}>{renderInlineFormatting(item)}</li>
           ))}
@@ -158,6 +180,8 @@ function renderSimpleMarkdown(text: string): React.ReactNode[] {
     );
   });
 }
+
+// ─── Sub-components ────────────────────────────────────────────────
 
 const FAQAccordion: React.FC<{ items: FAQItem[] }> = ({ items }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -177,7 +201,9 @@ const FAQAccordion: React.FC<{ items: FAQItem[] }> = ({ items }) => {
             style={{ backgroundColor: openIndex === index ? 'var(--ds-card)' : 'transparent' }}
             aria-expanded={openIndex === index}
           >
-            <span className="font-medium" style={{ color: 'var(--ds-text)' }}>{item.question}</span>
+            <span className="font-medium" style={{ color: 'var(--ds-text)' }}>
+              {item.question}
+            </span>
             {openIndex === index ? (
               <ChevronUp className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--ds-muted)' }} />
             ) : (
@@ -185,7 +211,10 @@ const FAQAccordion: React.FC<{ items: FAQItem[] }> = ({ items }) => {
             )}
           </button>
           {openIndex === index && (
-            <div className="p-4" style={{ backgroundColor: 'var(--ds-card)', borderTop: `1px solid var(--ds-border)` }}>
+            <div
+              className="p-4"
+              style={{ backgroundColor: 'var(--ds-card)', borderTop: `1px solid var(--ds-border)` }}
+            >
               <div className="leading-relaxed" style={{ color: 'var(--ds-muted)' }}>
                 {renderSimpleMarkdown(item.answer)}
               </div>
@@ -214,10 +243,23 @@ const InlineCTA: React.FC<{ text: string; url: string }> = ({ text, url }) => {
   );
 };
 
-const MarketingBlock: React.FC<MarketingBlockProps> = ({ block, className = '' }) => {
+// ─── Component ─────────────────────────────────────────────────────
+
+const MarketingBlock: React.FC<MarketingBlockProps> = ({
+  block,
+  variant,
+  // primaryColor accepted for consistency but not used directly
+  className = '',
+}) => {
   if (!block) return null;
 
-  const parsedContent = parseContent(block.content);
+  // When variant is provided and not 'default', map to internal blockType
+  const effectiveBlock: ContentBlock =
+    variant && variant !== 'default' && VARIANT_TO_BLOCK_TYPE[variant]
+      ? { ...block, blockType: VARIANT_TO_BLOCK_TYPE[variant] }
+      : block;
+
+  const parsedContent = parseContent(effectiveBlock.content);
   const isObjectContent = typeof parsedContent === 'object';
 
   const contentTitle = isObjectContent ? (parsedContent as ContentWithItems).title : undefined;
@@ -227,47 +269,49 @@ const MarketingBlock: React.FC<MarketingBlockProps> = ({ block, className = '' }
   const contentItems = isObjectContent ? (parsedContent as ContentWithItems).items : undefined;
 
   const faqItems =
-    block.blockType === 'faq' && contentItems && Array.isArray(contentItems)
+    effectiveBlock.blockType === 'faq' && contentItems && Array.isArray(contentItems)
       ? contentItems
-      : block.blockType === 'faq' && typeof contentBody === 'string'
+      : effectiveBlock.blockType === 'faq' && typeof contentBody === 'string'
         ? parsePlainTextFAQ(contentBody)
         : null;
   const isFAQ = faqItems && faqItems.length > 0;
 
-  const hasTitle = block.title || contentTitle;
+  const hasTitle = effectiveBlock.title || contentTitle;
   const hasBody = contentBody && contentBody.trim() !== '';
-  const hasCTA = block.ctaText && block.ctaUrl;
+  const hasCTA = effectiveBlock.ctaText && effectiveBlock.ctaUrl;
 
   if (!hasTitle && !hasBody && !isFAQ && !hasCTA) return null;
 
   return (
-    <div
-      className={`rounded-xl shadow-sm p-6 ${className}`.trim()}
-      style={{
-        backgroundColor: 'var(--ds-card)',
-        border: `1px solid var(--ds-border)`,
-      }}
-    >
-      {hasTitle && (
-        <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--ds-text)' }}>
-          {block.title || contentTitle}
-        </h3>
-      )}
+    <ScrollReveal>
+      <div
+        className={`rounded-xl shadow-sm p-6 ${className}`.trim()}
+        style={{
+          backgroundColor: 'var(--ds-card)',
+          border: `1px solid var(--ds-border)`,
+        }}
+      >
+        {hasTitle && (
+          <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--ds-text)' }}>
+            {effectiveBlock.title || contentTitle}
+          </h3>
+        )}
 
-      {hasBody && !isFAQ && (
-        <div className="leading-relaxed" style={{ color: 'var(--ds-muted)' }}>
-          {renderSimpleMarkdown(contentBody)}
-        </div>
-      )}
+        {hasBody && !isFAQ && (
+          <div className="leading-relaxed" style={{ color: 'var(--ds-muted)' }}>
+            {renderSimpleMarkdown(contentBody)}
+          </div>
+        )}
 
-      {isFAQ && <FAQAccordion items={faqItems as FAQItem[]} />}
+        {isFAQ && <FAQAccordion items={faqItems as FAQItem[]} />}
 
-      {hasCTA && (
-        <div className="mt-6">
-          <InlineCTA text={block.ctaText!} url={block.ctaUrl!} />
-        </div>
-      )}
-    </div>
+        {hasCTA && (
+          <div className="mt-6">
+            <InlineCTA text={effectiveBlock.ctaText!} url={effectiveBlock.ctaUrl!} />
+          </div>
+        )}
+      </div>
+    </ScrollReveal>
   );
 };
 
