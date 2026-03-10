@@ -111,9 +111,7 @@ const MOCK_GAP_RESULT = {
   preAnsweredCount: 2,
   knowledgeContext: 'Brain context with relevant insights',
   gapSummary: 'Brain context answers 2 of 4 questions. 2 questions still need your input.',
-  brainEntries: [
-    { content: 'Our system starts with ICP definition', category: 'insight' },
-  ],
+  brainEntries: [{ content: 'Our system starts with ICP definition', category: 'insight' }],
 };
 
 const MOCK_EXTRACTED_CONTENT = {
@@ -132,11 +130,20 @@ const MOCK_EXTRACTED_CONTENT = {
 
 const MOCK_POST_RESULT = {
   variations: [
-    { hookType: 'Result', post: 'I helped 50 agencies get 40% more leads...', whyThisAngle: 'Results hook' },
-    { hookType: 'Contrarian', post: 'Everyone says cold outreach is dead...', whyThisAngle: 'Against common belief' },
+    {
+      hookType: 'Result',
+      post: 'I helped 50 agencies get 40% more leads...',
+      whyThisAngle: 'Results hook',
+    },
+    {
+      hookType: 'Contrarian',
+      post: 'Everyone says cold outreach is dead...',
+      whyThisAngle: 'Against common belief',
+    },
   ],
   recommendation: 'Variation 1 performs best for B2B audiences',
-  dmTemplate: 'Hi {first_name}, saw your post about {{topic}} — I put together a guide that might help.',
+  dmTemplate:
+    'Hi {first_name}, saw your post about {{topic}} — I put together a guide that might help.',
   ctaWord: 'SEND',
 };
 
@@ -205,7 +212,7 @@ describe('start_lead_magnet_creation', () => {
     expect(data.questions).toEqual(MOCK_GAP_RESULT.questions);
     expect(data.preAnsweredCount).toBe(2);
     expect(data.gapSummary).toContain('2 of 4');
-    expect(data.archetype).toBe('guide'); // default archetype
+    expect(data.archetype).toBe('single-system'); // default archetype
     expect(data.concept).toBeDefined();
   });
 
@@ -231,14 +238,14 @@ describe('start_lead_magnet_creation', () => {
     );
   });
 
-  it('defaults archetype to "guide" when not specified', async () => {
+  it('defaults archetype to "single-system" when not specified', async () => {
     await executeAction(CTX, 'start_lead_magnet_creation', {
       topic: 'Quick Guide',
     });
 
     expect(mockAnalyzeContextGaps).toHaveBeenCalledWith(
       expect.objectContaining({
-        archetype: 'guide',
+        archetype: 'single-system',
       })
     );
   });
@@ -282,7 +289,7 @@ describe('submit_extraction_answers', () => {
     const answers = { system: 'Step 1 is...', results: '40% growth' };
 
     await executeAction(CTX, 'submit_extraction_answers', {
-      archetype: 'guide',
+      archetype: 'single-system',
       concept_title: 'My Guide',
       concept_pain: 'No leads',
       answers,
@@ -290,7 +297,7 @@ describe('submit_extraction_answers', () => {
 
     expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
-        archetype: 'guide',
+        archetype: 'single-system',
         userId: CTX.userId,
         concept: expect.objectContaining({
           title: 'My Guide',
@@ -303,7 +310,7 @@ describe('submit_extraction_answers', () => {
 
   it('defaults concept_title and concept_pain when omitted', async () => {
     await executeAction(CTX, 'submit_extraction_answers', {
-      archetype: 'guide',
+      archetype: 'single-system',
       answers: { q1: 'answer' },
     });
 
@@ -322,7 +329,7 @@ describe('submit_extraction_answers', () => {
     mockGenerateContent.mockRejectedValueOnce(new Error('Missing required parameters'));
 
     const result = await executeAction(CTX, 'submit_extraction_answers', {
-      archetype: 'guide',
+      archetype: 'single-system',
       answers: {},
     });
 
@@ -361,7 +368,7 @@ describe('save_lead_magnet', () => {
   it('calls Supabase insert with correct fields', async () => {
     await executeAction(CTX, 'save_lead_magnet', {
       title: 'Test LM',
-      archetype: 'guide',
+      archetype: 'single-system',
       content_blocks: { structure: [] },
       extraction_data: { source: 'copilot' },
     });
@@ -377,7 +384,7 @@ describe('save_lead_magnet', () => {
 
     const result = await executeAction(CTX, 'save_lead_magnet', {
       title: 'Test',
-      archetype: 'guide',
+      archetype: 'single-system',
       content_blocks: {},
     });
 
@@ -438,8 +445,22 @@ describe('list_lead_magnets', () => {
   it('returns lead magnets with text displayHint', async () => {
     mockSupabase.setResult('lead_magnets', {
       data: [
-        { id: 'lm-1', title: 'Guide 1', status: 'draft', archetype: 'guide', created_at: '2026-03-01', updated_at: '2026-03-09' },
-        { id: 'lm-2', title: 'Toolkit', status: 'published', archetype: 'focused-toolkit', created_at: '2026-02-15', updated_at: '2026-03-08' },
+        {
+          id: 'lm-1',
+          title: 'Guide 1',
+          status: 'draft',
+          archetype: 'single-system',
+          created_at: '2026-03-01',
+          updated_at: '2026-03-09',
+        },
+        {
+          id: 'lm-2',
+          title: 'Toolkit',
+          status: 'published',
+          archetype: 'focused-toolkit',
+          created_at: '2026-02-15',
+          updated_at: '2026-03-08',
+        },
       ],
       error: null,
     });
@@ -479,7 +500,7 @@ describe('get_lead_magnet', () => {
       data: {
         id: 'lm-1',
         title: 'My Guide',
-        archetype: 'guide',
+        archetype: 'single-system',
         status: 'draft',
         content_blocks: MOCK_EXTRACTED_CONTENT,
         extraction_data: null,
