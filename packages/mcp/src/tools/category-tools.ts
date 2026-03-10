@@ -181,10 +181,11 @@ The brand kit is for VISUAL styling only (colors, fonts) — never use it for co
 
 3. IDEATE — Present findings, discuss the angle with the user
 
-4. CREATE + FUNNEL (one call)
+4. CREATE + FUNNEL (one call, with brain enrichment)
    → magnetlab_execute({tool: "magnetlab_create_lead_magnet", arguments: {
        title: "...",
        archetype: "...",
+       use_brain: true,
        concept: {...},
        funnel_config: {
          slug: "my-guide",
@@ -194,8 +195,12 @@ The brand kit is for VISUAL styling only (colors, fonts) — never use it for co
        }
      }})
 
+   use_brain=true automatically searches the AI Brain, synthesizes the user's position,
+   and enriches the concept with real pain points, key takeaways, data points, and stories.
+   Any manual concept fields you provide take priority over brain-derived ones.
+
    OR CREATE then FUNNEL separately:
-   → magnetlab_execute({tool: "magnetlab_create_lead_magnet", arguments: {title: "...", archetype: "..."}})
+   → magnetlab_execute({tool: "magnetlab_create_lead_magnet", arguments: {title: "...", archetype: "...", use_brain: true}})
    → magnetlab_execute({tool: "magnetlab_create_funnel", arguments: {lead_magnet_id: "...", slug: "..."}})
 
 5. GENERATE CONTENT — Fill the lead magnet with actual deliverable content

@@ -34,6 +34,8 @@ export const leadMagnetTools: Tool[] = [
     name: 'magnetlab_create_lead_magnet',
     description:
       'Create a new lead magnet. Choose an archetype and provide a title. ' +
+      "Set use_brain=true to automatically enrich the concept with the user's real expertise, " +
+      'data points, stories, and contrarian angles from the AI Brain. ' +
       'A lead magnet alone is NOT publicly accessible — you must also create a funnel page. ' +
       'Two options: (1) pass funnel_config here to create both in one call, or ' +
       '(2) call magnetlab_create_funnel separately after. ' +
@@ -58,7 +60,32 @@ export const leadMagnetTools: Tool[] = [
           ],
           description: 'Content archetype/format',
         },
-        concept: { type: 'object', description: 'Concept data (optional, from ideation)' },
+        concept: {
+          type: 'object',
+          description:
+            'Concept data (optional, from ideation or manual input). When use_brain is true, brain-derived fields are merged — manual fields take priority.',
+        },
+        use_brain: {
+          type: 'boolean',
+          default: false,
+          description:
+            "When true, searches the AI Brain for relevant knowledge and synthesizes the user's position to enrich the concept. " +
+            'Adds real pain points, key takeaways, data points, stories, and differentiators from actual expertise. ' +
+            'Manual concept fields override brain-derived ones where both exist.',
+        },
+        brain_query: {
+          type: 'string',
+          description:
+            'Custom search query for brain retrieval. Defaults to the lead magnet title. ' +
+            'Only used when use_brain=true.',
+        },
+        knowledge_entry_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Specific knowledge entry IDs to incorporate. These are included alongside search results ' +
+            'and stored in the concept for content generation. Only used when use_brain=true.',
+        },
         funnel_config: {
           type: 'object',
           description:
