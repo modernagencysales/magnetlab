@@ -235,6 +235,7 @@ Detailed docs for each feature live in `docs/`. Consult these when working on a 
 | Testing Strategy | [docs/testing-strategy.md](docs/testing-strategy.md) |
 | Frontend Architecture | [docs/frontend-refactor-plan.md](docs/frontend-refactor-plan.md) |
 | Coding Standards | [docs/coding-standards.md](docs/coding-standards.md) |
+| AI Standards Learning Loop | [docs/plans/2026-03-09-standards-learning-loop-design.md](docs/plans/2026-03-09-standards-learning-loop-design.md) |
 
 ## Post-Feature Workflow
 
@@ -329,3 +330,30 @@ User input (prompt + optional URLs)
 - `magnetlab_create_section` — create with type, variant, config
 - `magnetlab_update_section` — update variant, config, visibility
 - `magnetlab_delete_section` — remove section
+
+## AI Standards Learning Loop (Mar 2026)
+
+Automated workflow for AI-to-developer feature handoff and coding standards improvement.
+
+### How It Works
+
+1. **Feature Handoff** — When a PR is opened from `early-users/*` to `main` with Claude co-authored commits, a Linear issue is auto-created in the "Experimental Feature Pipeline" project
+2. **Standards Review** — When that PR is merged, Claude Sonnet analyzes the diff between AI code and developer-refined code, categorizes findings, creates a Linear issue, and opens a draft PR proposing coding standards updates
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `.github/workflows/feature-handoff.yml` | PR opened → Linear issue creation |
+| `.github/workflows/standards-review.yml` | PR merged → diff analysis trigger |
+| `.github/scripts/analyze-standards.ts` | Claude Sonnet analysis + Linear + draft PR |
+
+### Linear Configuration
+
+- **Project:** Experimental Feature Pipeline (`43e6d56e-b1dc-43bd-8631-d99070bb942b`)
+- **Labels:** `ai-built`, `needs-dev-review`, `standards-review`, `magnetlab`
+
+### GitHub Secrets
+
+- `ANTHROPIC_API_KEY_STANDARDS` — Dedicated workspace key (spend-limited)
+- `LINEAR_API_KEY` — For creating issues

@@ -1,0 +1,185 @@
+name: Feature Handoff to Linear
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+
+jobs:
+  feature-handoff:
+    if: startsWith(github.head_ref, 'early-users/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check for Claude co-authored commits
+        id: claude-check
+        run: |
+          CLAUDE_COMMITS=$(git log origin/main..HEAD --format="%H %s" \
+            | while read hash msg; do
+                if git log -1 --format="%b" "$hash" | grep -qi "Co-Authored-By:.*Claude"; then
+                  echo "$hash"
+                fi
+              done)
+
+          if [ -z "$CLAUDE_COMMITS" ]; then
+            echo "has_claude=false" >> "$GITHUB_OUTPUT"
+            echo "No Claude co-authored commits found."
+          else
+            COUNT=$(echo "$CLAUDE_COMMITS" | wc -l | tr -d ' ')
+            echo "has_claude=true" >> "$GITHUB_OUTPUT"
+            echo "claude_commit_count=$COUNT" >> "$GITHUB_OUTPUT"
+            echo "Found $COUNT Claude co-authored commit(s)."
+          fi
+
+      - name: Extract PR context
+        id: context
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          FEATURE_NAME="${BRANCH#early-users/}"
+
+          # Collect commit log
+          COMMITS=$(git log origin/main..HEAD --format="- %s (%h)" | head -50)
+
+          # Collect changed files
+          FILES=$(git diff --name-only origin/main..HEAD | head -100)
+          FILE_COUNT=$(git diff --name-only origin/main..HEAD | wc -l | tr -d ' ')
+
+          # Check for design docs
+          DESIGN_DOCS=$(git diff --name-only origin/main..HEAD | grep -iE "(DESIGN|SPEC|RFC|ADR|ARCHITECTURE)" || true)
+
+          # Build description body (using delimiter for multiline output)
+          EOF_MARKER=$(dd if=/dev/urandom bs=15 count=1 2>/dev/null | base64)
+          echo "description<<${EOF_MARKER}" >> "$GITHUB_OUTPUT"
+
+          cat >> "$GITHUB_OUTPUT" <<DESCEOF
+          ## Feature Handoff: ${FEATURE_NAME}
+
+          **Source PR:** [#${{ github.event.pull_request.number }}](${{ github.event.pull_request.html_url }})
+          **Branch:** \`${BRANCH}\`
+          **Claude Co-Authored:** ${{ steps.claude-check.outputs.has_claude }} (${{ steps.claude-check.outputs.claude_commit_count || '0' }} commits)
+
+          ### Commits
+
+          ${COMMITS}
+
+          ### Changed Files (${FILE_COUNT} total)
+
+          $(echo "$FILES" | sed 's/^/- /')
+          DESCEOF
+
+          if [ -n "$DESIGN_DOCS" ]; then
+            cat >> "$GITHUB_OUTPUT" <<DOCSEOF
+
+          ### Design Documents
+
+          $(echo "$DESIGN_DOCS" | sed 's/^/- /')
+          DOCSEOF
+          fi
+
+          echo "${EOF_MARKER}" >> "$GITHUB_OUTPUT"
+
+          echo "feature_name=$FEATURE_NAME" >> "$GITHUB_OUTPUT"
+          echo "file_count=$FILE_COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Create Linear issue
+        id: create-issue
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          TITLE="[Handoff] ${{ steps.context.outputs.feature_name }} (PR #${{ github.event.pull_request.number }})"
+
+          # Escape the description for JSON embedding
+          DESCRIPTION=$(cat <<'DESCEND'
+          ${{ steps.context.outputs.description }}
+          DESCEND
+          )
+          ESCAPED_DESC=$(echo "$DESCRIPTION" | jq -Rs .)
+
+          PAYLOAD=$(jq -n \
+            --arg title "$TITLE" \
+            --argjson desc "$ESCAPED_DESC" \
+            '{
+              query: "mutation CreateIssue($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id identifier url title } } }",
+              variables: {
+                input: {
+                  title: $title,
+                  description: $desc,
+                  teamId: "c7f962be-0a7e-470b-9d61-ccf0808aaa7d",
+                  projectId: "43e6d56e-b1dc-43bd-8631-d99070bb942b",
+                  stateId: "f2412f79-de1d-4cf5-a7ff-2e5f9308280a",
+                  labelIds: [
+                    "23784952-472d-455a-a2bd-4cf7cdf95ea8",
+                    "2f30c1ef-0178-4d5b-9a3e-cd7713b4b07f",
+                    "46736281-ed8d-4f9d-8d2d-f6eb9d25a6a6"
+                  ]
+                }
+              }
+            }')
+
+          RESPONSE=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: $LINEAR_API_KEY" \
+            -d "$PAYLOAD" \
+            https://api.linear.app/graphql)
+
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.data.issueCreate.success')
+          if [ "$SUCCESS" != "true" ]; then
+            echo "Linear API error:"
+            echo "$RESPONSE" | jq .
+            exit 1
+          fi
+
+          ISSUE_ID=$(echo "$RESPONSE" | jq -r '.data.issueCreate.issue.identifier')
+          ISSUE_URL=$(echo "$RESPONSE" | jq -r '.data.issueCreate.issue.url')
+          ISSUE_TITLE=$(echo "$RESPONSE" | jq -r '.data.issueCreate.issue.title')
+
+          echo "issue_id=$ISSUE_ID" >> "$GITHUB_OUTPUT"
+          echo "issue_url=$ISSUE_URL" >> "$GITHUB_OUTPUT"
+          echo "issue_title=$ISSUE_TITLE" >> "$GITHUB_OUTPUT"
+
+          echo "Created Linear issue: $ISSUE_ID ($ISSUE_URL)"
+
+      - name: Comment on PR with Linear issue link
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueId = '${{ steps.create-issue.outputs.issue_id }}';
+            const issueUrl = '${{ steps.create-issue.outputs.issue_url }}';
+            const issueTitle = '${{ steps.create-issue.outputs.issue_title }}';
+            const hasClaude = '${{ steps.claude-check.outputs.has_claude }}';
+            const claudeCount = '${{ steps.claude-check.outputs.claude_commit_count || '0' }}';
+            const fileCount = '${{ steps.context.outputs.file_count }}';
+
+            const body = [
+              `### Linear Issue Created`,
+              ``,
+              `**${issueId}** — [${issueTitle}](${issueUrl})`,
+              ``,
+              `| Detail | Value |`,
+              `|--------|-------|`,
+              `| Linear Issue | [${issueId}](${issueUrl}) |`,
+              `| Project | Experimental Feature Pipeline |`,
+              `| Status | Triage |`,
+              `| Labels | \`ai-built\`, \`needs-dev-review\`, \`magnetlab\` |`,
+              `| Claude Co-Authored | ${hasClaude === 'true' ? `Yes (${claudeCount} commits)` : 'No'} |`,
+              `| Files Changed | ${fileCount} |`,
+              ``,
+              `This feature branch has been queued for developer review in Linear.`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
