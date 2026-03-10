@@ -126,15 +126,25 @@ registerAction({
       pasted_content?: string;
     }
   ): Promise<ActionResult> => {
-    const archetype = (params.archetype || 'guide') as LeadMagnetArchetype;
+    const archetype = (params.archetype || 'single-system') as LeadMagnetArchetype;
 
     const concept: LeadMagnetConcept = {
       archetype,
       archetypeName: archetype,
       title: params.topic,
       painSolved: params.target_audience || params.topic,
+      whyNowHook: '',
       deliveryFormat: 'PDF',
-      contents: [params.topic],
+      contents: params.topic,
+      viralCheck: {
+        highValue: false,
+        urgentPain: false,
+        actionableUnder1h: false,
+        simple: false,
+        authorityBoosting: false,
+      },
+      creationTimeEstimate: '',
+      bundlePotential: [],
     };
 
     const result = await analyzeContextGaps({
@@ -203,8 +213,18 @@ registerAction({
       archetypeName: archetype,
       title: params.concept_title || 'Untitled Lead Magnet',
       painSolved: params.concept_pain || '',
+      whyNowHook: '',
       deliveryFormat: 'PDF',
-      contents: [params.concept_title || 'Untitled Lead Magnet'],
+      contents: params.concept_title || 'Untitled Lead Magnet',
+      viralCheck: {
+        highValue: false,
+        urgentPain: false,
+        actionableUnder1h: false,
+        simple: false,
+        authorityBoosting: false,
+      },
+      creationTimeEstimate: '',
+      bundlePotential: [],
     };
 
     const extractedContent = await generateContent(

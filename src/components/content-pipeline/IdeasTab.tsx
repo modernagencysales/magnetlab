@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Lightbulb,
   Loader2,
+  Magnet,
   Search,
   Filter,
   ChevronDown,
@@ -23,6 +24,7 @@ import type {
 } from '@/lib/types/content-pipeline';
 import { useIdeas } from '@/frontend/hooks/api/useIdeas';
 import { useWriteFromIdea, useArchiveIdea } from '@/frontend/hooks/api/useIdeasMutations';
+import { useCopilot } from '@/components/copilot/CopilotProvider';
 
 const STATUSES: { value: IdeaStatus | ''; label: string }[] = [
   { value: '', label: 'All Statuses' },
