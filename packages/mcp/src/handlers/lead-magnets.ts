@@ -370,6 +370,93 @@ export async function handleLeadMagnetTools(
     case 'magnetlab_analyze_transcript':
       return client.analyzeTranscript({ transcript: args.transcript as string });
 
+    case 'magnetlab_lead_magnet_status': {
+      const lmId = args.lead_magnet_id as string;
+
+      // Fetch lead magnet, funnel, and email sequence in parallel
+      const [lmResult, funnelResult, seqResult] = await Promise.all([
+        client.getLeadMagnet(lmId).catch(() => null),
+        client.getFunnelByTarget({ leadMagnetId: lmId }).catch(() => ({ funnel: null })),
+        client.getEmailSequence(lmId).catch(() => ({ emailSequence: null })),
+      ]);
+
+      if (!lmResult) {
+        throw new Error(`Lead magnet ${lmId} not found`);
+      }
+
+      const lm = lmResult as Record<string, unknown>;
+      const concept = lm.concept as Record<string, unknown> | undefined;
+      const funnel = (funnelResult as { funnel: Record<string, unknown> | null })?.funnel;
+      const seq = (seqResult as { emailSequence: Record<string, unknown> | null })?.emailSequence;
+
+      const hasConcept = !!concept && Object.keys(concept).length > 0;
+      const hasContent = !!(lm.extracted_content || lm.polished_content);
+      const hasPosts = !!(lm.linkedin_post || lm.post_variations);
+      const brainEnriched = !!(concept?._brain_position || concept?._brain_entry_ids);
+      const brainEntryCount = Array.isArray(concept?._brain_entry_ids)
+        ? (concept._brain_entry_ids as string[]).length
+        : 0;
+
+      const funnelPublished = funnel?.status === 'published';
+      const seqStatus = seq?.status as string | undefined;
+      const seqEmails = Array.isArray(seq?.emails) ? (seq.emails as unknown[]).length : 0;
+
+      // Determine what's missing
+      const missing: string[] = [];
+      if (!hasConcept)
+        missing.push('No concept — create_lead_magnet was called without concept data');
+      if (!hasContent) missing.push('No content — call magnetlab_generate_lead_magnet_content');
+      if (!funnel) missing.push('No funnel — call magnetlab_create_funnel');
+      if (funnel && !funnelPublished)
+        missing.push('Funnel not published — call magnetlab_publish_funnel');
+      if (!seq) missing.push('No email sequence — call magnetlab_generate_email_sequence');
+      if (seq && seqStatus !== 'active')
+        missing.push('Email sequence not active — call magnetlab_activate_email_sequence');
+
+      // Determine next step
+      let nextStep: string;
+      if (!hasConcept)
+        nextStep = 'Add a concept to this lead magnet or recreate with use_brain=true';
+      else if (!hasContent) nextStep = 'Generate content: magnetlab_generate_lead_magnet_content';
+      else if (!funnel) nextStep = 'Create funnel: magnetlab_create_funnel';
+      else if (!seq) nextStep = 'Generate email sequence: magnetlab_generate_email_sequence';
+      else if (seqStatus !== 'active')
+        nextStep = 'Activate email sequence: magnetlab_activate_email_sequence';
+      else if (!funnelPublished) nextStep = 'Publish funnel: magnetlab_publish_funnel';
+      else nextStep = 'Complete — lead magnet is live with active email sequence';
+
+      return {
+        lead_magnet: {
+          id: lm.id,
+          title: lm.title,
+          status: lm.status,
+          has_concept: hasConcept,
+          has_content: hasContent,
+          has_posts: hasPosts,
+          brain_enriched: brainEnriched,
+          brain_entries_used: brainEntryCount,
+        },
+        funnel: funnel
+          ? {
+              exists: true,
+              id: funnel.id,
+              slug: funnel.slug,
+              is_published: funnelPublished,
+              public_url: funnel.public_url || funnel.publicUrl || null,
+            }
+          : { exists: false },
+        email_sequence: seq
+          ? {
+              exists: true,
+              status: seqStatus,
+              email_count: seqEmails,
+            }
+          : { exists: false },
+        missing,
+        next_step: nextStep,
+      };
+    }
+
     default:
       throw new Error(`Unknown lead magnet tool: ${name}`);
   }

@@ -233,4 +233,18 @@ export const leadMagnetTools: Tool[] = [
       required: ['transcript'],
     },
   },
+  {
+    name: 'magnetlab_lead_magnet_status',
+    description:
+      'Get a comprehensive status check for a lead magnet and all its linked assets — funnel, email sequence, ' +
+      'content, and brain enrichment. Returns what exists, what is missing, and what the next step should be. ' +
+      'Useful for resuming interrupted workflows or checking readiness before publishing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lead_magnet_id: { type: 'string', description: 'Lead magnet UUID to check' },
+      },
+      required: ['lead_magnet_id'],
+    },
+  },
 ];

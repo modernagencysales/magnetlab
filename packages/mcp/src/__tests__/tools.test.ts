@@ -13,8 +13,8 @@ import {
 } from '../tools/category-tools.js';
 
 describe('Tool Registration', () => {
-  it('exports exactly 117 tools', () => {
-    expect(tools).toHaveLength(117);
+  it('exports exactly 118 tools', () => {
+    expect(tools).toHaveLength(118);
   });
 
   it('all tools have unique names', () => {
@@ -70,7 +70,7 @@ describe('Tool Registration', () => {
 
   describe('handler category sizes', () => {
     const expectedCounts: Record<string, number> = {
-      leadMagnets: 9,
+      leadMagnets: 10,
       ideation: 6,
       funnels: 15,
       leads: 2,
@@ -157,8 +157,8 @@ describe('Discovery Categories', () => {
     expect(discoveryCategories.leadMagnets).toContain('magnetlab_list_leads');
     expect(discoveryCategories.leadMagnets).toContain('magnetlab_export_leads');
     expect(discoveryCategories.leadMagnets).toContain('magnetlab_get_funnel_stats');
-    // 9 lead magnet tools + 2 leads + 1 analytics = 12
-    expect(discoveryCategories.leadMagnets.length).toBe(12);
+    // 10 lead magnet tools + 2 leads + 1 analytics = 13
+    expect(discoveryCategories.leadMagnets.length).toBe(13);
   });
 
   describe('discovery category sizes', () => {
@@ -166,7 +166,7 @@ describe('Discovery Categories', () => {
       knowledge: 17,
       contentWriting: 19,
       contentScheduling: 11,
-      leadMagnets: 12,
+      leadMagnets: 13,
       ideation: 6,
       funnels: 15,
       brandKit: 3,
@@ -326,10 +326,12 @@ describe('Guide Tool', () => {
     }
   });
 
-  it('create_lead_magnet recipe references knowledge search', () => {
+  it('create_lead_magnet recipe references knowledge search and status tool', () => {
     expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_search_knowledge');
     expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_ask_knowledge');
     expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_knowledge_readiness');
+    expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_lead_magnet_status');
+    expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_synthesize_position');
   });
 
   it('does not collide with any real or category tool name', () => {

@@ -165,66 +165,117 @@ export const workflowRecipes: Record<string, string> = {
 The AI Brain (knowledge base) contains the user's REAL expertise extracted from call transcripts.
 The brand kit is for VISUAL styling only (colors, fonts) — never use it for content substance.
 
+## Resuming an interrupted workflow?
+→ magnetlab_execute({tool: "magnetlab_lead_magnet_status", arguments: {lead_magnet_id: "..."}})
+Returns what exists, what's missing, and the next step. Skip to that step below.
+
 ## Steps
 
-1. RESEARCH — Search the AI Brain for expertise on the topic
-   → magnetlab_execute({tool: "magnetlab_search_knowledge", arguments: {query: "<topic>"}})
-   → magnetlab_execute({tool: "magnetlab_ask_knowledge", arguments: {question: "What are the key insights about <topic>?"}})
+### 0. ASSESS READINESS — Check brain has enough knowledge
+→ magnetlab_execute({tool: "magnetlab_knowledge_readiness", arguments: {topic: "<topic>", goal: "lead_magnet"}})
 
-1b. SYNTHESIZE — Get or build the user's position on the topic
-   → magnetlab_execute({tool: "magnetlab_synthesize_position", arguments: {topic: "<topic-slug>"}})
-   Returns thesis, stance type, key arguments, stories, data points, and differentiators.
-   Use this structured position to guide all content generation — it's far richer than raw search results.
+**Read the response fields:**
+- confidence: "high" | "medium" | "low" — high/medium = proceed, low = warn the user
+- entry_count: number of knowledge entries found
+- gaps: string[] — what's missing from the brain on this topic
+- suggestions: string[] — what the user could add (e.g., more transcripts about X)
 
-2. ASSESS — Check if there's enough knowledge
-   → magnetlab_execute({tool: "magnetlab_knowledge_readiness", arguments: {topic: "<topic>", goal: "lead_magnet"}})
+If confidence is "low": Tell the user what's missing and ask if they want to proceed with limited
+brain data or upload more transcripts first. A lead magnet with low brain data will have generic
+content instead of their unique expertise.
 
-3. IDEATE — Present findings, discuss the angle with the user
+### 1. RESEARCH — Search the AI Brain for expertise
+→ magnetlab_execute({tool: "magnetlab_search_knowledge", arguments: {query: "<topic>"}})
+→ magnetlab_execute({tool: "magnetlab_ask_knowledge", arguments: {question: "What are the key insights about <topic>?"}})
 
-4. CREATE + FUNNEL (one call, with brain enrichment)
-   → magnetlab_execute({tool: "magnetlab_create_lead_magnet", arguments: {
-       title: "...",
-       archetype: "...",
-       use_brain: true,
-       concept: {...},
-       funnel_config: {
-         slug: "my-guide",
-         optin_headline: "...",
-         optin_subline: "...",
-         publish: false
-       }
-     }})
+**Use from search response:** entries[].content, entries[].knowledge_type, entries[].topics
 
-   use_brain=true automatically searches the AI Brain, synthesizes the user's position,
-   and enriches the concept with real pain points, key takeaways, data points, and stories.
-   Any manual concept fields you provide take priority over brain-derived ones.
+### 1b. SYNTHESIZE — Build the user's position on this topic
+→ magnetlab_execute({tool: "magnetlab_synthesize_position", arguments: {topic: "<topic-slug>"}})
 
-   OR CREATE then FUNNEL separately:
-   → magnetlab_execute({tool: "magnetlab_create_lead_magnet", arguments: {title: "...", archetype: "...", use_brain: true}})
-   → magnetlab_execute({tool: "magnetlab_create_funnel", arguments: {lead_magnet_id: "...", slug: "..."}})
+**Key response fields to use in step 3:**
+- position.thesis — the user's core argument (→ becomes painSolved / headline angle)
+- position.differentiators — what makes their take unique (→ becomes hook / subheadline)
+- position.key_arguments — supporting points (→ becomes key takeaways)
+- position.stories — real anecdotes with hook/arc/lesson (→ use in content & emails)
+- position.unique_data_points — specific claims with evidence (→ social proof & email insights)
+- position.specific_recommendations — actionable advice (→ CTA angle & email tips)
+- position.voice_markers — how they naturally speak (→ tone for all generated copy)
 
-5. GENERATE CONTENT — Fill the lead magnet with actual deliverable content
-   → magnetlab_execute({tool: "magnetlab_generate_lead_magnet_content", arguments: {lead_magnet_id: "..."}})
-   This generates 2000+ word structured content from the concept and AI Brain.
-   Slow call (30-90s). Saves to extracted_content and polished_content.
+### 2. IDEATE — Present findings and discuss angle with the user
+Show the user what the brain has on this topic: thesis, differentiators, key stories.
+Propose a specific angle for the lead magnet based on their unique position.
+Agree on title, archetype, and concept before proceeding.
 
-6. EMAIL SEQUENCE (optional but recommended)
-   → magnetlab_execute({tool: "magnetlab_generate_email_sequence", arguments: {lead_magnet_id: "..."}})
-   → Review emails for placeholder text like "[INSERT TIP]" — replace via magnetlab_update_email_sequence
-   → magnetlab_execute({tool: "magnetlab_activate_email_sequence", arguments: {lead_magnet_id: "..."}})
-   Activation will FAIL if placeholders remain. Fix them first.
+### 3. CREATE + FUNNEL (one call, with brain enrichment)
+→ magnetlab_execute({tool: "magnetlab_create_lead_magnet", arguments: {
+     title: "...",
+     archetype: "single-breakdown" | "single-system" | "focused-toolkit" | etc,
+     use_brain: true,
+     concept: {
+       hook: "...",           // from position.stories or position.unique_data_points
+       painSolved: "...",     // from position.thesis
+       whyNowHook: "...",     // from position.differentiators[0]
+       key_takeaways: [...]   // from position.key_arguments
+     },
+     funnel_config: {
+       slug: "my-guide",
+       optin_headline: "...",       // lead with the differentiator
+       optin_subline: "...",
+       optin_social_proof: null,    // ONLY use real data — null if none available
+       publish: false
+     }
+   }})
 
-7. REVIEW & PUBLISH
-   → magnetlab_execute({tool: "magnetlab_publish_funnel", arguments: {funnel_id: "..."}})
-   WARNING: Publishing does NOT auto-activate the email sequence.
-   If you skip step 6, leads will NOT receive welcome emails.
+use_brain=true automatically searches the AI Brain, synthesizes the user's position, and enriches
+the concept. Manual concept fields you provide take priority over brain-derived ones.
 
-## Important
+**Extract from response:**
+- lead_magnet.id → needed for steps 4, 5, 6
+- funnel.funnel.id → needed for step 7
+- brain_entries_used, position_used → confirm brain was used
+
+### 4. GENERATE CONTENT (slow: 30-90s)
+→ magnetlab_execute({tool: "magnetlab_generate_lead_magnet_content", arguments: {lead_magnet_id: "<id from step 3>"}})
+
+Generates 2000+ word structured content from the concept + AI Brain entries.
+Brain entries, data points, and recommendations are automatically woven into the content.
+Saves to extracted_content and polished_content fields.
+
+### 5. GENERATE EMAIL SEQUENCE (slow: 30-60s)
+→ magnetlab_execute({tool: "magnetlab_generate_email_sequence", arguments: {lead_magnet_id: "<id from step 3>"}})
+
+Each email automatically features unique brain insights (stories, data points, recommendations).
+The position's thesis and voice markers shape the email tone.
+
+**Extract from response:**
+- emailSequence.emails — review each for placeholder text like "[INSERT TIP]" or "[YOUR NAME]"
+
+If placeholders found:
+→ magnetlab_execute({tool: "magnetlab_update_email_sequence", arguments: {
+     lead_magnet_id: "...",
+     emails: [... fixed emails ...]
+   }})
+
+Then activate:
+→ magnetlab_execute({tool: "magnetlab_activate_email_sequence", arguments: {lead_magnet_id: "..."}})
+Activation FAILS if placeholders remain. Fix them first.
+
+### 6. REVIEW & PUBLISH
+→ magnetlab_execute({tool: "magnetlab_publish_funnel", arguments: {funnel_id: "<id from step 3>"}})
+
+**Extract from response:**
+- publicUrl — the live URL for the funnel (e.g., magnetlab.app/p/username/slug)
+- warning — if email sequence is not active, a warning is included
+
+## Rules
 - A lead magnet without a funnel is NOT publicly accessible
-- A lead magnet without content is an empty shell — always generate content
-- Never fabricate social proof — use real data or omit it
+- A lead magnet without content is an empty shell — always generate content (step 4)
+- Never fabricate social proof — use real data from the brain or set to null
+- Email sequences must be explicitly activated — publishing does NOT auto-activate
 - The lead magnet should use the user's actual language from the AI Brain
-- Email sequences must be explicitly activated — publishing a funnel does NOT start sending emails`,
+- Steps 4 and 5 can run back-to-back — content gen must finish first since the email
+  sequence uses the generated content`,
 
   write_linkedin_post: `# Writing a LinkedIn Post — Workflow
 
