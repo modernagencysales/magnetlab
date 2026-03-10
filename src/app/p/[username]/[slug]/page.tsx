@@ -74,7 +74,8 @@ export default async function PublicOptinPage({ params }: PageProps) {
   // Find published funnel page
   const { data: funnel, error: funnelError } = await supabase
     .from('funnel_pages')
-    .select(`
+    .select(
+      `
       id,
       slug,
       lead_magnet_id,
@@ -92,7 +93,8 @@ export default async function PublicOptinPage({ params }: PageProps) {
       team_id,
       redirect_trigger,
       redirect_url
-    `)
+    `
+    )
     .eq('user_id', user.id)
     .eq('slug', slug)
     .single();
@@ -113,13 +115,15 @@ export default async function PublicOptinPage({ params }: PageProps) {
   // Fetch page sections for optin
   const { data: sectionRows } = await supabase
     .from('funnel_page_sections')
-    .select('id, funnel_page_id, section_type, page_location, sort_order, is_visible, config, created_at, updated_at')
+    .select(
+      'id, funnel_page_id, section_type, page_location, sort_order, is_visible, variant, config, created_at, updated_at'
+    )
     .eq('funnel_page_id', funnel.id)
     .eq('page_location', 'optin')
     .eq('is_visible', true)
     .order('sort_order', { ascending: true });
 
-  const sections = (sectionRows as FunnelPageSectionRow[] || []).map(funnelPageSectionFromRow);
+  const sections = ((sectionRows as FunnelPageSectionRow[]) || []).map(funnelPageSectionFromRow);
 
   // Fetch user's active pixel integrations (pixel IDs only, no tokens)
   const { data: pixelIntegrations } = await supabase
@@ -129,7 +133,10 @@ export default async function PublicOptinPage({ params }: PageProps) {
     .in('service', ['meta_pixel', 'linkedin_insight'])
     .eq('is_active', true);
 
-  const pixelConfig: { meta?: { pixelId: string; enabledEvents: string[] }; linkedin?: { partnerId: string; enabledEvents: string[] } } = {};
+  const pixelConfig: {
+    meta?: { pixelId: string; enabledEvents: string[] };
+    linkedin?: { partnerId: string; enabledEvents: string[] };
+  } = {};
   for (const pi of pixelIntegrations || []) {
     const meta = pi.metadata as Record<string, unknown> | null;
     if (pi.service === 'meta_pixel' && meta?.pixel_id) {
@@ -166,7 +173,9 @@ export default async function PublicOptinPage({ params }: PageProps) {
         fontFamily={funnel.font_family}
         fontUrl={funnel.font_url}
         hideBranding={whitelabel?.hideBranding || false}
-        redirectTrigger={(funnel.redirect_trigger as 'none' | 'immediate' | 'after_qualification') || 'none'}
+        redirectTrigger={
+          (funnel.redirect_trigger as 'none' | 'immediate' | 'after_qualification') || 'none'
+        }
         redirectUrl={funnel.redirect_url}
       />
     </Suspense>

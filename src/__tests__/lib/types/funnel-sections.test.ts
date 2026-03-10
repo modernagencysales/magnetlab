@@ -1,7 +1,4 @@
-import {
-  funnelPageSectionFromRow,
-  type FunnelPageSectionRow,
-} from '@/lib/types/funnel';
+import { funnelPageSectionFromRow, type FunnelPageSectionRow } from '@/lib/types/funnel';
 
 describe('funnelPageSectionFromRow', () => {
   const mockRow: FunnelPageSectionRow = {
@@ -11,6 +8,7 @@ describe('funnelPageSectionFromRow', () => {
     page_location: 'optin',
     sort_order: 10,
     is_visible: true,
+    variant: 'quote-card',
     config: { quote: 'Great product!', author: 'Jane', role: 'CEO' },
     created_at: '2026-01-29T00:00:00Z',
     updated_at: '2026-01-29T00:00:00Z',
@@ -26,6 +24,7 @@ describe('funnelPageSectionFromRow', () => {
       pageLocation: 'optin',
       sortOrder: 10,
       isVisible: true,
+      variant: 'quote-card',
       config: { quote: 'Great product!', author: 'Jane', role: 'CEO' },
       createdAt: '2026-01-29T00:00:00Z',
       updatedAt: '2026-01-29T00:00:00Z',
@@ -33,9 +32,19 @@ describe('funnelPageSectionFromRow', () => {
   });
 
   it('should handle all section types', () => {
-    const types = ['logo_bar', 'steps', 'testimonial', 'marketing_block', 'section_bridge'] as const;
+    const types = [
+      'logo_bar',
+      'steps',
+      'testimonial',
+      'marketing_block',
+      'section_bridge',
+      'hero',
+      'stats_bar',
+      'feature_grid',
+      'social_proof_wall',
+    ] as const;
 
-    types.forEach(sectionType => {
+    types.forEach((sectionType) => {
       const row: FunnelPageSectionRow = { ...mockRow, section_type: sectionType };
       const result = funnelPageSectionFromRow(row);
       expect(result.sectionType).toBe(sectionType);
@@ -45,7 +54,7 @@ describe('funnelPageSectionFromRow', () => {
   it('should handle all page locations', () => {
     const locations = ['optin', 'thankyou', 'content'] as const;
 
-    locations.forEach(pageLocation => {
+    locations.forEach((pageLocation) => {
       const row: FunnelPageSectionRow = { ...mockRow, page_location: pageLocation };
       const result = funnelPageSectionFromRow(row);
       expect(result.pageLocation).toBe(pageLocation);
@@ -64,7 +73,11 @@ describe('funnelPageSectionFromRow', () => {
       title: 'FAQ',
       content: 'Q: What? | A: This\nQ: How? | A: That',
     };
-    const row: FunnelPageSectionRow = { ...mockRow, section_type: 'marketing_block', config: complexConfig };
+    const row: FunnelPageSectionRow = {
+      ...mockRow,
+      section_type: 'marketing_block',
+      config: complexConfig,
+    };
     const result = funnelPageSectionFromRow(row);
     expect(result.config).toEqual(complexConfig);
   });

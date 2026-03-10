@@ -1,14 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Loader2, Copy, Check, Sparkles, Trash2, Eye } from 'lucide-react';
+import {
+  FileText,
+  Loader2,
+  Copy,
+  Check,
+  Sparkles,
+  Trash2,
+  Eye,
+  List,
+  LayoutGrid,
+} from 'lucide-react';
 import { cn, truncate, formatDateTime } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostDetailModal } from './PostDetailModal';
+import { BatchView } from './BatchView';
 import type { PipelinePost, PostStatus, ReviewData } from '@/lib/types/content-pipeline';
 import { usePosts } from '@/frontend/hooks/api/usePosts';
 import { usePolishPost, useDeletePost } from '@/frontend/hooks/api/usePostsMutations';
-import { getPostById } from '@/frontend/api/content-pipeline/posts';
+import { getPostById, updatePost } from '@/frontend/api/content-pipeline/posts';
 
 const STATUS_FILTERS: { value: PostStatus | ''; label: string }[] = [
   { value: '', label: 'All' },
@@ -50,6 +61,7 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
   const [reviewFilter, setReviewFilter] = useState<ReviewCategory>('');
   const [polishingId, setPolishingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'batch'>('list');
 
   const {
     posts,
@@ -67,6 +79,15 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
     await fetchPosts(true);
   });
   const { mutate: deleteMutate } = useDeletePost(() => fetchPosts(true));
+
+  const handleStatusChange = async (postId: string, newStatus: PostStatus) => {
+    try {
+      await updatePost(postId, { status: newStatus });
+      await fetchPosts(true);
+    } catch {
+      // Silent failure
+    }
+  };
 
   const handlePolish = async (postId: string) => {
     setPolishingId(postId);
@@ -137,7 +158,7 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
       </div>
 
       {/* Status Filter */}
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex items-center gap-2">
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
@@ -152,6 +173,32 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
             {f.label}
           </button>
         ))}
+        <div className="ml-auto flex items-center gap-1 rounded-lg border p-0.5">
+          <button
+            onClick={() => setViewMode('list')}
+            className={cn(
+              'rounded-md p-1.5 transition-colors',
+              viewMode === 'list'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            title="List view"
+          >
+            <List className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('batch')}
+            className={cn(
+              'rounded-md p-1.5 transition-colors',
+              viewMode === 'batch'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            title="Batch view"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Review Category Filter */}
@@ -180,15 +227,34 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
         const filteredPosts = reviewFilter
           ? posts.filter((p) => (p.review_data as ReviewData | null)?.category === reviewFilter)
           : posts;
-        return filteredPosts.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-12 text-center">
-            <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
-            <p className="mt-4 text-muted-foreground">No posts found</p>
-            <p className="mt-1 text-sm text-muted-foreground/70">
-              Write posts from your ideas or run autopilot
-            </p>
-          </div>
-        ) : (
+        if (filteredPosts.length === 0) {
+          return (
+            <div className="rounded-lg border border-dashed p-12 text-center">
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
+              <p className="mt-4 text-muted-foreground">No posts found</p>
+              <p className="mt-1 text-sm text-muted-foreground/70">
+                Write posts from your ideas or run autopilot
+              </p>
+            </div>
+          );
+        }
+
+        if (viewMode === 'batch') {
+          return (
+            <BatchView
+              posts={filteredPosts}
+              onOpenPost={setSelectedPost}
+              onPolish={handlePolish}
+              onDelete={handleDelete}
+              onCopy={handleCopy}
+              onStatusChange={handleStatusChange}
+              polishingId={polishingId}
+              copiedId={copiedId}
+            />
+          );
+        }
+
+        return (
           <div className="space-y-3">
             {filteredPosts.map((post) => {
               const content = post.final_content || post.draft_content || '';

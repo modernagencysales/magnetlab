@@ -282,7 +282,7 @@ export async function submitLead(
   const leadMagnet = funnel.lead_magnet_id ? await publicRepo.findLeadMagnetForLead(funnel.lead_magnet_id) : null;
   const username = await userRepo.getUsername(funnel.user_id);
   let resourceUrl: string | null = leadMagnet?.external_url ?? null;
-  if (!resourceUrl && username && (leadMagnet?.polished_content || leadMagnet?.extracted_content)) {
+  if (!resourceUrl && username && (leadMagnet?.polished_content || leadMagnet?.extracted_content || leadMagnet?.interactive_config)) {
     resourceUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.magnetlab.app'}/p/${username}/${funnel.slug}/content`;
   }
 

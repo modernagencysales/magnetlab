@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getDataScope } from '@/lib/utils/team-context';
+import { getScopeForResource } from '@/lib/utils/team-context';
 import { ApiErrors, isValidUUID } from '@/lib/api/errors';
 import * as funnelsService from '@/server/services/funnels.service';
+import { getFunnelTeamId } from '@/server/repositories/funnels.repo';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -20,7 +21,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     const { publish } = body;
     if (typeof publish !== 'boolean') return ApiErrors.validationError('publish must be a boolean');
 
-    const scope = await getDataScope(session.user.id);
+    const teamId = await getFunnelTeamId(id);
+    const scope = await getScopeForResource(session.user.id, teamId);
     const result = await funnelsService.publishFunnel(scope, id, publish);
     return NextResponse.json(result);
   } catch (error) {

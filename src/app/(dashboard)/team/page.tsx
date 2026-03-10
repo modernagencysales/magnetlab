@@ -385,8 +385,15 @@ export default function TeamPage() {
 
         {/* Profile Editor Modal */}
         {showProfileModal && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-background rounded-xl shadow-xl w-full max-w-xl max-h-[85vh] overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowProfileModal(false)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setShowProfileModal(false); }}
+          >
+            <div
+              className="bg-background rounded-xl shadow-xl w-full max-w-xl max-h-[85vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold">

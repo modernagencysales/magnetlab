@@ -11,12 +11,22 @@ import { generateEmailSequence, generateDefaultEmailSequence } from "@/lib/ai/em
 import { logApiError } from "@/lib/api/errors";
 import { fireGtmLeadMagnetDeployedWebhook } from "@/lib/webhooks/gtm-system";
 import { createAnthropicClient } from "@/lib/ai/anthropic-client";
+import {
+  isInteractiveArchetype,
+  getInteractiveType,
+} from "@/lib/types/lead-magnet";
+import {
+  generateCalculatorConfig,
+  generateAssessmentConfig,
+  generateGPTConfig,
+} from "@/lib/ai/interactive-generators";
 import type {
   LeadMagnetArchetype,
   LeadMagnetConcept,
   BusinessContext,
   BusinessType,
   ExtractedContent,
+  InteractiveConfig,
   PostWriterInput,
   PostWriterResult,
 } from "@/lib/types/lead-magnet";
@@ -218,13 +228,37 @@ export const createLeadMagnetPipeline = task({
       // ==========================================
       // STEP D: Generate content
       // ==========================================
-      const extractedContent: ExtractedContent = await processContentExtraction(
-        archetype,
-        selectedConcept,
-        extractionAnswers,
-        undefined,
-        userId
-      );
+      let extractedContent: ExtractedContent | null = null;
+      let interactiveConfig: InteractiveConfig | null = null;
+
+      if (isInteractiveArchetype(archetype)) {
+        const interactiveType = getInteractiveType(archetype);
+        switch (interactiveType) {
+          case 'calculator':
+            interactiveConfig = await generateCalculatorConfig(selectedConcept, extractionAnswers);
+            break;
+          case 'assessment':
+            interactiveConfig = await generateAssessmentConfig(selectedConcept, extractionAnswers);
+            break;
+          case 'gpt':
+            interactiveConfig = await generateGPTConfig(
+              selectedConcept,
+              extractionAnswers,
+              businessContext as unknown as Record<string, unknown>
+            );
+            break;
+          default:
+            throw new Error(`Unknown interactive type for archetype: ${archetype}`);
+        }
+      } else {
+        extractedContent = await processContentExtraction(
+          archetype,
+          selectedConcept,
+          extractionAnswers,
+          undefined,
+          userId
+        );
+      }
 
       // ==========================================
       // STEP E: Generate post variations
@@ -254,6 +288,7 @@ export const createLeadMagnetPipeline = task({
           archetype,
           concept: selectedConcept,
           extracted_content: extractedContent,
+          interactive_config: interactiveConfig,
           linkedin_post: postResult.variations[0]?.post || null,
           post_variations: postResult.variations,
           dm_template: postResult.dmTemplate,
@@ -328,23 +363,26 @@ export const createLeadMagnetPipeline = task({
             });
           } else {
             // Auto-polish content — must succeed before funnel is published
-            let polishSucceeded = false;
-            try {
-              const polished = await polishLeadMagnetContent(extractedContent, selectedConcept);
-              await supabase
-                .from("lead_magnets")
-                .update({
-                  polished_content: polished,
-                  polished_at: new Date().toISOString(),
-                })
-                .eq("id", leadMagnetId);
-              polishSucceeded = true;
-            } catch (polishError) {
-              logApiError("create-lead-magnet-pipeline/polish", polishError, {
-                userId,
-                leadMagnetId,
-                note: "Polish failed — funnel will NOT be published",
-              });
+            // Interactive archetypes skip polishing (they use interactive_config, not text content)
+            let polishSucceeded = isInteractiveArchetype(archetype);
+            if (!polishSucceeded && extractedContent) {
+              try {
+                const polished = await polishLeadMagnetContent(extractedContent, selectedConcept);
+                await supabase
+                  .from("lead_magnets")
+                  .update({
+                    polished_content: polished,
+                    polished_at: new Date().toISOString(),
+                  })
+                  .eq("id", leadMagnetId);
+                polishSucceeded = true;
+              } catch (polishError) {
+                logApiError("create-lead-magnet-pipeline/polish", polishError, {
+                  userId,
+                  leadMagnetId,
+                  note: "Polish failed — funnel will NOT be published",
+                });
+              }
             }
 
             // Only publish if polish succeeded and user has a username

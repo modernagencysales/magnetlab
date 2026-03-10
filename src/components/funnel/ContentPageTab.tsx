@@ -1,28 +1,16 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import {
-  Loader2,
-  Sparkles,
-  ExternalLink,
-  CheckCircle2,
-  Clock,
-  FileText,
-  PenLine,
-} from 'lucide-react';
+import { Loader2, Sparkles, ExternalLink, CheckCircle2, Clock, FileText, PenLine } from 'lucide-react';
 import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
 import { useBackgroundJob } from '@/frontend/hooks/useBackgroundJob';
-import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 interface ContentPageTabProps {
   leadMagnet: LeadMagnet;
   username: string | null;
   slug: string | null;
-  onPolished: (
-    polishedContent: PolishedContent,
-    polishedAt: string,
-    extractedContent?: ExtractedContent
-  ) => void;
+  onPolished: (polishedContent: PolishedContent, polishedAt: string, extractedContent?: ExtractedContent) => void;
+  onEditContent?: () => void;
 }
 
 interface ContentJobResult {
@@ -37,28 +25,23 @@ function createBlankContent(title: string): PolishedContent {
     polishedAt: new Date().toISOString(),
     title,
     heroSummary: '',
-    sections: [
-      {
-        id: `section-${Date.now()}`,
-        sectionName: 'Introduction',
-        introduction: '',
-        keyTakeaway: '',
-        blocks: [{ type: 'paragraph', content: '' }],
-      },
-    ],
+    sections: [{
+      id: `section-${Date.now()}`,
+      sectionName: 'Introduction',
+      introduction: '',
+      keyTakeaway: '',
+      blocks: [{ type: 'paragraph', content: '' }],
+    }],
     metadata: { wordCount: 0, readingTimeMinutes: 0 },
   };
 }
 
-export function ContentPageTab({ leadMagnet, username, slug, onPolished }: ContentPageTabProps) {
+export function ContentPageTab({ leadMagnet, username, slug, onPolished, onEditContent }: ContentPageTabProps) {
   const [error, setError] = useState<string | null>(null);
 
-  const onComplete = useCallback(
-    (result: ContentJobResult) => {
-      onPolished(result.polishedContent, result.polishedAt, result.extractedContent);
-    },
-    [onPolished]
-  );
+  const onComplete = useCallback((result: ContentJobResult) => {
+    onPolished(result.polishedContent, result.polishedAt, result.extractedContent);
+  }, [onPolished]);
 
   const onError = useCallback((errorMsg: string) => {
     setError(errorMsg);
@@ -80,7 +63,22 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
     setError(null);
 
     try {
-      const { jobId } = await leadMagnetApi.polishLeadMagnet(leadMagnet.id);
+      const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/polish`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        let errorMsg = 'Failed to polish content';
+        try {
+          const data = await response.json();
+          errorMsg = data.error || errorMsg;
+        } catch {
+          // Non-JSON response (e.g. Vercel timeout)
+        }
+        throw new Error(errorMsg);
+      }
+
+      const { jobId } = await response.json();
       startPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to polish content');
@@ -91,7 +89,22 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
     setError(null);
 
     try {
-      const { jobId } = await leadMagnetApi.generateLeadMagnetContent(leadMagnet.id);
+      const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/generate-content`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        let errorMsg = 'Failed to generate content';
+        try {
+          const data = await response.json();
+          errorMsg = data.error || errorMsg;
+        } catch {
+          // Non-JSON response (e.g. Vercel timeout)
+        }
+        throw new Error(errorMsg);
+      }
+
+      const { jobId } = await response.json();
       startPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate content');
@@ -106,17 +119,25 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       try {
         const now = new Date().toISOString();
         const contentToSave = { ...blank, polishedAt: now };
-        const { polishedContent: saved } = await leadMagnetApi.updateLeadMagnetContent(
-          leadMagnet.id,
-          {
-            polishedContent: contentToSave,
+        const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/content`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ polishedContent: contentToSave }),
+        });
+        if (!response.ok) {
+          let errorMsg = 'Failed to create content';
+          try {
+            const data = await response.json();
+            errorMsg = data.error || errorMsg;
+          } catch {
+            // Non-JSON response (e.g. Vercel timeout)
           }
-        );
-        onPolished(saved as PolishedContent, now);
-        // Redirect to inline editor
-        if (contentUrl) {
-          window.open(`${contentUrl}?edit=true`, '_blank');
+          throw new Error(errorMsg);
         }
+        const { polishedContent: saved } = await response.json();
+        onPolished(saved, now);
+        // Open inline editor
+        if (onEditContent) onEditContent();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create content');
       }
@@ -203,19 +224,6 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
         </div>
       )}
 
-      {/* Primary action: Open content page (when polished) */}
-      {contentUrl && (
-        <a
-          href={contentUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-4 py-3 text-sm font-medium text-white hover:bg-violet-600 transition-colors w-full"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Open Content Page
-        </a>
-      )}
-
       {/* Polish status */}
       {polished && (
         <div className="rounded-lg border p-4 space-y-3">
@@ -239,39 +247,55 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
               <Clock className="h-3.5 w-3.5" />
               {polished.metadata.readingTimeMinutes} min read
             </span>
-            <span>{polished.metadata.wordCount.toLocaleString()} words</span>
+            <span>
+              {polished.metadata.wordCount.toLocaleString()} words
+            </span>
           </div>
         </div>
       )}
 
-      {/* Edit Content link → inline editor on live page */}
-      {polished && contentUrl && (
-        <a
-          href={`${contentUrl}?edit=true`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+      {/* Edit Content → open inline full-page editor (primary action) */}
+      {polished && onEditContent && (
+        <button
+          onClick={onEditContent}
+          className="flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-4 py-3 text-sm font-medium text-white hover:bg-violet-600 transition-colors w-full"
         >
           <PenLine className="h-4 w-4" />
           Edit Content
-        </a>
-      )}
-
-      {/* Re-polish (only if extracted content exists) */}
-      {hasExtracted && (
-        <button
-          onClick={handlePolish}
-          disabled={isAiLoading}
-          className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/50 disabled:opacity-50"
-        >
-          {isAiLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          Re-polish Content
         </button>
       )}
+
+      {/* Secondary actions row */}
+      <div className="flex items-center gap-3">
+        {/* Open content page in new tab */}
+        {contentUrl && (
+          <a
+            href={contentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open Content Page
+          </a>
+        )}
+
+        {/* Re-polish (only if extracted content exists) */}
+        {hasExtracted && (
+          <button
+            onClick={handlePolish}
+            disabled={isAiLoading}
+            className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/50 disabled:opacity-50"
+          >
+            {isAiLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Re-polish Content
+          </button>
+        )}
+      </div>
     </div>
   );
 }

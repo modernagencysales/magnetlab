@@ -11,7 +11,10 @@ export async function handleEmailSystemTools(
   switch (name) {
     // ── Flows ──────────────────────────────────────────────
     case 'magnetlab_list_email_flows':
-      return client.listEmailFlows()
+      return client.listEmailFlows({
+        limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
+      })
 
     case 'magnetlab_get_email_flow':
       return client.getEmailFlow(args.id as string)
@@ -54,7 +57,10 @@ export async function handleEmailSystemTools(
 
     // ── Broadcasts ─────────────────────────────────────────
     case 'magnetlab_list_broadcasts':
-      return client.listBroadcasts()
+      return client.listBroadcasts({
+        limit: args.limit as number | undefined,
+        offset: args.offset as number | undefined,
+      })
 
     case 'magnetlab_get_broadcast':
       return client.getBroadcast(args.id as string)

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Search, ArrowUpDown, Eye, Users, Globe, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
@@ -62,6 +63,7 @@ export default function MagnetsListClient({
   items: MagnetListItem[];
   totalCount: number;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortOption>('newest');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -168,11 +170,16 @@ export default function MagnetsListClient({
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} className="group border-b last:border-0 transition-colors hover:bg-muted/50">
+                <tr
+                  key={item.id}
+                  className="group border-b last:border-0 transition-colors hover:bg-muted/50 cursor-pointer"
+                  onClick={() => router.push(`/magnets/${item.id}`)}
+                >
                   <td className="px-4 py-3">
                     <Link
                       href={`/magnets/${item.id}`}
                       className="font-medium text-foreground group-hover:text-primary"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {item.title}
                     </Link>

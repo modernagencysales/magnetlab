@@ -2,7 +2,14 @@ import { searchKnowledgeV2 } from '@/lib/services/knowledge-brain';
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { buildVoicePromptSection } from './voice-prompt-builder';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
-import type { ContentBrief, KnowledgeEntryWithSimilarity, KnowledgeType, TeamVoiceProfile } from '@/lib/types/content-pipeline';
+import type {
+  ContentBrief,
+  KnowledgeEntryWithSimilarity,
+  KnowledgeType,
+  Position,
+  TeamVoiceProfile,
+} from '@/lib/types/content-pipeline';
+import { getCachedPosition } from '@/lib/services/knowledge-brain';
 import { logWarn } from '@/lib/utils/logger';
 
 const KNOWLEDGE_TYPE_LABELS: Record<string, string> = {
@@ -70,15 +77,32 @@ export async function buildContentBrief(
   );
 
   // Track top knowledge types from entries
-  const topKnowledgeTypes = [...uniqueTypes].filter(
-    (t): t is KnowledgeType =>
-      ['how_to', 'insight', 'story', 'question', 'objection', 'mistake', 'decision', 'market_intel'].includes(t)
+  const topKnowledgeTypes = [...uniqueTypes].filter((t): t is KnowledgeType =>
+    [
+      'how_to',
+      'insight',
+      'story',
+      'question',
+      'objection',
+      'mistake',
+      'decision',
+      'market_intel',
+    ].includes(t)
   );
 
   // Generate suggested angles if we have enough context
   let suggestedAngles: string[] = [];
   if (allEntries.length >= 3) {
     suggestedAngles = await generateSuggestedAngles(topic, compiledContext, voiceProfile);
+  }
+
+  // Fetch cached position if available (non-blocking — don't fail the brief)
+  let position: Position | null = null;
+  try {
+    const topicSlug = allEntries[0]?.topics?.[0] || topic.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    position = await getCachedPosition(userId, topicSlug, { teamId, profileId });
+  } catch (err) {
+    logWarn('briefing-agent/cached-position', 'Failed to fetch cached position', { err });
   }
 
   return {
@@ -90,6 +114,7 @@ export async function buildContentBrief(
     suggestedAngles,
     topicReadiness,
     topKnowledgeTypes,
+    position,
   };
 }
 
@@ -107,7 +132,9 @@ function compileContextV2(entries: KnowledgeEntryWithSimilarity[]): string {
     sections.push(label + ':');
     for (const entry of typeEntries.slice(0, 8)) {
       const qualityTag = (entry.quality_score || 0) >= 4 ? ' [HIGH QUALITY]' : '';
-      sections.push(`- ${entry.content}${entry.context ? ` (Context: ${entry.context})` : ''}${qualityTag}`);
+      sections.push(
+        `- ${entry.content}${entry.context ? ` (Context: ${entry.context})` : ''}${qualityTag}`
+      );
     }
     sections.push('');
   }
@@ -115,7 +142,11 @@ function compileContextV2(entries: KnowledgeEntryWithSimilarity[]): string {
   return sections.join('\n');
 }
 
-async function generateSuggestedAngles(topic: string, context: string, voiceProfile?: TeamVoiceProfile): Promise<string[]> {
+async function generateSuggestedAngles(
+  topic: string,
+  context: string,
+  voiceProfile?: TeamVoiceProfile
+): Promise<string[]> {
   try {
     const client = getAnthropicClient('briefing-agent');
 
@@ -154,10 +185,7 @@ export async function buildContentBriefForIdea(
   idea: { title: string; core_insight: string | null; content_type: string | null },
   options: { teamId?: string; profileId?: string; voiceProfile?: TeamVoiceProfile } = {}
 ): Promise<ContentBrief> {
-  const searchQuery = [
-    idea.title,
-    idea.core_insight,
-  ].filter(Boolean).join(' ');
+  const searchQuery = [idea.title, idea.core_insight].filter(Boolean).join(' ');
 
   return buildContentBrief(userId, searchQuery, {
     teamId: options.teamId,

@@ -5,10 +5,13 @@ export const emailSystemTools: Tool[] = [
   {
     name: 'magnetlab_list_email_flows',
     description:
-      'List all email flows (automated drip sequences). Returns flows with step counts, ordered by creation date.',
+      'List email flows (automated drip sequences). Returns flows with step counts, ordered by creation date. Paginated.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
+      },
     },
   },
   {
@@ -125,10 +128,13 @@ export const emailSystemTools: Tool[] = [
   {
     name: 'magnetlab_list_broadcasts',
     description:
-      'List all email broadcasts (one-time sends). Returns broadcasts ordered by creation date.',
+      'List email broadcasts (one-time sends). Returns broadcasts ordered by creation date. Paginated.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
+        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
+      },
     },
   },
   {

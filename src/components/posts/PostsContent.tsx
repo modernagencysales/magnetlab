@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, Suspense, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Lightbulb, LayoutGrid, Sparkles, Loader2, BookOpen, Calendar } from 'lucide-react';
+import { Lightbulb, LayoutGrid, Sparkles, Loader2, BookOpen, Calendar, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProfileSwitcher, useProfileSelection } from '@/components/content-pipeline/ProfileSwitcher';
 import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
@@ -74,11 +74,52 @@ export function PostsContent({
   const { selectedProfileId, onProfileChange } = useProfileSelection();
   const bufferLow = initialBufferLow;
 
+  const [showGeneratePopover, setShowGeneratePopover] = useState(false);
+  const [batchSize, setBatchSize] = useState(3);
+  const [generating, setGenerating] = useState(false);
+  const generateRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam)) {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (generateRef.current && !generateRef.current.contains(e.target as Node)) {
+        setShowGeneratePopover(false);
+      }
+    }
+    if (showGeneratePopover) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showGeneratePopover]);
+
+  async function handleGenerate() {
+    setGenerating(true);
+    try {
+      await fetch('/api/content-pipeline/schedule/autopilot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postsPerBatch: batchSize,
+          profileId: selectedProfileId || undefined,
+        }),
+      });
+      setShowGeneratePopover(false);
+      handleTabChange('pipeline');
+      setTimeout(() => {
+        router.refresh();
+        setRefreshKey((k) => k + 1);
+      }, 2000);
+    } catch {
+      // silent
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   function handleTabChange(tab: Tab) {
     setActiveTab(tab);
@@ -102,10 +143,50 @@ export function PostsContent({
             Manage your content ideas, drafts, and publishing schedule
           </p>
         </div>
-        <ProfileSwitcher
-          selectedProfileId={selectedProfileId}
-          onProfileChange={onProfileChange}
-        />
+        <div className="flex items-center gap-3">
+          <div className="relative" ref={generateRef}>
+            <button
+              onClick={() => setShowGeneratePopover((v) => !v)}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Zap className="h-4 w-4" />
+              Generate Posts
+            </button>
+            {showGeneratePopover && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-border bg-popover p-4 shadow-lg">
+                <label className="mb-2 block text-sm font-medium">
+                  Posts per batch
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={batchSize}
+                  onChange={(e) =>
+                    setBatchSize(Math.min(10, Math.max(1, Number(e.target.value) || 1)))
+                  }
+                  className="mb-3 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                />
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {generating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                  {generating ? 'Generating…' : 'Generate'}
+                </button>
+              </div>
+            )}
+          </div>
+          <ProfileSwitcher
+            selectedProfileId={selectedProfileId}
+            onProfileChange={onProfileChange}
+          />
+        </div>
       </div>
 
       {/* Tabs */}

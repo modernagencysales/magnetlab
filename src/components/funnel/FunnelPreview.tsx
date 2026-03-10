@@ -200,7 +200,7 @@ export function FunnelPreview({
 
               {/* Above sections */}
               {aboveSections.map((s) => (
-                <SectionRenderer key={s.id} section={s} />
+                <SectionRenderer key={s.id} section={s} primaryColor={primaryColor} />
               ))}
 
               {/* Headline */}
@@ -248,7 +248,7 @@ export function FunnelPreview({
 
               {/* Below sections */}
               {belowSections.map((s) => (
-                <SectionRenderer key={s.id} section={s} />
+                <SectionRenderer key={s.id} section={s} primaryColor={primaryColor} />
               ))}
             </div>
           ) : (
@@ -262,7 +262,7 @@ export function FunnelPreview({
 
               {/* Above sections */}
               {aboveSections.map((s) => (
-                <SectionRenderer key={s.id} section={s} />
+                <SectionRenderer key={s.id} section={s} primaryColor={primaryColor} />
               ))}
 
               {/* Success Icon */}
@@ -365,7 +365,7 @@ export function FunnelPreview({
 
               {/* Below sections */}
               {belowSections.map((s) => (
-                <SectionRenderer key={s.id} section={s} />
+                <SectionRenderer key={s.id} section={s} primaryColor={primaryColor} />
               ))}
             </div>
           )}

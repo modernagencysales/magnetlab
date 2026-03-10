@@ -183,6 +183,22 @@ export class MagnetLabClient {
     return this.aiRequest<unknown>('POST', `/lead-magnet/write-post`, { ...params, leadMagnetId });
   }
 
+  async generateLeadMagnetPosts(leadMagnetId: string) {
+    return this.aiRequest<{ jobId: string; status: string }>(
+      'POST',
+      `/lead-magnet/${leadMagnetId}/generate-posts`,
+      {}
+    );
+  }
+
+  async generateLeadMagnetContent(leadMagnetId: string) {
+    return this.aiRequest<{
+      extractedContent: unknown;
+      polishedContent: unknown;
+      polishedAt: string;
+    }>('POST', `/lead-magnet/${leadMagnetId}/generate-content`, {});
+  }
+
   async polishLeadMagnetContent(leadMagnetId: string) {
     return this.aiRequest<unknown>('POST', `/lead-magnet/${leadMagnetId}/polish`, {});
   }
@@ -210,8 +226,12 @@ export class MagnetLabClient {
   // Funnels
   // ============================================================
 
-  async listFunnels() {
-    return this.request<{ funnels: unknown[] }>('GET', `/funnel/all`);
+  async listFunnels(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const qs = searchParams.toString();
+    return this.request<{ funnels: unknown[] }>('GET', `/funnel/all${qs ? `?${qs}` : ''}`);
   }
 
   async getFunnel(id: string) {
@@ -300,12 +320,66 @@ export class MagnetLabClient {
     return this.request<{ funnel: unknown }>('POST', `/funnel/${id}/publish`, { publish: false });
   }
 
+  async listSections(funnelId: string) {
+    return this.request<{ sections: unknown[] }>('GET', `/funnel/${funnelId}/sections`);
+  }
+
+  async createSection(
+    funnelId: string,
+    params: {
+      sectionType: string;
+      pageLocation: string;
+      variant?: string;
+      sortOrder?: number;
+      isVisible?: boolean;
+      config: Record<string, unknown>;
+    }
+  ) {
+    return this.request<{ section: unknown }>('POST', `/funnel/${funnelId}/sections`, params);
+  }
+
+  async updateSection(
+    funnelId: string,
+    sectionId: string,
+    params: {
+      variant?: string;
+      sortOrder?: number;
+      isVisible?: boolean;
+      pageLocation?: string;
+      config?: Record<string, unknown>;
+    }
+  ) {
+    return this.request<{ section: unknown }>(
+      'PUT',
+      `/funnel/${funnelId}/sections/${sectionId}`,
+      params
+    );
+  }
+
+  async deleteSection(funnelId: string, sectionId: string) {
+    return this.request<{ success: boolean }>(
+      'DELETE',
+      `/funnel/${funnelId}/sections/${sectionId}`
+    );
+  }
+
   async getFunnelStats() {
     return this.request<{ stats: Record<string, unknown> }>('GET', `/funnel/stats`);
   }
 
   async generateFunnelContent(params: { leadMagnetId: string }) {
     return this.aiRequest<unknown>('POST', `/funnel/generate-content`, params);
+  }
+
+  async restyleFunnel(funnelId: string, params: { prompt?: string; urls?: string[] }) {
+    return this.aiRequest<{ plan: unknown }>('POST', `/funnel/${funnelId}/restyle`, params);
+  }
+
+  async applyRestyle(funnelId: string, params: { plan: unknown }) {
+    return this.request<{
+      success: boolean;
+      applied: { fieldChanges: number; sectionChanges: number };
+    }>('POST', `/funnel/${funnelId}/apply-restyle`, params);
   }
 
   // ============================================================
@@ -418,8 +492,12 @@ export class MagnetLabClient {
   // Email System — Flows
   // ============================================================
 
-  async listEmailFlows() {
-    return this.request<{ flows: unknown[] }>('GET', '/email/flows');
+  async listEmailFlows(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const qs = searchParams.toString();
+    return this.request<{ flows: unknown[] }>('GET', `/email/flows${qs ? `?${qs}` : ''}`);
   }
 
   async getEmailFlow(id: string) {
@@ -476,8 +554,12 @@ export class MagnetLabClient {
   // Email System — Broadcasts
   // ============================================================
 
-  async listBroadcasts() {
-    return this.request<{ broadcasts: unknown[] }>('GET', '/email/broadcasts');
+  async listBroadcasts(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const qs = searchParams.toString();
+    return this.request<{ broadcasts: unknown[] }>('GET', `/email/broadcasts${qs ? `?${qs}` : ''}`);
   }
 
   async getBroadcast(id: string) {
@@ -542,8 +624,15 @@ export class MagnetLabClient {
   // Content Pipeline - Transcripts
   // ============================================================
 
-  async listTranscripts() {
-    return this.request<{ transcripts: unknown[] }>('GET', `/content-pipeline/transcripts`);
+  async listTranscripts(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const qs = searchParams.toString();
+    return this.request<{ transcripts: unknown[] }>(
+      'GET',
+      `/content-pipeline/transcripts${qs ? `?${qs}` : ''}`
+    );
   }
 
   async submitTranscript(params: { transcript: string; title?: string }) {
@@ -570,6 +659,8 @@ export class MagnetLabClient {
     topic?: string;
     min_quality?: number;
     since?: string;
+    limit?: number;
+    offset?: number;
   }) {
     const searchParams = new URLSearchParams();
     if (params.query) searchParams.set('q', params.query);
@@ -579,6 +670,8 @@ export class MagnetLabClient {
     if (params.topic) searchParams.set('topic', params.topic);
     if (params.min_quality) searchParams.set('min_quality', String(params.min_quality));
     if (params.since) searchParams.set('since', params.since);
+    if (params.limit) searchParams.set('limit', String(params.limit));
+    if (params.offset) searchParams.set('offset', String(params.offset));
     return this.request<{ entries?: unknown[]; tags?: unknown[]; total_count?: number }>(
       'GET',
       `/content-pipeline/knowledge?${searchParams}`
@@ -626,16 +719,44 @@ export class MagnetLabClient {
     );
   }
 
-  async listKnowledgeTopics(params?: { limit?: number }) {
-    const searchParams = params?.limit ? `?limit=${params.limit}` : '';
+  async listKnowledgeTopics(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const qs = searchParams.toString();
     return this.request<{ topics: unknown[] }>(
       'GET',
-      `/content-pipeline/knowledge/topics${searchParams}`
+      `/content-pipeline/knowledge/topics${qs ? `?${qs}` : ''}`
     );
   }
 
   async getTopicDetail(slug: string) {
     return this.request<{ topic: unknown }>('GET', `/content-pipeline/knowledge/topics/${slug}`);
+  }
+
+  async synthesizePosition(params: { topic: string; force_fresh?: boolean }) {
+    if (params.force_fresh) {
+      return this.aiRequest<{ position: unknown }>('POST', `/content-pipeline/knowledge/position`, {
+        topic: params.topic,
+      });
+    }
+    const searchParams = new URLSearchParams({ topic: params.topic });
+    return this.request<{ position: unknown }>(
+      'GET',
+      `/content-pipeline/knowledge/position?${searchParams}`
+    );
+  }
+
+  async listPositions() {
+    return this.request<{ positions: unknown[] }>('GET', `/content-pipeline/knowledge/position`);
+  }
+
+  async recomputePositions() {
+    return this.aiRequest<{ recomputed: number; errors: number; total: number }>(
+      'POST',
+      `/content-pipeline/knowledge/position`,
+      { recompute_all: true }
+    );
   }
 
   // ============================================================
@@ -647,12 +768,14 @@ export class MagnetLabClient {
     pillar?: ContentPillar;
     contentType?: ContentType;
     limit?: number;
+    offset?: number;
   }) {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
     if (params?.pillar) searchParams.set('pillar', params.pillar);
     if (params?.contentType) searchParams.set('content_type', params.contentType);
     if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
     return this.request<{ ideas: unknown[] }>('GET', `/content-pipeline/ideas?${searchParams}`);
   }
 
@@ -676,11 +799,17 @@ export class MagnetLabClient {
   // Content Pipeline - Posts
   // ============================================================
 
-  async listPosts(params?: { status?: PipelinePostStatus; isBuffer?: boolean; limit?: number }) {
+  async listPosts(params?: {
+    status?: PipelinePostStatus;
+    isBuffer?: boolean;
+    limit?: number;
+    offset?: number;
+  }) {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
     if (params?.isBuffer !== undefined) searchParams.set('is_buffer', String(params.isBuffer));
     if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
     return this.request<{ posts: unknown[] }>('GET', `/content-pipeline/posts?${searchParams}`);
   }
 
@@ -786,9 +915,10 @@ export class MagnetLabClient {
     return this.request<{ style: unknown }>('GET', `/content-pipeline/styles/${id}`);
   }
 
-  async listTemplates(params?: { limit?: number }) {
+  async listTemplates(params?: { limit?: number; offset?: number }) {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
     return this.request<{ templates: unknown[] }>(
       'GET',
       `/content-pipeline/templates?${searchParams}`
@@ -915,8 +1045,12 @@ export class MagnetLabClient {
   // Libraries
   // ============================================================
 
-  async listLibraries() {
-    return this.request<{ libraries: unknown[] }>('GET', `/libraries`);
+  async listLibraries(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const qs = searchParams.toString();
+    return this.request<{ libraries: unknown[] }>('GET', `/libraries${qs ? `?${qs}` : ''}`);
   }
 
   async getLibrary(id: string) {

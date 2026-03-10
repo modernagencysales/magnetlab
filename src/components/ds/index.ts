@@ -1,8 +1,12 @@
 export { default as CTAButton } from './CTAButton';
+export { default as HeroSection } from './HeroSection';
 export { default as LogoBar } from './LogoBar';
 export { default as MarketingBlock } from './MarketingBlock';
 export { default as SectionBridge } from './SectionBridge';
 export { default as SimpleSteps } from './SimpleSteps';
 export { default as TestimonialQuote } from './TestimonialQuote';
+export { default as StatsBar } from './StatsBar';
+export { default as FeatureGrid } from './FeatureGrid';
+export { default as SocialProofWall } from './SocialProofWall';
 export { default as ThemeToggle } from './ThemeToggle';
 export { default as SectionRenderer } from './SectionRenderer';
