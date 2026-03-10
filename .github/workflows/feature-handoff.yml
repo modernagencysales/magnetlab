@@ -16,94 +16,151 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
       - name: Check for Claude co-authored commits
         id: claude-check
         run: |
-          CLAUDE_COMMITS=$(git log origin/main..HEAD --format="%H %s" \
-            | while read hash msg; do
-                if git log -1 --format="%b" "$hash" | grep -qi "Co-Authored-By:.*Claude"; then
+          CLAUDE_COMMITS=$(git log origin/main..HEAD --format="%H" \
+            | while read hash; do
+                if git log -1 --format="%b" "$hash" | grep -qi "Co-Authored-By.*Claude"; then
                   echo "$hash"
                 fi
               done)
 
           if [ -z "$CLAUDE_COMMITS" ]; then
             echo "has_claude=false" >> "$GITHUB_OUTPUT"
-            echo "No Claude co-authored commits found."
+            echo "claude_commit_count=0" >> "$GITHUB_OUTPUT"
           else
             COUNT=$(echo "$CLAUDE_COMMITS" | wc -l | tr -d ' ')
             echo "has_claude=true" >> "$GITHUB_OUTPUT"
             echo "claude_commit_count=$COUNT" >> "$GITHUB_OUTPUT"
-            echo "Found $COUNT Claude co-authored commit(s)."
           fi
 
-      - name: Extract PR context
+      - name: Build feature summary
         id: context
         run: |
           BRANCH="${{ github.head_ref }}"
           FEATURE_NAME="${BRANCH#early-users/}"
-
-          # Collect commit log
-          COMMITS=$(git log origin/main..HEAD --format="- %s (%h)" | head -50)
-
-          # Collect changed files
-          FILES=$(git diff --name-only origin/main..HEAD | head -100)
+          TOTAL_COMMITS=$(git log --oneline origin/main..HEAD | wc -l | tr -d ' ')
           FILE_COUNT=$(git diff --name-only origin/main..HEAD | wc -l | tr -d ' ')
 
-          # Check for design docs
-          DESIGN_DOCS=$(git diff --name-only origin/main..HEAD | grep -iE "(DESIGN|SPEC|RFC|ADR|ARCHITECTURE)" || true)
+          # ── Group commits by feature area ──
+          # Extract unique prefixes from conventional commit messages
+          declare -A FEATURE_GROUPS
+          declare -A FEATURE_ITEMS
 
-          # Build description body (using delimiter for multiline output)
+          while IFS= read -r line; do
+            hash="${line%% *}"
+            msg="${line#* }"
+
+            # Skip merge commits and chores
+            echo "$msg" | grep -qiE "^(Merge|chore:)" && continue
+
+            # Determine feature group from commit prefix
+            if echo "$msg" | grep -qi "restyle"; then
+              group="Funnel Restyler"
+            elif echo "$msg" | grep -qiE "(hero|section.*variant|page.builder|stats.bar|feature.grid|social.proof|scroll.reveal|animation|position.rule|SectionRenderer|gradient.shift|section.editor|SectionsManager)"; then
+              group="Enhanced Page Builder"
+            elif echo "$msg" | grep -qiE "(standards.*(loop|review|learning)|feature.handoff|analyze-standards)"; then
+              group="AI Standards Learning Loop"
+            elif echo "$msg" | grep -qiE "(mcp|cli.*command|magnetlab_)"; then
+              group="MCP & CLI Tools"
+            elif echo "$msg" | grep -qiE "(knowledge|ai.brain|position.synthesis|brain)"; then
+              group="AI Brain Integration"
+            elif echo "$msg" | grep -qiE "(email.sequence)"; then
+              group="Email Sequences"
+            elif echo "$msg" | grep -qi "^docs:"; then
+              group="Documentation"
+            elif echo "$msg" | grep -qi "^fix:"; then
+              group="Bug Fixes"
+            elif echo "$msg" | grep -qi "^feat:"; then
+              group="Features"
+            else
+              group="Other"
+            fi
+
+            FEATURE_GROUPS["$group"]=1
+            FEATURE_ITEMS["$group"]+="- ${msg}"$'\n'
+          done < <(git log --oneline origin/main..HEAD)
+
+          # ── Group changed files by directory ──
+          AREAS=$(git diff --name-only origin/main..HEAD | sed 's|/[^/]*$||' | sort | uniq -c | sort -rn | head -15)
+
+          # ── Find design docs ──
+          DESIGN_DOCS=$(git diff --name-only origin/main..HEAD | grep -E "docs/plans/.*design" || true)
+          IMPL_PLANS=$(git diff --name-only origin/main..HEAD | grep -E "docs/plans/" | grep -v "design" || true)
+          FEATURE_DOCS=$(git diff --name-only origin/main..HEAD | grep -E "^docs/[^/]+\.md$" || true)
+
+          # ── Build description ──
           EOF_MARKER=$(dd if=/dev/urandom bs=15 count=1 2>/dev/null | base64)
           echo "description<<${EOF_MARKER}" >> "$GITHUB_OUTPUT"
 
-          cat >> "$GITHUB_OUTPUT" <<DESCEOF
-          ## Feature Handoff: ${FEATURE_NAME}
+          cat >> "$GITHUB_OUTPUT" <<HEADER
+          ## AI-Built Feature Branch: ${FEATURE_NAME}
 
-          **Source PR:** [#${{ github.event.pull_request.number }}](${{ github.event.pull_request.html_url }})
+          **PR:** [#${{ github.event.pull_request.number }}](${{ github.event.pull_request.html_url }})
           **Branch:** \`${BRANCH}\`
-          **Claude Co-Authored:** ${{ steps.claude-check.outputs.has_claude }} (${{ steps.claude-check.outputs.claude_commit_count || '0' }} commits)
+          **Scope:** ${TOTAL_COMMITS} commits, ${FILE_COUNT} files changed
+          **Claude Co-Authored:** ${{ steps.claude-check.outputs.claude_commit_count }} commits
 
-          ### Commits
+          ---
 
-          ${COMMITS}
+          ### Feature Areas
+          HEADER
 
-          ### Changed Files (${FILE_COUNT} total)
+          # Write each feature group
+          for group in "Funnel Restyler" "Enhanced Page Builder" "AI Standards Learning Loop" "AI Brain Integration" "MCP & CLI Tools" "Email Sequences" "Features" "Bug Fixes" "Documentation" "Other"; do
+            if [ -n "${FEATURE_ITEMS[$group]}" ]; then
+              ITEM_COUNT=$(echo "${FEATURE_ITEMS[$group]}" | grep -c "^-" || true)
+              echo "" >> "$GITHUB_OUTPUT"
+              echo "#### ${group} (${ITEM_COUNT} commits)" >> "$GITHUB_OUTPUT"
+              echo "" >> "$GITHUB_OUTPUT"
+              echo "${FEATURE_ITEMS[$group]}" >> "$GITHUB_OUTPUT"
+            fi
+          done
 
-          $(echo "$FILES" | sed 's/^/- /')
-          DESCEOF
+          cat >> "$GITHUB_OUTPUT" <<AREAS_SECTION
 
-          if [ -n "$DESIGN_DOCS" ]; then
-            cat >> "$GITHUB_OUTPUT" <<DOCSEOF
+          ### Code Areas Touched
 
-          ### Design Documents
+          \`\`\`
+          ${AREAS}
+          \`\`\`
+          AREAS_SECTION
 
-          $(echo "$DESIGN_DOCS" | sed 's/^/- /')
-          DOCSEOF
+          if [ -n "$DESIGN_DOCS" ] || [ -n "$FEATURE_DOCS" ]; then
+            echo "" >> "$GITHUB_OUTPUT"
+            echo "### Documentation" >> "$GITHUB_OUTPUT"
+            echo "" >> "$GITHUB_OUTPUT"
+            if [ -n "$DESIGN_DOCS" ]; then
+              echo "**Design Docs:**" >> "$GITHUB_OUTPUT"
+              echo "$DESIGN_DOCS" | sed 's/^/- /' >> "$GITHUB_OUTPUT"
+            fi
+            if [ -n "$IMPL_PLANS" ]; then
+              echo "" >> "$GITHUB_OUTPUT"
+              echo "**Implementation Plans:**" >> "$GITHUB_OUTPUT"
+              echo "$IMPL_PLANS" | sed 's/^/- /' >> "$GITHUB_OUTPUT"
+            fi
+            if [ -n "$FEATURE_DOCS" ]; then
+              echo "" >> "$GITHUB_OUTPUT"
+              echo "**Feature Docs:**" >> "$GITHUB_OUTPUT"
+              echo "$FEATURE_DOCS" | sed 's/^/- /' >> "$GITHUB_OUTPUT"
+            fi
           fi
 
           echo "${EOF_MARKER}" >> "$GITHUB_OUTPUT"
-
           echo "feature_name=$FEATURE_NAME" >> "$GITHUB_OUTPUT"
           echo "file_count=$FILE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "total_commits=$TOTAL_COMMITS" >> "$GITHUB_OUTPUT"
 
       - name: Create Linear issue
         id: create-issue
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: |
-          TITLE="[Handoff] ${{ steps.context.outputs.feature_name }} (PR #${{ github.event.pull_request.number }})"
+          TITLE="[Review] ${FEATURE_NAME} — ${{ steps.context.outputs.total_commits }} commits, ${{ steps.context.outputs.file_count }} files (PR #${{ github.event.pull_request.number }})"
+          FEATURE_NAME="${{ steps.context.outputs.feature_name }}"
 
-          # Escape the description for JSON embedding
-          DESCRIPTION=$(cat <<'DESCEND'
-          ${{ steps.context.outputs.description }}
-          DESCEND
-          )
-          ESCAPED_DESC=$(echo "$DESCRIPTION" | jq -Rs .)
+          ESCAPED_DESC=$(echo '${{ steps.context.outputs.description }}' | jq -Rs .)
 
           PAYLOAD=$(jq -n \
             --arg title "$TITLE" \
@@ -147,34 +204,29 @@ jobs:
           echo "issue_url=$ISSUE_URL" >> "$GITHUB_OUTPUT"
           echo "issue_title=$ISSUE_TITLE" >> "$GITHUB_OUTPUT"
 
-          echo "Created Linear issue: $ISSUE_ID ($ISSUE_URL)"
-
-      - name: Comment on PR with Linear issue link
+      - name: Comment on PR
         uses: actions/github-script@v7
         with:
           script: |
             const issueId = '${{ steps.create-issue.outputs.issue_id }}';
             const issueUrl = '${{ steps.create-issue.outputs.issue_url }}';
-            const issueTitle = '${{ steps.create-issue.outputs.issue_title }}';
             const hasClaude = '${{ steps.claude-check.outputs.has_claude }}';
-            const claudeCount = '${{ steps.claude-check.outputs.claude_commit_count || '0' }}';
+            const claudeCount = '${{ steps.claude-check.outputs.claude_commit_count }}';
             const fileCount = '${{ steps.context.outputs.file_count }}';
+            const totalCommits = '${{ steps.context.outputs.total_commits }}';
 
             const body = [
-              `### Linear Issue Created`,
+              `### 🔗 Developer Review Issue Created`,
               ``,
-              `**${issueId}** — [${issueTitle}](${issueUrl})`,
+              `**[${issueId}](${issueUrl})** in Experimental Feature Pipeline`,
               ``,
-              `| Detail | Value |`,
-              `|--------|-------|`,
-              `| Linear Issue | [${issueId}](${issueUrl}) |`,
-              `| Project | Experimental Feature Pipeline |`,
-              `| Status | Triage |`,
-              `| Labels | \`ai-built\`, \`needs-dev-review\`, \`magnetlab\` |`,
-              `| Claude Co-Authored | ${hasClaude === 'true' ? `Yes (${claudeCount} commits)` : 'No'} |`,
-              `| Files Changed | ${fileCount} |`,
+              `| | |`,
+              `|---|---|`,
+              `| Commits | ${totalCommits} (${claudeCount} Claude co-authored) |`,
+              `| Files | ${fileCount} |`,
+              `| Labels | \`ai-built\` \`needs-dev-review\` |`,
               ``,
-              `This feature branch has been queued for developer review in Linear.`,
+              `The Linear issue contains a feature-grouped summary. Review there and break into sub-issues as needed.`,
             ].join('\n');
 
             await github.rest.issues.createComment({
