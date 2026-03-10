@@ -12,6 +12,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./charts": {
+      "types": "./dist/charts.d.ts",
+      "import": "./dist/charts.js",
+      "require": "./dist/charts.cjs"
+    },
     "./styles/magnetui.css": "./src/styles/magnetui.css",
     "./preset": {
       "types": "./dist/preset/tailwind-preset.d.ts",

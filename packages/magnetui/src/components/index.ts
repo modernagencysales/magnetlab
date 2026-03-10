@@ -315,17 +315,9 @@ export {
 // Toaster
 export { Toaster, toast } from './toaster';
 
-// Chart
-export {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-  ChartStyle,
-  useChart,
-} from './chart';
-export type { ChartConfig } from './chart';
+// Chart — exported separately via @magnetlab/magnetui/charts to avoid
+// loading recharts (class-based) in React Server Components.
+// import { ChartContainer, ... } from '@magnetlab/magnetui/charts';
 
 // ThemeProvider
 export { ThemeProvider, useTheme } from './theme-provider';

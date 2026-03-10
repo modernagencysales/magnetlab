@@ -7,7 +7,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from '@magnetlab/magnetui';
+} from '@magnetlab/magnetui/charts';
 
 interface TimeSeriesChartProps {
   data: Array<{ date: string; value: number }>;

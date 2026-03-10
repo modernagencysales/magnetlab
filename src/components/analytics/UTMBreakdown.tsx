@@ -7,7 +7,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from '@magnetlab/magnetui';
+} from '@magnetlab/magnetui/charts';
 import { Globe } from 'lucide-react';
 
 interface UTMBreakdownProps {
