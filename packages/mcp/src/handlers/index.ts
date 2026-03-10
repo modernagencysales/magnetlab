@@ -1,22 +1,23 @@
-import { MagnetLabClient } from '../client.js'
-import { handleLeadMagnetTools } from './lead-magnets.js'
-import { handleIdeationTools } from './ideation.js'
-import { handleFunnelTools } from './funnels.js'
-import { handleLeadTools } from './leads.js'
-import { handleAnalyticsTools } from './analytics.js'
-import { handleBrandKitTools } from './brand-kit.js'
-import { handleEmailSequenceTools } from './email-sequences.js'
-import { handleContentPipelineTools } from './content-pipeline.js'
-import { handleSwipeFileTools } from './swipe-file.js'
-import { handleLibraryTools } from './libraries.js'
-import { handleQualificationFormTools } from './qualification-forms.js'
-import { handleEmailSystemTools } from './email-system.js'
-import { toolCategories } from '../tools/index.js'
-import { validateToolArgs } from '../validation.js'
+import { MagnetLabClient } from '../client.js';
+import { handleLeadMagnetTools } from './lead-magnets.js';
+import { handleIdeationTools } from './ideation.js';
+import { handleFunnelTools } from './funnels.js';
+import { handleLeadTools } from './leads.js';
+import { handleAnalyticsTools } from './analytics.js';
+import { handleBrandKitTools } from './brand-kit.js';
+import { handleEmailSequenceTools } from './email-sequences.js';
+import { handleContentPipelineTools } from './content-pipeline.js';
+import { handleSwipeFileTools } from './swipe-file.js';
+import { handleLibraryTools } from './libraries.js';
+import { handleQualificationFormTools } from './qualification-forms.js';
+import { handleEmailSystemTools } from './email-system.js';
+import { handleSignalTools } from './signals.js';
+import { toolCategories } from '../tools/index.js';
+import { validateToolArgs } from '../validation.js';
 
 export type ToolResult = {
-  content: Array<{ type: 'text'; text: string }>
-}
+  content: Array<{ type: 'text'; text: string }>;
+};
 
 /**
  * Main dispatcher for MCP tool calls.
@@ -30,7 +31,7 @@ export async function handleToolCall(
 ): Promise<ToolResult> {
   try {
     // Validate args before calling handler
-    const validation = validateToolArgs(name, args)
+    const validation = validateToolArgs(name, args);
     if (!validation.success) {
       return {
         content: [
@@ -39,38 +40,40 @@ export async function handleToolCall(
             text: JSON.stringify({ error: validation.error }),
           },
         ],
-      }
+      };
     }
 
-    let result: unknown
+    let result: unknown;
 
     // Route to appropriate handler based on tool category
     if (toolCategories.leadMagnets.includes(name)) {
-      result = await handleLeadMagnetTools(name, args, client)
+      result = await handleLeadMagnetTools(name, args, client);
     } else if (toolCategories.ideation.includes(name)) {
-      result = await handleIdeationTools(name, args, client)
+      result = await handleIdeationTools(name, args, client);
     } else if (toolCategories.funnels.includes(name)) {
-      result = await handleFunnelTools(name, args, client)
+      result = await handleFunnelTools(name, args, client);
     } else if (toolCategories.leads.includes(name)) {
-      result = await handleLeadTools(name, args, client)
+      result = await handleLeadTools(name, args, client);
     } else if (toolCategories.analytics.includes(name)) {
-      result = await handleAnalyticsTools(name, args, client)
+      result = await handleAnalyticsTools(name, args, client);
     } else if (toolCategories.brandKit.includes(name)) {
-      result = await handleBrandKitTools(name, args, client)
+      result = await handleBrandKitTools(name, args, client);
     } else if (toolCategories.emailSequences.includes(name)) {
-      result = await handleEmailSequenceTools(name, args, client)
+      result = await handleEmailSequenceTools(name, args, client);
     } else if (toolCategories.contentPipeline.includes(name)) {
-      result = await handleContentPipelineTools(name, args, client)
+      result = await handleContentPipelineTools(name, args, client);
     } else if (toolCategories.swipeFile.includes(name)) {
-      result = await handleSwipeFileTools(name, args, client)
+      result = await handleSwipeFileTools(name, args, client);
     } else if (toolCategories.libraries.includes(name)) {
-      result = await handleLibraryTools(name, args, client)
+      result = await handleLibraryTools(name, args, client);
     } else if (toolCategories.qualificationForms.includes(name)) {
-      result = await handleQualificationFormTools(name, args, client)
+      result = await handleQualificationFormTools(name, args, client);
     } else if (toolCategories.emailSystem.includes(name)) {
-      result = await handleEmailSystemTools(name, args, client)
+      result = await handleEmailSystemTools(name, args, client);
+    } else if (toolCategories.signals.includes(name)) {
+      result = await handleSignalTools(name, args, client);
     } else {
-      throw new Error(`Unknown tool: ${name}`)
+      throw new Error(`Unknown tool: ${name}`);
     }
 
     return {
@@ -80,7 +83,7 @@ export async function handleToolCall(
           text: JSON.stringify(result, null, 2),
         },
       ],
-    }
+    };
   } catch (error) {
     return {
       content: [
@@ -91,20 +94,21 @@ export async function handleToolCall(
           }),
         },
       ],
-    }
+    };
   }
 }
 
 // Re-export individual handlers for testing
-export { handleLeadMagnetTools } from './lead-magnets.js'
-export { handleIdeationTools } from './ideation.js'
-export { handleFunnelTools } from './funnels.js'
-export { handleLeadTools } from './leads.js'
-export { handleAnalyticsTools } from './analytics.js'
-export { handleBrandKitTools } from './brand-kit.js'
-export { handleEmailSequenceTools } from './email-sequences.js'
-export { handleContentPipelineTools } from './content-pipeline.js'
-export { handleSwipeFileTools } from './swipe-file.js'
-export { handleLibraryTools } from './libraries.js'
-export { handleQualificationFormTools } from './qualification-forms.js'
-export { handleEmailSystemTools } from './email-system.js'
+export { handleLeadMagnetTools } from './lead-magnets.js';
+export { handleIdeationTools } from './ideation.js';
+export { handleFunnelTools } from './funnels.js';
+export { handleLeadTools } from './leads.js';
+export { handleAnalyticsTools } from './analytics.js';
+export { handleBrandKitTools } from './brand-kit.js';
+export { handleEmailSequenceTools } from './email-sequences.js';
+export { handleContentPipelineTools } from './content-pipeline.js';
+export { handleSwipeFileTools } from './swipe-file.js';
+export { handleLibraryTools } from './libraries.js';
+export { handleQualificationFormTools } from './qualification-forms.js';
+export { handleEmailSystemTools } from './email-system.js';
+export { handleSignalTools } from './signals.js';

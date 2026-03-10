@@ -321,3 +321,32 @@ export function validateToolArgs<T>(toolName: string, args: unknown): Validation
 
   return { success: true, data: result.data as T };
 }
+
+// ─── Signal Tools ─────────────────────────────────────────────────────────
+
+export const importProspectsSchema = z.object({
+  prospects: z
+    .array(
+      z.object({
+        linkedin_url: z.string(),
+        full_name: z.string().optional(),
+        company: z.string().nullable().optional(),
+        prospect_id: z.string().nullable().optional(),
+        custom_data: z.record(z.unknown()).optional(),
+      })
+    )
+    .min(1)
+    .max(500),
+});
+
+export const createSignalVariableSchema = z.object({
+  name: z.string(),
+  field_type: z.enum(['number', 'text', 'boolean']),
+  scoring_rule: z.record(z.unknown()),
+  display_order: z.number().optional(),
+});
+
+export const signalRecommendationsSchema = z.object({
+  limit: z.number().min(1).max(50).optional(),
+  min_score: z.number().optional(),
+});

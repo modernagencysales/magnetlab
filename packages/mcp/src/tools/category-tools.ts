@@ -1,7 +1,7 @@
-import { Tool } from '@modelcontextprotocol/sdk/types.js'
-import { discoveryCategories } from './index.js'
+import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { discoveryCategories } from './index.js';
 
-export type DiscoveryCategoryKey = keyof typeof discoveryCategories
+export type DiscoveryCategoryKey = keyof typeof discoveryCategories;
 
 /**
  * Category discovery tools + execute gateway + tool help.
@@ -73,7 +73,12 @@ const categoryDescriptions: Record<DiscoveryCategoryKey, { label: string; descri
     description:
       'Lead qualification surveys. Use this to create and manage the survey questions shown on thank-you pages to qualify and segment leads.',
   },
-}
+  signals: {
+    label: 'Prospect Intelligence',
+    description:
+      'Import prospects, manage custom scoring variables, and get outreach recommendations.',
+  },
+};
 
 export const categoryTools: Tool[] = Object.entries(categoryDescriptions).map(
   ([key, { description }]) => ({
@@ -84,7 +89,7 @@ export const categoryTools: Tool[] = Object.entries(categoryDescriptions).map(
       properties: {},
     },
   })
-)
+);
 
 /**
  * The gateway tool that executes any real tool by name.
@@ -107,7 +112,7 @@ export const executeGatewayTool: Tool = {
     },
     required: ['tool'],
   },
-}
+};
 
 /**
  * On-demand schema lookup for a single tool.
@@ -126,7 +131,7 @@ export const toolHelpTool: Tool = {
     },
     required: ['tool'],
   },
-}
+};
 
 /**
  * Workflow guide tool — returns step-by-step recipes for common tasks.
@@ -154,7 +159,7 @@ export const guideTool: Tool = {
     },
     required: ['task'],
   },
-}
+};
 
 /**
  * Workflow recipes keyed by task name.
@@ -297,7 +302,7 @@ Call magnetlab_guide with one of these tasks:
 - plan_content_week — Plan and schedule a week of content
 
 For any task: the AI Brain (magnetlab_knowledge category) contains the user's real expertise from call transcripts. ALWAYS search it before creating content.`,
-}
+};
 
 /**
  * Maps category tool names back to their discovery category key.
@@ -307,18 +312,18 @@ export const categoryToolToKey = new Map<string, DiscoveryCategoryKey>(
     `magnetlab_${key.replace(/([A-Z])/g, '_$1').toLowerCase()}`,
     key as DiscoveryCategoryKey,
   ])
-)
+);
 
 /**
  * Get human-readable label for a category.
  */
 export function getCategoryLabel(key: DiscoveryCategoryKey): string {
-  return categoryDescriptions[key].label
+  return categoryDescriptions[key].label;
 }
 
 /**
  * Get the count of real tools in a discovery category.
  */
 export function getCategoryToolCount(key: DiscoveryCategoryKey): number {
-  return discoveryCategories[key].length
+  return discoveryCategories[key].length;
 }

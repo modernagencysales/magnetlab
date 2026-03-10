@@ -211,6 +211,90 @@ export async function updateLeadsPushError(
   return { error };
 }
 
+// ─── Custom Variables ─────────────────────────────────────────────────────
+
+export async function listCustomVariables(userId: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('signal_custom_variables')
+    .select('id, user_id, name, field_type, scoring_rule, display_order, created_at')
+    .eq('user_id', userId)
+    .order('display_order', { ascending: true });
+  return { data, error };
+}
+
+export async function upsertCustomVariable(
+  userId: string,
+  payload: {
+    name: string;
+    field_type: string;
+    scoring_rule: Record<string, unknown>;
+    display_order?: number;
+  }
+) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('signal_custom_variables')
+    .upsert(
+      {
+        user_id: userId,
+        name: payload.name,
+        field_type: payload.field_type,
+        scoring_rule: payload.scoring_rule,
+        display_order: payload.display_order ?? 0,
+      },
+      { onConflict: 'user_id,name' }
+    )
+    .select()
+    .single();
+  return { data, error };
+}
+
+export async function deleteCustomVariable(id: string, userId: string) {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from('signal_custom_variables')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
+  return { error };
+}
+
+export async function updateSignalLeadCustomData(
+  leadId: string,
+  userId: string,
+  customData: Record<string, unknown>,
+  prospectId?: string | null
+) {
+  const supabase = createSupabaseAdminClient();
+  const update: Record<string, unknown> = {
+    custom_data: customData,
+    updated_at: new Date().toISOString(),
+  };
+  if (prospectId !== undefined) update.prospect_id = prospectId;
+  const { error } = await supabase
+    .from('signal_leads')
+    .update(update)
+    .eq('id', leadId)
+    .eq('user_id', userId);
+  return { error };
+}
+
+export async function getSignalLeadCustomData(
+  leadId: string,
+  userId: string
+): Promise<{ data: Record<string, unknown> | null; error: string | null }> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('signal_leads')
+    .select('custom_data')
+    .eq('id', leadId)
+    .eq('user_id', userId)
+    .single();
+  if (error) return { data: null, error: error.message };
+  return { data: (data?.custom_data as Record<string, unknown>) ?? null, error: null };
+}
+
 // ─── Config ────────────────────────────────────────────────────────────────
 
 export async function getSignalConfig(userId: string) {

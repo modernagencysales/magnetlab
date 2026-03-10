@@ -100,8 +100,42 @@ export interface SignalLead {
   heyreach_pushed_at: string | null;
   heyreach_error: string | null;
   enriched_at: string | null;
+  custom_data: Record<string, unknown> | null;
+  prospect_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ============================================
+// CUSTOM VARIABLE SCORING
+// ============================================
+
+export type CustomVariableType = 'number' | 'text' | 'boolean';
+
+export interface NumberScoringRule {
+  ranges: Array<{ min: number; max?: number; weight: number }>;
+}
+
+export interface BooleanScoringRule {
+  when_true: number;
+  when_false: number;
+}
+
+export interface TextScoringRule {
+  contains: Record<string, number>;
+  default: number;
+}
+
+export type ScoringRule = NumberScoringRule | BooleanScoringRule | TextScoringRule;
+
+export interface SignalCustomVariable {
+  id: string;
+  user_id: string;
+  name: string;
+  field_type: CustomVariableType;
+  scoring_rule: ScoringRule;
+  display_order: number;
+  created_at: string;
 }
 
 export interface SignalEvent {

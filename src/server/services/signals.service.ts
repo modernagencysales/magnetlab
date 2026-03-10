@@ -6,6 +6,8 @@
 import { logError } from '@/lib/utils/logger';
 import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach/client';
 import type { SignalType } from '@/lib/types/signals';
+import { normalizeLinkedInUrl, splitName } from '@/lib/services/signal-engine';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import * as signalsRepo from '@/server/repositories/signals.repo';
 
 const MAX_KEYWORDS = 20;
@@ -311,4 +313,50 @@ export async function upsertConfig(
     return { success: false as const, error: 'database' as const };
   }
   return { success: true as const, config: data };
+}
+
+// ─── Import ──────────────────────────────────────────────────────────────
+
+export async function importProspects(
+  userId: string,
+  prospects: Array<{
+    linkedin_url: string;
+    full_name?: string;
+    company?: string | null;
+    prospect_id?: string | null;
+    custom_data?: Record<string, unknown>;
+  }>
+) {
+  const supabase = createSupabaseAdminClient();
+  let imported = 0;
+  const errors: string[] = [];
+
+  for (const p of prospects) {
+    if (!p.linkedin_url) continue;
+    const normalizedUrl = normalizeLinkedInUrl(p.linkedin_url);
+    const { firstName, lastName } = splitName(p.full_name || '');
+
+    const row: Record<string, unknown> = {
+      user_id: userId,
+      linkedin_url: normalizedUrl,
+      first_name: firstName || null,
+      last_name: lastName || null,
+      company: p.company || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (p.custom_data) row.custom_data = p.custom_data;
+    if (p.prospect_id) row.prospect_id = p.prospect_id;
+
+    const { error } = await supabase
+      .from('signal_leads')
+      .upsert(row, { onConflict: 'user_id,linkedin_url' });
+
+    if (error) {
+      errors.push(p.linkedin_url + ': ' + error.message);
+    } else {
+      imported++;
+    }
+  }
+
+  return { imported, errors, total: prospects.length };
 }

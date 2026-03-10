@@ -7,12 +7,20 @@
  */
 
 import { logError } from '@/lib/utils/logger';
-import type { SignalType, SentimentScore } from '@/lib/types/signals';
+import type {
+  SignalType,
+  SentimentScore,
+  SignalCustomVariable,
+  NumberScoringRule,
+  BooleanScoringRule,
+  TextScoringRule,
+} from '@/lib/types/signals';
 import {
   upsertSignalLeadRecord,
   upsertSignalEventRecord,
   findSignalEventsByLead,
   updateSignalLeadScores,
+  getSignalLeadCustomData,
 } from '@/server/repositories/signals.repo';
 
 // ============================================
@@ -104,6 +112,62 @@ const SENTIMENT_RANK: Record<SentimentScore, number> = {
 };
 
 // ============================================
+// CUSTOM VARIABLE SCORING (pure)
+// ============================================
+
+export function computeCustomVariableScore(
+  variables: SignalCustomVariable[],
+  customData: Record<string, unknown> | null
+): number {
+  if (!customData || variables.length === 0) return 0;
+  let total = 0;
+  for (const variable of variables) {
+    const value = customData[variable.name];
+    if (value === undefined || value === null) continue;
+    switch (variable.field_type) {
+      case 'number': {
+        const numValue = typeof value === 'number' ? value : Number(value);
+        if (isNaN(numValue)) break;
+        const rule = variable.scoring_rule as NumberScoringRule;
+        if (!rule.ranges) break;
+        for (const range of rule.ranges) {
+          if (numValue >= range.min && (range.max === undefined || numValue < range.max)) {
+            total += range.weight;
+            break;
+          }
+        }
+        break;
+      }
+      case 'boolean': {
+        const boolValue = typeof value === 'boolean' ? value : value === 'true';
+        const rule = variable.scoring_rule as BooleanScoringRule;
+        total += boolValue ? (rule.when_true ?? 0) : (rule.when_false ?? 0);
+        break;
+      }
+      case 'text': {
+        const textValue = String(value).toLowerCase();
+        const rule = variable.scoring_rule as TextScoringRule;
+        if (!rule.contains) {
+          total += rule.default ?? 0;
+          break;
+        }
+        let matched = false;
+        for (const [keyword, weight] of Object.entries(rule.contains)) {
+          if (textValue.includes(keyword.toLowerCase())) {
+            total += weight;
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) total += rule.default ?? 0;
+        break;
+      }
+    }
+  }
+  return total;
+}
+
+// ============================================
 // DB OPERATIONS
 // ============================================
 
@@ -170,7 +234,11 @@ export async function recordSignalEvent(event: {
  * Recompute signal_count, compound_score, and sentiment_score
  * for a given lead based on all their signal_events.
  */
-export async function updateSignalCounts(userId: string, leadId: string): Promise<void> {
+export async function updateSignalCounts(
+  userId: string,
+  leadId: string,
+  customVariables?: SignalCustomVariable[]
+): Promise<void> {
   const { data: events, error } = await findSignalEventsByLead(userId, leadId);
 
   if (error) {
@@ -181,36 +249,47 @@ export async function updateSignalCounts(userId: string, leadId: string): Promis
     return;
   }
 
-  if (!events || events.length === 0) {
-    return;
-  }
-
-  // Count distinct signal types
+  // Count distinct signal types from events
   const distinctTypes = new Set<string>();
   let compoundScore = 0;
   let bestSentiment: SentimentScore | null = null;
   let bestSentimentRank = 0;
 
-  for (const event of events) {
-    const signalType = event.signal_type as SignalType;
+  if (events && events.length > 0) {
+    for (const event of events) {
+      const signalType = event.signal_type as SignalType;
 
-    if (!distinctTypes.has(signalType)) {
-      distinctTypes.add(signalType);
-      compoundScore += SIGNAL_TYPE_WEIGHTS[signalType] || 0;
-    }
+      if (!distinctTypes.has(signalType)) {
+        distinctTypes.add(signalType);
+        compoundScore += SIGNAL_TYPE_WEIGHTS[signalType] || 0;
+      }
 
-    const sentiment = event.sentiment as SentimentScore | null;
-    if (sentiment && SENTIMENT_BONUS[sentiment]) {
-      compoundScore += SENTIMENT_BONUS[sentiment];
-    }
+      const sentiment = event.sentiment as SentimentScore | null;
+      if (sentiment && SENTIMENT_BONUS[sentiment]) {
+        compoundScore += SENTIMENT_BONUS[sentiment];
+      }
 
-    if (sentiment && SENTIMENT_RANK[sentiment]) {
-      const rank = SENTIMENT_RANK[sentiment];
-      if (rank > bestSentimentRank) {
-        bestSentimentRank = rank;
-        bestSentiment = sentiment;
+      if (sentiment && SENTIMENT_RANK[sentiment]) {
+        const rank = SENTIMENT_RANK[sentiment];
+        if (rank > bestSentimentRank) {
+          bestSentimentRank = rank;
+          bestSentiment = sentiment;
+        }
       }
     }
+  }
+
+  // Add custom variable scores if provided
+  if (customVariables && customVariables.length > 0) {
+    const { data: customData } = await getSignalLeadCustomData(leadId, userId);
+    if (customData) {
+      compoundScore += computeCustomVariableScore(customVariables, customData);
+    }
+  }
+
+  // Skip update if no events and no custom variable contribution
+  if (distinctTypes.size === 0 && compoundScore === 0) {
+    return;
   }
 
   compoundScore = Math.min(compoundScore, 100);

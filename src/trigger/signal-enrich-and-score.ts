@@ -9,7 +9,8 @@ import {
 } from '@/lib/services/signal-icp-filter';
 import { updateSignalCounts } from '@/lib/services/signal-engine';
 import { batchClassifySentiment } from '@/lib/ai/signal-sentiment';
-import type { SignalConfig } from '@/lib/types/signals';
+import { listCustomVariables } from '@/server/repositories/signals.repo';
+import type { SignalConfig, SignalCustomVariable } from '@/lib/types/signals';
 
 export const signalEnrichAndScore = schedules.task({
   id: 'signal-enrich-and-score',
@@ -85,8 +86,7 @@ export const signalEnrichAndScore = schedules.task({
                 extractCompany(profile.headline || '') ||
                 profile.currentPosition?.[0]?.companyName ||
                 null;
-              const country =
-                profile.location?.parsed?.countryCode || null;
+              const country = profile.location?.parsed?.countryCode || null;
 
               // Build update payload
               const updatePayload: Record<string, unknown> = {
@@ -116,10 +116,7 @@ export const signalEnrichAndScore = schedules.task({
                 }
               }
 
-              await supabase
-                .from('signal_leads')
-                .update(updatePayload)
-                .eq('id', lead.id);
+              await supabase.from('signal_leads').update(updatePayload).eq('id', lead.id);
 
               enrichedCount++;
 
@@ -240,9 +237,18 @@ export const signalEnrichAndScore = schedules.task({
     if (leadsToScore && leadsToScore.length > 0) {
       logger.info(`Updating compound scores for ${leadsToScore.length} leads`);
 
+      // Load custom variables per user
+      const scoreUserIds = [...new Set(leadsToScore.map((l) => l.user_id))];
+      const customVarsMap = new Map<string, SignalCustomVariable[]>();
+      for (const uid of scoreUserIds) {
+        const { data: vars } = await listCustomVariables(uid);
+        if (vars && vars.length > 0) customVarsMap.set(uid, vars as SignalCustomVariable[]);
+      }
+
       for (const lead of leadsToScore) {
         try {
-          await updateSignalCounts(lead.user_id, lead.id);
+          const userVars = customVarsMap.get(lead.user_id);
+          await updateSignalCounts(lead.user_id, lead.id, userVars);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           logger.warn(`Failed to update counts for lead ${lead.id}`, { error: msg });
@@ -258,7 +264,10 @@ export const signalEnrichAndScore = schedules.task({
     // DONE
     // ==========================================
 
-    logger.info('Signal enrich-and-score complete', { enriched: enrichedCount, qualified: qualifiedCount });
+    logger.info('Signal enrich-and-score complete', {
+      enriched: enrichedCount,
+      qualified: qualifiedCount,
+    });
 
     return { enriched: enrichedCount, qualified: qualifiedCount };
   },
