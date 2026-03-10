@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { MessageSquare } from 'lucide-react';
 import { ContextStep } from './steps/ContextStep';
 import { IdeationStep } from './steps/IdeationStep';
 import { CustomIdeaStep } from './steps/CustomIdeaStep';
@@ -13,6 +14,7 @@ import { GeneratingScreen } from './GeneratingScreen';
 import { WizardProgress } from './WizardProgress';
 import { DraftPicker } from './DraftPicker';
 import { useWizard } from '@/frontend/hooks/useWizard';
+import { useCopilot } from '@/components/copilot/CopilotProvider';
 import { useCopilotContext } from '@/components/copilot/useCopilotContext';
 import type { BusinessContext } from '@/lib/types/lead-magnet';
 
@@ -55,6 +57,8 @@ export function WizardContainer() {
     savedIdeation,
     ideationGeneratedAt,
   } = useWizard();
+
+  const { open: openCopilot, sendMessage, startNewConversation } = useCopilot();
 
   useCopilotContext({
     page: 'lead-magnet-creation',
@@ -127,6 +131,33 @@ export function WizardContainer() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* AI Assistant Entry Point */}
+      <div className="border-b bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20">
+        <div className="container mx-auto max-w-4xl px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold">Create with AI Assistant</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Describe what you want — the AI uses your knowledge base to ask only the questions
+                that matter.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                startNewConversation();
+                openCopilot();
+                sendMessage('I want to create a new lead magnet.');
+              }}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Open AI Assistant
+            </button>
+          </div>
+        </div>
+      </div>
+
       <WizardProgress currentStep={state.currentStep} />
 
       {autoSaveEnabled && (isSaving || lastSavedAt) && (

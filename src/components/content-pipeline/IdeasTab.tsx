@@ -98,6 +98,7 @@ export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
   const { mutate: archiveIdeaMutate } = useArchiveIdea(() => {
     fetchIdeas(true);
   });
+  const { open: openCopilot, sendMessage: sendCopilotMessage } = useCopilot();
 
   const handleWritePost = useCallback(
     async (ideaId: string) => {
@@ -415,20 +416,35 @@ export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
                     </button>
                   )}
                   {(idea.status === 'extracted' || idea.status === 'selected') && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleWritePost(idea.id);
-                      }}
-                      disabled={writingId === idea.id}
-                      className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                    >
-                      {writingId === idea.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        'Write Post'
-                      )}
-                    </button>
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openCopilot();
+                          sendCopilotMessage(
+                            `Create a lead magnet from this idea: "${idea.title}". ${idea.core_insight || ''}`
+                          );
+                        }}
+                        className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        <Magnet className="h-3 w-3" />
+                        Create Lead Magnet
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleWritePost(idea.id);
+                        }}
+                        disabled={writingId === idea.id}
+                        className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                      >
+                        {writingId === idea.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          'Write Post'
+                        )}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
