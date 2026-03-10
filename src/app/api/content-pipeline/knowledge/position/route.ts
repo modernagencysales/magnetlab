@@ -1,8 +1,13 @@
-/** Position Synthesis API. GET = cached position, POST = force fresh synthesis. */
+/** Position Synthesis API. GET = cached/list, POST = force fresh or bulk recompute. */
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getCachedPosition, listPositions } from '@/lib/services/knowledge-brain';
+import {
+  getCachedPosition,
+  listPositions,
+  synthesizeAndCachePosition,
+} from '@/lib/services/knowledge-brain';
+import { logApiError } from '@/lib/api/errors';
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -40,6 +45,30 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
+
+  // Bulk recompute: re-synthesize all existing positions
+  if (body.recompute_all === true) {
+    const positions = await listPositions(session.user.id, { includeStale: true });
+    if (positions.length === 0) {
+      return NextResponse.json({ recomputed: 0, errors: 0, message: 'No positions to recompute' });
+    }
+
+    let recomputed = 0;
+    let errors = 0;
+    for (const row of positions) {
+      try {
+        const result = await synthesizeAndCachePosition(session.user.id, row.topic_slug);
+        if (result) recomputed++;
+      } catch (err) {
+        errors++;
+        logApiError('position/recompute', err, { topicSlug: row.topic_slug });
+      }
+    }
+
+    return NextResponse.json({ recomputed, errors, total: positions.length });
+  }
+
+  // Single topic: force fresh synthesis
   const topicSlug = body.topic as string;
   if (!topicSlug) {
     return NextResponse.json({ error: 'topic is required' }, { status: 400 });

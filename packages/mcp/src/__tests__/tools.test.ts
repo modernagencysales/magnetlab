@@ -13,8 +13,8 @@ import {
 } from '../tools/category-tools.js';
 
 describe('Tool Registration', () => {
-  it('exports exactly 116 tools', () => {
-    expect(tools).toHaveLength(116);
+  it('exports exactly 117 tools', () => {
+    expect(tools).toHaveLength(117);
   });
 
   it('all tools have unique names', () => {
@@ -77,7 +77,7 @@ describe('Tool Registration', () => {
       analytics: 1,
       brandKit: 3,
       emailSequences: 4,
-      contentPipeline: 46,
+      contentPipeline: 47,
       swipeFile: 3,
       libraries: 7,
       qualificationForms: 5,
@@ -141,16 +141,16 @@ describe('Discovery Categories', () => {
   });
 
   it('content pipeline is split into knowledge, writing, and scheduling', () => {
-    expect(discoveryCategories.knowledge.length).toBe(16);
+    expect(discoveryCategories.knowledge.length).toBe(17);
     expect(discoveryCategories.contentWriting.length).toBe(19);
     expect(discoveryCategories.contentScheduling.length).toBe(11);
 
-    // Total should equal original 44 + 2 position tools = 46
+    // Total should equal original 44 + 3 position tools = 47
     const total =
       discoveryCategories.knowledge.length +
       discoveryCategories.contentWriting.length +
       discoveryCategories.contentScheduling.length;
-    expect(total).toBe(46);
+    expect(total).toBe(47);
   });
 
   it('leadMagnets discovery includes leads and analytics tools', () => {
@@ -163,7 +163,7 @@ describe('Discovery Categories', () => {
 
   describe('discovery category sizes', () => {
     const expectedCounts: Record<string, number> = {
-      knowledge: 16,
+      knowledge: 17,
       contentWriting: 19,
       contentScheduling: 11,
       leadMagnets: 12,

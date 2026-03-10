@@ -265,6 +265,17 @@ export const contentPipelineTools: Tool[] = [
       properties: {},
     },
   },
+  {
+    name: 'magnetlab_recompute_positions',
+    description:
+      'Force re-synthesis of ALL cached positions. Useful after bulk transcript ingestion or when positions seem outdated. ' +
+      'This is a slow operation (one AI call per topic) — only use when needed, not routinely. ' +
+      'Returns count of positions recomputed and any errors.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
 
   // ============================================================
   // Content Ideas

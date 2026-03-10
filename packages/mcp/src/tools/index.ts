@@ -62,6 +62,7 @@ const knowledgeToolNames = [
   'magnetlab_topic_detail',
   'magnetlab_synthesize_position',
   'magnetlab_list_positions',
+  'magnetlab_recompute_positions',
 ];
 
 const contentWritingToolNames = [

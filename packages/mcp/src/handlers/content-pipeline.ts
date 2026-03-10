@@ -102,6 +102,9 @@ export async function handleContentPipelineTools(
     case 'magnetlab_list_positions':
       return client.listPositions();
 
+    case 'magnetlab_recompute_positions':
+      return client.recomputePositions();
+
     // Ideas
     case 'magnetlab_list_ideas':
       return client.listIdeas({

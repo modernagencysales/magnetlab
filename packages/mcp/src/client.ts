@@ -751,6 +751,14 @@ export class MagnetLabClient {
     return this.request<{ positions: unknown[] }>('GET', `/content-pipeline/knowledge/position`);
   }
 
+  async recomputePositions() {
+    return this.aiRequest<{ recomputed: number; errors: number; total: number }>(
+      'POST',
+      `/content-pipeline/knowledge/position`,
+      { recompute_all: true }
+    );
+  }
+
   // ============================================================
   // Content Pipeline - Ideas
   // ============================================================
