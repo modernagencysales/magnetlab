@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Copy, Check, Loader2, ChevronDown, ExternalLink, Webhook } from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
 import { cn } from '@/lib/utils';
 import * as transcriptsApi from '@/frontend/api/content-pipeline/transcripts';
 
@@ -35,7 +36,8 @@ const TOOLS: RecorderTool[] = [
       'No Zapier or webhook setup needed with the native integration',
       'Fallback: You can also use Zapier → Fathom trigger → POST to your webhook URL below',
     ],
-    notes: 'We recommend the native integration — no Zapier needed. Just connect your Fathom account in Settings and transcripts flow in automatically.',
+    notes:
+      'We recommend the native integration — no Zapier needed. Just connect your Fathom account in Settings and transcripts flow in automatically.',
   },
   {
     id: 'otter',
@@ -52,7 +54,8 @@ const TOOLS: RecorderTool[] = [
       'Set source to "otter" in the JSON body',
       'Turn on the Zap',
     ],
-    notes: 'Otter Pro ($17/mo+) required. The Zapier integration includes the full transcript — emails only send summaries.',
+    notes:
+      'Otter Pro ($17/mo+) required. The Zapier integration includes the full transcript — emails only send summaries.',
   },
   {
     id: 'fireflies',
@@ -67,7 +70,8 @@ const TOOLS: RecorderTool[] = [
       'Send to your webhook URL with an HTTP POST module',
       'Option B (Direct): Use our built-in Fireflies integration instead — go to your Fireflies webhook settings and paste the Grain/Fireflies webhook URL from the docs',
     ],
-    notes: 'Fireflies emails only contain summaries. Use Make.com (not Zapier) — it has a "Get Transcript" module that returns the full text. Zapier only gets the URL.',
+    notes:
+      'Fireflies emails only contain summaries. Use Make.com (not Zapier) — it has a "Get Transcript" module that returns the full text. Zapier only gets the URL.',
   },
   {
     id: 'tldv',
@@ -82,7 +86,8 @@ const TOOLS: RecorderTool[] = [
       'The webhook payload includes the full transcript with speaker names',
       'Option B (Zapier): Trigger → "Transcript Ready", Action → POST to your webhook URL',
     ],
-    notes: 'tl;dv has the best native webhook — the payload already includes the full transcript. No Zapier needed if you use the direct webhook.',
+    notes:
+      'tl;dv has the best native webhook — the payload already includes the full transcript. No Zapier needed if you use the direct webhook.',
   },
   {
     id: 'readai',
@@ -96,7 +101,8 @@ const TOOLS: RecorderTool[] = [
       'Add your webhook URL below',
       'Read.ai sends the full transcript with speaker names and timestamps automatically after each meeting',
     ],
-    notes: 'Requires Read.ai Pro or Enterprise. The webhook payload includes the complete transcript — this is one of the simplest setups.',
+    notes:
+      'Requires Read.ai Pro or Enterprise. The webhook payload includes the complete transcript — this is one of the simplest setups.',
   },
   {
     id: 'tactiq',
@@ -113,7 +119,8 @@ const TOOLS: RecorderTool[] = [
       'Set source to "tactiq" in the JSON body',
       'Turn on the Zap',
     ],
-    notes: 'Tactiq is a Chrome extension (browser-only). Full word-for-word transcript available via Zapier.',
+    notes:
+      'Tactiq is a Chrome extension (browser-only). Full word-for-word transcript available via Zapier.',
   },
   {
     id: 'krisp',
@@ -127,7 +134,8 @@ const TOOLS: RecorderTool[] = [
       'Paste your webhook URL below',
       'Krisp automatically sends transcripts and notes after each meeting',
     ],
-    notes: 'Krisp has a built-in webhook that sends full transcripts. Free plan includes unlimited transcription.',
+    notes:
+      'Krisp has a built-in webhook that sends full transcripts. Free plan includes unlimited transcription.',
   },
   {
     id: 'grain',
@@ -141,7 +149,8 @@ const TOOLS: RecorderTool[] = [
       'Go to Grain → Settings → Webhooks and paste the Grain-specific webhook URL from Settings',
       'Or use Zapier: Trigger → "New Recording" → map the transcript field to POST',
     ],
-    notes: 'The native Grain integration is already set up. If you have a Grain webhook secret configured, transcripts flow in automatically.',
+    notes:
+      'The native Grain integration is already set up. If you have a Grain webhook secret configured, transcripts flow in automatically.',
   },
 ];
 
@@ -176,7 +185,12 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Connect Your Meeting Recorder">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Connect Your Meeting Recorder"
+    >
       <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-background shadow-xl">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-6 py-4">
@@ -186,9 +200,9 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
               Auto-import transcripts from any recording tool
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="px-6 py-5 space-y-6">
@@ -197,15 +211,21 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
             <p className="text-sm font-semibold mb-3">How it works</p>
             <div className="grid grid-cols-3 gap-3">
               <div className="text-center">
-                <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">1</div>
+                <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                  1
+                </div>
                 <p className="mt-2 text-xs font-medium">Copy your webhook URL</p>
               </div>
               <div className="text-center">
-                <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">2</div>
+                <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                  2
+                </div>
                 <p className="mt-2 text-xs font-medium">Connect via Zapier or tool settings</p>
               </div>
               <div className="text-center">
-                <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">3</div>
+                <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                  3
+                </div>
                 <p className="mt-2 text-xs font-medium">Transcripts auto-import after calls</p>
               </div>
             </div>
@@ -224,22 +244,19 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
                 <div className="flex-1 overflow-hidden rounded-lg border bg-muted/50 px-3 py-2.5">
                   <code className="block truncate text-xs text-muted-foreground">{webhookUrl}</code>
                 </div>
-                <button
+                <Button
                   onClick={handleCopy}
-                  className={cn(
-                    'flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
-                    copied
-                      ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-                      : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  )}
+                  variant={copied ? 'outline' : 'default'}
+                  className={copied ? 'text-green-700 border-green-300 dark:text-green-300' : ''}
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   {copied ? 'Copied!' : 'Copy'}
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                Webhook not configured. Ask your admin to set the TRANSCRIPT_WEBHOOK_SECRET environment variable.
+                Webhook not configured. Ask your admin to set the TRANSCRIPT_WEBHOOK_SECRET
+                environment variable.
               </div>
             )}
           </div>
@@ -257,20 +274,16 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
                     <span className="text-xl">{tool.logo}</span>
                     <span className="flex-1 text-sm font-medium">{tool.name}</span>
                     <div className="flex items-center gap-2">
-                      {tool.zapierUrl && (
-                        <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700 dark:bg-orange-950 dark:text-orange-300">
-                          Zapier
-                        </span>
-                      )}
+                      {tool.zapierUrl && <Badge variant="orange">Zapier</Badge>}
                       {tool.method === 'webhook' || tool.method === 'both' ? (
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                          Webhook
-                        </span>
+                        <Badge variant="blue">Webhook</Badge>
                       ) : null}
-                      <ChevronDown className={cn(
-                        'h-4 w-4 text-muted-foreground transition-transform',
-                        expandedTool === tool.id && 'rotate-180'
-                      )} />
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 text-muted-foreground transition-transform',
+                          expandedTool === tool.id && 'rotate-180'
+                        )}
+                      />
                     </div>
                   </button>
 
@@ -332,10 +345,12 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
             >
               <Webhook className="h-5 w-5 text-muted-foreground" />
               <span className="flex-1 text-sm font-medium">Other tool / custom integration</span>
-              <ChevronDown className={cn(
-                'h-4 w-4 text-muted-foreground transition-transform',
-                showPayload && 'rotate-180'
-              )} />
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 text-muted-foreground transition-transform',
+                  showPayload && 'rotate-180'
+                )}
+              />
             </button>
             {showPayload && (
               <div className="border-t px-4 py-3 space-y-3">
@@ -343,7 +358,7 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
                   POST to your webhook URL with this JSON body:
                 </p>
                 <pre className="overflow-x-auto rounded-lg bg-zinc-950 p-3 text-xs text-zinc-200">
-{`{
+                  {`{
   "source": "your-tool-name",
   "recording_id": "unique-id",
   "title": "Call title",
@@ -354,9 +369,17 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
 }`}
                 </pre>
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <p><strong>Required:</strong> recording_id, transcript</p>
-                  <p><strong>Optional:</strong> source (defaults to &quot;other&quot;), title, date, duration_minutes, participants</p>
-                  <p><strong>Deduplication:</strong> Same source + recording_id combination won&apos;t be processed twice</p>
+                  <p>
+                    <strong>Required:</strong> recording_id, transcript
+                  </p>
+                  <p>
+                    <strong>Optional:</strong> source (defaults to &quot;other&quot;), title, date,
+                    duration_minutes, participants
+                  </p>
+                  <p>
+                    <strong>Deduplication:</strong> Same source + recording_id combination
+                    won&apos;t be processed twice
+                  </p>
                 </div>
               </div>
             )}

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Lightbulb, PenTool } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 
 interface Idea {
   id?: string;
@@ -28,7 +29,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function IdeaListCard({ data, onApply }: Props) {
-  const ideas: Idea[] = Array.isArray(data) ? data : (data?.data || []);
+  const ideas: Idea[] = Array.isArray(data) ? data : data?.data || [];
 
   const handleWrite = (idea: Idea) => {
     onApply?.('write_from_idea', { idea });
@@ -53,7 +54,9 @@ export function IdeaListCard({ data, onApply }: Props) {
               <p className="text-sm font-medium text-gray-800 mb-1">{idea.title}</p>
 
               {idea.content_type && (
-                <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full mb-1 ${typeColor}`}>
+                <span
+                  className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full mb-1 ${typeColor}`}
+                >
                   {idea.content_type.replace(/_/g, ' ')}
                 </span>
               )}
@@ -65,13 +68,15 @@ export function IdeaListCard({ data, onApply }: Props) {
               )}
 
               {onApply && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => handleWrite(idea)}
-                  className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-violet-600 hover:text-violet-700 transition-colors"
+                  className="mt-1.5 h-auto px-0 py-0 text-[10px] font-medium text-violet-600 hover:text-violet-700"
                 >
-                  <PenTool className="w-3 h-3" />
+                  <PenTool className="w-3 h-3 mr-1" />
                   Write this
-                </button>
+                </Button>
               )}
             </div>
           );

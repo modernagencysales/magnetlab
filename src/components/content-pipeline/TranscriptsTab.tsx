@@ -1,8 +1,22 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Mic, Radio, Clipboard, Upload, Video, BookOpen, Loader2, Plus, Trash2, Link2, RotateCcw, Pencil } from 'lucide-react';
-import { cn, formatDate } from '@/lib/utils';
+import {
+  Mic,
+  Radio,
+  Clipboard,
+  Upload,
+  Video,
+  BookOpen,
+  Loader2,
+  Plus,
+  Trash2,
+  Link2,
+  RotateCcw,
+  Pencil,
+} from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
+import { formatDate } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { TranscriptPasteModal } from './TranscriptPasteModal';
 import { ConnectRecorderGuide } from './ConnectRecorderGuide';
@@ -34,19 +48,22 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
   const [viewingId, setViewingId] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchTranscripts = useCallback(async (showLoader = false) => {
-    if (showLoader) setLoading(true);
-    try {
-      const data = await transcriptsApi.listTranscripts({
-        speaker_profile_id: profileId ?? undefined,
-      });
-      setTranscripts((data.transcripts || []) as CallTranscript[]);
-    } catch {
-      // Silent failure
-    } finally {
-      if (showLoader) setLoading(false);
-    }
-  }, [profileId]);
+  const fetchTranscripts = useCallback(
+    async (showLoader = false) => {
+      if (showLoader) setLoading(true);
+      try {
+        const data = await transcriptsApi.listTranscripts({
+          speaker_profile_id: profileId ?? undefined,
+        });
+        setTranscripts((data.transcripts || []) as CallTranscript[]);
+      } catch {
+        // Silent failure
+      } finally {
+        if (showLoader) setLoading(false);
+      }
+    },
+    [profileId]
+  );
 
   useEffect(() => {
     fetchTranscripts(true);
@@ -74,7 +91,12 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
   }, [transcripts, fetchTranscripts]);
 
   const handleReprocess = async (id: string) => {
-    if (!confirm('This will delete existing knowledge entries and ideas for this transcript and re-process it. Continue?')) return;
+    if (
+      !confirm(
+        'This will delete existing knowledge entries and ideas for this transcript and re-process it. Continue?'
+      )
+    )
+      return;
     setReprocessingId(id);
     try {
       await transcriptsApi.reprocessTranscript(id);
@@ -136,20 +158,14 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
 
       {/* Actions */}
       <div className="mb-4 flex justify-end gap-2">
-        <button
-          onClick={() => setShowConnectGuide(true)}
-          className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-        >
+        <Button variant="outline" onClick={() => setShowConnectGuide(true)}>
           <Link2 className="h-4 w-4" />
           Connect Recorder
-        </button>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
+        </Button>
+        <Button onClick={() => setShowAddModal(true)}>
           <Plus className="h-4 w-4" />
           Add Transcript
-        </button>
+        </Button>
       </div>
 
       {/* Table */}
@@ -161,20 +177,14 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
             Get started by connecting your meeting recorder or pasting a transcript
           </p>
           <div className="mt-6 flex justify-center gap-3">
-            <button
-              onClick={() => setShowConnectGuide(true)}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
+            <Button onClick={() => setShowConnectGuide(true)}>
               <Link2 className="h-4 w-4" />
               Connect Recorder
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-            >
+            </Button>
+            <Button variant="outline" onClick={() => setShowAddModal(true)}>
               <Plus className="h-4 w-4" />
               Paste or Upload
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -182,13 +192,27 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
           <table className="w-full">
             <thead>
               <tr className="bg-muted/50">
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Title</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Speaker</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Source</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase sr-only">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Title
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Speaker
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Source
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Type
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase sr-only">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -206,17 +230,24 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
                     </td>
                     <td className="px-4 py-3">
                       {(() => {
-                        const ext = t as CallTranscript & { speaker_name?: string | null; speaker_map?: Record<string, { role: string; company?: string | null }> | null };
+                        const ext = t as CallTranscript & {
+                          speaker_name?: string | null;
+                          speaker_map?: Record<
+                            string,
+                            { role: string; company?: string | null }
+                          > | null;
+                        };
                         const speakerName = ext.speaker_name;
                         // Fall back to host name from speaker_map
-                        const hostFromMap = !speakerName && ext.speaker_map
-                          ? Object.entries(ext.speaker_map).find(([, v]) => v.role === 'host')?.[0]
-                          : null;
+                        const hostFromMap =
+                          !speakerName && ext.speaker_map
+                            ? Object.entries(ext.speaker_map).find(
+                                ([, v]) => v.role === 'host'
+                              )?.[0]
+                            : null;
                         const displayName = speakerName || hostFromMap;
                         return displayName ? (
-                          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
-                            {displayName}
-                          </span>
+                          <Badge variant="purple">{displayName}</Badge>
                         ) : (
                           <span className="text-sm text-muted-foreground">&mdash;</span>
                         );
@@ -230,14 +261,9 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
                     </td>
                     <td className="px-4 py-3">
                       {t.transcript_type ? (
-                        <span className={cn(
-                          'rounded-full px-2 py-1 text-xs font-medium',
-                          t.transcript_type === 'coaching'
-                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
-                            : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                        )}>
+                        <Badge variant={t.transcript_type === 'coaching' ? 'purple' : 'blue'}>
                           {t.transcript_type}
-                        </span>
+                        </Badge>
                       ) : (
                         <span className="text-sm text-muted-foreground">&mdash;</span>
                       )}
@@ -257,17 +283,21 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => setViewingId(t.id)}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-violet-100 hover:text-violet-600 dark:hover:bg-violet-950 dark:hover:text-violet-400 transition-colors"
                           title="Edit transcript"
                         >
                           <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => handleReprocess(t.id)}
-                          disabled={reprocessingId === t.id || getProcessingStatus(t) === 'processing'}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-950 dark:hover:text-blue-400 disabled:opacity-50 transition-colors"
+                          disabled={
+                            reprocessingId === t.id || getProcessingStatus(t) === 'processing'
+                          }
                           title="Re-process transcript"
                         >
                           {reprocessingId === t.id ? (
@@ -275,19 +305,20 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
                           ) : (
                             <RotateCcw className="h-4 w-4" />
                           )}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => handleDelete(t.id)}
                           disabled={deletingId === t.id}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400 disabled:opacity-50 transition-colors"
                           title="Delete transcript"
                         >
                           {deletingId === t.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4 text-red-400" />
                           )}
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -299,17 +330,10 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
       )}
 
       {showAddModal && (
-        <TranscriptPasteModal
-          onClose={() => setShowAddModal(false)}
-          onSuccess={fetchTranscripts}
-        />
+        <TranscriptPasteModal onClose={() => setShowAddModal(false)} onSuccess={fetchTranscripts} />
       )}
 
-      {showConnectGuide && (
-        <ConnectRecorderGuide
-          onClose={() => setShowConnectGuide(false)}
-        />
-      )}
+      {showConnectGuide && <ConnectRecorderGuide onClose={() => setShowConnectGuide(false)} />}
 
       {viewingId && (
         <TranscriptViewerModal

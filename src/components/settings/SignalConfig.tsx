@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Plus, X, Save, CheckCircle, Settings2 } from 'lucide-react';
+import { Button, Input, Label, Switch } from '@magnetlab/magnetui';
 import * as signalsApi from '@/frontend/api/signals';
 
 interface SignalConfigData {
@@ -78,23 +79,18 @@ function TagInput({
         ))}
       </div>
       <div className="flex gap-2">
-        <input
+        <Input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="flex-1 rounded-md border bg-transparent px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          className="flex-1"
         />
-        <button
-          type="button"
-          onClick={handleAddClick}
-          disabled={!inputValue.trim()}
-          className="flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted disabled:opacity-50 transition-colors"
-        >
+        <Button variant="outline" size="sm" onClick={handleAddClick} disabled={!inputValue.trim()}>
           <Plus className="h-3 w-3" />
           Add
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -117,21 +113,7 @@ function ToggleSwitch({
         <p className="text-sm font-medium">{label}</p>
         {description && <p className="text-xs text-muted-foreground">{description}</p>}
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-          checked ? 'bg-primary' : 'bg-muted-foreground/30'
-        }`}
-      >
-        <span
-          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-            checked ? 'translate-x-[18px]' : 'translate-x-[3px]'
-          }`}
-        />
-      </button>
+      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }
@@ -264,8 +246,8 @@ export function SignalConfig() {
 
           {/* Text Input */}
           <div>
-            <label className="block text-sm font-medium mb-1">Default HeyReach Campaign ID</label>
-            <input
+            <Label>Default HeyReach Campaign ID</Label>
+            <Input
               type="text"
               value={config.default_heyreach_campaign_id}
               onChange={(e) =>
@@ -275,7 +257,7 @@ export function SignalConfig() {
                 }))
               }
               placeholder="Campaign ID for auto-push"
-              className="w-full rounded-md border bg-transparent px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="mt-1"
             />
           </div>
 
@@ -307,14 +289,10 @@ export function SignalConfig() {
 
           {/* Save Button */}
           <div className="pt-2">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
+            <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Configuration
-            </button>
+            </Button>
           </div>
 
           {saved && (

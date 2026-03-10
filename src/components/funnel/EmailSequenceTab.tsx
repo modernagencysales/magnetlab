@@ -14,6 +14,7 @@ import {
   ChevronUp,
   Clock,
 } from 'lucide-react';
+import { Button, Input, Textarea, Label } from '@magnetlab/magnetui';
 import type { Email, EmailSequence } from '@/lib/types/email';
 
 import { logError } from '@/lib/utils/logger';
@@ -79,51 +80,37 @@ function EmailCard({
           {isEditing ? (
             <>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Subject</label>
-                <input
+                <Label>Subject</Label>
+                <Input
                   type="text"
                   value={editedEmail?.subject || ''}
-                  onChange={(e) =>
-                    setEditedEmail({ ...editedEmail!, subject: e.target.value })
-                  }
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  onChange={(e) => setEditedEmail({ ...editedEmail!, subject: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email Body</label>
-                <textarea
+                <Label>Email Body</Label>
+                <Textarea
                   value={editedEmail?.body || ''}
-                  onChange={(e) =>
-                    setEditedEmail({ ...editedEmail!, body: e.target.value })
-                  }
+                  onChange={(e) => setEditedEmail({ ...editedEmail!, body: e.target.value })}
                   rows={10}
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm font-mono focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-y"
+                  className="font-mono resize-y"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Reply Trigger</label>
-                <input
+                <Label>Reply Trigger</Label>
+                <Input
                   type="text"
                   value={editedEmail?.replyTrigger || ''}
                   onChange={(e) =>
                     setEditedEmail({ ...editedEmail!, replyTrigger: e.target.value })
                   }
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                 />
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={onSaveEdit}
-                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  Save Changes
-                </button>
-                <button
-                  onClick={onCancelEdit}
-                  className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-                >
+                <Button onClick={onSaveEdit}>Save Changes</Button>
+                <Button variant="outline" onClick={onCancelEdit}>
                   Cancel
-                </button>
+                </Button>
               </div>
             </>
           ) : (
@@ -137,13 +124,10 @@ function EmailCard({
                 <p className="text-xs text-muted-foreground">
                   <span className="font-medium">Reply trigger:</span> {email.replyTrigger}
                 </p>
-                <button
-                  onClick={onEdit}
-                  className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors"
-                >
-                  <Edit2 className="h-4 w-4" />
+                <Button variant="ghost" size="sm" onClick={onEdit}>
+                  <Edit2 className="h-4 w-4 mr-1" />
                   Edit
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -223,7 +207,10 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
     try {
       const data = await emailSequenceApi.activateEmailSequence(leadMagnetId);
       setSequence(data.emailSequence as EmailSequence);
-      setSuccess((data as { message?: string }).message || 'Email sequence activated! New leads will receive it automatically.');
+      setSuccess(
+        (data as { message?: string }).message ||
+          'Email sequence activated! New leads will receive it automatically.'
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to activate email sequence');
     } finally {
@@ -264,7 +251,9 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
     updatedEmails[editingEmail] = editedEmail;
 
     try {
-      const data = await emailSequenceApi.updateEmailSequence(leadMagnetId, { emails: updatedEmails });
+      const data = await emailSequenceApi.updateEmailSequence(leadMagnetId, {
+        emails: updatedEmails,
+      });
       setSequence(data.emailSequence as EmailSequence);
       setEditingEmail(null);
       setEditedEmail(null);
@@ -310,8 +299,8 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
                 sequence.status === 'active'
                   ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                   : sequence.status === 'synced'
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                  : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
               }`}
             >
               {sequence.status === 'active' && <CheckCircle className="h-3 w-3" />}
@@ -342,9 +331,7 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
         <div className="text-center py-12 border-2 border-primary/30 rounded-lg bg-primary/5">
           <Loader2 className="h-10 w-10 mx-auto text-primary animate-spin mb-4" />
           <h4 className="font-medium mb-2">Generating Your Email Sequence</h4>
-          <p className="text-sm text-muted-foreground animate-pulse">
-            {generatingMessage}
-          </p>
+          <p className="text-sm text-muted-foreground animate-pulse">{generatingMessage}</p>
         </div>
       )}
 
@@ -354,16 +341,13 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
           <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h4 className="font-medium mb-2">No Email Sequence Yet</h4>
           <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-            Generate a 5-email welcome sequence that will be sent to leads after they opt in.
-            The sequence is personalized based on your lead magnet and brand kit.
+            Generate a 5-email welcome sequence that will be sent to leads after they opt in. The
+            sequence is personalized based on your lead magnet and brand kit.
           </p>
-          <button
-            onClick={handleGenerate}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <Sparkles className="h-4 w-4" />
+          <Button onClick={handleGenerate}>
+            <Sparkles className="h-4 w-4 mr-2" />
             Generate Email Sequence
-          </button>
+          </Button>
         </div>
       )}
 
@@ -391,48 +375,41 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
       {/* Action buttons */}
       {!generating && sequence && (
         <div className="flex items-center gap-3 pt-4 border-t">
-          <button
-            onClick={handleGenerate}
-            disabled={generating}
-            className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
-          >
+          <Button variant="outline" onClick={handleGenerate} disabled={generating}>
             {generating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
-              <Sparkles className="h-4 w-4" />
+              <Sparkles className="h-4 w-4 mr-2" />
             )}
             Regenerate
-          </button>
+          </Button>
 
           {sequence.status !== 'active' && (
-            <button
-              onClick={handleActivate}
-              disabled={activating}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
+            <Button onClick={handleActivate} disabled={activating}>
               {activating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
-                <PlayCircle className="h-4 w-4" />
+                <PlayCircle className="h-4 w-4 mr-2" />
               )}
               Activate Sequence
-            </button>
+            </Button>
           )}
 
           {sequence.status === 'active' && (
             <>
-              <button
+              <Button
+                variant="outline"
                 onClick={handleDeactivate}
                 disabled={activating}
-                className="flex items-center gap-2 rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-2 text-sm font-medium text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 disabled:opacity-50 transition-colors"
+                className="border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30"
               >
                 {activating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
-                  <PauseCircle className="h-4 w-4" />
+                  <PauseCircle className="h-4 w-4 mr-2" />
                 )}
                 Pause Emails
-              </button>
+              </Button>
               <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
                 <CheckCircle className="h-4 w-4" />
                 Active - new leads will receive this sequence

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Palette, Sun, Moon, X, Link as LinkIcon, RefreshCw, Loader2 } from 'lucide-react';
+import { Button, Input } from '@magnetlab/magnetui';
 import type { FunnelTheme, BackgroundStyle } from '@/lib/types/funnel';
 import * as funnelApi from '@/frontend/api/funnel';
 
@@ -155,12 +156,12 @@ export function ThemeEditor({
               onChange={(e) => setPrimaryColor(e.target.value)}
               className="w-10 h-10 rounded cursor-pointer border-0"
             />
-            <input
+            <Input
               type="text"
               value={primaryColor}
               onChange={(e) => setPrimaryColor(e.target.value)}
               placeholder="#8b5cf6"
-              className="w-24 rounded-lg border bg-background px-3 py-2 text-sm font-mono"
+              className="w-24 font-mono"
             />
           </div>
         </div>
@@ -209,22 +210,18 @@ export function ThemeEditor({
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
             <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
+            <Input
               type="url"
               value={logoUrl || ''}
               onChange={(e) => setLogoUrl(e.target.value || null)}
               placeholder="https://example.com/logo.png"
-              className="w-full rounded-lg border bg-background pl-10 pr-4 py-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+              className="pl-10"
             />
           </div>
           {logoUrl && (
-            <button
-              type="button"
-              onClick={() => setLogoUrl(null)}
-              className="rounded-lg p-2.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
+            <Button variant="ghost" size="icon-sm" onClick={() => setLogoUrl(null)}>
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           )}
         </div>
 
@@ -252,11 +249,11 @@ export function ThemeEditor({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="block text-sm font-medium">Brand Kit</label>
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleReapplyBrandKit}
               disabled={applyingBrand}
-              className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-secondary disabled:opacity-50"
             >
               {applyingBrand ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -264,7 +261,7 @@ export function ThemeEditor({
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
               Re-apply brand kit
-            </button>
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
             Overwrite this funnel&apos;s theme, colors, fonts, and logo with your current brand kit

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Loader2, MessageCircle, Send, Lightbulb, Quote } from 'lucide-react';
+import { Button, Textarea } from '@magnetlab/magnetui';
 import type {
   LeadMagnetConcept,
   ContentExtractionQuestion,
@@ -251,13 +252,10 @@ export function ExtractionStep({
             valuable content.
           </p>
         </div>
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
+        <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </Button>
       </div>
 
       {/* Progress indicator */}
@@ -396,13 +394,13 @@ export function ExtractionStep({
                 </div>
               )}
 
-              <textarea
+              <Textarea
                 value={answers[question.id] || ''}
                 onChange={(e) => setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))}
                 placeholder={isActive ? 'Type your answer here...' : ''}
                 rows={isActive ? 4 : 2}
                 disabled={!isActive}
-                className="w-full resize-none rounded-lg border bg-background px-4 py-3 disabled:opacity-50"
+                className="resize-none"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && e.metaKey) {
                     handleAnswerSubmit();
@@ -415,14 +413,14 @@ export function ExtractionStep({
                   <span className="text-xs text-muted-foreground">
                     {question.required ? 'Required' : 'Optional'} · Press Cmd+Enter to continue
                   </span>
-                  <button
+                  <Button
                     onClick={handleAnswerSubmit}
                     disabled={!answers[question.id]?.trim()}
-                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                    size="sm"
                   >
                     {index < questions.length - 1 ? 'Next' : 'Done'}
                     <Send className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -432,10 +430,10 @@ export function ExtractionStep({
 
       {/* Completion button */}
       {isComplete && (
-        <button
+        <Button
           onClick={handleComplete}
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground disabled:opacity-50"
+          className="w-full py-4 text-lg font-semibold"
         >
           {loading ? (
             <>
@@ -448,7 +446,7 @@ export function ExtractionStep({
               Generate Lead Magnet Content
             </>
           )}
-        </button>
+        </Button>
       )}
     </div>
   );

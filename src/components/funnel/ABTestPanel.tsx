@@ -13,6 +13,7 @@ import {
   X,
   Check,
 } from 'lucide-react';
+import { Button, Badge, Input } from '@magnetlab/magnetui';
 import * as abExperimentsApi from '@/frontend/api/ab-experiments';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -372,41 +373,42 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
           </div>
         )}
 
-        <button
+        <Button
           onClick={() => {
             setCreating(true);
             setError(null);
           }}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           New A/B Test
-        </button>
+        </Button>
 
         {/* History of completed tests */}
         {completedExperiments.length > 0 && (
           <div className="border-t pt-4">
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setHistoryOpen(!historyOpen)}
-              className="flex w-full items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="flex w-full items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground"
             >
               <span>History ({completedExperiments.length})</span>
               <ChevronDown
                 className={`h-4 w-4 transition-transform ${historyOpen ? 'rotate-180' : ''}`}
               />
-            </button>
+            </Button>
             {historyOpen && (
               <div className="mt-3 space-y-2">
                 {completedExperiments.map((exp) => (
-                  <button
+                  <Button
                     key={exp.id}
+                    variant="ghost"
                     onClick={() => handleViewCompleted(exp)}
-                    className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                    className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted/50 h-auto"
                   >
                     <span className="font-medium">{exp.name}</span>
                     <span className="text-xs text-muted-foreground">
                       {exp.completed_at ? formatDate(exp.completed_at) : formatDate(exp.created_at)}
                     </span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -426,17 +428,18 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
             <FlaskConical className="h-5 w-5 text-primary" />
             <h3 className="text-lg font-semibold">New A/B Test</h3>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => {
               setCreating(false);
               setSelectedField(null);
               setSuggestions([]);
               setError(null);
             }}
-            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         {error && (
@@ -495,7 +498,9 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium">{suggestion.label}</span>
                   {editingIdx !== idx && (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditingIdx(idx);
@@ -506,17 +511,17 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                         setSelectedSuggestionIdx(idx);
                         setUseCustom(false);
                       }}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                      className="text-xs text-muted-foreground hover:text-foreground"
                     >
                       <Pencil className="h-3 w-3" />
                       Edit
-                    </button>
+                    </Button>
                   )}
                 </div>
 
                 {editingIdx === idx ? (
                   <div className="flex items-center gap-2 mb-1">
-                    <input
+                    <Input
                       type="text"
                       value={editValues[idx] ?? suggestion.value ?? ''}
                       onChange={(e) => {
@@ -524,17 +529,19 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                         setEditValues((prev) => ({ ...prev, [idx]: e.target.value }));
                       }}
                       onClick={(e) => e.stopPropagation()}
-                      className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                      className="flex-1"
                     />
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditingIdx(null);
                       }}
-                      className="text-green-600 hover:text-green-700 transition-colors"
+                      className="text-green-600 hover:text-green-700"
                     >
                       <Check className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <p className="text-sm">
@@ -563,7 +570,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
               }`}
             >
               <p className="text-sm font-medium mb-2">Custom</p>
-              <input
+              <Input
                 type="text"
                 value={customValue}
                 onChange={(e) => setCustomValue(e.target.value)}
@@ -573,31 +580,29 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                   setSelectedSuggestionIdx(null);
                 }}
                 placeholder="Enter your own variant value..."
-                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               />
             </div>
 
             {/* Actions */}
             <div className="flex items-center gap-3 pt-2">
-              <button
+              <Button
                 onClick={handleLaunch}
                 disabled={launching || (!useCustom && selectedSuggestionIdx === null)}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {launching && <Loader2 className="h-4 w-4 animate-spin" />}
                 Launch Test
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => {
                   setCreating(false);
                   setSelectedField(null);
                   setSuggestions([]);
                   setError(null);
                 }}
-                className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -627,21 +632,12 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
               <h3 className="text-lg font-semibold">{activeExperiment.name}</h3>
               <div className="flex items-center gap-2 mt-0.5">
                 {isRunning && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <Badge variant="green" className="animate-pulse">
                     Running
-                  </span>
+                  </Badge>
                 )}
-                {isPaused && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600">
-                    Paused
-                  </span>
-                )}
-                {isDone && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600">
-                    Completed
-                  </span>
-                )}
+                {isPaused && <Badge variant="orange">Paused</Badge>}
+                {isDone && <Badge variant="blue">Completed</Badge>}
               </div>
             </div>
           </div>
@@ -672,10 +668,10 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">{variant.label}</span>
                   {isWinner && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
-                      <Trophy className="h-3 w-3" />
+                    <Badge variant="green">
+                      <Trophy className="h-3 w-3 mr-1" />
                       Winner
-                    </span>
+                    </Badge>
                   )}
                 </div>
 
@@ -731,42 +727,39 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
         <div className="flex items-center gap-2 flex-wrap">
           {isRunning && (
             <>
-              <button
-                onClick={handlePause}
-                disabled={actionLoading}
-                className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
-              >
+              <Button variant="outline" onClick={handlePause} disabled={actionLoading}>
                 {actionLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Pause className="h-4 w-4" />
                 )}
                 Pause Test
-              </button>
+              </Button>
 
               {/* Declare winner dropdown */}
               <div className="relative">
-                <button
+                <Button
+                  variant="outline"
                   onClick={() => setDeclareOpen(!declareOpen)}
                   disabled={actionLoading}
-                  className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
                 >
                   <Trophy className="h-4 w-4" />
                   Declare Winner
                   <ChevronDown
                     className={`h-3 w-3 transition-transform ${declareOpen ? 'rotate-180' : ''}`}
                   />
-                </button>
+                </Button>
                 {declareOpen && (
                   <div className="absolute top-full left-0 mt-1 z-10 w-48 rounded-lg border bg-card shadow-lg">
                     {variants.map((v) => (
-                      <button
+                      <Button
                         key={v.funnelPageId}
+                        variant="ghost"
                         onClick={() => handleDeclareWinner(v.funnelPageId)}
-                        className="block w-full px-4 py-2 text-left text-sm hover:bg-muted transition-colors first:rounded-t-lg last:rounded-b-lg"
+                        className="block w-full text-left text-sm first:rounded-t-lg last:rounded-b-lg rounded-none h-auto py-2"
                       >
                         {v.label} ({v.completionRate}%)
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -776,70 +769,68 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
 
           {isPaused && (
             <>
-              <button
-                onClick={handleResume}
-                disabled={actionLoading}
-                className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
+              <Button onClick={handleResume} disabled={actionLoading}>
                 {actionLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Play className="h-4 w-4" />
                 )}
                 Resume Test
-              </button>
+              </Button>
 
-              <button
+              <Button
+                variant="outline"
                 onClick={handleDelete}
                 disabled={actionLoading}
-                className="rounded-lg border border-red-200 dark:border-red-800 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
               >
                 Delete
-              </button>
+              </Button>
             </>
           )}
 
           {isDone && (
-            <button
+            <Button
               onClick={() => {
                 setActiveExperiment(null);
                 setVariants([]);
                 setCreating(true);
                 setError(null);
               }}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Plus className="h-4 w-4" />
               Run Another Test
-            </button>
+            </Button>
           )}
         </div>
 
         {/* History (completed experiments) */}
         {completedExperiments.length > 0 && !isDone && (
           <div className="border-t pt-4">
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setHistoryOpen(!historyOpen)}
-              className="flex w-full items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="flex w-full items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground"
             >
               <span>History ({completedExperiments.length})</span>
               <ChevronDown
                 className={`h-4 w-4 transition-transform ${historyOpen ? 'rotate-180' : ''}`}
               />
-            </button>
+            </Button>
             {historyOpen && (
               <div className="mt-3 space-y-2">
                 {completedExperiments.map((exp) => (
-                  <button
+                  <Button
                     key={exp.id}
+                    variant="ghost"
                     onClick={() => handleViewCompleted(exp)}
-                    className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                    className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted/50 h-auto"
                   >
                     <span className="font-medium">{exp.name}</span>
                     <span className="text-xs text-muted-foreground">
                       {exp.completed_at ? formatDate(exp.completed_at) : formatDate(exp.created_at)}
                     </span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -849,24 +840,26 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
         {/* History for completed view with multiple completed experiments */}
         {isDone && completedExperiments.length > 1 && (
           <div className="border-t pt-4">
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setHistoryOpen(!historyOpen)}
-              className="flex w-full items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="flex w-full items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground"
             >
               <span>History ({completedExperiments.length})</span>
               <ChevronDown
                 className={`h-4 w-4 transition-transform ${historyOpen ? 'rotate-180' : ''}`}
               />
-            </button>
+            </Button>
             {historyOpen && (
               <div className="mt-3 space-y-2">
                 {completedExperiments
                   .filter((exp) => exp.id !== activeExperiment.id)
                   .map((exp) => (
-                    <button
+                    <Button
                       key={exp.id}
+                      variant="ghost"
                       onClick={() => handleViewCompleted(exp)}
-                      className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                      className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted/50 h-auto"
                     >
                       <span className="font-medium">{exp.name}</span>
                       <span className="text-xs text-muted-foreground">
@@ -874,7 +867,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                           ? formatDate(exp.completed_at)
                           : formatDate(exp.created_at)}
                       </span>
-                    </button>
+                    </Button>
                   ))}
               </div>
             )}

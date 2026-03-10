@@ -4,15 +4,24 @@ import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Mic, Brain, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ProfileSwitcher, useProfileSelection } from '@/components/content-pipeline/ProfileSwitcher';
+import { PageContainer, PageTitle, Button } from '@magnetlab/magnetui';
+import {
+  ProfileSwitcher,
+  useProfileSelection,
+} from '@/components/content-pipeline/ProfileSwitcher';
 
 const TranscriptsTab = dynamic(
-  () => import('@/components/content-pipeline/TranscriptsTab').then((m) => ({ default: m.TranscriptsTab })),
+  () =>
+    import('@/components/content-pipeline/TranscriptsTab').then((m) => ({
+      default: m.TranscriptsTab,
+    })),
   { ssr: false }
 );
 const KnowledgeBrainTab = dynamic(
-  () => import('@/components/content-pipeline/KnowledgeBrainTab').then((m) => ({ default: m.KnowledgeBrainTab })),
+  () =>
+    import('@/components/content-pipeline/KnowledgeBrainTab').then((m) => ({
+      default: m.KnowledgeBrainTab,
+    })),
   { ssr: false }
 );
 
@@ -74,37 +83,30 @@ export function KnowledgeContent() {
   }
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
-      {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold">Knowledge</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Import transcripts and build your AI knowledge base
-          </p>
-        </div>
-        <ProfileSwitcher
-          selectedProfileId={selectedProfileId}
-          onProfileChange={onProfileChange}
-        />
-      </div>
+    <PageContainer maxWidth="xl">
+      <PageTitle
+        title="Knowledge"
+        description="Import transcripts and build your AI knowledge base"
+        actions={
+          <ProfileSwitcher
+            selectedProfileId={selectedProfileId}
+            onProfileChange={onProfileChange}
+          />
+        }
+      />
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-2 overflow-x-auto">
+      <div className="flex gap-1.5 overflow-x-auto">
         {TABS.map((tab) => (
-          <button
+          <Button
             key={tab.id}
+            variant={activeTab === tab.id ? 'default' : 'outline'}
+            size="sm"
             onClick={() => handleTabChange(tab.id)}
-            className={cn(
-              'flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-              activeTab === tab.id
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary hover:bg-secondary/80'
-            )}
           >
-            <tab.icon className="h-4 w-4" />
+            <tab.icon className="h-3.5 w-3.5 mr-1.5" />
             {tab.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -119,6 +121,6 @@ export function KnowledgeContent() {
           </>
         )}
       </Suspense>
-    </div>
+    </PageContainer>
   );
 }

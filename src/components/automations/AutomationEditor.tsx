@@ -2,18 +2,19 @@
 
 import { useState, useEffect, useCallback, KeyboardEvent } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
+  Button,
+  Input,
+  Label,
+  Badge,
+  Textarea,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@magnetlab/magnetui';
 import type { Automation } from './AutomationList';
 import * as automationsApi from '@/frontend/api/linkedin/automations';
 import * as postsApi from '@/frontend/api/content-pipeline/posts';
@@ -286,7 +287,7 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
             {keywords.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {keywords.map((kw) => (
-                  <Badge key={kw} variant="secondary" className="gap-1 pr-1">
+                  <Badge key={kw} variant="gray" className="gap-1 pr-1">
                     {kw}
                     <button
                       type="button"
@@ -348,13 +349,13 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
           {/* Comment Reply Template */}
           <div className="space-y-2">
             <Label htmlFor="automation-comment-reply">Comment Reply Template (optional)</Label>
-            <textarea
+            <Textarea
               id="automation-comment-reply"
               value={commentReplyTemplate}
               onChange={(e) => setCommentReplyTemplate(e.target.value)}
               placeholder="Thanks for the comment! Just sent you a DM with more details."
               rows={2}
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
               Publicly reply to the comment before sending the DM.

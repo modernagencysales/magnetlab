@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
@@ -47,6 +46,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  Button,
 } from '@magnetlab/magnetui';
 import { cn } from '@/lib/utils';
 
@@ -183,14 +186,16 @@ function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="icon-sm"
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       title="Toggle theme"
       aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
     >
       {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
-    </button>
+    </Button>
   );
 }
 
@@ -327,40 +332,32 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center gap-3 px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-              {/* Avatar */}
-              {user.image ? (
-                <Image
-                  src={user.image}
-                  alt={displayLabel}
-                  width={32}
-                  height={32}
-                  className="size-8 shrink-0 rounded-lg"
-                />
-              ) : (
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-medium text-primary-foreground">
-                  {initials}
-                </div>
-              )}
+              <Avatar size="sm">
+                {user.image && <AvatarImage src={user.image} alt={displayLabel} />}
+                <AvatarFallback name={displayLabel}>{initials}</AvatarFallback>
+              </Avatar>
 
-              {/* Name + actions (hidden when collapsed) */}
               <div className="flex min-w-0 flex-1 items-center justify-between gap-2 group-data-[collapsible=icon]:hidden">
                 <span className="truncate text-sm font-medium text-sidebar-foreground">
                   {displayLabel}
                 </span>
                 <div className="flex items-center gap-0.5">
                   <ThemeToggle />
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => {
-                      try { posthog.reset(); } catch {}
+                      try {
+                        posthog.reset();
+                      } catch {}
                       signOut({ callbackUrl: '/login' });
                     }}
-                    className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    className="text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive"
                     title="Sign out"
                     aria-label="Sign out"
                   >
                     <LogOut className="size-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

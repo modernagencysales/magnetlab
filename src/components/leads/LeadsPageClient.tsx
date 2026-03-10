@@ -6,9 +6,7 @@ import * as funnelApi from '@/frontend/api/funnel';
 import * as leadsApi from '@/frontend/api/leads';
 
 import {
-  Users,
   Download,
-  Search,
   Filter,
   CheckCircle,
   XCircle,
@@ -17,6 +15,25 @@ import {
   Loader2,
   Mail,
 } from 'lucide-react';
+import {
+  PageContainer,
+  PageTitle,
+  Button,
+  StatCard,
+  SearchInput,
+  EmptyState,
+  Badge,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Card,
+  CardContent,
+  LoadingCard,
+} from '@magnetlab/magnetui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@magnetlab/magnetui';
 
 interface Lead {
   id: string;
@@ -166,243 +183,219 @@ export function LeadsPageClient({
   );
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <Users className="h-6 w-6" />
-            Leads
-          </h1>
-          <p className="text-muted-foreground">{total} total leads captured</p>
-        </div>
-        <button
-          onClick={handleExport}
-          disabled={exporting || leads.length === 0}
-          className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-        >
-          {exporting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
-          Export CSV
-        </button>
-      </div>
+    <PageContainer maxWidth="xl">
+      <PageTitle
+        title="Leads"
+        description={`${total} total leads captured`}
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={exporting || leads.length === 0}
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <Download className="h-4 w-4 mr-1" />
+            )}
+            Export CSV
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex items-center gap-2 text-green-600">
-            <CheckCircle className="h-5 w-5" />
-            <span className="text-sm font-medium">Qualified</span>
-          </div>
-          <p className="mt-2 text-2xl font-semibold">{qualifiedCount}</p>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex items-center gap-2 text-red-600">
-            <XCircle className="h-5 w-5" />
-            <span className="text-sm font-medium">Not Qualified</span>
-          </div>
-          <p className="mt-2 text-2xl font-semibold">{unqualifiedCount}</p>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex items-center gap-2 text-yellow-600">
-            <Clock className="h-5 w-5" />
-            <span className="text-sm font-medium">Pending</span>
-          </div>
-          <p className="mt-2 text-2xl font-semibold">{pendingCount}</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <StatCard
+          label="Qualified"
+          value={qualifiedCount}
+          icon={<CheckCircle className="text-emerald-500" />}
+        />
+        <StatCard
+          label="Not Qualified"
+          value={unqualifiedCount}
+          icon={<XCircle className="text-red-500" />}
+        />
+        <StatCard
+          label="Pending"
+          value={pendingCount}
+          icon={<Clock className="text-amber-500" />}
+        />
       </div>
 
       {/* Search & Filters */}
-      <div className="mb-6 space-y-4">
-        <div className="flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by email or name..."
-              className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm ${
+      <div className="space-y-3">
+        <div className="flex gap-3">
+          <SearchInput
+            placeholder="Search by email or name..."
+            value={search}
+            onValueChange={setSearch}
+            className="flex-1"
+          />
+          <Button
+            variant={
               showFilters || selectedFunnel !== 'all' || qualifiedFilter !== 'all'
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border hover:bg-muted'
-            }`}
+                ? 'default'
+                : 'outline'
+            }
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="h-4 w-4 mr-1" />
             Filters
             <ChevronDown
-              className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+              className={`h-3.5 w-3.5 ml-1 transition-transform ${showFilters ? 'rotate-180' : ''}`}
             />
-          </button>
+          </Button>
         </div>
 
         {showFilters && (
-          <div className="flex gap-4 rounded-lg border bg-muted/30 p-4">
-            <div className="flex-1">
-              <label className="text-xs font-medium text-muted-foreground">Funnel</label>
-              <select
-                value={selectedFunnel}
-                onChange={(e) => {
-                  setSelectedFunnel(e.target.value);
-                  setPage(0);
-                }}
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              >
-                <option value="all">All Funnels</option>
-                {funnels.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.optinHeadline || f.slug}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="text-xs font-medium text-muted-foreground">Qualification</label>
-              <select
-                value={qualifiedFilter}
-                onChange={(e) => {
-                  setQualifiedFilter(e.target.value);
-                  setPage(0);
-                }}
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              >
-                <option value="all">All Leads</option>
-                <option value="true">Qualified Only</option>
-                <option value="false">Not Qualified</option>
-              </select>
-            </div>
-          </div>
+          <Card>
+            <CardContent className="flex gap-4 p-3">
+              <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground">Funnel</label>
+                <select
+                  value={selectedFunnel}
+                  onChange={(e) => {
+                    setSelectedFunnel(e.target.value);
+                    setPage(0);
+                  }}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                >
+                  <option value="all">All Funnels</option>
+                  {funnels.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.optinHeadline || f.slug}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground">Qualification</label>
+                <select
+                  value={qualifiedFilter}
+                  onChange={(e) => {
+                    setQualifiedFilter(e.target.value);
+                    setPage(0);
+                  }}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                >
+                  <option value="all">All Leads</option>
+                  <option value="true">Qualified Only</option>
+                  <option value="false">Not Qualified</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
+          <p className="text-xs text-red-800 dark:text-red-200">{error}</p>
         </div>
       )}
 
       {/* Leads Table */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <LoadingCard count={3} />
       ) : leads.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <Mail className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-medium">No leads yet</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Leads will appear here once people sign up through your funnel pages.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Mail />}
+          title="No leads yet"
+          description="Leads will appear here once people sign up through your funnel pages."
+        />
       ) : (
         <>
-          <div className="rounded-lg border overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Funnel
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Source
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Funnel</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {leads.map((lead) => (
-                  <tr
+                  <TableRow
                     key={lead.id}
-                    className="hover:bg-muted/30 cursor-pointer"
+                    className="cursor-pointer"
                     onClick={() => setSelectedLead(lead)}
                   >
-                    <td className="px-4 py-3">
+                    <TableCell>
                       <div>
-                        <p className="font-medium">{lead.email}</p>
-                        {lead.name && <p className="text-sm text-muted-foreground">{lead.name}</p>}
+                        <p className="text-sm font-medium">{lead.email}</p>
+                        {lead.name && <p className="text-xs text-muted-foreground">{lead.name}</p>}
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">
-                        <p className="truncate max-w-[200px]">
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="text-sm truncate max-w-[180px]">
                           {lead.leadMagnetTitle || 'Unknown'}
                         </p>
-                        <p className="text-muted-foreground">/{lead.funnelSlug}</p>
+                        <p className="text-xs text-muted-foreground">/{lead.funnelSlug}</p>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       {lead.isQualified === true && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
-                          <CheckCircle className="h-3 w-3" />
+                        <Badge variant="green">
+                          <CheckCircle className="h-3 w-3 mr-1" />
                           Qualified
-                        </span>
+                        </Badge>
                       )}
                       {lead.isQualified === false && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700 dark:bg-red-900 dark:text-red-300">
-                          <XCircle className="h-3 w-3" />
+                        <Badge variant="red">
+                          <XCircle className="h-3 w-3 mr-1" />
                           Not Qualified
-                        </span>
+                        </Badge>
                       )}
                       {lead.isQualified === null && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
-                          <Clock className="h-3 w-3" />
+                        <Badge variant="orange">
+                          <Clock className="h-3 w-3 mr-1" />
                           Pending
-                        </span>
+                        </Badge>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {lead.utmSource ? (
-                        <span className="text-sm">{lead.utmSource}</span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Direct</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
+                        {lead.utmSource || <span className="text-muted-foreground">Direct</span>}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
                       {new Date(lead.createdAt).toLocaleDateString()}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </Card>
 
           {/* Pagination */}
           {total > limit && (
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
                 Showing {page * limit + 1} to {Math.min((page + 1) * limit, total)} of {total}
               </p>
-              <div className="flex gap-2">
-                <button
+              <div className="flex gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
-                  className="rounded-lg border px-3 py-1 text-sm disabled:opacity-50"
                 >
                   Previous
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => p + 1)}
                   disabled={(page + 1) * limit >= total}
-                  className="rounded-lg border px-3 py-1 text-sm disabled:opacity-50"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -410,33 +403,21 @@ export function LeadsPageClient({
       )}
 
       {/* Lead Detail Modal */}
-      {selectedLead && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setSelectedLead(null)}
-        >
-          <div
-            className="w-full max-w-lg rounded-lg bg-background p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">{selectedLead.email}</h3>
-                {selectedLead.name && <p className="text-muted-foreground">{selectedLead.name}</p>}
-              </div>
-              <button
-                onClick={() => setSelectedLead(null)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                &times;
-              </button>
-            </div>
+      <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{selectedLead?.email}</DialogTitle>
+            {selectedLead?.name && (
+              <p className="text-sm text-muted-foreground">{selectedLead.name}</p>
+            )}
+          </DialogHeader>
 
+          {selectedLead && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Status</p>
-                  <p className="mt-1">
+                  <p className="mt-1 text-sm">
                     {selectedLead.isQualified === true && 'Qualified'}
                     {selectedLead.isQualified === false && 'Not Qualified'}
                     {selectedLead.isQualified === null && 'Pending'}
@@ -444,34 +425,30 @@ export function LeadsPageClient({
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Date</p>
-                  <p className="mt-1">{new Date(selectedLead.createdAt).toLocaleString()}</p>
+                  <p className="mt-1 text-sm">
+                    {new Date(selectedLead.createdAt).toLocaleString()}
+                  </p>
                 </div>
               </div>
 
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Funnel</p>
-                <p className="mt-1">{selectedLead.leadMagnetTitle || 'Unknown'}</p>
-                <p className="text-sm text-muted-foreground">/{selectedLead.funnelSlug}</p>
+                <p className="mt-1 text-sm">{selectedLead.leadMagnetTitle || 'Unknown'}</p>
+                <p className="text-xs text-muted-foreground">/{selectedLead.funnelSlug}</p>
               </div>
 
               {(selectedLead.utmSource || selectedLead.utmMedium || selectedLead.utmCampaign) && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">UTM Parameters</p>
-                  <div className="mt-1 flex flex-wrap gap-2">
+                  <div className="mt-1 flex flex-wrap gap-1.5">
                     {selectedLead.utmSource && (
-                      <span className="rounded bg-muted px-2 py-1 text-xs">
-                        source: {selectedLead.utmSource}
-                      </span>
+                      <Badge variant="gray">source: {selectedLead.utmSource}</Badge>
                     )}
                     {selectedLead.utmMedium && (
-                      <span className="rounded bg-muted px-2 py-1 text-xs">
-                        medium: {selectedLead.utmMedium}
-                      </span>
+                      <Badge variant="gray">medium: {selectedLead.utmMedium}</Badge>
                     )}
                     {selectedLead.utmCampaign && (
-                      <span className="rounded bg-muted px-2 py-1 text-xs">
-                        campaign: {selectedLead.utmCampaign}
-                      </span>
+                      <Badge variant="gray">campaign: {selectedLead.utmCampaign}</Badge>
                     )}
                   </div>
                 </div>
@@ -486,9 +463,9 @@ export function LeadsPageClient({
                     <div className="mt-2 space-y-2">
                       {Object.entries(selectedLead.qualificationAnswers).map(
                         ([question, answer]) => (
-                          <div key={question} className="rounded-lg bg-muted/50 p-3">
-                            <p className="text-sm">{question}</p>
-                            <p className="mt-1 font-medium capitalize">{answer}</p>
+                          <div key={question} className="rounded-md bg-muted/50 p-2.5">
+                            <p className="text-xs text-muted-foreground">{question}</p>
+                            <p className="mt-0.5 text-sm font-medium capitalize">{answer}</p>
                           </div>
                         )
                       )}
@@ -496,25 +473,21 @@ export function LeadsPageClient({
                   </div>
                 )}
 
-              <div className="flex gap-2 pt-4">
-                <a
-                  href={`mailto:${selectedLead.email}`}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                >
-                  <Mail className="h-4 w-4" />
-                  Send Email
-                </a>
-                <button
-                  onClick={() => setSelectedLead(null)}
-                  className="flex-1 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
-                >
+              <div className="flex gap-2 pt-2">
+                <Button asChild className="flex-1">
+                  <a href={`mailto:${selectedLead.email}`}>
+                    <Mail className="h-4 w-4 mr-1" />
+                    Send Email
+                  </a>
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={() => setSelectedLead(null)}>
                   Close
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </PageContainer>
   );
 }

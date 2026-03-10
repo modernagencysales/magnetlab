@@ -7,7 +7,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from '@/components/ui/chart';
+} from '@magnetlab/magnetui';
 import { Globe } from 'lucide-react';
 
 interface UTMBreakdownProps {
@@ -29,9 +29,7 @@ export function UTMBreakdown({ data }: UTMBreakdownProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <Globe className="h-10 w-10 text-muted-foreground/50" />
-        <p className="mt-3 text-sm font-medium text-muted-foreground">
-          No UTM data yet
-        </p>
+        <p className="mt-3 text-sm font-medium text-muted-foreground">No UTM data yet</p>
         <p className="mt-1 text-xs text-muted-foreground/70">
           Add UTM parameters to your funnel links to track traffic sources.
         </p>
@@ -41,11 +39,7 @@ export function UTMBreakdown({ data }: UTMBreakdownProps) {
 
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
-      <BarChart
-        data={data}
-        layout="vertical"
-        margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-      >
+      <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
         <XAxis type="number" tickLine={false} axisLine={false} allowDecimals={false} />
         <YAxis
           dataKey="source"
@@ -56,11 +50,7 @@ export function UTMBreakdown({ data }: UTMBreakdownProps) {
           tickMargin={8}
         />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar
-          dataKey="count"
-          fill="var(--color-count)"
-          radius={[0, 4, 4, 0]}
-        />
+        <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ChartContainer>
   );

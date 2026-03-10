@@ -1,7 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Brain, Search, Loader2, ChevronDown, ChevronRight, Sparkles, Plus, ArrowUpDown } from 'lucide-react';
+import {
+  Brain,
+  Search,
+  Loader2,
+  ChevronDown,
+  ChevronRight,
+  Sparkles,
+  Plus,
+  ArrowUpDown,
+} from 'lucide-react';
+import { Button, Input, Badge } from '@magnetlab/magnetui';
 import { cn } from '@/lib/utils';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
 import { ManualKnowledgeModal } from './ManualKnowledgeModal';
@@ -69,29 +79,40 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
     };
   }, []);
 
-  const fetchEntries = useCallback(async (searchQuery: string, cat: string, spk: string = '', tag: string = '', sortBy: SortOption = 'newest') => {
-    setLoading(true);
-    try {
-      const data = await knowledgeApi.listKnowledge({
-        q: searchQuery || undefined,
-        category: cat || undefined,
-        speaker: spk || undefined,
-        tag: tag || undefined,
-        sort: sortBy !== 'newest' ? sortBy : undefined,
-        team_id: teamId,
-      }) as { entries?: KnowledgeEntryResult[]; total_count?: number };
-      setEntries(data.entries || []);
-      setTotalCount(data.total_count || 0);
-    } catch {
-      // Silent failure
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId]);
+  const fetchEntries = useCallback(
+    async (
+      searchQuery: string,
+      cat: string,
+      spk: string = '',
+      tag: string = '',
+      sortBy: SortOption = 'newest'
+    ) => {
+      setLoading(true);
+      try {
+        const data = (await knowledgeApi.listKnowledge({
+          q: searchQuery || undefined,
+          category: cat || undefined,
+          speaker: spk || undefined,
+          tag: tag || undefined,
+          sort: sortBy !== 'newest' ? sortBy : undefined,
+          team_id: teamId,
+        })) as { entries?: KnowledgeEntryResult[]; total_count?: number };
+        setEntries(data.entries || []);
+        setTotalCount(data.total_count || 0);
+      } catch {
+        // Silent failure
+      } finally {
+        setLoading(false);
+      }
+    },
+    [teamId]
+  );
 
   const fetchTags = useCallback(async () => {
     try {
-      const data = await knowledgeApi.listKnowledge({ view: 'tags', team_id: teamId }) as { tags?: { tag_name: string; usage_count: number }[] };
+      const data = (await knowledgeApi.listKnowledge({ view: 'tags', team_id: teamId })) as {
+        tags?: { tag_name: string; usage_count: number }[];
+      };
       setTags(data.tags || []);
     } catch {
       // Silent failure
@@ -100,7 +121,9 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
 
   const fetchClusters = useCallback(async () => {
     try {
-      const data = await knowledgeApi.getClusters({ team_id: teamId }) as { clusters?: TagCluster[] };
+      const data = (await knowledgeApi.getClusters({ team_id: teamId })) as {
+        clusters?: TagCluster[];
+      };
       setClusters(data.clusters || []);
     } catch {
       // Silent failure
@@ -111,7 +134,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
     fetchEntries('', '', '', '', 'newest');
     fetchTags();
     fetchClusters();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchTags, fetchClusters]);
 
   const handleSearchChange = (value: string) => {
@@ -198,11 +221,11 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
+            <Input
               type="text"
               value={query}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background py-3 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full py-3 pl-10 pr-4 text-base"
               placeholder="Search your knowledge base..."
             />
           </div>
@@ -214,7 +237,9 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
               className="h-full appearance-none rounded-lg border border-border bg-background py-3 pl-10 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -280,7 +305,9 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
             {query ? 'No results found' : 'No knowledge entries yet'}
           </p>
           <p className="mt-1 text-sm text-muted-foreground/70">
-            {query ? 'Try a different search term' : 'Upload transcripts to build your knowledge base'}
+            {query
+              ? 'Try a different search term'
+              : 'Upload transcripts to build your knowledge base'}
           </p>
         </div>
       ) : (
@@ -289,19 +316,19 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
           {!query && tags.length > 0 && (
             <div className="mb-6">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold uppercase text-muted-foreground">Knowledge Topics</h3>
+                <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+                  Knowledge Topics
+                </h3>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowManualEntry(true)}
-                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-                  >
+                  <Button size="sm" onClick={() => setShowManualEntry(true)}>
                     <Plus className="h-3 w-3" />
                     Add Knowledge
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleOrganizeTags}
                     disabled={clustering || tags.length < 4}
-                    className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
                   >
                     {clustering ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -309,7 +336,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
                       <Sparkles className="h-3 w-3" />
                     )}
                     {clustering ? 'Organizing...' : 'Organize Tags'}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -329,9 +356,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
                             <ChevronRight className="h-4 w-4 text-muted-foreground" />
                           )}
                           <span className="text-sm font-medium">{cluster.name}</span>
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                            {cluster.tags.length}
-                          </span>
+                          <Badge variant="gray">{cluster.tags.length}</Badge>
                         </div>
                         {cluster.description && (
                           <span className="text-xs text-muted-foreground hidden sm:block">
@@ -348,7 +373,9 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
                               className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
                             >
                               {tag.tag_name}
-                              <span className="ml-1 text-muted-foreground/50">({tag.usage_count})</span>
+                              <span className="ml-1 text-muted-foreground/50">
+                                ({tag.usage_count})
+                              </span>
                             </button>
                           ))}
                         </div>
@@ -406,9 +433,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
                 key={entry.id}
                 entry={entry}
                 onUpdate={(id, updated) => {
-                  setEntries((prev) =>
-                    prev.map((e) => (e.id === id ? { ...e, ...updated } : e))
-                  );
+                  setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...updated } : e)));
                   fetchTags();
                 }}
                 onDelete={(id) => {

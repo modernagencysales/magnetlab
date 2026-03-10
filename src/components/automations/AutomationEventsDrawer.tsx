@@ -7,10 +7,10 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-} from '@/components/ui/sheet';
+  Button,
+  Badge,
+} from '@magnetlab/magnetui';
 import * as automationsApi from '@/frontend/api/linkedin/automations';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Loader2,
   MessageSquare,

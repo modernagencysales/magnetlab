@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils/index';
+import { Button } from '@magnetlab/magnetui';
 import { OptinPageEditor } from './OptinPageEditor';
 import { ThankyouPageEditor } from './ThankyouPageEditor';
 import { QuestionsManager } from './QuestionsManager';
@@ -134,27 +135,24 @@ export function FunnelBuilder({
         </div>
         <div className="flex items-center gap-3">
           {!funnel && isLeadMagnetTarget && (
-            <button
+            <Button
+              variant="outline"
               onClick={handleGenerateContent}
               disabled={generating}
-              className="flex items-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 disabled:opacity-50 transition-colors"
+              className="bg-primary/10 text-primary hover:bg-primary/20"
             >
               {generating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
               ) : (
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-4 w-4 mr-1.5" />
               )}
               Generate Copy with AI
-            </button>
+            </Button>
           )}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+          <Button onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
             {funnel ? 'Save Changes' : 'Create Funnel'}
-          </button>
+          </Button>
         </div>
       </div>
 

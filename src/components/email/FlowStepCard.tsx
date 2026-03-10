@@ -1,14 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  Loader2,
-  Trash2,
-  AlertCircle,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock, Loader2, Trash2, AlertCircle } from 'lucide-react';
+import { Button, Input, Textarea, Label } from '@magnetlab/magnetui';
 import type { EmailFlowStep } from '@/lib/types/email-system';
 import * as flowsApi from '@/frontend/api/email/flows';
 
@@ -87,7 +81,9 @@ export function FlowStepCard({
   };
 
   const delayLabel =
-    step.delay_days === 0 ? 'Immediate' : `After ${step.delay_days} day${step.delay_days !== 1 ? 's' : ''}`;
+    step.delay_days === 0
+      ? 'Immediate'
+      : `After ${step.delay_days} day${step.delay_days !== 1 ? 's' : ''}`;
 
   return (
     <div
@@ -107,9 +103,7 @@ export function FlowStepCard({
           </div>
           <div className="text-left min-w-0">
             <p className="font-medium truncate">
-              {step.subject || (
-                <span className="text-muted-foreground italic">No subject</span>
-              )}
+              {step.subject || <span className="text-muted-foreground italic">No subject</span>}
             </p>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" />
@@ -138,34 +132,31 @@ export function FlowStepCard({
             <>
               {/* Subject */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Subject</label>
-                <input
+                <Label>Subject</Label>
+                <Input
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="Enter email subject..."
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                 />
               </div>
 
               {/* Body */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email Body</label>
-                <textarea
+                <Label>Email Body</Label>
+                <Textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   placeholder="Write your email content..."
                   rows={8}
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm font-mono focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-y min-h-[200px]"
+                  className="font-mono resize-y min-h-[200px]"
                 />
               </div>
 
               {/* Delay days */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Days after previous step
-                </label>
-                <input
+                <Label>Days after previous step</Label>
+                <Input
                   type="number"
                   min={0}
                   max={365}
@@ -173,7 +164,7 @@ export function FlowStepCard({
                   onChange={(e) =>
                     setDelayDays(Math.max(0, Math.min(365, parseInt(e.target.value) || 0)))
                   }
-                  className="w-24 rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  className="w-24"
                 />
                 <p className="text-xs text-muted-foreground">
                   0 = send immediately. Otherwise, wait this many days after the previous email.
@@ -184,13 +175,8 @@ export function FlowStepCard({
               <div className="rounded-lg bg-muted/50 p-3">
                 <p className="text-xs text-muted-foreground">
                   Use{' '}
-                  <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                    {'{{first_name}}'}
-                  </code>{' '}
-                  and{' '}
-                  <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                    {'{{email}}'}
-                  </code>{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">{'{{first_name}}'}</code>{' '}
+                  and <code className="rounded bg-muted px-1 py-0.5 text-xs">{'{{email}}'}</code>{' '}
                   for personalization.
                 </p>
               </div>
@@ -198,61 +184,51 @@ export function FlowStepCard({
               {/* Action buttons */}
               <div className="flex items-center justify-between pt-2 border-t">
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleSave}
-                    disabled={saving || !hasChanges}
-                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  >
+                  <Button onClick={handleSave} disabled={saving || !hasChanges}>
                     {saving ? (
-                      <span className="flex items-center gap-2">
+                      <>
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Saving...
-                      </span>
+                      </>
                     ) : (
                       'Save'
                     )}
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    disabled={saving || !hasChanges}
-                    className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
-                  >
+                  </Button>
+                  <Button variant="outline" onClick={handleCancel} disabled={saving || !hasChanges}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
 
                 {confirmDelete ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      Are you sure?
-                    </span>
-                    <button
+                    <span className="text-xs text-muted-foreground">Are you sure?</span>
+                    <Button
+                      size="sm"
                       onClick={handleDelete}
                       disabled={deleting}
-                      className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                      className="bg-red-600 hover:bg-red-700 text-white"
                     >
-                      {deleting ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        'Delete'
-                      )}
-                    </button>
-                    <button
+                      {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Delete'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setConfirmDelete(false)}
                       disabled={deleting}
-                      className="rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
                     >
                       No
-                    </button>
+                    </Button>
                   </div>
                 ) : (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setConfirmDelete(true)}
-                    className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 transition-colors"
+                    className="text-red-500 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
-                  </button>
+                  </Button>
                 )}
               </div>
             </>
@@ -262,18 +238,14 @@ export function FlowStepCard({
               <div className="space-y-2">
                 <label className="text-sm font-medium">Subject</label>
                 <p className="text-sm bg-muted/50 p-3 rounded-lg">
-                  {step.subject || (
-                    <span className="text-muted-foreground italic">No subject</span>
-                  )}
+                  {step.subject || <span className="text-muted-foreground italic">No subject</span>}
                 </p>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Email Body</label>
                 <pre className="whitespace-pre-wrap font-sans text-sm bg-muted/50 p-4 rounded-lg">
-                  {step.body || (
-                    <span className="text-muted-foreground italic">No content</span>
-                  )}
+                  {step.body || <span className="text-muted-foreground italic">No content</span>}
                 </pre>
               </div>
 

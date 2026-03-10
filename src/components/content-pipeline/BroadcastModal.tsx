@@ -2,6 +2,16 @@
 
 import { useState } from 'react';
 import { X, Loader2, Radio, Check, Linkedin, AlertCircle } from 'lucide-react';
+import {
+  Button,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  Label,
+  Badge,
+} from '@magnetlab/magnetui';
 import { cn } from '@/lib/utils';
 import type { PipelinePost, TeamProfileWithConnection } from '@/lib/types/content-pipeline';
 import * as broadcastApi from '@/frontend/api/content-pipeline/broadcast';
@@ -73,13 +83,9 @@ export function BroadcastModal({ post, profiles, onClose, onBroadcast }: Broadca
             <Radio className="h-5 w-5 text-primary" />
             <h2 className="text-base font-semibold">Broadcast to Team</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 hover:bg-secondary transition-colors"
-            title="Close"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={onClose} title="Close">
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="space-y-5 px-5 py-4">
@@ -91,9 +97,7 @@ export function BroadcastModal({ post, profiles, onClose, onBroadcast }: Broadca
             <div className="rounded-lg border bg-muted/30 p-3">
               <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground/80">
                 {previewLines}
-                {isTruncated && (
-                  <span className="text-muted-foreground">...</span>
-                )}
+                {isTruncated && <span className="text-muted-foreground">...</span>}
               </p>
             </div>
           </div>
@@ -137,9 +141,7 @@ export function BroadcastModal({ post, profiles, onClose, onBroadcast }: Broadca
                     {/* Profile info */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {profile.full_name}
-                        </span>
+                        <span className="truncate text-sm font-medium">{profile.full_name}</span>
                         {isSource && (
                           <span className="flex-shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                             Source
@@ -147,24 +149,22 @@ export function BroadcastModal({ post, profiles, onClose, onBroadcast }: Broadca
                         )}
                       </div>
                       {profile.title && (
-                        <p className="truncate text-xs text-muted-foreground">
-                          {profile.title}
-                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{profile.title}</p>
                       )}
                     </div>
 
                     {/* LinkedIn connection badge */}
                     <div className="flex-shrink-0">
                       {profile.linkedin_connected ? (
-                        <span className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                        <Badge variant="blue" className="gap-1">
                           <Linkedin className="h-3 w-3" />
                           Connected
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                        <Badge variant="gray" className="gap-1">
                           <Linkedin className="h-3 w-3" />
                           Not connected
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </button>
@@ -175,22 +175,22 @@ export function BroadcastModal({ post, profiles, onClose, onBroadcast }: Broadca
 
           {/* Stagger config */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-              Stagger Over
-            </label>
-            <select
-              value={staggerDays}
-              onChange={(e) => setStaggerDays(Number(e.target.value))}
-              className="rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            >
-              <option value={1}>1 day</option>
-              <option value={2}>2 days</option>
-              <option value={3}>3 days</option>
-              <option value={4}>4 days</option>
-              <option value={5}>5 days</option>
-            </select>
+            <Label className="mb-1.5 text-xs text-muted-foreground">Stagger Over</Label>
+            <Select value={String(staggerDays)} onValueChange={(v) => setStaggerDays(Number(v))}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 day</SelectItem>
+                <SelectItem value="2">2 days</SelectItem>
+                <SelectItem value="3">3 days</SelectItem>
+                <SelectItem value="4">4 days</SelectItem>
+                <SelectItem value="5">5 days</SelectItem>
+              </SelectContent>
+            </Select>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Posts will be spread across {staggerDays} day{staggerDays > 1 ? 's' : ''}, starting tomorrow.
+              Posts will be spread across {staggerDays} day{staggerDays > 1 ? 's' : ''}, starting
+              tomorrow.
             </p>
           </div>
 
@@ -205,22 +205,10 @@ export function BroadcastModal({ post, profiles, onClose, onBroadcast }: Broadca
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 border-t px-5 py-4">
-          <button
-            onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-          >
+          <Button variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={selectedIds.size === 0 || submitting}
-            className={cn(
-              'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors',
-              selectedIds.size === 0 || submitting
-                ? 'cursor-not-allowed bg-primary/50'
-                : 'bg-primary hover:bg-primary/90'
-            )}
-          >
+          </Button>
+          <Button onClick={handleSubmit} disabled={selectedIds.size === 0 || submitting}>
             {submitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -232,7 +220,7 @@ export function BroadcastModal({ post, profiles, onClose, onBroadcast }: Broadca
                 Broadcast to {selectedIds.size} member{selectedIds.size !== 1 ? 's' : ''}
               </>
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

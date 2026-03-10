@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Users, Plus, Loader2, Trash2, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Button, Input, Badge } from '@magnetlab/magnetui';
 
 import { logError } from '@/lib/utils/logger';
 import * as teamApi from '@/frontend/api/team';
@@ -49,11 +50,12 @@ export function TeamMembersSettings() {
     setSuccess(null);
 
     try {
-      const data = await teamApi.inviteTeamMember(email.trim()) as { autoLinked?: boolean };
+      const data = (await teamApi.inviteTeamMember(email.trim())) as { autoLinked?: boolean };
       setEmail('');
-      setSuccess(data.autoLinked
-        ? `${email.trim()} added to your team (existing account linked automatically)`
-        : `Invitation sent to ${email.trim()}`
+      setSuccess(
+        data.autoLinked
+          ? `${email.trim()} added to your team (existing account linked automatically)`
+          : `Invitation sent to ${email.trim()}`
       );
       setTimeout(() => setSuccess(null), 5000);
       fetchMembers();
@@ -70,7 +72,7 @@ export function TeamMembersSettings() {
     setRemoving(memberId);
     try {
       await teamApi.removeTeamMember(memberId);
-      setMembers(prev => prev.filter(m => m.id !== memberId));
+      setMembers((prev) => prev.filter((m) => m.id !== memberId));
     } catch (err) {
       logError('settings/team-members', err, { step: 'remove_error' });
     } finally {
@@ -94,18 +96,14 @@ export function TeamMembersSettings() {
       <form onSubmit={handleInvite} className="mb-6 rounded-lg border p-4">
         <p className="mb-3 text-sm font-medium">Invite by Email</p>
         <div className="flex gap-2">
-          <input
+          <Input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="teammate@example.com"
-            className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+            className="flex-1"
           />
-          <button
-            type="submit"
-            disabled={inviting || !email.trim()}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
+          <Button type="submit" disabled={inviting || !email.trim()}>
             {inviting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -114,7 +112,7 @@ export function TeamMembersSettings() {
                 Invite
               </>
             )}
-          </button>
+          </Button>
         </div>
 
         {error && (
@@ -156,15 +154,15 @@ export function TeamMembersSettings() {
                       {member.memberName || member.email}
                     </p>
                     {member.status === 'active' ? (
-                      <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <Badge variant="green">
                         <CheckCircle className="h-3 w-3" />
                         Active
-                      </span>
+                      </Badge>
                     ) : (
-                      <span className="flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                      <Badge variant="orange">
                         <Clock className="h-3 w-3" />
                         Pending
-                      </span>
+                      </Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-1">
@@ -176,17 +174,19 @@ export function TeamMembersSettings() {
                     </span>
                   </div>
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => handleRemove(member.id, member.email)}
                   disabled={removing === member.id}
-                  className="ml-4 flex items-center gap-1 text-sm text-red-500 hover:text-red-600 transition-colors"
+                  className="ml-4 text-red-500 hover:text-red-600"
                 >
                   {removing === member.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Trash2 className="h-4 w-4" />
                   )}
-                </button>
+                </Button>
               </div>
             ))}
           </div>

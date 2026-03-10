@@ -62,6 +62,24 @@ const eslintConfig = [
       ],
     },
   },
+  // Enforce magnetui design system: all UI primitives come from @magnetlab/magnetui
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/components/ui/*"],
+              message:
+                "Import from '@magnetlab/magnetui' instead of '@/components/ui/*'.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

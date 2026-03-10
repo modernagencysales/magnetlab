@@ -2,6 +2,7 @@
 
 import { PenLine, ArrowRight, Calendar, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@magnetlab/magnetui';
 import type { ColumnId } from './KanbanColumn';
 
 interface BulkSelectionBarProps {
@@ -52,36 +53,37 @@ export function BulkSelectionBar({
         <span className="text-sm font-medium">{count} selected</span>
 
         {action && (
-          <button
+          <Button
+            size="sm"
             onClick={onPrimaryAction}
             disabled={isProcessing}
-            className={cn(
-              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50',
-              action.color
-            )}
+            className={cn(action.color)}
           >
             {action.icon}
-            {action.label}
-          </button>
+            <span className="ml-1.5">{action.label}</span>
+          </Button>
         )}
 
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={onDelete}
           disabled={isProcessing}
-          className="flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 transition-colors"
+          className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
           Delete
-        </button>
+        </Button>
 
-        <button
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={onClear}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary transition-colors"
           title="Clear selection (Esc)"
           aria-label="Clear selection"
         >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
 
         <span className="text-[10px] text-muted-foreground">Press Esc to clear</span>
       </div>

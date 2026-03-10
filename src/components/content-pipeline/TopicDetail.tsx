@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
 import { KNOWLEDGE_TYPE_LABELS } from '@/lib/types/content-pipeline';
 import type { KnowledgeCategory } from '@/lib/types/content-pipeline';
@@ -108,12 +109,7 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
         <p className="text-sm text-destructive">{error}</p>
-        <button
-          onClick={() => fetchDetail()}
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-        >
-          Retry
-        </button>
+        <Button onClick={() => fetchDetail()}>Retry</Button>
       </div>
     );
   }
@@ -122,9 +118,9 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">Topic not found</p>
-        <button onClick={onBack} className="mt-2 text-sm text-primary hover:underline">
+        <Button variant="ghost" size="sm" onClick={onBack}>
           Back to topics
-        </button>
+        </Button>
       </div>
     );
   }
@@ -141,13 +137,15 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
     <div className="space-y-6">
       {/* Back + Header */}
       <div>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onBack}
-          className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="mb-4 gap-1 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to topics
-        </button>
+        </Button>
 
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -159,9 +157,7 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
               <span>{topic.entry_count} entries</span>
               {topic.avg_quality && <span>Avg quality: {topic.avg_quality.toFixed(1)}/5</span>}
               {corroboration_count > 0 && (
-                <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-700 dark:bg-green-950 dark:text-green-300">
-                  {corroboration_count} corroborations
-                </span>
+                <Badge variant="green">{corroboration_count} corroborations</Badge>
               )}
             </div>
           </div>
@@ -179,10 +175,11 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
               </span>
             )}
             {summary ? (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => handleGenerateSummary(true)}
                 disabled={generatingSummary}
-                className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
               >
                 {generatingSummary ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -190,12 +187,12 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
                   <RefreshCw className="h-3 w-3" />
                 )}
                 Regenerate
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
+                size="sm"
                 onClick={() => handleGenerateSummary(false)}
                 disabled={generatingSummary}
-                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {generatingSummary ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -203,7 +200,7 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
                   <Sparkles className="h-3 w-3" />
                 )}
                 Generate Summary
-              </button>
+              </Button>
             )}
           </div>
         </div>

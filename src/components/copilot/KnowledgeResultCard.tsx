@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Brain, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 
 interface KnowledgeEntry {
   id?: string;
@@ -42,7 +43,7 @@ function QualityStars({ score }: { score: number }) {
 }
 
 export function KnowledgeResultCard({ data, onApply }: Props) {
-  const entries: KnowledgeEntry[] = Array.isArray(data) ? data : (data?.data || []);
+  const entries: KnowledgeEntry[] = Array.isArray(data) ? data : data?.data || [];
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   const maxShown = 10;
@@ -50,7 +51,7 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
   const moreCount = entries.length - maxShown;
 
   const toggleExpand = (index: number) => {
-    setExpandedIds(prev => {
+    setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(index)) {
         next.delete(index);
@@ -79,22 +80,21 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
         {visibleEntries.map((entry, index) => {
           const isExpanded = expandedIds.has(index);
           const isLong = entry.content.length > 100;
-          const displayContent = isExpanded || !isLong
-            ? entry.content
-            : entry.content.slice(0, 100) + '...';
+          const displayContent =
+            isExpanded || !isLong ? entry.content : entry.content.slice(0, 100) + '...';
           const typeColor = TYPE_COLORS[entry.knowledge_type || ''] || 'bg-gray-100 text-gray-700';
 
           return (
             <div key={entry.id || index} className="border border-gray-100 rounded-md p-2">
               <div className="flex items-center gap-2 mb-1">
                 {entry.knowledge_type && (
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${typeColor}`}>
+                  <span
+                    className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${typeColor}`}
+                  >
                     {entry.knowledge_type.replace(/_/g, ' ')}
                   </span>
                 )}
-                {entry.quality_score != null && (
-                  <QualityStars score={entry.quality_score} />
-                )}
+                {entry.quality_score != null && <QualityStars score={entry.quality_score} />}
               </div>
 
               <button
@@ -102,15 +102,17 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
                 className="text-left w-full group"
                 type="button"
               >
-                <p className="text-xs text-gray-700 leading-relaxed">
-                  {displayContent}
-                </p>
+                <p className="text-xs text-gray-700 leading-relaxed">{displayContent}</p>
                 {isLong && (
                   <span className="inline-flex items-center text-[10px] text-violet-500 mt-0.5">
                     {isExpanded ? (
-                      <>Show less <ChevronUp className="w-3 h-3 ml-0.5" /></>
+                      <>
+                        Show less <ChevronUp className="w-3 h-3 ml-0.5" />
+                      </>
                     ) : (
-                      <>Show more <ChevronDown className="w-3 h-3 ml-0.5" /></>
+                      <>
+                        Show more <ChevronDown className="w-3 h-3 ml-0.5" />
+                      </>
                     )}
                   </span>
                 )}
@@ -121,23 +123,21 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
               )}
 
               {onApply && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => handleUseInPost(entry)}
-                  className="mt-1.5 text-[10px] font-medium text-violet-600 hover:text-violet-700 transition-colors"
+                  className="mt-1.5 h-auto px-0 py-0 text-[10px] font-medium text-violet-600 hover:text-violet-700"
                 >
                   Use in post
-                </button>
+                </Button>
               )}
             </div>
           );
         })}
       </div>
 
-      {moreCount > 0 && (
-        <p className="text-xs text-gray-400 mt-2 text-center">
-          +{moreCount} more
-        </p>
-      )}
+      {moreCount > 0 && <p className="text-xs text-gray-400 mt-2 text-center">+{moreCount} more</p>}
     </div>
   );
 }

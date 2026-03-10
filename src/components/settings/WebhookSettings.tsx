@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Plus, Trash2, Play, Loader2, Check, X, Globe } from 'lucide-react';
+import { Button, Input, Label, Badge } from '@magnetlab/magnetui';
 import type { WebhookConfig } from '@/lib/types/funnel';
 
 import { logError } from '@/lib/utils/logger';
@@ -13,7 +14,11 @@ export function WebhookSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<{ id: string; success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    id: string;
+    success: boolean;
+    message: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // New webhook form
@@ -115,25 +120,17 @@ export function WebhookSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Webhooks</h3>
-          <p className="text-sm text-muted-foreground">
-            Get notified when new leads are captured
-          </p>
+          <p className="text-sm text-muted-foreground">Get notified when new leads are captured</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
+        <Button onClick={() => setShowForm(!showForm)}>
           <Plus className="h-4 w-4" />
           Add Webhook
-        </button>
+        </Button>
       </div>
 
       {/* Add Webhook Form */}
       {showForm && (
-        <form
-          onSubmit={handleCreate}
-          className="rounded-lg border bg-card p-4 space-y-4"
-        >
+        <form onSubmit={handleCreate} className="rounded-lg border bg-card p-4 space-y-4">
           {error && (
             <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
@@ -142,48 +139,43 @@ export function WebhookSettings() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium mb-1.5">Name</label>
-              <input
+              <Label>Name</Label>
+              <Input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="My CRM Webhook"
-                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="mt-1"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5">URL (HTTPS only)</label>
-              <input
+              <Label>URL (HTTPS only)</Label>
+              <Input
                 type="url"
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="mt-1"
                 required
               />
             </div>
           </div>
 
           <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               onClick={() => {
                 setShowForm(false);
                 setError(null);
               }}
-              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving || !newName || !newUrl}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
+            </Button>
+            <Button type="submit" disabled={saving || !newName || !newUrl}>
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               Create Webhook
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -213,9 +205,7 @@ export function WebhookSettings() {
                   />
                   <h4 className="font-medium truncate">{webhook.name}</h4>
                 </div>
-                <p className="text-sm text-muted-foreground truncate mt-1">
-                  {webhook.url}
-                </p>
+                <p className="text-sm text-muted-foreground truncate mt-1">{webhook.url}</p>
                 {testResult?.id === webhook.id && (
                   <p
                     className={`text-xs mt-2 ${
@@ -238,10 +228,11 @@ export function WebhookSettings() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => handleTest(webhook.id)}
                   disabled={testing === webhook.id}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                   title="Test webhook"
                 >
                   {testing === webhook.id ? (
@@ -249,24 +240,23 @@ export function WebhookSettings() {
                   ) : (
                     <Play className="h-4 w-4" />
                   )}
-                </button>
-                <button
+                </Button>
+                <Badge
+                  variant={webhook.isActive ? 'green' : 'gray'}
+                  className="cursor-pointer"
                   onClick={() => handleToggleActive(webhook)}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                    webhook.isActive
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
                 >
                   {webhook.isActive ? 'Active' : 'Inactive'}
-                </button>
-                <button
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => handleDelete(webhook.id)}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  className="text-muted-foreground hover:text-red-500"
                   title="Delete webhook"
                 >
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </div>
           ))
@@ -280,7 +270,7 @@ export function WebhookSettings() {
           When a lead is captured, we&apos;ll send a POST request with this JSON payload:
         </p>
         <pre className="text-xs bg-background rounded-lg p-3 overflow-x-auto">
-{`{
+          {`{
   "event": "lead.created",
   "timestamp": "2025-01-26T12:00:00Z",
   "data": {
@@ -299,10 +289,16 @@ export function WebhookSettings() {
 }`}
         </pre>
         <div className="mt-3 flex items-center gap-4">
-          <Link href="/docs/connect-email-list" className="text-sm text-violet-600 dark:text-violet-400 hover:underline">
+          <Link
+            href="/docs/connect-email-list"
+            className="text-sm text-violet-600 dark:text-violet-400 hover:underline"
+          >
             Integration guides (Zapier, Make, n8n) →
           </Link>
-          <Link href="/docs/webhook-reference-ai" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+          <Link
+            href="/docs/webhook-reference-ai"
+            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+          >
             AI-friendly reference →
           </Link>
         </div>

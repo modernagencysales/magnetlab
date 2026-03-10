@@ -4,17 +4,17 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as subscribersApi from '@/frontend/api/email/subscribers';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
+  Button,
+  Input,
+  Label,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui/dialog';
+} from '@magnetlab/magnetui';
 
 interface AddSubscriberDialogProps {
   open: boolean;
@@ -60,16 +60,17 @@ export function AddSubscriberDialog({ open, onOpenChange, onSuccess }: AddSubscr
   };
 
   return (
-    <Dialog open={open} onOpenChange={(value) => {
-      if (!value) resetForm();
-      onOpenChange(value);
-    }}>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!value) resetForm();
+        onOpenChange(value);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Subscriber</DialogTitle>
-          <DialogDescription>
-            Manually add a new subscriber to your list.
-          </DialogDescription>
+          <DialogDescription>Manually add a new subscriber to your list.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

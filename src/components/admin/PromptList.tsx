@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
+import { Input } from '@magnetlab/magnetui';
 
 interface PromptSummary {
   slug: string;
@@ -75,12 +76,12 @@ export function PromptList({ prompts }: { prompts: PromptSummary[] }) {
       {/* Search */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-        <input
+        <Input
           type="text"
           placeholder="Search prompts by name, slug, or description..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          className="pl-10"
         />
       </div>
 

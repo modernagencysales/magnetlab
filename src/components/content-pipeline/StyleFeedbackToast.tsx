@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Check, Loader2, MessageSquare } from 'lucide-react';
+import { Button, Textarea } from '@magnetlab/magnetui';
 import { cn } from '@/lib/utils';
 import * as editFeedbackApi from '@/frontend/api/content-pipeline/edit-feedback';
 
@@ -35,8 +36,8 @@ export function StyleFeedbackToast({ editId, onDismiss }: StyleFeedbackToastProp
   }, [submitted, onDismiss]);
 
   const toggleTag = useCallback((tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
   }, []);
 
@@ -65,7 +66,9 @@ export function StyleFeedbackToast({ editId, onDismiss }: StyleFeedbackToastProp
       <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-4 fade-in">
         <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 shadow-lg dark:border-green-800 dark:bg-green-950/80">
           <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <span className="text-sm font-medium text-green-700 dark:text-green-300">Feedback saved</span>
+          <span className="text-sm font-medium text-green-700 dark:text-green-300">
+            Feedback saved
+          </span>
         </div>
       </div>
     );
@@ -80,18 +83,14 @@ export function StyleFeedbackToast({ editId, onDismiss }: StyleFeedbackToastProp
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">How was this edit?</span>
           </div>
-          <button
-            onClick={onDismiss}
-            className="rounded-lg p-1 hover:bg-secondary transition-colors"
-            aria-label="Dismiss"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={onDismiss} aria-label="Dismiss">
             <X className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
+          </Button>
         </div>
 
         {/* Quick-tag chips */}
         <div className="mb-3 flex flex-wrap gap-1.5">
-          {QUICK_TAGS.map(tag => (
+          {QUICK_TAGS.map((tag) => (
             <button
               key={tag}
               onClick={() => toggleTag(tag)}
@@ -116,28 +115,20 @@ export function StyleFeedbackToast({ editId, onDismiss }: StyleFeedbackToastProp
             + Add a note
           </button>
         ) : (
-          <textarea
+          <Textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="What would you change?"
             rows={2}
-            className="mb-3 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="mb-3 resize-none"
             autoFocus
           />
         )}
 
         {/* Submit */}
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit || submitting}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
-          {submitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            'Submit Feedback'
-          )}
-        </button>
+        <Button className="w-full" onClick={handleSubmit} disabled={!canSubmit || submitting}>
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit Feedback'}
+        </Button>
       </div>
     </div>
   );

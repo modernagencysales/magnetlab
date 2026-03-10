@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Button } from '@magnetlab/magnetui';
 import type { PillarDistribution, ContentPillar } from '@/lib/types/content-pipeline';
 import { CONTENT_PILLAR_LABELS } from '@/lib/types/content-pipeline';
 
@@ -24,7 +25,11 @@ const PILLAR_KEYS: ContentPillar[] = [
   'collaboration_social_proof',
 ];
 
-export function PillarDistributionSlider({ value, onChange, disabled }: PillarDistributionSliderProps) {
+export function PillarDistributionSlider({
+  value,
+  onChange,
+  disabled,
+}: PillarDistributionSliderProps) {
   const [local, setLocal] = useState(value);
 
   useEffect(() => {
@@ -70,16 +75,10 @@ export function PillarDistributionSlider({ value, onChange, disabled }: PillarDi
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Pillar Distribution</span>
         <div className="flex items-center gap-2">
-          {!isValid && (
-            <span className="text-xs text-red-500">Total: {total}% (must be 100%)</span>
-          )}
-          <button
-            onClick={autoBalance}
-            disabled={disabled}
-            className="text-xs text-primary hover:underline disabled:opacity-50"
-          >
+          {!isValid && <span className="text-xs text-red-500">Total: {total}% (must be 100%)</span>}
+          <Button variant="ghost" size="sm" onClick={autoBalance} disabled={disabled}>
             Auto-balance
-          </button>
+          </Button>
         </div>
       </div>
 

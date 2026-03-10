@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Download, ChevronLeft, ChevronRight, Filter, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import {
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+} from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import type { FunnelLead } from '@/lib/types/funnel';
 
 import { logError } from '@/lib/utils/logger';
@@ -30,7 +39,7 @@ export function LeadsTable({ funnelId, leadMagnetId }: LeadsTableProps) {
         limit,
         offset,
       });
-      setLeads((data.leads as FunnelLead[]));
+      setLeads(data.leads as FunnelLead[]);
       setTotal(data.total ?? 0);
     } catch (err) {
       logError('leads/table', err, { step: 'fetch_leads_error' });
@@ -87,14 +96,10 @@ export function LeadsTable({ funnelId, leadMagnetId }: LeadsTableProps) {
           </span>
         </div>
 
-        <button
-          onClick={handleExport}
-          disabled={leads.length === 0}
-          className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-secondary/80 disabled:opacity-50 transition-colors"
-        >
+        <Button variant="outline" size="sm" onClick={handleExport} disabled={leads.length === 0}>
           <Download className="h-4 w-4" />
           Export CSV
-        </button>
+        </Button>
       </div>
 
       {/* Table */}
@@ -131,13 +136,12 @@ export function LeadsTable({ funnelId, leadMagnetId }: LeadsTableProps) {
               </thead>
               <tbody>
                 {leads.map((lead) => (
-                  <tr key={lead.id} className="border-b last:border-b-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium">
-                      {lead.email}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {lead.name || '-'}
-                    </td>
+                  <tr
+                    key={lead.id}
+                    className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
+                  >
+                    <td className="px-4 py-3 text-sm font-medium">{lead.email}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{lead.name || '-'}</td>
                     <td className="px-4 py-3">
                       {lead.isQualified === null ? (
                         <span className="text-xs text-muted-foreground">Pending</span>
@@ -178,20 +182,22 @@ export function LeadsTable({ funnelId, leadMagnetId }: LeadsTableProps) {
             Page {currentPage} of {totalPages}
           </p>
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="outline"
+              size="icon-sm"
               onClick={() => setOffset(Math.max(0, offset - limit))}
               disabled={offset === 0}
-              className="p-2 rounded-lg border bg-background hover:bg-muted disabled:opacity-50 transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-sm"
               onClick={() => setOffset(offset + limit)}
               disabled={offset + limit >= total}
-              className="p-2 rounded-lg border bg-background hover:bg-muted disabled:opacity-50 transition-colors"
             >
               <ChevronRight className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
         </div>
       )}

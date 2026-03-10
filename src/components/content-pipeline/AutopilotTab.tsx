@@ -2,7 +2,18 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Zap, Loader2, Clock, Plus, Trash2, Settings } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import {
+  Button,
+  Input,
+  Label,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  Badge,
+  Checkbox,
+} from '@magnetlab/magnetui';
 import { BufferQueueCard } from './BufferQueueCard';
 import { PlannerView } from './PlannerView';
 import { BusinessContextModal } from './BusinessContextModal';
@@ -172,13 +183,10 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
 
       {/* Business Context */}
       <div className="flex justify-end">
-        <button
-          onClick={() => setShowBusinessContext(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-        >
+        <Button variant="outline" size="sm" onClick={() => setShowBusinessContext(true)}>
           <Settings className="h-3 w-3" />
           Business Context
-        </button>
+        </Button>
       </div>
       {showBusinessContext && (
         <BusinessContextModal onClose={() => setShowBusinessContext(false)} />
@@ -251,64 +259,58 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
           <h3 className="text-sm font-semibold uppercase text-muted-foreground">
             Posting Schedule
           </h3>
-          <button
-            onClick={() => setShowAddSlot(!showAddSlot)}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowAddSlot(!showAddSlot)}>
             <Plus className="h-3 w-3" />
             Add Slot
-          </button>
+          </Button>
         </div>
 
         {showAddSlot && (
           <div className="mb-4 rounded-lg border bg-card p-4">
             <div className="flex flex-wrap items-end gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium">Time</label>
-                <input
+                <Label className="mb-1">Time</Label>
+                <Input
                   type="time"
                   value={newSlotTime}
                   onChange={(e) => setNewSlotTime(e.target.value)}
-                  className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium">Day (optional)</label>
-                <select
-                  value={newSlotDay}
-                  onChange={(e) => setNewSlotDay(e.target.value)}
-                  className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Any day</option>
-                  {DAYS.map((d, i) => (
-                    <option key={i} value={i}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
+                <Label className="mb-1">Day (optional)</Label>
+                <Select value={newSlotDay} onValueChange={setNewSlotDay}>
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue placeholder="Any day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Any day</SelectItem>
+                    {DAYS.map((d, i) => (
+                      <SelectItem key={i} value={String(i)}>
+                        {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium">Timezone</label>
-                <select
-                  value={newSlotTimezone}
-                  onChange={(e) => setNewSlotTimezone(e.target.value)}
-                  className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="UTC">UTC</option>
-                  <option value="America/New_York">Eastern</option>
-                  <option value="America/Chicago">Central</option>
-                  <option value="America/Denver">Mountain</option>
-                  <option value="America/Los_Angeles">Pacific</option>
-                  <option value="Europe/London">London</option>
-                </select>
+                <Label className="mb-1">Timezone</Label>
+                <Select value={newSlotTimezone} onValueChange={setNewSlotTimezone}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UTC">UTC</SelectItem>
+                    <SelectItem value="America/New_York">Eastern</SelectItem>
+                    <SelectItem value="America/Chicago">Central</SelectItem>
+                    <SelectItem value="America/Denver">Mountain</SelectItem>
+                    <SelectItem value="America/Los_Angeles">Pacific</SelectItem>
+                    <SelectItem value="Europe/London">London</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <button
-                onClick={handleAddSlot}
-                disabled={addingSlot}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
+              <Button onClick={handleAddSlot} disabled={addingSlot} size="sm">
                 {addingSlot ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -336,23 +338,21 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Badge
+                    variant={slot.is_active ? 'green' : 'gray'}
+                    className="cursor-pointer"
                     onClick={() => handleToggleSlot(slot)}
-                    className={cn(
-                      'rounded-full px-2 py-0.5 text-xs font-medium transition-colors',
-                      slot.is_active
-                        ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-                        : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
-                    )}
                   >
                     {slot.is_active ? 'Active' : 'Paused'}
-                  </button>
-                  <button
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => handleDeleteSlot(slot.id)}
-                    className="rounded-lg p-1 text-muted-foreground hover:text-red-500 transition-colors"
+                    className="text-muted-foreground hover:text-red-500"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -369,32 +369,26 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
 
         <div className="mb-4 flex flex-wrap items-center gap-4">
           <div>
-            <label className="mb-1 block text-xs font-medium">Posts per batch</label>
-            <input
+            <Label className="mb-1">Posts per batch</Label>
+            <Input
               type="number"
               min={1}
               max={10}
               value={postsPerBatch}
               onChange={(e) => setPostsPerBatch(parseInt(e.target.value) || 3)}
-              className="w-20 rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-20"
             />
           </div>
           <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={autoPublish}
-              onChange={(e) => setAutoPublish(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              onCheckedChange={(checked) => setAutoPublish(checked === true)}
             />
             Auto-publish after review window
           </label>
         </div>
 
-        <button
-          onClick={handleRunAutopilot}
-          disabled={runningAutopilot}
-          className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
+        <Button onClick={handleRunAutopilot} disabled={runningAutopilot}>
           {runningAutopilot ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -406,7 +400,7 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
               Run Autopilot
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

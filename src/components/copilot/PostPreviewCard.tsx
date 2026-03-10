@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { FileText, Copy, ArrowRight } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 
 interface Props {
   data: {
@@ -47,27 +48,19 @@ export function PostPreviewCard({ data, onApply }: Props) {
         )}
       </div>
 
-      <div className="text-sm text-gray-800 whitespace-pre-wrap mb-3">
-        {preview}
-      </div>
+      <div className="text-sm text-gray-800 whitespace-pre-wrap mb-3">{preview}</div>
 
       <div className="flex items-center gap-2">
         {onApply && (
-          <button
-            onClick={handleApply}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-violet-600 rounded-md hover:bg-violet-700 transition-colors"
-          >
-            <ArrowRight className="w-3 h-3" />
+          <Button size="sm" onClick={handleApply}>
+            <ArrowRight className="w-3 h-3 mr-1" />
             Apply to editor
-          </button>
+          </Button>
         )}
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-        >
-          <Copy className="w-3 h-3" />
+        <Button variant="outline" size="sm" onClick={handleCopy}>
+          <Copy className="w-3 h-3 mr-1" />
           {copied ? 'Copied!' : 'Copy'}
-        </button>
+        </Button>
       </div>
     </div>
   );

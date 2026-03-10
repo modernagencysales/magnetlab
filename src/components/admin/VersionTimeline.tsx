@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Badge } from '@magnetlab/magnetui';
 import { PromptDiffViewer } from './PromptDiffViewer';
 
 interface Version {
@@ -69,15 +70,11 @@ export function VersionTimeline({
             <div className="flex items-start justify-between p-3 gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 text-[11px] font-semibold">
-                    v{version.version}
-                  </span>
+                  <Badge variant="purple">v{version.version}</Badge>
                   <span className="text-xs text-zinc-400">{timeAgo(version.created_at)}</span>
                 </div>
                 <p className="text-xs text-zinc-600 dark:text-zinc-300 line-clamp-1">
-                  {version.change_note || (
-                    <span className="text-zinc-400 italic">No note</span>
-                  )}
+                  {version.change_note || <span className="text-zinc-400 italic">No note</span>}
                 </p>
                 <p className="text-[11px] text-zinc-400 mt-0.5">by {version.changed_by}</p>
               </div>
@@ -128,12 +125,8 @@ export function VersionTimeline({
                   </button>
                 </div>
                 <PromptDiffViewer
-                  oldText={
-                    diffTab === 'system' ? version.system_prompt : version.user_prompt
-                  }
-                  newText={
-                    diffTab === 'system' ? currentSystemPrompt : currentUserPrompt
-                  }
+                  oldText={diffTab === 'system' ? version.system_prompt : version.user_prompt}
+                  newText={diffTab === 'system' ? currentSystemPrompt : currentUserPrompt}
                   oldLabel={`v${version.version}`}
                   newLabel="Current"
                 />

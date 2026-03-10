@@ -2,15 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Plus,
-  Loader2,
-  AlertCircle,
-  Mail,
-  Calendar,
-  Layers,
-  Zap,
-} from 'lucide-react';
+import { Plus, Loader2, AlertCircle, Mail, Calendar, Layers, Zap } from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
 import { formatDate } from '@/lib/utils';
 import type { EmailFlow } from '@/lib/types/email-system';
 import * as flowsApi from '@/frontend/api/email/flows';
@@ -19,10 +12,11 @@ interface FlowWithCount extends EmailFlow {
   step_count: number;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400',
-  active: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  paused: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+type BadgeVariant = 'gray' | 'green' | 'orange';
+const STATUS_VARIANTS: Record<string, BadgeVariant> = {
+  draft: 'gray',
+  active: 'green',
+  paused: 'orange',
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -94,34 +88,26 @@ export function FlowList() {
           <p className="mb-6 text-muted-foreground max-w-md mx-auto">
             Create your first flow to start automating emails.
           </p>
-          <button
-            onClick={handleCreateFlow}
-            disabled={creating}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
+          <Button onClick={handleCreateFlow} disabled={creating}>
             {creating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4 mr-2" />
             )}
             Create Your First Flow
-          </button>
+          </Button>
         </div>
       ) : (
         <>
           <div className="flex justify-end">
-            <button
-              onClick={handleCreateFlow}
-              disabled={creating}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
+            <Button onClick={handleCreateFlow} disabled={creating}>
               {creating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4 mr-2" />
               )}
               Create Flow
-            </button>
+            </Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -132,11 +118,9 @@ export function FlowList() {
                 className="group rounded-xl border bg-card p-5 text-left transition-all hover:border-primary hover:shadow-lg"
               >
                 <div className="mb-3 flex items-center justify-between">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[flow.status] || STATUS_STYLES.draft}`}
-                  >
+                  <Badge variant={STATUS_VARIANTS[flow.status] || 'gray'}>
                     {flow.status.charAt(0).toUpperCase() + flow.status.slice(1)}
-                  </span>
+                  </Badge>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Zap className="h-3 w-3" />
                     {TRIGGER_LABELS[flow.trigger_type] || flow.trigger_type}

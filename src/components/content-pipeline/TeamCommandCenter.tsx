@@ -2,6 +2,7 @@
 
 import { Fragment } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, X, Calendar } from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { WeeklyGrid } from './WeeklyGrid';
@@ -60,26 +61,15 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
       {/* Week Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button
-            onClick={goPrev}
-            className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
-            title="Previous week"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={goPrev} title="Previous week">
             <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            onClick={goThisWeek}
-            className="rounded-lg border border-border px-3 py-1 text-xs font-medium hover:bg-muted transition-colors"
-          >
+          </Button>
+          <Button variant="outline" size="sm" onClick={goThisWeek}>
             This Week
-          </button>
-          <button
-            onClick={goNext}
-            className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
-            title="Next week"
-          >
+          </Button>
+          <Button variant="ghost" size="icon-sm" onClick={goNext} title="Next week">
             <ChevronRight className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         <div className="flex items-center gap-1.5 text-sm font-medium">
@@ -91,22 +81,11 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
       {/* Stats Bar */}
       {scheduleData && !loading && (
         <div className="flex flex-wrap gap-3">
-          <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
-            {scheduledCount} scheduled
-          </span>
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-            {bufferCount} in buffer
-          </span>
-          <span
-            className={cn(
-              'rounded-full px-3 py-1 text-xs font-medium',
-              connectedCount === totalProfiles
-                ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-                : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
-            )}
-          >
+          <Badge variant="green">{scheduledCount} scheduled</Badge>
+          <Badge variant="orange">{bufferCount} in buffer</Badge>
+          <Badge variant={connectedCount === totalProfiles ? 'green' : 'gray'}>
             {connectedCount}/{totalProfiles} connected
-          </span>
+          </Badge>
         </div>
       )}
 
@@ -185,16 +164,17 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
                   {format(assignTarget.date, 'EEEE, MMM d')}
                 </span>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => {
                   setShowBufferDock(false);
                   setAssignTarget(null);
                 }}
-                className="rounded-lg p-1 hover:bg-secondary transition-colors"
                 title="Close"
               >
                 <X className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
 
             {bufferPostsForProfile.length === 0 ? (

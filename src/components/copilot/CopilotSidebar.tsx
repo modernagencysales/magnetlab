@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { X, Plus, MessageSquare, Trash2 } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import { useCopilot } from './CopilotProvider';
 import { ConversationInput } from './ConversationInput';
 import { CopilotMessage as CopilotMessageComponent } from './CopilotMessage';
@@ -29,7 +30,7 @@ export function CopilotSidebar() {
     applyToPage,
   } = useCopilot();
 
-  const activeConversation = conversations.find(c => c.id === activeConversationId);
+  const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasLoadedRef = useRef(false);
@@ -52,10 +53,7 @@ export function CopilotSidebar() {
   return (
     <>
       {/* Backdrop (mobile) */}
-      <div
-        className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-        onClick={close}
-      />
+      <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={close} />
 
       {/* Panel */}
       <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 z-50 flex flex-col shadow-2xl">
@@ -70,16 +68,10 @@ export function CopilotSidebar() {
           />
         ) : (
           <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              AI Co-pilot
-            </h2>
-            <button
-              onClick={close}
-              className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
-              aria-label="Close co-pilot"
-            >
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">AI Co-pilot</h2>
+            <Button variant="ghost" size="icon-sm" onClick={close} aria-label="Close co-pilot">
               <X className="w-5 h-5" />
-            </button>
+            </Button>
           </div>
         )}
 
@@ -88,7 +80,7 @@ export function CopilotSidebar() {
           // Active conversation view
           <>
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-              {messages.map(msg => (
+              {messages.map((msg) => (
                 <CopilotMessageComponent
                   key={msg.id}
                   message={msg}
@@ -123,19 +115,19 @@ export function CopilotSidebar() {
           // Conversation list view
           <div className="flex-1 overflow-y-auto">
             <div className="p-4">
-              <button
+              <Button
                 onClick={() => {
                   startNewConversation();
                   // No need to set activeConversationId — sendMessage will create one
                 }}
-                className="w-full flex items-center gap-2 px-4 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium"
+                className="w-full flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 New Conversation
-              </button>
+              </Button>
             </div>
             <div className="space-y-1 px-2">
-              {conversations.map(conv => (
+              {conversations.map((conv) => (
                 <div
                   key={conv.id}
                   className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer transition-colors"
@@ -150,16 +142,18 @@ export function CopilotSidebar() {
                       {new Date(conv.updatedAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteConversation(conv.id);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-red-500 transition-all"
+                    className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-500"
                     aria-label="Delete conversation"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </div>
               ))}
               {conversations.length === 0 && (

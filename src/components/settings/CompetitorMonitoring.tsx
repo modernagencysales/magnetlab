@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Plus, Trash2, Eye, EyeOff, Users } from 'lucide-react';
+import { Button, Input } from '@magnetlab/magnetui';
 import * as competitorsApi from '@/frontend/api/competitors';
 
 interface Competitor {
@@ -124,7 +125,8 @@ export function CompetitorMonitoring() {
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">
-                      {comp.name || comp.linkedin_profile_url.replace(/.*\/in\//, '').replace(/\/$/, '')}
+                      {comp.name ||
+                        comp.linkedin_profile_url.replace(/.*\/in\//, '').replace(/\/$/, '')}
                     </p>
                     {comp.headline && (
                       <p className="text-xs text-muted-foreground truncate">{comp.headline}</p>
@@ -135,9 +137,10 @@ export function CompetitorMonitoring() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 ml-2">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => handleToggle(comp.id, comp.is_active)}
-                      className="p-1.5 rounded hover:bg-muted transition-colors"
                       title={comp.is_active ? 'Pause monitoring' : 'Resume monitoring'}
                     >
                       {comp.is_active ? (
@@ -145,14 +148,15 @@ export function CompetitorMonitoring() {
                       ) : (
                         <EyeOff className="h-4 w-4 text-muted-foreground" />
                       )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => handleDelete(comp.id)}
-                      className="p-1.5 rounded hover:bg-muted transition-colors"
                       title="Remove competitor"
                     >
                       <Trash2 className="h-4 w-4 text-red-400" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -163,41 +167,34 @@ export function CompetitorMonitoring() {
           {competitors.length < 10 && (
             <form onSubmit={handleAdd} className="space-y-2">
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
                   value={newUrl}
                   onChange={(e) => setNewUrl(e.target.value)}
                   placeholder="LinkedIn profile URL or username"
-                  className="flex-1 rounded-md border bg-transparent px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="flex-1"
                 />
-                <button
-                  type="submit"
-                  disabled={adding || !newUrl.trim()}
-                  className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
+                <Button type="submit" size="sm" disabled={adding || !newUrl.trim()}>
                   {adding ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <Plus className="h-3 w-3" />
                   )}
                   Add
-                </button>
+                </Button>
               </div>
-              <input
+              <Input
                 type="text"
                 value={newCampaignId}
                 onChange={(e) => setNewCampaignId(e.target.value)}
                 placeholder="HeyReach campaign ID (optional)"
-                className="w-full rounded-md border bg-transparent px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </form>
           )}
         </>
       )}
 
-      {error && (
-        <p className="mt-2 text-sm text-red-500">{error}</p>
-      )}
+      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
     </div>
   );
 }

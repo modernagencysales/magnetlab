@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { Button, Input } from '@magnetlab/magnetui';
 import { VersionTimeline } from './VersionTimeline';
 import * as adminPromptsApi from '@/frontend/api/admin/prompts';
 
@@ -49,11 +50,7 @@ interface Props {
   versions: Version[];
 }
 
-const MODEL_OPTIONS = [
-  'claude-sonnet-4-6',
-  'claude-haiku-4-5-20251001',
-  'claude-opus-4-6',
-];
+const MODEL_OPTIONS = ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-opus-4-6'];
 
 export function PromptEditor({ prompt, versions }: Props) {
   const router = useRouter();
@@ -160,7 +157,9 @@ export function PromptEditor({ prompt, versions }: Props) {
 
   const handleRestore = useCallback(
     async (versionId: string) => {
-      if (!confirm('Restore this version? This will create a new version with the restored content.')) {
+      if (
+        !confirm('Restore this version? This will create a new version with the restored content.')
+      ) {
         return;
       }
 
@@ -198,9 +197,7 @@ export function PromptEditor({ prompt, versions }: Props) {
           </span>
         </div>
         <p className="text-xs font-mono text-zinc-400 mt-1">{prompt.slug}</p>
-        {prompt.description && (
-          <p className="text-sm text-zinc-500 mt-1">{prompt.description}</p>
-        )}
+        {prompt.description && <p className="text-sm text-zinc-500 mt-1">{prompt.description}</p>}
       </div>
 
       {/* Main content: editor + sidebar */}
@@ -235,8 +232,11 @@ export function PromptEditor({ prompt, versions }: Props) {
 
           {/* Variable hint */}
           <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-t-0 border-zinc-200 dark:border-zinc-700 px-3 py-2 text-xs text-zinc-500">
-            Use <code className="font-mono text-violet-600 dark:text-violet-400">{'{{variable_name}}'}</code> syntax
-            for dynamic variables. They will be replaced at runtime.
+            Use{' '}
+            <code className="font-mono text-violet-600 dark:text-violet-400">
+              {'{{variable_name}}'}
+            </code>{' '}
+            syntax for dynamic variables. They will be replaced at runtime.
           </div>
 
           {/* Textarea */}
@@ -253,29 +253,19 @@ export function PromptEditor({ prompt, versions }: Props) {
 
           {/* Bottom bar */}
           <div className="mt-4 flex items-center gap-3 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
-            <input
+            <Input
               type="text"
               placeholder="What changed? (optional)"
               value={changeNote}
               onChange={(e) => setChangeNote(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="flex-1"
             />
-            <button
-              type="button"
-              onClick={handleTest}
-              disabled={testing}
-              className="px-4 py-2 text-sm font-medium rounded-lg border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 transition-colors"
-            >
+            <Button variant="outline" type="button" onClick={handleTest} disabled={testing}>
               {testing ? 'Testing...' : 'Test'}
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || !isDirty}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
+            </Button>
+            <Button type="button" onClick={handleSave} disabled={saving || !isDirty}>
               {saving ? 'Saving...' : 'Save'}
-            </button>
+            </Button>
             {saveMessage && (
               <span
                 className={`text-sm font-medium ${
@@ -362,25 +352,23 @@ export function PromptEditor({ prompt, versions }: Props) {
               </div>
               <div>
                 <label className="block text-xs text-zinc-500 mb-1">Temperature</label>
-                <input
+                <Input
                   type="number"
                   step="0.1"
                   min="0"
                   max="2"
                   value={temperature}
                   onChange={(e) => setTemperature(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
               </div>
               <div>
                 <label className="block text-xs text-zinc-500 mb-1">Max Tokens</label>
-                <input
+                <Input
                   type="number"
                   step="100"
                   min="100"
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(parseInt(e.target.value, 10) || 100)}
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
               </div>
             </div>

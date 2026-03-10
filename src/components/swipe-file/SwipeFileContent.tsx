@@ -25,6 +25,7 @@ import {
   ArrowUpDown,
   ExternalLink,
 } from 'lucide-react';
+import { Badge } from '@magnetlab/magnetui';
 import { VIRAL_POST_TOPICS } from '@/lib/ai/content-pipeline/template-extractor';
 import { useSwipeFileContent, type DiscoveredPost } from '@/frontend/hooks/useSwipeFileContent';
 
@@ -147,18 +148,11 @@ export function SwipeFileContent() {
           </div>
           <div className="ml-2 flex items-center gap-1.5 shrink-0">
             {dPost.topics?.slice(0, 2).map((t) => (
-              <span
-                key={t}
-                className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-              >
+              <Badge key={t} variant="blue">
                 {t}
-              </span>
+              </Badge>
             ))}
-            {dPost.template_extracted && (
-              <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                Template
-              </span>
-            )}
+            {dPost.template_extracted && <Badge variant="green">Template</Badge>}
             <button
               onClick={() => handleCopy(dPost.content, dPost.id)}
               className="rounded-lg p-1.5 text-muted-foreground opacity-0 hover:bg-secondary hover:text-foreground group-hover:opacity-100 transition-all"

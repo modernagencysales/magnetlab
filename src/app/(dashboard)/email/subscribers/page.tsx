@@ -1,3 +1,4 @@
+import { SectionContainer } from '@magnetlab/magnetui';
 import { SubscriberTable } from '@/components/email/SubscriberTable';
 
 export const metadata = {
@@ -7,14 +8,11 @@ export const metadata = {
 
 export default function EmailSubscribersPage() {
   return (
-    <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold">Subscribers</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage your subscriber list, add contacts manually, or import via CSV.
-        </p>
-      </div>
+    <SectionContainer
+      title="Subscribers"
+      description="Manage your subscriber list, add contacts manually, or import via CSV."
+    >
       <SubscriberTable />
-    </div>
+    </SectionContainer>
   );
 }

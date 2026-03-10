@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Globe, Loader2 } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import * as landingPageApi from '@/frontend/api/landing-page';
 
 export default function QuickCreatePage() {
@@ -76,15 +77,9 @@ export default function QuickCreatePage() {
           />
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={loading || !title.trim()}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-        >
+        <Button type="submit" className="w-full" disabled={loading || !title.trim()}>
           {loading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -93,7 +88,7 @@ export default function QuickCreatePage() {
           ) : (
             'Create Landing Page'
           )}
-        </button>
+        </Button>
       </form>
     </div>
   );

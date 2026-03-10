@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Video, Copy, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import * as integrationsApi from '@/frontend/api/integrations';
 
 interface FathomSettingsProps {
@@ -13,7 +14,9 @@ export function FathomSettings({ isConnected }: FathomSettingsProps) {
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
   const [configured, setConfigured] = useState(isConnected);
   const [copied, setCopied] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+    null
+  );
 
   const clearFeedback = useCallback(() => {
     const timer = setTimeout(() => setFeedback(null), 5000);
@@ -55,7 +58,10 @@ export function FathomSettings({ isConnected }: FathomSettingsProps) {
       const data = await integrationsApi.createFathomWebhookUrl();
       setWebhookUrl(data.webhook_url);
       setConfigured(true);
-      setFeedback({ type: 'success', message: 'Webhook URL generated. Paste it into your Fathom settings.' });
+      setFeedback({
+        type: 'success',
+        message: 'Webhook URL generated. Paste it into your Fathom settings.',
+      });
     } catch {
       setFeedback({ type: 'error', message: 'Failed to generate webhook URL. Please try again.' });
     } finally {
@@ -120,7 +126,8 @@ export function FathomSettings({ isConnected }: FathomSettingsProps) {
       {configured && webhookUrl ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Paste this webhook URL into your Fathom settings. Transcripts will sync automatically when meetings end.
+            Paste this webhook URL into your Fathom settings. Transcripts will sync automatically
+            when meetings end.
           </p>
 
           {/* Webhook URL display */}
@@ -128,11 +135,7 @@ export function FathomSettings({ isConnected }: FathomSettingsProps) {
             <code className="flex-1 rounded bg-muted px-3 py-2 text-xs font-mono break-all select-all">
               {webhookUrl}
             </code>
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors shrink-0"
-              title="Copy webhook URL"
-            >
+            <Button variant="outline" size="sm" onClick={handleCopy} title="Copy webhook URL">
               {copied ? (
                 <>
                   <CheckCircle className="h-4 w-4 text-green-500" />
@@ -144,30 +147,28 @@ export function FathomSettings({ isConnected }: FathomSettingsProps) {
                   Copy
                 </>
               )}
-            </button>
+            </Button>
           </div>
 
           {/* Action buttons */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleRegenerate}
-              disabled={loading}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
-            >
+            <Button variant="ghost" size="sm" onClick={handleRegenerate} disabled={loading}>
               {loading ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
                 <RefreshCw className="h-3 w-3" />
               )}
               Regenerate URL
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleDisconnect}
               disabled={loading}
-              className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+              className="text-red-500 hover:text-red-600"
             >
               Disconnect
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -177,11 +178,7 @@ export function FathomSettings({ isConnected }: FathomSettingsProps) {
             We&apos;ll generate a webhook URL that you paste into your Fathom settings.
           </p>
 
-          <button
-            onClick={handleGenerate}
-            disabled={loading}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
+          <Button onClick={handleGenerate} disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -190,14 +187,16 @@ export function FathomSettings({ isConnected }: FathomSettingsProps) {
             ) : (
               'Connect Fathom'
             )}
-          </button>
+          </Button>
         </div>
       )}
 
       {feedback && (
-        <p className={`mt-3 flex items-center gap-2 text-sm ${
-          feedback.type === 'success' ? 'text-green-600' : 'text-red-500'
-        }`}>
+        <p
+          className={`mt-3 flex items-center gap-2 text-sm ${
+            feedback.type === 'success' ? 'text-green-600' : 'text-red-500'
+          }`}
+        >
           {feedback.type === 'success' ? (
             <CheckCircle className="h-4 w-4" />
           ) : (

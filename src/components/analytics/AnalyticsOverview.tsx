@@ -1,10 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Skeleton,
+  Button,
+  StatCard,
+  Badge,
+  EmptyState,
+} from '@magnetlab/magnetui';
 import * as analyticsApi from '@/frontend/api/analytics';
 import * as funnelApi from '@/frontend/api/funnel';
-import { Skeleton } from '@/components/ui/skeleton';
 import { StatCards } from '@/components/analytics/StatCards';
 import { TimeSeriesChart } from '@/components/analytics/TimeSeriesChart';
 import { UTMBreakdown } from '@/components/analytics/UTMBreakdown';
@@ -155,17 +164,14 @@ export function AnalyticsOverview() {
       {/* Date range selector */}
       <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit">
         {RANGE_OPTIONS.map((option) => (
-          <button
+          <Button
             key={option.value}
+            variant={range === option.value ? 'default' : 'ghost'}
+            size="sm"
             onClick={() => handleRangeChange(option.value)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
-              range === option.value
-                ? 'bg-background text-foreground shadow'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
           >
             {option.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -235,30 +241,21 @@ export function AnalyticsOverview() {
                 <h2 className="text-base font-semibold">Content Pipeline</h2>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className="rounded-xl border bg-card p-5">
-                  <p className="text-sm text-muted-foreground">Published Posts</p>
-                  <p className="mt-1 text-2xl font-bold">{data.contentStats.posts.published}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {data.contentStats.posts.total} total
-                  </p>
-                </div>
-                <div className="rounded-xl border bg-card p-5">
-                  <p className="text-sm text-muted-foreground">Draft / Review Posts</p>
-                  <p className="mt-1 text-2xl font-bold">
-                    {data.contentStats.posts.draft + data.contentStats.posts.review}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {data.contentStats.posts.scheduled} scheduled
-                  </p>
-                </div>
-                <div className="rounded-xl border bg-card p-5">
-                  <p className="text-sm text-muted-foreground">Knowledge Entries</p>
-                  <p className="mt-1 text-2xl font-bold">{data.contentStats.knowledgeEntries}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {data.contentStats.transcripts} transcript
-                    {data.contentStats.transcripts !== 1 ? 's' : ''}
-                  </p>
-                </div>
+                <StatCard
+                  label="Published Posts"
+                  value={data.contentStats.posts.published}
+                  description={`${data.contentStats.posts.total} total`}
+                />
+                <StatCard
+                  label="Draft / Review Posts"
+                  value={data.contentStats.posts.draft + data.contentStats.posts.review}
+                  description={`${data.contentStats.posts.scheduled} scheduled`}
+                />
+                <StatCard
+                  label="Knowledge Entries"
+                  value={data.contentStats.knowledgeEntries}
+                  description={`${data.contentStats.transcripts} transcript${data.contentStats.transcripts !== 1 ? 's' : ''}`}
+                />
               </div>
             </div>
           )}
@@ -305,13 +302,9 @@ export function AnalyticsOverview() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">{getFunnelName(funnel)}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                             /{funnel.slug}
-                            {!funnel.is_published && (
-                              <span className="ml-2 text-yellow-600 dark:text-yellow-400">
-                                Draft
-                              </span>
-                            )}
+                            {!funnel.is_published && <Badge variant="orange">Draft</Badge>}
                           </p>
                         </div>
                       </div>
@@ -327,13 +320,11 @@ export function AnalyticsOverview() {
 
       {/* Empty state when data loaded but no views/leads */}
       {!loading && data && data.totals.views === 0 && data.totals.leads === 0 && (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-medium">No analytics data yet</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Once visitors view your funnel pages and submit leads, your metrics will appear here.
-          </p>
-        </div>
+        <EmptyState
+          icon={<BarChart3 />}
+          title="No analytics data yet"
+          description="Once visitors view your funnel pages and submit leads, your metrics will appear here."
+        />
       )}
     </div>
   );

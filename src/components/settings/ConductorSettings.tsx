@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle, Zap } from 'lucide-react';
+import { Button, Input, Label } from '@magnetlab/magnetui';
 
 import { logError } from '@/lib/utils/logger';
 import * as integrationsApi from '@/frontend/api/integrations';
@@ -14,9 +15,15 @@ interface ConductorSettingsProps {
   };
 }
 
-export function ConductorSettings({ isConnected, lastVerifiedAt, metadata }: ConductorSettingsProps) {
+export function ConductorSettings({
+  isConnected,
+  lastVerifiedAt,
+  metadata,
+}: ConductorSettingsProps) {
   const [apiKey, setApiKey] = useState('');
-  const [endpointUrl, setEndpointUrl] = useState(metadata?.endpointUrl || 'https://gtmconductor.com');
+  const [endpointUrl, setEndpointUrl] = useState(
+    metadata?.endpointUrl || 'https://gtmconductor.com'
+  );
   const [showKey, setShowKey] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{
@@ -67,7 +74,11 @@ export function ConductorSettings({ isConnected, lastVerifiedAt, metadata }: Con
   };
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect Conductor? Leads will no longer be pushed to your GTM pipeline.')) {
+    if (
+      !confirm(
+        'Are you sure you want to disconnect Conductor? Leads will no longer be pushed to your GTM pipeline.'
+      )
+    ) {
       return;
     }
 
@@ -91,9 +102,7 @@ export function ConductorSettings({ isConnected, lastVerifiedAt, metadata }: Con
           </div>
           <div>
             <p className="font-medium">Conductor</p>
-            <p className="text-xs text-muted-foreground">
-              Push leads through your GTM pipeline
-            </p>
+            <p className="text-xs text-muted-foreground">Push leads through your GTM pipeline</p>
           </div>
         </div>
         {isConnected && (
@@ -107,12 +116,14 @@ export function ConductorSettings({ isConnected, lastVerifiedAt, metadata }: Con
       {isConnected ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Your Conductor account is connected. Qualified leads will be automatically pushed through the Blueprint pipeline.
+            Your Conductor account is connected. Qualified leads will be automatically pushed
+            through the Blueprint pipeline.
           </p>
 
           {metadata?.endpointUrl && (
             <p className="text-xs text-muted-foreground">
-              Endpoint: <code className="bg-muted px-1 py-0.5 rounded text-xs">{metadata.endpointUrl}</code>
+              Endpoint:{' '}
+              <code className="bg-muted px-1 py-0.5 rounded text-xs">{metadata.endpointUrl}</code>
             </p>
           )}
 
@@ -122,73 +133,73 @@ export function ConductorSettings({ isConnected, lastVerifiedAt, metadata }: Con
             </p>
           )}
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleDisconnect}
             disabled={loading}
-            className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+            className="text-red-500 hover:text-red-600"
           >
             {loading ? (
-              <span className="flex items-center gap-2">
+              <>
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Disconnecting...
-              </span>
+              </>
             ) : (
               'Disconnect'
             )}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Connect to your GTM Conductor instance to automatically push qualified leads through the Blueprint pipeline (scrape, enrich, generate).
+            Connect to your GTM Conductor instance to automatically push qualified leads through the
+            Blueprint pipeline (scrape, enrich, generate).
           </p>
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-muted-foreground">Conductor URL</label>
-              <input
+              <Label className="text-xs text-muted-foreground">Conductor URL</Label>
+              <Input
                 type="url"
                 value={endpointUrl}
                 onChange={(e) => setEndpointUrl(e.target.value)}
                 placeholder="https://gtmconductor.com"
-                className="w-full mt-1 rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="mt-1"
               />
             </div>
 
-            <div className="relative">
-              <label className="text-xs text-muted-foreground">API Key</label>
+            <div>
+              <Label className="text-xs text-muted-foreground">API Key</Label>
               <div className="relative mt-1">
-                <input
+                <Input
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="gtm_..."
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary pr-10"
+                  className="pr-10"
                 />
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => setShowKey(!showKey)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                </Button>
               </div>
             </div>
 
-            <button
-              onClick={handleConnect}
-              disabled={status.verifying || !apiKey.trim()}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
+            <Button onClick={handleConnect} disabled={status.verifying || !apiKey.trim()}>
               {status.verifying ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Verifying...
-                </span>
+                </>
               ) : (
                 'Connect'
               )}
-            </button>
+            </Button>
           </div>
 
           {status.verified === true && (

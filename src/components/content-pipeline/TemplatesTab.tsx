@@ -2,6 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2, Upload, Wand2, X, Globe, User, Check } from 'lucide-react';
+import {
+  Button,
+  Input,
+  Textarea,
+  Label,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@magnetlab/magnetui';
 import type { PostTemplate } from '@/lib/types/content-pipeline';
 import * as templatesApi from '@/frontend/api/content-pipeline/templates';
 import { CSVTemplateImporter } from './CSVTemplateImporter';
@@ -184,33 +195,23 @@ export function TemplatesTab() {
             <h3 className="text-sm font-semibold uppercase text-muted-foreground">My Templates</h3>
             <div className="flex gap-2">
               {templates.length === 0 && (
-                <button
-                  onClick={handleSeed}
-                  disabled={seeding}
-                  className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
-                >
+                <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding}>
                   {seeding ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <Wand2 className="h-3 w-3" />
                   )}
                   Seed Defaults
-                </button>
+                </Button>
               )}
-              <button
-                onClick={() => setShowImport(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-              >
+              <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
                 <Upload className="h-3 w-3" />
                 Import CSV
-              </button>
-              <button
-                onClick={openCreate}
-                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
+              </Button>
+              <Button size="sm" onClick={openCreate}>
                 <Plus className="h-3 w-3" />
                 New Template
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -234,14 +235,14 @@ export function TemplatesTab() {
                       )}
                     </div>
                     <div className="flex gap-1">
-                      <button
+                      <Button
+                        size="sm"
                         onClick={async (e) => {
                           e.stopPropagation();
                           await navigator.clipboard.writeText(template.structure);
                           setCopiedId(template.id);
                           setTimeout(() => setCopiedId(null), 2000);
                         }}
-                        className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                       >
                         {copiedId === template.id ? (
                           <>
@@ -250,19 +251,17 @@ export function TemplatesTab() {
                         ) : (
                           'Use This'
                         )}
-                      </button>
-                      <button
-                        onClick={() => openEdit(template)}
-                        className="rounded-lg p-1 text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <span className="text-xs">Edit</span>
-                      </button>
-                      <button
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(template)}>
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => handleDelete(template.id)}
-                        className="rounded-lg p-1 text-muted-foreground hover:text-red-500 transition-colors"
                       >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                        <X className="h-3.5 w-3.5 text-red-400" />
+                      </Button>
                     </div>
                   </div>
                   {template.description && (
@@ -303,87 +302,76 @@ export function TemplatesTab() {
               <h2 className="text-lg font-semibold">
                 {editingTemplate ? 'Edit Template' : 'New Template'}
               </h2>
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setShowCreate(false)}
-                className="rounded-lg p-1.5 hover:bg-secondary"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium">Name *</label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+                <Label className="mb-1">Name *</Label>
+                <Input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium">Category</label>
-                <select
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Select...</option>
-                  <option value="story">Story</option>
-                  <option value="framework">Framework</option>
-                  <option value="listicle">Listicle</option>
-                  <option value="contrarian">Contrarian</option>
-                  <option value="case_study">Case Study</option>
-                  <option value="question">Question</option>
-                  <option value="educational">Educational</option>
-                  <option value="motivational">Motivational</option>
-                </select>
+                <Label className="mb-1">Category</Label>
+                <Select value={formCategory} onValueChange={setFormCategory}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="story">Story</SelectItem>
+                    <SelectItem value="framework">Framework</SelectItem>
+                    <SelectItem value="listicle">Listicle</SelectItem>
+                    <SelectItem value="contrarian">Contrarian</SelectItem>
+                    <SelectItem value="case_study">Case Study</SelectItem>
+                    <SelectItem value="question">Question</SelectItem>
+                    <SelectItem value="educational">Educational</SelectItem>
+                    <SelectItem value="motivational">Motivational</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium">Description</label>
-                <input
+                <Label className="mb-1">Description</Label>
+                <Input
                   type="text"
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium">
-                  Structure * (use [PLACEHOLDER] format)
-                </label>
-                <textarea
+                <Label className="mb-1">Structure * (use [PLACEHOLDER] format)</Label>
+                <Textarea
                   value={formStructure}
                   onChange={(e) => setFormStructure(e.target.value)}
                   rows={6}
-                  className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="resize-none font-mono"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium">Tags (comma-separated)</label>
-                <input
+                <Label className="mb-1">Tags (comma-separated)</Label>
+                <Input
                   type="text"
                   value={formTags}
                   onChange={(e) => setFormTags(e.target.value)}
                   placeholder="storytelling, data-driven, hooks"
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => setShowCreate(false)}
-                className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-              >
+              <Button variant="outline" className="flex-1" onClick={() => setShowCreate(false)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                className="flex-1"
                 onClick={handleSave}
                 disabled={saving || !formName || !formStructure}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

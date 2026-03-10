@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Loader2, ChevronDown, ChevronRight, Sparkles, Plus, SlidersHorizontal } from 'lucide-react';
+import {
+  Search,
+  Loader2,
+  ChevronDown,
+  ChevronRight,
+  Sparkles,
+  Plus,
+  SlidersHorizontal,
+} from 'lucide-react';
+import { Button, Input } from '@magnetlab/magnetui';
 import { cn } from '@/lib/utils';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
 import { ManualKnowledgeModal } from './ManualKnowledgeModal';
@@ -91,35 +100,38 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
     };
   }, []);
 
-  const fetchEntries = useCallback(async (
-    searchQuery: string, cat: string, spk: string = '', tag: string = ''
-  ) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await knowledgeApi.listKnowledge({
-        q: searchQuery || undefined,
-        category: cat || undefined,
-        speaker: spk || undefined,
-        tag: tag || undefined,
-        type: knowledgeType || undefined,
-        topic: topicSlug || undefined,
-        min_quality: minQuality ? parseInt(minQuality, 10) : undefined,
-        since: sinceDate || undefined,
-        team_id: teamId,
-      }) as { entries?: KnowledgeEntryResult[]; total_count?: number };
-      setEntries(data.entries || []);
-      setTotalCount(data.total_count || 0);
-    } catch {
-      setError('Failed to load data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [knowledgeType, topicSlug, minQuality, sinceDate, teamId]);
+  const fetchEntries = useCallback(
+    async (searchQuery: string, cat: string, spk: string = '', tag: string = '') => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = (await knowledgeApi.listKnowledge({
+          q: searchQuery || undefined,
+          category: cat || undefined,
+          speaker: spk || undefined,
+          tag: tag || undefined,
+          type: knowledgeType || undefined,
+          topic: topicSlug || undefined,
+          min_quality: minQuality ? parseInt(minQuality, 10) : undefined,
+          since: sinceDate || undefined,
+          team_id: teamId,
+        })) as { entries?: KnowledgeEntryResult[]; total_count?: number };
+        setEntries(data.entries || []);
+        setTotalCount(data.total_count || 0);
+      } catch {
+        setError('Failed to load data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [knowledgeType, topicSlug, minQuality, sinceDate, teamId]
+  );
 
   const fetchTags = useCallback(async () => {
     try {
-      const data = await knowledgeApi.listKnowledge({ view: 'tags', team_id: teamId }) as { tags?: { tag_name: string; usage_count: number }[] };
+      const data = (await knowledgeApi.listKnowledge({ view: 'tags', team_id: teamId })) as {
+        tags?: { tag_name: string; usage_count: number }[];
+      };
       setTags(data.tags || []);
     } catch {
       // Silent
@@ -128,7 +140,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
 
   const fetchClusters = useCallback(async () => {
     try {
-      const data = await knowledgeApi.getClusters() as { clusters?: TagCluster[] };
+      const data = (await knowledgeApi.getClusters()) as { clusters?: TagCluster[] };
       setClusters(data.clusters || []);
     } catch {
       // Silent
@@ -221,11 +233,11 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
       {/* Search box */}
       <div className="mb-4 relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
+        <Input
           type="text"
           value={query}
           onChange={(e) => handleSearchChange(e.target.value)}
-          className="w-full rounded-lg border border-border bg-background py-3 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full py-3 pl-10 pr-4 text-base"
           placeholder="Search your knowledge base..."
         />
       </div>
@@ -280,7 +292,9 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
           onClick={() => setShowAdvanced(!showAdvanced)}
           className={cn(
             'ml-auto flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
-            showAdvanced ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'
+            showAdvanced
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-secondary hover:bg-secondary/80'
           )}
         >
           <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -293,14 +307,20 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
         <div className="mb-4 rounded-lg border bg-muted/30 p-4">
           <div className="grid gap-3 sm:grid-cols-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Knowledge Type</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Knowledge Type
+              </label>
               <select
                 value={knowledgeType}
-                onChange={(e) => { setKnowledgeType(e.target.value); }}
+                onChange={(e) => {
+                  setKnowledgeType(e.target.value);
+                }}
                 className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
               >
                 {KNOWLEDGE_TYPES.map((kt) => (
-                  <option key={kt.value} value={kt.value}>{kt.label}</option>
+                  <option key={kt.value} value={kt.value}>
+                    {kt.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -308,20 +328,28 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Topic</label>
               <select
                 value={topicSlug}
-                onChange={(e) => { setTopicSlug(e.target.value); }}
+                onChange={(e) => {
+                  setTopicSlug(e.target.value);
+                }}
                 className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
               >
                 <option value="">All Topics</option>
                 {topics.map((t) => (
-                  <option key={t.slug} value={t.slug}>{t.display_name}</option>
+                  <option key={t.slug} value={t.slug}>
+                    {t.display_name}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Min Quality</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Min Quality
+              </label>
               <select
                 value={minQuality}
-                onChange={(e) => { setMinQuality(e.target.value); }}
+                onChange={(e) => {
+                  setMinQuality(e.target.value);
+                }}
                 className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
               >
                 <option value="">Any</option>
@@ -336,7 +364,9 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
               <input
                 type="date"
                 value={sinceDate}
-                onChange={(e) => { setSinceDate(e.target.value); }}
+                onChange={(e) => {
+                  setSinceDate(e.target.value);
+                }}
                 className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
               />
             </div>
@@ -348,7 +378,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
       {error ? (
         <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
           <p className="text-sm text-destructive">{error}</p>
-          <button onClick={() => fetchEntries(query, category, speaker, activeTag)} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Retry</button>
+          <Button onClick={() => fetchEntries(query, category, speaker, activeTag)}>Retry</Button>
         </div>
       ) : loading ? (
         <div className="flex items-center justify-center py-20">
@@ -361,7 +391,9 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
             {query ? 'No results found' : 'No knowledge entries yet'}
           </p>
           <p className="mt-1 text-sm text-muted-foreground/70">
-            {query ? 'Try a different search term or adjust filters' : 'Upload transcripts to build your knowledge base'}
+            {query
+              ? 'Try a different search term or adjust filters'
+              : 'Upload transcripts to build your knowledge base'}
           </p>
         </div>
       ) : (
@@ -370,19 +402,19 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
           {!query && tags.length > 0 && (
             <div className="mb-6">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold uppercase text-muted-foreground">Knowledge Topics</h3>
+                <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+                  Knowledge Topics
+                </h3>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowManualEntry(true)}
-                    className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-                  >
+                  <Button size="sm" onClick={() => setShowManualEntry(true)}>
                     <Plus className="h-3 w-3" />
                     Add Knowledge
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleOrganizeTags}
                     disabled={clustering || tags.length < 4}
-                    className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
                   >
                     {clustering ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -390,7 +422,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
                       <Sparkles className="h-3 w-3" />
                     )}
                     {clustering ? 'Organizing...' : 'Organize Tags'}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -429,7 +461,9 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
                               className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-secondary transition-colors"
                             >
                               {tag.tag_name}
-                              <span className="ml-1 text-muted-foreground/50">({tag.usage_count})</span>
+                              <span className="ml-1 text-muted-foreground/50">
+                                ({tag.usage_count})
+                              </span>
                             </button>
                           ))}
                         </div>
@@ -487,9 +521,7 @@ export function KnowledgeSearch({ teamId }: { teamId?: string }) {
                 key={entry.id}
                 entry={entry}
                 onUpdate={(id, updated) => {
-                  setEntries((prev) =>
-                    prev.map((e) => (e.id === id ? { ...e, ...updated } : e))
-                  );
+                  setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...updated } : e)));
                   fetchTags();
                 }}
                 onDelete={(id) => {

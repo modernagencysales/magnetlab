@@ -11,6 +11,7 @@ import {
   X,
   ChevronDown,
 } from 'lucide-react';
+import { Button, Badge, Input, Label } from '@magnetlab/magnetui';
 import type { QualificationQuestion, AnswerType } from '@/lib/types/funnel';
 import { SURVEY_TEMPLATE_QUESTIONS } from '@/lib/constants/survey-templates';
 import * as funnelApi from '@/frontend/api/funnel';
@@ -282,10 +283,11 @@ export function QuestionsManager({
           </p>
         </div>
         {questions.length < SURVEY_TEMPLATE_QUESTIONS.length && (
-          <button
+          <Button
+            variant="outline"
             onClick={handleLoadTemplate}
             disabled={loadingTemplate}
-            className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors disabled:opacity-50 shrink-0"
+            className="shrink-0"
           >
             {loadingTemplate ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -293,7 +295,7 @@ export function QuestionsManager({
               <ListChecks className="h-4 w-4" />
             )}
             Load Template
-          </button>
+          </Button>
         )}
       </div>
 
@@ -335,22 +337,10 @@ export function QuestionsManager({
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                    Q{index + 1}
-                  </span>
-                  <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">
-                    {getAnswerTypeLabel(question.answerType)}
-                  </span>
-                  {question.isQualifying && (
-                    <span className="text-xs text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded">
-                      Qualifying
-                    </span>
-                  )}
-                  {!question.isRequired && (
-                    <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">
-                      Optional
-                    </span>
-                  )}
+                  <Badge variant="gray">Q{index + 1}</Badge>
+                  <Badge variant="gray">{getAnswerTypeLabel(question.answerType)}</Badge>
+                  {question.isQualifying && <Badge variant="green">Qualifying</Badge>}
+                  {!question.isRequired && <Badge variant="gray">Optional</Badge>}
                 </div>
                 <p className="text-sm truncate">{question.questionText}</p>
                 {question.isQualifying && (
@@ -366,22 +356,25 @@ export function QuestionsManager({
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() =>
                     setExpandedQuestion(expandedQuestion === question.id ? null : question.id)
                   }
-                  className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${expandedQuestion === question.id ? 'rotate-180' : ''}`}
                   />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => handleDeleteQuestion(question.id)}
-                  className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors"
+                  className="text-muted-foreground hover:text-red-500"
                 >
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -389,16 +382,13 @@ export function QuestionsManager({
             {expandedQuestion === question.id && (
               <div className="mt-4 pt-4 border-t border-border space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Question Text
-                  </label>
-                  <input
+                  <Label className="text-xs">Question Text</Label>
+                  <Input
                     type="text"
                     value={question.questionText}
                     onChange={(e) =>
                       handleUpdateQuestion(question.id, { questionText: e.target.value })
                     }
-                    className="w-full rounded border border-border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary transition-colors"
                   />
                 </div>
 
@@ -549,7 +539,9 @@ export function QuestionsManager({
                             placeholder={`Option ${optIdx + 1}`}
                           />
                           {(question.options || []).length > 2 && (
-                            <button
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
                               onClick={() => {
                                 const updatedOptions = (question.options || []).filter(
                                   (_, i) => i !== optIdx
@@ -562,10 +554,10 @@ export function QuestionsManager({
                                   qualifyingAnswer: updatedQualifying,
                                 });
                               }}
-                              className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
+                              className="p-1 text-muted-foreground hover:text-red-500"
                             >
                               <X className="h-3.5 w-3.5" />
-                            </button>
+                            </Button>
                           )}
                         </div>
                       ))}
@@ -590,12 +582,11 @@ export function QuestionsManager({
       {/* Add New Question */}
       <div className="rounded-lg border border-dashed bg-muted/30 p-4 space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5">New Question</label>
-          <input
+          <Label>New Question</Label>
+          <Input
             type="text"
             value={newQuestion}
             onChange={(e) => setNewQuestion(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
             placeholder="Enter your question..."
             onKeyDown={(e) => e.key === 'Enter' && handleAddQuestion()}
           />
@@ -734,15 +725,17 @@ export function QuestionsManager({
                     placeholder={`Option ${idx + 1}`}
                   />
                   {newOptions.length > 2 && (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => {
                         setNewOptions(newOptions.filter((_, i) => i !== idx));
                         setNewQualifyingOptions(newQualifyingOptions.filter((o) => o !== opt));
                       }}
-                      className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
+                      className="p-1 text-muted-foreground hover:text-red-500"
                     >
                       <X className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   )}
                 </div>
               ))}
@@ -757,14 +750,10 @@ export function QuestionsManager({
         )}
 
         <div className="flex justify-end">
-          <button
-            onClick={handleAddQuestion}
-            disabled={!newQuestion.trim() || saving}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
+          <Button onClick={handleAddQuestion} disabled={!newQuestion.trim() || saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Add Question
-          </button>
+          </Button>
         </div>
       </div>
 

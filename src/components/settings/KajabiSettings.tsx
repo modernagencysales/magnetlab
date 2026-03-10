@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle, BookOpen } from 'lucide-react';
+import { Button, Input, Label } from '@magnetlab/magnetui';
 
 import { logError } from '@/lib/utils/logger';
 
@@ -93,7 +94,11 @@ export function KajabiSettings({ isConnected, lastVerifiedAt }: KajabiSettingsPr
   };
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect Kajabi? Leads will no longer be pushed to your Kajabi site.')) {
+    if (
+      !confirm(
+        'Are you sure you want to disconnect Kajabi? Leads will no longer be pushed to your Kajabi site.'
+      )
+    ) {
       return;
     }
 
@@ -142,7 +147,8 @@ export function KajabiSettings({ isConnected, lastVerifiedAt }: KajabiSettingsPr
       {isConnected ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Your Kajabi account is connected. New funnel leads will be automatically created as contacts in your Kajabi site.
+            Your Kajabi account is connected. New funnel leads will be automatically created as
+            contacts in your Kajabi site.
           </p>
 
           {lastVerifiedAt && (
@@ -152,35 +158,33 @@ export function KajabiSettings({ isConnected, lastVerifiedAt }: KajabiSettingsPr
           )}
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleVerify}
-              disabled={verifying}
-              className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
-            >
+            <Button variant="outline" size="sm" onClick={handleVerify} disabled={verifying}>
               {verifying ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Testing...
-                </span>
+                </>
               ) : (
                 'Test Connection'
               )}
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleDisconnect}
               disabled={disconnecting}
-              className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+              className="text-red-500 hover:text-red-600"
             >
               {disconnecting ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Disconnecting...
-                </span>
+                </>
               ) : (
                 'Disconnect'
               )}
-            </button>
+            </Button>
           </div>
         </div>
       ) : expanded ? (
@@ -189,70 +193,69 @@ export function KajabiSettings({ isConnected, lastVerifiedAt }: KajabiSettingsPr
             Enter your Kajabi API key and Site ID to connect your account.
           </p>
 
-          <div className="relative">
-            <label className="text-xs text-muted-foreground">API Key</label>
+          <div>
+            <Label className="text-xs text-muted-foreground">API Key</Label>
             <div className="relative mt-1">
-              <input
+              <Input
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="kbjb_..."
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary pr-10"
+                className="pr-10"
               />
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+              </Button>
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-muted-foreground">Site ID</label>
-            <div className="mt-1">
-              <input
-                type="text"
-                value={siteId}
-                onChange={(e) => setSiteId(e.target.value)}
-                placeholder="your-site-id"
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
+            <Label className="text-xs text-muted-foreground">Site ID</Label>
+            <Input
+              type="text"
+              value={siteId}
+              onChange={(e) => setSiteId(e.target.value)}
+              placeholder="your-site-id"
+              className="mt-1"
+            />
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={handleConnect}
               disabled={connecting || !apiKey.trim() || !siteId.trim()}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {connecting ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Connecting...
-                </span>
+                </>
               ) : (
                 'Connect'
               )}
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
               onClick={() => {
                 setExpanded(false);
                 setApiKey('');
                 setSiteId('');
                 setFeedback(null);
               }}
-              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
             >
               Cancel
-            </button>
+            </Button>
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Find your API key in Kajabi Admin &gt; User API Keys. Your Site ID is in the URL when logged in.
+            Find your API key in Kajabi Admin &gt; User API Keys. Your Site ID is in the URL when
+            logged in.
           </p>
         </div>
       ) : (
@@ -261,12 +264,7 @@ export function KajabiSettings({ isConnected, lastVerifiedAt }: KajabiSettingsPr
             Connect Kajabi to automatically push funnel leads as contacts to your Kajabi site.
           </p>
 
-          <button
-            onClick={() => setExpanded(true)}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Connect Kajabi
-          </button>
+          <Button onClick={() => setExpanded(true)}>Connect Kajabi</Button>
         </div>
       )}
 

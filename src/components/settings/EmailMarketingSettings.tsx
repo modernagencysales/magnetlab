@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, CheckCircle, XCircle, ExternalLink, Eye, EyeOff, Mail } from 'lucide-react';
-
+import { Button, Input, Label } from '@magnetlab/magnetui';
 import { logError } from '@/lib/utils/logger';
 import * as integrationsApi from '@/frontend/api/integrations';
 
@@ -76,7 +76,9 @@ const PROVIDERS: ProviderConfig[] = [
 
 function ProviderIcon({ provider, className }: { provider: ProviderConfig; className?: string }) {
   return (
-    <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10 ${className ?? ''}`}>
+    <div
+      className={`flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10 ${className ?? ''}`}
+    >
       <Mail className={`h-5 w-5 ${provider.iconColor}`} />
     </div>
   );
@@ -98,7 +100,9 @@ function ProviderCard({
   const [connecting, setConnecting] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+    null
+  );
 
   const handleConnect = async () => {
     if (provider.authType === 'oauth') {
@@ -150,11 +154,16 @@ function ProviderCard({
     setFeedback(null);
 
     try {
-      const data = await integrationsApi.verifyEmailMarketing({ provider: provider.id }) as { verified?: boolean };
+      const data = (await integrationsApi.verifyEmailMarketing({ provider: provider.id })) as {
+        verified?: boolean;
+      };
       if (data.verified) {
         setFeedback({ type: 'success', message: 'Connection verified successfully' });
       } else {
-        setFeedback({ type: 'error', message: 'Connection test failed. Credentials may have been revoked.' });
+        setFeedback({
+          type: 'error',
+          message: 'Connection test failed. Credentials may have been revoked.',
+        });
       }
     } catch (error) {
       logError('settings/email-marketing', error, { step: 'verify_error', provider: provider.id });
@@ -165,7 +174,11 @@ function ProviderCard({
   };
 
   const handleDisconnect = async () => {
-    if (!confirm(`Are you sure you want to disconnect ${provider.name}? Active funnel integrations for this provider will be deactivated.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to disconnect ${provider.name}? Active funnel integrations for this provider will be deactivated.`
+      )
+    ) {
       return;
     }
 
@@ -176,7 +189,10 @@ function ProviderCard({
       await integrationsApi.disconnectEmailMarketing({ provider: provider.id });
       window.location.reload();
     } catch (error) {
-      logError('settings/email-marketing', error, { step: 'disconnect_error', provider: provider.id });
+      logError('settings/email-marketing', error, {
+        step: 'disconnect_error',
+        provider: provider.id,
+      });
       setFeedback({ type: 'error', message: 'Failed to disconnect' });
     } finally {
       setDisconnecting(false);
@@ -204,7 +220,8 @@ function ProviderCard({
       {isConnected ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Your {provider.name} account is connected. To start syncing leads, go to each funnel&apos;s <strong>Integrations</strong> tab and select a list.
+            Your {provider.name} account is connected. To start syncing leads, go to each
+            funnel&apos;s <strong>Integrations</strong> tab and select a list.
           </p>
 
           {integration?.last_verified_at && (
@@ -214,37 +231,41 @@ function ProviderCard({
           )}
 
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleTestConnection}
               disabled={verifying}
-              className="text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+              className="text-primary hover:text-primary/80"
             >
               {verifying ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Testing...
-                </span>
+                </>
               ) : (
                 'Test Connection'
               )}
-            </button>
+            </Button>
 
             <span className="text-muted-foreground">|</span>
 
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleDisconnect}
               disabled={disconnecting}
-              className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+              className="text-red-500 hover:text-red-600"
             >
               {disconnecting ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Disconnecting...
-                </span>
+                </>
               ) : (
                 'Disconnect'
               )}
-            </button>
+            </Button>
           </div>
         </div>
       ) : expanded ? (
@@ -252,64 +273,61 @@ function ProviderCard({
           {/* Extra field for ActiveCampaign (API URL) */}
           {provider.extraField && (
             <div>
-              <label className="text-xs text-muted-foreground">{provider.extraField.label}</label>
-              <input
+              <Label className="text-xs text-muted-foreground">{provider.extraField.label}</Label>
+              <Input
                 type="text"
                 value={extraFieldValue}
                 onChange={(e) => setExtraFieldValue(e.target.value)}
                 placeholder={provider.extraField.placeholder}
-                className="w-full mt-1 rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="mt-1"
               />
             </div>
           )}
 
           {/* API Key input */}
           <div>
-            <label className="text-xs text-muted-foreground">API Key</label>
+            <Label className="text-xs text-muted-foreground">API Key</Label>
             <div className="relative mt-1">
-              <input
+              <Input
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={`Enter your ${provider.name} API key`}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary pr-10"
+                className="pr-10"
               />
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleConnect}
-              disabled={connecting || !apiKey.trim()}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
+            <Button onClick={handleConnect} disabled={connecting || !apiKey.trim()}>
               {connecting ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Connecting...
-                </span>
+                </>
               ) : (
                 'Connect'
               )}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => {
                 setExpanded(false);
                 setApiKey('');
                 setExtraFieldValue('');
                 setFeedback(null);
               }}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
-            </button>
+            </Button>
           </div>
 
           {provider.helpUrl && (
@@ -329,7 +347,7 @@ function ProviderCard({
         </div>
       ) : (
         <div>
-          <button
+          <Button
             onClick={() => {
               if (provider.authType === 'oauth') {
                 handleConnect();
@@ -337,17 +355,18 @@ function ProviderCard({
                 setExpanded(true);
               }
             }}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             Connect {provider.name}
-          </button>
+          </Button>
         </div>
       )}
 
       {feedback && (
-        <p className={`mt-3 flex items-center gap-2 text-sm ${
-          feedback.type === 'success' ? 'text-green-600' : 'text-red-500'
-        }`}>
+        <p
+          className={`mt-3 flex items-center gap-2 text-sm ${
+            feedback.type === 'success' ? 'text-green-600' : 'text-red-500'
+          }`}
+        >
           {feedback.type === 'success' ? (
             <CheckCircle className="h-4 w-4" />
           ) : (

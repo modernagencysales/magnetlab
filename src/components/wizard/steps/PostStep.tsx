@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Check, Copy, CheckCircle2 } from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
 import type { PostWriterResult, PostVariation } from '@/lib/types/lead-magnet';
 import { cn } from '@/lib/utils';
 import { SwipeFileInspiration } from '@/components/swipe-file/SwipeFileInspiration';
@@ -67,21 +68,20 @@ function PostCard({
                   key={i}
                   className={cn(
                     'h-3 w-3 rounded-full border',
-                    i <= Math.ceil(score / 2)
-                      ? 'border-primary bg-primary'
-                      : 'border-muted'
+                    i <= Math.ceil(score / 2) ? 'border-primary bg-primary' : 'border-muted'
                   )}
                 />
               ))}
             </div>
           </div>
         </div>
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={(e) => {
             e.stopPropagation();
             onCopy();
           }}
-          className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-1.5 text-sm hover:bg-secondary/80"
         >
           {copied ? (
             <>
@@ -94,7 +94,7 @@ function PostCard({
               Copy
             </>
           )}
-        </button>
+        </Button>
       </div>
 
       {/* Post content */}
@@ -110,45 +110,24 @@ function PostCard({
 
       {/* Evaluation badges */}
       <div className="mb-4 flex flex-wrap gap-2">
-        <span
-          className={cn(
-            'rounded px-2 py-0.5 text-xs',
+        <Badge
+          variant={
             variation.evaluation.hookStrength === 'strong'
-              ? 'bg-green-500/10 text-green-600'
+              ? 'green'
               : variation.evaluation.hookStrength === 'medium'
-              ? 'bg-yellow-500/10 text-yellow-600'
-              : 'bg-red-500/10 text-red-600'
-          )}
+                ? 'orange'
+                : 'red'
+          }
         >
           Hook: {variation.evaluation.hookStrength}
-        </span>
-        {variation.evaluation.credibilityClear && (
-          <span className="rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600">
-            Credibility Clear
-          </span>
-        )}
-        {variation.evaluation.aiClicheFree && (
-          <span className="rounded bg-purple-500/10 px-2 py-0.5 text-xs text-purple-600">
-            AI-Cliché Free
-          </span>
-        )}
-        {variation.evaluation.contentsSpecific && (
-          <span className="rounded bg-green-500/10 px-2 py-0.5 text-xs text-green-600">
-            Specific
-          </span>
-        )}
+        </Badge>
+        {variation.evaluation.credibilityClear && <Badge variant="blue">Credibility Clear</Badge>}
+        {variation.evaluation.aiClicheFree && <Badge variant="purple">AI-Cliché Free</Badge>}
+        {variation.evaluation.contentsSpecific && <Badge variant="green">Specific</Badge>}
       </div>
 
       {/* Select button */}
-      <button
-        onClick={onSelect}
-        className={cn(
-          'w-full rounded-lg py-3 font-medium transition-colors',
-          isSelected
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-secondary hover:bg-secondary/80'
-        )}
-      >
+      <Button className="w-full" variant={isSelected ? 'default' : 'outline'} onClick={onSelect}>
         {isSelected ? (
           <span className="flex items-center justify-center gap-2">
             <Check className="h-4 w-4" />
@@ -157,7 +136,7 @@ function PostCard({
         ) : (
           'Select This Post'
         )}
-      </button>
+      </Button>
     </motion.div>
   );
 }
@@ -187,13 +166,10 @@ export function PostStep({ result, onSelect, onBack }: PostStepProps) {
             We generated 3 variations with different hooks. Pick the one that resonates most.
           </p>
         </div>
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
+        <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </Button>
       </div>
 
       {/* Swipe File Inspiration */}
@@ -236,12 +212,9 @@ export function PostStep({ result, onSelect, onBack }: PostStepProps) {
           animate={{ opacity: 1, y: 0 }}
           className="sticky bottom-4"
         >
-          <button
-            onClick={handleContinue}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground shadow-lg"
-          >
+          <Button onClick={handleContinue} className="w-full py-4 text-lg font-semibold shadow-lg">
             Continue to Publishing
-          </button>
+          </Button>
         </motion.div>
       )}
     </div>

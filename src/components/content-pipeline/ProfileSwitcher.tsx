@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@magnetlab/magnetui';
 import type { TeamProfile } from '@/lib/types/content-pipeline';
 import * as teamsApi from '@/frontend/api/teams';
 
@@ -43,19 +44,20 @@ export function ProfileSwitcher({
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm text-muted-foreground">Viewing as:</span>
-      <select
-        value={selectedProfileId || ''}
-        onChange={(e) => onProfileChange(e.target.value || null)}
-        className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-      >
-        <option value="">All Members</option>
-        {profiles.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.full_name}
-            {p.title ? ` (${p.title})` : ''}
-          </option>
-        ))}
-      </select>
+      <Select value={selectedProfileId || ''} onValueChange={(v) => onProfileChange(v || null)}>
+        <SelectTrigger className="w-[200px]">
+          <SelectValue placeholder="All Members" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="">All Members</SelectItem>
+          {profiles.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.full_name}
+              {p.title ? ` (${p.title})` : ''}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {selected && (
         <div className="flex items-center gap-1.5">
           <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">

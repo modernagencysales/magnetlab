@@ -1,9 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Copy, Check, CheckCircle2, Loader2, FileText, MessageSquare, Send, Globe, ChevronDown, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  Copy,
+  Check,
+  CheckCircle2,
+  Loader2,
+  FileText,
+  MessageSquare,
+  Send,
+  Globe,
+  ChevronDown,
+  Sparkles,
+} from 'lucide-react';
+import { Button, Input } from '@magnetlab/magnetui';
 import Link from 'next/link';
-import type { ExtractedContent, PostVariation, LeadMagnetConcept, InteractiveConfig } from '@/lib/types/lead-magnet';
+import type {
+  ExtractedContent,
+  PostVariation,
+  LeadMagnetConcept,
+  InteractiveConfig,
+} from '@/lib/types/lead-magnet';
 
 import { logError } from '@/lib/utils/logger';
 import * as leadMagnetApi from '@/frontend/api/lead-magnet';
@@ -119,7 +137,11 @@ export function PublishStep({
       }
     } catch (error) {
       logError('wizard/publish', error, { step: 'save_error' });
-      setSaveError(error instanceof Error ? error.message : 'Failed to save. You can still copy the content below.');
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to save. You can still copy the content below.'
+      );
     } finally {
       setSaving(false);
     }
@@ -136,13 +158,10 @@ export function PublishStep({
             Save it and set up your hosted page to start capturing leads.
           </p>
         </div>
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
+        <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </Button>
       </div>
 
       {/* Save to Library */}
@@ -158,14 +177,12 @@ export function PublishStep({
             )}
             <div>
               <h3 className="font-semibold">Save to Library</h3>
-              <p className="text-xs text-muted-foreground">Save your lead magnet to set up hosting and track leads</p>
+              <p className="text-xs text-muted-foreground">
+                Save your lead magnet to set up hosting and track leads
+              </p>
             </div>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving || saved}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
+          <Button onClick={handleSave} disabled={saving || saved} size="sm">
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : saved ? (
@@ -176,10 +193,10 @@ export function PublishStep({
             ) : (
               'Save'
             )}
-          </button>
+          </Button>
         </div>
         {!saved && (
-          <input
+          <Input
             type="text"
             value={saveTitle}
             onChange={(e) => {
@@ -188,12 +205,10 @@ export function PublishStep({
             }}
             aria-label="Lead magnet name"
             placeholder="Name your lead magnet..."
-            className="mt-3 w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="mt-3"
           />
         )}
-        {saveError && (
-          <p className="mt-2 text-sm text-destructive">{saveError}</p>
-        )}
+        {saveError && <p className="mt-2 text-sm text-destructive">{saveError}</p>}
         {saved && (
           <p className="mt-2 text-sm text-green-600 dark:text-green-400">
             Lead magnet saved to your library.
@@ -213,15 +228,24 @@ export function PublishStep({
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-500 text-sm font-medium text-white">
                   2
                 </div>
-                <h3 className="text-lg font-semibold text-violet-900 dark:text-violet-100">Set Up Your Hosted Page</h3>
+                <h3 className="text-lg font-semibold text-violet-900 dark:text-violet-100">
+                  Set Up Your Hosted Page
+                </h3>
               </div>
               <p className="mt-2 text-sm text-violet-700 dark:text-violet-300">
-                We&apos;ll host your lead magnet with a professional opt-in page, automatic content delivery, and lead tracking — no Google Docs or external tools needed.
+                We&apos;ll host your lead magnet with a professional opt-in page, automatic content
+                delivery, and lead tracking — no Google Docs or external tools needed.
               </p>
               <div className="mt-3 flex items-center gap-3 text-xs text-violet-600 dark:text-violet-400">
-                <span className="flex items-center gap-1"><Globe className="h-3.5 w-3.5" /> Custom landing page</span>
-                <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" /> Lead capture built-in</span>
-                <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> Content auto-delivered</span>
+                <span className="flex items-center gap-1">
+                  <Globe className="h-3.5 w-3.5" /> Custom landing page
+                </span>
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Lead capture built-in
+                </span>
+                <span className="flex items-center gap-1">
+                  <FileText className="h-3.5 w-3.5" /> Content auto-delivered
+                </span>
               </div>
               <Link
                 href={`/magnets/${savedLeadMagnetId}?tab=funnel`}
@@ -241,10 +265,7 @@ export function PublishStep({
             <Send className="h-5 w-5 text-blue-500" />
             <h3 className="font-semibold">LinkedIn Post</h3>
           </div>
-          <button
-            onClick={() => copyToClipboard(post.post, 'post')}
-            className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-secondary/80 transition-colors"
-          >
+          <Button variant="outline" size="sm" onClick={() => copyToClipboard(post.post, 'post')}>
             {copiedSection === 'post' ? (
               <>
                 <Check className="h-4 w-4 text-green-500" />
@@ -256,17 +277,19 @@ export function PublishStep({
                 Copy Post
               </>
             )}
-          </button>
+          </Button>
         </div>
         <div className="p-4">
           <div className="rounded-lg bg-muted/50 p-4">
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-              {post.post}
-            </pre>
+            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{post.post}</pre>
           </div>
           <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-            <span>Hook: <span className="font-medium text-foreground">{post.hookType}</span></span>
-            <span>CTA word: <span className="font-medium text-foreground">&quot;{ctaWord}&quot;</span></span>
+            <span>
+              Hook: <span className="font-medium text-foreground">{post.hookType}</span>
+            </span>
+            <span>
+              CTA word: <span className="font-medium text-foreground">&quot;{ctaWord}&quot;</span>
+            </span>
           </div>
         </div>
       </div>
@@ -281,10 +304,7 @@ export function PublishStep({
               (Send to people who comment &quot;{ctaWord}&quot;)
             </span>
           </div>
-          <button
-            onClick={() => copyToClipboard(dmTemplate, 'dm')}
-            className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-secondary/80 transition-colors"
-          >
+          <Button variant="outline" size="sm" onClick={() => copyToClipboard(dmTemplate, 'dm')}>
             {copiedSection === 'dm' ? (
               <>
                 <Check className="h-4 w-4 text-green-500" />
@@ -296,7 +316,7 @@ export function PublishStep({
                 Copy DM
               </>
             )}
-          </button>
+          </Button>
         </div>
         <div className="p-4">
           <div className="rounded-lg bg-muted/50 p-4">
@@ -321,14 +341,17 @@ export function PublishStep({
               <p className="text-xs text-muted-foreground">Copy if you prefer to host elsewhere</p>
             </div>
           </div>
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showRawContent ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`h-4 w-4 text-muted-foreground transition-transform ${showRawContent ? 'rotate-180' : ''}`}
+          />
         </button>
         {showRawContent && (
           <>
             <div className="border-t px-4 py-2 flex justify-end">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => copyToClipboard(fullContent, 'content')}
-                className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-secondary/80 transition-colors"
               >
                 {copiedSection === 'content' ? (
                   <>
@@ -341,7 +364,7 @@ export function PublishStep({
                     Copy All
                   </>
                 )}
-              </button>
+              </Button>
             </div>
             <div className="max-h-[400px] overflow-y-auto border-t p-4">
               <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-muted-foreground">

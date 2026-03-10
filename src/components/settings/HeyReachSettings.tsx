@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
+import { Button, Input, Label } from '@magnetlab/magnetui';
 
 import { logError } from '@/lib/utils/logger';
 import * as integrationsApi from '@/frontend/api/integrations';
@@ -50,7 +51,7 @@ export function HeyReachSettings({ isConnected, lastVerifiedAt }: HeyReachSettin
     setFeedback(null);
 
     try {
-      const data = await integrationsApi.verifyHeyReach() as { verified?: boolean };
+      const data = (await integrationsApi.verifyHeyReach()) as { verified?: boolean };
       if (data.verified) {
         setFeedback({ type: 'success', message: 'Connection verified successfully' });
       } else {
@@ -71,7 +72,11 @@ export function HeyReachSettings({ isConnected, lastVerifiedAt }: HeyReachSettin
   };
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect HeyReach? Leads will no longer be delivered via LinkedIn DM campaigns.')) {
+    if (
+      !confirm(
+        'Are you sure you want to disconnect HeyReach? Leads will no longer be delivered via LinkedIn DM campaigns.'
+      )
+    ) {
       return;
     }
 
@@ -117,7 +122,8 @@ export function HeyReachSettings({ isConnected, lastVerifiedAt }: HeyReachSettin
       {isConnected ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Your HeyReach account is connected. You can now deliver lead magnets to leads via LinkedIn DM campaigns.
+            Your HeyReach account is connected. You can now deliver lead magnets to leads via
+            LinkedIn DM campaigns.
           </p>
 
           {lastVerifiedAt && (
@@ -137,7 +143,8 @@ export function HeyReachSettings({ isConnected, lastVerifiedAt }: HeyReachSettin
                 <span className="text-foreground">{'{lead_magnet_title}'}</span> — Lead magnet name
               </p>
               <p className="text-xs font-mono text-muted-foreground">
-                <span className="text-foreground">{'{lead_magnet_url}'}</span> — Content delivery URL
+                <span className="text-foreground">{'{lead_magnet_url}'}</span> — Content delivery
+                URL
               </p>
               <p className="text-xs font-mono text-muted-foreground">
                 <span className="text-foreground">{'{utm_source}'}</span> — UTM source
@@ -146,35 +153,33 @@ export function HeyReachSettings({ isConnected, lastVerifiedAt }: HeyReachSettin
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleVerify}
-              disabled={verifying}
-              className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
-            >
+            <Button variant="outline" size="sm" onClick={handleVerify} disabled={verifying}>
               {verifying ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Testing...
-                </span>
+                </>
               ) : (
                 'Test Connection'
               )}
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleDisconnect}
               disabled={disconnecting}
-              className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+              className="text-red-500 hover:text-red-600"
             >
               {disconnecting ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Disconnecting...
-                </span>
+                </>
               ) : (
                 'Disconnect'
               )}
-            </button>
+            </Button>
           </div>
         </div>
       ) : expanded ? (
@@ -183,52 +188,49 @@ export function HeyReachSettings({ isConnected, lastVerifiedAt }: HeyReachSettin
             Enter your HeyReach API key to connect your account.
           </p>
 
-          <div className="relative">
-            <label className="text-xs text-muted-foreground">API Key</label>
+          <div>
+            <Label className="text-xs text-muted-foreground">API Key</Label>
             <div className="relative mt-1">
-              <input
+              <Input
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="hr_..."
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary pr-10"
+                className="pr-10"
               />
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleConnect}
-              disabled={connecting || !apiKey.trim()}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
+            <Button onClick={handleConnect} disabled={connecting || !apiKey.trim()}>
               {connecting ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Connecting...
-                </span>
+                </>
               ) : (
                 'Connect'
               )}
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
               onClick={() => {
                 setExpanded(false);
                 setApiKey('');
                 setFeedback(null);
               }}
-              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
             >
               Cancel
-            </button>
+            </Button>
           </div>
 
           <p className="text-xs text-muted-foreground">
@@ -241,12 +243,7 @@ export function HeyReachSettings({ isConnected, lastVerifiedAt }: HeyReachSettin
             Connect HeyReach to deliver lead magnets to leads via LinkedIn DM campaigns.
           </p>
 
-          <button
-            onClick={() => setExpanded(true)}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Connect HeyReach
-          </button>
+          <Button onClick={() => setExpanded(true)}>Connect HeyReach</Button>
         </div>
       )}
 

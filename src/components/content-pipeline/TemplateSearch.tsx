@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { Search, Loader2 } from 'lucide-react';
+import { Button, Input } from '@magnetlab/magnetui';
 import * as templatesApi from '@/frontend/api/content-pipeline/templates';
 
 interface MatchedTemplate {
@@ -55,21 +56,22 @@ export function TemplateSearch({ onSelect }: TemplateSearchProps) {
     <div>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
+        <Input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Search templates by topic (press Enter)..."
-          className="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-20 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full pl-10 pr-20"
         />
-        <button
+        <Button
+          size="sm"
           onClick={handleSearch}
           disabled={searching || !query.trim()}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2"
         >
           {searching ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Search'}
-        </button>
+        </Button>
       </div>
 
       {/* Results */}

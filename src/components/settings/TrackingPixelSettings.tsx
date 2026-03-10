@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
+import { Button, Input, Label, Checkbox } from '@magnetlab/magnetui';
 import * as integrationsApi from '@/frontend/api/integrations';
 
 interface Integration {
@@ -38,12 +39,14 @@ function MetaPixelCard({ integration }: { integration?: Integration }) {
   const [disconnecting, setDisconnecting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const metadata = integration?.metadata as {
-    pixel_id?: string;
-    enabled_events?: string[];
-    default_conversion_value?: number;
-    test_event_code?: string;
-  } | undefined;
+  const metadata = integration?.metadata as
+    | {
+        pixel_id?: string;
+        enabled_events?: string[];
+        default_conversion_value?: number;
+        test_event_code?: string;
+      }
+    | undefined;
 
   const handleConnect = async () => {
     if (!pixelId.trim() || !accessToken.trim()) return;
@@ -65,7 +68,10 @@ function MetaPixelCard({ integration }: { integration?: Integration }) {
       setResult({ success: true, message: 'Meta Pixel connected!' });
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
-      setResult({ success: false, message: error instanceof Error ? error.message : 'Failed to save' });
+      setResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to save',
+      });
     } finally {
       setSaving(false);
     }
@@ -115,7 +121,8 @@ function MetaPixelCard({ integration }: { integration?: Integration }) {
       {integration?.is_active ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Pixel ID: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metadata?.pixel_id}</code>
+            Pixel ID:{' '}
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metadata?.pixel_id}</code>
           </p>
           <p className="text-sm text-muted-foreground">
             Events: {(metadata?.enabled_events || []).join(', ')}
@@ -130,64 +137,65 @@ function MetaPixelCard({ integration }: { integration?: Integration }) {
               Connected: {new Date(integration.last_verified_at).toLocaleDateString()}
             </p>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleDisconnect}
             disabled={disconnecting}
-            className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+            className="text-red-500 hover:text-red-600"
           >
             {disconnecting ? (
-              <span className="flex items-center gap-2">
+              <>
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Disconnecting...
-              </span>
+              </>
             ) : (
               'Disconnect'
             )}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
           <div>
-            <label className="text-sm font-medium mb-1 block">Pixel ID</label>
-            <input
+            <Label>Pixel ID</Label>
+            <Input
               type="text"
               value={pixelId}
               onChange={(e) => setPixelId(e.target.value)}
               placeholder="123456789012345"
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              className="mt-1"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Conversions API Access Token</label>
-            <div className="relative">
-              <input
+            <Label>Conversions API Access Token</Label>
+            <div className="relative mt-1">
+              <Input
                 type={showToken ? 'text' : 'password'}
                 value={accessToken}
                 onChange={(e) => setAccessToken(e.target.value)}
                 placeholder="EAAxxxxxxxx..."
-                className="w-full rounded-lg border bg-background px-3 py-2 pr-10 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                className="pr-10"
               />
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setShowToken(!showToken)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+              </Button>
             </div>
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Events</label>
-            <div className="flex gap-3">
+            <Label>Events</Label>
+            <div className="flex gap-3 mt-1">
               {['PageView', 'Lead'].map((event) => (
                 <label key={event} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={enabledEvents.includes(event)}
-                    onChange={() => toggleEvent(event)}
-                    className="rounded border-gray-300"
+                    onCheckedChange={() => toggleEvent(event)}
                   />
                   {event}
                 </label>
@@ -197,39 +205,44 @@ function MetaPixelCard({ integration }: { integration?: Integration }) {
 
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="text-sm font-medium mb-1 block">Default Conversion Value ($)</label>
-              <input
+              <Label>Default Conversion Value ($)</Label>
+              <Input
                 type="number"
                 value={conversionValue}
                 onChange={(e) => setConversionValue(e.target.value)}
                 min="0"
                 step="0.01"
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                className="mt-1"
               />
             </div>
             <div className="flex-1">
-              <label className="text-sm font-medium mb-1 block">Test Event Code</label>
-              <input
+              <Label>Test Event Code</Label>
+              <Input
                 type="text"
                 value={testEventCode}
                 onChange={(e) => setTestEventCode(e.target.value)}
                 placeholder="Optional"
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                className="mt-1"
               />
             </div>
           </div>
 
-          <button
+          <Button
             onClick={handleConnect}
             disabled={saving || !pixelId.trim() || !accessToken.trim()}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect'}
-          </button>
+          </Button>
 
           {result && (
-            <p className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-red-500'}`}>
-              {result.success ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+            <p
+              className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-red-500'}`}
+            >
+              {result.success ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
               {result.message}
             </p>
           )}
@@ -262,12 +275,14 @@ function LinkedInInsightCard({ integration }: { integration?: Integration }) {
   const [disconnecting, setDisconnecting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const metadata = integration?.metadata as {
-    partner_id?: string;
-    conversion_id?: string;
-    enabled_events?: string[];
-    default_conversion_value?: number;
-  } | undefined;
+  const metadata = integration?.metadata as
+    | {
+        partner_id?: string;
+        conversion_id?: string;
+        enabled_events?: string[];
+        default_conversion_value?: number;
+      }
+    | undefined;
 
   const handleConnect = async () => {
     if (!partnerId.trim() || !conversionId.trim() || !accessToken.trim()) return;
@@ -289,7 +304,10 @@ function LinkedInInsightCard({ integration }: { integration?: Integration }) {
       setResult({ success: true, message: 'LinkedIn Insight Tag connected!' });
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
-      setResult({ success: false, message: error instanceof Error ? error.message : 'Failed to save' });
+      setResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to save',
+      });
     } finally {
       setSaving(false);
     }
@@ -339,10 +357,14 @@ function LinkedInInsightCard({ integration }: { integration?: Integration }) {
       {integration?.is_active ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Partner ID: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metadata?.partner_id}</code>
+            Partner ID:{' '}
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metadata?.partner_id}</code>
           </p>
           <p className="text-sm text-muted-foreground">
-            Conversion ID: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metadata?.conversion_id}</code>
+            Conversion ID:{' '}
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+              {metadata?.conversion_id}
+            </code>
           </p>
           <p className="text-sm text-muted-foreground">
             Events: {(metadata?.enabled_events || []).join(', ')}
@@ -352,75 +374,76 @@ function LinkedInInsightCard({ integration }: { integration?: Integration }) {
               Conversion value: ${metadata?.default_conversion_value}
             </p>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleDisconnect}
             disabled={disconnecting}
-            className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+            className="text-red-500 hover:text-red-600"
           >
             {disconnecting ? (
-              <span className="flex items-center gap-2">
+              <>
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Disconnecting...
-              </span>
+              </>
             ) : (
               'Disconnect'
             )}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
           <div>
-            <label className="text-sm font-medium mb-1 block">Partner ID</label>
-            <input
+            <Label>Partner ID</Label>
+            <Input
               type="text"
               value={partnerId}
               onChange={(e) => setPartnerId(e.target.value)}
               placeholder="1234567"
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              className="mt-1"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Conversion ID</label>
-            <input
+            <Label>Conversion ID</Label>
+            <Input
               type="text"
               value={conversionId}
               onChange={(e) => setConversionId(e.target.value)}
               placeholder="12345678"
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              className="mt-1"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">CAPI Access Token</label>
-            <div className="relative">
-              <input
+            <Label>CAPI Access Token</Label>
+            <div className="relative mt-1">
+              <Input
                 type={showToken ? 'text' : 'password'}
                 value={accessToken}
                 onChange={(e) => setAccessToken(e.target.value)}
                 placeholder="AQXxxxxxxx..."
-                className="w-full rounded-lg border bg-background px-3 py-2 pr-10 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                className="pr-10"
               />
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setShowToken(!showToken)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+              </Button>
             </div>
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Events</label>
-            <div className="flex gap-3">
+            <Label>Events</Label>
+            <div className="flex gap-3 mt-1">
               {['PageView', 'Lead'].map((event) => (
                 <label key={event} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={enabledEvents.includes(event)}
-                    onChange={() => toggleEvent(event)}
-                    className="rounded border-gray-300"
+                    onCheckedChange={() => toggleEvent(event)}
                   />
                   {event}
                 </label>
@@ -429,28 +452,33 @@ function LinkedInInsightCard({ integration }: { integration?: Integration }) {
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Default Conversion Value ($)</label>
-            <input
+            <Label>Default Conversion Value ($)</Label>
+            <Input
               type="number"
               value={conversionValue}
               onChange={(e) => setConversionValue(e.target.value)}
               min="0"
               step="0.01"
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+              className="mt-1"
             />
           </div>
 
-          <button
+          <Button
             onClick={handleConnect}
             disabled={saving || !partnerId.trim() || !conversionId.trim() || !accessToken.trim()}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect'}
-          </button>
+          </Button>
 
           {result && (
-            <p className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-red-500'}`}>
-              {result.success ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+            <p
+              className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-red-500'}`}
+            >
+              {result.success ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
               {result.message}
             </p>
           )}

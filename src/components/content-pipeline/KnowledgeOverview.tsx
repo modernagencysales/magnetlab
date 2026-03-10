@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, TrendingUp, Hash, Star, FileText } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import { KnowledgeEntryCard } from './KnowledgeEntryCard';
 import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
@@ -59,12 +60,7 @@ export function KnowledgeOverview({ teamId }: { teamId?: string }) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
         <p className="text-sm text-destructive">{error}</p>
-        <button
-          onClick={() => fetchData()}
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-        >
-          Retry
-        </button>
+        <Button onClick={() => fetchData()}>Retry</Button>
       </div>
     );
   }

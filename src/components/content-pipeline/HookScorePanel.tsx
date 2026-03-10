@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, Sparkles, Zap } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import { cn } from '@/lib/utils';
 
 interface HookScoreData {
@@ -94,18 +95,14 @@ export function HookScorePanel({ postId, initialScore, onVariantsGenerated }: Ho
           <Zap className="h-3.5 w-3.5 text-amber-500" />
           <span className="text-xs font-semibold">Hook Analysis</span>
         </div>
-        <button
-          onClick={handleScore}
-          disabled={scoring}
-          className="flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[10px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
+        <Button size="sm" onClick={handleScore} disabled={scoring}>
           {scoring ? (
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
             <Sparkles className="h-3 w-3" />
           )}
           {scoreData || initialScore !== null ? 'Re-score' : 'Score Hook'}
-        </button>
+        </Button>
       </div>
 
       {/* Score circle */}
@@ -153,10 +150,7 @@ export function HookScorePanel({ postId, initialScore, onVariantsGenerated }: Ho
         <div className="space-y-1.5">
           <span className="text-[11px] font-medium text-muted-foreground">Suggestions</span>
           {scoreData.suggestions.map((suggestion, i) => (
-            <p
-              key={i}
-              className="border-l-2 border-primary/20 pl-2 text-xs text-muted-foreground"
-            >
+            <p key={i} className="border-l-2 border-primary/20 pl-2 text-xs text-muted-foreground">
               {suggestion}
             </p>
           ))}
@@ -164,10 +158,12 @@ export function HookScorePanel({ postId, initialScore, onVariantsGenerated }: Ho
       )}
 
       {/* Generate variants button */}
-      <button
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full border-dashed"
         onClick={handleGenerateVariants}
         disabled={generating}
-        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 transition-colors"
       >
         {generating ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -175,7 +171,7 @@ export function HookScorePanel({ postId, initialScore, onVariantsGenerated }: Ho
           <Sparkles className="h-3.5 w-3.5" />
         )}
         Generate 3 Hook Variants
-      </button>
+      </Button>
     </div>
   );
 }

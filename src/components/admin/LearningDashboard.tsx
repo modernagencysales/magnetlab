@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { Activity, Brain, TrendingUp, History, Users, MessageSquare, Tag } from 'lucide-react';
+import { Badge } from '@magnetlab/magnetui';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -66,9 +67,7 @@ function formatDate(dateStr: string): string {
 }
 
 function formatPatternLabel(pattern: string): string {
-  return pattern
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return pattern.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 const CONTENT_TYPE_COLORS: Record<string, string> = {
@@ -200,7 +199,9 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
                         style={{ width: `${widthPercent}%` }}
                       />
                     </div>
-                    <span className="text-xs text-zinc-500 w-8 text-right tabular-nums">{count}</span>
+                    <span className="text-xs text-zinc-500 w-8 text-right tabular-nums">
+                      {count}
+                    </span>
                   </div>
                 );
               })}
@@ -232,8 +233,7 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
           <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
             <div className="max-h-[600px] overflow-y-auto">
               {recentEdits.map((edit, index) => {
-                const patterns =
-                  edit.auto_classified_changes?.patterns ?? [];
+                const patterns = edit.auto_classified_changes?.patterns ?? [];
                 return (
                   <div
                     key={edit.id}
@@ -300,15 +300,7 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
-function StatCard({
-  icon,
-  value,
-  label,
-}: {
-  icon: React.ReactNode;
-  value: number;
-  label: string;
-}) {
+function StatCard({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
   return (
     <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
       <div className="flex items-center gap-2 mb-3">
@@ -341,9 +333,7 @@ function VoiceProfileCard({ profile }: { profile: Profile }) {
   const vp = profile.voice_profile;
   if (!vp) return null;
 
-  const topPatterns = (vp.edit_patterns ?? [])
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
+  const topPatterns = (vp.edit_patterns ?? []).sort((a, b) => b.count - a.count).slice(0, 5);
 
   const maxCount = topPatterns.length > 0 ? topPatterns[0].count : 1;
 
@@ -354,14 +344,10 @@ function VoiceProfileCard({ profile }: { profile: Profile }) {
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             {profile.full_name}
           </h3>
-          {vp.tone && (
-            <p className="text-xs text-zinc-400 mt-0.5">Tone: {vp.tone}</p>
-          )}
+          {vp.tone && <p className="text-xs text-zinc-400 mt-0.5">Tone: {vp.tone}</p>}
         </div>
         <div className="text-right">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
-            v{vp.evolution_version ?? 0}
-          </span>
+          <Badge variant="purple">v{vp.evolution_version ?? 0}</Badge>
         </div>
       </div>
 
@@ -372,9 +358,7 @@ function VoiceProfileCard({ profile }: { profile: Profile }) {
           {vp.last_evolved ? formatDate(vp.last_evolved) : 'Never'}
         </div>
         <div className="text-zinc-400">Positive examples</div>
-        <div className="text-zinc-600 dark:text-zinc-300">
-          {vp.positive_examples?.length ?? 0}
-        </div>
+        <div className="text-zinc-600 dark:text-zinc-300">{vp.positive_examples?.length ?? 0}</div>
       </div>
 
       {/* Top edit patterns */}

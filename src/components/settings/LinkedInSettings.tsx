@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2, CheckCircle, XCircle, Linkedin } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 
 import { logError } from '@/lib/utils/logger';
 import * as linkedInApi from '@/frontend/api/linkedin';
@@ -14,13 +15,18 @@ interface LinkedInSettingsProps {
 
 export function LinkedInSettings({ isConnected, accountName }: LinkedInSettingsProps) {
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+    null
+  );
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const linkedinParam = searchParams.get('linkedin');
     if (linkedinParam === 'connected') {
-      setFeedback({ type: 'success', message: 'LinkedIn connected successfully! You can now publish posts directly.' });
+      setFeedback({
+        type: 'success',
+        message: 'LinkedIn connected successfully! You can now publish posts directly.',
+      });
     } else if (linkedinParam === 'error') {
       const reason = searchParams.get('reason') || 'Unknown error';
       setFeedback({ type: 'error', message: `Failed to connect LinkedIn: ${reason}` });
@@ -32,7 +38,9 @@ export function LinkedInSettings({ isConnected, accountName }: LinkedInSettingsP
   };
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect LinkedIn? Post publishing will stop working.')) {
+    if (
+      !confirm('Are you sure you want to disconnect LinkedIn? Post publishing will stop working.')
+    ) {
       return;
     }
 
@@ -73,43 +81,44 @@ export function LinkedInSettings({ isConnected, accountName }: LinkedInSettingsP
       {isConnected ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Your LinkedIn account is connected{accountName ? ` as ${accountName}` : ''}. Posts will be published directly to LinkedIn.
+            Your LinkedIn account is connected{accountName ? ` as ${accountName}` : ''}. Posts will
+            be published directly to LinkedIn.
           </p>
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleDisconnect}
             disabled={loading}
-            className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+            className="text-red-500 hover:text-red-600"
           >
             {loading ? (
-              <span className="flex items-center gap-2">
+              <>
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Disconnecting...
-              </span>
+              </>
             ) : (
               'Disconnect'
             )}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Connect your LinkedIn account to publish posts from the content pipeline directly to LinkedIn.
+            Connect your LinkedIn account to publish posts from the content pipeline directly to
+            LinkedIn.
           </p>
 
-          <button
-            onClick={handleConnect}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Connect LinkedIn
-          </button>
+          <Button onClick={handleConnect}>Connect LinkedIn</Button>
         </div>
       )}
 
       {feedback && (
-        <p className={`mt-3 flex items-center gap-2 text-sm ${
-          feedback.type === 'success' ? 'text-green-600' : 'text-red-500'
-        }`}>
+        <p
+          className={`mt-3 flex items-center gap-2 text-sm ${
+            feedback.type === 'success' ? 'text-green-600' : 'text-red-500'
+          }`}
+        >
           {feedback.type === 'success' ? (
             <CheckCircle className="h-4 w-4" />
           ) : (
