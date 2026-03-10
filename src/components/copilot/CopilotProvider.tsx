@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import type { ExtractedContent } from '@/lib/types/lead-magnet';
 
 // ============================================
 // TYPES
@@ -62,7 +63,11 @@ interface CopilotContextValue {
   selectConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
   deleteConversation: (id: string) => Promise<void>;
-  submitFeedback: (messageId: string, rating: 'positive' | 'negative', note?: string) => Promise<void>;
+  submitFeedback: (
+    messageId: string,
+    rating: 'positive' | 'negative',
+    note?: string
+  ) => Promise<void>;
 
   // Page context
   pageContext: PageContext | null;
@@ -75,6 +80,13 @@ interface CopilotContextValue {
   // Apply to page
   applyToPage: ApplyHandler | null;
   registerApplyHandler: (handler: ApplyHandler | null) => void;
+
+  // Content review
+  contentReviewData: ExtractedContent | null;
+  isContentReviewOpen: boolean;
+  openContentReview: (content: ExtractedContent) => void;
+  closeContentReview: () => void;
+  approveContent: (content: ExtractedContent) => void;
 }
 
 // ============================================
@@ -128,6 +140,8 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [pageContext, setPageContext] = useState<PageContext | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [contentReviewData, setContentReviewData] = useState<ExtractedContent | null>(null);
+  const [isContentReviewOpen, setIsContentReviewOpen] = useState(false);
   const applyHandlerRef = useRef<ApplyHandler | null>(null);
   const [applyToPage, setApplyToPage] = useState<ApplyHandler | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -135,21 +149,23 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
-  const toggle = useCallback(() => setIsOpen(prev => !prev), []);
+  const toggle = useCallback(() => setIsOpen((prev) => !prev), []);
 
   const loadConversations = useCallback(async () => {
     try {
       const res = await fetch('/api/copilot/conversations');
       if (res.ok) {
         const data = await res.json();
-        setConversations(data.conversations.map((c: Record<string, unknown>) => ({
-          id: c.id,
-          title: c.title,
-          entityType: c.entity_type,
-          entityId: c.entity_id,
-          createdAt: c.created_at,
-          updatedAt: c.updated_at,
-        })));
+        setConversations(
+          data.conversations.map((c: Record<string, unknown>) => ({
+            id: c.id,
+            title: c.title,
+            entityType: c.entity_type,
+            entityId: c.entity_id,
+            createdAt: c.created_at,
+            updatedAt: c.updated_at,
+          }))
+        );
       }
     } catch {
       /* ignore fetch errors */
@@ -162,16 +178,18 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`/api/copilot/conversations/${id}`);
       if (res.ok) {
         const data = await res.json();
-        setMessages((data.messages || []).map((m: Record<string, unknown>) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content || '',
-          toolName: m.tool_name,
-          toolArgs: m.tool_args as Record<string, unknown> | undefined,
-          toolResult: m.tool_result as Record<string, unknown> | undefined,
-          feedback: m.feedback as CopilotMessage['feedback'],
-          createdAt: m.created_at,
-        })));
+        setMessages(
+          (data.messages || []).map((m: Record<string, unknown>) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content || '',
+            toolName: m.tool_name,
+            toolArgs: m.tool_args as Record<string, unknown> | undefined,
+            toolResult: m.tool_result as Record<string, unknown> | undefined,
+            feedback: m.feedback as CopilotMessage['feedback'],
+            createdAt: m.created_at,
+          }))
+        );
       }
     } catch {
       /* ignore */
@@ -183,233 +201,279 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
     setMessages([]);
   }, []);
 
-  const deleteConversation = useCallback(async (id: string) => {
-    await fetch(`/api/copilot/conversations/${id}`, { method: 'DELETE' });
-    setConversations(prev => prev.filter(c => c.id !== id));
-    if (activeConversationId === id) {
-      setActiveConversationId(null);
-      setMessages([]);
-    }
-  }, [activeConversationId]);
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      await fetch(`/api/copilot/conversations/${id}`, { method: 'DELETE' });
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (activeConversationId === id) {
+        setActiveConversationId(null);
+        setMessages([]);
+      }
+    },
+    [activeConversationId]
+  );
 
   const cancelStream = useCallback(() => {
     abortRef.current?.abort();
     setIsStreaming(false);
   }, []);
 
-  const confirmAction = useCallback(async (toolUseId: string, approved: boolean) => {
-    if (!activeConversationId || !pendingConfirmation) return;
+  const confirmAction = useCallback(
+    async (toolUseId: string, approved: boolean) => {
+      if (!activeConversationId || !pendingConfirmation) return;
 
-    const { toolName, toolArgs } = pendingConfirmation;
-    setPendingConfirmation(null);
+      const { toolName, toolArgs } = pendingConfirmation;
+      setPendingConfirmation(null);
 
-    try {
-      const res = await fetch('/api/copilot/confirm-action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId: activeConversationId,
-          toolUseId,
-          approved,
-          toolName,
-          toolArgs,
-        }),
-      });
+      try {
+        const res = await fetch('/api/copilot/confirm-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: activeConversationId,
+            toolUseId,
+            approved,
+            toolName,
+            toolArgs,
+          }),
+        });
 
-      if (res.ok) {
-        const data = await res.json();
+        if (res.ok) {
+          const data = await res.json();
 
-        if (data.executed && data.result) {
-          // Update the awaiting_confirmation tool_result in local state with the real result
-          setMessages(prev => {
-            const updated = prev.map(m =>
-              m.role === 'tool_result' && m.toolName === toolName && m.toolResult?.awaiting_confirmation
-                ? { ...m, toolResult: data.result, displayHint: data.result.displayHint }
-                : m
-            );
-            return updated;
-          });
+          if (data.executed && data.result) {
+            // Update the awaiting_confirmation tool_result in local state with the real result
+            setMessages((prev) => {
+              const updated = prev.map((m) =>
+                m.role === 'tool_result' &&
+                m.toolName === toolName &&
+                m.toolResult?.awaiting_confirmation
+                  ? { ...m, toolResult: data.result, displayHint: data.result.displayHint }
+                  : m
+              );
+              return updated;
+            });
 
-          // Resume the conversation so Claude can continue
-          await sendMessageRef.current(approved ? 'Confirmed.' : 'Cancelled.');
-        } else if (!approved) {
-          // User denied — send a message so Claude knows
-          await sendMessageRef.current('The user declined the action.');
+            // Resume the conversation so Claude can continue
+            await sendMessageRef.current(approved ? 'Confirmed.' : 'Cancelled.');
+          } else if (!approved) {
+            // User denied — send a message so Claude knows
+            await sendMessageRef.current('The user declined the action.');
+          }
         }
+      } catch {
+        /* ignore fetch errors */
       }
-    } catch {
-      /* ignore fetch errors */
-    }
-  }, [activeConversationId, pendingConfirmation]);
+    },
+    [activeConversationId, pendingConfirmation]
+  );
 
   const registerApplyHandler = useCallback((handler: ApplyHandler | null) => {
     applyHandlerRef.current = handler;
     setApplyToPage(() => handler);
   }, []);
 
+  const openContentReview = useCallback((content: ExtractedContent) => {
+    setContentReviewData(content);
+    setIsContentReviewOpen(true);
+  }, []);
+
+  const closeContentReview = useCallback(() => {
+    setIsContentReviewOpen(false);
+  }, []);
+
+  const approveContent = useCallback((_content: ExtractedContent) => {
+    setIsContentReviewOpen(false);
+    setContentReviewData(null);
+    sendMessageRef.current('Content approved. Save this lead magnet.');
+  }, []);
+
   // Auto-load entity-scoped conversations when page context changes
   useEffect(() => {
     if (pageContext?.entityType && pageContext?.entityId && isOpen) {
-      fetch(`/api/copilot/conversations?entity_type=${pageContext.entityType}&entity_id=${pageContext.entityId}`)
-        .then(res => res.json())
-        .then(data => {
+      fetch(
+        `/api/copilot/conversations?entity_type=${pageContext.entityType}&entity_id=${pageContext.entityId}`
+      )
+        .then((res) => res.json())
+        .then((data) => {
           if (data.conversations?.length > 0) {
             selectConversation(data.conversations[0].id);
           }
         })
         .catch(() => {}); // Silently fail — user can start new conversation
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageContext?.entityType, pageContext?.entityId, isOpen]);
 
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || isStreaming) return;
+  const sendMessage = useCallback(
+    async (text: string) => {
+      if (!text.trim() || isStreaming) return;
 
-    // Add user message optimistically
-    const userMsg: CopilotMessage = {
-      id: `temp-${Date.now()}`,
-      role: 'user',
-      content: text,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages(prev => [...prev, userMsg]);
-
-    // Prepare streaming assistant message placeholder
-    const assistantMsgId = `temp-assistant-${Date.now()}`;
-    setMessages(prev => [...prev, {
-      id: assistantMsgId,
-      role: 'assistant' as const,
-      content: '',
-      createdAt: new Date().toISOString(),
-    }]);
-
-    setIsStreaming(true);
-    abortRef.current = new AbortController();
-
-    try {
-      const res = await fetch('/api/copilot/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          conversationId: activeConversationId,
-          pageContext,
-        }),
-        signal: abortRef.current.signal,
-      });
-
-      if (!res.ok || !res.body) {
-        setIsStreaming(false);
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      const handleSSEEvent: SSEEventHandler = (eventType, data) => {
-        switch (eventType) {
-          case 'conversation_id':
-            setActiveConversationId(data.conversationId as string);
-            break;
-
-          case 'text_delta':
-            setMessages(prev => prev.map(m =>
-              m.id === assistantMsgId
-                ? { ...m, content: m.content + (data.text as string) }
-                : m
-            ));
-            break;
-
-          case 'tool_call':
-            setMessages(prev => [...prev, {
-              id: `tool-call-${data.id}`,
-              role: 'tool_call' as const,
-              content: '',
-              toolName: data.name as string,
-              toolArgs: data.args as Record<string, unknown>,
-              createdAt: new Date().toISOString(),
-            }]);
-            break;
-
-          case 'tool_result': {
-            const resultData = data.result as Record<string, unknown> | undefined;
-            setMessages(prev => [...prev, {
-              id: `tool-result-${data.id}`,
-              role: 'tool_result' as const,
-              content: '',
-              toolName: data.name as string,
-              toolResult: resultData,
-              displayHint: resultData?.displayHint as string | undefined,
-              createdAt: new Date().toISOString(),
-            }]);
-            break;
-          }
-
-          case 'confirmation_required':
-            setPendingConfirmation({
-              toolName: data.tool as string,
-              toolArgs: data.args as Record<string, unknown>,
-              toolUseId: data.toolUseId as string,
-            });
-            break;
-
-          case 'done':
-            loadConversations();
-            break;
-
-          case 'error':
-            setMessages(prev => prev.map(m =>
-              m.id === assistantMsgId
-                ? { ...m, content: m.content || `Error: ${data.message}` }
-                : m
-            ));
-            break;
-        }
+      // Add user message optimistically
+      const userMsg: CopilotMessage = {
+        id: `temp-${Date.now()}`,
+        role: 'user',
+        content: text,
+        createdAt: new Date().toISOString(),
       };
+      setMessages((prev) => [...prev, userMsg]);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // Prepare streaming assistant message placeholder
+      const assistantMsgId = `temp-assistant-${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMsgId,
+          role: 'assistant' as const,
+          content: '',
+          createdAt: new Date().toISOString(),
+        },
+      ]);
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        // Keep the last (potentially incomplete) line in the buffer
-        buffer = lines.pop() || '';
+      setIsStreaming(true);
+      abortRef.current = new AbortController();
 
-        parseSSELines(lines, handleSSEEvent);
+      try {
+        const res = await fetch('/api/copilot/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            conversationId: activeConversationId,
+            pageContext,
+          }),
+          signal: abortRef.current.signal,
+        });
+
+        if (!res.ok || !res.body) {
+          setIsStreaming(false);
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        const handleSSEEvent: SSEEventHandler = (eventType, data) => {
+          switch (eventType) {
+            case 'conversation_id':
+              setActiveConversationId(data.conversationId as string);
+              break;
+
+            case 'text_delta':
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId ? { ...m, content: m.content + (data.text as string) } : m
+                )
+              );
+              break;
+
+            case 'tool_call':
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: `tool-call-${data.id}`,
+                  role: 'tool_call' as const,
+                  content: '',
+                  toolName: data.name as string,
+                  toolArgs: data.args as Record<string, unknown>,
+                  createdAt: new Date().toISOString(),
+                },
+              ]);
+              break;
+
+            case 'tool_result': {
+              const resultData = data.result as Record<string, unknown> | undefined;
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: `tool-result-${data.id}`,
+                  role: 'tool_result' as const,
+                  content: '',
+                  toolName: data.name as string,
+                  toolResult: resultData,
+                  displayHint: resultData?.displayHint as string | undefined,
+                  createdAt: new Date().toISOString(),
+                },
+              ]);
+
+              if (data.displayHint === 'content_review' && resultData?.content) {
+                openContentReview(resultData.content as ExtractedContent);
+              }
+              break;
+            }
+
+            case 'confirmation_required':
+              setPendingConfirmation({
+                toolName: data.tool as string,
+                toolArgs: data.args as Record<string, unknown>,
+                toolUseId: data.toolUseId as string,
+              });
+              break;
+
+            case 'done':
+              loadConversations();
+              break;
+
+            case 'error':
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId
+                    ? { ...m, content: m.content || `Error: ${data.message}` }
+                    : m
+                )
+              );
+              break;
+          }
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          // Keep the last (potentially incomplete) line in the buffer
+          buffer = lines.pop() || '';
+
+          parseSSELines(lines, handleSSEEvent);
+        }
+
+        // Process any remaining data in the buffer
+        if (buffer.trim()) {
+          parseSSELines([buffer], handleSSEEvent);
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          // User cancelled -- expected behavior
+        }
+      } finally {
+        setIsStreaming(false);
+        abortRef.current = null;
       }
-
-      // Process any remaining data in the buffer
-      if (buffer.trim()) {
-        parseSSELines([buffer], handleSSEEvent);
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        // User cancelled -- expected behavior
-      }
-    } finally {
-      setIsStreaming(false);
-      abortRef.current = null;
-    }
-  }, [isStreaming, activeConversationId, pageContext, loadConversations]);
+    },
+    [isStreaming, activeConversationId, pageContext, loadConversations, openContentReview]
+  );
 
   // Keep ref in sync so confirmAction can call sendMessage without circular dependency
   sendMessageRef.current = sendMessage;
 
-  const submitFeedback = useCallback(async (messageId: string, rating: 'positive' | 'negative', note?: string) => {
-    if (!activeConversationId) return;
+  const submitFeedback = useCallback(
+    async (messageId: string, rating: 'positive' | 'negative', note?: string) => {
+      if (!activeConversationId) return;
 
-    await fetch(`/api/copilot/conversations/${activeConversationId}/feedback`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messageId, rating, note }),
-    });
+      await fetch(`/api/copilot/conversations/${activeConversationId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId, rating, note }),
+      });
 
-    setMessages(prev => prev.map(m =>
-      m.id === messageId ? { ...m, feedback: { rating, note } } : m
-    ));
-  }, [activeConversationId]);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, feedback: { rating, note } } : m))
+      );
+    },
+    [activeConversationId]
+  );
 
   const value: CopilotContextValue = {
     isOpen,
@@ -433,11 +497,12 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
     confirmAction,
     applyToPage,
     registerApplyHandler,
+    contentReviewData,
+    isContentReviewOpen,
+    openContentReview,
+    closeContentReview,
+    approveContent,
   };
 
-  return (
-    <CopilotContext.Provider value={value}>
-      {children}
-    </CopilotContext.Provider>
-  );
+  return <CopilotContext.Provider value={value}>{children}</CopilotContext.Provider>;
 }
