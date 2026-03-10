@@ -30,11 +30,29 @@ The opt-in page has 4 elements:
 3. Social proof (1 line): A credibility statement (numbers work best)
 4. Button text (2-4 words): Action-oriented CTA`;
 
+export interface BrainContext {
+  thesis?: string;
+  key_arguments?: string[];
+  unique_data_points?: Array<{ claim: string; evidence_strength?: string }>;
+  stories?: Array<{ hook: string; arc: string; lesson: string }>;
+  differentiators?: string[];
+  voice_markers?: string[];
+  specific_recommendations?: Array<{ recommendation: string; reasoning: string }>;
+}
+
+export interface BrainEntry {
+  content: string;
+  knowledge_type?: string;
+  quality_score?: number;
+}
+
 export interface GenerateOptinContentInput {
   leadMagnetTitle: string;
   concept: LeadMagnetConcept | null;
   extractedContent: ExtractedContent | null;
   credibility?: string;
+  brainPosition?: BrainContext;
+  brainEntries?: BrainEntry[];
 }
 
 export async function generateOptinContent(
@@ -68,6 +86,49 @@ export async function generateOptinContent(
     contextParts.push(`Creator Credibility: ${credibility}`);
   }
 
+  // Brain expertise context — only include when directly relevant to this lead magnet
+  if (input.brainPosition) {
+    const pos = input.brainPosition;
+    const brainParts: string[] = [
+      "CREATOR'S REAL EXPERTISE (use only if directly relevant to this lead magnet):",
+    ];
+
+    if (pos.thesis) {
+      brainParts.push(`Core thesis: ${pos.thesis}`);
+    }
+    if (pos.differentiators?.length) {
+      brainParts.push(`Unique angle: ${pos.differentiators.join('; ')}`);
+    }
+    if (pos.unique_data_points?.length) {
+      brainParts.push('Real data points:');
+      for (const dp of pos.unique_data_points.slice(0, 3)) {
+        brainParts.push(
+          `  - ${dp.claim}${dp.evidence_strength ? ` (${dp.evidence_strength})` : ''}`
+        );
+      }
+    }
+    if (pos.stories?.length) {
+      const s = pos.stories[0];
+      brainParts.push(`Real story: ${s.hook}: ${s.arc} → ${s.lesson}`);
+    }
+    if (pos.voice_markers?.length) {
+      brainParts.push(`Voice patterns: ${pos.voice_markers.join(', ')}`);
+    }
+
+    contextParts.push(brainParts.join('\n'));
+  }
+
+  if (input.brainEntries?.length) {
+    const entryParts: string[] = ['SPECIFIC KNOWLEDGE (use only if relevant):'];
+    for (const entry of input.brainEntries.slice(0, 5)) {
+      const typeTag = entry.knowledge_type ? `[${entry.knowledge_type}]` : '';
+      entryParts.push(`- ${typeTag} ${entry.content}`);
+    }
+    contextParts.push(entryParts.join('\n'));
+  }
+
+  const hasBrain = !!(input.brainPosition || input.brainEntries?.length);
+
   const prompt = `${OPTIN_CONTENT_SYSTEM_PROMPT}
 
 LEAD MAGNET CONTEXT:
@@ -77,8 +138,22 @@ Generate opt-in page content for this lead magnet. Return ONLY valid JSON with t
 {
   "headline": "8-10 word headline that hooks attention",
   "subline": "15-25 word supporting text that expands on the promise",
-  "socialProof": "One credibility line with specific numbers if available",
-  "buttonText": "2-4 word CTA"
+  "socialProof": ${hasBrain ? '"One credibility line using REAL data from the expertise above, or null if no real data supports a claim"' : '"One credibility line with specific numbers if available"'},
+  "buttonText": "2-4 word CTA",
+  "thankyouSubline": "Optional 15-25 word teaser for the thank-you page, or null"
+}
+${
+  hasBrain
+    ? `
+BRAIN DATA RULES:
+- Only use the creator's expertise data if it is DIRECTLY relevant to this specific lead magnet topic
+- If the brain data is about a different topic, IGNORE it and write generic copy
+- For the headline: prefer the creator's unique angle/differentiator over generic benefit statements
+- For the subline: reference specific results or data points IF they relate to this lead magnet
+- For socialProof: ONLY use real data from the expertise above. If no real claim supports social proof, return null — NEVER fabricate numbers or stats
+- For thankyouSubline: if the brain suggests a broader framework beyond this lead magnet, tease it. Otherwise return null
+- Use their voice/language naturally — don't sanitize or genericize`
+    : ''
 }
 
 Examples of good output:
@@ -105,14 +180,20 @@ Examples of good output:
     throw new Error('Could not find JSON in AI response');
   }
 
-  const result = JSON.parse(jsonMatch[0]) as GeneratedOptinContent;
+  const result = JSON.parse(jsonMatch[0]) as GeneratedOptinContent & { thankyouSubline?: string };
 
-  // Validate required fields
-  if (!result.headline || !result.subline || !result.socialProof || !result.buttonText) {
+  // Validate required fields (socialProof can be null when brain says no real data)
+  if (!result.headline || !result.subline || !result.buttonText) {
     throw new Error('AI response missing required fields');
   }
 
-  return result;
+  return {
+    headline: result.headline,
+    subline: result.subline,
+    socialProof: result.socialProof || null,
+    buttonText: result.buttonText,
+    thankyouSubline: result.thankyouSubline || null,
+  };
 }
 
 // Alternative simpler version for quick generation without AI

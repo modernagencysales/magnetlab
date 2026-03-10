@@ -24,6 +24,8 @@ import {
   generateOptinContent,
   generateDefaultOptinContent,
 } from '@/lib/ai/funnel-content-generator';
+import type { GenerateOptinContentInput } from '@/lib/ai/funnel-content-generator';
+import { searchKnowledgeV2, getCachedPosition } from '@/lib/services/knowledge-brain';
 import { getPostHogServerClient } from '@/lib/posthog';
 import { logApiError } from '@/lib/api/errors';
 import type { DataScope } from '@/lib/utils/team-context';
@@ -837,6 +839,83 @@ export async function getFunnelStats(
   return stats;
 }
 
+// ─── Brain enrichment for funnel copy ──────────────────────────────────────
+
+/**
+ * Fetch brain context for funnel copy generation.
+ * Uses pre-computed position from concept, falls back to cached position.
+ * Returns empty if no relevant brain data found.
+ */
+async function fetchBrainForFunnel(
+  leadMagnet: { title: string; concept: unknown },
+  scope: DataScope
+): Promise<{
+  position?: GenerateOptinContentInput['brainPosition'];
+  entries?: GenerateOptinContentInput['brainEntries'];
+}> {
+  const concept = leadMagnet.concept as Record<string, unknown> | null;
+
+  // 1. Use pre-computed position from concept (from create_lead_magnet with use_brain=true)
+  let position = concept?._brain_position as GenerateOptinContentInput['brainPosition'] | undefined;
+  if (position && !position.thesis) position = undefined;
+
+  // 2. Search knowledge entries for relevant content
+  const searchResult = await searchKnowledgeV2(scope.userId, {
+    query: leadMagnet.title,
+    limit: 5,
+    minQuality: 2,
+    teamId: scope.teamId,
+    sort: 'quality',
+  });
+
+  const entries: GenerateOptinContentInput['brainEntries'] =
+    searchResult.entries.length > 0
+      ? searchResult.entries.map((e) => ({
+          content: e.content,
+          knowledge_type: e.knowledge_type ?? undefined,
+          quality_score: e.quality_score ?? undefined,
+        }))
+      : undefined;
+
+  // 3. If no pre-computed position, try cached position from dominant topic
+  if (!position && searchResult.entries.length > 0) {
+    const topicCounts = new Map<string, number>();
+    for (const entry of searchResult.entries) {
+      for (const topic of (entry as unknown as { topics?: string[] }).topics || []) {
+        topicCounts.set(topic, (topicCounts.get(topic) || 0) + 1);
+      }
+    }
+
+    let dominantTopic: string | null = null;
+    let maxCount = 0;
+    for (const [topic, count] of topicCounts) {
+      if (count > maxCount) {
+        dominantTopic = topic;
+        maxCount = count;
+      }
+    }
+
+    if (dominantTopic) {
+      const cached = await getCachedPosition(scope.userId, dominantTopic, {
+        teamId: scope.teamId,
+      });
+      if (cached) {
+        position = {
+          thesis: cached.thesis,
+          key_arguments: cached.key_arguments,
+          unique_data_points: cached.unique_data_points,
+          stories: cached.stories,
+          differentiators: cached.differentiators,
+          voice_markers: cached.voice_markers,
+          specific_recommendations: cached.specific_recommendations,
+        };
+      }
+    }
+  }
+
+  return { position, entries };
+}
+
 // ─── Generate content ──────────────────────────────────────────────────────
 
 export async function generateFunnelContent(scope: DataScope, leadMagnetId: string, useAI = true) {
@@ -847,12 +926,25 @@ export async function generateFunnelContent(scope: DataScope, leadMagnetId: stri
   const credibility = (brandKit?.credibility_markers as string[] | null)?.join('. ') || undefined;
 
   if (useAI) {
+    // Fetch brain context (non-blocking — failures are ignored)
+    let brainPosition: GenerateOptinContentInput['brainPosition'];
+    let brainEntries: GenerateOptinContentInput['brainEntries'];
+    try {
+      const brainData = await fetchBrainForFunnel(leadMagnet, scope);
+      brainPosition = brainData.position;
+      brainEntries = brainData.entries;
+    } catch {
+      // Brain enrichment is optional — continue without
+    }
+
     try {
       return await generateOptinContent({
         leadMagnetTitle: leadMagnet.title,
         concept: leadMagnet.concept as LeadMagnetConcept | null,
         extractedContent: leadMagnet.extracted_content as ExtractedContent | null,
         credibility,
+        brainPosition,
+        brainEntries,
       });
     } catch {
       return generateDefaultOptinContent(

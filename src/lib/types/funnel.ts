@@ -397,6 +397,7 @@ export interface GeneratedOptinContent {
   subline: string;
   socialProof: string | null;
   buttonText: string;
+  thankyouSubline?: string | null;
 }
 
 // ============================================
