@@ -235,7 +235,7 @@ Detailed docs for each feature live in `docs/`. Consult these when working on a 
 | Testing Strategy | [docs/testing-strategy.md](docs/testing-strategy.md) |
 | Frontend Architecture | [docs/frontend-refactor-plan.md](docs/frontend-refactor-plan.md) |
 | Coding Standards | [docs/coding-standards.md](docs/coding-standards.md) |
-| AI Standards Learning Loop | [docs/plans/2026-03-09-standards-learning-loop-design.md](docs/plans/2026-03-09-standards-learning-loop-design.md) |
+| AI Standards Learning Loop | [docs/standards-learning-loop.md](docs/standards-learning-loop.md) |
 
 ## Post-Feature Workflow
 
