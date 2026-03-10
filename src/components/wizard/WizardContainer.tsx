@@ -13,6 +13,7 @@ import { GeneratingScreen } from './GeneratingScreen';
 import { WizardProgress } from './WizardProgress';
 import { DraftPicker } from './DraftPicker';
 import { useWizard } from '@/frontend/hooks/useWizard';
+import { useCopilotContext } from '@/components/copilot/useCopilotContext';
 import type { BusinessContext } from '@/lib/types/lead-magnet';
 
 export function WizardContainer() {
@@ -54,6 +55,13 @@ export function WizardContainer() {
     savedIdeation,
     ideationGeneratedAt,
   } = useWizard();
+
+  useCopilotContext({
+    page: 'lead-magnet-creation',
+    entityType: 'lead-magnet',
+    entityId: draftId || undefined,
+    entityTitle: selectedConcept?.title || 'New Lead Magnet',
+  });
 
   if (loadingBrandKit) {
     return (
