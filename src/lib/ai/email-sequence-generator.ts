@@ -70,9 +70,7 @@ export interface GenerateEmailSequenceInput {
   context: EmailGenerationContext;
 }
 
-export async function generateEmailSequence(
-  input: GenerateEmailSequenceInput
-): Promise<Email[]> {
+export async function generateEmailSequence(input: GenerateEmailSequenceInput): Promise<Email[]> {
   const { context } = input;
 
   // Build the context for the AI
@@ -85,22 +83,89 @@ export async function generateEmailSequence(
   contextParts.push(`BUSINESS DESCRIPTION: ${context.businessDescription}`);
 
   if (context.resourceUrl) {
-    contextParts.push(`RESOURCE URL (use this as the download link in Email 1): ${context.resourceUrl}`);
+    contextParts.push(
+      `RESOURCE URL (use this as the download link in Email 1): ${context.resourceUrl}`
+    );
   }
 
   if (context.bestVideoUrl && context.bestVideoTitle) {
-    contextParts.push(`BEST VIDEO TO LINK (Email 2): ${context.bestVideoTitle} - ${context.bestVideoUrl}`);
+    contextParts.push(
+      `BEST VIDEO TO LINK (Email 2): ${context.bestVideoTitle} - ${context.bestVideoUrl}`
+    );
   }
 
   if (context.contentLinks && context.contentLinks.length > 0) {
-    const links = context.contentLinks
-      .map((l, i) => `${i + 1}. ${l.title} - ${l.url}`)
-      .join('\n');
+    const links = context.contentLinks.map((l, i) => `${i + 1}. ${l.title} - ${l.url}`).join('\n');
     contextParts.push(`FREE RESOURCES TO SHARE (Email 3):\n${links}`);
   }
 
   if (context.communityUrl) {
     contextParts.push(`COMMUNITY URL (Email 4): ${context.communityUrl}`);
+  }
+
+  // Brain expertise context — real knowledge from the user's AI Brain
+  if (context.brainPosition) {
+    const pos = context.brainPosition;
+    const brainParts: string[] = ['YOUR EXPERTISE (ground every email in this real knowledge):'];
+
+    if (pos.thesis) {
+      brainParts.push(`Core thesis: ${pos.thesis}`);
+    }
+    if (pos.differentiators?.length) {
+      brainParts.push(`Differentiators: ${pos.differentiators.join('; ')}`);
+    }
+    if (pos.key_arguments?.length) {
+      brainParts.push(`Key arguments: ${pos.key_arguments.join('; ')}`);
+    }
+    if (pos.unique_data_points?.length) {
+      brainParts.push('Real data points:');
+      for (const dp of pos.unique_data_points.slice(0, 5)) {
+        brainParts.push(
+          `  - ${dp.claim}${dp.evidence_strength ? ` (${dp.evidence_strength})` : ''}`
+        );
+      }
+    }
+    if (pos.stories?.length) {
+      brainParts.push('Real stories:');
+      for (const s of pos.stories.slice(0, 3)) {
+        brainParts.push(`  - ${s.hook}: ${s.arc} → ${s.lesson}`);
+      }
+    }
+    if (pos.specific_recommendations?.length) {
+      brainParts.push('Recommendations:');
+      for (const r of pos.specific_recommendations.slice(0, 3)) {
+        brainParts.push(`  - ${r.recommendation} (${r.reasoning})`);
+      }
+    }
+    if (pos.voice_markers?.length) {
+      brainParts.push(`Voice/language patterns (use naturally): ${pos.voice_markers.join(', ')}`);
+    }
+
+    contextParts.push(brainParts.join('\n'));
+  }
+
+  if (context.brainEntries?.length) {
+    const entryParts: string[] = ['SPECIFIC INSIGHTS FROM KNOWLEDGE BASE:'];
+    for (const entry of context.brainEntries.slice(0, 8)) {
+      const typeTag = entry.knowledge_type ? `[${entry.knowledge_type}]` : '';
+      entryParts.push(`- ${typeTag} ${entry.content}`);
+    }
+    contextParts.push(entryParts.join('\n'));
+  }
+
+  // Override email themes when brain expertise is available
+  if (context.brainPosition) {
+    contextParts.push(
+      `BRAIN-ENRICHED EMAIL STRUCTURE (override default themes):
+- Email 1 (Day 0): Deliver the lead magnet + tease the most compelling differentiator from the expertise above
+- Email 2 (Day 1): Lead with the most contrarian or surprising insight, backed by a real data point
+- Email 3 (Day 2): Share specific, actionable advice using real numbers and recommendations
+- Email 4 (Day 3): Address a common mistake using a real experience or story from above
+- Email 5 (Day 4): Reference the broader thesis/framework, set expectations, ask for engagement
+
+Each email MUST include at least one specific insight, data point, or story from the expertise data.
+Use the voice markers and terminology naturally — do not sanitize or genericize their language.`
+    );
   }
 
   const prompt = `${EMAIL_SEQUENCE_SYSTEM_PROMPT}
