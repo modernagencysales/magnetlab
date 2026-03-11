@@ -332,6 +332,7 @@ export const polishedContentSchema = z
 
 export const updateContentBodySchema = z.object({
   polishedContent: polishedContentSchema,
+  title: z.string().min(1).optional(),
 });
 
 export type UpdateContentBodyInput = z.infer<typeof updateContentBodySchema>;
