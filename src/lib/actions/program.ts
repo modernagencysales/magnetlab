@@ -169,6 +169,7 @@ registerAction({
           'content_plan',
           'post_drafts',
           'metrics_digest',
+          'diagnostic_report',
         ],
       },
       entity_id: { type: 'string', description: 'Optional linked entity UUID' },

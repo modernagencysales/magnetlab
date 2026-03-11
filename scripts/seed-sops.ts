@@ -28,6 +28,8 @@ const MODULE_DIRS: Record<string, string> = {
   m2: 'module-2-tam-building',
   m3: 'module-3-linkedin-outreach',
   m4: 'module-4-cold-email',
+  m5: 'module-5-linkedin-ads',
+  m6: 'module-6-operating-system',
   m7: 'module-7-daily-content',
 };
 
