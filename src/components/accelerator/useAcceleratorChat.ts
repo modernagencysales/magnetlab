@@ -278,8 +278,14 @@ export function useAcceleratorChat({
 
   const retryLastMessage = useCallback(() => {
     if (!lastUserMessage || isLoading) return;
-    // Remove the error message before retrying
-    setMessages((prev) => prev.filter((m) => !m.id.startsWith('error-')));
+    // Remove the error message and the failed user message (sendMessage will re-add it)
+    setMessages((prev) => {
+      const cleaned = prev.filter((m) => !m.id.startsWith('error-'));
+      // Drop the last user message to avoid duplicate after sendMessage re-adds it
+      const lastUserIdx = cleaned.findLastIndex((m) => m.role === 'user');
+      if (lastUserIdx >= 0) cleaned.splice(lastUserIdx, 1);
+      return cleaned;
+    });
     sendMessage(lastUserMessage);
   }, [lastUserMessage, isLoading, sendMessage]);
 

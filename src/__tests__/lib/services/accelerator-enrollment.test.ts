@@ -190,5 +190,33 @@ describe('accelerator-enrollment', () => {
       // Only 1 call — the idempotency lookup. No insert attempted.
       expect(mockFrom).toHaveBeenCalledTimes(1);
     });
+
+    it('recovers from 23505 race condition by falling back to lookup', async () => {
+      const enrollment = {
+        id: 'e1',
+        user_id: 'user-1',
+        status: 'active',
+        stripe_customer_id: 'cus_123',
+      };
+
+      // Call 1: idempotency check — not found
+      const idempotencyChain = createChain(null, { code: 'PGRST116' });
+      // Call 2: insert fails with unique constraint (another webhook beat us)
+      const insertChain = createChain(null, { code: '23505', message: 'duplicate key' });
+      // Call 3: fallback lookup succeeds
+      const fallbackChain = createChain(enrollment);
+
+      let callCount = 0;
+      mockFrom.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return idempotencyChain;
+        if (callCount === 2) return insertChain;
+        return fallbackChain;
+      });
+
+      const result = await createPaidEnrollment('user-1', 'cus_123', 'pi_123');
+      expect(result).toEqual(enrollment);
+      expect(mockFrom).toHaveBeenCalledTimes(3);
+    });
   });
 });
