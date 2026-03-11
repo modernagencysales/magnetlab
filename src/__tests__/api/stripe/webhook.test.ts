@@ -13,6 +13,12 @@ jest.mock('@/lib/integrations/stripe', () => ({
   parseSubscriptionEvent: (...args: unknown[]) => mockParseSubscriptionEvent(...args),
 }));
 
+// Mock accelerator enrollment service
+const mockCreatePaidEnrollment = jest.fn();
+jest.mock('@/lib/services/accelerator-enrollment', () => ({
+  createPaidEnrollment: (...args: unknown[]) => mockCreatePaidEnrollment(...args),
+}));
+
 // Mock Supabase
 jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(),
@@ -100,6 +106,7 @@ describe('POST /api/stripe/webhook', () => {
     (createSupabaseAdminClient as jest.Mock).mockReturnValue(mock.client);
     mockConstructWebhookEvent.mockReset();
     mockParseSubscriptionEvent.mockReset();
+    mockCreatePaidEnrollment.mockReset();
   });
 
   it('should return 400 when stripe-signature header is missing', async () => {
@@ -247,5 +254,54 @@ describe('POST /api/stripe/webhook', () => {
     expect(response.status).toBe(200);
     expect(data.received).toBe(true);
     expect(mock.client.from).toHaveBeenCalledWith('subscriptions');
+  });
+
+  it('creates accelerator enrollment on one-time payment checkout', async () => {
+    mockConstructWebhookEvent.mockReturnValue({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          mode: 'payment',
+          metadata: { product: 'accelerator', userId: 'user-123' },
+          customer: 'cus_test_123',
+          payment_intent: 'pi_test_456',
+        },
+      },
+    });
+    mockCreatePaidEnrollment.mockResolvedValue({ id: 'enrollment-1' });
+
+    const request = makeRequest('{}', 'whsec_valid_sig');
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.received).toBe(true);
+    expect(mockCreatePaidEnrollment).toHaveBeenCalledWith(
+      'user-123',
+      'cus_test_123',
+      'pi_test_456'
+    );
+  });
+
+  it('skips enrollment when metadata.product is not accelerator', async () => {
+    mockConstructWebhookEvent.mockReturnValue({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          mode: 'payment',
+          metadata: { product: 'other', userId: 'user-123' },
+          customer: 'cus_test_123',
+          payment_intent: 'pi_test_456',
+        },
+      },
+    });
+
+    const request = makeRequest('{}', 'whsec_valid_sig');
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.received).toBe(true);
+    expect(mockCreatePaidEnrollment).not.toHaveBeenCalled();
   });
 });
