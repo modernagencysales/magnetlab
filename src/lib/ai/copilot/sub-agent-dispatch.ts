@@ -88,12 +88,27 @@ export async function dispatchSubAgent(
             subAgent: config.type,
           });
 
-          // Execute through the normal action system
-          const result = await executeAction(
-            actionCtx,
-            block.name,
-            block.input as Record<string, unknown>
-          );
+          // Execute through the action system — graceful on failure
+          let result;
+          try {
+            result = await executeAction(
+              actionCtx,
+              block.name,
+              block.input as Record<string, unknown>
+            );
+          } catch (toolErr) {
+            // Tool threw unexpectedly — return error result so sub-agent can adapt
+            logError(LOG_CTX, toolErr, {
+              type: config.type,
+              tool: block.name,
+              context: 'tool_execution_failed',
+            });
+            result = {
+              success: false,
+              error: `Tool "${block.name}" failed: ${toolErr instanceof Error ? toolErr.message : 'Unknown error'}. You can continue with other tools or report the issue.`,
+            };
+          }
+
           sendSSE('tool_result', {
             name: block.name,
             result,

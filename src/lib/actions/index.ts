@@ -16,5 +16,6 @@ import './support';
 
 // Re-export the executor and registry
 export { executeAction, actionRequiresConfirmation } from './executor';
+export type { ExecuteActionOptions } from './executor';
 export { getToolDefinitions, getAllActions } from './registry';
 export type { ActionContext, ActionResult } from './types';
