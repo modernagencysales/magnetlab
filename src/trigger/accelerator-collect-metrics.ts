@@ -172,33 +172,39 @@ export const acceleratorCollectMetrics = task({
     // ─── Funnel Metrics (M1) ────────────────────────────
     if (enrollment.selected_modules.includes('m1')) {
       try {
-        const { data: funnels } = await supabase
+        const { data: funnelPages } = await supabase
           .from('funnel_pages')
-          .select('id, views, conversions')
+          .select('id')
           .eq('user_id', enrollment.user_id)
           .not('published_at', 'is', null);
 
-        if (funnels && funnels.length > 0) {
-          const totalViews = funnels.reduce(
-            (sum: number, f: Record<string, number>) => sum + (f.views || 0),
-            0
-          );
-          const totalConversions = funnels.reduce(
-            (sum: number, f: Record<string, number>) => sum + (f.conversions || 0),
-            0
-          );
+        if (funnelPages && funnelPages.length > 0) {
+          const funnelIds = funnelPages.map((f) => f.id);
+
+          const { count: totalViews } = await supabase
+            .from('page_views')
+            .select('id', { count: 'exact', head: true })
+            .in('funnel_page_id', funnelIds);
+
+          const { count: totalConversions } = await supabase
+            .from('funnel_leads')
+            .select('id', { count: 'exact', head: true })
+            .in('funnel_page_id', funnelIds);
+
+          const views = totalViews ?? 0;
+          const conversions = totalConversions ?? 0;
 
           metrics.push(
             {
               module_id: 'm1',
               metric_key: 'funnel_page_views',
-              value: totalViews,
+              value: views,
               source: 'magnetlab',
             },
             {
               module_id: 'm1',
               metric_key: 'funnel_opt_in_rate',
-              value: totalViews > 0 ? (totalConversions / totalViews) * 100 : 0,
+              value: views > 0 ? (conversions / views) * 100 : 0,
               source: 'magnetlab',
             }
           );
