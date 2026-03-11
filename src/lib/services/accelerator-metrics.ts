@@ -28,12 +28,12 @@ export const METRIC_BENCHMARKS: Record<MetricKey, { low: number; high: number }>
   content_avg_engagement: { low: 2, high: 8 },
   funnel_opt_in_rate: { low: 15, high: 40 },
   funnel_page_views: { low: 50, high: 500 },
-  ads_spend: { low: 1500, high: 10000 },
-  ads_cpl: { low: 20, high: 150 },
-  ads_ctr: { low: 0.3, high: 0.8 },
+  ads_spend: { low: 1500, high: 5000 },
+  ads_cpl: { low: 20, high: 150 }, // Lower is better — low=good, high=bad
+  ads_ctr: { low: 0.3, high: 1.0 },
   ads_roas: { low: 1, high: 5 },
   os_weekly_reviews: { low: 3, high: 4 },
-  os_daily_sessions: { low: 4, high: 7 },
+  os_daily_sessions: { low: 15, high: 25 }, // Daily GTM sessions per month (~22 work days)
 };
 
 // ─── Status Computation ──────────────────────────────────

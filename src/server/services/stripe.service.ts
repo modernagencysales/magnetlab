@@ -13,6 +13,7 @@ import {
 } from '@/lib/integrations/stripe';
 import type { SubscriptionPlan } from '@/lib/types/integrations';
 import { getPostHogServerClient } from '@/lib/posthog';
+import { logError } from '@/lib/utils/logger';
 import * as subscriptionRepo from '@/server/repositories/subscription.repo';
 import { createPaidEnrollment } from '@/lib/services/accelerator-enrollment';
 
@@ -88,8 +89,9 @@ export async function handleWebhookEvent(event: Stripe.Event): Promise<void> {
             event: 'accelerator_enrolled',
             properties: { payment_intent: paymentIntentId },
           });
-        } catch {
+        } catch (err) {
           // PostHog capture must never affect the webhook flow
+          logError('stripe-webhook', err, { event: 'posthog_capture_failed', userId });
         }
       }
       // Subscription checkouts are handled by subscription.created event

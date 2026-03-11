@@ -3,18 +3,7 @@
  *  enrichment waterfall, email validation, and activity-based segmentation.
  *  Never imports NextRequest, NextResponse, or cookies. */
 
-import type { IntakeData, CoachingMode } from '@/lib/types/accelerator';
-
-interface SopData {
-  title: string;
-  content: string;
-  quality_bars: unknown[];
-}
-
-interface UserContext {
-  intake_data: IntakeData | null;
-  coaching_mode: CoachingMode;
-}
+import type { SopData, UserContext } from './types';
 
 export function buildTamAgentPrompt(sops: SopData[], ctx: UserContext): string {
   const sections: string[] = [];

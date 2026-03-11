@@ -41,14 +41,16 @@ export async function POST(req: NextRequest) {
     // ─── Enrollment Access Check ────────────────────────
     // Accelerator features require a paid enrollment.
     // Non-accelerator copilot usage (page-context help) is not gated.
+    // Result cached to avoid duplicate DB queries in sub-agent dispatch.
     const isAcceleratorRequest =
       body.message?.toLowerCase().includes('accelerator') ||
-      body.message?.toLowerCase().includes('module') ||
       body.pageContext?.page?.includes('accelerator');
 
+    let cachedEnrollmentCheck: boolean | null = null;
+
     if (isAcceleratorRequest) {
-      const hasAccess = await hasAcceleratorAccess(userId);
-      if (!hasAccess) {
+      cachedEnrollmentCheck = await hasAcceleratorAccess(userId);
+      if (!cachedEnrollmentCheck) {
         return new Response(
           JSON.stringify({
             error: 'GTM Accelerator requires enrollment.',
@@ -360,7 +362,9 @@ export async function POST(req: NextRequest) {
                   let result;
                   if (block.name === 'dispatch_sub_agent') {
                     // Verify enrollment before dispatching accelerator sub-agents
-                    const hasEnrollment = await hasAcceleratorAccess(userId);
+                    // Use cached result from soft gate when available
+                    const hasEnrollment =
+                      cachedEnrollmentCheck ?? (await hasAcceleratorAccess(userId));
                     if (!hasEnrollment) {
                       result = {
                         success: false,

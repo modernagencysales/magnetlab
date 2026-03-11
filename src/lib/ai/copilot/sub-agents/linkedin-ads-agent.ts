@@ -4,20 +4,7 @@
  *  LinkedIn Ads API is NOT integrated — all guidance is manual/guided.
  *  Never imports NextRequest, NextResponse, or cookies. */
 
-import type { IntakeData, CoachingMode } from '@/lib/types/accelerator';
-
-// ─── Types ──────────────────────────────────────────────
-
-interface SopData {
-  title: string;
-  content: string;
-  quality_bars: unknown[];
-}
-
-interface UserContext {
-  intake_data: IntakeData | null;
-  coaching_mode: CoachingMode;
-}
+import type { SopData, UserContext } from './types';
 
 // ─── Prompt Builder ─────────────────────────────────────
 
