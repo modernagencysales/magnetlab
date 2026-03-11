@@ -60,14 +60,54 @@ export function OnboardingIntakeCard({ data, onApply }: OnboardingIntakeCardProp
                 : 'hover:bg-muted'
             }`}
           >
-            <span className="text-xs">
-              {isMulti
-                ? selected.includes(opt.value)
-                  ? '☑'
-                  : '☐'
-                : selected.includes(opt.value)
-                  ? '◉'
-                  : '○'}
+            <span className="shrink-0">
+              {isMulti ? (
+                selected.includes(opt.value) ? (
+                  <svg width="14" height="14" viewBox="0 0 14 14" className="text-violet-600">
+                    <rect x="1" y="1" width="12" height="12" rx="2" fill="currentColor" />
+                    <path
+                      d="M4 7l2 2 4-4"
+                      stroke="white"
+                      strokeWidth="1.5"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    className="text-muted-foreground/40"
+                  >
+                    <rect
+                      x="1"
+                      y="1"
+                      width="12"
+                      height="12"
+                      rx="2"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                  </svg>
+                )
+              ) : selected.includes(opt.value) ? (
+                <svg width="14" height="14" viewBox="0 0 14 14" className="text-violet-600">
+                  <circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                  <circle cx="7" cy="7" r="3.5" fill="currentColor" />
+                </svg>
+              ) : (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  className="text-muted-foreground/40"
+                >
+                  <circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              )}
             </span>
             {opt.label}
           </button>

@@ -22,16 +22,137 @@ const MODULE_DESCRIPTIONS: Record<ModuleId, string> = {
   m7: 'Create a content engine with scheduling',
 };
 
-const MODULE_ICONS: Record<ModuleId, string> = {
-  m0: '🎯',
-  m1: '🧲',
-  m2: '🗺️',
-  m3: '💬',
-  m4: '📧',
-  m5: '📣',
-  m6: '⚙️',
-  m7: '✍️',
-};
+// ─── SVG Module Icons ────────────────────────────────────
+
+function ModuleIcon({ id }: { id: ModuleId }) {
+  const cls = 'text-violet-600';
+  const s = 16;
+  switch (id) {
+    case 'm0': // ICP — crosshair
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+          <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="8" cy="8" r="2.5" fill="currentColor" />
+          <path
+            d="M8 1v3M8 12v3M1 8h3M12 8h3"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case 'm1': // Lead magnets — magnet
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+          <path
+            d="M4 3v5a4 4 0 008 0V3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+          <path d="M4 3h2v2H4zM10 3h2v2h-2z" fill="currentColor" />
+        </svg>
+      );
+    case 'm2': // TAM — map
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+          <path
+            d="M2 3l4 2v8l-4-2zM6 5l4-2v8l-4 2zM10 3l4 2v8l-4-2z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case 'm3': // LinkedIn — chat bubble
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+          <path
+            d="M2 3h12v8H6l-3 2v-2H2z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M5 6.5h6M5 8.5h4"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case 'm4': // Cold email — envelope
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+          <rect
+            x="1.5"
+            y="3.5"
+            width="13"
+            height="9"
+            rx="1.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M1.5 4.5l6.5 4 6.5-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case 'm5': // Ads — megaphone
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+          <path
+            d="M2 6h2v4H2zM4 6l8-3v10L4 10z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M12 5.5h1.5a1 1 0 011 1v3a1 1 0 01-1 1H12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.2"
+          />
+        </svg>
+      );
+    case 'm6': // Operations — gear
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+          <circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <path
+            d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.4 1.4M11.55 11.55l1.4 1.4M3.05 12.95l1.4-1.4M11.55 4.45l1.4-1.4"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case 'm7': // Content — pencil
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+          <path
+            d="M10.5 2.5l3 3L5.5 13.5H2.5v-3z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path d="M9 4l3 3" stroke="currentColor" strokeWidth="1.2" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
 
 // ─── Component ───────────────────────────────────────────
 
@@ -72,8 +193,8 @@ export default function EnrollmentCTA() {
         {MODULE_IDS.map((id, index) => (
           <div key={id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-base">
-                {MODULE_ICONS[id]}
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
+                <ModuleIcon id={id} />
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-violet-500">

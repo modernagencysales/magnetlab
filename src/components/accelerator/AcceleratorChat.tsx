@@ -77,8 +77,25 @@ export default function AcceleratorChat({
       {/* Sub-agent indicator */}
       {subAgentActive && (
         <div className="flex items-center gap-2 border-b bg-violet-50 px-4 py-2 text-xs text-violet-700 dark:bg-violet-900/20 dark:text-violet-300">
-          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-violet-500" />
-          {subAgentActive}
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            className="shrink-0 animate-spin text-violet-500"
+            style={{ animationDuration: '2s' }}
+          >
+            <circle
+              cx="7"
+              cy="7"
+              r="5.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeDasharray="12 20"
+              strokeLinecap="round"
+            />
+          </svg>
+          <span className="font-medium">{subAgentActive}</span>
         </div>
       )}
 
@@ -113,8 +130,18 @@ export default function AcceleratorChat({
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm text-white hover:bg-violet-700 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700 disabled:opacity-50"
           >
+            <svg width="14" height="14" viewBox="0 0 14 14" className="shrink-0">
+              <path
+                d="M1 7h10M8 4l3 3-3 3"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
             Send
           </button>
         </div>
