@@ -26,6 +26,28 @@ import {
 
 const LOG_CTX = 'accelerator-program';
 
+// ─── Update Field Whitelists ──────────────────────────────
+
+const ALLOWED_MODULE_UPDATE_FIELDS = new Set([
+  'status',
+  'current_step',
+  'started_at',
+  'completed_at',
+]);
+
+const ALLOWED_DELIVERABLE_UPDATE_FIELDS = new Set(['status', 'validation_result', 'validated_at']);
+
+const ALLOWED_ENROLLMENT_UPDATE_FIELDS = new Set(['intake_data', 'onboarding_completed_at']);
+
+/** Pick only allowed fields from an object. */
+function pickAllowed(obj: Record<string, unknown>, allowed: Set<string>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(obj)) {
+    if (allowed.has(key)) result[key] = obj[key];
+  }
+  return result;
+}
+
 // ─── Enrollment ──────────────────────────────────────────
 
 export async function getEnrollmentByUserId(userId: string): Promise<ProgramEnrollment | null> {
@@ -89,9 +111,13 @@ export async function updateEnrollmentIntake(
   intakeData: IntakeData
 ): Promise<boolean> {
   const supabase = getSupabaseAdminClient();
+  const updates = pickAllowed(
+    { intake_data: intakeData, onboarding_completed_at: new Date().toISOString() },
+    ALLOWED_ENROLLMENT_UPDATE_FIELDS
+  );
   const { error } = await supabase
     .from('program_enrollments')
-    .update({ intake_data: intakeData, onboarding_completed_at: new Date().toISOString() })
+    .update(updates)
     .eq('id', enrollmentId);
 
   if (error) {
@@ -124,15 +150,14 @@ export async function updateModuleStatus(
   currentStep?: string
 ): Promise<ProgramModule | null> {
   const supabase = getSupabaseAdminClient();
-  const updates: Record<string, unknown> = { status };
-
-  if (currentStep !== undefined) updates.current_step = currentStep;
-  if (status === 'active') updates.started_at = new Date().toISOString();
-  if (status === 'completed') updates.completed_at = new Date().toISOString();
+  const raw: Record<string, unknown> = { status };
+  if (currentStep !== undefined) raw.current_step = currentStep;
+  if (status === 'active') raw.started_at = new Date().toISOString();
+  if (status === 'completed') raw.completed_at = new Date().toISOString();
 
   const { data, error } = await supabase
     .from('program_modules')
-    .update(updates)
+    .update(pickAllowed(raw, ALLOWED_MODULE_UPDATE_FIELDS))
     .eq('id', moduleId)
     .select(MODULE_COLUMNS)
     .single();
@@ -222,16 +247,15 @@ export async function updateDeliverableStatus(
   }
 ): Promise<ProgramDeliverable | null> {
   const supabase = getSupabaseAdminClient();
-  const updates: Record<string, unknown> = { status };
-
+  const raw: Record<string, unknown> = { status };
   if (validationResult) {
-    updates.validation_result = validationResult;
-    updates.validated_at = new Date().toISOString();
+    raw.validation_result = validationResult;
+    raw.validated_at = new Date().toISOString();
   }
 
   const { data, error } = await supabase
     .from('program_deliverables')
-    .update(updates)
+    .update(pickAllowed(raw, ALLOWED_DELIVERABLE_UPDATE_FIELDS))
     .eq('id', deliverableId)
     .select(DELIVERABLE_COLUMNS)
     .single();

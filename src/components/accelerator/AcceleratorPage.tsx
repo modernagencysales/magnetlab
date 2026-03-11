@@ -39,9 +39,8 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
     loadProgramState().finally(() => setLoading(false));
   }, [loadProgramState]);
 
-  const handleModuleClick = (moduleId: ModuleId) => {
+  const handleModuleClick = (_moduleId: ModuleId) => {
     // Future: could scroll chat to last message about this module
-    console.log('Module clicked:', moduleId);
   };
 
   if (loading) {

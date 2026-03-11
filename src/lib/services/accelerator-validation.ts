@@ -2,12 +2,11 @@
  *  Checks deliverable content against SOP quality bars using Claude Haiku.
  *  Never imports NextRequest, NextResponse, or cookies. */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 import { logError } from '@/lib/utils/logger';
 import type { QualityBar, ValidationResult, ValidationCheck } from '@/lib/types/accelerator';
 
 const LOG_CTX = 'accelerator-validation';
-const anthropic = new Anthropic();
 
 export async function validateDeliverable(
   content: string,
@@ -18,12 +17,13 @@ export async function validateDeliverable(
   }
 
   try {
+    const client = createAnthropicClient('accelerator-validation');
     const checksJson = qualityBars.map((qb) => ({
       check: qb.check,
       severity: qb.severity,
     }));
 
-    const response = await anthropic.messages.create({
+    const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       messages: [
