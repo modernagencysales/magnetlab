@@ -97,7 +97,7 @@ export async function getLatestMetrics(enrollmentId: string): Promise<ProgramMet
     .select(METRIC_COLUMNS)
     .eq('enrollment_id', enrollmentId)
     .order('collected_at', { ascending: false })
-    .limit(50);
+    .limit(200);
 
   if (error) {
     logError(LOG_CTX, error, { enrollmentId });
