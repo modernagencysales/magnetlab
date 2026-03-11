@@ -151,7 +151,7 @@ describe('accelerator-usage service', () => {
       const result = await checkUsageAllocation('enrollment-abc');
 
       expect(result.withinLimits).toBe(true);
-      expect(result.usage).toEqual({});
+      expect(result.usage).toEqual({ sessions: 0, deliverables: 0, api_calls: 0 });
       expect(logError).toHaveBeenCalledWith('accelerator-usage', dbError, {
         enrollmentId: 'enrollment-abc',
       });

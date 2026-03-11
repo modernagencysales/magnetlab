@@ -128,7 +128,7 @@ describe('create_support_ticket action', () => {
       context: { tried: 'debugging', error: 'unknown' },
     });
 
-    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({ module_id: null }));
+    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({ module_id: 'general' }));
   });
 
   it('selects id, summary, status, created_at from inserted record', async () => {
