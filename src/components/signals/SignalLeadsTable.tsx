@@ -1,14 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Loader2, Radio, ChevronDown, Filter, Send, XCircle } from 'lucide-react';
 import {
-  Loader2,
-  Radio,
-  ChevronDown,
-  Filter,
-  Send,
-  XCircle,
-} from 'lucide-react';
+  Badge,
+  Button,
+  Input,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  Label,
+} from '@magnetlab/magnetui';
 import { logError } from '@/lib/utils/logger';
 import * as signalsApi from '@/frontend/api/signals';
 import { SignalLeadDetail } from './SignalLeadDetail';
@@ -27,19 +31,21 @@ interface SignalLeadWithEvents extends SignalLead {
 
 // ─── Score color coding ────────────────────────────────────
 
-function scoreColor(score: number): string {
-  if (score >= 80) return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
-  if (score >= 50) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300';
-  return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400';
+type BadgeVariant = 'green' | 'orange' | 'blue' | 'purple' | 'red' | 'gray';
+
+function scoreVariant(score: number): BadgeVariant {
+  if (score >= 80) return 'green';
+  if (score >= 50) return 'orange';
+  return 'gray';
 }
 
-// ─── Sentiment badge styling ────────────────────────────────
+// ─── Sentiment badge variants ────────────────────────────────
 
-const SENTIMENT_STYLES: Record<SentimentScore, string> = {
-  high_intent: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-  question: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  medium_intent: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
-  low_intent: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
+const SENTIMENT_VARIANTS: Record<SentimentScore, BadgeVariant> = {
+  high_intent: 'green',
+  question: 'blue',
+  medium_intent: 'orange',
+  low_intent: 'gray',
 };
 
 const SENTIMENT_LABELS: Record<SentimentScore, string> = {
@@ -49,14 +55,14 @@ const SENTIMENT_LABELS: Record<SentimentScore, string> = {
   low_intent: 'Low',
 };
 
-// ─── Status badge styling ───────────────────────────────────
+// ─── Status badge variants ───────────────────────────────────
 
-const STATUS_STYLES: Record<SignalLeadStatus, string> = {
-  new: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
-  enriched: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  qualified: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-  pushed: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
-  excluded: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+const STATUS_VARIANTS: Record<SignalLeadStatus, BadgeVariant> = {
+  new: 'gray',
+  enriched: 'blue',
+  qualified: 'green',
+  pushed: 'purple',
+  excluded: 'red',
 };
 
 // ─── Main component ─────────────────────────────────────────
@@ -192,53 +198,56 @@ export function SignalLeadsTable() {
   // ── Render ───────────────────────────────────────────────
 
   return (
-    <>
+    <div className="space-y-6">
       {/* Filters */}
-      <div className="mb-6 space-y-4">
-        <div className="flex gap-4">
-          <button
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant={showFilters || hasActiveFilters ? 'default' : 'outline'}
+            size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm ${
+            className={
               showFilters || hasActiveFilters
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border hover:bg-muted'
-            }`}
+                ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                : ''
+            }
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="mr-1.5 h-4 w-4" />
             Filters
             <ChevronDown
-              className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+              className={`h-4 w-4 ml-1 transition-transform ${showFilters ? 'rotate-180' : ''}`}
             />
-          </button>
+          </Button>
 
           {/* Bulk actions */}
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {selectedIds.size} selected
-              </span>
-              <button
+              <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+              <Button
+                size="sm"
                 onClick={() => setShowPushModal(true)}
                 disabled={bulkLoading}
-                className="flex items-center gap-2 rounded-lg bg-violet-500 px-3 py-2 text-sm font-medium text-white hover:bg-violet-600 disabled:opacity-50"
+                className="bg-primary hover:bg-primary/90"
               >
-                <Send className="h-3.5 w-3.5" />
+                <Send className="mr-1.5 h-3.5 w-3.5" />
                 Push to HeyReach
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleBulkExclude}
                 disabled={bulkLoading}
-                className="flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950 disabled:opacity-50"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
-                <XCircle className="h-3.5 w-3.5" />
+                <XCircle className="mr-1.5 h-3.5 w-3.5" />
                 Exclude
-              </button>
+              </Button>
             </div>
           )}
         </div>
 
         {showFilters && (
-          <div className="flex flex-wrap gap-4 rounded-lg border bg-muted/30 p-4">
+          <div className="flex flex-wrap gap-4 rounded-lg border border-border bg-muted/30 p-4">
             {/* Status */}
             <div className="min-w-[140px]">
               <label className="text-xs font-medium text-muted-foreground">Status</label>
@@ -307,8 +316,8 @@ export function SignalLeadsTable() {
 
       {/* Error */}
       {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
@@ -318,19 +327,19 @@ export function SignalLeadsTable() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : leads.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
+        <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <Radio className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">No signal leads yet</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Signal leads will appear here once your keyword monitors, company monitors,
-            or profile monitors discover engagement.
+            Signal leads will appear here once your keyword monitors, company monitors, or profile
+            monitors discover engagement.
           </p>
         </div>
       ) : (
         <>
-          <div className="rounded-lg border overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/30">
                 <tr>
                   <th className="px-4 py-3 text-left">
                     <input
@@ -373,13 +382,10 @@ export function SignalLeadsTable() {
                 {leads.map((lead) => (
                   <tr
                     key={lead.id}
-                    className="hover:bg-muted/30 cursor-pointer"
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
                     onClick={() => setSelectedLead(lead)}
                   >
-                    <td
-                      className="px-4 py-3"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(lead.id)}
@@ -398,9 +404,7 @@ export function SignalLeadsTable() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm whitespace-nowrap">
-                        {lead.company || '-'}
-                      </div>
+                      <div className="text-sm whitespace-nowrap">{lead.company || '-'}</div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm text-muted-foreground whitespace-nowrap">
@@ -408,40 +412,26 @@ export function SignalLeadsTable() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center justify-center rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-900 dark:text-violet-300">
-                        {lead.signal_count}
-                      </span>
+                      <Badge variant="purple">{lead.signal_count}</Badge>
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${scoreColor(
-                          lead.compound_score
-                        )}`}
-                      >
+                      <Badge variant={scoreVariant(lead.compound_score)}>
                         {lead.compound_score}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-4 py-3">
                       {lead.sentiment_score ? (
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            SENTIMENT_STYLES[lead.sentiment_score]
-                          }`}
-                        >
+                        <Badge variant={SENTIMENT_VARIANTS[lead.sentiment_score]}>
                           {SENTIMENT_LABELS[lead.sentiment_score]}
-                        </span>
+                        </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
-                          STATUS_STYLES[lead.status]
-                        }`}
-                      >
+                      <Badge variant={STATUS_VARIANTS[lead.status]} className="capitalize">
                         {lead.status}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                       {new Date(lead.created_at).toLocaleDateString()}
@@ -454,25 +444,27 @@ export function SignalLeadsTable() {
 
           {/* Pagination */}
           {total > limit && (
-            <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center justify-between pt-4">
               <p className="text-sm text-muted-foreground">
                 Showing {startIndex} to {endIndex} of {total}
               </p>
               <div className="flex gap-2">
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="rounded-lg border px-3 py-1 text-sm disabled:opacity-50 hover:bg-muted"
                 >
                   Previous
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page * limit >= total}
-                  className="rounded-lg border px-3 py-1 text-sm disabled:opacity-50 hover:bg-muted"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -480,53 +472,38 @@ export function SignalLeadsTable() {
       )}
 
       {/* Push to HeyReach modal */}
-      {showPushModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setShowPushModal(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-lg bg-background p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-semibold mb-4">Push to HeyReach</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Push {selectedIds.size} selected lead{selectedIds.size !== 1 ? 's' : ''} to a
-              HeyReach campaign.
-            </p>
-            <label className="text-xs font-medium text-muted-foreground">
-              Campaign ID
-            </label>
-            <input
-              type="text"
+      <Dialog open={showPushModal} onOpenChange={setShowPushModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Push to HeyReach</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Push {selectedIds.size} selected lead{selectedIds.size !== 1 ? 's' : ''} to a HeyReach
+            campaign.
+          </p>
+          <div className="space-y-2">
+            <Label>Campaign ID</Label>
+            <Input
               value={campaignId}
               onChange={(e) => setCampaignId(e.target.value)}
               placeholder="Enter HeyReach campaign ID..."
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
             />
-            <div className="flex gap-2 mt-6">
-              <button
-                onClick={handleBulkPush}
-                disabled={!campaignId.trim() || bulkLoading}
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 disabled:opacity-50"
-              >
-                {bulkLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                Push
-              </button>
-              <button
-                onClick={() => setShowPushModal(false)}
-                className="flex-1 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
-              >
-                Cancel
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPushModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkPush} disabled={!campaignId.trim() || bulkLoading}>
+              {bulkLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Push
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Detail drawer */}
       {selectedLead && (
@@ -560,6 +537,6 @@ export function SignalLeadsTable() {
           }}
         />
       )}
-    </>
+    </div>
   );
 }

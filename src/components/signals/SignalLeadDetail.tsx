@@ -15,12 +15,8 @@ import {
   Target,
   Hash,
 } from 'lucide-react';
-import type {
-  SignalLead,
-  SignalEvent,
-  SignalType,
-  SentimentScore,
-} from '@/lib/types/signals';
+import { Button, Badge, Input } from '@magnetlab/magnetui';
+import type { SignalLead, SignalEvent, SignalType, SentimentScore } from '@/lib/types/signals';
 
 // ─── Signal type labels and styles ─────────────────────────
 
@@ -33,20 +29,22 @@ const SIGNAL_TYPE_LABELS: Record<SignalType, string> = {
   job_posting: 'Job Posting',
 };
 
-const SIGNAL_TYPE_STYLES: Record<SignalType, string> = {
-  keyword_engagement: 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300',
-  company_engagement: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  profile_engagement: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
-  job_change: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-  content_velocity: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300',
-  job_posting: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300',
+type BadgeVariant = 'purple' | 'blue' | 'orange' | 'green' | 'red' | 'gray';
+
+const SIGNAL_TYPE_VARIANTS: Record<SignalType, BadgeVariant> = {
+  keyword_engagement: 'purple',
+  company_engagement: 'blue',
+  profile_engagement: 'orange',
+  job_change: 'green',
+  content_velocity: 'red',
+  job_posting: 'blue',
 };
 
-const SENTIMENT_STYLES: Record<SentimentScore, string> = {
-  high_intent: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-  question: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  medium_intent: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
-  low_intent: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
+const SENTIMENT_VARIANTS: Record<SentimentScore, BadgeVariant> = {
+  high_intent: 'green',
+  question: 'blue',
+  medium_intent: 'orange',
+  low_intent: 'gray',
 };
 
 const SENTIMENT_LABELS: Record<SentimentScore, string> = {
@@ -61,13 +59,13 @@ const SENTIMENT_LABELS: Record<SentimentScore, string> = {
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-green-600 dark:text-green-400';
   if (score >= 50) return 'text-yellow-600 dark:text-yellow-400';
-  return 'text-zinc-500 dark:text-zinc-400';
+  return 'text-muted-foreground';
 }
 
 function scoreBg(score: number): string {
   if (score >= 80) return 'bg-green-100 dark:bg-green-900/30';
   if (score >= 50) return 'bg-yellow-100 dark:bg-yellow-900/30';
-  return 'bg-zinc-100 dark:bg-zinc-800/50';
+  return 'bg-muted';
 }
 
 // ─── Props ──────────────────────────────────────────────────
@@ -85,18 +83,12 @@ interface SignalLeadDetailProps {
 
 // ─── Component ──────────────────────────────────────────────
 
-export function SignalLeadDetail({
-  lead,
-  onClose,
-  onExclude,
-  onPush,
-}: SignalLeadDetailProps) {
+export function SignalLeadDetail({ lead, onClose, onExclude, onPush }: SignalLeadDetailProps) {
   const [pushCampaignId, setPushCampaignId] = useState('');
   const [showPushInput, setShowPushInput] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fullName =
-    [lead.first_name, lead.last_name].filter(Boolean).join(' ') || 'Unknown';
+  const fullName = [lead.first_name, lead.last_name].filter(Boolean).join(' ') || 'Unknown';
 
   const events = [...(lead.signal_events || [])].sort(
     (a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime()
@@ -134,12 +126,9 @@ export function SignalLeadDetail({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <h2 className="text-lg font-semibold">Lead Details</h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         {/* Scrollable content */}
@@ -208,15 +197,11 @@ export function SignalLeadDetail({
                 <p className="text-xs text-muted-foreground mt-0.5">Compound</p>
               </div>
               <div className="rounded-lg bg-muted/50 p-3 text-center">
-                <p className="text-2xl font-bold text-foreground">
-                  {lead.icp_score}
-                </p>
+                <p className="text-2xl font-bold text-foreground">{lead.icp_score}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">ICP Score</p>
               </div>
               <div className="rounded-lg bg-muted/50 p-3 text-center">
-                <p className="text-2xl font-bold text-foreground">
-                  {lead.signal_count}
-                </p>
+                <p className="text-2xl font-bold text-foreground">{lead.signal_count}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Signals</p>
               </div>
             </div>
@@ -227,7 +212,7 @@ export function SignalLeadDetail({
                   className={
                     lead.icp_match
                       ? 'text-green-600 dark:text-green-400 font-medium'
-                      : 'text-zinc-500 font-medium'
+                      : 'text-muted-foreground font-medium'
                   }
                 >
                   {lead.icp_match ? 'Yes' : 'No'}
@@ -248,27 +233,16 @@ export function SignalLeadDetail({
             ) : (
               <div className="space-y-3">
                 {events.map((event) => (
-                  <div
-                    key={event.id}
-                    className="rounded-lg border bg-card p-3 space-y-2"
-                  >
+                  <div key={event.id} className="rounded-lg border bg-card p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            SIGNAL_TYPE_STYLES[event.signal_type]
-                          }`}
-                        >
+                        <Badge variant={SIGNAL_TYPE_VARIANTS[event.signal_type]}>
                           {SIGNAL_TYPE_LABELS[event.signal_type]}
-                        </span>
+                        </Badge>
                         {event.sentiment && (
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                              SENTIMENT_STYLES[event.sentiment]
-                            }`}
-                          >
+                          <Badge variant={SENTIMENT_VARIANTS[event.sentiment]}>
                             {SENTIMENT_LABELS[event.sentiment]}
-                          </span>
+                          </Badge>
                         )}
                         {event.keyword_matched && (
                           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -310,18 +284,17 @@ export function SignalLeadDetail({
         <div className="border-t border-border p-4 space-y-3">
           {showPushInput ? (
             <div className="space-y-2">
-              <input
+              <Input
                 type="text"
                 value={pushCampaignId}
                 onChange={(e) => setPushCampaignId(e.target.value)}
                 placeholder="HeyReach campaign ID..."
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
               />
               <div className="flex gap-2">
-                <button
+                <Button
+                  className="flex-1"
                   onClick={handlePush}
                   disabled={!pushCampaignId.trim() || actionLoading}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 disabled:opacity-50"
                 >
                   {actionLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -329,32 +302,32 @@ export function SignalLeadDetail({
                     <Send className="h-4 w-4" />
                   )}
                   Push
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setShowPushInput(false);
                     setPushCampaignId('');
                   }}
-                  className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
             <div className="flex gap-2">
-              <button
+              <Button
+                className="flex-1"
                 onClick={() => setShowPushInput(true)}
                 disabled={lead.status === 'pushed' || lead.status === 'excluded' || actionLoading}
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
                 Push to HeyReach
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
                 onClick={handleExclude}
                 disabled={lead.status === 'excluded' || actionLoading}
-                className="flex items-center justify-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950 disabled:opacity-50"
               >
                 {actionLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -362,13 +335,10 @@ export function SignalLeadDetail({
                   <XCircle className="h-4 w-4" />
                 )}
                 Exclude
-              </button>
-              <button
-                onClick={onClose}
-                className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
-              >
+              </Button>
+              <Button variant="outline" onClick={onClose}>
                 Close
-              </button>
+              </Button>
             </div>
           )}
         </div>

@@ -19,9 +19,17 @@ import {
   MessageSquare,
   HelpCircle,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import {
+  PageContainer,
+  PageTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  IconWrapper,
+} from '@magnetlab/magnetui';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@magnetlab/magnetui';
 
 // ── Collapsible FAQ section ─────────────────────────────
 
@@ -39,12 +47,14 @@ function CollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border-border">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-3 p-5 text-left transition-colors hover:bg-muted/50"
+        className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/50"
       >
-        <Icon size={18} className="shrink-0 text-violet-500" />
+        <IconWrapper variant="primary" size="sm">
+          <Icon />
+        </IconWrapper>
         <span className="flex-1 font-semibold text-sm">{title}</span>
         {open ? (
           <ChevronDown size={16} className="shrink-0 text-muted-foreground" />
@@ -52,11 +62,7 @@ function CollapsibleSection({
           <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
         )}
       </button>
-      {open && (
-        <CardContent className="border-t pt-4 pb-5">
-          {children}
-        </CardContent>
-      )}
+      {open && <CardContent className="border-t pt-4 pb-5">{children}</CardContent>}
     </Card>
   );
 }
@@ -66,7 +72,7 @@ function CollapsibleSection({
 function Step({ number, children }: { number: number; children: React.ReactNode }) {
   return (
     <div className="flex gap-3 py-2">
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-xs font-bold text-violet-600 dark:text-violet-400">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
         {number}
       </div>
       <div className="text-sm text-foreground leading-relaxed pt-0.5">{children}</div>
@@ -111,15 +117,11 @@ const QUICK_TAGS = [
 
 export function ContentOpsGuide() {
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Content Operations Guide</h1>
-        <p className="mt-2 text-muted-foreground">
-          Your daily and weekly playbook for running AI-powered content production.
-          Follow these routines and the system handles the rest.
-        </p>
-      </div>
+    <PageContainer maxWidth="lg">
+      <PageTitle
+        title="Content Operations Guide"
+        description="Your daily and weekly playbook for running AI-powered content production. Follow these routines and the system handles the rest."
+      />
 
       {/* Main tabs */}
       <Tabs defaultValue="daily" className="space-y-6">
@@ -144,40 +146,41 @@ export function ContentOpsGuide() {
 
         {/* ──────── Daily Routine ──────── */}
         <TabsContent value="daily">
-          <Card>
+          <Card className="border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock size={18} className="text-violet-500" />
+                <Clock size={18} className="text-primary" />
                 Daily Routine
-                <Badge variant="secondary" className="ml-auto font-normal">15-30 min</Badge>
+                <Badge variant="gray" className="ml-auto font-normal">
+                  15-30 min
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1">
               <div className="mb-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   LinkedIn Posts
                 </h3>
                 <Step number={1}>
-                  Open MagnetLab and go to <strong>Posts</strong>. Switch to your profile if you have multiple.
+                  Open MagnetLab and go to <strong>Posts</strong>. Switch to your profile if you
+                  have multiple.
                 </Step>
-                <Step number={2}>
-                  Review AI drafts in your buffer (typically 3-5 waiting).
-                </Step>
+                <Step number={2}>Review AI drafts in your buffer (typically 3-5 waiting).</Step>
                 <Step number={3}>
-                  Edit what needs editing. <em>Your edits train the AI -- be honest, change what you don&apos;t like.</em>
+                  Edit what needs editing.{' '}
+                  <em>Your edits train the AI -- be honest, change what you don&apos;t like.</em>
                 </Step>
                 <Step number={4}>
-                  Optionally tag drafts: &quot;too formal&quot;, &quot;needs story&quot;, etc. (quick-tag chips appear after saving).
+                  Optionally tag drafts: &quot;too formal&quot;, &quot;needs story&quot;, etc.
+                  (quick-tag chips appear after saving).
                 </Step>
-                <Step number={5}>
-                  Approve 1 post. It publishes at your scheduled time.
-                </Step>
+                <Step number={5}>Approve 1 post. It publishes at your scheduled time.</Step>
               </div>
 
               <div className="h-px bg-border my-4" />
 
               <div>
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   Email Newsletter
                 </h3>
                 <Step number={6}>
@@ -186,17 +189,16 @@ export function ContentOpsGuide() {
                 <Step number={7}>
                   Edit for depth and utility -- emails should be meatier than LinkedIn posts.
                 </Step>
-                <Step number={8}>
-                  Send to your subscriber list.
-                </Step>
+                <Step number={8}>Send to your subscriber list.</Step>
               </div>
 
-              <div className="mt-6 rounded-lg bg-violet-500/5 border border-violet-500/20 p-4">
+              <div className="mt-6 rounded-lg bg-primary/5 border border-primary/20 p-4">
                 <div className="flex items-start gap-2">
-                  <Lightbulb size={16} className="shrink-0 text-violet-500 mt-0.5" />
+                  <Lightbulb size={16} className="shrink-0 text-primary mt-0.5" />
                   <p className="text-sm text-muted-foreground">
-                    <strong className="text-foreground">Pro tip:</strong> The more consistently you edit and give feedback,
-                    the faster the AI adapts to your voice. Most CEOs see noticeable improvement within 1-2 weeks.
+                    <strong className="text-foreground">Pro tip:</strong> The more consistently you
+                    edit and give feedback, the faster the AI adapts to your voice. Most CEOs see
+                    noticeable improvement within 1-2 weeks.
                   </p>
                 </div>
               </div>
@@ -206,28 +208,26 @@ export function ContentOpsGuide() {
 
         {/* ──────── Weekly Routine ──────── */}
         <TabsContent value="weekly">
-          <Card>
+          <Card className="border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <CalendarDays size={18} className="text-violet-500" />
+                <CalendarDays size={18} className="text-primary" />
                 Weekly Routine
-                <Badge variant="secondary" className="ml-auto font-normal">30-60 min</Badge>
+                <Badge variant="gray" className="ml-auto font-normal">
+                  30-60 min
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1">
               <div className="mb-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   Lead Magnet Production
                 </h3>
                 <Step number={1}>
                   Review 3 suggested lead magnet topics (generated from your knowledge base).
                 </Step>
-                <Step number={2}>
-                  Pick one. The AI generates the full content.
-                </Step>
-                <Step number={3}>
-                  Review and edit content blocks as needed.
-                </Step>
+                <Step number={2}>Pick one. The AI generates the full content.</Step>
+                <Step number={3}>Review and edit content blocks as needed.</Step>
                 <Step number={4}>
                   Approve the lead magnet. A funnel page goes live automatically.
                 </Step>
@@ -240,9 +240,10 @@ export function ContentOpsGuide() {
                 <div className="flex items-start gap-2">
                   <CheckCircle2 size={16} className="shrink-0 text-emerald-500 mt-0.5" />
                   <p className="text-sm text-muted-foreground">
-                    <strong className="text-foreground">What happens next:</strong> Once you approve a lead magnet,
-                    the system automatically creates a funnel page, generates promotional LinkedIn posts,
-                    and adds them to your content buffer. You just review and approve as part of your daily routine.
+                    <strong className="text-foreground">What happens next:</strong> Once you approve
+                    a lead magnet, the system automatically creates a funnel page, generates
+                    promotional LinkedIn posts, and adds them to your content buffer. You just
+                    review and approve as part of your daily routine.
                   </p>
                 </div>
               </div>
@@ -251,11 +252,12 @@ export function ContentOpsGuide() {
         </TabsContent>
 
         {/* ──────── Troubleshooting ──────── */}
-        <TabsContent value="troubleshoot" className="space-y-4">
+        <TabsContent value="troubleshoot" className="space-y-3">
           <div className="mb-2">
-            <h2 className="text-lg font-semibold">When Things Go Wrong</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Quick fixes for common issues. If none of these help, use the feedback button in the bottom-right corner.
+            <h2 className="text-sm font-semibold">When Things Go Wrong</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Quick fixes for common issues. If none of these help, use the feedback button in the
+              bottom-right corner.
             </p>
           </div>
 
@@ -302,8 +304,9 @@ export function ContentOpsGuide() {
           <CollapsibleSection title="Need More Help" icon={HelpCircle}>
             <div className="text-sm text-muted-foreground">
               <p>
-                Click the <strong>feedback button</strong> in the bottom-right corner of any page to send a message
-                directly to the team. Include what you were trying to do and what happened instead.
+                Click the <strong>feedback button</strong> in the bottom-right corner of any page to
+                send a message directly to the team. Include what you were trying to do and what
+                happened instead.
               </p>
             </div>
           </CollapsibleSection>
@@ -312,23 +315,26 @@ export function ContentOpsGuide() {
         {/* ──────── Style Feedback ──────── */}
         <TabsContent value="style">
           <div className="space-y-6">
-            <Card>
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Sparkles size={18} className="text-violet-500" />
+                  <Sparkles size={18} className="text-primary" />
                   How Style Learning Works
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Every edit you make teaches the AI. Be authentic -- change anything that doesn&apos;t sound like you.
-                  The system tracks your changes and evolves its writing style to match yours over time.
+                  Every edit you make teaches the AI. Be authentic -- change anything that
+                  doesn&apos;t sound like you. The system tracks your changes and evolves its
+                  writing style to match yours over time.
                 </p>
 
                 <div className="rounded-lg bg-muted/50 p-4 space-y-3">
                   <h4 className="text-sm font-semibold">How it works behind the scenes:</h4>
                   <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                    <li>You edit an AI draft (changing words, rewriting sections, adjusting tone)</li>
+                    <li>
+                      You edit an AI draft (changing words, rewriting sections, adjusting tone)
+                    </li>
                     <li>The system captures your edit and classifies the type of change</li>
                     <li>Quick-tag chips let you add context (optional but speeds up learning)</li>
                     <li>The AI reviews all your feedback weekly and updates its writing style</li>
@@ -338,7 +344,7 @@ export function ContentOpsGuide() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle>Quick-Tag Chips</CardTitle>
               </CardHeader>
@@ -358,49 +364,59 @@ export function ContentOpsGuide() {
                   ))}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  These tags help the AI understand <em>what kind</em> of issue you noticed.
-                  You don&apos;t need to use them every time, but they speed up the learning process.
+                  These tags help the AI understand <em>what kind</em> of issue you noticed. You
+                  don&apos;t need to use them every time, but they speed up the learning process.
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle>Writing Style Notes</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  When you want to explain <em>why</em> you made a change, add a note.
-                  This is optional but helps the AI learn faster.
+                  When you want to explain <em>why</em> you made a change, add a note. This is
+                  optional but helps the AI learn faster.
                 </p>
 
                 <div className="space-y-3">
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">Good note</p>
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
+                      Good note
+                    </p>
                     <p className="text-sm text-muted-foreground italic">
-                      &quot;I never use corporate jargon like &apos;leverage&apos; or &apos;synergy&apos;. I say &apos;use&apos; and &apos;work together&apos;.&quot;
+                      &quot;I never use corporate jargon like &apos;leverage&apos; or
+                      &apos;synergy&apos;. I say &apos;use&apos; and &apos;work
+                      together&apos;.&quot;
                     </p>
                   </div>
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">Good note</p>
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
+                      Good note
+                    </p>
                     <p className="text-sm text-muted-foreground italic">
-                      &quot;I always open with a personal story or question, never a generic statement.&quot;
+                      &quot;I always open with a personal story or question, never a generic
+                      statement.&quot;
                     </p>
                   </div>
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">Less helpful</p>
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="mb-1 text-xs font-semibold text-destructive">
+                      Less helpful
+                    </p>
                     <p className="text-sm text-muted-foreground italic">
                       &quot;Fix the tone.&quot;
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-lg bg-violet-500/5 border border-violet-500/20 p-4">
+                <div className="mt-4 rounded-lg bg-primary/5 border border-primary/20 p-4">
                   <div className="flex items-start gap-2">
-                    <Lightbulb size={16} className="shrink-0 text-violet-500 mt-0.5" />
+                    <Lightbulb size={16} className="shrink-0 text-primary mt-0.5" />
                     <p className="text-sm text-muted-foreground">
-                      <strong className="text-foreground">Timeline:</strong> Give the AI 1-2 weeks of consistent editing
-                      to fully adapt to your style. The more specific your feedback, the faster it learns.
+                      <strong className="text-foreground">Timeline:</strong> Give the AI 1-2 weeks
+                      of consistent editing to fully adapt to your style. The more specific your
+                      feedback, the faster it learns.
                     </p>
                   </div>
                 </div>
@@ -409,6 +425,6 @@ export function ContentOpsGuide() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }

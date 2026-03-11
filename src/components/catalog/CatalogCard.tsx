@@ -1,8 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Check, ExternalLink, Pencil, X } from 'lucide-react';
-
+import { Copy, Check, ExternalLink, Pencil, X, Loader2 } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+  Input,
+  Textarea,
+  FormField,
+} from '@magnetlab/magnetui';
 import { logError } from '@/lib/utils/logger';
 import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
@@ -23,7 +33,10 @@ interface CatalogCardProps {
   item: CatalogItem;
   isOwner: boolean;
   baseUrl: string;
-  onUpdate?: (id: string, fields: { pain_point?: string; target_audience?: string; short_description?: string }) => void;
+  onUpdate?: (
+    id: string,
+    fields: { pain_point?: string; target_audience?: string; short_description?: string }
+  ) => void;
 }
 
 const ARCHETYPE_LABELS: Record<string, string> = {
@@ -34,9 +47,9 @@ const ARCHETYPE_LABELS: Record<string, string> = {
   'focused-directory': 'Directory',
   'mini-training': 'Training',
   'one-story': 'Story',
-  'prompt': 'Prompt',
-  'assessment': 'Assessment',
-  'workflow': 'Workflow',
+  prompt: 'Prompt',
+  assessment: 'Assessment',
+  workflow: 'Workflow',
 };
 
 export function CatalogCard({ item, isOwner, baseUrl, onUpdate }: CatalogCardProps) {
@@ -78,122 +91,114 @@ export function CatalogCard({ item, isOwner, baseUrl, onUpdate }: CatalogCardPro
   };
 
   return (
-    <div className="rounded-lg border bg-card p-5 transition-colors hover:border-primary/30">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm truncate">{item.title}</h3>
-          <div className="flex items-center gap-2 mt-1">
-            {item.archetype && (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                {ARCHETYPE_LABELS[item.archetype] || item.archetype}
-              </span>
-            )}
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              item.status === 'published'
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-            }`}>
-              {item.status}
-            </span>
+    <Card className="border-border transition-colors hover:border-primary/30">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-sm truncate">{item.title}</CardTitle>
+            <div className="flex items-center gap-2 mt-1">
+              {item.archetype && (
+                <Badge variant="default">
+                  {ARCHETYPE_LABELS[item.archetype] || item.archetype}
+                </Badge>
+              )}
+              <Badge variant={item.status === 'published' ? 'green' : 'gray'}>{item.status}</Badge>
+            </div>
           </div>
-        </div>
-        {isOwner && (
-          <button
-            onClick={() => setEditing(!editing)}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors shrink-0"
-            title="Edit catalog info"
-          >
-            {editing ? <X size={14} /> : <Pencil size={14} />}
-          </button>
-        )}
-      </div>
-
-      {/* Edit mode */}
-      {editing ? (
-        <div className="space-y-3 mb-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Pain Point</label>
-            <input
-              value={painPoint}
-              onChange={(e) => setPainPoint(e.target.value)}
-              placeholder="What problem does this solve?"
-              className="w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Target Audience</label>
-            <input
-              value={targetAudience}
-              onChange={(e) => setTargetAudience(e.target.value)}
-              placeholder="Who is this for?"
-              className="w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Short Description</label>
-            <textarea
-              value={shortDescription}
-              onChange={(e) => setShortDescription(e.target.value)}
-              placeholder="Brief description for your team"
-              rows={2}
-              className="w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-            />
-          </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* Catalog fields */}
-          {item.short_description && (
-            <p className="text-sm text-muted-foreground mb-2">{item.short_description}</p>
+          {isOwner && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setEditing(!editing)}
+              title="Edit catalog info"
+            >
+              {editing ? <X className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+            </Button>
           )}
-          <div className="space-y-1 mb-3">
-            {item.pain_point && (
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground/70">Pain:</span> {item.pain_point}
-              </p>
-            )}
-            {item.target_audience && (
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground/70">Audience:</span> {item.target_audience}
-              </p>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Public link */}
-      {fullUrl && (
-        <div className="flex items-center gap-2 pt-3 border-t">
-          <a
-            href={fullUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors truncate"
-          >
-            <ExternalLink size={12} />
-            <span className="truncate">{item.publicUrl}</span>
-          </a>
-          <button
-            onClick={handleCopy}
-            className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors shrink-0"
-            title="Copy link"
-          >
-            {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-          </button>
         </div>
-      )}
+      </CardHeader>
+      <CardContent>
+        {editing ? (
+          <div className="space-y-3 mb-3">
+            <FormField label="Pain Point" htmlFor="pain-point">
+              <Input
+                id="pain-point"
+                value={painPoint}
+                onChange={(e) => setPainPoint(e.target.value)}
+                placeholder="What problem does this solve?"
+              />
+            </FormField>
+            <FormField label="Target Audience" htmlFor="target-audience">
+              <Input
+                id="target-audience"
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+                placeholder="Who is this for?"
+              />
+            </FormField>
+            <FormField label="Short Description" htmlFor="short-desc">
+              <Textarea
+                id="short-desc"
+                value={shortDescription}
+                onChange={(e) => setShortDescription(e.target.value)}
+                placeholder="Brief description for your team"
+                rows={2}
+                className="resize-none"
+              />
+            </FormField>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                  Saving...
+                </>
+              ) : (
+                'Save'
+              )}
+            </Button>
+          </div>
+        ) : (
+          <>
+            {item.short_description && (
+              <p className="text-sm text-muted-foreground mb-2">{item.short_description}</p>
+            )}
+            <div className="space-y-1 mb-3">
+              {item.pain_point && (
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground/70">Pain:</span> {item.pain_point}
+                </p>
+              )}
+              {item.target_audience && (
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground/70">Audience:</span>{' '}
+                  {item.target_audience}
+                </p>
+              )}
+            </div>
+          </>
+        )}
 
-      {!fullUrl && !editing && (
-        <p className="text-xs text-muted-foreground/60 pt-3 border-t">No published funnel page</p>
-      )}
-    </div>
+        {fullUrl && (
+          <div className="flex items-center gap-2 pt-3 border-t">
+            <a
+              href={fullUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors truncate"
+            >
+              <ExternalLink className="h-3 w-3 shrink-0" />
+              <span className="truncate">{item.publicUrl}</span>
+            </a>
+            <Button variant="ghost" size="icon-sm" onClick={handleCopy} title="Copy link">
+              {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+            </Button>
+          </div>
+        )}
+
+        {!fullUrl && !editing && (
+          <p className="text-xs text-muted-foreground/60 pt-3 border-t">No published funnel page</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

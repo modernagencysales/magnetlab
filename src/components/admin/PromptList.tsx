@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
+import { Input } from '@magnetlab/magnetui';
 
 interface PromptSummary {
   slug: string;
@@ -71,59 +72,60 @@ export function PromptList({ prompts }: { prompts: PromptSummary[] }) {
   }, [filtered]);
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-        <input
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
           type="text"
           placeholder="Search prompts by name, slug, or description..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          className="pl-10"
         />
       </div>
 
       {/* Groups */}
       {Object.keys(grouped).length === 0 && (
-        <div className="text-center py-12 text-zinc-500 text-sm">
+        <div className="text-center py-12 text-muted-foreground text-sm">
           No prompts found matching &quot;{search}&quot;
         </div>
       )}
 
+      <div className="space-y-6">
       {Object.entries(grouped).map(([category, items]) => (
-        <div key={category} className="mb-8">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
+        <div key={category} className="space-y-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {CATEGORY_LABELS[category] ?? category}
           </h2>
-          <div className="grid gap-3">
+          <div className="grid gap-4">
             {items.map((prompt) => (
               <Link
                 key={prompt.slug}
                 href={`/admin/prompts/${prompt.slug}`}
-                className="block rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 hover:border-violet-400 dark:hover:border-violet-500 transition-colors"
+                className="block rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/50"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      <span className="text-sm font-medium">
                         {prompt.name}
                       </span>
                       <span
                         className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
                           prompt.is_active
                             ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                            : 'bg-muted text-muted-foreground'
                         }`}
                       >
                         {prompt.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
                     {prompt.description && (
-                      <p className="text-xs text-zinc-500 line-clamp-1">{prompt.description}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{prompt.description}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 shrink-0 text-xs text-zinc-400">
+                  <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
                     <span className="font-mono">{prompt.model}</span>
                     <span>{formatDate(prompt.updated_at)}</span>
                   </div>
@@ -133,6 +135,7 @@ export function PromptList({ prompts }: { prompts: PromptSummary[] }) {
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }

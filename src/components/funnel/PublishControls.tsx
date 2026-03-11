@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Globe, Copy, Check, ExternalLink, Loader2, AlertCircle, Users } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import type { FunnelPage } from '@/lib/types/funnel';
 
 import { logError } from '@/lib/utils/logger';
@@ -23,11 +24,7 @@ interface PublishControlsProps {
   username: string | null;
 }
 
-export function PublishControls({
-  funnel,
-  setFunnel,
-  username,
-}: PublishControlsProps) {
+export function PublishControls({ funnel, setFunnel, username }: PublishControlsProps) {
   const [publishing, setPublishing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,16 +51,16 @@ export function PublishControls({
     fetchStats();
   }, [funnel.id]);
 
-  const publicUrl = username && origin
-    ? `${origin}/p/${username}/${funnel.slug}`
-    : null;
+  const publicUrl = username && origin ? `${origin}/p/${username}/${funnel.slug}` : null;
 
   const handleTogglePublish = async () => {
     setPublishing(true);
     setError(null);
 
     try {
-      const result = await funnelApi.publishFunnel(funnel.id, !funnel.isPublished) as { funnel: FunnelPage };
+      const result = (await funnelApi.publishFunnel(funnel.id, !funnel.isPublished)) as {
+        funnel: FunnelPage;
+      };
       setFunnel(result.funnel);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update publish status');
@@ -96,33 +93,30 @@ export function PublishControls({
     <div className="rounded-lg border bg-card p-5 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-2 h-2 rounded-full ${funnel.isPublished ? 'bg-green-500' : 'bg-zinc-400'}`} />
-          <h3 className="font-semibold">
-            {funnel.isPublished ? 'Published' : 'Not Published'}
-          </h3>
+          <div
+            className={`w-2 h-2 rounded-full ${funnel.isPublished ? 'bg-green-500' : 'bg-muted-foreground'}`}
+          />
+          <h3 className="font-semibold">{funnel.isPublished ? 'Published' : 'Not Published'}</h3>
         </div>
-        <button
+        <Button
           onClick={handleTogglePublish}
           disabled={publishing || !username}
-          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
-            funnel.isPublished
-              ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              : 'bg-green-600 text-white hover:bg-green-700'
-          }`}
+          variant={funnel.isPublished ? 'outline' : 'default'}
+          className={funnel.isPublished ? '' : 'bg-green-600 hover:bg-green-700 text-white'}
         >
           {publishing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : (
-            <Globe className="h-4 w-4" />
+            <Globe className="h-4 w-4 mr-2" />
           )}
           {funnel.isPublished ? 'Unpublish' : 'Publish'}
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <p className="text-sm">{error}</p>
         </div>
       )}
 
@@ -145,29 +139,24 @@ export function PublishControls({
 
       {funnel.isPublished && publicUrl && (
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-muted-foreground">
-            Public URL
-          </label>
+          <label className="block text-sm font-medium text-muted-foreground">Public URL</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 rounded-lg bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm font-mono truncate">
               {publicUrl}
             </div>
-            <button
-              onClick={handleCopyUrl}
-              className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-2.5 text-sm font-medium hover:bg-secondary/80 transition-colors"
-            >
+            <Button variant="outline" onClick={handleCopyUrl}>
               {copied ? (
                 <>
-                  <Check className="h-4 w-4 text-green-500" />
+                  <Check className="h-4 w-4 text-green-500 mr-1" />
                   Copied!
                 </>
               ) : (
                 <>
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-4 w-4 mr-1" />
                   Copy
                 </>
               )}
-            </button>
+            </Button>
             <a
               href={publicUrl}
               target="_blank"
@@ -185,10 +174,13 @@ export function PublishControls({
         <div className="mt-4 pt-4 border-t">
           <p className="text-sm text-muted-foreground">
             Next:{' '}
-            <Link href="/docs/connect-email-list" className="text-violet-600 dark:text-violet-400 hover:underline">
+            <Link
+              href="/docs/connect-email-list"
+              className="text-violet-600 dark:text-violet-400 hover:underline"
+            >
               connect your email list
-            </Link>
-            {' '}to receive leads in real-time.
+            </Link>{' '}
+            to receive leads in real-time.
           </p>
         </div>
       )}
@@ -229,9 +221,9 @@ export function PublishControls({
               <p className="text-xl font-semibold text-green-600">{stats.qualified}</p>
               <p className="text-xs text-green-600/80">Qualified</p>
             </div>
-            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-2 text-center">
-              <p className="text-xl font-semibold text-red-600">{stats.unqualified}</p>
-              <p className="text-xs text-red-600/80">Unqualified</p>
+            <div className="rounded-lg bg-destructive/10 p-2 text-center">
+              <p className="text-xl font-semibold text-destructive">{stats.unqualified}</p>
+              <p className="text-xs text-destructive/80">Unqualified</p>
             </div>
           </div>
 

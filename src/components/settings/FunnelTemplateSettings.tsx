@@ -49,7 +49,7 @@ export function FunnelTemplateSettings({ currentTemplate, onSaved }: FunnelTempl
       </div>
 
       {error && (
-        <p className="text-sm text-red-500">{error}</p>
+        <p className="text-sm text-destructive">{error}</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

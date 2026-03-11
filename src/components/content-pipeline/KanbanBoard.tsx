@@ -2,6 +2,7 @@
 
 import { Loader2, CheckSquare, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@magnetlab/magnetui';
 import type { PipelinePost, ContentIdea } from '@/lib/types/content-pipeline';
 import { FocusedCard } from './KanbanCard';
 import { COLUMN_STYLES, type ColumnId } from './KanbanColumn';
@@ -92,16 +93,17 @@ export function KanbanBoard(props: KanbanBoardProps) {
           {/* Select all header */}
           {currentItems.length > 0 && (
             <div className="flex items-center gap-3 mb-3 px-1">
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={allSelected ? clearSelection : selectAll}
-                className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 {allSelected ? (
                   <CheckSquare className="h-4 w-4 text-primary" />
                 ) : (
                   <Square className="h-4 w-4" />
                 )}
-              </button>
+              </Button>
               <span className="text-xs text-muted-foreground">
                 {selectedIds.size > 0
                   ? `${selectedIds.size} of ${currentItems.length} selected`

@@ -690,7 +690,7 @@ export function InlineContentEditor({
                 <button
                   type="button"
                   onClick={() => deleteSection(sectionIdx)}
-                  className="flex h-5 w-5 items-center justify-center rounded text-red-500 hover:bg-red-500/10"
+                  className="flex h-5 w-5 items-center justify-center rounded text-destructive hover:bg-destructive/10"
                   aria-label="Delete section"
                 >
                   <Trash2 size={12} />

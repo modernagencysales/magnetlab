@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import { ArrowLeft, Loader2, RefreshCw, Sparkles } from 'lucide-react';
-import type { InteractiveConfig, LeadMagnetConcept, AssessmentConfig, GPTConfig } from '@/lib/types/lead-magnet';
+import { Button } from '@magnetlab/magnetui';
+import type {
+  InteractiveConfig,
+  LeadMagnetConcept,
+  AssessmentConfig,
+  GPTConfig,
+} from '@/lib/types/lead-magnet';
 import { CalculatorPreview } from '@/components/interactive/CalculatorPreview';
 import { AssessmentPreview } from '@/components/interactive/AssessmentPreview';
 import { GPTPreview } from '@/components/interactive/GPTPreview';
@@ -29,7 +35,8 @@ const TYPE_LABELS: Record<InteractiveConfig['type'], string> = {
 
 const TYPE_DESCRIPTIONS: Record<InteractiveConfig['type'], string> = {
   calculator: 'An interactive calculator that helps your audience get personalized results.',
-  assessment: 'A scored assessment that gives your audience actionable insights about where they stand.',
+  assessment:
+    'A scored assessment that gives your audience actionable insights about where they stand.',
   gpt: 'An AI-powered chat tool that gives your audience personalized advice.',
 };
 
@@ -95,16 +102,14 @@ export function InteractiveContentStep({
         <div>
           <h1 className="text-3xl font-bold">Review Your Interactive Tool</h1>
           <p className="mt-2 text-muted-foreground">
-            {TYPE_DESCRIPTIONS[config.type]} Preview it below, or switch to the Edit tab to tweak the details.
+            {TYPE_DESCRIPTIONS[config.type]} Preview it below, or switch to the Edit tab to tweak
+            the details.
           </p>
         </div>
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
+        <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </Button>
       </div>
 
       {/* Tool type badge */}
@@ -140,18 +145,12 @@ export function InteractiveContentStep({
           </button>
         </div>
 
-        <div className="p-6">
-          {activeTab === 'preview' ? renderPreview() : renderEditor()}
-        </div>
+        <div className="p-6">{activeTab === 'preview' ? renderPreview() : renderEditor()}</div>
       </div>
 
       {/* Bottom bar */}
       <div className="flex items-center justify-between gap-4">
-        <button
-          onClick={onRegenerate}
-          disabled={regenerating || loading}
-          className="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
-        >
+        <Button variant="outline" onClick={onRegenerate} disabled={regenerating || loading}>
           {regenerating ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -163,13 +162,9 @@ export function InteractiveContentStep({
               Regenerate
             </>
           )}
-        </button>
+        </Button>
 
-        <button
-          onClick={onApprove}
-          disabled={loading || regenerating}
-          className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-        >
+        <Button onClick={onApprove} disabled={loading || regenerating} className="px-6">
           {loading ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -181,7 +176,7 @@ export function InteractiveContentStep({
               Looks Good &mdash; Generate Posts
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -19,9 +19,9 @@ interface CopilotMessageProps {
 export function CopilotMessage({ message, onFeedback, onApply }: CopilotMessageProps) {
   if (message.role === 'tool_call') {
     return (
-      <div className="flex items-start gap-2 text-xs text-zinc-400 py-1">
+      <div className="flex items-start gap-2 text-xs text-muted-foreground py-1">
         <Wrench className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-        <span>Using <strong className="text-zinc-500">{message.toolName}</strong>...</span>
+        <span>Using <strong className="text-muted-foreground">{message.toolName}</strong>...</span>
       </div>
     );
   }
@@ -57,7 +57,7 @@ export function CopilotMessage({ message, onFeedback, onApply }: CopilotMessageP
     // Default: simple success/failure badge
     const success = result && typeof result === 'object' && 'success' in result && result.success;
     return (
-      <div className={`text-xs py-1 px-2 rounded ${success ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' : 'text-red-500 bg-red-50 dark:bg-red-900/20'}`}>
+      <div className={`rounded px-2 py-1 text-xs ${success ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' : 'bg-destructive/10 text-destructive'}`}>
         {success ? 'Done' : 'Failed'}: {message.toolName}
       </div>
     );
@@ -71,7 +71,7 @@ export function CopilotMessage({ message, onFeedback, onApply }: CopilotMessageP
         className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
           isUser
             ? 'bg-violet-600 text-white whitespace-pre-wrap'
-            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+            : 'bg-muted text-foreground'
         }`}
       >
         {isUser ? (
@@ -89,13 +89,13 @@ export function CopilotMessage({ message, onFeedback, onApply }: CopilotMessageP
                 const isBlock = className?.includes('language-') || (node?.position && node.position.start.line !== node.position.end.line);
                 if (isBlock) {
                   return (
-                    <code className="block bg-gray-800 text-gray-100 rounded p-2 text-xs overflow-x-auto mb-2" {...props}>
+                    <code className="block bg-muted text-foreground rounded p-2 text-xs overflow-x-auto mb-2" {...props}>
                       {children}
                     </code>
                   );
                 }
                 return (
-                  <code className="bg-gray-100 px-1 py-0.5 rounded text-sm" {...props}>
+                  <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props}>
                     {children}
                   </code>
                 );

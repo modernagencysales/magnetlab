@@ -10,6 +10,7 @@ import {
   FileText,
   PenLine,
 } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
 import { useBackgroundJob } from '@/frontend/hooks/useBackgroundJob';
 import * as leadMagnetApi from '@/frontend/api/lead-magnet';
@@ -133,8 +134,8 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
         </p>
 
         {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+            {error}
           </div>
         )}
 
@@ -198,22 +199,17 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       </p>
 
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
         </div>
       )}
 
       {/* Primary action: Open content page (when polished) */}
       {contentUrl && (
-        <a
-          href={contentUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-4 py-3 text-sm font-medium text-white hover:bg-violet-600 transition-colors w-full"
-        >
-          <ExternalLink className="h-4 w-4" />
+        <Button className="w-full" onClick={() => window.open(contentUrl, '_blank')}>
+          <ExternalLink className="h-4 w-4 mr-2" />
           Open Content Page
-        </a>
+        </Button>
       )}
 
       {/* Polish status */}
@@ -246,31 +242,22 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
 
       {/* Edit Content link → inline editor on live page */}
       {polished && contentUrl && (
-        <a
-          href={`${contentUrl}?edit=true`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
-        >
-          <PenLine className="h-4 w-4" />
+        <Button variant="outline" onClick={() => window.open(`${contentUrl}?edit=true`, '_blank')}>
+          <PenLine className="h-4 w-4 mr-2" />
           Edit Content
-        </a>
+        </Button>
       )}
 
       {/* Re-polish (only if extracted content exists) */}
       {hasExtracted && (
-        <button
-          onClick={handlePolish}
-          disabled={isAiLoading}
-          className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/50 disabled:opacity-50"
-        >
+        <Button variant="outline" onClick={handlePolish} disabled={isAiLoading}>
           {isAiLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : (
-            <Sparkles className="h-4 w-4" />
+            <Sparkles className="h-4 w-4 mr-2" />
           )}
           Re-polish Content
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -15,6 +15,7 @@ import {
   Linkedin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button, Badge, Textarea } from '@magnetlab/magnetui';
 import { PillarBadge } from './PillarBadge';
 import { StatusBadge } from './StatusBadge';
 import type { ContentIdea, PipelinePost, ReviewData } from '@/lib/types/content-pipeline';
@@ -100,13 +101,9 @@ function IdeaDetail({
           <StatusBadge status={idea.status} />
           <PillarBadge pillar={idea.content_pillar} />
         </div>
-        <button
-          onClick={onClose}
-          className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
-          aria-label="Close"
-        >
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       {/* Content */}
@@ -114,9 +111,9 @@ function IdeaDetail({
         <h3 className="text-base font-semibold leading-snug">{idea.title}</h3>
 
         {idea.content_type && (
-          <span className="inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+          <Badge variant="gray">
             {CONTENT_TYPE_LABELS[idea.content_type] || idea.content_type}
-          </span>
+          </Badge>
         )}
 
         {idea.core_insight && (
@@ -155,14 +152,18 @@ function IdeaDetail({
 
       {/* Footer */}
       <div className="border-t px-4 py-3">
-        <button
+        <Button
           onClick={handleWrite}
           disabled={writing}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+          className="w-full bg-green-600 hover:bg-green-700 text-white"
         >
-          {writing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
+          {writing ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+          ) : (
+            <PenLine className="h-4 w-4 mr-1.5" />
+          )}
           Write Post
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -280,28 +281,15 @@ function PostDetail({
         <div className="flex items-center gap-2">
           <StatusBadge status={post.status} />
           {post.hook_score !== null && post.hook_score !== undefined && (
-            <span
-              className={cn(
-                'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-                post.hook_score >= 8
-                  ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-                  : post.hook_score >= 5
-                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
-                    : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-              )}
+            <Badge
+              variant={post.hook_score >= 8 ? 'green' : post.hook_score >= 5 ? 'orange' : 'red'}
             >
               Hook {post.hook_score}/10
-            </span>
+            </Badge>
           )}
           {post.review_data &&
             (() => {
               const rd = post.review_data as ReviewData;
-              const badgeStyle =
-                rd.category === 'excellent'
-                  ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-                  : rd.category === 'good_with_edits'
-                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
-                    : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300';
               const label =
                 rd.category === 'excellent'
                   ? 'Excellent'
@@ -309,32 +297,34 @@ function PostDetail({
                     ? 'Needs Edits'
                     : 'Rewrite';
               return (
-                <span
-                  className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-semibold', badgeStyle)}
+                <Badge
+                  variant={
+                    rd.category === 'excellent'
+                      ? 'green'
+                      : rd.category === 'good_with_edits'
+                        ? 'orange'
+                        : 'red'
+                  }
                 >
                   {label} {rd.score}/10
-                </span>
+                </Badge>
               );
             })()}
           {/* Save indicator */}
           <SaveIndicator state={saveState} />
         </div>
-        <button
-          onClick={onClose}
-          className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
-          aria-label="Close"
-        >
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       {/* Editable textarea — fills available space */}
       <div className="flex-1 p-4">
-        <textarea
+        <Textarea
           value={editContent}
           onChange={(e) => handleChange(e.target.value)}
           onBlur={handleBlur}
-          className="h-full w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary"
+          className="h-full resize-none leading-relaxed"
           placeholder="Write your post content..."
         />
       </div>
@@ -398,58 +388,46 @@ function PostDetail({
 
       {/* Action buttons */}
       <div className="flex items-center gap-2 border-t px-4 py-3">
-        <button
-          onClick={handlePolish}
-          disabled={polishing}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
-        >
+        <Button variant="outline" size="sm" onClick={handlePolish} disabled={polishing}>
           {polishing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
           ) : (
-            <Sparkles className="h-3.5 w-3.5" />
+            <Sparkles className="h-3.5 w-3.5 mr-1" />
           )}
           Polish
-        </button>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-        >
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleCopy}>
           {copied ? (
-            <Check className="h-3.5 w-3.5 text-green-500" />
+            <Check className="h-3.5 w-3.5 text-green-500 mr-1" />
           ) : (
-            <Copy className="h-3.5 w-3.5" />
+            <Copy className="h-3.5 w-3.5 mr-1" />
           )}
           {copied ? 'Copied' : 'Copy'}
-        </button>
-        <button
-          onClick={handleSchedule}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-        >
-          <Calendar className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleSchedule}>
+          <Calendar className="h-3.5 w-3.5 mr-1" />
           Schedule
-        </button>
+        </Button>
         {canPublish && (
-          <button
+          <Button
+            size="sm"
             onClick={handlePublish}
             disabled={publishing}
-            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {publishing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
             ) : (
-              <Linkedin className="h-3.5 w-3.5" />
+              <Linkedin className="h-3.5 w-3.5 mr-1" />
             )}
             Publish
-          </button>
+          </Button>
         )}
         <div className="flex-1" />
-        <button
-          onClick={() => onOpenModal(post)}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
+        <Button variant="outline" size="sm" onClick={() => onOpenModal(post)}>
+          <ExternalLink className="h-3.5 w-3.5 mr-1" />
           Full Editor
-        </button>
+        </Button>
       </div>
       {/* Publish Error */}
       {publishError && (
@@ -480,7 +458,7 @@ function SaveIndicator({ state }: { state: SaveState }) {
         'flex items-center gap-1 text-[10px] font-medium',
         state === 'saving' && 'text-muted-foreground',
         state === 'saved' && 'text-green-600 dark:text-green-400',
-        state === 'error' && 'text-red-600 dark:text-red-400'
+        state === 'error' && 'text-destructive'
       )}
     >
       {state === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}

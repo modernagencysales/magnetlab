@@ -13,17 +13,17 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
+  Button,
+  Input,
+  Badge,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui/dialog';
+} from '@magnetlab/magnetui';
 import { AudienceFilterBuilder } from '@/components/email/AudienceFilterBuilder';
 import { formatDateTime } from '@/lib/utils';
 import type { EmailBroadcast, AudienceFilter, BroadcastStatus } from '@/lib/types/email-system';
@@ -33,11 +33,11 @@ interface BroadcastEditorProps {
   broadcastId: string;
 }
 
-const STATUS_STYLES: Record<BroadcastStatus, string> = {
-  draft: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400',
-  sending: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  sent: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+const STATUS_VARIANTS: Record<BroadcastStatus, 'gray' | 'blue' | 'green' | 'red'> = {
+  draft: 'gray',
+  sending: 'blue',
+  sent: 'green',
+  failed: 'red',
 };
 
 const STATUS_LABELS: Record<BroadcastStatus, string> = {
@@ -249,16 +249,13 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
   if (error || !broadcast) {
     return (
       <div className="space-y-4">
-        <button
-          onClick={() => router.push('/email/broadcasts')}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={() => router.push('/email/broadcasts')}>
+          <ArrowLeft className="h-4 w-4 mr-1.5" />
           Back to Broadcasts
-        </button>
-        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-          <p className="text-sm text-red-800 dark:text-red-200">{error || 'Broadcast not found'}</p>
+        </Button>
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-destructive">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">{error || 'Broadcast not found'}</p>
         </div>
       </div>
     );
@@ -268,17 +265,14 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => router.push('/email/broadcasts')}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={() => router.push('/email/broadcasts')}>
+          <ArrowLeft className="h-4 w-4 mr-1.5" />
           Back to Broadcasts
-        </button>
+        </Button>
 
         <Badge
-          variant="outline"
-          className={`${STATUS_STYLES[broadcast.status]} ${isSending ? 'animate-pulse' : ''}`}
+          variant={STATUS_VARIANTS[broadcast.status]}
+          className={isSending ? 'animate-pulse' : ''}
         >
           {isSending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
           {isSent && <CheckCircle2 className="h-3 w-3 mr-1" />}
@@ -292,23 +286,27 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
         <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 dark:border-green-900 dark:bg-green-950">
           <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
           <p className="text-sm text-green-800 dark:text-green-200">
-            Sent to {broadcast.recipient_count} subscriber{broadcast.recipient_count !== 1 ? 's' : ''} on{' '}
-            {formatDateTime(broadcast.sent_at)}
+            Sent to {broadcast.recipient_count} subscriber
+            {broadcast.recipient_count !== 1 ? 's' : ''} on {formatDateTime(broadcast.sent_at)}
           </p>
         </div>
       )}
 
       {/* Failed state banner */}
       {isFailed && (
-        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-950">
+        <div className="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-destructive">
           <div className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
-            <p className="text-sm text-red-800 dark:text-red-200">
+            <XCircle className="h-5 w-5 shrink-0" />
+            <p className="text-sm">
               This broadcast failed to send. You can retry by resetting it to draft.
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={handleRetry} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
             Retry
           </Button>
         </div>
@@ -319,7 +317,8 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
         <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900 dark:bg-blue-950">
           <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 animate-spin" />
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            Sending to {broadcast.recipient_count} subscriber{broadcast.recipient_count !== 1 ? 's' : ''}...
+            Sending to {broadcast.recipient_count} subscriber
+            {broadcast.recipient_count !== 1 ? 's' : ''}...
           </p>
         </div>
       )}
@@ -371,11 +370,7 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={saveDraft}
-              disabled={saving || !hasUnsavedChanges}
-            >
+            <Button variant="outline" onClick={saveDraft} disabled={saving || !hasUnsavedChanges}>
               <Save className="h-4 w-4" />
               Save Draft
             </Button>
@@ -395,9 +390,7 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Send Broadcast</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to send this broadcast?
-            </DialogDescription>
+            <DialogDescription>Are you sure you want to send this broadcast?</DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
@@ -412,18 +405,12 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
                 subscriber{previewCount !== 1 ? 's' : ''}. This action cannot be undone.
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                This action cannot be undone.
-              </p>
+              <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
             )}
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setSendDialogOpen(false)}
-              disabled={sending}
-            >
+            <Button variant="outline" onClick={() => setSendDialogOpen(false)} disabled={sending}>
               Cancel
             </Button>
             <Button

@@ -65,7 +65,7 @@ function LinkInput({ initialUrl, onSubmit, onCancel }: LinkInputProps) {
         onChange={(e) => setUrl(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="https://..."
-        className="h-7 w-48 rounded border border-zinc-300 bg-white px-2 text-xs text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+        className="h-7 w-48 rounded border border-border bg-background px-2 text-xs text-foreground outline-none focus:border-violet-500"
       />
       <button
         type="button"
@@ -83,7 +83,7 @@ function LinkInput({ initialUrl, onSubmit, onCancel }: LinkInputProps) {
           e.preventDefault();
           onCancel();
         }}
-        className="rounded px-2 py-1 text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+        className="rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
       >
         Cancel
       </button>
@@ -156,7 +156,7 @@ function BubbleToolbar({ editor }: ToolbarProps) {
         className={`rounded p-1.5 transition-colors ${
           editor.isActive('bold')
             ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'
-            : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700'
+            : 'text-muted-foreground hover:bg-muted'
         }`}
         aria-label="Bold"
         title="Bold"
@@ -173,7 +173,7 @@ function BubbleToolbar({ editor }: ToolbarProps) {
         className={`rounded p-1.5 transition-colors ${
           editor.isActive('italic')
             ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'
-            : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700'
+            : 'text-muted-foreground hover:bg-muted'
         }`}
         aria-label="Italic"
         title="Italic"
@@ -190,7 +190,7 @@ function BubbleToolbar({ editor }: ToolbarProps) {
         className={`rounded p-1.5 transition-colors ${
           editor.isActive('strike')
             ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'
-            : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700'
+            : 'text-muted-foreground hover:bg-muted'
         }`}
         aria-label="Strikethrough"
         title="Strikethrough"
@@ -198,7 +198,7 @@ function BubbleToolbar({ editor }: ToolbarProps) {
         <Strikethrough className="h-4 w-4" />
       </button>
 
-      <div className="mx-0.5 h-4 w-px bg-zinc-200 dark:bg-zinc-600" />
+      <div className="mx-0.5 h-4 w-px bg-border" />
 
       <button
         type="button"
@@ -209,7 +209,7 @@ function BubbleToolbar({ editor }: ToolbarProps) {
         className={`rounded p-1.5 transition-colors ${
           isLink
             ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'
-            : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700'
+            : 'text-muted-foreground hover:bg-muted'
         }`}
         aria-label={isLink ? 'Unlink' : 'Link'}
         title={isLink ? 'Remove link' : 'Add link'}
@@ -322,7 +322,7 @@ export function TipTapTextBlock({
             placement: 'top',
             onHide: handleBubbleMenuHide,
           }}
-          className="flex items-center gap-0.5 rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+          className="flex items-center gap-0.5 rounded-lg border border-border bg-card p-1 shadow-lg"
         >
           <BubbleToolbar editor={editor} />
         </BubbleMenu>

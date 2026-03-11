@@ -2,17 +2,25 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Bot, Plus, Play, Pause, Pencil, Trash2, Loader2, Users, Activity } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  PageContainer,
+  PageTitle,
+  Button,
+  Badge,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  EmptyState,
+  LoadingCard,
+  StatusDot,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@magnetlab/magnetui';
 import { AutomationEditor } from './AutomationEditor';
 import { AutomationEventsDrawer } from './AutomationEventsDrawer';
 import * as automationsApi from '@/frontend/api/linkedin/automations';
@@ -25,12 +33,17 @@ export type Automation = automationsApi.Automation;
 
 function StatusBadge({ status }: { status: Automation['status'] }) {
   const config = {
-    running: { label: 'Running', className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-    paused: { label: 'Paused', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
-    draft: { label: 'Draft', className: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20' },
+    running: { label: 'Running', variant: 'green' as const, dotStatus: 'success' as const },
+    paused: { label: 'Paused', variant: 'orange' as const, dotStatus: 'warning' as const },
+    draft: { label: 'Draft', variant: 'gray' as const, dotStatus: 'neutral' as const },
   };
-  const { label, className } = config[status];
-  return <Badge className={className}>{label}</Badge>;
+  const { label, variant, dotStatus } = config[status];
+  return (
+    <Badge variant={variant}>
+      <StatusDot status={dotStatus} size="sm" pulse={status === 'running'} className="mr-1.5" />
+      {label}
+    </Badge>
+  );
 }
 
 // ─── Main list component ────────────────────────────────
@@ -69,9 +82,7 @@ export function AutomationList() {
     setTogglingId(automation.id);
     try {
       const data = await automationsApi.updateAutomation(automation.id, { status: newStatus });
-      setAutomations((prev) =>
-        prev.map((a) => (a.id === automation.id ? data.automation : a))
-      );
+      setAutomations((prev) => prev.map((a) => (a.id === automation.id ? data.automation : a)));
     } catch {
       // Silently fail — the UI state remains unchanged
     } finally {
@@ -127,72 +138,62 @@ export function AutomationList() {
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
+      <PageContainer maxWidth="xl">
+        <LoadingCard count={3} />
+      </PageContainer>
     );
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Automations</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Auto-DM LinkedIn commenters on your posts
-          </p>
-        </div>
-        <Button onClick={handleCreate} size="sm">
-          <Plus className="h-4 w-4 mr-1.5" />
-          New Automation
-        </Button>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-700 dark:text-red-400">
-          {error}
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!error && automations.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-12 h-12 rounded-lg bg-violet-500/10 flex items-center justify-center mb-4">
-              <Bot className="h-6 w-6 text-violet-500" />
-            </div>
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
-              No automations yet
-            </h3>
-            <p className="text-sm text-muted-foreground max-w-sm mb-6">
-              Create one to auto-DM commenters on your posts. Set keywords to match, craft a DM template, and let it run.
-            </p>
+    <PageContainer maxWidth="xl">
+      <div className="space-y-6">
+        <PageTitle
+          title="Automations"
+          description="Auto-DM LinkedIn commenters on your posts"
+          actions={
             <Button onClick={handleCreate} size="sm">
-              <Plus className="h-4 w-4 mr-1.5" />
+              <Plus className="mr-1 h-4 w-4" />
+              New Automation
+            </Button>
+          }
+        />
+
+        {/* Error */}
+        {error && (
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!error && automations.length === 0 && (
+        <EmptyState
+          icon={<Bot />}
+          title="No automations yet"
+          description="Create one to auto-DM commenters on your posts. Set keywords to match, craft a DM template, and let it run."
+          action={
+            <Button onClick={handleCreate} size="sm">
+              <Plus className="mr-1 h-4 w-4" />
               Create Automation
             </Button>
-          </CardContent>
-        </Card>
-      )}
+          }
+          />
+        )}
 
-      {/* Automation cards */}
-      <div className="grid gap-4">
+        {/* Automation cards */}
+        <div className="grid gap-4">
         {automations.map((automation) => (
-          <Card key={automation.id} className="group">
+          <Card key={automation.id} className="group border-border">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
-                    <Bot className="h-4 w-4 text-violet-500" />
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <Bot className="h-4 w-4 text-primary" />
                   </div>
                   <div className="min-w-0">
                     <CardTitle className="text-sm truncate">{automation.name}</CardTitle>
                     {automation.post_social_id && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {automation.post_social_id}
                       </p>
                     )}
@@ -201,17 +202,18 @@ export function AutomationList() {
                 <StatusBadge status={automation.status} />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-4">
-                {/* Leads captured */}
+            <CardContent className="pt-0">
+              <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5" />
-                  <span>{automation.leads_captured} lead{automation.leads_captured !== 1 ? 's' : ''} captured</span>
+                  <span>
+                    {automation.leads_captured} lead{automation.leads_captured !== 1 ? 's' : ''}{' '}
+                    captured
+                  </span>
                 </div>
 
-                {/* Keywords */}
                 {automation.keywords.length > 0 && (
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex min-w-0 items-center gap-1.5">
                     <span className="shrink-0">Keywords:</span>
                     <span className="truncate max-w-[200px]">
                       {automation.keywords.slice(0, 5).join(', ')}
@@ -220,69 +222,48 @@ export function AutomationList() {
                   </div>
                 )}
 
-                {/* Features */}
-                {automation.auto_connect && (
-                  <Badge variant="outline" className="text-xs py-0">Auto-connect</Badge>
-                )}
-                {automation.auto_like && (
-                  <Badge variant="outline" className="text-xs py-0">Auto-like</Badge>
-                )}
-                {automation.plusvibe_campaign_id && (
-                  <Badge variant="outline" className="text-xs py-0">PlusVibe</Badge>
-                )}
-                {automation.enable_follow_up && (
-                  <Badge variant="outline" className="text-xs py-0">Follow-up</Badge>
-                )}
+                {automation.auto_connect && <Badge variant="outline">Auto-connect</Badge>}
+                {automation.auto_like && <Badge variant="outline">Auto-like</Badge>}
+                {automation.plusvibe_campaign_id && <Badge variant="outline">PlusVibe</Badge>}
+                {automation.enable_follow_up && <Badge variant="outline">Follow-up</Badge>}
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleToggleStatus(automation)}
                   disabled={togglingId === automation.id}
-                  className="h-8"
                 >
                   {togglingId === automation.id ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : automation.status === 'running' ? (
                     <>
-                      <Pause className="h-3.5 w-3.5 mr-1" />
+                      <Pause className="mr-1 h-3.5 w-3.5" />
                       Pause
                     </>
                   ) : (
                     <>
-                      <Play className="h-3.5 w-3.5 mr-1" />
+                      <Play className="mr-1 h-3.5 w-3.5" />
                       Start
                     </>
                   )}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setActivityTarget(automation)}
-                  className="h-8"
-                >
-                  <Activity className="h-3.5 w-3.5 mr-1" />
+                <Button variant="ghost" size="sm" onClick={() => setActivityTarget(automation)}>
+                  <Activity className="mr-1 h-3.5 w-3.5" />
                   Activity
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEdit(automation)}
-                  className="h-8"
-                >
-                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                <Button variant="ghost" size="sm" onClick={() => handleEdit(automation)}>
+                  <Pencil className="mr-1 h-3.5 w-3.5" />
                   Edit
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setDeleteTarget(automation)}
-                  className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  <Trash2 className="mr-1 h-3.5 w-3.5" />
                   Delete
                 </Button>
               </div>
@@ -314,25 +295,18 @@ export function AutomationList() {
           <DialogHeader>
             <DialogTitle>Delete Automation</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This action cannot
+              be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteTarget(null)}
-              disabled={deleting}
-            >
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                   Deleting...
                 </>
               ) : (
@@ -342,6 +316,7 @@ export function AutomationList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PageContainer>
   );
 }

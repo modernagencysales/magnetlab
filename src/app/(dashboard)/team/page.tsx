@@ -1,9 +1,40 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
+// Image removed - unused
 import { useRouter } from 'next/navigation';
+import { Plus, ArrowLeft, Loader2, Settings, Users as UsersIcon } from 'lucide-react';
 import type { Team, TeamProfile, TeamVoiceProfile } from '@/lib/types/content-pipeline';
+
+import {
+  PageContainer,
+  PageTitle,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  EmptyState,
+  FormField,
+  SectionContainer,
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  LoadingCard,
+  Input,
+} from '@magnetlab/magnetui';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@magnetlab/magnetui';
 
 import { logError } from '@/lib/utils/logger';
 import { getTeamMemberships, getTeam } from '@/frontend/api/team';
@@ -62,7 +93,6 @@ export default function TeamPage() {
   const [editingProfile, setEditingProfile] = useState<TeamProfile | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileForm, setProfileForm] = useState<ProfileFormData>(emptyForm);
-  const [activeTab, setActiveTab] = useState<'details' | 'voice'>('details');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -170,7 +200,6 @@ export default function TeamPage() {
       setEditingProfile(null);
       setProfileForm(emptyForm);
     }
-    setActiveTab('details');
     setShowProfileModal(true);
   };
 
@@ -206,17 +235,9 @@ export default function TeamPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-48" />
-          <div className="h-4 bg-muted rounded w-96" />
-          <div className="grid grid-cols-3 gap-4 mt-8">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-muted rounded-lg" />
-            ))}
-          </div>
-        </div>
-      </div>
+      <PageContainer maxWidth="xl">
+        <LoadingCard count={3} />
+      </PageContainer>
     );
   }
 
@@ -225,430 +246,355 @@ export default function TeamPage() {
     const isOwner = memberships.find((m) => m.teamId === managingTeam.id)?.role === 'owner';
 
     return (
-      <div className="p-8 max-w-5xl mx-auto">
-        <button
-          onClick={() => setManagingTeam(null)}
-          className="text-sm text-muted-foreground hover:text-foreground mb-4"
-        >
-          &larr; Back to all teams
-        </button>
+      <PageContainer maxWidth="xl">
+        <Button variant="ghost" size="sm" onClick={() => setManagingTeam(null)} className="mb-2">
+          <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+          Back to all teams
+        </Button>
 
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold">{managingTeam.name}</h1>
-            <p className="text-muted-foreground">Manage team settings and profiles.</p>
-          </div>
-          <button
-            onClick={() => enterTeam(managingTeam.id)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-          >
-            Enter Team
-          </button>
-        </div>
+        <PageTitle
+          title={managingTeam.name}
+          description="Manage team settings and profiles."
+          actions={
+            <Button onClick={() => enterTeam(managingTeam.id)} size="sm">
+              Enter Team
+            </Button>
+          }
+        />
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 p-3 text-sm text-red-700 dark:text-red-400 flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
-              &times;
-            </button>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+            {error}
           </div>
         )}
         {success && (
-          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950 p-3 text-sm text-green-700 dark:text-green-400 flex items-center justify-between">
-            <span>{success}</span>
-            <button
-              onClick={() => setSuccess(null)}
-              className="text-green-500 hover:text-green-700"
-            >
-              &times;
-            </button>
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950 p-3 text-sm text-emerald-700 dark:text-emerald-400">
+            {success}
           </div>
         )}
 
+        <div className="space-y-6">
         {/* Team Settings (owner only) */}
         {isOwner && (
-          <div className="border rounded-lg p-6 mb-8">
-            <h2 className="text-lg font-semibold mb-4">Team Settings</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Team Name</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border rounded-lg bg-background"
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Industry</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border rounded-lg bg-background"
-                  value={teamIndustry}
-                  onChange={(e) => setTeamIndustry(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Shared Goal</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border rounded-lg bg-background"
-                  value={teamGoal}
-                  onChange={(e) => setTeamGoal(e.target.value)}
-                />
-              </div>
-            </div>
-            <button
-              onClick={updateTeam}
-              disabled={saving}
-              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
-            >
-              {saving ? 'Saving...' : 'Save Settings'}
-            </button>
-          </div>
+          <SectionContainer title="Team Settings">
+            <Card>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField label="Team Name" htmlFor="team-name">
+                    <Input
+                      id="team-name"
+                      value={teamName}
+                      onChange={(e) => setTeamName(e.target.value)}
+                    />
+                  </FormField>
+                  <FormField label="Industry" htmlFor="team-industry">
+                    <Input
+                      id="team-industry"
+                      value={teamIndustry}
+                      onChange={(e) => setTeamIndustry(e.target.value)}
+                    />
+                  </FormField>
+                  <FormField label="Shared Goal" htmlFor="team-goal">
+                    <Input
+                      id="team-goal"
+                      value={teamGoal}
+                      onChange={(e) => setTeamGoal(e.target.value)}
+                    />
+                  </FormField>
+                </div>
+                <Button onClick={updateTeam} disabled={saving} size="sm" className="mt-4">
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Settings'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </SectionContainer>
         )}
 
         {/* Profiles */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Team Profiles</h2>
-          {isOwner && (
-            <button
-              onClick={() => openProfileModal()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-            >
-              + Add Profile
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {profiles.map((profile) => (
-            <div key={profile.id} className="border rounded-lg p-4 relative">
-              {profile.is_default && (
-                <span className="absolute top-2 right-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                  Default
-                </span>
-              )}
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
-                  {profile.avatar_url ? (
-                    <Image
-                      src={profile.avatar_url}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="rounded-full object-cover"
-                    />
-                  ) : (
-                    profile.full_name.charAt(0).toUpperCase()
+        <SectionContainer
+          title="Team Profiles"
+          actions={
+            isOwner ? (
+              <Button size="sm" onClick={() => openProfileModal()}>
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Add Profile
+              </Button>
+            ) : undefined
+          }
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {profiles.map((profile) => (
+              <Card key={profile.id}>
+                <CardContent className="p-4">
+                  {profile.is_default && (
+                    <Badge variant="blue" className="mb-2">
+                      Default
+                    </Badge>
                   )}
-                </div>
-                <div>
-                  <div className="font-medium">{profile.full_name}</div>
-                  <div className="text-sm text-muted-foreground">{profile.title || 'No title'}</div>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground mb-3">
-                {profile.email || 'No email'}
-                <span className="mx-1.5">·</span>
-                <span
-                  className={profile.status === 'active' ? 'text-green-600' : 'text-yellow-600'}
-                >
-                  {profile.status}
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground mb-3">
-                Voice: {profile.voice_profile?.tone ? profile.voice_profile.tone : 'Not configured'}
-              </div>
-              {isOwner && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openProfileModal(profile)}
-                    className="text-xs px-3 py-1.5 border rounded-md hover:bg-muted"
-                  >
-                    Edit
-                  </button>
-                  {profile.role !== 'owner' && (
-                    <button
-                      onClick={() => removeProfile(profile.id)}
-                      className="text-xs px-3 py-1.5 border border-red-200 text-red-600 rounded-md hover:bg-red-50"
-                    >
-                      Remove
-                    </button>
+                  <div className="flex items-center gap-3 mb-3">
+                    <Avatar size="sm">
+                      {profile.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
+                      <AvatarFallback name={profile.full_name}>
+                        {profile.full_name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{profile.full_name}</p>
+                      <p className="text-xs text-muted-foreground">{profile.title || 'No title'}</p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground mb-3">
+                    {profile.email || 'No email'}
+                    <span className="mx-1.5">·</span>
+                    <Badge variant={profile.status === 'active' ? 'green' : 'orange'}>
+                      {profile.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Voice:{' '}
+                    {profile.voice_profile?.tone ? profile.voice_profile.tone : 'Not configured'}
+                  </p>
+                  {isOwner && (
+                    <div className="flex gap-1.5">
+                      <Button variant="outline" size="sm" onClick={() => openProfileModal(profile)}>
+                        Edit
+                      </Button>
+                      {profile.role !== 'owner' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeProfile(profile.id)}
+                          className="text-destructive hover:bg-destructive/10"
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
-            </div>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </SectionContainer>
         </div>
 
         {/* Profile Editor Modal */}
-        {showProfileModal && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-background rounded-xl shadow-xl w-full max-w-xl max-h-[85vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">
-                    {editingProfile ? 'Edit Profile' : 'Add Team Member'}
-                  </h3>
-                  <button
-                    onClick={() => setShowProfileModal(false)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    &times;
-                  </button>
-                </div>
+        <Dialog
+          open={showProfileModal}
+          onOpenChange={(open) => !open && setShowProfileModal(false)}
+        >
+          <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingProfile ? 'Edit Profile' : 'Add Team Member'}</DialogTitle>
+            </DialogHeader>
 
-                {/* Tabs */}
-                <div className="flex border-b mb-4">
-                  <button
-                    onClick={() => setActiveTab('details')}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === 'details' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
-                  >
-                    Details
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('voice')}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === 'voice' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
-                  >
-                    Voice Profile
-                  </button>
-                </div>
+            <Tabs defaultValue="details">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="voice">Voice Profile</TabsTrigger>
+              </TabsList>
 
-                {activeTab === 'details' ? (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Full Name *</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        value={profileForm.full_name}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({ ...f, full_name: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Email</label>
-                      <input
-                        type="email"
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        value={profileForm.email}
-                        onChange={(e) => setProfileForm((f) => ({ ...f, email: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Title</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        placeholder="e.g. CEO, Head of Sales"
-                        value={profileForm.title}
-                        onChange={(e) => setProfileForm((f) => ({ ...f, title: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">LinkedIn URL</label>
-                      <input
-                        type="url"
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        placeholder="https://linkedin.com/in/..."
-                        value={profileForm.linkedin_url}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({ ...f, linkedin_url: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Bio</label>
-                      <textarea
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        rows={3}
-                        placeholder="Background, expertise, what they're known for..."
-                        value={profileForm.bio}
-                        onChange={(e) => setProfileForm((f) => ({ ...f, bio: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Expertise Areas</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        placeholder="Comma separated: Sales, Marketing, AI"
-                        value={profileForm.expertise_areas.join(', ')}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({
-                            ...f,
-                            expertise_areas: e.target.value
-                              .split(',')
-                              .map((s) => s.trim())
-                              .filter(Boolean),
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
+              <TabsContent value="details" className="space-y-4 mt-4">
+                <FormField label="Full Name" required>
+                  <Input
+                    value={profileForm.full_name}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, full_name: e.target.value }))}
+                  />
+                </FormField>
+                <FormField label="Email">
+                  <Input
+                    type="email"
+                    value={profileForm.email}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, email: e.target.value }))}
+                  />
+                </FormField>
+                <FormField label="Title">
+                  <Input
+                    placeholder="e.g. CEO, Head of Sales"
+                    value={profileForm.title}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, title: e.target.value }))}
+                  />
+                </FormField>
+                <FormField label="LinkedIn URL">
+                  <Input
+                    type="url"
+                    placeholder="https://linkedin.com/in/..."
+                    value={profileForm.linkedin_url}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({ ...f, linkedin_url: e.target.value }))
+                    }
+                  />
+                </FormField>
+                <FormField label="Bio">
+                  <textarea
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    rows={3}
+                    placeholder="Background, expertise, what they're known for..."
+                    value={profileForm.bio}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, bio: e.target.value }))}
+                  />
+                </FormField>
+                <FormField label="Expertise Areas" hint="Comma separated">
+                  <Input
+                    placeholder="Sales, Marketing, AI"
+                    value={profileForm.expertise_areas.join(', ')}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        expertise_areas: e.target.value
+                          .split(',')
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      }))
+                    }
+                  />
+                </FormField>
+              </TabsContent>
+
+              <TabsContent value="voice" className="space-y-4 mt-4">
+                <FormField
+                  label="First-Person Context"
+                  hint='The AI will use this as the "I" perspective when writing posts.'
+                >
+                  <textarea
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    rows={3}
+                    placeholder="I'm a 15-year agency veteran who's scaled 3 businesses..."
+                    value={profileForm.voice_profile.first_person_context || ''}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        voice_profile: { ...f.voice_profile, first_person_context: e.target.value },
+                      }))
+                    }
+                  />
+                </FormField>
+                <FormField label="Perspective Notes">
+                  <textarea
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    rows={2}
+                    placeholder="Speaks from hands-on experience building sales teams"
+                    value={profileForm.voice_profile.perspective_notes || ''}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        voice_profile: { ...f.voice_profile, perspective_notes: e.target.value },
+                      }))
+                    }
+                  />
+                </FormField>
+                <FormField label="Tone">
+                  <Input
+                    placeholder="Direct, warm, slightly irreverent"
+                    value={profileForm.voice_profile.tone || ''}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        voice_profile: { ...f.voice_profile, tone: e.target.value },
+                      }))
+                    }
+                  />
+                </FormField>
+                <FormField label="Signature Phrases" hint="Comma separated">
+                  <Input
+                    placeholder="Phrases this person naturally uses"
+                    value={(profileForm.voice_profile.signature_phrases || []).join(', ')}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        voice_profile: {
+                          ...f.voice_profile,
+                          signature_phrases: e.target.value
+                            .split(',')
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        },
+                      }))
+                    }
+                  />
+                </FormField>
+                <FormField label="Banned Phrases" hint="Phrases to avoid">
+                  <Input
+                    placeholder="Phrases to avoid for this person"
+                    value={(profileForm.voice_profile.banned_phrases || []).join(', ')}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        voice_profile: {
+                          ...f.voice_profile,
+                          banned_phrases: e.target.value
+                            .split(',')
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        },
+                      }))
+                    }
+                  />
+                </FormField>
+                <FormField label="Industry Jargon" hint="Domain-specific terms">
+                  <Input
+                    placeholder="Domain-specific terms they use"
+                    value={(profileForm.voice_profile.industry_jargon || []).join(', ')}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        voice_profile: {
+                          ...f.voice_profile,
+                          industry_jargon: e.target.value
+                            .split(',')
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        },
+                      }))
+                    }
+                  />
+                </FormField>
+                <FormField label="Storytelling Style">
+                  <Input
+                    placeholder="e.g. Case studies from client work"
+                    value={profileForm.voice_profile.storytelling_style || ''}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        voice_profile: { ...f.voice_profile, storytelling_style: e.target.value },
+                      }))
+                    }
+                  />
+                </FormField>
+              </TabsContent>
+            </Tabs>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowProfileModal(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button onClick={saveProfile} disabled={!profileForm.full_name.trim() || saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    Saving...
+                  </>
+                ) : editingProfile ? (
+                  'Save Changes'
                 ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">First-Person Context</label>
-                      <textarea
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        rows={3}
-                        placeholder="I'm a 15-year agency veteran who's scaled 3 businesses..."
-                        value={profileForm.voice_profile.first_person_context || ''}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({
-                            ...f,
-                            voice_profile: {
-                              ...f.voice_profile,
-                              first_person_context: e.target.value,
-                            },
-                          }))
-                        }
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        The AI will use this as the &quot;I&quot; perspective when writing posts.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Perspective Notes</label>
-                      <textarea
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        rows={2}
-                        placeholder="Speaks from hands-on experience building sales teams"
-                        value={profileForm.voice_profile.perspective_notes || ''}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({
-                            ...f,
-                            voice_profile: {
-                              ...f.voice_profile,
-                              perspective_notes: e.target.value,
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Tone</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        placeholder="Direct, warm, slightly irreverent"
-                        value={profileForm.voice_profile.tone || ''}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({
-                            ...f,
-                            voice_profile: { ...f.voice_profile, tone: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Signature Phrases</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        placeholder="Comma separated phrases this person naturally uses"
-                        value={(profileForm.voice_profile.signature_phrases || []).join(', ')}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({
-                            ...f,
-                            voice_profile: {
-                              ...f.voice_profile,
-                              signature_phrases: e.target.value
-                                .split(',')
-                                .map((s) => s.trim())
-                                .filter(Boolean),
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Banned Phrases</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        placeholder="Phrases to avoid for this person"
-                        value={(profileForm.voice_profile.banned_phrases || []).join(', ')}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({
-                            ...f,
-                            voice_profile: {
-                              ...f.voice_profile,
-                              banned_phrases: e.target.value
-                                .split(',')
-                                .map((s) => s.trim())
-                                .filter(Boolean),
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Industry Jargon</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        placeholder="Domain-specific terms they use"
-                        value={(profileForm.voice_profile.industry_jargon || []).join(', ')}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({
-                            ...f,
-                            voice_profile: {
-                              ...f.voice_profile,
-                              industry_jargon: e.target.value
-                                .split(',')
-                                .map((s) => s.trim())
-                                .filter(Boolean),
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Storytelling Style</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-lg bg-background"
-                        placeholder="e.g. Case studies from client work"
-                        value={profileForm.voice_profile.storytelling_style || ''}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({
-                            ...f,
-                            voice_profile: {
-                              ...f.voice_profile,
-                              storytelling_style: e.target.value,
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
+                  'Add Member'
                 )}
-
-                <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                  <button
-                    onClick={() => setShowProfileModal(false)}
-                    className="px-4 py-2 border rounded-lg text-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveProfile}
-                    disabled={!profileForm.full_name.trim() || saving}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
-                  >
-                    {saving ? 'Saving...' : editingProfile ? 'Save Changes' : 'Add Member'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </PageContainer>
     );
   }
 
@@ -657,166 +603,151 @@ export default function TeamPage() {
   const memberTeams = memberships.filter((m) => m.role === 'member');
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Teams</h1>
-          <p className="text-muted-foreground">Manage your teams and client workspaces.</p>
-        </div>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-        >
-          + Create Team
-        </button>
-      </div>
+    <PageContainer maxWidth="xl">
+      <PageTitle
+        title="Teams"
+        description="Manage your teams and client workspaces."
+        actions={
+          <Button size="sm" onClick={() => setShowCreateForm(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Create Team
+          </Button>
+        }
+      />
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 p-3 text-sm text-red-700 dark:text-red-400 flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
-            &times;
-          </button>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+          {error}
         </div>
       )}
       {success && (
-        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950 p-3 text-sm text-green-700 dark:text-green-400 flex items-center justify-between">
-          <span>{success}</span>
-          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700">
-            &times;
-          </button>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950 p-3 text-sm text-emerald-700 dark:text-emerald-400">
+          {success}
         </div>
       )}
 
-      {/* Create team form (modal) */}
+      <div className="space-y-6">
+      {/* Create team form */}
       {showCreateForm && (
-        <div className="border rounded-lg p-6 mb-8 bg-muted/30">
-          <h2 className="text-lg font-semibold mb-4">Create New Team</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Team Name *</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border rounded-lg bg-background"
-                placeholder="e.g. Client A"
-                value={newTeamName}
-                onChange={(e) => setNewTeamName(e.target.value)}
-              />
+        <Card>
+          <CardHeader>
+            <CardTitle>Create New Team</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField label="Team Name" required>
+                <Input
+                  placeholder="e.g. Client A"
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                />
+              </FormField>
+              <FormField label="Industry">
+                <Input
+                  placeholder="e.g. B2B SaaS"
+                  value={newTeamIndustry}
+                  onChange={(e) => setNewTeamIndustry(e.target.value)}
+                />
+              </FormField>
+              <FormField label="Shared Goal">
+                <Input
+                  placeholder="e.g. Build thought leadership"
+                  value={newTeamGoal}
+                  onChange={(e) => setNewTeamGoal(e.target.value)}
+                />
+              </FormField>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Industry</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border rounded-lg bg-background"
-                placeholder="e.g. B2B SaaS"
-                value={newTeamIndustry}
-                onChange={(e) => setNewTeamIndustry(e.target.value)}
-              />
+            <div className="flex gap-2">
+              <Button onClick={createTeam} disabled={!newTeamName.trim() || saving} size="sm">
+                {saving ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Team'
+                )}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowCreateForm(false)}>
+                Cancel
+              </Button>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Shared Goal</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border rounded-lg bg-background"
-                placeholder="e.g. Build thought leadership"
-                value={newTeamGoal}
-                onChange={(e) => setNewTeamGoal(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={createTeam}
-              disabled={!newTeamName.trim() || saving}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
-            >
-              {saving ? 'Creating...' : 'Create Team'}
-            </button>
-            <button
-              onClick={() => setShowCreateForm(false)}
-              className="px-4 py-2 border rounded-lg text-sm"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Owned teams */}
       {ownedTeams.length > 0 && (
-        <>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">Your Teams</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <SectionContainer title="Your Teams">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {ownedTeams.map((t) => (
-              <div key={t.teamId} className="border rounded-lg p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-violet-500 flex items-center justify-center text-white font-medium text-sm shrink-0">
-                    {t.teamName.substring(0, 2).toUpperCase()}
+              <Card key={t.teamId}>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-medium text-xs shrink-0">
+                      {t.teamName.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{t.teamName}</p>
+                      <Badge variant="blue">Owner</Badge>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{t.teamName}</p>
-                    <p className="text-xs text-muted-foreground">Owner</p>
+                  <div className="flex gap-1.5">
+                    <Button size="sm" className="flex-1" onClick={() => enterTeam(t.teamId)}>
+                      Enter
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => openManage(t.teamId)}>
+                      <Settings className="h-3.5 w-3.5 mr-1" />
+                      Manage
+                    </Button>
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => enterTeam(t.teamId)}
-                    className="flex-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium"
-                  >
-                    Enter
-                  </button>
-                  <button
-                    onClick={() => openManage(t.teamId)}
-                    className="px-3 py-1.5 border rounded-md text-sm hover:bg-muted"
-                  >
-                    Manage
-                  </button>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
-        </>
+        </SectionContainer>
       )}
 
       {/* Member teams */}
       {memberTeams.length > 0 && (
-        <>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">Teams You Belong To</h2>
+        <SectionContainer title="Teams You Belong To">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {memberTeams.map((t) => (
-              <div key={t.teamId} className="border rounded-lg p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-medium text-sm shrink-0">
-                    {t.teamName.substring(0, 2).toUpperCase()}
+              <Card key={t.teamId}>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-medium text-xs shrink-0">
+                      {t.teamName.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{t.teamName}</p>
+                      <Badge variant="green">Member</Badge>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{t.teamName}</p>
-                    <p className="text-xs text-muted-foreground">Member</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => enterTeam(t.teamId)}
-                  className="w-full px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium"
-                >
-                  Enter
-                </button>
-              </div>
+                  <Button size="sm" className="w-full" onClick={() => enterTeam(t.teamId)}>
+                    Enter
+                  </Button>
+                </CardContent>
+              </Card>
             ))}
           </div>
-        </>
+        </SectionContainer>
       )}
 
       {memberships.length === 0 && !showCreateForm && (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="mb-4">No teams yet. Create your first team to get started.</p>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-          >
-            + Create Team
-          </button>
-        </div>
+        <EmptyState
+          icon={<UsersIcon />}
+          title="No teams yet"
+          description="Create your first team to get started."
+          action={
+            <Button size="sm" onClick={() => setShowCreateForm(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Create Team
+            </Button>
+          }
+        />
       )}
-    </div>
+      </div>
+    </PageContainer>
   );
 }

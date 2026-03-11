@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Plus, Trash2, Eye, EyeOff, Hash } from 'lucide-react';
+import { Button, Input } from '@magnetlab/magnetui';
 import * as signalsApi from '@/frontend/api/signals';
 
 interface Keyword {
@@ -72,7 +73,7 @@ export function KeywordMonitors() {
   };
 
   return (
-    <div className="mt-4 rounded-lg border p-4">
+    <div className="mt-4 rounded-lg border border-border p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
@@ -112,9 +113,10 @@ export function KeywordMonitors() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 ml-2">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => handleToggle(kw.id, kw.is_active)}
-                      className="p-1.5 rounded hover:bg-muted transition-colors"
                       title={kw.is_active ? 'Pause monitoring' : 'Resume monitoring'}
                     >
                       {kw.is_active ? (
@@ -122,14 +124,15 @@ export function KeywordMonitors() {
                       ) : (
                         <EyeOff className="h-4 w-4 text-muted-foreground" />
                       )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => handleDelete(kw.id)}
-                      className="p-1.5 rounded hover:bg-muted transition-colors"
                       title="Remove keyword"
                     >
-                      <Trash2 className="h-4 w-4 text-red-400" />
-                    </button>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -140,34 +143,28 @@ export function KeywordMonitors() {
           {keywords.length < 20 && (
             <form onSubmit={handleAdd} className="space-y-2">
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
                   value={newKeyword}
                   onChange={(e) => setNewKeyword(e.target.value)}
                   placeholder="Enter a keyword to monitor"
-                  className="flex-1 rounded-md border bg-transparent px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="flex-1"
                 />
-                <button
-                  type="submit"
-                  disabled={adding || !newKeyword.trim()}
-                  className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
+                <Button type="submit" size="sm" disabled={adding || !newKeyword.trim()}>
                   {adding ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <Plus className="h-3 w-3" />
                   )}
                   Add
-                </button>
+                </Button>
               </div>
             </form>
           )}
         </>
       )}
 
-      {error && (
-        <p className="mt-2 text-sm text-red-500">{error}</p>
-      )}
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
     </div>
   );
 }

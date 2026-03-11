@@ -15,6 +15,7 @@ import {
   ArrowUpRight,
   Mail,
 } from 'lucide-react';
+import { Button, Input, Label, Checkbox, Badge } from '@magnetlab/magnetui';
 import { useWhiteLabelSettings } from '@/frontend/hooks/useWhiteLabelSettings';
 
 interface WhiteLabelSettingsProps {
@@ -142,37 +143,40 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                 <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="text-sm font-medium truncate">{domain.domain}</span>
                 {domain.status === 'active' ? (
-                  <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600 flex-shrink-0">
+                  <Badge variant="green" className="gap-1 flex-shrink-0">
                     <CheckCircle className="h-3 w-3" />
                     Active
-                  </span>
+                  </Badge>
                 ) : (
-                  <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 flex-shrink-0">
+                  <Badge variant="orange" className="flex-shrink-0">
                     Pending DNS
-                  </span>
+                  </Badge>
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                 {domain.status === 'pending_dns' && (
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleVerifyDomain}
                     disabled={domainVerifying}
-                    className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted transition-colors disabled:opacity-50"
                   >
                     {domainVerifying ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Verify'}
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={handleDeleteDomain}
                   disabled={domainDeleting}
-                  className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
+                  className="text-destructive hover:opacity-80"
                 >
                   {domainDeleting ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <Trash2 className="h-4 w-4" />
                   )}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -187,10 +191,10 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
             {/* DNS Instructions (expandable) */}
             {dnsInstructions && domain.status === 'pending_dns' && (
               <div className="rounded-lg border">
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   onClick={() => setDnsExpanded(!dnsExpanded)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+                  className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium rounded-none h-auto"
                 >
                   <span>DNS Configuration Instructions</span>
                   <ChevronDown
@@ -198,7 +202,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                       dnsExpanded ? 'rotate-180' : ''
                     }`}
                   />
-                </button>
+                </Button>
                 {dnsExpanded && (
                   <div className="border-t px-4 py-3 space-y-3">
                     <p className="text-sm text-muted-foreground">
@@ -211,48 +215,54 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                         <span className="text-xs font-medium text-muted-foreground">Type</span>
                         <div className="flex items-center gap-2">
                           <code className="text-sm font-mono">{dnsInstructions.type}</code>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => handleCopy(dnsInstructions.type, 'type')}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            className="text-muted-foreground hover:text-foreground"
                           >
                             {copiedField === 'type' ? (
                               <Check className="h-3 w-3 text-green-500" />
                             ) : (
                               <Copy className="h-3 w-3" />
                             )}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-muted-foreground">Name</span>
                         <div className="flex items-center gap-2">
                           <code className="text-sm font-mono">{dnsInstructions.name}</code>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => handleCopy(dnsInstructions.name, 'name')}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            className="text-muted-foreground hover:text-foreground"
                           >
                             {copiedField === 'name' ? (
                               <Check className="h-3 w-3 text-green-500" />
                             ) : (
                               <Copy className="h-3 w-3" />
                             )}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-muted-foreground">Value</span>
                         <div className="flex items-center gap-2">
                           <code className="text-sm font-mono">{dnsInstructions.value}</code>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => handleCopy(dnsInstructions.value, 'value')}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            className="text-muted-foreground hover:text-foreground"
                           >
                             {copiedField === 'value' ? (
                               <Check className="h-3 w-3 text-green-500" />
                             ) : (
                               <Copy className="h-3 w-3" />
                             )}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -277,16 +287,18 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                               </span>
                               <div className="flex items-center gap-2">
                                 <code className="text-sm font-mono break-all">{v.domain}</code>
-                                <button
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
                                   onClick={() => handleCopy(v.domain, `vdomain-${i}`)}
-                                  className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                                  className="text-muted-foreground hover:text-foreground flex-shrink-0"
                                 >
                                   {copiedField === `vdomain-${i}` ? (
                                     <Check className="h-3 w-3 text-green-500" />
                                   ) : (
                                     <Copy className="h-3 w-3" />
                                   )}
-                                </button>
+                                </Button>
                               </div>
                             </div>
                             <div className="flex items-center justify-between">
@@ -295,16 +307,18 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                               </span>
                               <div className="flex items-center gap-2">
                                 <code className="text-sm font-mono break-all">{v.value}</code>
-                                <button
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
                                   onClick={() => handleCopy(v.value, `vvalue-${i}`)}
-                                  className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                                  className="text-muted-foreground hover:text-foreground flex-shrink-0"
                                 >
                                   {copiedField === `vvalue-${i}` ? (
                                     <Check className="h-3 w-3 text-green-500" />
                                   ) : (
                                     <Copy className="h-3 w-3" />
                                   )}
-                                </button>
+                                </Button>
                               </div>
                             </div>
                             {v.reason && (
@@ -329,20 +343,16 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
               domain.
             </p>
             <div className="flex gap-2">
-              <input
+              <Input
                 type="text"
                 value={domainInput}
                 onChange={(e) => setDomainInput(e.target.value)}
                 placeholder="leads.yourdomain.com"
-                className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                className="flex-1"
               />
-              <button
-                onClick={handleSaveDomain}
-                disabled={domainSaving || !domainInput.trim()}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
+              <Button onClick={handleSaveDomain} disabled={domainSaving || !domainInput.trim()}>
                 {domainSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Domain'}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -355,7 +365,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
           </p>
         )}
         {domainError && (
-          <p className="flex items-center gap-2 text-sm text-red-500">
+          <p className="flex items-center gap-2 text-sm text-destructive">
             <XCircle className="h-4 w-4" />
             {domainError}
           </p>
@@ -380,30 +390,29 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
         ) : (
           <div className="space-y-4">
             {/* Hide branding checkbox */}
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3">
+              <Checkbox
                 checked={hideBranding}
-                onChange={(e) => setHideBranding(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                onCheckedChange={(checked) => setHideBranding(checked === true)}
               />
               <div>
-                <span className="text-sm font-medium">Hide MagnetLab branding</span>
+                <Label className="text-sm font-medium cursor-pointer">
+                  Hide MagnetLab branding
+                </Label>
                 <p className="text-xs text-muted-foreground">
                   Remove &quot;Powered by MagnetLab&quot; from your funnel pages
                 </p>
               </div>
-            </label>
+            </div>
 
             {/* Site name */}
             <div>
-              <label className="mb-1 block text-sm font-medium">Site Name</label>
-              <input
+              <Label className="mb-1 block text-sm font-medium">Site Name</Label>
+              <Input
                 type="text"
                 value={siteName}
                 onChange={(e) => setSiteName(e.target.value)}
                 placeholder="Your Brand Name"
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 Used in page titles and email headers instead of &quot;MagnetLab&quot;
@@ -412,7 +421,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
 
             {/* Favicon upload */}
             <div>
-              <label className="mb-1 block text-sm font-medium">Custom Favicon</label>
+              <Label className="mb-1 block text-sm font-medium">Custom Favicon</Label>
               <input
                 ref={faviconInputRef}
                 type="file"
@@ -426,28 +435,29 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={faviconUrl} alt="Favicon" className="h-full w-full object-contain" />
                   </div>
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => faviconInputRef.current?.click()}
                     disabled={faviconUploading}
-                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
                   >
                     {faviconUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Replace'}
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => setFaviconUrl('')}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               ) : (
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
                   onClick={() => faviconInputRef.current?.click()}
                   disabled={faviconUploading}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-4 py-6 text-sm text-muted-foreground hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                  className="flex w-full items-center justify-center gap-2 border-2 border-dashed px-4 py-6 h-auto text-muted-foreground hover:border-primary/50"
                 >
                   {faviconUploading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -457,19 +467,18 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                       <span>Upload favicon (.ico, .png, .svg)</span>
                     </>
                   )}
-                </button>
+                </Button>
               )}
             </div>
 
             {/* Email sender name */}
             <div>
-              <label className="mb-1 block text-sm font-medium">Email Sender Name</label>
-              <input
+              <Label className="mb-1 block text-sm font-medium">Email Sender Name</Label>
+              <Input
                 type="text"
                 value={emailSenderName}
                 onChange={(e) => setEmailSenderName(e.target.value)}
                 placeholder="Your Company"
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 The sender name shown in transactional emails (e.g. lead notifications)
@@ -478,13 +487,9 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
 
             {/* Save button */}
             <div className="flex items-center gap-3">
-              <button
-                onClick={handleSaveBranding}
-                disabled={brandingSaving}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
+              <Button onClick={handleSaveBranding} disabled={brandingSaving}>
                 {brandingSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Branding'}
-              </button>
+              </Button>
               {brandingSaved && (
                 <span className="flex items-center gap-1 text-sm text-green-600">
                   <CheckCircle className="h-4 w-4" />
@@ -494,7 +499,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
             </div>
 
             {brandingError && (
-              <p className="flex items-center gap-2 text-sm text-red-500">
+              <p className="flex items-center gap-2 text-sm text-destructive">
                 <XCircle className="h-4 w-4" />
                 {brandingError}
               </p>
@@ -526,42 +531,45 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                 <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="text-sm font-medium truncate">{emailDomain.domain}</span>
                 {emailDomain.status === 'verified' ? (
-                  <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600 flex-shrink-0">
+                  <Badge variant="green" className="gap-1 flex-shrink-0">
                     <CheckCircle className="h-3 w-3" />
                     Verified
-                  </span>
+                  </Badge>
                 ) : emailDomain.status === 'failed' ? (
-                  <span className="flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 flex-shrink-0">
+                  <Badge variant="red" className="gap-1 flex-shrink-0">
                     <XCircle className="h-3 w-3" />
                     Failed
-                  </span>
+                  </Badge>
                 ) : (
-                  <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 flex-shrink-0">
+                  <Badge variant="orange" className="flex-shrink-0">
                     Pending DNS
-                  </span>
+                  </Badge>
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                 {emailDomain.status !== 'verified' && (
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleVerifyEmailDomain}
                     disabled={emailDomainVerifying}
-                    className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted transition-colors disabled:opacity-50"
                   >
                     {emailDomainVerifying ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Verify'}
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={handleDeleteEmailDomain}
                   disabled={emailDomainDeleting}
-                  className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
+                  className="text-destructive hover:opacity-80"
                 >
                   {emailDomainDeleting ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <Trash2 className="h-4 w-4" />
                   )}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -578,10 +586,10 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
               emailDomain.dns_records.length > 0 &&
               emailDomain.status !== 'verified' && (
                 <div className="rounded-lg border">
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
                     onClick={() => setEmailDnsExpanded(!emailDnsExpanded)}
-                    className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+                    className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium rounded-none h-auto"
                   >
                     <span>DNS Records</span>
                     <ChevronDown
@@ -589,7 +597,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                         emailDnsExpanded ? 'rotate-180' : ''
                       }`}
                     />
-                  </button>
+                  </Button>
                   {emailDnsExpanded && (
                     <div className="border-t px-4 py-3 space-y-3">
                       <p className="text-sm text-muted-foreground">
@@ -622,32 +630,36 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                             <span className="text-xs font-medium text-muted-foreground">Name</span>
                             <div className="flex items-center gap-2">
                               <code className="text-sm font-mono break-all">{rec.name}</code>
-                              <button
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
                                 onClick={() => handleCopy(rec.name, `email-name-${i}`)}
-                                className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                                className="text-muted-foreground hover:text-foreground flex-shrink-0"
                               >
                                 {copiedField === `email-name-${i}` ? (
                                   <Check className="h-3 w-3 text-green-500" />
                                 ) : (
                                   <Copy className="h-3 w-3" />
                                 )}
-                              </button>
+                              </Button>
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-medium text-muted-foreground">Value</span>
                             <div className="flex items-center gap-2">
                               <code className="text-sm font-mono break-all">{rec.value}</code>
-                              <button
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
                                 onClick={() => handleCopy(rec.value, `email-value-${i}`)}
-                                className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                                className="text-muted-foreground hover:text-foreground flex-shrink-0"
                               >
                                 {copiedField === `email-value-${i}` ? (
                                   <Check className="h-3 w-3 text-green-500" />
                                 ) : (
                                   <Copy className="h-3 w-3" />
                                 )}
-                              </button>
+                              </Button>
                             </div>
                           </div>
                           {rec.priority !== undefined && (
@@ -673,9 +685,9 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
             {/* From email input — only shown when domain is verified */}
             {emailDomain.status === 'verified' && (
               <div className="space-y-2">
-                <label className="block text-sm font-medium">From Email Address</label>
+                <Label className="block text-sm font-medium">From Email Address</Label>
                 <div className="flex gap-2">
-                  <input
+                  <Input
                     type="email"
                     value={fromEmail}
                     onChange={(e) => {
@@ -684,15 +696,14 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                       setFromEmailSaved(false);
                     }}
                     placeholder={`hello@${emailDomain.domain}`}
-                    className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                    className="flex-1"
                   />
-                  <button
+                  <Button
                     onClick={handleSaveFromEmail}
                     disabled={fromEmailSaving || !fromEmail.trim()}
-                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                   >
                     {fromEmailSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-                  </button>
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Transactional emails will be sent from this address
@@ -704,7 +715,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                   </p>
                 )}
                 {fromEmailError && (
-                  <p className="flex items-center gap-2 text-sm text-red-500">
+                  <p className="flex items-center gap-2 text-sm text-destructive">
                     <XCircle className="h-4 w-4" />
                     {fromEmailError}
                   </p>
@@ -720,24 +731,23 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
               to get started.
             </p>
             <div className="flex gap-2">
-              <input
+              <Input
                 type="text"
                 value={emailDomainInput}
                 onChange={(e) => setEmailDomainInput(e.target.value)}
                 placeholder="yourdomain.com"
-                className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                className="flex-1"
               />
-              <button
+              <Button
                 onClick={handleSaveEmailDomain}
                 disabled={emailDomainSaving || !emailDomainInput.trim()}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {emailDomainSaving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   'Add Email Domain'
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -750,7 +760,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
           </p>
         )}
         {emailDomainError && (
-          <p className="flex items-center gap-2 text-sm text-red-500">
+          <p className="flex items-center gap-2 text-sm text-destructive">
             <XCircle className="h-4 w-4" />
             {emailDomainError}
           </p>

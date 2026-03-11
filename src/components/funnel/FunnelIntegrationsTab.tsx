@@ -16,6 +16,7 @@ import {
   Check,
 } from 'lucide-react';
 
+import { Button, Input, Label } from '@magnetlab/magnetui';
 import { logError } from '@/lib/utils/logger';
 import * as funnelIntegrationsApi from '@/frontend/api/funnel-integrations';
 import {
@@ -148,7 +149,7 @@ function IntegrationRow({
           onClick={handleToggle}
           disabled={toggling}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            integration.is_active ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+            integration.is_active ? 'bg-green-500' : 'bg-muted-foreground'
           }`}
         >
           {toggling ? (
@@ -163,13 +164,15 @@ function IntegrationRow({
         </button>
 
         {/* Remove */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={handleRemove}
           disabled={removing}
-          className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
+          className="text-muted-foreground hover:text-destructive"
         >
           {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -289,12 +292,9 @@ function AddIntegrationForm({
     <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Add {PROVIDER_LABELS[provider] || provider}</p>
-        <button
-          onClick={onCancel}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
+        <Button variant="ghost" size="sm" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
 
       {loadingLists ? (
@@ -354,11 +354,7 @@ function AddIntegrationForm({
           )}
 
           {/* Save button */}
-          <button
-            onClick={handleSave}
-            disabled={saving || !selectedListId}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
+          <Button onClick={handleSave} disabled={saving || !selectedListId}>
             {saving ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -367,12 +363,12 @@ function AddIntegrationForm({
             ) : (
               'Add Integration'
             )}
-          </button>
+          </Button>
         </>
       )}
 
       {error && (
-        <p className="flex items-center gap-2 text-sm text-red-500">
+        <p className="flex items-center gap-2 text-sm text-destructive">
           <XCircle className="h-4 w-4" />
           {error}
         </p>
@@ -497,7 +493,7 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
           onClick={handleToggle}
           disabled={toggling}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+            enabled ? 'bg-green-500' : 'bg-muted-foreground'
           }`}
         >
           {toggling ? (
@@ -515,22 +511,17 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
       {/* Custom tags input (shown when enabled) */}
       {enabled && (
         <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-          <label className="text-xs font-medium">Custom Tags (comma-separated)</label>
-          <input
+          <Label className="text-xs">Custom Tags (comma-separated)</Label>
+          <Input
             type="text"
             value={customTags}
             onChange={(e) => setCustomTags(e.target.value)}
             placeholder="e.g. vip, webinar-attendee"
-            className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <p className="text-xs text-muted-foreground">
             Auto-tags (lead magnet title, funnel slug, &quot;magnetlab&quot;) are always included.
           </p>
-          <button
-            onClick={handleSaveTags}
-            disabled={saving}
-            className="rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
+          <Button size="sm" onClick={handleSaveTags} disabled={saving}>
             {saving ? (
               <span className="flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -544,12 +535,12 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
             ) : (
               'Save Tags'
             )}
-          </button>
+          </Button>
         </div>
       )}
 
       {error && (
-        <p className="flex items-center gap-2 text-xs text-red-500">
+        <p className="flex items-center gap-2 text-xs text-destructive">
           <XCircle className="h-3 w-3" />
           {error}
         </p>
@@ -704,7 +695,7 @@ function HeyReachFunnelToggle({
           onClick={handleToggle}
           disabled={toggling}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+            enabled ? 'bg-green-500' : 'bg-muted-foreground'
           }`}
         >
           {toggling ? (
@@ -753,11 +744,7 @@ function HeyReachFunnelToggle({
           </div>
 
           {/* Save button */}
-          <button
-            onClick={handleSaveCampaign}
-            disabled={saving}
-            className="rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
+          <Button size="sm" onClick={handleSaveCampaign} disabled={saving}>
             {saving ? (
               <span className="flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -771,7 +758,7 @@ function HeyReachFunnelToggle({
             ) : (
               'Save Campaign'
             )}
-          </button>
+          </Button>
 
           {/* Funnel URL with LinkedIn tracking */}
           {funnelUrl && (
@@ -784,22 +771,19 @@ function HeyReachFunnelToggle({
                 <code className="flex-1 rounded border bg-background px-2 py-1.5 text-xs font-mono break-all">
                   {funnelUrl}?li={'{linkedinUrl}'}
                 </code>
-                <button
-                  onClick={handleCopyUrl}
-                  className="flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs hover:bg-muted transition-colors shrink-0"
-                >
+                <Button variant="outline" size="sm" onClick={handleCopyUrl} className="shrink-0">
                   {urlCopied ? (
                     <>
-                      <Check className="h-3 w-3 text-green-500" />
+                      <Check className="h-3 w-3 text-green-500 mr-1" />
                       Copied
                     </>
                   ) : (
                     <>
-                      <Copy className="h-3 w-3" />
+                      <Copy className="h-3 w-3 mr-1" />
                       Copy
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -807,7 +791,7 @@ function HeyReachFunnelToggle({
       )}
 
       {error && (
-        <p className="flex items-center gap-2 text-xs text-red-500">
+        <p className="flex items-center gap-2 text-xs text-destructive">
           <XCircle className="h-3 w-3" />
           {error}
         </p>

@@ -2,6 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Button,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  Checkbox,
+  Label,
+} from '@magnetlab/magnetui';
 import { toast } from 'sonner';
 import type {
   WritingStyle,
@@ -327,21 +337,16 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
             <h2 className="text-base font-semibold">Apply Style Traits</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">From: {sourceStyle.name}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={onClose}>
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {/* Profile selector */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-              Target team member
-            </label>
+            <Label className="mb-1.5">Target team member</Label>
             {loadingProfiles ? (
               <div className="flex items-center gap-2 py-2">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -352,18 +357,22 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
                 No team profiles found. Create a team profile first.
               </p>
             ) : (
-              <select
+              <Select
                 value={selectedProfileId || ''}
-                onChange={(e) => setSelectedProfileId(e.target.value || null)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                onValueChange={(v) => setSelectedProfileId(v || null)}
               >
-                {profiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.full_name}
-                    {p.title ? ` - ${p.title}` : ''}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {profiles.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.full_name}
+                      {p.title ? ` - ${p.title}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
 
@@ -387,21 +396,21 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
 
               <div className="space-y-1.5">
                 {traitRows.map((row) => (
-                  <label
+                  <div
                     key={row.key}
                     className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-2.5 hover:bg-accent/50 transition-colors"
+                    onClick={() => toggleTrait(row.key)}
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedTraits.has(row.key)}
-                      onChange={() => toggleTrait(row.key)}
-                      className="mt-0.5 h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary"
+                      onCheckedChange={() => toggleTrait(row.key)}
+                      className="mt-0.5"
                     />
                     <div className="min-w-0 flex-1">
                       <span className="text-sm font-medium">{row.label}</span>
                       <p className="mt-0.5 text-xs text-muted-foreground truncate">{row.preview}</p>
                     </div>
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
@@ -438,16 +447,12 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 border-t px-5 py-3">
-          <button
-            onClick={onClose}
-            className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <Button variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleApply}
             disabled={applying || !selectedProfile || selectedTraits.size === 0}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {applying ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -455,7 +460,7 @@ export function StyleMixer({ sourceStyle, onClose }: StyleMixerProps) {
               <Check className="h-3.5 w-3.5" />
             )}
             Apply {selectedTraits.size} trait{selectedTraits.size !== 1 ? 's' : ''}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

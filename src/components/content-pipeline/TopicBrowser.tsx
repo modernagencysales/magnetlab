@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Star, BookOpen } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import { TopicDetail } from './TopicDetail';
 import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
@@ -35,7 +36,9 @@ export function TopicBrowser({ teamId }: { teamId?: string }) {
     }
   }, [teamId]);
 
-  useEffect(() => { fetchTopics(); }, [fetchTopics]);
+  useEffect(() => {
+    fetchTopics();
+  }, [fetchTopics]);
 
   if (loading) {
     return (
@@ -49,7 +52,7 @@ export function TopicBrowser({ teamId }: { teamId?: string }) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
         <p className="text-sm text-destructive">{error}</p>
-        <button onClick={() => fetchTopics()} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Retry</button>
+        <Button onClick={() => fetchTopics()}>Retry</Button>
       </div>
     );
   }
@@ -59,19 +62,15 @@ export function TopicBrowser({ teamId }: { teamId?: string }) {
       <div className="rounded-lg border border-dashed p-12 text-center">
         <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/50" />
         <p className="mt-4 text-muted-foreground">No topics discovered yet</p>
-        <p className="mt-1 text-sm text-muted-foreground/70">Process transcripts to auto-discover topics</p>
+        <p className="mt-1 text-sm text-muted-foreground/70">
+          Process transcripts to auto-discover topics
+        </p>
       </div>
     );
   }
 
   if (selectedSlug) {
-    return (
-      <TopicDetail
-        slug={selectedSlug}
-        teamId={teamId}
-        onBack={() => setSelectedSlug(null)}
-      />
-    );
+    return <TopicDetail slug={selectedSlug} teamId={teamId} onBack={() => setSelectedSlug(null)} />;
   }
 
   return (

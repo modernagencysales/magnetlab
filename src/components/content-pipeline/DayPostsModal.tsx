@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Loader2, Clock } from 'lucide-react';
+import { Button, Input, Label } from '@magnetlab/magnetui';
 import { format } from 'date-fns';
 import type { PipelinePost } from '@/lib/types/content-pipeline';
 import { StatusBadge } from './StatusBadge';
@@ -36,13 +37,18 @@ export function DayPostsModal({ day, posts, onClose, onUpdate }: DayPostsModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Day Posts">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Day Posts"
+    >
       <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{format(day, 'EEEE, MMM d')}</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="space-y-3">
@@ -66,36 +72,29 @@ export function DayPostsModal({ day, posts, onClose, onUpdate }: DayPostsModalPr
                 {rescheduling === post.id ? (
                   <div className="flex items-end gap-2">
                     <div>
-                      <label className="mb-0.5 block text-[10px] font-medium">Date</label>
-                      <input
+                      <Label className="mb-0.5 text-[10px]">Date</Label>
+                      <Input
                         type="date"
                         value={newDate}
                         onChange={(e) => setNewDate(e.target.value)}
-                        className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="text-xs"
                       />
                     </div>
                     <div>
-                      <label className="mb-0.5 block text-[10px] font-medium">Time</label>
-                      <input
+                      <Label className="mb-0.5 text-[10px]">Time</Label>
+                      <Input
                         type="time"
                         value={newTime}
                         onChange={(e) => setNewTime(e.target.value)}
-                        className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="text-xs"
                       />
                     </div>
-                    <button
-                      onClick={() => handleReschedule(post.id)}
-                      disabled={saving}
-                      className="rounded-lg bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                    >
+                    <Button size="sm" onClick={() => handleReschedule(post.id)} disabled={saving}>
                       {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => setRescheduling(null)}
-                      className="rounded-lg border border-border px-2 py-1 text-xs hover:bg-muted transition-colors"
-                    >
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setRescheduling(null)}>
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <button

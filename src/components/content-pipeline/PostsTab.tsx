@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FileText, Loader2, Copy, Check, Sparkles, Trash2, Eye } from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
 import { cn, truncate, formatDateTime } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { PostDetailModal } from './PostDetailModal';
@@ -35,7 +36,7 @@ const REVIEW_FILTERS: { value: ReviewCategory; label: string; className: string 
   {
     value: 'needs_rewrite',
     label: 'Rewrite',
-    className: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+    className: 'bg-destructive/10 text-destructive',
   },
 ];
 
@@ -202,23 +203,22 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
                       <div className="mb-2 flex items-center gap-2 flex-wrap">
                         <StatusBadge status={post.status} />
                         {(post as PipelinePost & { profile_name?: string | null }).profile_name && (
-                          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                          <Badge variant="purple">
                             {(post as PipelinePost & { profile_name?: string | null }).profile_name}
-                          </span>
+                          </Badge>
                         )}
                         {post.hook_score !== null && post.hook_score !== undefined && (
-                          <span
-                            className={cn(
-                              'rounded-full px-2 py-0.5 text-xs font-semibold',
+                          <Badge
+                            variant={
                               post.hook_score >= 8
-                                ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                                ? 'green'
                                 : post.hook_score >= 5
-                                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
-                                  : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-                            )}
+                                  ? 'orange'
+                                  : 'red'
+                            }
                           >
                             {post.hook_score}/10
-                          </span>
+                          </Badge>
                         )}
                         {post.review_data && (
                           <ReviewBadge reviewData={post.review_data as ReviewData} />
@@ -236,17 +236,19 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => setSelectedPost(post)}
-                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
                         title="View"
                       >
                         <Eye className="h-4 w-4" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => handlePolish(post.id)}
                         disabled={polishingId === post.id}
-                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-50"
                         title="Polish"
                       >
                         {polishingId === post.id ? (
@@ -254,10 +256,11 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
                         ) : (
                           <Sparkles className="h-4 w-4" />
                         )}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => handleCopy(content, post.id)}
-                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
                         title="Copy"
                       >
                         {copiedId === post.id ? (
@@ -265,14 +268,15 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
                         ) : (
                           <Copy className="h-4 w-4" />
                         )}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => handleDelete(post.id)}
-                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-red-500 transition-colors"
                         title="Delete"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -297,10 +301,10 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
 
 // ─── Review Badge ─────────────────────────────────────────
 
-const REVIEW_BADGE_STYLES: Record<string, string> = {
-  excellent: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
-  good_with_edits: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
-  needs_rewrite: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+const REVIEW_BADGE_VARIANTS: Record<string, 'green' | 'orange' | 'red'> = {
+  excellent: 'green',
+  good_with_edits: 'orange',
+  needs_rewrite: 'red',
 };
 
 const REVIEW_CATEGORY_LABELS: Record<string, string> = {
@@ -310,11 +314,10 @@ const REVIEW_CATEGORY_LABELS: Record<string, string> = {
 };
 
 function ReviewBadge({ reviewData }: { reviewData: ReviewData }) {
-  const style = REVIEW_BADGE_STYLES[reviewData.category] || REVIEW_BADGE_STYLES.good_with_edits;
   return (
-    <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', style)}>
+    <Badge variant={REVIEW_BADGE_VARIANTS[reviewData.category] || 'orange'}>
       {REVIEW_CATEGORY_LABELS[reviewData.category] || reviewData.category} {reviewData.score}/10
-    </span>
+    </Badge>
   );
 }
 

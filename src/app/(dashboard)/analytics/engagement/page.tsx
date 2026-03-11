@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { PageContainer } from '@magnetlab/magnetui';
 import { EngagementDashboard } from '@/components/analytics/EngagementDashboard';
 
 export const metadata = {
@@ -21,16 +22,18 @@ function EngagementSkeleton() {
 
 export default function EngagementAnalyticsPage() {
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Engagement Analytics</h1>
-        <p className="mt-1 text-muted-foreground">
-          Track comments, reactions, and DMs across your published posts.
-        </p>
+    <PageContainer maxWidth="xl">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Engagement Analytics</h1>
+          <p className="mt-1 text-muted-foreground">
+            Track comments, reactions, and DMs across your published posts.
+          </p>
+        </div>
+        <Suspense fallback={<EngagementSkeleton />}>
+          <EngagementDashboard />
+        </Suspense>
       </div>
-      <Suspense fallback={<EngagementSkeleton />}>
-        <EngagementDashboard />
-      </Suspense>
-    </div>
+    </PageContainer>
   );
 }

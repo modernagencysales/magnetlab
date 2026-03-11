@@ -60,20 +60,21 @@ export default function TeamSelectPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-lg px-4 py-16">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-xl mb-4">
-          <Users className="h-6 w-6 text-primary" />
+    <div className="mx-auto max-w-lg px-4 py-16">
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
+            <Users className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="mt-6 text-2xl font-semibold">Switch Team</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Choose which team to work in</p>
         </div>
-        <h1 className="text-2xl font-semibold mb-2">Switch Team</h1>
-        <p className="text-sm text-muted-foreground">Choose which team to work in</p>
-      </div>
 
-      <div className="space-y-3">
+        <div className="space-y-4">
         {/* Personal account option */}
         <button
           onClick={selectPersonal}
-          className="flex items-center gap-4 w-full rounded-lg border p-4 hover:border-primary/30 hover:bg-muted/50 transition-colors text-left"
+          className="flex w-full items-center gap-4 rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
         >
           <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-lg text-primary-foreground shrink-0">
             <Magnet size={18} />
@@ -100,7 +101,7 @@ export default function TeamSelectPage() {
           <button
             key={m.teamId}
             onClick={() => selectTeam(m.teamId)}
-            className="flex items-center gap-4 w-full rounded-lg border p-4 hover:border-primary/30 hover:bg-muted/50 transition-colors text-left"
+            className="flex w-full items-center gap-4 rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
           >
             <div className="flex items-center justify-center w-10 h-10 bg-violet-500 rounded-lg text-white shrink-0">
               <UsersRound size={18} />
@@ -114,6 +115,7 @@ export default function TeamSelectPage() {
             <ArrowRight size={16} className="text-muted-foreground shrink-0" />
           </button>
         ))}
+        </div>
       </div>
     </div>
   );

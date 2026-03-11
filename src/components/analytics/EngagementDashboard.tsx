@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@magnetlab/magnetui';
 import * as analyticsApi from '@/frontend/api/analytics';
-import { Skeleton } from '@/components/ui/skeleton';
 import { MessageSquare, Heart, Send, ArrowLeft, Activity } from 'lucide-react';
 import Link from 'next/link';
 
@@ -118,8 +117,8 @@ export function EngagementDashboard() {
       </Link>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
         </div>
       )}
 
@@ -167,7 +166,7 @@ export function EngagementDashboard() {
                     <p className="text-sm text-muted-foreground">DMs Sent</p>
                     <p className="text-2xl font-bold">{data.totals.dmsSent}</p>
                     {data.totals.dmsFailed > 0 && (
-                      <p className="text-xs text-red-500">{data.totals.dmsFailed} failed</p>
+                      <p className="text-xs text-destructive">{data.totals.dmsFailed} failed</p>
                     )}
                   </div>
                 </div>
@@ -227,7 +226,7 @@ export function EngagementDashboard() {
               </CardContent>
             </Card>
           ) : (
-            <div className="rounded-lg border border-dashed p-12 text-center">
+            <div className="rounded-lg border border-border border-dashed p-12 text-center">
               <Activity className="mx-auto h-12 w-12 text-muted-foreground/50" />
               <h3 className="mt-4 text-lg font-medium">No engagement data yet</h3>
               <p className="mt-2 text-sm text-muted-foreground">

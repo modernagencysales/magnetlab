@@ -212,15 +212,15 @@ export default function LibraryEditorPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      <div className="flex items-center justify-between mb-6">
+    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
+      <div className="flex items-center justify-between">
         <BackLink />
       </div>
 
       <FormError message={error} onDismiss={() => setError(null)} />
 
       {/* Library Details */}
-      <div className="border rounded-lg p-6 mb-8">
+      <div className="rounded-lg border border-border p-6">
         <h2 className="text-lg font-semibold mb-4">Library Details</h2>
 
         <div className="space-y-4">
@@ -266,7 +266,7 @@ export default function LibraryEditorPage() {
       </div>
 
       {/* Funnel Page */}
-      <div className="border rounded-lg p-6 mb-8">
+      <div className="rounded-lg border border-border p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -289,7 +289,7 @@ export default function LibraryEditorPage() {
       </div>
 
       {/* Library Items */}
-      <div className="border rounded-lg p-6">
+      <div className="rounded-lg border border-border p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Library Items ({items.length})</h2>
           <button
@@ -310,7 +310,7 @@ export default function LibraryEditorPage() {
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
               >
                 <GripVertical size={16} className="text-muted-foreground cursor-grab" />
                 <span className="text-xl">{getAssetIcon(item)}</span>
@@ -347,12 +347,12 @@ export default function LibraryEditorPage() {
       {showAddModal && (
         <>
           <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowAddModal(false)} />
-          <div className="fixed inset-x-4 top-[10%] max-w-lg mx-auto bg-background border rounded-lg shadow-lg z-50 max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b">
+          <div className="fixed inset-x-4 top-[10%] mx-auto max-h-[80vh] max-w-lg flex flex-col rounded-lg border border-border bg-background shadow-lg z-50">
+            <div className="border-b border-border p-4">
               <h3 className="font-semibold">Add Item to Library</h3>
             </div>
 
-            <div className="p-4 border-b">
+            <div className="border-b border-border p-4">
               <div className="relative">
                 <Search
                   size={16}
@@ -363,7 +363,7 @@ export default function LibraryEditorPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search assets..."
-                  className="w-full pl-9 pr-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -398,10 +398,10 @@ export default function LibraryEditorPage() {
               )}
             </div>
 
-            <div className="p-4 border-t">
+            <div className="border-t border-border p-4">
               <button
                 onClick={() => setShowAddModal(false)}
-                className="w-full px-4 py-2 border rounded-lg hover:bg-muted transition-colors"
+                className="w-full rounded-lg border border-border px-4 py-2 transition-colors hover:bg-muted"
               >
                 Cancel
               </button>

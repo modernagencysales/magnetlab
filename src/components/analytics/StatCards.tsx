@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@magnetlab/magnetui';
 import { Eye, Users, Target, Award } from 'lucide-react';
 
 interface StatCardsProps {
@@ -55,16 +55,14 @@ export function StatCards({ totals }: StatCardsProps) {
         const Icon = stat.icon;
         const value = totals[stat.key];
         return (
-          <Card key={stat.key}>
+          <Card key={stat.key} className="border-border">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <div className={`rounded-lg p-2 ${stat.bg}`}>
                   <Icon className={`h-5 w-5 ${stat.color}`} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {stat.label}
-                  </p>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
                   <p className="text-2xl font-bold">{stat.format(value)}</p>
                 </div>
               </div>

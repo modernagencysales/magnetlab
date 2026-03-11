@@ -2,6 +2,16 @@
 
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Users, Check, Loader2 } from 'lucide-react';
+import {
+  Button,
+  Input,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  Badge,
+} from '@magnetlab/magnetui';
 import { parseSpeakerNames } from '@/lib/utils/transcript-parser';
 
 export interface SpeakerMapEntry {
@@ -64,12 +74,14 @@ export function SpeakerMapEditor({ rawTranscript, speakerMap, onSave }: SpeakerM
 
   if (detectedSpeakers.length === 0) return null;
 
-  const hasChanges = JSON.stringify(localMap) !== JSON.stringify(
-    detectedSpeakers.reduce((acc, name) => {
-      acc[name] = speakerMap?.[name] || { role: 'unknown', company: '' };
-      return acc;
-    }, {} as SpeakerMap)
-  );
+  const hasChanges =
+    JSON.stringify(localMap) !==
+    JSON.stringify(
+      detectedSpeakers.reduce((acc, name) => {
+        acc[name] = speakerMap?.[name] || { role: 'unknown', company: '' };
+        return acc;
+      }, {} as SpeakerMap)
+    );
 
   return (
     <div className="border-b">
@@ -80,13 +92,9 @@ export function SpeakerMapEditor({ rawTranscript, speakerMap, onSave }: SpeakerM
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
           Speaker Identification
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
-            {detectedSpeakers.length} speakers
-          </span>
-          {speakerMap && Object.values(speakerMap).some(v => v.company) && (
-            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-950 dark:text-green-400">
-              Configured
-            </span>
+          <Badge variant="gray">{detectedSpeakers.length} speakers</Badge>
+          {speakerMap && Object.values(speakerMap).some((v) => v.company) && (
+            <Badge variant="green">Configured</Badge>
           )}
         </div>
         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -95,7 +103,8 @@ export function SpeakerMapEditor({ rawTranscript, speakerMap, onSave }: SpeakerM
       {expanded && (
         <div className="border-t px-6 py-4">
           <p className="mb-3 text-xs text-muted-foreground">
-            Identify each speaker&apos;s role and company. This helps the AI correctly attribute insights and write content from the right perspective.
+            Identify each speaker&apos;s role and company. This helps the AI correctly attribute
+            insights and write content from the right perspective.
           </p>
 
           <div className="space-y-3">
@@ -104,21 +113,27 @@ export function SpeakerMapEditor({ rawTranscript, speakerMap, onSave }: SpeakerM
                 <span className="w-40 truncate text-sm font-medium" title={speaker}>
                   {speaker}
                 </span>
-                <select
+                <Select
                   value={localMap[speaker]?.role || 'unknown'}
-                  onChange={(e) => handleRoleChange(speaker, e.target.value as SpeakerMapEntry['role'])}
-                  className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                  onValueChange={(v) => handleRoleChange(speaker, v as SpeakerMapEntry['role'])}
                 >
-                  {ROLE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <input
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
                   type="text"
                   value={localMap[speaker]?.company || ''}
                   onChange={(e) => handleCompanyChange(speaker, e.target.value)}
                   placeholder="Company name"
-                  className="flex-1 rounded-md border bg-background px-2 py-1.5 text-sm"
+                  className="flex-1"
                 />
               </div>
             ))}
@@ -126,18 +141,14 @@ export function SpeakerMapEditor({ rawTranscript, speakerMap, onSave }: SpeakerM
 
           {hasChanges && (
             <div className="mt-4 flex justify-end">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
+              <Button size="sm" onClick={handleSave} disabled={saving}>
                 {saving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Check className="h-3.5 w-3.5" />
                 )}
                 Save Speaker Info
-              </button>
+              </Button>
             </div>
           )}
         </div>

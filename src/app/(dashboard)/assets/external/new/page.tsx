@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { PageContainer } from '@magnetlab/magnetui';
 import { BackLink, FormError, IconPicker, RESOURCE_ICONS } from '@/components/assets';
 import * as externalResourcesApi from '@/frontend/api/external-resources';
 
@@ -63,21 +64,23 @@ function NewExternalResourceForm() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4">
+    <div className="mx-auto max-w-2xl space-y-6">
       <BackLink />
 
-      <h1 className="text-2xl font-bold mb-6">
-        {createPage ? 'Create Landing Page for External Resource' : 'Add External Resource'}
-      </h1>
-      <p className="text-muted-foreground mb-6">
-        {createPage
-          ? 'First, tell us about your external resource. Then we\'ll set up your opt-in page.'
-          : 'Link to external content like YouTube videos, podcasts, tools, or any web resource.'}
-      </p>
+      <div>
+        <h1 className="text-2xl font-bold">
+          {createPage ? 'Create Landing Page for External Resource' : 'Add External Resource'}
+        </h1>
+        <p className="mt-1 text-muted-foreground">
+          {createPage
+            ? 'First, tell us about your external resource. Then we\'ll set up your opt-in page.'
+            : 'Link to external content like YouTube videos, podcasts, tools, or any web resource.'}
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label htmlFor="title" className="block text-sm font-medium mb-2">
+          <label htmlFor="title" className="mb-2 block text-sm font-medium">
             Title *
           </label>
           <input
@@ -86,13 +89,13 @@ function NewExternalResourceForm() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g., LinkedIn Optimization Guide (Video)"
-            className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             disabled={isSubmitting}
           />
         </div>
 
         <div>
-          <label htmlFor="url" className="block text-sm font-medium mb-2">
+          <label htmlFor="url" className="mb-2 block text-sm font-medium">
             URL *
           </label>
           <input
@@ -101,7 +104,7 @@ function NewExternalResourceForm() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://..."
-            className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             disabled={isSubmitting}
           />
         </div>
@@ -118,16 +121,16 @@ function NewExternalResourceForm() {
         <div className="flex gap-3">
           <Link
             href="/pages"
-            className="px-4 py-2 border rounded-lg hover:bg-muted transition-colors"
+            className="rounded-lg border border-border px-4 py-2 transition-colors hover:bg-muted"
           >
             Cancel
           </Link>
           <button
             type="submit"
             disabled={isSubmitting || !title.trim() || !url.trim()}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+            {isSubmitting && <Loader2 size={16} className="animate-spin mr-1" />}
             {createPage ? 'Continue to Page Builder' : 'Add Resource'}
           </button>
         </div>
@@ -138,8 +141,10 @@ function NewExternalResourceForm() {
 
 export default function NewExternalResourcePage() {
   return (
-    <Suspense>
-      <NewExternalResourceForm />
-    </Suspense>
+    <PageContainer maxWidth="lg">
+      <Suspense>
+        <NewExternalResourceForm />
+      </Suspense>
+    </PageContainer>
   );
 }

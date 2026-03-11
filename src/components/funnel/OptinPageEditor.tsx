@@ -1,5 +1,7 @@
 'use client';
 
+import { Input, Textarea, Label } from '@magnetlab/magnetui';
+
 interface OptinPageEditorProps {
   headline: string;
   setHeadline: (value: string) => void;
@@ -38,16 +40,14 @@ export function OptinPageEditor({
     <div className="space-y-5">
       {/* URL Slug */}
       <div>
-        <label className="block text-sm font-medium mb-1.5">
-          Page URL Slug
-        </label>
+        <Label className="block text-sm font-medium mb-1.5">Page URL Slug</Label>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">/p/username/</span>
-          <input
+          <Input
             type="text"
             value={slug}
             onChange={(e) => handleSlugChange(e.target.value)}
-            className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+            className="flex-1"
             placeholder="my-lead-magnet"
           />
         </div>
@@ -58,51 +58,49 @@ export function OptinPageEditor({
 
       {/* Headline */}
       <div>
-        <label className="block text-sm font-medium mb-1.5">
+        <Label className="block text-sm font-medium mb-1.5">
           Headline
           <span className="ml-1 text-muted-foreground font-normal">(8-10 words ideal)</span>
-        </label>
-        <input
+        </Label>
+        <Input
           type="text"
           value={headline}
           onChange={(e) => setHeadline(e.target.value)}
-          className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
           placeholder="The Exact Template That Generated $100K in Sales"
         />
         <p className="mt-1 text-xs text-muted-foreground">
-          {headline.split(' ').filter(w => w).length} words
+          {headline.split(' ').filter((w) => w).length} words
         </p>
       </div>
 
       {/* Subline */}
       <div>
-        <label className="block text-sm font-medium mb-1.5">
+        <Label className="block text-sm font-medium mb-1.5">
           Subline
           <span className="ml-1 text-muted-foreground font-normal">(15-25 words)</span>
-        </label>
-        <textarea
+        </Label>
+        <Textarea
           value={subline}
           onChange={(e) => setSubline(e.target.value)}
           rows={2}
-          className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+          className="resize-none"
           placeholder="Stop guessing what to say. Use the same approach that helped 500+ consultants book qualified calls."
         />
         <p className="mt-1 text-xs text-muted-foreground">
-          {subline.split(' ').filter(w => w).length} words
+          {subline.split(' ').filter((w) => w).length} words
         </p>
       </div>
 
       {/* Social Proof */}
       <div>
-        <label className="block text-sm font-medium mb-1.5">
+        <Label className="block text-sm font-medium mb-1.5">
           Social Proof
           <span className="ml-1 text-muted-foreground font-normal">(optional)</span>
-        </label>
-        <input
+        </Label>
+        <Input
           type="text"
           value={socialProof}
           onChange={(e) => setSocialProof(e.target.value)}
-          className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
           placeholder="Used by 2,400+ consultants to book qualified sales calls"
         />
         <p className="mt-1 text-xs text-muted-foreground">
@@ -112,19 +110,14 @@ export function OptinPageEditor({
 
       {/* Button Text */}
       <div>
-        <label className="block text-sm font-medium mb-1.5">
-          Button Text
-        </label>
-        <input
+        <Label className="block text-sm font-medium mb-1.5">Button Text</Label>
+        <Input
           type="text"
           value={buttonText}
           onChange={(e) => setButtonText(e.target.value)}
-          className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
           placeholder="Get Free Access"
         />
-        <p className="mt-1 text-xs text-muted-foreground">
-          Keep it action-oriented. 2-4 words.
-        </p>
+        <p className="mt-1 text-xs text-muted-foreground">Keep it action-oriented. 2-4 words.</p>
       </div>
     </div>
   );

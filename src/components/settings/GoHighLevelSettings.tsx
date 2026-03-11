@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle, Building2 } from 'lucide-react';
+import { Button, Input, Label } from '@magnetlab/magnetui';
 
 import { logError } from '@/lib/utils/logger';
 import * as integrationsApi from '@/frontend/api/integrations';
@@ -50,7 +51,7 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
     setFeedback(null);
 
     try {
-      const data = await integrationsApi.verifyGoHighLevel() as { verified?: boolean };
+      const data = (await integrationsApi.verifyGoHighLevel()) as { verified?: boolean };
       if (data.verified) {
         setFeedback({ type: 'success', message: 'Connection verified successfully' });
       } else {
@@ -71,7 +72,11 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
   };
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect GoHighLevel? Leads will no longer be pushed to your CRM.')) {
+    if (
+      !confirm(
+        'Are you sure you want to disconnect GoHighLevel? Leads will no longer be pushed to your CRM.'
+      )
+    ) {
       return;
     }
 
@@ -93,7 +98,7 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
   };
 
   return (
-    <div className="mt-4 rounded-lg border p-4">
+    <div className="mt-4 rounded-lg border border-border p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
@@ -101,9 +106,7 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
           </div>
           <div>
             <p className="font-medium">GoHighLevel</p>
-            <p className="text-xs text-muted-foreground">
-              Push leads to your CRM when they opt in
-            </p>
+            <p className="text-xs text-muted-foreground">Push leads to your CRM when they opt in</p>
           </div>
         </div>
         {isConnected && (
@@ -117,7 +120,8 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
       {isConnected ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Your GoHighLevel account is connected. New funnel leads will be automatically created as contacts in your CRM.
+            Your GoHighLevel account is connected. New funnel leads will be automatically created as
+            contacts in your CRM.
           </p>
 
           {lastVerifiedAt && (
@@ -127,35 +131,33 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
           )}
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleVerify}
-              disabled={verifying}
-              className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
-            >
+            <Button variant="outline" size="sm" onClick={handleVerify} disabled={verifying}>
               {verifying ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Testing...
-                </span>
+                </>
               ) : (
                 'Test Connection'
               )}
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleDisconnect}
               disabled={disconnecting}
-              className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+              className="text-destructive hover:opacity-80"
             >
               {disconnecting ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Disconnecting...
-                </span>
+                </>
               ) : (
                 'Disconnect'
               )}
-            </button>
+            </Button>
           </div>
         </div>
       ) : expanded ? (
@@ -164,56 +166,54 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
             Enter your GoHighLevel Location API key to connect your CRM.
           </p>
 
-          <div className="relative">
-            <label className="text-xs text-muted-foreground">API Key</label>
+          <div>
+            <Label className="text-xs text-muted-foreground">API Key</Label>
             <div className="relative mt-1">
-              <input
+              <Input
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="eyJhbGciOi..."
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary pr-10"
+                className="pr-10"
               />
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleConnect}
-              disabled={connecting || !apiKey.trim()}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
+            <Button onClick={handleConnect} disabled={connecting || !apiKey.trim()}>
               {connecting ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Connecting...
-                </span>
+                </>
               ) : (
                 'Connect'
               )}
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
               onClick={() => {
                 setExpanded(false);
                 setApiKey('');
                 setFeedback(null);
               }}
-              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
             >
               Cancel
-            </button>
+            </Button>
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Find your Location API key in GoHighLevel under Settings &gt; Business Profile &gt; API Keys.
+            Find your Location API key in GoHighLevel under Settings &gt; Business Profile &gt; API
+            Keys.
           </p>
         </div>
       ) : (
@@ -222,12 +222,7 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
             Connect GoHighLevel to automatically push funnel leads to your CRM as contacts.
           </p>
 
-          <button
-            onClick={() => setExpanded(true)}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Connect GoHighLevel
-          </button>
+          <Button onClick={() => setExpanded(true)}>Connect GoHighLevel</Button>
         </div>
       )}
 
@@ -239,7 +234,7 @@ export function GoHighLevelSettings({ isConnected, lastVerifiedAt }: GoHighLevel
       )}
 
       {feedback?.type === 'error' && (
-        <p className="mt-3 flex items-center gap-2 text-sm text-red-500">
+        <p className="mt-3 flex items-center gap-2 text-sm text-destructive">
           <XCircle className="h-4 w-4" />
           {feedback.message}
         </p>

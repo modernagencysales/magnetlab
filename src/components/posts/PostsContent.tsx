@@ -4,8 +4,11 @@ import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Lightbulb, LayoutGrid, Sparkles, Loader2, BookOpen, Calendar } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ProfileSwitcher, useProfileSelection } from '@/components/content-pipeline/ProfileSwitcher';
+import { PageContainer, PageTitle, Button, StatusDot } from '@magnetlab/magnetui';
+import {
+  ProfileSwitcher,
+  useProfileSelection,
+} from '@/components/content-pipeline/ProfileSwitcher';
 import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
 
 const IdeasTab = dynamic(
@@ -13,15 +16,18 @@ const IdeasTab = dynamic(
   { ssr: false }
 );
 const AutopilotTab = dynamic(
-  () => import('@/components/content-pipeline/AutopilotTab').then((m) => ({ default: m.AutopilotTab })),
+  () =>
+    import('@/components/content-pipeline/AutopilotTab').then((m) => ({ default: m.AutopilotTab })),
   { ssr: false }
 );
 const PipelineView = dynamic(
-  () => import('@/components/content-pipeline/PipelineView').then((m) => ({ default: m.PipelineView })),
+  () =>
+    import('@/components/content-pipeline/PipelineView').then((m) => ({ default: m.PipelineView })),
   { ssr: false }
 );
 const CalendarView = dynamic(
-  () => import('@/components/content-pipeline/CalendarView').then((m) => ({ default: m.CalendarView })),
+  () =>
+    import('@/components/content-pipeline/CalendarView').then((m) => ({ default: m.CalendarView })),
   { ssr: false }
 );
 const LibraryTab = dynamic(
@@ -29,7 +35,10 @@ const LibraryTab = dynamic(
   { ssr: false }
 );
 const QuickWriteModal = dynamic(
-  () => import('@/components/content-pipeline/QuickWriteModal').then((m) => ({ default: m.QuickWriteModal })),
+  () =>
+    import('@/components/content-pipeline/QuickWriteModal').then((m) => ({
+      default: m.QuickWriteModal,
+    })),
   { ssr: false }
 );
 
@@ -57,11 +66,7 @@ interface PostsContentProps {
   initialPosts: PipelinePost[];
 }
 
-export function PostsContent({
-  initialBufferLow,
-  initialIdeas,
-  initialPosts,
-}: PostsContentProps) {
+export function PostsContent({ initialBufferLow, initialIdeas, initialPosts }: PostsContentProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -93,45 +98,39 @@ export function PostsContent({
   }
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
-      {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold">Posts</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your content ideas, drafts, and publishing schedule
-          </p>
-        </div>
-        <ProfileSwitcher
-          selectedProfileId={selectedProfileId}
-          onProfileChange={onProfileChange}
+    <PageContainer maxWidth="xl">
+      <div className="space-y-6">
+        <PageTitle
+          title="Posts"
+          description="Manage your content ideas, drafts, and publishing schedule"
+          actions={
+            <ProfileSwitcher
+              selectedProfileId={selectedProfileId}
+              onProfileChange={onProfileChange}
+            />
+          }
         />
-      </div>
 
-      {/* Tabs */}
-      <div className="mb-6 flex gap-2 overflow-x-auto">
+        {/* Tabs */}
+        <div className="flex gap-2 overflow-x-auto">
         {TABS.map((tab) => (
-          <button
+          <Button
             key={tab.id}
+            variant={activeTab === tab.id ? 'default' : 'outline'}
+            size="sm"
             onClick={() => handleTabChange(tab.id)}
-            className={cn(
-              'flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-              activeTab === tab.id
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary hover:bg-secondary/80'
-            )}
           >
-            <tab.icon className="h-4 w-4" />
+            <tab.icon className="mr-1.5 h-3.5 w-3.5" />
             {tab.label}
             {tab.id === 'autopilot' && bufferLow && (
-              <span className="ml-1 h-2 w-2 rounded-full bg-yellow-500" />
+              <StatusDot status="warning" size="sm" pulse className="ml-1.5" />
             )}
-          </button>
+          </Button>
         ))}
-      </div>
+        </div>
 
-      {/* Tab Content */}
-      <Suspense fallback={<TabLoader />}>
+        {/* Tab Content */}
+        <Suspense fallback={<TabLoader />}>
         {activeTab === 'pipeline' && (
           <PipelineView
             key={refreshKey}
@@ -148,12 +147,12 @@ export function PostsContent({
         {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
         {activeTab === 'library' && <LibraryTab />}
         {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}
-      </Suspense>
+        </Suspense>
 
-      {/* Quick Write FAB */}
+        {/* Quick Write FAB */}
       <button
         onClick={() => setShowQuickWrite(true)}
-        className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+        className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
         title="Quick Write"
       >
         <Sparkles className="h-5 w-5" />
@@ -168,7 +167,8 @@ export function PostsContent({
           }}
           profileId={selectedProfileId}
         />
-      )}
-    </div>
+        )}
+      </div>
+    </PageContainer>
   );
 }

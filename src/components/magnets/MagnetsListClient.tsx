@@ -87,9 +87,9 @@ export default function MagnetsListClient({
   const draftCount = items.filter((i) => !i.isLive).length;
 
   return (
-    <div>
+    <div className="space-y-4">
       {/* Toolbar */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Search */}
         <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -146,17 +146,17 @@ export default function MagnetsListClient({
 
       {/* Results count */}
       {search || statusFilter !== 'all' ? (
-        <p className="mb-3 text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {filtered.length} result{filtered.length !== 1 ? 's' : ''}
         </p>
       ) : null}
 
       {/* Desktop table */}
       <div className="hidden md:block">
-        <div className="rounded-xl border bg-card">
+        <div className="overflow-hidden rounded-lg border bg-card">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-xs font-medium text-muted-foreground">
+              <tr className="border-b border-border bg-muted/30 text-left text-xs font-medium text-muted-foreground">
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Status</th>
@@ -168,7 +168,7 @@ export default function MagnetsListClient({
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} className="group border-b last:border-0 transition-colors hover:bg-muted/50">
+                <tr key={item.id} className="group border-b border-border last:border-0 transition-colors hover:bg-muted/50">
                   <td className="px-4 py-3">
                     <Link
                       href={`/magnets/${item.id}`}
@@ -188,7 +188,7 @@ export default function MagnetsListClient({
                         'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
                         item.isLive
                           ? 'bg-emerald-500/10 text-emerald-600'
-                          : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                          : 'bg-muted text-muted-foreground'
                       )}
                     >
                       {item.isLive && <Globe className="h-3 w-3" />}
@@ -224,7 +224,7 @@ export default function MagnetsListClient({
                             ? 'bg-emerald-500/10 text-emerald-600'
                             : item.conversionRate >= 10
                             ? 'bg-yellow-500/10 text-yellow-600'
-                            : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                            : 'bg-muted text-muted-foreground'
                         )}
                       >
                         {item.conversionRate.toFixed(1)}%
@@ -253,12 +253,12 @@ export default function MagnetsListClient({
       </div>
 
       {/* Mobile compact cards */}
-      <div className="flex flex-col gap-2 md:hidden">
+      <div className="flex flex-col gap-3 md:hidden">
         {filtered.map((item) => (
           <Link
             key={item.id}
             href={`/magnets/${item.id}`}
-            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 transition-colors hover:border-primary"
+            className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/50"
           >
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{item.title}</p>
@@ -268,7 +268,7 @@ export default function MagnetsListClient({
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
                     item.isLive
                       ? 'bg-emerald-500/10 text-emerald-600'
-                      : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                      : 'bg-muted text-muted-foreground'
                   )}
                 >
                   {item.isLive && <Globe className="h-3 w-3" />}
@@ -296,7 +296,7 @@ export default function MagnetsListClient({
                     ? 'bg-emerald-500/10 text-emerald-600'
                     : item.conversionRate >= 10
                     ? 'bg-yellow-500/10 text-yellow-600'
-                    : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                    : 'bg-muted text-muted-foreground'
                 )}
               >
                 {item.conversionRate.toFixed(1)}%

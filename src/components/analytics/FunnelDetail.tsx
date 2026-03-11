@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, Skeleton, Badge } from '@magnetlab/magnetui';
 import * as analyticsApi from '@/frontend/api/analytics';
-import { Skeleton } from '@/components/ui/skeleton';
 import { StatCards } from '@/components/analytics/StatCards';
 import { TimeSeriesChart } from '@/components/analytics/TimeSeriesChart';
 import { ArrowLeft } from 'lucide-react';
@@ -49,24 +48,12 @@ function formatDate(dateStr: string): string {
 
 function QualifiedBadge({ value }: { value: boolean | null }) {
   if (value === true) {
-    return (
-      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-        Yes
-      </span>
-    );
+    return <Badge variant="green">Yes</Badge>;
   }
   if (value === false) {
-    return (
-      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
-        No
-      </span>
-    );
+    return <Badge variant="red">No</Badge>;
   }
-  return (
-    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-      Pending
-    </span>
-  );
+  return <Badge variant="gray">Pending</Badge>;
 }
 
 function LoadingSkeleton() {
@@ -215,11 +202,11 @@ export function FunnelDetail({ funnelId }: FunnelDetailProps) {
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-6 text-center text-destructive">
+          <p className="text-sm font-medium">{error}</p>
           <Link
             href="/analytics"
-            className="mt-3 inline-block text-sm text-red-600 underline hover:text-red-500 dark:text-red-400"
+            className="mt-3 inline-block text-sm underline hover:opacity-80"
           >
             Return to Analytics
           </Link>

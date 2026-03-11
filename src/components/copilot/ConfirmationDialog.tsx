@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 
 const ACTION_DESCRIPTIONS: Record<string, string> = {
   schedule_post: 'Schedule this post for publishing',
@@ -44,18 +45,12 @@ export function ConfirmationDialog({
       </pre>
 
       <div className="flex items-center gap-2">
-        <button
-          onClick={() => onConfirm(toolUseId, true)}
-          className="px-3 py-1.5 text-sm font-medium text-white bg-violet-600 rounded-md hover:bg-violet-700 transition-colors"
-        >
+        <Button size="sm" onClick={() => onConfirm(toolUseId, true)}>
           Confirm
-        </button>
-        <button
-          onClick={() => onConfirm(toolUseId, false)}
-          className="px-3 py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-gray-200 dark:bg-zinc-700 rounded-md hover:bg-gray-300 dark:hover:bg-zinc-600 transition-colors"
-        >
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onConfirm(toolUseId, false)}>
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { Component, type ReactNode } from 'react';
+import { Button } from '@magnetlab/magnetui';
 import { logError } from '@/lib/utils/logger';
 
 interface Props {
@@ -43,12 +44,7 @@ export class ErrorBoundary extends Component<Props, State> {
               {this.state.error.message}
             </p>
           )}
-          <button
-            onClick={() => this.setState({ hasError: false, error: null })}
-            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-          >
-            Try again
-          </button>
+          <Button onClick={() => this.setState({ hasError: false, error: null })}>Try again</Button>
         </div>
       );
     }

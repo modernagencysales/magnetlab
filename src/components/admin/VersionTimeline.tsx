@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Badge } from '@magnetlab/magnetui';
 import { PromptDiffViewer } from './PromptDiffViewer';
 
 interface Version {
@@ -50,7 +51,7 @@ export function VersionTimeline({
 
   if (versions.length === 0) {
     return (
-      <div className="text-center py-8 text-zinc-500 text-sm">
+      <div className="py-8 text-center text-sm text-muted-foreground">
         No version history yet. Save changes to create the first version.
       </div>
     );
@@ -63,29 +64,25 @@ export function VersionTimeline({
         return (
           <div
             key={version.id}
-            className="border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900"
+            className="rounded-lg border border-border bg-card"
           >
             {/* Version header */}
             <div className="flex items-start justify-between p-3 gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 text-[11px] font-semibold">
-                    v{version.version}
-                  </span>
-                  <span className="text-xs text-zinc-400">{timeAgo(version.created_at)}</span>
+                  <Badge variant="purple">v{version.version}</Badge>
+                  <span className="text-xs text-muted-foreground">{timeAgo(version.created_at)}</span>
                 </div>
-                <p className="text-xs text-zinc-600 dark:text-zinc-300 line-clamp-1">
-                  {version.change_note || (
-                    <span className="text-zinc-400 italic">No note</span>
-                  )}
+                <p className="text-xs line-clamp-1 text-muted-foreground">
+                  {version.change_note || <span className="italic">No note</span>}
                 </p>
-                <p className="text-[11px] text-zinc-400 mt-0.5">by {version.changed_by}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">by {version.changed_by}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setExpandedId(isExpanded ? null : version.id)}
-                  className="px-2.5 py-1 text-xs rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                  className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
                 >
                   {isExpanded ? 'Hide Diff' : 'View Diff'}
                 </button>
@@ -101,7 +98,7 @@ export function VersionTimeline({
 
             {/* Diff viewer (expanded) */}
             {isExpanded && (
-              <div className="border-t border-zinc-200 dark:border-zinc-700 p-3">
+              <div className="border-t border-border p-3">
                 {/* Tab toggle for system vs user prompt diff */}
                 <div className="flex gap-1 mb-3">
                   <button
@@ -110,7 +107,7 @@ export function VersionTimeline({
                     className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
                       diffTab === 'system'
                         ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
-                        : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     System Prompt
@@ -121,19 +118,15 @@ export function VersionTimeline({
                     className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
                       diffTab === 'user'
                         ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
-                        : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     User Prompt
                   </button>
                 </div>
                 <PromptDiffViewer
-                  oldText={
-                    diffTab === 'system' ? version.system_prompt : version.user_prompt
-                  }
-                  newText={
-                    diffTab === 'system' ? currentSystemPrompt : currentUserPrompt
-                  }
+                  oldText={diffTab === 'system' ? version.system_prompt : version.user_prompt}
+                  newText={diffTab === 'system' ? currentSystemPrompt : currentUserPrompt}
                   oldLabel={`v${version.version}`}
                   newLabel="Current"
                 />

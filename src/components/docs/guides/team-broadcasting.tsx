@@ -68,7 +68,7 @@ export default function TeamBroadcasting() {
           their posts auto-published
         </li>
         <li>
-          <strong className="text-zinc-500 dark:text-zinc-400">Not connected</strong> members will
+          <strong className="text-muted-foreground">Not connected</strong> members will
           get variations created, but posts must be published manually
         </li>
         <li>Click a member to toggle them on or off</li>
@@ -141,7 +141,7 @@ export default function TeamBroadcasting() {
       <ul className="list-disc list-inside space-y-2 text-sm">
         <li>
           A severity indicator:{' '}
-          <span className="inline-block h-2 w-2 rounded-full bg-red-500" /> high,{' '}
+          <span className="inline-block h-2 w-2 rounded-full bg-destructive" /> high,{' '}
           <span className="inline-block h-2 w-2 rounded-full bg-orange-500" /> medium,{' '}
           <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" /> low
         </li>

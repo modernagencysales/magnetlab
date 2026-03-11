@@ -26,15 +26,15 @@ function QualificationResult({ isQualified, passMessage, failMessage }: {
       className={`rounded-xl p-6 text-center ${
         isQualified
           ? 'bg-green-500/10 border border-green-500/30'
-          : 'bg-red-400/10 border border-red-400/30'
+          : 'bg-destructive/10 border border-destructive/30'
       }`}
     >
       {isQualified ? (
         <CheckCircle2 className="w-8 h-8 mx-auto mb-3 text-green-500" />
       ) : (
-        <XCircle className="w-8 h-8 mx-auto mb-3 text-red-400" />
+        <XCircle className="mx-auto mb-3 w-8 h-8 text-destructive" />
       )}
-      <p className={`font-medium ${isQualified ? 'text-green-500' : 'text-red-400'}`}>
+      <p className={`font-medium ${isQualified ? 'text-green-500' : 'text-destructive'}`}>
         {isQualified ? passMessage : failMessage}
       </p>
     </div>
@@ -133,8 +133,8 @@ function SurveyCard({
         </div>
 
         {error && (
-          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-            <p className="text-sm text-red-400">{error}</p>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+            {error}
           </div>
         )}
 
@@ -160,7 +160,7 @@ function SurveyCard({
                 </button>
                 <button
                   onClick={() => handleYesNoAnswer('no')}
-                  className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
+                  className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-destructive"
                   style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
                 >
                   No
@@ -276,7 +276,7 @@ function SurveyCard({
                 </button>
                 <button
                   onClick={() => handleYesNoAnswer('no')}
-                  className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-red-400"
+                  className="flex-1 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:border-destructive"
                   style={{ background: 'var(--ds-card)', border: '1px solid var(--ds-border)', color: 'var(--ds-text)' }}
                 >
                   No

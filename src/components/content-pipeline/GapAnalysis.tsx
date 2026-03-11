@@ -2,6 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, AlertTriangle, CheckCircle2, XCircle, BarChart } from 'lucide-react';
+import {
+  Button,
+  Label,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  Badge,
+} from '@magnetlab/magnetui';
 import { cn } from '@/lib/utils';
 import { KNOWLEDGE_TYPE_LABELS } from '@/lib/types/content-pipeline';
 import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
@@ -91,12 +101,7 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
         <p className="text-sm text-destructive">{error}</p>
-        <button
-          onClick={() => fetchGaps()}
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-        >
-          Retry
-        </button>
+        <Button onClick={() => fetchGaps()}>Retry</Button>
       </div>
     );
   }
@@ -123,47 +128,50 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[200px]">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Topic</label>
-            <select
+            <Label className="mb-1 block text-xs font-medium text-muted-foreground">Topic</Label>
+            <Select
               value={selectedTopic}
-              onChange={(e) => {
-                setSelectedTopic(e.target.value);
+              onValueChange={(value) => {
+                setSelectedTopic(value);
                 setReadiness(null);
               }}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
-              <option value="">Select a topic...</option>
-              {gaps.map((g) => (
-                <option key={g.topic_slug} value={g.topic_name}>
-                  {g.topic_name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a topic..." />
+              </SelectTrigger>
+              <SelectContent>
+                {gaps.map((g) => (
+                  <SelectItem key={g.topic_slug} value={g.topic_name}>
+                    {g.topic_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="min-w-[160px]">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Goal</label>
-            <select
+            <Label className="mb-1 block text-xs font-medium text-muted-foreground">Goal</Label>
+            <Select
               value={selectedGoal}
-              onChange={(e) => {
-                setSelectedGoal(e.target.value);
+              onValueChange={(value) => {
+                setSelectedGoal(value);
                 setReadiness(null);
               }}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
-              {GOALS.map((g) => (
-                <option key={g.value} value={g.value}>
-                  {g.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {GOALS.map((g) => (
+                  <SelectItem key={g.value} value={g.value}>
+                    {g.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <button
-            onClick={handleAssessReadiness}
-            disabled={!selectedTopic || assessing}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
+          <Button onClick={handleAssessReadiness} disabled={!selectedTopic || assessing}>
             {assessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Assess'}
-          </button>
+          </Button>
         </div>
 
         {readiness && (
@@ -172,12 +180,12 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
               {readiness.ready ? (
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
               ) : (
-                <XCircle className="h-5 w-5 text-red-500" />
+                <XCircle className="h-5 w-5 text-destructive" />
               )}
               <span
                 className={cn(
                   'font-semibold text-sm',
-                  readiness.ready ? 'text-green-600' : 'text-red-600'
+                  readiness.ready ? 'text-green-600' : 'text-destructive'
                 )}
               >
                 {readiness.ready ? 'Ready' : 'Not Ready'}
@@ -210,7 +218,7 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
           {gaps.map((gap) => {
             const scoreColor =
               gap.coverage_score < 0.3
-                ? 'bg-red-500'
+                ? 'bg-destructive'
                 : gap.coverage_score < 0.6
                   ? 'bg-yellow-500'
                   : 'bg-green-500';
@@ -240,12 +248,9 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
                     <p className="text-xs font-medium text-muted-foreground mb-1">Missing:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {gap.missing_types.map((type) => (
-                        <span
-                          key={type}
-                          className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-600 dark:border-red-900 dark:bg-red-950 dark:text-red-400"
-                        >
+                        <Badge key={type} variant="red">
                           {KNOWLEDGE_TYPE_LABELS[type] || type}
-                        </span>
+                        </Badge>
                       ))}
                     </div>
                   </div>

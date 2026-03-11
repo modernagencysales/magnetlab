@@ -15,9 +15,9 @@ export function BackLink({
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
-    >
-      <ArrowLeft size={16} />
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft size={16} className="mr-1" />
       {children}
     </Link>
   );

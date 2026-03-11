@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { X, Upload, Loader2, FileText } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import * as templatesApi from '@/frontend/api/content-pipeline/templates';
 
 interface CSVTemplateImporterProps {
@@ -124,13 +125,9 @@ export function CSVTemplateImporter({ onClose, onImported }: CSVTemplateImporter
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Import Templates from CSV</h2>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 hover:bg-secondary"
-            aria-label="Close"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         {parsed.length === 0 ? (
@@ -188,29 +185,22 @@ export function CSVTemplateImporter({ onClose, onImported }: CSVTemplateImporter
               </table>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => setParsed([])}
-                className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-              >
+              <Button variant="outline" className="flex-1" onClick={() => setParsed([])}>
                 Reset
-              </button>
-              <button
-                onClick={handleImport}
-                disabled={importing}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
+              </Button>
+              <Button className="flex-1" onClick={handleImport} disabled={importing}>
                 {importing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Upload className="h-4 w-4" />
                 )}
                 Import {parsed.length}
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
-        {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
       </div>
     </div>
   );

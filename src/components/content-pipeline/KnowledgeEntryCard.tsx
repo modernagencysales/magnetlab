@@ -2,14 +2,34 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Pencil, Trash2, Check, X } from 'lucide-react';
+import {
+  Button,
+  Input,
+  Textarea,
+  Label,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@magnetlab/magnetui';
 import { cn } from '@/lib/utils';
 import type { KnowledgeCategory, KnowledgeSpeaker } from '@/lib/types/content-pipeline';
 import * as knowledgeApi from '@/frontend/api/content-pipeline/knowledge';
 
 const CATEGORY_STYLES: Record<KnowledgeCategory, { label: string; className: string }> = {
-  insight: { label: 'Insight', className: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' },
-  question: { label: 'Question', className: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' },
-  product_intel: { label: 'Product Intel', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' },
+  insight: {
+    label: 'Insight',
+    className: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
+  },
+  question: {
+    label: 'Question',
+    className: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+  },
+  product_intel: {
+    label: 'Product Intel',
+    className: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  },
 };
 
 const CATEGORY_OPTIONS: { value: KnowledgeCategory; label: string }[] = [
@@ -74,13 +94,13 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
         .map((t) => t.trim())
         .filter(Boolean);
 
-      const data = await knowledgeApi.updateKnowledgeEntry(entry.id, {
+      const data = (await knowledgeApi.updateKnowledgeEntry(entry.id, {
         content: editContent,
         category: editCategory,
         speaker: editSpeaker,
         context: editContext || null,
         tags,
-      }) as { entry?: Record<string, unknown> };
+      })) as { entry?: Record<string, unknown> };
       if (data.entry) {
         setEditing(false);
         onUpdate?.(entry.id, data.entry);
@@ -104,53 +124,65 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
   if (editing) {
     return (
       <div className="rounded-lg border border-primary/30 bg-card p-4">
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* Category + Speaker row */}
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-4 sm:flex-row sm:gap-3">
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Category</label>
-              <select
+              <Label className="mb-1.5">Category</Label>
+              <Select
                 value={editCategory}
-                onChange={(e) => setEditCategory(e.target.value as KnowledgeCategory)}
-                className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                onValueChange={(v) => setEditCategory(v as KnowledgeCategory)}
               >
-                {CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Speaker</label>
-              <select
+              <Label className="mb-1.5">Speaker</Label>
+              <Select
                 value={editSpeaker}
-                onChange={(e) => setEditSpeaker(e.target.value as KnowledgeSpeaker)}
-                className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                onValueChange={(v) => setEditSpeaker(v as KnowledgeSpeaker)}
               >
-                {SPEAKER_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SPEAKER_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Content */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Content</label>
-            <textarea
+            <Label className="mb-1.5">Content</Label>
+            <Textarea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm leading-relaxed"
+              className="leading-relaxed"
               rows={4}
             />
           </div>
 
           {/* Context */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Context</label>
-            <textarea
+            <Label className="mb-1.5">Context</Label>
+            <Textarea
               value={editContext}
               onChange={(e) => setEditContext(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm leading-relaxed"
+              className="leading-relaxed"
               rows={2}
               placeholder="Optional context..."
             />
@@ -158,32 +190,23 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
 
           {/* Tags */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Tags (comma-separated)</label>
-            <input
+            <Label className="mb-1.5">Tags (comma-separated)</Label>
+            <Input
               type="text"
               value={editTags}
               onChange={(e) => setEditTags(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               placeholder="tag1, tag2, tag3"
             />
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={handleCancelEdit}
-              disabled={saving}
-              className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
-            >
-              <X className="h-3.5 w-3.5" /> Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving || !editContent.trim()}
-              className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              <Check className="h-3.5 w-3.5" /> {saving ? 'Saving...' : 'Save'}
-            </button>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving}>
+              <X className="mr-1 h-3.5 w-3.5" /> Cancel
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving || !editContent.trim()}>
+              <Check className="mr-1 h-3.5 w-3.5" /> {saving ? 'Saving...' : 'Save'}
+            </Button>
           </div>
         </div>
       </div>
@@ -191,11 +214,13 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
   }
 
   return (
-    <div className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30">
+    <div className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/30">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="mb-2 flex items-center gap-2 flex-wrap">
-            <span className={cn('rounded-full px-2 py-1 text-xs font-medium', categoryConfig.className)}>
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span
+              className={cn('rounded-full px-2 py-1 text-xs font-medium', categoryConfig.className)}
+            >
               {categoryConfig.label}
             </span>
             {entry.speaker && entry.speaker !== 'unknown' && (
@@ -216,38 +241,28 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
         {(onUpdate || onDelete) && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {onUpdate && (
-              <button
-                onClick={handleStartEdit}
-                className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Edit"
-              >
+              <Button variant="ghost" size="icon-sm" onClick={handleStartEdit} title="Edit">
                 <Pencil className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             )}
             {onDelete && !confirmDelete && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setConfirmDelete(true)}
-                className="rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                 title="Delete"
               >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
             )}
             {confirmDelete && (
               <div className="flex items-center gap-1">
-                <button
-                  onClick={handleDelete}
-                  disabled={saving}
-                  className="rounded-md bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:bg-destructive/90"
-                >
+                <Button variant="destructive" size="sm" onClick={handleDelete} disabled={saving}>
                   {saving ? '...' : 'Delete'}
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
-                >
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>
                   Cancel
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -256,7 +271,7 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
 
       {/* Tags */}
       {entry.tags?.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           {entry.tags.map((tag) => (
             <span
               key={tag}
@@ -270,7 +285,7 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
 
       {/* Collapsible context */}
       {entry.context && (
-        <div className="mt-3">
+        <div className="mt-3 border-t border-border pt-3">
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -279,7 +294,7 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
             Context
           </button>
           {expanded && (
-            <p className="mt-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground leading-relaxed">
+            <p className="mt-2 rounded-md bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">
               {entry.context}
             </p>
           )}

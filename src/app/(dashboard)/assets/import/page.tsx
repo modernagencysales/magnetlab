@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Upload, Loader2, Link as LinkIcon, FileText } from 'lucide-react';
+import { PageContainer } from '@magnetlab/magnetui';
 import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 export default function ImportLeadMagnetPage() {
@@ -37,27 +38,28 @@ export default function ImportLeadMagnetPage() {
   const hasInput = url.trim() || content.trim();
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-8">
+    <PageContainer maxWidth="lg">
+      <div className="mx-auto max-w-2xl space-y-6">
       {/* Back link */}
       <Link
         href="/pages"
-        className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className="h-4 w-4 mr-1" />
         Back to Pages
       </Link>
 
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <h1 className="text-2xl font-bold">Import Your Lead Magnet</h1>
-        <p className="mt-2 text-muted-foreground">
+        <p className="mt-1 text-muted-foreground">
           Already have a lead magnet? Paste it here and we&apos;ll set up your capture page.
         </p>
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
         </div>
       )}
 
@@ -130,7 +132,7 @@ export default function ImportLeadMagnetPage() {
         </button>
 
         {/* Info box */}
-        <div className="rounded-lg border bg-muted/30 p-4">
+        <div className="rounded-lg border border-border bg-muted/30 p-4">
           <h3 className="text-sm font-medium mb-2">What happens next?</h3>
           <ul className="space-y-1 text-sm text-muted-foreground">
             <li>• We&apos;ll analyze your content and extract key details</li>
@@ -140,6 +142,7 @@ export default function ImportLeadMagnetPage() {
           </ul>
         </div>
       </div>
-    </div>
+      </div>
+    </PageContainer>
   );
 }

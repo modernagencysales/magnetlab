@@ -15,6 +15,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button, Badge, Input, Textarea, Label } from '@magnetlab/magnetui';
 import { StatusBadge } from './StatusBadge';
 import { PostPreview } from './PostPreview';
 import { StyleFeedbackToast } from './StyleFeedbackToast';
@@ -110,77 +111,50 @@ export function PostDetailModal({
             <h2 className="text-lg font-semibold">Post Details</h2>
             <StatusBadge status={post.status} />
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 hover:bg-secondary"
-            aria-label="Close"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         {/* Hook Score */}
         {post.hook_score !== null && post.hook_score !== undefined && (
           <div className="mb-4 flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Hook Score:</span>
-            <span
-              className={cn(
-                'rounded-full px-2 py-0.5 text-sm font-semibold',
-                post.hook_score >= 8
-                  ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
-                  : post.hook_score >= 5
-                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
-                    : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-              )}
+            <Badge
+              variant={post.hook_score >= 8 ? 'green' : post.hook_score >= 5 ? 'orange' : 'red'}
             >
               {post.hook_score}/10
-            </span>
+            </Badge>
           </div>
         )}
 
         {/* Template & Style Badges */}
         {(post.template_id || post.style_id) && (
           <div className="mb-4 flex items-center gap-2">
-            {post.template_id && (
-              <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-                Template applied
-              </span>
-            )}
-            {post.style_id && (
-              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                Style applied
-              </span>
-            )}
+            {post.template_id && <Badge variant="purple">Template applied</Badge>}
+            {post.style_id && <Badge variant="blue">Style applied</Badge>}
           </div>
         )}
 
         {/* Variations Tabs */}
         {post.variations && post.variations.length > 0 && (
           <div className="mb-4 flex gap-2 flex-wrap">
-            <button
+            <Button
+              variant={activeVariation === null ? 'default' : 'outline'}
+              size="sm"
               onClick={() => setActiveVariation(null)}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                activeVariation === null
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary hover:bg-secondary/80'
-              )}
             >
               Original
-            </button>
+            </Button>
             {post.variations.map((v: PostVariation, i: number) => (
-              <button
+              <Button
                 key={v.id}
+                variant={activeVariation === i ? 'default' : 'outline'}
+                size="sm"
                 onClick={() => setActiveVariation(i)}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                  activeVariation === i
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary hover:bg-secondary/80'
-                )}
               >
                 {v.hook_type || `Variation ${i + 1}`}
-              </button>
+              </Button>
             ))}
           </div>
         )}
@@ -193,25 +167,18 @@ export function PostDetailModal({
         {/* Edit Mode */}
         {editing ? (
           <div className="mb-4 space-y-3">
-            <textarea
+            <Textarea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
-              className="h-48 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-48 resize-none"
             />
             <div className="flex gap-2">
-              <button
-                onClick={() => setEditing(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-              >
+              <Button variant="outline" onClick={() => setEditing(false)}>
                 Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -269,44 +236,51 @@ export function PostDetailModal({
 
             {/* Toggle */}
             <div className="mb-2 flex items-center gap-3">
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={scrapeEnabled}
-                  onChange={(e) => {
-                    const enabled = e.target.checked;
-                    setScrapeEnabled(enabled);
-                    handleEngagementSave({ scrape_engagement: enabled });
-                  }}
-                  className="peer sr-only"
-                  disabled={engagementSaving}
-                />
-                <div className="peer h-5 w-9 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-full dark:bg-gray-600 dark:peer-checked:bg-blue-500" />
-              </label>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => {
+                  const enabled = !scrapeEnabled;
+                  setScrapeEnabled(enabled);
+                  handleEngagementSave({ scrape_engagement: enabled });
+                }}
+                disabled={engagementSaving}
+                aria-label={scrapeEnabled ? 'Disable scraping' : 'Enable scraping'}
+              >
+                <div
+                  className={cn(
+                    'w-8 h-4 rounded-full relative transition-colors',
+                    scrapeEnabled ? 'bg-primary' : 'bg-muted-foreground/30'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform',
+                      scrapeEnabled ? 'left-4' : 'left-0.5'
+                    )}
+                  />
+                </div>
+              </Button>
               <span className="text-sm">Scrape engagement from this post</span>
             </div>
 
             {/* Campaign ID */}
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  HeyReach Campaign ID
-                </label>
-                <input
-                  type="text"
+                <Label className="mb-1 text-xs text-muted-foreground">HeyReach Campaign ID</Label>
+                <Input
                   value={campaignId}
                   onChange={(e) => setCampaignId(e.target.value)}
                   placeholder="e.g. 301276"
-                  className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
-              <button
+              <Button
+                size="sm"
                 onClick={() => handleEngagementSave({ heyreach_campaign_id: campaignId })}
                 disabled={engagementSaving}
-                className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {engagementSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -323,18 +297,17 @@ export function PostDetailModal({
                 )}
               </div>
               {automation && (
-                <span
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-xs font-medium',
+                <Badge
+                  variant={
                     automation.status === 'running'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
+                      ? 'green'
                       : automation.status === 'paused'
-                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300'
-                        : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                  )}
+                        ? 'orange'
+                        : 'gray'
+                  }
                 >
                   {automation.status}
-                </span>
+                </Badge>
               )}
             </div>
 
@@ -359,49 +332,52 @@ export function PostDetailModal({
                 {/* Toggle buttons */}
                 <div className="flex gap-2">
                   {automation.status !== 'running' && (
-                    <button
+                    <Button
+                      size="sm"
                       onClick={() => handleToggleAutomation('running')}
                       disabled={automationSaving}
-                      className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       {automationSaving ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
                       ) : (
-                        <Zap className="h-3 w-3" />
+                        <Zap className="h-3 w-3 mr-1" />
                       )}
                       Start
-                    </button>
+                    </Button>
                   )}
                   {automation.status === 'running' && (
-                    <button
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => handleToggleAutomation('paused')}
                       disabled={automationSaving}
-                      className="flex items-center gap-1.5 rounded-lg bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-700 disabled:opacity-50 transition-colors"
+                      className="border-orange-300 text-orange-600 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
                     >
-                      {automationSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      {automationSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                       Pause
-                    </button>
+                    </Button>
                   )}
                 </div>
               </>
             ) : (
               <>
                 {!showAutomationSetup ? (
-                  <button
+                  <Button
+                    variant="outline"
                     onClick={() => setShowAutomationSetup(true)}
-                    className="flex items-center gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground hover:bg-muted transition-colors w-full justify-center"
+                    className="w-full border-dashed text-muted-foreground"
                   >
-                    <MessageSquare className="h-4 w-4" />
+                    <MessageSquare className="h-4 w-4 mr-2" />
                     Set up Comment→DM automation for this post
-                  </button>
+                  </Button>
                 ) : (
                   <div className="space-y-3">
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      <Label className="mb-1 text-xs text-muted-foreground">
                         Trigger Keywords (comma-separated)
-                      </label>
-                      <input
-                        type="text"
+                      </Label>
+                      <Input
                         value={autoKeywords}
                         onChange={(e) => setAutoKeywords(e.target.value)}
                         placeholder={
@@ -409,20 +385,17 @@ export function PostDetailModal({
                             ? `e.g. ${post.cta_word}, guide, yes, send`
                             : 'e.g. guide, yes, send, interested'
                         }
-                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                        DM Template
-                      </label>
-                      <textarea
+                      <Label className="mb-1 text-xs text-muted-foreground">DM Template</Label>
+                      <Textarea
                         value={autoDmTemplate}
                         onChange={(e) => setAutoDmTemplate(e.target.value)}
                         rows={3}
                         placeholder="Hey {{name}}! Thanks for your interest..."
-                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        className="resize-none"
                       />
                       <p className="mt-1 text-xs text-muted-foreground">
                         Variables: {'{{name}}'}, {'{{full_name}}'}, {'{{comment}}'}
@@ -461,38 +434,39 @@ export function PostDetailModal({
 
                     {autoFollowUp && (
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                        <Label className="mb-1 text-xs text-muted-foreground">
                           Follow-up Template (sent after 24h)
-                        </label>
-                        <textarea
+                        </Label>
+                        <Textarea
                           value={autoFollowUpTemplate}
                           onChange={(e) => setAutoFollowUpTemplate(e.target.value)}
                           rows={2}
                           placeholder="Hey {{name}}, just following up..."
-                          className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                          className="resize-none"
                         />
                       </div>
                     )}
 
                     <div className="flex gap-2">
-                      <button
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setShowAutomationSetup(false)}
-                        className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors"
                       >
                         Cancel
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
                         onClick={handleCreateAutomation}
                         disabled={automationSaving || !autoKeywords.trim()}
-                        className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                       >
                         {automationSaving ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
                         ) : (
-                          <Zap className="h-3 w-3" />
+                          <Zap className="h-3 w-3 mr-1" />
                         )}
                         Create Automation
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -503,69 +477,62 @@ export function PostDetailModal({
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2">
-          <button
+          <Button
+            variant={showTemplatePicker ? 'default' : 'outline'}
+            size="sm"
             onClick={() => {
               fetchTemplates();
               setShowTemplatePicker(!showTemplatePicker);
             }}
-            className={cn(
-              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
-              showTemplatePicker
-                ? 'bg-primary text-primary-foreground'
-                : 'border border-border hover:bg-muted'
-            )}
             title="Insert template"
           >
-            <FileText className="h-4 w-4" />
+            <FileText className="h-4 w-4 mr-1.5" />
             Templates
-          </button>
+          </Button>
           {!editing && (
-            <button
-              onClick={() => setEditing(true)}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-            >
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
               Edit
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => onPolish(post.id)}
             disabled={polishing}
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
           >
             {polishing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
             ) : (
-              <Sparkles className="h-4 w-4" />
+              <Sparkles className="h-4 w-4 mr-1.5" />
             )}
             Polish
-          </button>
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-          >
-            {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleCopy}>
+            {copied ? (
+              <Check className="h-4 w-4 text-green-500 mr-1.5" />
+            ) : (
+              <Copy className="h-4 w-4 mr-1.5" />
+            )}
             {copied ? 'Copied!' : 'Copy'}
-          </button>
-          <button
-            onClick={() => setShowSchedule(!showSchedule)}
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-          >
-            <Calendar className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowSchedule(!showSchedule)}>
+            <Calendar className="h-4 w-4 mr-1.5" />
             Schedule
-          </button>
+          </Button>
           {canPublish && (
-            <button
+            <Button
+              size="sm"
               onClick={handlePublish}
               disabled={publishing}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {publishing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
               ) : (
-                <Linkedin className="h-4 w-4" />
+                <Linkedin className="h-4 w-4 mr-1.5" />
               )}
               Publish to LinkedIn
-            </button>
+            </Button>
           )}
         </div>
 
@@ -582,8 +549,10 @@ export function PostDetailModal({
               </p>
             ) : (
               templates.map((t) => (
-                <button
+                <Button
                   key={t.id}
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     const current = editContent.trim();
                     if (current && !confirm('Replace current content with this template?')) return;
@@ -591,13 +560,13 @@ export function PostDetailModal({
                     setEditing(true);
                     setShowTemplatePicker(false);
                   }}
-                  className="w-full text-left rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors"
+                  className="w-full justify-start text-left"
                 >
                   <span className="font-medium">{t.name}</span>
                   {t.category && (
                     <span className="ml-2 text-xs text-muted-foreground">{t.category}</span>
                   )}
-                </button>
+                </Button>
               ))
             )}
           </div>
@@ -623,26 +592,21 @@ export function PostDetailModal({
           <div className="mt-4 rounded-lg border bg-muted/50 p-4">
             <div className="flex items-end gap-3">
               <div className="flex-1">
-                <label className="mb-1 block text-xs font-medium">Schedule Time</label>
-                <input
+                <Label className="mb-1 text-xs">Schedule Time</Label>
+                <Input
                   type="datetime-local"
                   value={scheduleTime}
                   onChange={(e) => setScheduleTime(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
-              <button
-                onClick={handleSchedule}
-                disabled={scheduling}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
+              <Button onClick={handleSchedule} disabled={scheduling}>
                 {scheduling ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Send className="h-4 w-4 mr-1.5" />
                 )}
                 Schedule to LinkedIn
-              </button>
+              </Button>
             </div>
             {scheduleError && (
               <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/50">

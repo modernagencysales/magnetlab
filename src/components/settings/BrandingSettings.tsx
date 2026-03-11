@@ -15,6 +15,17 @@ import {
   Check,
   Globe,
 } from 'lucide-react';
+import {
+  Button,
+  Input,
+  Textarea,
+  Label,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@magnetlab/magnetui';
 
 import { GOOGLE_FONTS } from '@/components/funnel/public/FontLoader';
 import * as brandKitApi from '@/frontend/api/brand-kit';
@@ -62,7 +73,9 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
   const [logos, setLogos] = useState<LogoItem[]>(initialData.logos || []);
   const [theme, setTheme] = useState(initialData.default_theme || 'dark');
   const [primaryColor, setPrimaryColor] = useState(initialData.default_primary_color || '#8b5cf6');
-  const [backgroundStyle, setBackgroundStyle] = useState(initialData.default_background_style || 'solid');
+  const [backgroundStyle, setBackgroundStyle] = useState(
+    initialData.default_background_style || 'solid'
+  );
   const [fontFamily, setFontFamily] = useState(initialData.font_family || '');
   const [fontUrl, setFontUrl] = useState(initialData.font_url || '');
   const [websiteUrl, setWebsiteUrl] = useState(initialData.website_url || '');
@@ -333,41 +346,38 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
                 <div className="flex items-center gap-4">
                   <div className="relative h-16 w-32 rounded-lg border bg-muted/50 p-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={logoUrl}
-                      alt="Logo"
-                      className="h-full w-full object-contain"
-                    />
+                    <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
                   </div>
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => mainLogoInputRef.current?.click()}
                     disabled={uploading === 'logo'}
-                    className="rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors"
                   >
                     {uploading === 'logo' ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       'Replace'
                     )}
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => {
                       setLogoUrl('');
                       saveBranding({ logoUrl: null });
                     }}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               ) : (
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
                   onClick={() => mainLogoInputRef.current?.click()}
                   disabled={uploading === 'logo'}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-4 py-8 text-sm text-muted-foreground hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                  className="flex w-full items-center justify-center gap-2 border-dashed h-auto py-8"
                 >
                   {uploading === 'logo' ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -377,7 +387,7 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
                       <span>Click or drag to upload your logo</span>
                     </>
                   )}
-                </button>
+                </Button>
               )}
             </div>
 
@@ -410,22 +420,23 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
                         />
                       </div>
                       <span className="flex-1 truncate text-sm">{logo.name}</span>
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => handleRemoveBarLogo(index)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-muted-foreground hover:text-foreground"
                       >
                         <X className="h-4 w-4" />
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
               )}
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => barLogoInputRef.current?.click()}
                 disabled={uploading === 'logo'}
-                className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors"
               >
                 {uploading === 'logo' ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -435,7 +446,7 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
                     Add Logo
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -443,11 +454,7 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
 
       {/* Card 2: Theme & Colors */}
       <div className="rounded-lg border bg-card p-6">
-        <CardHeader
-          icon={<Palette className="h-5 w-5" />}
-          title="Theme & Colors"
-          cardKey="theme"
-        />
+        <CardHeader icon={<Palette className="h-5 w-5" />} title="Theme & Colors" cardKey="theme" />
         {openCards.theme && (
           <div className="mt-6 space-y-6">
             {/* Theme selection */}
@@ -473,19 +480,19 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
 
             {/* Primary color */}
             <div>
-              <p className="mb-2 text-sm font-medium">Primary Color</p>
-              <div className="flex items-center gap-3">
+              <Label>Primary Color</Label>
+              <div className="flex items-center gap-3 mt-1">
                 <input
                   type="color"
                   value={primaryColor}
                   onChange={(e) => handlePrimaryColorChange(e.target.value)}
                   className="h-10 w-10 cursor-pointer rounded-lg border border-border bg-background"
                 />
-                <input
+                <Input
                   type="text"
                   value={primaryColor}
                   onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-32 font-mono"
+                  className="w-32 font-mono"
                   maxLength={7}
                 />
               </div>
@@ -521,24 +528,28 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
         {openCards.font && (
           <div className="mt-6 space-y-4">
             <div>
-              <p className="mb-2 text-sm font-medium">Font Family</p>
-              <select
+              <Label>Font Family</Label>
+              <Select
                 value={fontUrl ? '__custom__' : fontFamily}
-                onChange={(e) => {
-                  if (e.target.value === '__custom__') return;
-                  handleFontFamilyChange(e.target.value);
+                onValueChange={(value) => {
+                  if (value === '__custom__') return;
+                  handleFontFamilyChange(value);
                 }}
                 disabled={!!fontUrl}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-full"
               >
-                <option value="">System Default</option>
-                {GOOGLE_FONTS.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-                {fontUrl && <option value="__custom__">Custom Font</option>}
-              </select>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="System Default" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">System Default</SelectItem>
+                  {GOOGLE_FONTS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                  {fontUrl && <SelectItem value="__custom__">Custom Font</SelectItem>}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Custom font upload */}
@@ -555,20 +566,21 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
                 <div className="flex items-center gap-3 rounded-lg border px-3 py-2">
                   <Type className="h-4 w-4 text-muted-foreground" />
                   <span className="flex-1 truncate text-sm">{fontFamily || 'Custom font'}</span>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={handleRemoveCustomFont}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               ) : (
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
                   onClick={() => fontInputRef.current?.click()}
                   disabled={uploading === 'font'}
-                  className="flex items-center gap-2 rounded-lg border-2 border-dashed border-border px-4 py-4 text-sm text-muted-foreground hover:border-primary/50 hover:bg-muted/50 transition-colors w-full justify-center"
+                  className="flex items-center justify-center gap-2 border-dashed h-auto py-4 w-full"
                 >
                   {uploading === 'font' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -578,7 +590,7 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
                       <span>Upload .woff2 file</span>
                     </>
                   )}
-                </button>
+                </Button>
               )}
             </div>
 
@@ -612,43 +624,43 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
         {openCards.testimonial && (
           <div className="mt-6 space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium">Quote</label>
-              <textarea
+              <Label>Quote</Label>
+              <Textarea
                 rows={3}
                 value={testimonial.quote}
                 onChange={(e) => handleTestimonialChange('quote', e.target.value)}
                 placeholder="What your client said about working with you..."
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-full resize-none"
+                className="mt-1 resize-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Author</label>
-              <input
+              <Label>Author</Label>
+              <Input
                 type="text"
                 value={testimonial.author || ''}
                 onChange={(e) => handleTestimonialChange('author', e.target.value)}
                 placeholder="Jane Smith"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-full"
+                className="mt-1"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Role</label>
-              <input
+              <Label>Role</Label>
+              <Input
                 type="text"
                 value={testimonial.role || ''}
                 onChange={(e) => handleTestimonialChange('role', e.target.value)}
                 placeholder="CEO at Acme Inc."
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-full"
+                className="mt-1"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Result</label>
-              <input
+              <Label>Result</Label>
+              <Input
                 type="text"
                 value={testimonial.result || ''}
                 onChange={(e) => handleTestimonialChange('result', e.target.value)}
                 placeholder="2x revenue in 90 days"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-full"
+                className="mt-1"
               />
             </div>
           </div>
@@ -665,13 +677,13 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
         {openCards.steps && (
           <div className="mt-6 space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium">Heading</label>
-              <input
+              <Label>Heading</Label>
+              <Input
                 type="text"
                 value={stepsData.heading || ''}
                 onChange={(e) => handleStepsHeadingChange(e.target.value)}
                 placeholder="What Happens Next"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-full"
+                className="mt-1"
               />
             </div>
 
@@ -683,62 +695,53 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
                       {index + 1}
                     </div>
                     <div className="flex-1 space-y-2">
-                      <input
+                      <Input
                         type="text"
                         value={step.title}
                         onChange={(e) => handleStepChange(index, 'title', e.target.value)}
                         placeholder="Step title"
-                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-full"
                       />
-                      <input
+                      <Input
                         type="text"
                         value={step.description}
                         onChange={(e) => handleStepChange(index, 'description', e.target.value)}
                         placeholder="Step description"
-                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-full"
                       />
                     </div>
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => handleRemoveStep(index)}
-                      className="mt-1 text-muted-foreground hover:text-foreground transition-colors"
+                      className="mt-1 text-muted-foreground hover:text-foreground"
                     >
                       <X className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={handleAddStep}
-              className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted transition-colors"
-            >
+            <Button variant="outline" size="sm" onClick={handleAddStep}>
               <Plus className="h-4 w-4" />
               Add Step
-            </button>
+            </Button>
           </div>
         )}
       </div>
 
       {/* Card 6: Website */}
       <div className="rounded-lg border bg-card p-6">
-        <CardHeader
-          icon={<Globe className="h-5 w-5" />}
-          title="Website"
-          cardKey="website"
-        />
+        <CardHeader icon={<Globe className="h-5 w-5" />} title="Website" cardKey="website" />
         {openCards.website && (
           <div className="mt-6 space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium">Website URL</label>
-              <input
+              <Label>Website URL</Label>
+              <Input
                 type="url"
                 value={websiteUrl}
                 onChange={(e) => handleWebsiteUrlChange(e.target.value)}
                 placeholder="https://yourwebsite.com"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm w-full"
+                className="mt-1"
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 Default homepage link shown on thank-you pages. Can be overridden per funnel.
