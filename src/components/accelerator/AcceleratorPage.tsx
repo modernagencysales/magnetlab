@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import AcceleratorChat from './AcceleratorChat';
 import EnrollmentCTA from './EnrollmentCTA';
 import ProgressPanel from './ProgressPanel';
+import { getProgramState } from '@/frontend/api/accelerator';
 import type { ProgramState, ModuleId } from '@/lib/types/accelerator';
 
 // ─── Types ───────────────────────────────────────────────
@@ -25,12 +26,9 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
 
   const loadProgramState = useCallback(async () => {
     try {
-      const res = await fetch('/api/accelerator/program-state');
-      if (res.ok) {
-        const data = await res.json();
-        setEnrolled(data.enrolled ?? false);
-        setProgramState(data.programState ?? null);
-      }
+      const data = await getProgramState();
+      setEnrolled(data.enrolled ?? false);
+      setProgramState(data.programState ?? null);
     } catch (err) {
       console.error('Failed to load program state', err);
       setEnrolled(false);
@@ -60,6 +58,8 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
     return <EnrollmentCTA />;
   }
 
+  const needsOnboarding = enrolled && !programState?.enrollment?.intake_data?.business_description;
+
   return (
     <div className="flex h-full">
       {/* Chat area */}
@@ -69,6 +69,7 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
           onConversationId={setConversationId}
           onStateChange={loadProgramState}
           enrollmentId={programState?.enrollment?.id}
+          needsOnboarding={needsOnboarding}
         />
       </div>
 

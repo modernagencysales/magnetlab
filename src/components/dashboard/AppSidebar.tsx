@@ -26,6 +26,7 @@ import {
   HelpCircle,
   Shield,
   Radio,
+  Rocket,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -89,6 +90,7 @@ const mainNav: NavItem[] = [
   { href: '/automations', label: 'Automations', icon: Bot },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/signals', label: 'Signals', icon: Radio },
+  { href: '/accelerator', label: 'Accelerator', icon: Rocket },
   { href: '/email/flows', label: 'Email', icon: Mail, activePrefix: '/email' },
   { href: '/team', label: 'Team', icon: UsersRound },
 ];
@@ -352,7 +354,9 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
                   <button
                     type="button"
                     onClick={() => {
-                      try { posthog.reset(); } catch {}
+                      try {
+                        posthog.reset();
+                      } catch {}
                       signOut({ callbackUrl: '/login' });
                     }}
                     className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-destructive/10 hover:text-destructive"

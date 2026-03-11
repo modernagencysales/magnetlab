@@ -4,13 +4,11 @@
  *         update_module_progress, search_knowledge, save_intake_data */
 
 import type { SubAgentType } from '@/lib/types/accelerator';
+import type { SopData, UserContext } from './types';
 
 export const ICP_AGENT_TYPE: SubAgentType = 'icp';
 
-export function buildIcpAgentPrompt(
-  sops: Array<{ title: string; content: string; quality_bars: unknown[] }>,
-  userContext: { intake_data: unknown; coaching_mode: string }
-): string {
+export function buildIcpAgentPrompt(sops: SopData[], userContext: UserContext): string {
   return `You are the ICP & Positioning specialist in the GTM Accelerator program.
 
 ## Your Role

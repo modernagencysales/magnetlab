@@ -3,15 +3,16 @@
  *  Routes through provider registry to determine setup approach.
  *  Never imports NextRequest, NextResponse, or cookies. */
 
-import type { SubAgentType, IntakeData } from '@/lib/types/accelerator';
+import type { SubAgentType } from '@/lib/types/accelerator';
+import type { SopData, UserContext } from './types';
 
 export const OUTREACH_AGENT_TYPE: SubAgentType = 'outreach';
 
 // ─── Prompt Builder ───────────────────────────────────────
 
 export function buildOutreachAgentPrompt(
-  sops: Array<{ title: string; content: string; quality_bars: unknown[] }>,
-  userContext: { intake_data: IntakeData | null; coaching_mode: string },
+  sops: SopData[],
+  userContext: UserContext,
   focus: 'linkedin' | 'email'
 ): string {
   const coachingSection =

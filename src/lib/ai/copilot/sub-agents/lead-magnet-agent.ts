@@ -5,13 +5,11 @@
  *         update_module_progress */
 
 import type { SubAgentType } from '@/lib/types/accelerator';
+import type { SopData, UserContext } from './types';
 
 export const LEAD_MAGNET_AGENT_TYPE: SubAgentType = 'lead_magnet';
 
-export function buildLeadMagnetAgentPrompt(
-  sops: Array<{ title: string; content: string; quality_bars: unknown[] }>,
-  userContext: { intake_data: unknown; coaching_mode: string; has_brain_content: boolean }
-): string {
+export function buildLeadMagnetAgentPrompt(sops: SopData[], userContext: UserContext): string {
   return `You are the Lead Magnet specialist in the GTM Accelerator program.
 
 ## Your Role

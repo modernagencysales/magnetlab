@@ -16,6 +16,7 @@ export interface AcceleratorChatProps {
   onConversationId: (id: string) => void;
   onStateChange?: () => void;
   enrollmentId?: string;
+  needsOnboarding?: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────
@@ -25,6 +26,7 @@ export default function AcceleratorChat({
   onConversationId,
   onStateChange,
   enrollmentId,
+  needsOnboarding,
 }: AcceleratorChatProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -35,6 +37,7 @@ export default function AcceleratorChat({
     onConversationId,
     onStateChange,
     enrollmentId,
+    needsOnboarding,
   });
 
   const scrollToBottom = useCallback(() => {

@@ -4,13 +4,11 @@
  *         update_module_progress */
 
 import type { SubAgentType } from '@/lib/types/accelerator';
+import type { SopData, UserContext } from './types';
 
 export const CONTENT_AGENT_TYPE: SubAgentType = 'content';
 
-export function buildContentAgentPrompt(
-  sops: Array<{ title: string; content: string; quality_bars: unknown[] }>,
-  userContext: { intake_data: unknown; coaching_mode: string; has_brain_content: boolean }
-): string {
+export function buildContentAgentPrompt(sops: SopData[], userContext: UserContext): string {
   return `You are the Content Engine specialist in the GTM Accelerator program.
 
 ## Your Role

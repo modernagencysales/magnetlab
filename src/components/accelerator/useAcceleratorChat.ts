@@ -2,7 +2,7 @@
  *  and sub-agent tracking for the AcceleratorChat component. Never imports
  *  NextRequest, NextResponse, or cookies. */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -23,6 +23,7 @@ interface UseAcceleratorChatOptions {
   onConversationId: (id: string) => void;
   onStateChange?: () => void;
   enrollmentId?: string;
+  needsOnboarding?: boolean;
 }
 
 interface UseAcceleratorChatReturn {
@@ -72,6 +73,7 @@ export function useAcceleratorChat({
   onConversationId,
   onStateChange,
   enrollmentId,
+  needsOnboarding,
 }: UseAcceleratorChatOptions): UseAcceleratorChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -241,6 +243,13 @@ export function useAcceleratorChat({
     },
     [isLoading, conversationId, onConversationId, onStateChange, enrollmentId]
   );
+
+  useEffect(() => {
+    if (needsOnboarding && messages.length === 0 && !isLoading) {
+      sendMessage("I just enrolled in the GTM Accelerator. Let's start with my onboarding intake.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsOnboarding]);
 
   const handleFeedback = useCallback((_rating: 'positive' | 'negative', _note?: string) => {
     // Feedback handling — can be expanded to POST /api/copilot/conversations/:id/feedback
