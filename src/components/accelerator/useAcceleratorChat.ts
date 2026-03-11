@@ -2,9 +2,10 @@
  *  and sub-agent tracking for the AcceleratorChat component. Never imports
  *  NextRequest, NextResponse, or cookies. */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ModuleId } from '@/lib/types/accelerator';
 import { MODULE_NAMES } from '@/lib/types/accelerator';
+import { getConversation } from '@/frontend/api/accelerator';
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -88,6 +89,34 @@ export function useAcceleratorChat({
   const [subAgentActive, setSubAgentActive] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState(false);
   const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);
+  const historyLoadedRef = useRef(false);
+
+  // Load conversation history on mount when conversationId is available
+  useEffect(() => {
+    if (!conversationId || historyLoadedRef.current) return;
+    historyLoadedRef.current = true;
+
+    getConversation(conversationId)
+      .then(({ messages: dbMessages }) => {
+        if (!dbMessages?.length) return;
+        const hydrated: ChatMessage[] = dbMessages
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .filter((m) => m.content?.trim())
+          .map((m) => ({
+            id: m.id,
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+            createdAt: m.created_at,
+          }));
+        if (hydrated.length > 0) {
+          setMessages(hydrated);
+        }
+      })
+      .catch(() => {
+        // Conversation may have been deleted — start fresh
+        historyLoadedRef.current = false;
+      });
+  }, [conversationId]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -261,7 +290,8 @@ export function useAcceleratorChat({
   );
 
   useEffect(() => {
-    if (needsOnboarding && messages.length === 0 && !isLoading) {
+    // Don't auto-send onboarding if we're loading an existing conversation
+    if (needsOnboarding && messages.length === 0 && !isLoading && !conversationId) {
       sendMessage("I just enrolled in the GTM Accelerator. Let's start with my onboarding intake.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

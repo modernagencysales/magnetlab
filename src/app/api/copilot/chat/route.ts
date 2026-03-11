@@ -6,6 +6,8 @@ import type { ActionContext } from '@/lib/actions';
 import { logError } from '@/lib/utils/logger';
 import { detectCorrectionSignal, extractMemories } from '@/lib/ai/copilot/memory-extractor';
 import { hasAcceleratorAccess } from '@/lib/services/accelerator-enrollment';
+import { getEnrollmentByUserId } from '@/lib/services/accelerator-program';
+import { checkUsageAllocation, trackUsageEvent } from '@/lib/services/accelerator-usage';
 import { buildClaudeMessages } from '@/lib/ai/copilot/chat-history';
 import type { DbMessage } from '@/lib/ai/copilot/chat-history';
 import { runAgentLoop } from '@/lib/ai/copilot/chat-agent-loop';
@@ -62,6 +64,25 @@ export async function POST(req: NextRequest) {
           }),
           { status: 403 }
         );
+      }
+    }
+
+    // ─── Usage Quota Enforcement ──────────────────────────
+    let enrollmentId: string | undefined;
+    if (isAcceleratorRequest && cachedEnrollmentCheck) {
+      const enrollment = await getEnrollmentByUserId(userId);
+      if (enrollment) {
+        enrollmentId = enrollment.id;
+        const { withinLimits, usage, limits } = await checkUsageAllocation(enrollment.id);
+        if (!withinLimits) {
+          return new Response(
+            JSON.stringify({
+              error: `Monthly usage limit reached (${usage.sessions}/${limits.sessions} sessions, ${usage.deliverables}/${limits.deliverables} deliverables). Resets next month.`,
+              code: 'USAGE_LIMIT_EXCEEDED',
+            }),
+            { status: 429 }
+          );
+        }
       }
     }
 
@@ -177,6 +198,13 @@ export async function POST(req: NextRequest) {
 
           // Update conversation timestamp
           await touchConversation(conversationId);
+
+          // Track usage for accelerator sessions (non-fatal)
+          if (enrollmentId) {
+            trackUsageEvent(enrollmentId, 'api_call', { conversationId, iterations }).catch((err) =>
+              logError('copilot/chat', err, { step: 'usage_tracking' })
+            );
+          }
 
           send('done', { conversationId, iterations });
         } catch (error) {

@@ -19,11 +19,21 @@ interface AcceleratorPageProps {
 
 // ─── Component ───────────────────────────────────────────
 
+const CONVERSATION_STORAGE_KEY = 'accelerator_conversation_id';
+
 export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProps) {
   const [programState, setProgramState] = useState<ProgramState | null>(null);
   const [enrolled, setEnrolled] = useState<boolean | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(CONVERSATION_STORAGE_KEY);
+  });
   const [error, setError] = useState<string | null>(null);
+
+  const handleConversationId = useCallback((id: string) => {
+    setConversationId(id);
+    localStorage.setItem(CONVERSATION_STORAGE_KEY, id);
+  }, []);
 
   const loadProgramState = useCallback(async () => {
     try {
@@ -96,7 +106,7 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
       <div className="flex-1 overflow-hidden">
         <AcceleratorChat
           conversationId={conversationId}
-          onConversationId={setConversationId}
+          onConversationId={handleConversationId}
           onStateChange={loadProgramState}
           enrollmentId={programState?.enrollment?.id}
           needsOnboarding={needsOnboarding}
