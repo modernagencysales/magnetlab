@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-03-11T20:12:54.892Z",
+  "model": "claude-sonnet-4-20250514",
+  "summary": {
+    "avgWeighted": 95,
+    "avgRaw": 94,
+    "passCount": 1,
+    "failCount": 0
+  },
+  "results": [
+    {
+      "scenarioId": "onboard-1",
+      "scenarioName": "New enrollment — first message",
+      "overallScore": 94,
+      "weightedScore": 95,
+      "criteria": [
+        {
+          "criterion": "welcome",
+          "description": "Welcomes the user warmly and sets expectations",
+          "weight": 3,
+          "score": 9,
+          "reasoning": "Warm, enthusiastic greeting with emoji and clear positioning as a dedicated GTM coach sets a welcoming tone immediately."
+        },
+        {
+          "criterion": "asks_question",
+          "description": "Asks an intake question (what they sell, to whom, etc.)",
+          "weight": 5,
+          "score": 10,
+          "reasoning": "Asks a core intake question directly aligned with onboarding needs (what they sell and to whom) with helpful context and example."
+        },
+        {
+          "criterion": "one_at_a_time",
+          "description": "Asks ONE question at a time, not a wall of questions",
+          "weight": 4,
+          "score": 10,
+          "reasoning": "Despite mentioning 5 total questions, only one question is presented here, respecting the one-at-a-time principle perfectly."
+        },
+        {
+          "criterion": "coach_tone",
+          "description": "Sounds like a knowledgeable coach, not a generic chatbot",
+          "weight": 3,
+          "score": 9,
+          "reasoning": "Uses confident, experienced language ('I have your entire program loaded,' 'heavy lifting') that conveys expertise while remaining approachable and collaborative."
+        },
+        {
+          "criterion": "action_oriented",
+          "description": "Conveys that they will get a win today",
+          "weight": 2,
+          "score": 9,
+          "reasoning": "Explicitly promises 'a tangible win today' and emphasizes 'actual deliverables you can use immediately,' strongly conveying action focus."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "This is an excellent onboarding response that successfully balances warmth with competence. The coach establishes credibility while setting achievable expectations, asks the right foundational question without overwhelming the user, and maintains an encouraging, knowledgeable tone throughout. The promise of immediate value delivery aligns perfectly with the guide_me coaching mode and creates clear momentum for the engagement."
+    }
+  ],
+  "totalTokens": {
+    "input": 506,
+    "output": 196
+  }
+}

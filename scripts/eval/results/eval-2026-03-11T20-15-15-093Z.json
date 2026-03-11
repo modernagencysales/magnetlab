@@ -1,0 +1,469 @@
+{
+  "timestamp": "2026-03-11T20:15:15.093Z",
+  "model": "claude-sonnet-4-20250514",
+  "summary": {
+    "avgWeighted": 76,
+    "avgRaw": 75,
+    "passCount": 8,
+    "failCount": 1
+  },
+  "results": [
+    {
+      "scenarioId": "onboard-1",
+      "scenarioName": "New enrollment — first message",
+      "overallScore": 90,
+      "weightedScore": 92,
+      "criteria": [
+        {
+          "criterion": "welcome",
+          "description": "Welcomes the user warmly and sets expectations",
+          "weight": 3,
+          "score": 9,
+          "reasoning": "Warm greeting with emoji, clear role introduction, and explicit expectation-setting about customization and results delivery creates an inviting onboarding experience."
+        },
+        {
+          "criterion": "asks_question",
+          "description": "Asks an intake question (what they sell, to whom, etc.)",
+          "weight": 5,
+          "score": 10,
+          "reasoning": "Directly asks the core intake question about what they sell and to whom, which is exactly what's needed to begin GTM customization."
+        },
+        {
+          "criterion": "one_at_a_time",
+          "description": "Asks ONE question at a time, not a wall of questions",
+          "weight": 4,
+          "score": 10,
+          "reasoning": "Presents exactly one question despite it having two components (product and audience), framed as a single cohesive inquiry with appropriate guidance to avoid overthinking."
+        },
+        {
+          "criterion": "coach_tone",
+          "description": "Sounds like a knowledgeable coach, not a generic chatbot",
+          "weight": 3,
+          "score": 8,
+          "reasoning": "Confident, direct language ('do most of the heavy lifting,' 'get you winning results fast') establishes authority and personality beyond generic chatbot responses."
+        },
+        {
+          "criterion": "action_oriented",
+          "description": "Conveys that they will get a win today",
+          "weight": 2,
+          "score": 8,
+          "reasoning": "Strong language about immediate results ('starting today,' 'jump right into') and building their 'go-to-market machine' conveys momentum and urgency for quick wins."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "This is an excellent onboarding response that effectively balances warmth with action orientation. The coach establishes credibility and sets clear expectations while immediately driving toward the intake process. The single well-crafted question respects the user's time while gathering essential information. The tone is conversational and confident without being generic, and the messaging about fast results and heavy lifting creates appropriate urgency. Minor refinement could address whether 'doing most of the heavy lifting' sets realistic expectations, but overall this response strongly executes the onboarding objectives."
+    },
+    {
+      "scenarioId": "onboard-2",
+      "scenarioName": "Intake response — business description",
+      "overallScore": 88,
+      "weightedScore": 88,
+      "criteria": [
+        {
+          "criterion": "acknowledges_business",
+          "description": "Acknowledges the specific business (video production, B2B SaaS)",
+          "weight": 4,
+          "score": 9,
+          "reasoning": "Directly restates the specific business model (boutique video production for B2B SaaS, Series A-C) and acknowledges the revenue figure, demonstrating clear comprehension."
+        },
+        {
+          "criterion": "next_question",
+          "description": "Asks the next intake question (LinkedIn posting, channels, goals)",
+          "weight": 5,
+          "score": 9,
+          "reasoning": "Asks a concrete, relevant intake question about LinkedIn posting frequency with clear multiple-choice options that directly inform content strategy decisions."
+        },
+        {
+          "criterion": "no_premature_advice",
+          "description": "Does NOT jump into giving advice before completing intake",
+          "weight": 3,
+          "score": 9,
+          "reasoning": "Resists jumping into recommendations; instead frames the question as diagnostic to determine where to focus, maintaining proper intake sequencing."
+        },
+        {
+          "criterion": "specific_understanding",
+          "description": "Reflects understanding of their niche (not generic acknowledgment)",
+          "weight": 4,
+          "score": 8,
+          "reasoning": "Shows understanding by connecting the question to content strategy for their niche and positioning it as relevant to their specific business, though could have demonstrated deeper niche knowledge of video production GTM challenges."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "This is a high-quality intake response that successfully balances warmth and structure. It acknowledges the user's specific business details, avoids premature advice-giving, and asks a purposeful diagnostic question that logically follows their business description. The response establishes clear expectations about the coaching process while maintaining appropriate boundaries by completing intake before diving into strategies. The only minor opportunity for improvement would be reflecting slightly deeper familiarity with video production agency-specific GTM challenges, though the current level of specificity is solid."
+    },
+    {
+      "scenarioId": "coach-m0-1",
+      "scenarioName": "ICP module — getting started",
+      "overallScore": 68,
+      "weightedScore": 66,
+      "criteria": [
+        {
+          "criterion": "references_sop",
+          "description": "References the ICP/positioning SOP or Caroline Framework approach",
+          "weight": 5,
+          "score": 2,
+          "reasoning": "No explicit reference to ICP/positioning SOP or Caroline Framework; the structure presented (company characteristics, content needs, decision-making) appears ad-hoc rather than framework-based."
+        },
+        {
+          "criterion": "uses_intake_data",
+          "description": "Uses the intake data (video production, SaaS) to personalize guidance",
+          "weight": 5,
+          "score": 9,
+          "reasoning": "Excellent personalization using specific intake details (B2B SaaS, Series A-C, video production agency) with relevant examples like product demos, customer success stories, and appropriate budget ranges ($10K-100K+)."
+        },
+        {
+          "criterion": "specific_next_step",
+          "description": "Gives a clear, specific next step (not vague \"work on ICP\")",
+          "weight": 4,
+          "score": 8,
+          "reasoning": "Provides three concrete, sequenced questions about sweet spot size, content type profitability, and decision-maker identification that directly guide the user toward building their ICP."
+        },
+        {
+          "criterion": "offers_to_build",
+          "description": "Offers to help build/draft the ICP (matches guide_me coaching mode)",
+          "weight": 3,
+          "score": 9,
+          "reasoning": "Explicitly offers to 'craft your specific ICP profile' and 'build out the detailed ICP template' based on user input, aligning well with guide_me coaching mode."
+        },
+        {
+          "criterion": "quality_bar_aware",
+          "description": "Mentions or implies what \"good\" looks like (quality bar awareness)",
+          "weight": 2,
+          "score": 6,
+          "reasoning": "Implies quality awareness through phrases like 'rock-solid' and 'nail down' and acknowledges practical constraints (too small = no budget, too big = complex procurement), but doesn't explicitly articulate what a complete/excellent ICP should accomplish."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "The response is highly personalized, action-oriented, and well-structured with strong intake data integration and clear next steps. The coaching approach effectively guides the user toward building their ICP through targeted questions. However, it lacks explicit grounding in a specific SOP or framework (like the Caroline Framework), which is a notable gap for a response that should demonstrate methodology expertise. The quality bar could be more explicit about what success looks like. Overall, this is a solid, practically useful coaching response that falls short of excellence due to missing framework-based foundations."
+    },
+    {
+      "scenarioId": "coach-m1-1",
+      "scenarioName": "Lead Magnet module — ideation",
+      "overallScore": 88,
+      "weightedScore": 89,
+      "criteria": [
+        {
+          "criterion": "multiple_ideas",
+          "description": "Generates or offers to generate multiple lead magnet concepts (not just one)",
+          "weight": 5,
+          "score": 9,
+          "reasoning": "Four distinct lead magnet concepts are provided, giving the user substantial variety to choose from and explore."
+        },
+        {
+          "criterion": "icp_relevant",
+          "description": "Ideas are specific to VP Marketing at SaaS (not generic lead magnets)",
+          "weight": 5,
+          "score": 9,
+          "reasoning": "Every idea directly addresses pain points specific to VPs of Marketing at Series B SaaS companies (ROI proof, scaling, board reporting, conversion) rather than generic video content ideas."
+        },
+        {
+          "criterion": "format_variety",
+          "description": "Suggests different formats (guide, checklist, template, case study, etc.)",
+          "weight": 3,
+          "score": 9,
+          "reasoning": "Response includes diverse formats: interactive calculator, templates/calendar, guide/framework with checklist, and case study teardowns—covering at least four distinct deliverable types."
+        },
+        {
+          "criterion": "explains_why",
+          "description": "Explains why each idea would resonate with the ICP",
+          "weight": 3,
+          "score": 8,
+          "reasoning": "The response opens with primary pain points and each idea implicitly connects to those pain points, though explicit per-idea reasoning (e.g., 'this resonates because...') could be slightly more detailed."
+        },
+        {
+          "criterion": "actionable",
+          "description": "Offers to build one immediately or asks which to pursue",
+          "weight": 4,
+          "score": 9,
+          "reasoning": "Response ends with a direct question asking which idea resonates and invites the user to either select one or refine further, creating clear next steps toward execution."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "This is a high-quality coaching response that demonstrates strong understanding of the ICP and delivers substantial value immediately. The coach provides multiple well-researched ideas grounded in real VP of Marketing pain points, uses varied formats to increase appeal, and closes with an engaging question that invites refinement rather than dictation. The only minor gap is that each idea could include one additional sentence explaining the psychological or business reason why that specific concept would convert well for the target audience. Overall, this response effectively guides without overwhelming and sets up the next coaching conversation naturally."
+    },
+    {
+      "scenarioId": "coach-m4-1",
+      "scenarioName": "Cold Email module — sequence help",
+      "overallScore": 2,
+      "weightedScore": 2,
+      "criteria": [
+        {
+          "criterion": "drafts_emails",
+          "description": "Actually drafts email content (do_it mode = just build it)",
+          "weight": 5,
+          "score": 0,
+          "reasoning": "No email content was drafted; the response asks clarifying questions instead of delivering the requested output."
+        },
+        {
+          "criterion": "three_emails",
+          "description": "Provides all 3 emails as requested (not just one)",
+          "weight": 4,
+          "score": 0,
+          "reasoning": "Zero emails provided; the response defers to a future action contingent on clarification."
+        },
+        {
+          "criterion": "personalized",
+          "description": "Emails reference video production / SaaS marketing (not generic)",
+          "weight": 5,
+          "score": 0,
+          "reasoning": "No email content exists to evaluate for personalization to video production or SaaS marketing."
+        },
+        {
+          "criterion": "best_practices",
+          "description": "Follows cold email best practices (short, clear CTA, no attachments)",
+          "weight": 3,
+          "score": 0,
+          "reasoning": "No emails were drafted to assess against cold email best practices."
+        },
+        {
+          "criterion": "subject_lines",
+          "description": "Includes subject lines for each email",
+          "weight": 2,
+          "score": 0,
+          "reasoning": "No subject lines provided since no emails were drafted."
+        },
+        {
+          "criterion": "do_it_mode",
+          "description": "Executes directly without over-explaining (matches do_it coaching mode)",
+          "weight": 4,
+          "score": 1,
+          "reasoning": "The response fundamentally violates do_it mode by asking questions and delaying execution rather than immediately drafting the requested sequence."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "This response fails to execute the core coaching request. While the clarifying question about audience targeting shows understanding of the user's context and demonstrates good intention, do_it mode explicitly calls for immediate delivery of the requested output without unnecessary gatekeeping. The AI should have either (1) proceeded with drafting based on the stated profile information, or (2) asked the clarifying question AND immediately drafted a sequence as a working version. Instead, it paused execution entirely, creating friction and delaying value delivery. This represents a fundamental misalignment with the do_it coaching mode specification."
+    },
+    {
+      "scenarioId": "coach-teach-1",
+      "scenarioName": "Teach Me mode — explain TAM building",
+      "overallScore": 86,
+      "weightedScore": 86,
+      "criteria": [
+        {
+          "criterion": "explains_why",
+          "description": "Explains WHY TAM building matters (not just what to do)",
+          "weight": 5,
+          "score": 9,
+          "reasoning": "Clearly articulates three compelling reasons (resource allocation, investor confidence, strategic decision-making) with a memorable metaphor (market GPS) that makes the importance visceral and concrete."
+        },
+        {
+          "criterion": "teaches_concept",
+          "description": "Teaches the concept step-by-step (matches teach_me mode)",
+          "weight": 5,
+          "score": 8,
+          "reasoning": "Provides a structured step-by-step breakdown starting with ideal customer profile, moving to economics, and explaining why bottom-up is superior for service businesses; methodology is logical and pedagogically sound."
+        },
+        {
+          "criterion": "asks_understanding",
+          "description": "Checks understanding or asks what makes sense for their case",
+          "weight": 4,
+          "score": 9,
+          "reasoning": "Ends with three specific, targeted questions about vertical focus and ACV that directly probe their situation and demonstrate genuine interest in customizing the guidance rather than generic instruction."
+        },
+        {
+          "criterion": "specific_to_business",
+          "description": "Relates TAM to their video production agency",
+          "weight": 4,
+          "score": 8,
+          "reasoning": "Consistently references their video production agency context and frames TAM building specifically for service businesses; recommends bottom-up approach as more appropriate for their model rather than generic advice."
+        },
+        {
+          "criterion": "no_rushing",
+          "description": "Does not rush to execution — teaches first",
+          "weight": 3,
+          "score": 9,
+          "reasoning": "Deliberately prioritizes teaching the concept and rationale before moving to execution; stops at the inquiry phase rather than rushing into TAM calculation, respecting the 'teach me' mode requirement."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "This is a high-quality coaching response that effectively balances conceptual understanding with practical relevance. The AI explains the 'why' compellingly, teaches the methodology step-by-step without rushing to execution, personalizes the guidance to the video production agency context, and concludes with thoughtful follow-up questions that invite deeper dialogue. The tone is collaborative rather than prescriptive, and the language is accessible while maintaining professional depth. Minor areas for enhancement could include acknowledging potential challenges in TAM building or offering alternative frameworks, but these are not deficiencies."
+    },
+    {
+      "scenarioId": "review-1",
+      "scenarioName": "Review queue — presents pending items",
+      "overallScore": 73,
+      "weightedScore": 79,
+      "criteria": [
+        {
+          "criterion": "mentions_queue",
+          "description": "Tells user about the 2 pending review items",
+          "weight": 5,
+          "score": 10,
+          "reasoning": "Response immediately and clearly states there are 2 pending review items with a prominent header and checkmark indicators."
+        },
+        {
+          "criterion": "presents_items",
+          "description": "Presents the items for review (or offers to fetch them)",
+          "weight": 4,
+          "score": 9,
+          "reasoning": "Both items are comprehensively presented with titles, descriptions, key highlights, and relevant details that give the user full context without requiring them to fetch additional information."
+        },
+        {
+          "criterion": "clear_actions",
+          "description": "Explains what approve/reject does and guides the decision",
+          "weight": 4,
+          "score": 6,
+          "reasoning": "Response indicates next steps (approve to move to landing page creation) but lacks explicit explanation of what happens if items are rejected or how to formally approve them, creating some ambiguity around the decision mechanics."
+        },
+        {
+          "criterion": "priority_guidance",
+          "description": "Suggests which to review first or why",
+          "weight": 2,
+          "score": 4,
+          "reasoning": "Response asks user whether to walk through either item first or review both, which is collaborative but doesn't provide coaching guidance on which should logically be reviewed first or why."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "This is a well-structured and user-friendly response that excels at queue notification and item presentation. The deliverables are clearly described with actionable context, and the tone is encouraging and conversational. However, the response falls short on coaching quality by not guiding the user through decision-making logic or explaining approval/rejection mechanics. A stronger response would suggest reviewing the Strategy first (as foundational) before the Content, and explicitly explain what approval triggers next."
+    },
+    {
+      "scenarioId": "edge-1",
+      "scenarioName": "User tries to skip ahead",
+      "overallScore": 86,
+      "weightedScore": 86,
+      "criteria": [
+        {
+          "criterion": "respects_order",
+          "description": "Explains that modules must be completed in order",
+          "weight": 5,
+          "score": 9,
+          "reasoning": "Clearly and firmly establishes that Module 0 is a prerequisite that must be completed before Module 2, with explicit statement 'must be completed before we unlock Module 2'."
+        },
+        {
+          "criterion": "empathetic",
+          "description": "Acknowledges the user frustration / desire to move fast",
+          "weight": 4,
+          "score": 8,
+          "reasoning": "Opens with 'I understand you're eager to get to cold email' acknowledging the user's frustration, and frames the boundary-setting as being in service of their success rather than arbitrary gatekeeping."
+        },
+        {
+          "criterion": "explains_why",
+          "description": "Explains WHY the order matters (ICP feeds everything downstream)",
+          "weight": 4,
+          "score": 9,
+          "reasoning": "Provides multiple compelling reasons why ICP matters (feeds cold email personalization, avoids broad targeting, improves conversion rates), with concrete examples of what they'll discover."
+        },
+        {
+          "criterion": "offers_speed",
+          "description": "Offers to speed through the current module quickly",
+          "weight": 3,
+          "score": 9,
+          "reasoning": "Explicitly offers to move efficiently through the module ('rapid ICP definition process', '20-30 minutes', 'I'll do most of the heavy lifting'), directly addressing the user's desire to move fast."
+        },
+        {
+          "criterion": "not_robotic",
+          "description": "Does not sound like a rules-enforcing robot",
+          "weight": 3,
+          "score": 8,
+          "reasoning": "Uses conversational language ('I've seen countless founders'), acknowledges a real pattern ('The 'I already know my audience' trap is real'), and ends with an engaging question rather than a system instruction."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "This is a high-quality coaching response that successfully balances firm boundary-setting with genuine empathy and motivation. The coach respects the required module order while acknowledging the user's frustration, explains the downstream value proposition compellingly, and offers concrete speed options to reduce friction. The tone feels like an experienced mentor pushing back on a coachable moment rather than a rigid system enforcer. Minor opportunity: could have briefly validated one specific aspect of their current knowledge to feel slightly more personalized."
+    },
+    {
+      "scenarioId": "edge-2",
+      "scenarioName": "Off-topic question",
+      "overallScore": 83,
+      "weightedScore": 83,
+      "criteria": [
+        {
+          "criterion": "answers_helpfully",
+          "description": "Gives a helpful answer (does not refuse to engage)",
+          "weight": 4,
+          "score": 8,
+          "reasoning": "The response engages with the CRM question substantively by explaining why ICP definition should come first and how it impacts CRM selection, rather than refusing or dismissing the inquiry."
+        },
+        {
+          "criterion": "relevant_advice",
+          "description": "Gives relevant CRM advice for a small agency",
+          "weight": 3,
+          "score": 7,
+          "reasoning": "Provides contextually relevant guidance by identifying key factors (customer contact preferences, sales complexity, team size, budget) that should drive CRM selection for a small agency, though stops short of detailed HubSpot vs Pipedrive comparison."
+        },
+        {
+          "criterion": "redirects_gracefully",
+          "description": "Gently steers back to the accelerator module work",
+          "weight": 4,
+          "score": 9,
+          "reasoning": "Skillfully bridges the off-topic question back to Module 0 by reframing the CRM decision as dependent on ICP completion, making the redirection feel logical rather than arbitrary."
+        },
+        {
+          "criterion": "not_dismissive",
+          "description": "Does not dismiss the question as off-topic",
+          "weight": 3,
+          "score": 9,
+          "reasoning": "Opens with acknowledgment ('I understand you're thinking about CRM selection'), validates the question's importance, and frames it as solvable rather than off-limits or irrelevant."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "This is a high-quality coaching response that successfully manages an off-topic question without dismissing it. The coach demonstrates expertise by connecting the CRM question to current module work, explaining the logical dependency between ICP definition and tool selection. The response uses positive framing ('this is actually perfect timing') and provides concrete reasoning for why the redirection matters. The three follow-up questions are targeted and would effectively guide the user back into productive module work. The main minor limitation is that it doesn't provide a quick comparative answer to HubSpot vs Pipedrive, though this omission is defensible given the coaching strategy."
+    },
+    {
+      "scenarioId": "quality-1",
+      "scenarioName": "LinkedIn content coaching",
+      "overallScore": 87,
+      "weightedScore": 87,
+      "criteria": [
+        {
+          "criterion": "drafts_post",
+          "description": "Produces an actual LinkedIn post draft (not just advice)",
+          "weight": 5,
+          "score": 9,
+          "reasoning": "Delivers a complete, polished LinkedIn post draft with clear structure, formatting, and ready-to-publish quality rather than just conceptual advice."
+        },
+        {
+          "criterion": "hook",
+          "description": "Opens with a strong hook that would stop scrolling",
+          "weight": 4,
+          "score": 9,
+          "reasoning": "Opens with a compelling statistic (95% of B2B buyers watch video) paired with a contrasting fact about underinvestment, creating immediate cognitive friction that stops scrolling."
+        },
+        {
+          "criterion": "expertise_voice",
+          "description": "Positions user as an expert (not a salesperson)",
+          "weight": 5,
+          "score": 9,
+          "reasoning": "Positions the user as an experienced consultant working with VP Marketing teams, uses insider observations ('here's the disconnect I see'), and avoids any salesy language or self-promotion."
+        },
+        {
+          "criterion": "specific_insights",
+          "description": "Includes specific insights about video in B2B SaaS (not generic)",
+          "weight": 4,
+          "score": 8,
+          "reasoning": "Includes concrete B2B SaaS-specific insights (competitor engagement rates, sales team close rates, budget allocation patterns) with specific metrics rather than generic content advice."
+        },
+        {
+          "criterion": "cta",
+          "description": "Includes a conversational CTA (not \"book a call\" but engagement-driving)",
+          "weight": 3,
+          "score": 9,
+          "reasoning": "Uses a genuine engagement question ('What's been your experience...?') that invites conversation rather than a transactional ask like booking a call or downloading something."
+        },
+        {
+          "criterion": "appropriate_length",
+          "description": "LinkedIn-appropriate length (not a blog post)",
+          "weight": 2,
+          "score": 8,
+          "reasoning": "Post fits LinkedIn's optimal length for algorithm performance with good white space through emojis and formatting; substantial enough to deliver value without becoming blog-post territory."
+        }
+      ],
+      "mustIncludePass": true,
+      "mustNotIncludePass": true,
+      "judgeNotes": "This is a high-quality coaching response that delivers exactly what was requested. The AI provides a production-ready LinkedIn post draft that demonstrates strong copywriting fundamentals: a provocative hook, credibility positioning, specific industry insights, and a genuine engagement CTA. The response goes beyond the draft itself by explaining the strategic approach upfront and inviting collaborative refinement, which enhances the coaching value. The tone is expert and insider-focused rather than salesy, and the insights feel authentic to B2B SaaS marketing realities. Minor areas for perfection: the statistics, while realistic, are acknowledged as general rather than cited, which is honest but could be perceived as slightly less credible by discerning readers."
+    }
+  ],
+  "totalTokens": {
+    "input": 3243,
+    "output": 2910
+  }
+}
