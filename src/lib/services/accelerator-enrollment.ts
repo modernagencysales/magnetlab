@@ -7,6 +7,7 @@ import { getSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError } from '@/lib/utils/logger';
 import type { ProgramEnrollment, ModuleId, ModuleStatus } from '@/lib/types/accelerator';
 import { MODULE_IDS, ENROLLMENT_COLUMNS } from '@/lib/types/accelerator';
+import { initializeSystemSchedules } from './accelerator-scheduler';
 
 const LOG_CTX = 'accelerator-enrollment';
 
@@ -104,6 +105,13 @@ export async function createPaidEnrollment(
   if (modError) {
     logError(LOG_CTX, modError, { enrollmentId: enrollment.id });
     // Non-fatal: enrollment exists, modules can be created later
+  }
+
+  // Initialize system schedules — non-fatal, enrollment succeeds regardless
+  try {
+    await initializeSystemSchedules(enrollment.id);
+  } catch (err) {
+    logError(LOG_CTX, err, { enrollmentId: enrollment.id, step: 'schedule_init' });
   }
 
   return enrollment;

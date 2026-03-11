@@ -22,6 +22,7 @@ interface UseAcceleratorChatOptions {
   conversationId: string | null;
   onConversationId: (id: string) => void;
   onStateChange?: () => void;
+  enrollmentId?: string;
 }
 
 interface UseAcceleratorChatReturn {
@@ -70,6 +71,7 @@ export function useAcceleratorChat({
   conversationId,
   onConversationId,
   onStateChange,
+  enrollmentId,
 }: UseAcceleratorChatOptions): UseAcceleratorChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -102,7 +104,11 @@ export function useAcceleratorChat({
           body: JSON.stringify({
             message: text,
             conversationId,
-            pageContext: { page: 'accelerator' },
+            pageContext: {
+              page: 'accelerator',
+              entityType: 'accelerator',
+              entityId: enrollmentId || undefined,
+            },
           }),
         });
 
@@ -233,7 +239,7 @@ export function useAcceleratorChat({
         setMessages((prev) => prev.filter((m) => m.role !== 'assistant' || m.content.trim()));
       }
     },
-    [isLoading, conversationId, onConversationId, onStateChange]
+    [isLoading, conversationId, onConversationId, onStateChange, enrollmentId]
   );
 
   const handleFeedback = useCallback((_rating: 'positive' | 'negative', _note?: string) => {

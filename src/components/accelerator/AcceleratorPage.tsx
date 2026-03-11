@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AcceleratorChat from './AcceleratorChat';
+import EnrollmentCTA from './EnrollmentCTA';
 import ProgressPanel from './ProgressPanel';
 import type { ProgramState, ModuleId } from '@/lib/types/accelerator';
 
@@ -19,31 +20,32 @@ interface AcceleratorPageProps {
 
 export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProps) {
   const [programState, setProgramState] = useState<ProgramState | null>(null);
+  const [enrolled, setEnrolled] = useState<boolean | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const loadProgramState = useCallback(async () => {
     try {
       const res = await fetch('/api/accelerator/program-state');
       if (res.ok) {
         const data = await res.json();
+        setEnrolled(data.enrolled ?? false);
         setProgramState(data.programState ?? null);
       }
     } catch {
       /* Non-critical — panel shows empty state gracefully */
+      setEnrolled(false);
     }
   }, []);
 
   useEffect(() => {
-    // Attempt to load initial program state; mark ready regardless
-    loadProgramState().finally(() => setLoading(false));
+    loadProgramState();
   }, [loadProgramState]);
 
   const handleModuleClick = (_moduleId: ModuleId) => {
     // Future: could scroll chat to last message about this module
   };
 
-  if (loading) {
+  if (enrolled === null) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
@@ -54,6 +56,10 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
     );
   }
 
+  if (!enrolled) {
+    return <EnrollmentCTA />;
+  }
+
   return (
     <div className="flex h-full">
       {/* Chat area */}
@@ -62,6 +68,7 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
           conversationId={conversationId}
           onConversationId={setConversationId}
           onStateChange={loadProgramState}
+          enrollmentId={programState?.enrollment?.id}
         />
       </div>
 

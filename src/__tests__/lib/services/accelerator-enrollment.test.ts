@@ -9,6 +9,9 @@ jest.mock('@/lib/utils/supabase-server', () => ({
 jest.mock('@/lib/utils/logger', () => ({
   logError: jest.fn(),
 }));
+jest.mock('@/lib/services/accelerator-scheduler', () => ({
+  initializeSystemSchedules: jest.fn().mockResolvedValue(undefined),
+}));
 
 function createChain(data: unknown = null, error: unknown = null) {
   const result = { data, error };
@@ -28,6 +31,7 @@ import {
   getEnrollmentByPaymentId,
   createPaidEnrollment,
 } from '@/lib/services/accelerator-enrollment';
+import { initializeSystemSchedules } from '@/lib/services/accelerator-scheduler';
 
 describe('accelerator-enrollment', () => {
   beforeEach(() => {
@@ -105,6 +109,52 @@ describe('accelerator-enrollment', () => {
 
       const result = await createPaidEnrollment('user-1', 'cus_123', 'pi_123');
       expect(result).toBeNull();
+    });
+
+    it('calls initializeSystemSchedules with enrollment id after module creation', async () => {
+      const enrollment = {
+        id: 'e1',
+        user_id: 'user-1',
+        status: 'active',
+        selected_modules: ['m0', 'm1'],
+        stripe_customer_id: 'cus_123',
+      };
+
+      const insertChain = createChain(enrollment);
+      const moduleChain = createChain([]);
+
+      let callCount = 0;
+      mockFrom.mockImplementation(() => {
+        callCount++;
+        return callCount === 1 ? insertChain : moduleChain;
+      });
+
+      await createPaidEnrollment('user-1', 'cus_123', 'pi_123');
+      expect(initializeSystemSchedules).toHaveBeenCalledWith('e1');
+    });
+
+    it('still returns enrollment when initializeSystemSchedules throws', async () => {
+      const enrollment = {
+        id: 'e2',
+        user_id: 'user-2',
+        status: 'active',
+        selected_modules: ['m0'],
+        stripe_customer_id: 'cus_456',
+      };
+
+      const insertChain = createChain(enrollment);
+      const moduleChain = createChain([]);
+
+      let callCount = 0;
+      mockFrom.mockImplementation(() => {
+        callCount++;
+        return callCount === 1 ? insertChain : moduleChain;
+      });
+
+      (initializeSystemSchedules as jest.Mock).mockRejectedValueOnce(new Error('schedule error'));
+
+      const result = await createPaidEnrollment('user-2', 'cus_456', 'pi_456');
+      expect(result).toEqual(enrollment);
     });
   });
 });
