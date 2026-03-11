@@ -19,12 +19,26 @@ function isAppHostname(hostname: string): boolean {
 
 // Routes that require authentication
 const protectedRoutes = [
-  '/create', '/magnets', '/pages', '/knowledge', '/posts',
-  '/leads', '/settings', '/automations', '/admin',
+  '/create',
+  '/magnets',
+  '/pages',
+  '/knowledge',
+  '/posts',
+  '/leads',
+  '/settings',
+  '/automations',
+  '/admin',
+  '/accelerator',
   // Legacy routes (redirects handled in route files)
-  '/library', '/content', '/assets', '/analytics',
-  '/swipe-file', '/docs',
-  '/catalog', '/team-select', '/team',
+  '/library',
+  '/content',
+  '/assets',
+  '/analytics',
+  '/swipe-file',
+  '/docs',
+  '/catalog',
+  '/team-select',
+  '/team',
 ];
 
 // Routes that should redirect to dashboard if authenticated
@@ -82,7 +96,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|public).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|public).*)'],
 };
