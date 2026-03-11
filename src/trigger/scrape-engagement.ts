@@ -25,7 +25,6 @@ function shouldScrapeNow(publishedAt: string, lastScrapeAt: string | null): bool
   return sinceScrapeMin >= 360;
 }
 
-
 function splitName(fullName: string): { firstName: string; lastName: string } {
   const parts = fullName.trim().split(/\s+/);
   if (parts.length === 1) return { firstName: parts[0], lastName: '' };
@@ -39,13 +38,15 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
 interface ScrapeTarget {
   postUrl: string;
   userId: string;
-  postId?: string;          // null for competitor posts
-  competitorId?: string;    // null for own posts
+  postId?: string; // null for competitor posts
+  competitorId?: string; // null for own posts
   source: 'own_post' | 'competitor';
   heyreachCampaignId?: string;
 }
 
-async function scrapeAndStoreEngagers(target: ScrapeTarget): Promise<{ comments: number; likers: number; errors: string[] }> {
+async function scrapeAndStoreEngagers(
+  target: ScrapeTarget
+): Promise<{ comments: number; likers: number; errors: string[] }> {
   const supabase = createSupabaseAdminClient();
   const errors: string[] = [];
   let commentCount = 0;
@@ -56,7 +57,7 @@ async function scrapeAndStoreEngagers(target: ScrapeTarget): Promise<{ comments:
   if (commentersResult.error) {
     errors.push(`commenters: ${commentersResult.error}`);
   } else if (commentersResult.data.length > 0) {
-    const rows = commentersResult.data.map(c => {
+    const rows = commentersResult.data.map((c) => {
       const { firstName, lastName } = splitName(c.actor.name);
       return {
         user_id: target.userId,
@@ -96,7 +97,7 @@ async function scrapeAndStoreEngagers(target: ScrapeTarget): Promise<{ comments:
   if (reactionsResult.error) {
     errors.push(`reactions: ${reactionsResult.error}`);
   } else if (reactionsResult.data.length > 0) {
-    const rows = reactionsResult.data.map(r => {
+    const rows = reactionsResult.data.map((r) => {
       const { firstName, lastName } = splitName(r.actor.name);
       return {
         user_id: target.userId,
@@ -150,7 +151,7 @@ async function scrapeAndStoreEngagers(target: ScrapeTarget): Promise<{ comments:
     if (unpushed && unpushed.length > 0) {
       const result = await pushLeadsToHeyReach(
         target.heyreachCampaignId,
-        unpushed.map(l => ({
+        unpushed.map((l) => ({
           profileUrl: l.linkedin_url!,
           firstName: l.first_name || undefined,
           lastName: l.last_name || undefined,
@@ -158,14 +159,16 @@ async function scrapeAndStoreEngagers(target: ScrapeTarget): Promise<{ comments:
       );
 
       const now = new Date().toISOString();
-      const ids = unpushed.map(l => l.id);
+      const ids = unpushed.map((l) => l.id);
 
       if (result.success) {
         await supabase
           .from('cp_post_engagements')
           .update({ heyreach_pushed_at: now })
           .in('id', ids);
-        logger.info(`Pushed ${result.added} leads to HeyReach`, { campaignId: target.heyreachCampaignId });
+        logger.info(`Pushed ${result.added} leads to HeyReach`, {
+          campaignId: target.heyreachCampaignId,
+        });
       } else {
         await supabase
           .from('cp_post_engagements')
@@ -215,7 +218,9 @@ export const scrapeEngagement = schedules.task({
     // ==========================================
     const { data: ownPosts } = await supabase
       .from('cp_pipeline_posts')
-      .select('id, user_id, linkedin_post_id, heyreach_campaign_id, published_at, last_engagement_scrape_at, engagement_scrape_count')
+      .select(
+        'id, user_id, linkedin_post_id, heyreach_campaign_id, published_at, last_engagement_scrape_at, engagement_scrape_count, play_id'
+      )
       .eq('scrape_engagement', true)
       .eq('status', 'published')
       .not('linkedin_post_id', 'is', null)
@@ -223,7 +228,7 @@ export const scrapeEngagement = schedules.task({
       .limit(10);
 
     if (ownPosts) {
-      const eligible = ownPosts.filter(p =>
+      const eligible = ownPosts.filter((p) =>
         shouldScrapeNow(p.published_at!, p.last_engagement_scrape_at)
       );
 
@@ -238,7 +243,9 @@ export const scrapeEngagement = schedules.task({
             postUrl = `https://www.linkedin.com/feed/update/${postId}`;
           } else if (postId.includes('-') && postId.length > 30) {
             // UUID format — skip, can't scrape without a real LinkedIn URL
-            logger.warn(`Skipping post ${post.id}: linkedin_post_id is UUID format, not a LinkedIn URN`);
+            logger.warn(
+              `Skipping post ${post.id}: linkedin_post_id is UUID format, not a LinkedIn URN`
+            );
             continue;
           } else {
             // Assume it's an activity ID
@@ -266,6 +273,72 @@ export const scrapeEngagement = schedules.task({
             })
             .eq('id', post.id);
 
+          // ── Track play results if post has a play_id ──
+          if (post.play_id) {
+            try {
+              // Get 30-day baseline for this user's posts
+              const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+              const { data: baseline } = await supabase
+                .from('cp_pipeline_posts')
+                .select('id')
+                .eq('user_id', post.user_id)
+                .eq('status', 'published')
+                .gte('published_at', thirtyDaysAgo)
+                .is('play_id', null);
+
+              const totalReactions = result.comments + result.likers;
+
+              // Calculate multiplier based on average engagement
+              let multiplier: number | null = null;
+              if (baseline && baseline.length >= 3) {
+                // Get engagement counts for baseline posts
+                const { count: baselineEngagements } = await supabase
+                  .from('cp_post_engagements')
+                  .select('id', { count: 'exact', head: true })
+                  .in(
+                    'post_id',
+                    baseline.map((b) => b.id)
+                  );
+
+                const avgEngagement = (baselineEngagements || 0) / baseline.length;
+                if (avgEngagement > 0) {
+                  multiplier = Math.round((totalReactions / avgEngagement) * 100) / 100;
+                }
+              }
+
+              // Check data sharing preference
+              const { data: userData } = await supabase
+                .from('users')
+                .select('plays_data_sharing')
+                .eq('id', post.user_id)
+                .single();
+
+              const isAnonymous = userData?.plays_data_sharing === true;
+
+              await supabase.from('cs_play_results').upsert(
+                {
+                  play_id: post.play_id,
+                  post_id: post.id,
+                  account_id: isAnonymous ? null : post.user_id,
+                  reactions: result.likers,
+                  comments: result.comments,
+                  multiplier,
+                  is_anonymous: isAnonymous,
+                },
+                { onConflict: 'post_id' }
+              );
+
+              logger.info(`Tracked play result for post ${post.id}`, {
+                playId: post.play_id,
+                multiplier,
+              });
+            } catch (playErr) {
+              // Play result tracking must never affect the scrape flow
+              const msg = playErr instanceof Error ? playErr.message : 'Unknown error';
+              logger.error(`Failed to track play result for post ${post.id}`, { error: msg });
+            }
+          }
+
           totalScraped++;
           allErrors.push(...result.errors);
         } catch (err) {
@@ -278,7 +351,9 @@ export const scrapeEngagement = schedules.task({
 
     // Competitor scraping fully migrated to signal-profile-scan.ts (Harvest API)
 
-    logger.info(`Engagement scrape complete: ${totalScraped} targets scraped, ${allErrors.length} errors`);
+    logger.info(
+      `Engagement scrape complete: ${totalScraped} targets scraped, ${allErrors.length} errors`
+    );
     return { scraped: totalScraped, errors: allErrors };
   },
 });
