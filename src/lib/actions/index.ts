@@ -9,6 +9,8 @@ import './funnels';
 import './email';
 import './program';
 import './providers';
+import './metrics';
+import './schedules';
 
 // Re-export the executor and registry
 export { executeAction, actionRequiresConfirmation } from './executor';
