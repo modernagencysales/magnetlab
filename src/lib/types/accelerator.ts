@@ -20,6 +20,84 @@ export const MODULE_NAMES: Record<ModuleId, string> = {
 // Phase 1 modules only
 export const PHASE1_MODULES: ModuleId[] = ['m0', 'm1', 'm7'];
 export const PHASE2_MODULES: ModuleId[] = ['m2', 'm3', 'm4'];
+export const PHASE3_MODULES: ModuleId[] = ['m5', 'm6'];
+
+// ─── Metrics ────────────────────────────────────────────
+
+export type MetricKey =
+  | 'email_sent'
+  | 'email_open_rate'
+  | 'email_reply_rate'
+  | 'email_bounce_rate'
+  | 'dm_sent'
+  | 'dm_acceptance_rate'
+  | 'dm_reply_rate'
+  | 'tam_size'
+  | 'tam_email_coverage'
+  | 'content_posts_published'
+  | 'content_avg_impressions'
+  | 'content_avg_engagement'
+  | 'funnel_opt_in_rate'
+  | 'funnel_page_views';
+
+export type MetricStatus = 'above' | 'at' | 'below';
+
+export interface ProgramMetric {
+  id: string;
+  enrollment_id: string;
+  module_id: string;
+  metric_key: MetricKey;
+  value: number;
+  benchmark_low: number | null;
+  benchmark_high: number | null;
+  status: MetricStatus;
+  source: string;
+  collected_at: string;
+}
+
+export const METRIC_COLUMNS =
+  'id, enrollment_id, module_id, metric_key, value, benchmark_low, benchmark_high, status, source, collected_at';
+
+// ─── Schedules ──────────────────────────────────────────
+
+export type ScheduleTaskType =
+  | 'collect_metrics'
+  | 'weekly_digest'
+  | 'warmup_check'
+  | 'tam_decay_check'
+  | 'morning_briefing';
+
+export interface ProgramSchedule {
+  id: string;
+  enrollment_id: string;
+  task_type: ScheduleTaskType;
+  cron_expression: string;
+  config: Record<string, unknown>;
+  is_system: boolean;
+  is_active: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+}
+
+export const SCHEDULE_COLUMNS =
+  'id, enrollment_id, task_type, cron_expression, config, is_system, is_active, last_run_at, next_run_at';
+
+// ─── Diagnostic Rules ───────────────────────────────────
+
+export interface DiagnosticRule {
+  id: string;
+  symptom: string;
+  module_id: string;
+  metric_key: MetricKey | null;
+  threshold_operator: '<' | '>' | '<=' | '>=' | '=' | null;
+  threshold_value: number | null;
+  diagnostic_questions: string[];
+  common_causes: Array<{ cause: string; fix: string; severity: 'critical' | 'warning' | 'info' }>;
+  priority: number;
+}
+
+export const DIAGNOSTIC_RULE_COLUMNS =
+  'id, symptom, module_id, metric_key, threshold_operator, threshold_value, diagnostic_questions, common_causes, priority';
 
 // ─── Enrollment ──────────────────────────────────────────
 
@@ -89,7 +167,8 @@ export type DeliverableType =
   | 'email_infrastructure'
   | 'content_plan'
   | 'post_drafts'
-  | 'metrics_digest';
+  | 'metrics_digest'
+  | 'diagnostic_report';
 
 export interface ProgramDeliverable {
   id: string;
