@@ -101,7 +101,7 @@ describe('POST /api/email-sequence/generate', () => {
     (createSupabaseAdminClient as jest.Mock).mockReturnValue(mockSupabase);
   });
 
-  it('auto-activates when lead magnet has external_url', async () => {
+  it('generates sequence when lead magnet has external_url', async () => {
     mockSupabase.setResult('lead_magnets', {
       id: mockLeadMagnetId,
       user_id: mockUserId,
@@ -130,11 +130,11 @@ describe('POST /api/email-sequence/generate', () => {
     const response = await POST(makeRequest({ leadMagnetId: mockLeadMagnetId, useAI: false }));
     const data = await response.json();
 
-    expect(data.autoActivated).toBe(true);
     expect(data.generated).toBe(true);
+    expect(data.emailSequence).toBeDefined();
   });
 
-  it('stays draft when no resource URL available', async () => {
+  it('generates sequence when no resource URL available', async () => {
     mockSupabase.setResult('lead_magnets', {
       id: mockLeadMagnetId,
       user_id: mockUserId,
@@ -165,10 +165,11 @@ describe('POST /api/email-sequence/generate', () => {
     const response = await POST(makeRequest({ leadMagnetId: mockLeadMagnetId, useAI: false }));
     const data = await response.json();
 
-    expect(data.autoActivated).toBe(false);
+    expect(data.generated).toBe(true);
+    expect(generateDefaultEmailSequence).toHaveBeenCalledWith('Test Lead Magnet', 'John');
   });
 
-  it('auto-activates with hosted content URL when content exists', async () => {
+  it('generates sequence when hosted content exists', async () => {
     mockSupabase.setResult('lead_magnets', {
       id: mockLeadMagnetId,
       user_id: mockUserId,
@@ -198,16 +199,11 @@ describe('POST /api/email-sequence/generate', () => {
     const response = await POST(makeRequest({ leadMagnetId: mockLeadMagnetId, useAI: false }));
     const data = await response.json();
 
-    expect(data.autoActivated).toBe(true);
-    // Verify resourceUrl was passed to the default generator
-    expect(generateDefaultEmailSequence).toHaveBeenCalledWith(
-      'Test Lead Magnet',
-      'John',
-      expect.stringContaining('/p/johndoe/test-slug/content')
-    );
+    expect(data.generated).toBe(true);
+    expect(generateDefaultEmailSequence).toHaveBeenCalledWith('Test Lead Magnet', 'John');
   });
 
-  it('passes resourceUrl to generateDefaultEmailSequence', async () => {
+  it('calls generateDefaultEmailSequence with title and sender name', async () => {
     mockSupabase.setResult('lead_magnets', {
       id: mockLeadMagnetId,
       user_id: mockUserId,
@@ -235,11 +231,7 @@ describe('POST /api/email-sequence/generate', () => {
 
     await POST(makeRequest({ leadMagnetId: mockLeadMagnetId, useAI: false }));
 
-    expect(generateDefaultEmailSequence).toHaveBeenCalledWith(
-      'My Audit',
-      expect.any(String),
-      'https://example.com/resource.pdf'
-    );
+    expect(generateDefaultEmailSequence).toHaveBeenCalledWith('My Audit', 'Jane');
   });
 
   it('returns 401 when not authenticated', async () => {
