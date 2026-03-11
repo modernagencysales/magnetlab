@@ -8,6 +8,7 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
 import { EVAL_SCENARIOS } from './scenarios';
 import type { EvalScenario, MockProgramState } from './scenarios';
 import { judgeResponse } from './judge';
@@ -34,7 +35,50 @@ Walk through each step. Explain the why behind every decision. Let the user driv
 "The reason we do this is... what do you think makes sense for your case?"`,
 };
 
-function buildMockSystemPrompt(state: MockProgramState): string {
+async function loadCoachingRules(moduleId?: string): Promise<string> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) return '';
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  const { data, error } = await supabase
+    .from('program_coaching_rules')
+    .select('rule, category, severity, module_id')
+    .eq('active', true)
+    .order('severity')
+    .order('created_at', { ascending: false });
+
+  if (error || !data?.length) return '';
+
+  // Filter to global rules + module-specific rules
+  const applicable = data.filter(
+    (r: { module_id: string | null }) => !r.module_id || r.module_id === moduleId
+  );
+  if (applicable.length === 0) return '';
+
+  const critical = applicable.filter((r: { severity: string }) => r.severity === 'critical');
+  const important = applicable.filter((r: { severity: string }) => r.severity === 'important');
+  const suggestions = applicable.filter((r: { severity: string }) => r.severity === 'suggestion');
+
+  const sections: string[] = [
+    '## Learned Coaching Rules\nThese rules were learned from feedback and quality evaluations. Follow them strictly.',
+  ];
+  if (critical.length > 0) {
+    sections.push('**CRITICAL (must follow):**');
+    critical.forEach((r: { rule: string }) => sections.push(`- ${r.rule}`));
+  }
+  if (important.length > 0) {
+    sections.push('**Important:**');
+    important.forEach((r: { rule: string }) => sections.push(`- ${r.rule}`));
+  }
+  if (suggestions.length > 0) {
+    sections.push('**Suggestions:**');
+    suggestions.forEach((r: { rule: string }) => sections.push(`- ${r.rule}`));
+  }
+  return sections.join('\n');
+}
+
+function buildMockSystemPrompt(state: MockProgramState, rulesSection: string): string {
   const sections: string[] = [];
 
   sections.push(`## GTM Accelerator Mode
@@ -91,6 +135,10 @@ The user has just enrolled. Follow this flow exactly:
 5. **Close Session**: Recap deliverables, show progress, set expectation for next session.`);
   }
 
+  if (rulesSection) {
+    sections.push(rulesSection);
+  }
+
   return sections.join('\n\n');
 }
 
@@ -98,9 +146,10 @@ The user has just enrolled. Follow this flow exactly:
 
 async function runScenario(
   client: Anthropic,
-  scenario: EvalScenario
+  scenario: EvalScenario,
+  rulesSection: string
 ): Promise<{ response: string; inputTokens: number; outputTokens: number }> {
-  const systemPrompt = buildMockSystemPrompt(scenario.programState);
+  const systemPrompt = buildMockSystemPrompt(scenario.programState, rulesSection);
 
   const result = await client.messages.create({
     model: MODEL,
@@ -229,6 +278,10 @@ async function main() {
     process.exit(1);
   }
 
+  // Load coaching rules from DB (applied to all scenarios)
+  const rulesSection = await loadCoachingRules();
+  const rulesCount = rulesSection ? (rulesSection.match(/^- /gm) || []).length : 0;
+  console.log(`Loaded ${rulesCount} coaching rules from database.`);
   console.log(`Running ${scenarios.length} eval scenario(s)...\n`);
 
   const results: JudgeResult[] = [];
@@ -239,7 +292,13 @@ async function main() {
 
     try {
       // Get AI response
-      const { response, inputTokens, outputTokens } = await runScenario(client, scenario);
+      // Load module-specific rules for this scenario
+      const moduleRules = await loadCoachingRules(scenario.programState.activeModule);
+      const { response, inputTokens, outputTokens } = await runScenario(
+        client,
+        scenario,
+        moduleRules
+      );
       totalTokens.input += inputTokens;
       totalTokens.output += outputTokens;
 

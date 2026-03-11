@@ -4,6 +4,7 @@
  *  Never imports NextRequest, NextResponse, or cookies. */
 
 import { getSopsByModule } from '@/lib/services/accelerator-program';
+import { formatRulesForPrompt } from '@/lib/services/accelerator-coaching-rules';
 import type { ProgramState, ModuleId, CoachingMode, ProgramModule } from '@/lib/types/accelerator';
 import { MODULE_NAMES } from '@/lib/types/accelerator';
 
@@ -127,6 +128,12 @@ Start the session by presenting these for review.`);
   // 7. Onboarding mode (if not completed)
   if (!enrollment.onboarding_completed_at) {
     sections.push(buildOnboardingSection());
+  }
+
+  // 8. Learned coaching rules (from feedback + evals)
+  const rulesSection = await formatRulesForPrompt(activeModule?.module_id as ModuleId | undefined);
+  if (rulesSection) {
+    sections.push(rulesSection);
   }
 
   // Suppress unused variable warning — userId reserved for future personalization
