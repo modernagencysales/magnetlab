@@ -306,14 +306,14 @@ export const scrapeEngagement = schedules.task({
                 }
               }
 
-              // Check data sharing preference
-              const { data: userData } = await supabase
-                .from('users')
-                .select('plays_data_sharing')
-                .eq('id', post.user_id)
-                .single();
+              // Check data sharing preference + get play niche
+              const [{ data: userData }, { data: playData }] = await Promise.all([
+                supabase.from('users').select('plays_data_sharing').eq('id', post.user_id).single(),
+                supabase.from('cs_plays').select('niches').eq('id', post.play_id).single(),
+              ]);
 
               const isAnonymous = userData?.plays_data_sharing === true;
+              const niche = playData?.niches?.[0] ?? null;
 
               await supabase.from('cs_play_results').upsert(
                 {
@@ -323,6 +323,7 @@ export const scrapeEngagement = schedules.task({
                   likes: result.likers,
                   comments: result.comments,
                   multiplier,
+                  niche,
                   is_anonymous: isAnonymous,
                 },
                 { onConflict: 'post_id' }
