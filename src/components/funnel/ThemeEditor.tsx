@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Palette, Sun, Moon, X, Link as LinkIcon, RefreshCw, Loader2 } from 'lucide-react';
+import { Palette, Sun, Moon, X, Link as LinkIcon, RefreshCw, Loader2, Type } from 'lucide-react';
 import type { FunnelTheme, BackgroundStyle } from '@/lib/types/funnel';
 import * as funnelApi from '@/frontend/api/funnel';
 import { RestylePanel } from './RestylePanel';
+import { GOOGLE_FONTS } from './public/FontLoader';
 
 interface ThemeEditorProps {
   theme: FunnelTheme;
@@ -13,6 +14,8 @@ interface ThemeEditorProps {
   setPrimaryColor: (color: string) => void;
   backgroundStyle: BackgroundStyle;
   setBackgroundStyle: (style: BackgroundStyle) => void;
+  fontFamily: string | null;
+  setFontFamily: (font: string | null) => void;
   logoUrl: string | null;
   setLogoUrl: (url: string | null) => void;
   funnelId?: string | null;
@@ -37,6 +40,8 @@ export function ThemeEditor({
   setPrimaryColor,
   backgroundStyle,
   setBackgroundStyle,
+  fontFamily,
+  setFontFamily,
   logoUrl,
   setLogoUrl,
   funnelId,
@@ -60,6 +65,7 @@ export function ThemeEditor({
           theme?: FunnelTheme;
           primaryColor?: string;
           backgroundStyle?: BackgroundStyle;
+          fontFamily?: string | null;
           logoUrl?: string | null;
         };
         error?: string;
@@ -75,6 +81,7 @@ export function ThemeEditor({
           if (data.values.theme) setTheme(data.values.theme);
           if (data.values.primaryColor) setPrimaryColor(data.values.primaryColor);
           if (data.values.backgroundStyle) setBackgroundStyle(data.values.backgroundStyle);
+          if (data.values.fontFamily !== undefined) setFontFamily(data.values.fontFamily);
           if (data.values.logoUrl !== undefined) setLogoUrl(data.values.logoUrl);
         }
         setBrandMessage({ type: 'success', text: `Applied: ${data.applied.join(', ')}` });
@@ -209,6 +216,41 @@ export function ThemeEditor({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Font Family */}
+      <div className="space-y-3">
+        <label className="block text-sm font-medium">
+          <div className="flex items-center gap-2 mb-2">
+            <Type className="h-4 w-4" />
+            Font Family
+          </div>
+        </label>
+        <select
+          value={fontFamily || ''}
+          onChange={(e) => setFontFamily(e.target.value || null)}
+          className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+        >
+          <option value="">System Default</option>
+          {GOOGLE_FONTS.map((font) => (
+            <option key={font} value={font}>
+              {font}
+            </option>
+          ))}
+        </select>
+        {fontFamily && (
+          <div
+            className="rounded-lg border p-3 text-sm"
+            style={{ fontFamily: `'${fontFamily}', sans-serif` }}
+          >
+            <link
+              rel="stylesheet"
+              href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@400;600&display=swap`}
+            />
+            <p className="font-semibold">{fontFamily}</p>
+            <p className="text-muted-foreground">The quick brown fox jumps over the lazy dog</p>
+          </div>
+        )}
       </div>
 
       {/* Logo URL */}
