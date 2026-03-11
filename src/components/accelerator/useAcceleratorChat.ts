@@ -106,6 +106,7 @@ export function useAcceleratorChat({
       ]);
 
       try {
+        // Raw fetch required: SSE streaming is incompatible with apiClient's JSON response pattern
         const response = await fetch('/api/copilot/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

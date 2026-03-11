@@ -223,8 +223,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       });
     }
 
-    // If no tool use, we're done
-    if (!hasToolUse || response.stop_reason === 'end_turn') {
+    // If no tool use, we're done. When tools were used, always continue
+    // so Claude can incorporate tool results — even if stop_reason is end_turn.
+    if (!hasToolUse) {
       break;
     }
   }

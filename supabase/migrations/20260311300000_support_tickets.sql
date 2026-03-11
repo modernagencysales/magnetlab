@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS program_support_tickets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   enrollment_id UUID NOT NULL REFERENCES program_enrollments(id) ON DELETE CASCADE,
-  module_id TEXT NOT NULL,
+  module_id TEXT DEFAULT 'general',
   summary TEXT NOT NULL,
   context JSONB DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),

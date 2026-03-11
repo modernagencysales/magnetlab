@@ -127,8 +127,9 @@ export async function dispatchSubAgent(
         ];
       }
 
-      // If no tool use or stop_reason is end_turn, sub-agent is done
-      if (toolUseBlocks.length === 0 || response.stop_reason === 'end_turn') {
+      // If no tool use, sub-agent is done. When tools were used, always
+      // continue so the model can incorporate tool results.
+      if (toolUseBlocks.length === 0) {
         break;
       }
     }

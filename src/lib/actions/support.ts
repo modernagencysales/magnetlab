@@ -36,7 +36,7 @@ registerAction({
       .from('program_support_tickets')
       .insert({
         enrollment_id: enrollment.id,
-        module_id: params.module_id || null,
+        module_id: params.module_id || 'general',
         summary: params.summary,
         context: params.context,
         status: 'open',

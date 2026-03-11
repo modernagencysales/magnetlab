@@ -19,8 +19,8 @@ ALTER TABLE provider_configs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Service role full access to provider_configs"
   ON provider_configs FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
 
 CREATE POLICY "Users read own provider_configs"
   ON provider_configs FOR SELECT
