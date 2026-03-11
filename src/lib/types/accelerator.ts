@@ -289,7 +289,8 @@ export type AcceleratorDisplayHint =
   | 'quality_check'
   | 'metrics_card'
   | 'onboarding_intake'
-  | 'enrollment_card';
+  | 'enrollment_card'
+  | 'checkout_card';
 
 // ─── DB Column Constants ─────────────────────────────────
 

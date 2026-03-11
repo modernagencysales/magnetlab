@@ -12,6 +12,7 @@ import './providers';
 import './metrics';
 import './schedules';
 import './enrollment';
+import './support';
 
 // Re-export the executor and registry
 export { executeAction, actionRequiresConfirmation } from './executor';

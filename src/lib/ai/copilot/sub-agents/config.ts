@@ -145,7 +145,7 @@ export async function buildSubAgentConfig(
 
   // Troubleshooter gets additional metric tools
   if (agentType === 'troubleshooter') {
-    relevantToolNames.push('get_metric_history', 'list_schedules');
+    relevantToolNames.push('get_metric_history', 'list_schedules', 'create_support_ticket');
   }
   const filteredTools = allTools.filter((t) => relevantToolNames.includes(t.name));
 

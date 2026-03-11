@@ -15,6 +15,7 @@ import { QualityCheckCard } from '../accelerator/cards/QualityCheckCard';
 import { ApprovalCard } from '../accelerator/cards/ApprovalCard';
 import { OnboardingIntakeCard } from '../accelerator/cards/OnboardingIntakeCard';
 import { MetricsCard } from '../accelerator/cards/MetricsCard';
+import CheckoutCard from '../accelerator/cards/CheckoutCard';
 
 interface CopilotMessageProps {
   message: CopilotMessageType;
@@ -112,6 +113,15 @@ export function CopilotMessage({ message, onFeedback, onApply }: CopilotMessageP
         return (
           <div className="my-1">
             <MetricsCard data={resultData as Parameters<typeof MetricsCard>[0]['data']} />
+          </div>
+        );
+      case 'checkout_card':
+        return (
+          <div className="my-1">
+            <CheckoutCard
+              data={resultData as Parameters<typeof CheckoutCard>[0]['data']}
+              onApply={onApply}
+            />
           </div>
         );
       default:
