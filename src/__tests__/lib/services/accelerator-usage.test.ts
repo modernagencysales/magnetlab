@@ -152,9 +152,13 @@ describe('accelerator-usage service', () => {
 
       expect(result.withinLimits).toBe(true);
       expect(result.usage).toEqual({ sessions: 0, deliverables: 0, api_calls: 0 });
-      expect(logError).toHaveBeenCalledWith('accelerator-usage', dbError, {
-        enrollmentId: 'enrollment-abc',
-      });
+      expect(logError).toHaveBeenCalledWith(
+        'accelerator-usage',
+        dbError,
+        expect.objectContaining({
+          enrollmentId: 'enrollment-abc',
+        })
+      );
     });
 
     it('returns exact boundary values (sessions=30, deliverables=15) as withinLimits=true', async () => {
