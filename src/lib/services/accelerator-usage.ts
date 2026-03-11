@@ -32,8 +32,8 @@ export async function trackUsageEvent(
 
 export async function checkUsageAllocation(enrollmentId: string): Promise<{
   withinLimits: boolean;
-  usage: Record<string, number>;
-  limits: Record<string, number>;
+  usage: { sessions: number; deliverables: number; api_calls: number };
+  limits: { sessions: number; deliverables: number; api_calls: number };
 }> {
   const supabase = getSupabaseAdminClient();
   const periodStart = new Date();
@@ -64,7 +64,11 @@ export async function checkUsageAllocation(enrollmentId: string): Promise<{
 
   if (sessions.error || deliverables.error || apiCalls.error) {
     logError(LOG_CTX, sessions.error ?? deliverables.error ?? apiCalls.error, { enrollmentId });
-    return { withinLimits: true, usage: {}, limits: DEFAULT_MONTHLY_ALLOCATION };
+    return {
+      withinLimits: true,
+      usage: { sessions: 0, deliverables: 0, api_calls: 0 },
+      limits: DEFAULT_MONTHLY_ALLOCATION,
+    };
   }
 
   const usage = {

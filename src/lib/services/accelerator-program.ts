@@ -23,6 +23,7 @@ import {
   DELIVERABLE_COLUMNS,
   SOP_COLUMNS,
 } from '@/lib/types/accelerator';
+import { checkUsageAllocation } from './accelerator-usage';
 
 const LOG_CTX = 'accelerator-program';
 
@@ -273,38 +274,14 @@ export async function getProgramState(userId: string): Promise<ProgramState | nu
   const enrollment = await getEnrollmentByUserId(userId);
   if (!enrollment) return null;
 
-  const [modules, deliverables, reviewQueue, usageThisPeriod] = await Promise.all([
+  const [modules, deliverables, reviewQueue, { usage: usageThisPeriod }] = await Promise.all([
     getModulesByEnrollment(enrollment.id),
     getDeliverablesByEnrollment(enrollment.id),
     getReviewQueue(enrollment.id),
-    getUsageThisPeriod(enrollment.id),
+    checkUsageAllocation(enrollment.id),
   ]);
 
   return { enrollment, modules, deliverables, reviewQueue, usageThisPeriod };
-}
-
-async function getUsageThisPeriod(
-  enrollmentId: string
-): Promise<{ sessions: number; deliverables: number; api_calls: number }> {
-  const supabase = getSupabaseAdminClient();
-  const periodStart = new Date();
-  periodStart.setDate(1); // First of current month
-  periodStart.setHours(0, 0, 0, 0);
-
-  const { data, error } = await supabase
-    .from('program_usage_events')
-    .select('event_type')
-    .eq('enrollment_id', enrollmentId)
-    .gte('created_at', periodStart.toISOString());
-
-  if (error || !data) return { sessions: 0, deliverables: 0, api_calls: 0 };
-
-  return {
-    sessions: data.filter((e: { event_type: string }) => e.event_type === 'session_start').length,
-    deliverables: data.filter((e: { event_type: string }) => e.event_type === 'deliverable_created')
-      .length,
-    api_calls: data.filter((e: { event_type: string }) => e.event_type === 'api_call').length,
-  };
 }
 
 // ─── SOPs ────────────────────────────────────────────────
