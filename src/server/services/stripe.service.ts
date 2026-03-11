@@ -14,12 +14,13 @@ import {
 import type { SubscriptionPlan } from '@/lib/types/integrations';
 import { getPostHogServerClient } from '@/lib/posthog';
 import * as subscriptionRepo from '@/server/repositories/subscription.repo';
+import { createPaidEnrollment } from '@/lib/services/accelerator-enrollment';
 
 export async function createCheckout(
   userId: string,
   email: string,
   name: string | undefined,
-  plan: Exclude<SubscriptionPlan, 'free'>,
+  plan: Exclude<SubscriptionPlan, 'free'>
 ): Promise<{ url: string | null }> {
   const priceId = STRIPE_PRICE_IDS[plan];
   if (!priceId) throw new Error('Plan not available');
@@ -29,7 +30,7 @@ export async function createCheckout(
     userId,
     email,
     name,
-    subscription?.stripe_customer_id ?? undefined,
+    subscription?.stripe_customer_id ?? undefined
   );
 
   if (!subscription?.stripe_customer_id) {
@@ -60,9 +61,40 @@ export async function createCheckout(
 
 export async function handleWebhookEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
-    case 'checkout.session.completed':
-      // Handled by subscription.created
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session;
+
+      // Check if this is an accelerator purchase (one-time payment)
+      if (
+        session.mode === 'payment' &&
+        session.metadata?.product === 'accelerator' &&
+        session.metadata?.userId
+      ) {
+        const userId = session.metadata.userId;
+        const customerId =
+          typeof session.customer === 'string'
+            ? session.customer
+            : (session.customer as Stripe.Customer)?.id || '';
+        const paymentIntentId =
+          typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : (session.payment_intent as Stripe.PaymentIntent)?.id || '';
+
+        await createPaidEnrollment(userId, customerId, paymentIntentId);
+
+        try {
+          getPostHogServerClient()?.capture({
+            distinctId: userId,
+            event: 'accelerator_enrolled',
+            properties: { payment_intent: paymentIntentId },
+          });
+        } catch {
+          // PostHog capture must never affect the webhook flow
+        }
+      }
+      // Subscription checkouts are handled by subscription.created event
       break;
+    }
 
     case 'customer.subscription.created':
     case 'customer.subscription.updated': {
@@ -121,7 +153,9 @@ export async function handleWebhookEvent(event: Stripe.Event): Promise<void> {
 
     case 'invoice.payment_failed': {
       const invoice = event.data.object as Stripe.Invoice;
-      const subscriptionId = ((invoice as { parent?: { subscription_details?: { subscription?: string } } }).parent?.subscription_details?.subscription as string) || '';
+      const subscriptionId =
+        ((invoice as { parent?: { subscription_details?: { subscription?: string } } }).parent
+          ?.subscription_details?.subscription as string) || '';
       const existing = await subscriptionRepo.getByStripeSubscriptionId(subscriptionId);
       if (existing) {
         await subscriptionRepo.updateSubscription(existing.user_id, { status: 'past_due' });

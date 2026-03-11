@@ -91,6 +91,7 @@ export interface CreateCheckoutOptions {
   cancelUrl: string;
   trialDays?: number;
   metadata?: Record<string, string>;
+  mode?: 'payment' | 'subscription';
 }
 
 export async function createCheckoutSession(
@@ -98,9 +99,11 @@ export async function createCheckoutSession(
 ): Promise<Stripe.Checkout.Session> {
   const stripe = getStripeClient();
 
+  const effectiveMode = options.mode || 'subscription';
+
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     customer: options.customerId,
-    mode: 'subscription',
+    mode: effectiveMode,
     payment_method_types: ['card'],
     line_items: [
       {
@@ -111,12 +114,16 @@ export async function createCheckoutSession(
     success_url: options.successUrl,
     cancel_url: options.cancelUrl,
     metadata: options.metadata,
-    subscription_data: options.trialDays
+    ...(effectiveMode === 'subscription'
       ? {
-          trial_period_days: options.trialDays,
-          metadata: options.metadata,
+          subscription_data: options.trialDays
+            ? {
+                trial_period_days: options.trialDays,
+                metadata: options.metadata,
+              }
+            : { metadata: options.metadata },
         }
-      : { metadata: options.metadata },
+      : {}),
     allow_promotion_codes: true,
   };
 
