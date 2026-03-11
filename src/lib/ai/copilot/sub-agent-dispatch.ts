@@ -157,6 +157,8 @@ function getSubAgentLabel(type: SubAgentType): string {
     icp: 'Bringing in the ICP & Positioning specialist...',
     lead_magnet: 'Bringing in the Lead Magnet specialist...',
     content: 'Bringing in the Content Engine specialist...',
+    tam: 'Bringing in the TAM Builder specialist...',
+    outreach: 'Bringing in the Outreach Setup specialist...',
     troubleshooter: 'Running diagnostics...',
   };
   return labels[type];

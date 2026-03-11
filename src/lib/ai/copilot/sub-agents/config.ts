@@ -16,6 +16,8 @@ const AGENT_MODULE_MAP: Record<SubAgentType, ModuleId> = {
   icp: 'm0',
   lead_magnet: 'm1',
   content: 'm7',
+  tam: 'm2',
+  outreach: 'm3', // Covers M3 (LinkedIn) + M4 (Cold Email)
   troubleshooter: 'm0', // Troubleshooter is cross-module, default to m0
 };
 
@@ -54,6 +56,14 @@ export async function buildSubAgentConfig(
       break;
     case 'content':
       systemPrompt = buildContentAgentPrompt(sopData, userContext);
+      break;
+    case 'tam':
+      // Stub for Phase 2 — TAM Builder agent
+      systemPrompt = `You are the TAM Builder agent. Help build and qualify a target account list with: ${context}`;
+      break;
+    case 'outreach':
+      // Stub for Phase 2 — Outreach Setup agent (LinkedIn DM + Cold Email)
+      systemPrompt = `You are the Outreach Setup agent. Help configure LinkedIn DM and cold email campaigns with: ${context}`;
       break;
     case 'troubleshooter':
       // Stub for Phase 3

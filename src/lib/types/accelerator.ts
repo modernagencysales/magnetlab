@@ -19,6 +19,7 @@ export const MODULE_NAMES: Record<ModuleId, string> = {
 
 // Phase 1 modules only
 export const PHASE1_MODULES: ModuleId[] = ['m0', 'm1', 'm7'];
+export const PHASE2_MODULES: ModuleId[] = ['m2', 'm3', 'm4'];
 
 // ─── Enrollment ──────────────────────────────────────────
 
@@ -82,6 +83,10 @@ export type DeliverableType =
   | 'email_sequence'
   | 'tam_list'
   | 'outreach_campaign'
+  | 'tam_segment'
+  | 'dm_campaign'
+  | 'email_campaign'
+  | 'email_infrastructure'
   | 'content_plan'
   | 'post_drafts'
   | 'metrics_digest';
@@ -168,7 +173,13 @@ export interface ProgramState {
 
 // ─── Sub-Agent ───────────────────────────────────────────
 
-export type SubAgentType = 'icp' | 'lead_magnet' | 'content' | 'troubleshooter';
+export type SubAgentType =
+  | 'icp'
+  | 'lead_magnet'
+  | 'content'
+  | 'tam'
+  | 'outreach'
+  | 'troubleshooter';
 
 export interface SubAgentHandoff {
   deliverables_created: Array<{ type: DeliverableType; entity_id?: string; entity_type?: string }>;
