@@ -5,9 +5,8 @@
 import { schedules, logger, tasks } from '@trigger.dev/sdk/v3';
 import { getDueSchedules, markScheduleRun } from '@/lib/services/accelerator-scheduler';
 
-// Type imports for task payload validation — uncomment when tasks are created:
-// import type { acceleratorCollectMetrics } from './accelerator-collect-metrics';
-// import type { acceleratorDigest } from './accelerator-digest';
+import type { acceleratorCollectMetrics } from './accelerator-collect-metrics';
+import type { acceleratorDigest } from './accelerator-digest';
 
 export const acceleratorScheduler = schedules.task({
   id: 'accelerator-scheduler',
@@ -32,21 +31,21 @@ export const acceleratorScheduler = schedules.task({
       try {
         switch (schedule.task_type) {
           case 'collect_metrics':
-            await tasks.trigger('accelerator-collect-metrics', {
+            await tasks.trigger<typeof acceleratorCollectMetrics>('accelerator-collect-metrics', {
               enrollmentId: schedule.enrollment_id,
               config: schedule.config,
             });
             break;
 
           case 'weekly_digest':
-            await tasks.trigger('accelerator-digest', {
+            await tasks.trigger<typeof acceleratorDigest>('accelerator-digest', {
               enrollmentId: schedule.enrollment_id,
               config: schedule.config,
             });
             break;
 
           case 'warmup_check':
-            await tasks.trigger('accelerator-collect-metrics', {
+            await tasks.trigger<typeof acceleratorCollectMetrics>('accelerator-collect-metrics', {
               enrollmentId: schedule.enrollment_id,
               config: { ...schedule.config, metricsOnly: ['email_warmup'] },
             });
