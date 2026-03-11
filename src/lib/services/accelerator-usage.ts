@@ -62,8 +62,9 @@ export async function checkUsageAllocation(enrollmentId: string): Promise<{
       .gte('created_at', periodStart.toISOString()),
   ]);
 
-  if (sessions.error || deliverables.error || apiCalls.error) {
-    logError(LOG_CTX, sessions.error ?? deliverables.error ?? apiCalls.error, { enrollmentId });
+  const errors = [sessions.error, deliverables.error, apiCalls.error].filter(Boolean);
+  if (errors.length > 0) {
+    logError(LOG_CTX, errors[0], { enrollmentId, errorCount: errors.length });
     return {
       withinLimits: true,
       usage: { sessions: 0, deliverables: 0, api_calls: 0 },

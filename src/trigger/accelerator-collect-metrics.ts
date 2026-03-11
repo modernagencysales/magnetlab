@@ -181,6 +181,9 @@ export const acceleratorCollectMetrics = task({
         if (funnelPages && funnelPages.length > 0) {
           const funnelIds = funnelPages.map((f) => f.id);
 
+          // All-time counts (intentional — funnel performance is cumulative,
+          // unlike M4/M7 which use 30-day windows for recency).
+          // page_views rows are deduped per visitor-day via unique constraint.
           const { count: totalViews } = await supabase
             .from('page_views')
             .select('id', { count: 'exact', head: true })

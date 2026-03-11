@@ -3,13 +3,15 @@
  *  Never imports NextRequest, NextResponse, or cookies. */
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { logError } from '@/lib/utils/logger';
+
+const LOG_CTX = 'chat-conversation';
 
 // ─── Types ───────────────────────────────────────────────
 
 export interface ConversationContext {
   entityType?: string;
   entityId?: string;
-  entityTitle?: string;
 }
 
 export type GetOrCreateResult = { conversationId: string } | { error: string; status: number };
@@ -64,11 +66,14 @@ export async function getOrCreateConversation(
  */
 export async function saveUserMessage(conversationId: string, content: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
-  await supabase.from('copilot_messages').insert({
+  const { error } = await supabase.from('copilot_messages').insert({
     conversation_id: conversationId,
     role: 'user',
     content,
   });
+  if (error) {
+    logError(LOG_CTX, error, { conversationId, fn: 'saveUserMessage' });
+  }
 }
 
 /**
@@ -76,8 +81,11 @@ export async function saveUserMessage(conversationId: string, content: string): 
  */
 export async function touchConversation(conversationId: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
-  await supabase
+  const { error } = await supabase
     .from('copilot_conversations')
     .update({ updated_at: new Date().toISOString() })
     .eq('id', conversationId);
+  if (error) {
+    logError(LOG_CTX, error, { conversationId, fn: 'touchConversation' });
+  }
 }
