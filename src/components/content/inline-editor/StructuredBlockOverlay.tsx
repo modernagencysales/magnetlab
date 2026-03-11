@@ -32,7 +32,7 @@ const labelClass = 'text-[0.7rem] font-medium uppercase tracking-wide text-muted
 function CodeEditor({
   block,
   onChange,
-  isDark,
+  isDark: _isDark,
 }: {
   block: PolishedBlock;
   onChange: (updates: Partial<PolishedBlock>) => void;
@@ -71,7 +71,7 @@ function CodeEditor({
 function ImageEditor({
   block,
   onChange,
-  isDark,
+  isDark: _isDark,
 }: {
   block: PolishedBlock;
   onChange: (updates: Partial<PolishedBlock>) => void;
@@ -113,7 +113,7 @@ function ImageEditor({
 function EmbedEditor({
   block,
   onChange,
-  isDark,
+  isDark: _isDark,
 }: {
   block: PolishedBlock;
   onChange: (updates: Partial<PolishedBlock>) => void;
@@ -137,7 +137,7 @@ function EmbedEditor({
 function AccordionEditor({
   block,
   onChange,
-  isDark,
+  isDark: _isDark,
 }: {
   block: PolishedBlock;
   onChange: (updates: Partial<PolishedBlock>) => void;
@@ -171,7 +171,7 @@ function AccordionEditor({
 function NumberedItemEditor({
   block,
   onChange,
-  isDark,
+  isDark: _isDark,
 }: {
   block: PolishedBlock;
   onChange: (updates: Partial<PolishedBlock>) => void;
@@ -235,7 +235,7 @@ function NumberedItemEditor({
 function StatCardEditor({
   block,
   onChange,
-  isDark,
+  isDark: _isDark,
 }: {
   block: PolishedBlock;
   onChange: (updates: Partial<PolishedBlock>) => void;
@@ -280,7 +280,7 @@ function StatCardEditor({
 function TableEditor({
   block,
   onChange,
-  isDark,
+  isDark: _isDark,
 }: {
   block: PolishedBlock;
   onChange: (updates: Partial<PolishedBlock>) => void;

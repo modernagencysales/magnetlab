@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Calendar, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface SurveyPromptCardProps {
   funnelSlug: string;
@@ -17,7 +16,7 @@ export function SurveyPromptCard({
   funnelSlug,
   username,
   leadId,
-  isDark,
+  isDark: _isDark,
   primaryColor,
 }: SurveyPromptCardProps) {
   const [dismissed, setDismissed] = useState(false);
@@ -28,9 +27,7 @@ export function SurveyPromptCard({
 
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-sm">
-      <div
-        className="relative rounded-lg border border-border bg-card p-4 shadow-lg"
-      >
+      <div className="relative rounded-lg border border-border bg-card p-4 shadow-lg">
         <button
           onClick={() => setDismissed(true)}
           className="absolute right-2 top-2 rounded p-1 transition-colors hover:bg-muted"
