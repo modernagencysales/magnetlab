@@ -12,6 +12,8 @@ import { buildContentAgentPrompt } from './content-agent';
 import { buildTamAgentPrompt } from './tam-agent';
 import { buildOutreachAgentPrompt } from './outreach-agent';
 import { buildTroubleshooterPrompt } from './troubleshooter-agent';
+import { buildLinkedInAdsAgentPrompt } from './linkedin-ads-agent';
+import { buildOperatingSystemAgentPrompt } from './operating-system-agent';
 import { getDiagnosticRules, matchRulesToMetrics } from '@/lib/services/accelerator-troubleshooter';
 import { getLatestMetrics } from '@/lib/services/accelerator-metrics';
 
@@ -99,7 +101,7 @@ export async function buildSubAgentConfig(
 
       // Collect rules from all active modules and match
       const allRules: DiagnosticRule[] = [];
-      for (const mod of ['m0', 'm1', 'm2', 'm3', 'm4', 'm7'] as const) {
+      for (const mod of ['m0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7'] as const) {
         const rules = await getDiagnosticRules(mod);
         allRules.push(...rules);
       }
@@ -112,6 +114,12 @@ export async function buildSubAgentConfig(
       );
       break;
     }
+    case 'linkedin_ads':
+      systemPrompt = buildLinkedInAdsAgentPrompt(sopData, userContext);
+      break;
+    case 'operating_system':
+      systemPrompt = buildOperatingSystemAgentPrompt(sopData, userContext);
+      break;
     default:
       systemPrompt = `You are a GTM specialist. Help with: ${context}`;
   }

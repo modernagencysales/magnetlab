@@ -198,7 +198,16 @@ export async function POST(req: NextRequest) {
           properties: {
             agent_type: {
               type: 'string',
-              enum: ['icp', 'lead_magnet', 'content', 'troubleshooter'],
+              enum: [
+                'icp',
+                'lead_magnet',
+                'content',
+                'troubleshooter',
+                'tam',
+                'outreach',
+                'linkedin_ads',
+                'operating_system',
+              ],
               description: 'Which specialist to dispatch',
             },
             context: {
