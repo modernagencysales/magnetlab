@@ -206,41 +206,82 @@ export function ContentPageClient({
         <div style={{ maxWidth: '700px' }}>
           {isEditing && editContent ? (
             <div style={{ marginBottom: '2.5rem' }}>
-              <h1
-                ref={titleRef}
-                contentEditable
-                suppressContentEditableWarning
-                onBlur={(e) => setEditTitle(e.currentTarget.textContent || '')}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const text = e.clipboardData.getData('text/plain');
-                  document.execCommand('insertText', false, text);
-                }}
-                style={{
-                  fontSize: '2rem',
-                  fontWeight: 600,
-                  letterSpacing: '-0.02em',
-                  lineHeight: '2.5rem',
-                  color: isDark ? '#FAFAFA' : '#09090B',
-                  margin: '0 0 1rem 0',
-                  outline: 'none',
-                  borderRadius: '0.25rem',
-                }}
-              >
-                {editTitle}
-              </h1>
-
-              <div style={{ marginBottom: '1.25rem' }}>
-                <TipTapTextBlock
-                  content={editContent.heroSummary}
-                  onChange={(val) => setEditContent({ ...editContent, heroSummary: val })}
-                  placeholder="Hero summary..."
+              {/* Editable Title */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label
                   style={{
-                    fontSize: '1.125rem',
-                    lineHeight: '1.75rem',
-                    color: isDark ? '#E4E4E7' : '#27272A',
+                    display: 'block',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: isDark ? '#71717A' : '#A1A1AA',
+                    marginBottom: '0.375rem',
                   }}
-                />
+                >
+                  Title
+                </label>
+                <h1
+                  ref={titleRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onBlur={(e) => setEditTitle(e.currentTarget.textContent || '')}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const text = e.clipboardData.getData('text/plain');
+                    document.execCommand('insertText', false, text);
+                  }}
+                  style={{
+                    fontSize: '2rem',
+                    fontWeight: 600,
+                    letterSpacing: '-0.02em',
+                    lineHeight: '2.5rem',
+                    color: isDark ? '#FAFAFA' : '#09090B',
+                    margin: 0,
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '0.5rem',
+                    border: `1px dashed ${isDark ? '#3F3F46' : '#D4D4D8'}`,
+                    outline: 'none',
+                    cursor: 'text',
+                  }}
+                >
+                  {editTitle}
+                </h1>
+              </div>
+
+              {/* Editable Subheader */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: isDark ? '#71717A' : '#A1A1AA',
+                    marginBottom: '0.375rem',
+                  }}
+                >
+                  Subheader
+                </label>
+                <div
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '0.5rem',
+                    border: `1px dashed ${isDark ? '#3F3F46' : '#D4D4D8'}`,
+                  }}
+                >
+                  <TipTapTextBlock
+                    content={editContent.heroSummary}
+                    onChange={(val) => setEditContent({ ...editContent, heroSummary: val })}
+                    placeholder="Hero summary..."
+                    style={{
+                      fontSize: '1.125rem',
+                      lineHeight: '1.75rem',
+                      color: isDark ? '#E4E4E7' : '#27272A',
+                    }}
+                  />
+                </div>
               </div>
 
               {(readingTime || wordCount) && (
