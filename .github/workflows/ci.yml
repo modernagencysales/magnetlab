@@ -26,8 +26,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: "10"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -67,8 +65,6 @@ jobs:
         with:
           node-version: "20"
       - uses: pnpm/action-setup@v4
-        with:
-          version: "10"
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - name: Build for E2E

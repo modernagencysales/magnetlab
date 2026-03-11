@@ -42,8 +42,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: "10"
 
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest
@@ -84,8 +82,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: "10"
 
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest
