@@ -226,7 +226,7 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
               return (
                 <div
                   key={type}
-                  className={`${KNOWLEDGE_TYPE_COLORS[type] || 'bg-gray-400'}`}
+                  className={`${KNOWLEDGE_TYPE_COLORS[type] || 'bg-muted-foreground'}`}
                   style={{ width: `${pct}%` }}
                   title={`${KNOWLEDGE_TYPE_LABELS[type] || type}: ${count}`}
                 />
@@ -237,7 +237,7 @@ export function TopicDetail({ slug, teamId, onBack }: TopicDetailProps) {
             {Object.entries(type_breakdown).map(([type, count]) => (
               <span key={type} className="flex items-center gap-1">
                 <span
-                  className={`inline-block h-2 w-2 rounded-full ${KNOWLEDGE_TYPE_COLORS[type] || 'bg-gray-400'}`}
+                  className={`inline-block h-2 w-2 rounded-full ${KNOWLEDGE_TYPE_COLORS[type] || 'bg-muted-foreground'}`}
                 />
                 {KNOWLEDGE_TYPE_LABELS[type] || type} ({count})
               </span>

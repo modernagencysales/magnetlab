@@ -36,22 +36,22 @@ export function IdeaListCard({ data, onApply }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3 my-2">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-1.5 mb-2">
-        <Lightbulb className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-xs text-gray-500">Content Ideas</span>
-        <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+        <Lightbulb className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Content Ideas</span>
+        <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
           {ideas.length}
         </span>
       </div>
 
       <div className="space-y-2">
         {ideas.map((idea, index) => {
-          const typeColor = TYPE_COLORS[idea.content_type || ''] || 'bg-gray-100 text-gray-700';
+          const typeColor = TYPE_COLORS[idea.content_type || ''] || 'bg-muted text-muted-foreground';
 
           return (
-            <div key={idea.id || index} className="border border-gray-100 rounded-md p-2">
-              <p className="text-sm font-medium text-gray-800 mb-1">{idea.title}</p>
+            <div key={idea.id || index} className="border border-border rounded-md p-2">
+              <p className="text-sm font-medium text-foreground mb-1">{idea.title}</p>
 
               {idea.content_type && (
                 <span
@@ -62,7 +62,7 @@ export function IdeaListCard({ data, onApply }: Props) {
               )}
 
               {idea.hook && (
-                <p className="text-xs text-gray-500 italic">
+                <p className="text-xs text-muted-foreground italic">
                   {idea.hook.length > 80 ? idea.hook.slice(0, 80) + '...' : idea.hook}
                 </p>
               )}

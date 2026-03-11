@@ -462,7 +462,7 @@ function StepsEditor({
         placeholder="Optional subheading"
       />
       {steps.map((step, i) => (
-        <div key={i} className="rounded border p-2 space-y-1">
+        <div key={i} className="rounded-lg border border-border p-4 space-y-2">
           <FieldInput
             label={`Step ${i + 1} Title`}
             value={step.title}

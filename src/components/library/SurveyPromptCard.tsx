@@ -29,19 +29,11 @@ export function SurveyPromptCard({
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-sm">
       <div
-        className={cn(
-          'relative rounded-lg border p-4 shadow-lg',
-          isDark
-            ? 'border-gray-700 bg-gray-900'
-            : 'border-gray-200 bg-white'
-        )}
+        className="relative rounded-lg border border-border bg-card p-4 shadow-lg"
       >
         <button
           onClick={() => setDismissed(true)}
-          className={cn(
-            'absolute right-2 top-2 rounded p-1 transition-colors',
-            isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
-          )}
+          className="absolute right-2 top-2 rounded p-1 transition-colors hover:bg-muted"
         >
           <X className="h-4 w-4" />
         </button>
@@ -55,12 +47,7 @@ export function SurveyPromptCard({
           </div>
           <div className="flex-1">
             <h3 className="font-medium">Ready for a conversation?</h3>
-            <p
-              className={cn(
-                'mt-1 text-sm',
-                isDark ? 'text-gray-400' : 'text-gray-500'
-              )}
-            >
+            <p className="mt-1 text-sm text-muted-foreground">
               Answer a few quick questions to book a call.
             </p>
             <Link

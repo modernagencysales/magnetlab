@@ -149,7 +149,7 @@ function IntegrationRow({
           onClick={handleToggle}
           disabled={toggling}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            integration.is_active ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+            integration.is_active ? 'bg-green-500' : 'bg-muted-foreground'
           }`}
         >
           {toggling ? (
@@ -493,7 +493,7 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
           onClick={handleToggle}
           disabled={toggling}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+            enabled ? 'bg-green-500' : 'bg-muted-foreground'
           }`}
         >
           {toggling ? (
@@ -695,7 +695,7 @@ function HeyReachFunnelToggle({
           onClick={handleToggle}
           disabled={toggling}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+            enabled ? 'bg-green-500' : 'bg-muted-foreground'
           }`}
         >
           {toggling ? (

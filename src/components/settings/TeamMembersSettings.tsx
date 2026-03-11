@@ -93,7 +93,7 @@ export function TeamMembersSettings() {
       </div>
 
       {/* Invite form */}
-      <form onSubmit={handleInvite} className="mb-6 rounded-lg border p-4">
+      <form onSubmit={handleInvite} className="mb-6 rounded-lg border border-border p-4">
         <p className="mb-3 text-sm font-medium">Invite by Email</p>
         <div className="flex gap-2">
           <Input

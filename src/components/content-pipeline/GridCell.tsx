@@ -116,7 +116,7 @@ export function GridCell({ post, slotTime, hasSlot, onCellClick, onContextMenu, 
         onClick={onCellClick}
         onContextMenu={onContextMenu}
         className={cn(
-          'flex min-h-[72px] w-full flex-col gap-1 rounded-md border-l-[3px] bg-card p-1.5 text-left shadow-sm transition-colors hover:bg-muted/50',
+          'flex min-h-[72px] w-full flex-col gap-1 rounded-md border-l-[3px] bg-card p-2 text-left shadow-sm transition-colors hover:bg-muted/50',
           getStatusColor(post.status),
           isToday && 'ring-2 ring-blue-400/40'
         )}

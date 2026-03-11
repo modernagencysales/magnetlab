@@ -356,7 +356,7 @@ export function SwipeFileContent() {
               type="checkbox"
               checked={featuredOnly}
               onChange={(e) => setFeaturedOnly(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
             />
             <Star className="h-4 w-4 text-yellow-500" />
             Featured only

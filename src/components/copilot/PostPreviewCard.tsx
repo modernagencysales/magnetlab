@@ -37,10 +37,10 @@ export function PostPreviewCard({ data, onApply }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3 my-2">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-1.5 mb-2">
-        <FileText className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-xs text-gray-500">Post Preview</span>
+        <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Post Preview</span>
         {variationCount > 0 && (
           <span className="ml-auto text-xs text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full">
             +{variationCount} variations
@@ -48,7 +48,7 @@ export function PostPreviewCard({ data, onApply }: Props) {
         )}
       </div>
 
-      <div className="text-sm text-gray-800 whitespace-pre-wrap mb-3">{preview}</div>
+      <div className="text-sm text-foreground whitespace-pre-wrap mb-3">{preview}</div>
 
       <div className="flex items-center gap-2">
         {onApply && (

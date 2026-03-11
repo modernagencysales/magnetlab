@@ -71,7 +71,7 @@ export function FocusedCard({
           e.stopPropagation();
           onToggleSelect(e);
         }}
-        className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
+        className="mt-1 h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-primary"
       />
 
       {/* Content */}

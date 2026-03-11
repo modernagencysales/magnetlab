@@ -80,60 +80,60 @@ export default function ConnectEmailList() {
       <p className="text-sm mb-4">
         In your automation tool, map these fields from the webhook payload:
       </p>
-      <div className="overflow-x-auto my-4">
+      <div className="overflow-x-auto my-4 rounded-lg border border-border">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b">
-              <th className="text-left py-2 pr-4 font-semibold">Webhook Field</th>
-              <th className="text-left py-2 pr-4 font-semibold">What It Contains</th>
-              <th className="text-left py-2 font-semibold">Map To</th>
+            <tr className="border-b border-border bg-muted/30">
+              <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Webhook Field</th>
+              <th className="text-left px-4 py-3 font-semibold text-muted-foreground">What It Contains</th>
+              <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Map To</th>
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b">
-              <td className="py-2 pr-4">
+            <tr className="border-b border-border">
+              <td className="px-4 py-3">
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                   data.email
                 </code>
               </td>
-              <td className="py-2 pr-4">Lead&apos;s email address</td>
-              <td className="py-2">Email field</td>
+              <td className="px-4 py-3">Lead&apos;s email address</td>
+              <td className="px-4 py-3">Email field</td>
             </tr>
-            <tr className="border-b">
-              <td className="py-2 pr-4">
+            <tr className="border-b border-border">
+              <td className="px-4 py-3">
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                   data.name
                 </code>
               </td>
-              <td className="py-2 pr-4">Lead&apos;s name</td>
-              <td className="py-2">Name / First Name field</td>
+              <td className="px-4 py-3">Lead&apos;s name</td>
+              <td className="px-4 py-3">Name / First Name field</td>
             </tr>
-            <tr className="border-b">
-              <td className="py-2 pr-4">
+            <tr className="border-b border-border">
+              <td className="px-4 py-3">
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                   data.leadMagnetTitle
                 </code>
               </td>
-              <td className="py-2 pr-4">Which lead magnet they opted into</td>
-              <td className="py-2">Tag or custom field</td>
+              <td className="px-4 py-3">Which lead magnet they opted into</td>
+              <td className="px-4 py-3">Tag or custom field</td>
             </tr>
-            <tr className="border-b">
-              <td className="py-2 pr-4">
+            <tr className="border-b border-border">
+              <td className="px-4 py-3">
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                   data.isQualified
                 </code>
               </td>
-              <td className="py-2 pr-4">true / false / null</td>
-              <td className="py-2">Segment or tag</td>
+              <td className="px-4 py-3">true / false / null</td>
+              <td className="px-4 py-3">Segment or tag</td>
             </tr>
-            <tr>
-              <td className="py-2 pr-4">
+            <tr className="border-b border-border last:border-b-0">
+              <td className="px-4 py-3">
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                   data.utmSource
                 </code>
               </td>
-              <td className="py-2 pr-4">Traffic source</td>
-              <td className="py-2">Custom field</td>
+              <td className="px-4 py-3">Traffic source</td>
+              <td className="px-4 py-3">Custom field</td>
             </tr>
           </tbody>
         </table>

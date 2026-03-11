@@ -269,7 +269,7 @@ function ActionButton({ icon, label }: { icon: React.ReactNode; label: string })
     <button
       type="button"
       className={cn(
-        'flex items-center gap-1 px-3 py-2 rounded hover:bg-gray-100 transition-colors',
+        'flex items-center gap-1 px-3 py-2 rounded hover:bg-muted transition-colors',
         'text-xs font-semibold'
       )}
       style={{ color: '#00000099' }}

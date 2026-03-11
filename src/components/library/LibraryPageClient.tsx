@@ -74,15 +74,12 @@ export function LibraryPageClient({
 
   return (
     <div
-      className={cn('min-h-screen', isDark ? 'bg-gray-950 text-white' : 'bg-white text-gray-900')}
+      className={cn('min-h-screen bg-background text-foreground', isDark && 'dark')}
       style={{ '--primary-color': primaryColor } as React.CSSProperties}
     >
       {/* Header */}
       <header
-        className={cn(
-          'sticky top-0 z-50 border-b backdrop-blur-lg',
-          isDark ? 'border-gray-800 bg-gray-950/80' : 'border-gray-200 bg-white/80'
-        )}
+        className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-lg"
       >
         <div className="mx-auto max-w-6xl px-4 py-4">
           <div className="flex items-center justify-between">
@@ -96,7 +93,7 @@ export function LibraryPageClient({
               <div>
                 <h1 className="text-lg font-semibold">{library.name}</h1>
                 {userName && (
-                  <p className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-500')}>
+                  <p className="text-sm text-muted-foreground">
                     by {userName}
                   </p>
                 )}
@@ -119,7 +116,7 @@ export function LibraryPageClient({
       <main className="mx-auto max-w-6xl px-4 py-8">
         {/* Description */}
         {library.description && (
-          <p className={cn('mb-8 text-lg', isDark ? 'text-gray-300' : 'text-gray-600')}>
+          <p className="mb-8 text-lg text-muted-foreground">
             {library.description}
           </p>
         )}
@@ -136,12 +133,7 @@ export function LibraryPageClient({
         {/* Featured/New Section */}
         {featuredItems.length > 0 && (
           <section className="mb-8">
-            <h2
-              className={cn(
-                'mb-4 text-sm font-medium uppercase tracking-wide',
-                isDark ? 'text-gray-400' : 'text-gray-500'
-              )}
-            >
+            <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-muted-foreground">
               Featured & New
             </h2>
             <LibraryGrid
@@ -160,12 +152,7 @@ export function LibraryPageClient({
         {regularItems.length > 0 && (
           <section>
             {featuredItems.length > 0 && (
-              <h2
-                className={cn(
-                  'mb-4 text-sm font-medium uppercase tracking-wide',
-                  isDark ? 'text-gray-400' : 'text-gray-500'
-                )}
-              >
+              <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-muted-foreground">
                 All Resources
               </h2>
             )}
@@ -184,7 +171,7 @@ export function LibraryPageClient({
         {/* Empty State */}
         {filteredItems.length === 0 && (
           <div className="py-12 text-center">
-            <p className={cn('text-lg', isDark ? 'text-gray-400' : 'text-gray-500')}>
+            <p className="text-lg text-muted-foreground">
               {searchQuery
                 ? `No resources found for "${searchQuery}"`
                 : 'No resources available yet.'}

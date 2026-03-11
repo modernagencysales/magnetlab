@@ -61,7 +61,7 @@ export function IClosedWidgetSettings({ integration }: IClosedWidgetSettingsProp
   };
 
   return (
-    <div className="rounded-lg border p-4">
+    <div className="rounded-lg border border-border p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">

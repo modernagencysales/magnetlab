@@ -35,7 +35,7 @@ function QualityStars({ score }: { score: number }) {
     stars.push(
       <Star
         key={i}
-        className={`w-3 h-3 ${i <= score ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`}
+        className={`w-3 h-3 ${i <= score ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/50'}`}
       />
     );
   }
@@ -67,11 +67,11 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3 my-2">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-1.5 mb-2">
-        <Brain className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-xs text-gray-500">Knowledge Results</span>
-        <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+        <Brain className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Knowledge Results</span>
+        <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
           {entries.length}
         </span>
       </div>
@@ -82,10 +82,10 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
           const isLong = entry.content.length > 100;
           const displayContent =
             isExpanded || !isLong ? entry.content : entry.content.slice(0, 100) + '...';
-          const typeColor = TYPE_COLORS[entry.knowledge_type || ''] || 'bg-gray-100 text-gray-700';
+          const typeColor = TYPE_COLORS[entry.knowledge_type || ''] || 'bg-muted text-muted-foreground';
 
           return (
-            <div key={entry.id || index} className="border border-gray-100 rounded-md p-2">
+            <div key={entry.id || index} className="border border-border rounded-md p-2">
               <div className="flex items-center gap-2 mb-1">
                 {entry.knowledge_type && (
                   <span
@@ -102,7 +102,7 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
                 className="text-left w-full group"
                 type="button"
               >
-                <p className="text-xs text-gray-700 leading-relaxed">{displayContent}</p>
+                <p className="text-xs text-foreground leading-relaxed">{displayContent}</p>
                 {isLong && (
                   <span className="inline-flex items-center text-[10px] text-violet-500 mt-0.5">
                     {isExpanded ? (
@@ -119,7 +119,7 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
               </button>
 
               {entry.source_title && (
-                <p className="text-xs text-gray-400 mt-1">{entry.source_title}</p>
+                <p className="text-xs text-muted-foreground mt-1">{entry.source_title}</p>
               )}
 
               {onApply && (
@@ -137,7 +137,7 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
         })}
       </div>
 
-      {moreCount > 0 && <p className="text-xs text-gray-400 mt-2 text-center">+{moreCount} more</p>}
+      {moreCount > 0 && <p className="text-xs text-muted-foreground mt-2 text-center">+{moreCount} more</p>}
     </div>
   );
 }
