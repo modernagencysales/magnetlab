@@ -330,3 +330,77 @@ Background (Trigger.dev):
     → collect_metrics task → PlusVibe / HeyReach / MagnetLab → program_metrics
     → weekly_digest task → MetricsSummary → Resend email → metrics_digest deliverable
 ```
+
+---
+
+## Setup Guide
+
+### Required Environment Variables
+
+| Variable | Description | Where |
+|----------|-------------|-------|
+| `ACCELERATOR_STRIPE_PRICE_ID` | Stripe price ID for $997 one-time payment | Vercel env |
+| `ANTHROPIC_API_KEY` | Claude API key (for copilot chat + Haiku validation) | Vercel + Trigger.dev |
+| `TRIGGER_SECRET_KEY` | Trigger.dev project key | Vercel + Trigger.dev |
+
+### Database Setup
+
+Run all Supabase migrations. Key accelerator tables:
+- `program_enrollments` — enrollment records with intake data
+- `program_modules` — 8 module rows per enrollment
+- `program_deliverables` — work products created by sub-agents
+- `program_sops` — curriculum content (52 SOPs from dwy-playbook)
+- `program_schedules` — Trigger.dev cron schedules
+- `program_metrics` — performance metrics per module
+- `diagnostic_rules` — troubleshooter rule patterns
+
+### SOP Content Seeding
+
+SOPs are seeded via a one-time extraction script that parses markdown files from `dwy-playbook/docs/sops/` using Claude Haiku:
+
+```bash
+# From magnetlab root
+npx tsx scripts/seed-sops.ts
+```
+
+This generates `supabase/migrations/20260311500000_seed_program_sops.sql` (52 SOPs with quality bars, deliverables, and tools). Apply via Supabase Management API or `supabase db push`.
+
+The script:
+1. Discovers all `sop-*.md` files in dwy-playbook
+2. Extracts structured data (title, content, quality bars, deliverables, tools) via Claude Haiku
+3. Validates against known deliverable types and tools
+4. Generates idempotent SQL with `ON CONFLICT (module_id, sop_number) DO UPDATE`
+
+### Diagnostic Rules
+
+The `diagnostic_rules` table drives the troubleshooter sub-agent. Rules are manually inserted via SQL — see `supabase/migrations/` for examples.
+
+---
+
+## Sub-Agent Hardening
+
+The action executor (`src/lib/actions/executor.ts`) includes:
+- **Per-tool timeout**: Default 30s, configurable via `ExecuteActionOptions.timeoutMs`
+- **Exponential backoff retry**: Up to 2 retries for transient errors (ECONNRESET, 429, 502-504)
+- **Retryable error detection**: Pattern matching on error messages for known transient failures
+- **Graceful degradation**: Individual tool failures in sub-agent dispatch are caught and returned as error results so the AI can adapt
+
+---
+
+## UI Components
+
+All accelerator UI uses inline SVG icons (no emoji/Unicode) with `aria-hidden="true"` for accessibility.
+
+| Component | Purpose | Key Features |
+|-----------|---------|--------------|
+| `AcceleratorPage` | Main layout (chat + sidebar) | Loading/error/enrollment states, retry on error |
+| `AcceleratorChat` | SSE chat interface | Sub-agent spinner, SVG send button |
+| `ProgressPanel` | Right sidebar with modules/deliverables | Collapsible, mini progress bars, status SVG icons |
+| `EnrollmentCTA` | Sales page for unenrolled users | 8 SVG module icons, Stripe checkout |
+| `DeliverableCard` | Deliverable preview in chat | Per-status SVG icons, validation feedback |
+| `TaskBoardCard` | Checklist of module steps | Progress bar, animated active step |
+| `MetricsCard` | Performance metrics grid | SVG trend arrows, responsive layout |
+| `ApprovalCard` | Confirmation dialog | Warning triangle icon, 3-button hierarchy |
+| `CheckoutCard` | Tool provisioning checkout | Feature checkmarks, lock icon |
+| `OnboardingIntakeCard` | Multiple-choice intake form | SVG radio/checkbox icons |
+| `QualityCheckCard` | Pass/fail quality results | Per-check SVG icons, severity styling |

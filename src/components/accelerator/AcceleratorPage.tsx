@@ -31,8 +31,9 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
       setEnrolled(data.enrolled ?? false);
       setProgramState(data.programState ?? null);
     } catch (err) {
-      console.error('Failed to load program state', err);
-      setError('Failed to load program. Please refresh the page.');
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Failed to load program state:', msg);
+      setError(`Failed to load your program: ${msg}. Please try again.`);
     }
   }, []);
 
@@ -46,12 +47,26 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <p className="mb-4 text-red-600">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+          <svg
+            aria-hidden="true"
+            width="32"
+            height="32"
+            viewBox="0 0 16 16"
+            className="mx-auto mb-3 text-red-400"
           >
-            Refresh
+            <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M8 4.5v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="8" cy="11" r="0.75" fill="currentColor" />
+          </svg>
+          <p className="mb-4 text-sm text-red-600">{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              loadProgramState();
+            }}
+            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700"
+          >
+            Try Again
           </button>
         </div>
       </div>
