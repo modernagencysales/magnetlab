@@ -39,9 +39,7 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
     loadProgramState();
   }, [loadProgramState]);
 
-  const handleModuleClick = (_moduleId: ModuleId) => {
-    // Future: could scroll chat to last message about this module
-  };
+  const [focusModule, setFocusModule] = useState<ModuleId | null>(null);
 
   if (enrolled === null) {
     return (
@@ -70,11 +68,13 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
           onStateChange={loadProgramState}
           enrollmentId={programState?.enrollment?.id}
           needsOnboarding={needsOnboarding}
+          focusModule={focusModule}
+          onFocusHandled={() => setFocusModule(null)}
         />
       </div>
 
       {/* Progress panel */}
-      <ProgressPanel programState={programState} onModuleClick={handleModuleClick} />
+      <ProgressPanel programState={programState} onModuleClick={setFocusModule} />
     </div>
   );
 }

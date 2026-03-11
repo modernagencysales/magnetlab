@@ -8,6 +8,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { CopilotMessage } from '../copilot/CopilotMessage';
 import type { CopilotMessage as CopilotMessageType } from '../copilot/CopilotProvider';
 import { useAcceleratorChat } from './useAcceleratorChat';
+import type { ModuleId } from '@/lib/types/accelerator';
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -17,6 +18,8 @@ export interface AcceleratorChatProps {
   onStateChange?: () => void;
   enrollmentId?: string;
   needsOnboarding?: boolean;
+  focusModule?: ModuleId | null;
+  onFocusHandled?: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────
@@ -27,6 +30,8 @@ export default function AcceleratorChat({
   onStateChange,
   enrollmentId,
   needsOnboarding,
+  focusModule,
+  onFocusHandled,
 }: AcceleratorChatProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,6 +43,8 @@ export default function AcceleratorChat({
     onStateChange,
     enrollmentId,
     needsOnboarding,
+    focusModule,
+    onFocusHandled,
   });
 
   const scrollToBottom = useCallback(() => {

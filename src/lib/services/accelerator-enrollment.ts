@@ -16,9 +16,6 @@ const LOG_CTX = 'accelerator-enrollment';
 /** All modules included in the accelerator purchase. */
 const ALL_MODULES: ModuleId[] = [...MODULE_IDS];
 
-/** Stripe product ID for the accelerator. Set via env var. */
-export const ACCELERATOR_STRIPE_PRODUCT_ID = process.env.ACCELERATOR_STRIPE_PRODUCT_ID || '';
-
 /** Stripe price ID for the accelerator. Set via env var. */
 export const ACCELERATOR_STRIPE_PRICE_ID = process.env.ACCELERATOR_STRIPE_PRICE_ID || '';
 

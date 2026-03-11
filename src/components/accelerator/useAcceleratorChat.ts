@@ -3,6 +3,8 @@
  *  NextRequest, NextResponse, or cookies. */
 
 import { useState, useCallback, useEffect } from 'react';
+import type { ModuleId } from '@/lib/types/accelerator';
+import { MODULE_NAMES } from '@/lib/types/accelerator';
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -24,6 +26,8 @@ interface UseAcceleratorChatOptions {
   onStateChange?: () => void;
   enrollmentId?: string;
   needsOnboarding?: boolean;
+  focusModule?: ModuleId | null;
+  onFocusHandled?: () => void;
 }
 
 interface UseAcceleratorChatReturn {
@@ -74,6 +78,8 @@ export function useAcceleratorChat({
   onStateChange,
   enrollmentId,
   needsOnboarding,
+  focusModule,
+  onFocusHandled,
 }: UseAcceleratorChatOptions): UseAcceleratorChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -250,6 +256,15 @@ export function useAcceleratorChat({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsOnboarding]);
+
+  useEffect(() => {
+    if (focusModule && !isLoading) {
+      const moduleName = MODULE_NAMES[focusModule];
+      sendMessage(`Let's work on ${moduleName} (${focusModule}). What should I focus on next?`);
+      onFocusHandled?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusModule]);
 
   const handleFeedback = useCallback((_rating: 'positive' | 'negative', _note?: string) => {
     // Feedback handling — can be expanded to POST /api/copilot/conversations/:id/feedback
