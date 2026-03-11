@@ -32,7 +32,7 @@ src/
 │   ├── (marketing)/       # Landing pages
 │   ├── (auth)/            # Login, callbacks
 │   ├── (dashboard)/       # create/, library/, leads/, analytics/, pages/, settings/, swipe-file/
-│   ├── api/               # 57 route handlers (see API Routes below)
+│   ├── api/               # 67 route handlers (see API Routes below)
 │   └── p/[username]/[slug]/ # Public opt-in, thankyou, content pages
 ├── components/            # wizard/, funnel/, content/, dashboard/, ds/, settings/, leads/, ui/
 ├── lib/                   # ai/, integrations/, auth/, types/, utils/, services/, validations/, webhooks/, constants/, api/
@@ -90,9 +90,9 @@ All client-side API calls and shared client state live under `src/frontend/`: `a
 | `/p/[username]/[slug]/thankyou` | Post-opt-in thank you page |
 | `/p/[username]/[slug]/content` | Hosted lead magnet content |
 
-### API Routes (57 handlers)
+### API Routes (67 handlers)
 
-Groups: `lead-magnet/` (CRUD, content, polish, ideation), `funnel/` (pages, sections, publish, themes), `stripe/` (checkout, webhooks, portal), `leads/` (management, export), `brand-kit/` (extraction), `thumbnail/` (generation), `email-sequence/` (CRUD, trigger), `swipe-file/` (browse, save), `webhooks/` (user-configured), `integrations/` (connect/disconnect), `public/` (lead capture, page data, content delivery), `linkedin/` (post helpers), `landing-page/` (quick create), `user/` (profile), `external/` (third-party callbacks), `content-pipeline/` (knowledge, ideas, posts, schedule, broadcast), `copilot/` (AI assistant), `signals/` (config, keywords, companies, leads), `ab-experiments/` (A/B testing), `admin/` (prompts, learning).
+Groups: `lead-magnet/` (CRUD, content, polish, ideation), `funnel/` (pages, sections, publish, themes), `stripe/` (checkout, webhooks, portal), `leads/` (management, export), `brand-kit/` (extraction), `thumbnail/` (generation), `email-sequence/` (CRUD, trigger), `swipe-file/` (browse, save), `webhooks/` (user-configured), `integrations/` (connect/disconnect), `public/` (lead capture, page data, content delivery), `linkedin/` (post helpers), `landing-page/` (quick create), `user/` (profile), `external/` (third-party callbacks), `content-pipeline/` (knowledge, ideas, posts, schedule, broadcast), `copilot/` (AI assistant), `signals/` (config, keywords, companies, leads), `ab-experiments/` (A/B testing), `admin/` (prompts, learning), `creative-strategy/` (signals, plays, templates, config, data-sharing).
 
 ## Database
 
@@ -103,6 +103,8 @@ Supabase PostgreSQL. Key tables:
 **Content Pipeline** (`cp_` prefix): `cp_call_transcripts`, `cp_knowledge_entries`, `cp_knowledge_tags`, `cp_knowledge_topics`, `cp_knowledge_corroborations`, `cp_content_ideas`, `cp_pipeline_posts`, `cp_posting_slots`, `cp_post_templates`, `cp_writing_styles`, `cp_edit_history`, `cp_post_engagements`
 
 **Signal Engine**: `signal_configs`, `signal_keyword_monitors`, `signal_company_monitors`, `signal_profile_monitors`, `signal_leads`, `signal_events`
+
+**Creative Strategy** (`cs_` prefix): `cs_signals`, `cs_plays`, `cs_play_signals`, `cs_play_results`, `cs_play_templates`, `cs_play_feedback`, `cs_play_assignments`, `cs_scrape_config`
 
 **Other**: `ab_experiments`, `team_domains`, `team_email_domains`, `team_profile_integrations`, `funnel_integrations`, `copilot_conversations`, `copilot_messages`, `copilot_memories`, `ai_prompt_templates`, `ai_prompt_versions`, `engagement_enrichments`, `linkedin_automations`
 
@@ -236,6 +238,7 @@ Detailed docs for each feature live in `docs/`. Consult these when working on a 
 | Frontend Architecture | [docs/frontend-refactor-plan.md](docs/frontend-refactor-plan.md) |
 | Coding Standards | [docs/coding-standards.md](docs/coding-standards.md) |
 | GTM Accelerator | [docs/accelerator.md](docs/accelerator.md) |
+| Creative Strategy System | [docs/superpowers/specs/2026-03-11-creative-strategy-system-design.md](docs/superpowers/specs/2026-03-11-creative-strategy-system-design.md) |
 
 ## Post-Feature Workflow
 
