@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ContentHeader } from './ContentHeader';
 import { ContentHero } from './ContentHero';
 import { TableOfContents } from './TableOfContents';
 import { PolishedContentRenderer } from './PolishedContentRenderer';
 import { InlineContentEditor } from './inline-editor';
+import { TipTapTextBlock } from './inline-editor/TipTapTextBlock';
 import { ExtractedContentRenderer } from './ExtractedContentRenderer';
 import { ContentFooter } from './ContentFooter';
 import { VideoEmbed } from '@/components/funnel/public/VideoEmbed';
@@ -82,9 +83,12 @@ export function ContentPageClient({
   const [isEditing, setIsEditing] = useState(autoEdit && isOwner);
   const [editContent, setEditContent] = useState<PolishedContent | null>(polishedContent);
   const [savedContent, setSavedContent] = useState<PolishedContent | null>(polishedContent);
+  const [editTitle, setEditTitle] = useState(title);
+  const [savedTitle, setSavedTitle] = useState(title);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   const theme = isDark ? 'dark' : 'light';
   const themeVars = getThemeVars(theme as 'dark' | 'light', primaryColor);
@@ -106,6 +110,7 @@ export function ContentPageClient({
       ? extractedContent.structure.map((s, i) => ({ id: `section-${i}`, name: s.sectionName }))
       : [];
 
+  const displayTitle = isEditing ? editTitle : savedTitle;
   const heroSummary = displayContent?.heroSummary || null;
   const readingTime = displayContent?.metadata?.readingTimeMinutes || null;
   const wordCount = displayContent?.metadata?.wordCount || null;
@@ -114,10 +119,11 @@ export function ContentPageClient({
     if (isEditing) {
       // Discard changes
       setEditContent(savedContent);
+      setEditTitle(savedTitle);
     }
     setIsEditing(!isEditing);
     setSaveError(null);
-  }, [isEditing, savedContent]);
+  }, [isEditing, savedContent, savedTitle]);
 
   const handleSave = async () => {
     if (!editContent || !leadMagnetId) return;
@@ -125,8 +131,12 @@ export function ContentPageClient({
     setSaveError(null);
 
     try {
-      await leadMagnetApi.updateLeadMagnetContent(leadMagnetId, { polishedContent: editContent });
+      await leadMagnetApi.updateLeadMagnetContent(leadMagnetId, {
+        polishedContent: editContent,
+        title: editTitle,
+      });
       setSavedContent(editContent);
+      setSavedTitle(editTitle);
       setIsEditing(false);
       if (onSaved) onSaved(editContent);
     } catch (err) {
@@ -194,13 +204,77 @@ export function ContentPageClient({
       >
         {/* Hero */}
         <div style={{ maxWidth: '700px' }}>
-          <ContentHero
-            title={title}
-            heroSummary={heroSummary}
-            readingTimeMinutes={readingTime}
-            wordCount={wordCount}
-            isDark={isDark}
-          />
+          {isEditing && editContent ? (
+            <div style={{ marginBottom: '2.5rem' }}>
+              <h1
+                ref={titleRef}
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e) => setEditTitle(e.currentTarget.textContent || '')}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const text = e.clipboardData.getData('text/plain');
+                  document.execCommand('insertText', false, text);
+                }}
+                style={{
+                  fontSize: '2rem',
+                  fontWeight: 600,
+                  letterSpacing: '-0.02em',
+                  lineHeight: '2.5rem',
+                  color: isDark ? '#FAFAFA' : '#09090B',
+                  margin: '0 0 1rem 0',
+                  outline: 'none',
+                  borderRadius: '0.25rem',
+                }}
+              >
+                {editTitle}
+              </h1>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <TipTapTextBlock
+                  content={editContent.heroSummary}
+                  onChange={(val) => setEditContent({ ...editContent, heroSummary: val })}
+                  placeholder="Hero summary..."
+                  style={{
+                    fontSize: '1.125rem',
+                    lineHeight: '1.75rem',
+                    color: isDark ? '#E4E4E7' : '#27272A',
+                  }}
+                />
+              </div>
+
+              {(readingTime || wordCount) && (
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '1.25rem',
+                    alignItems: 'center',
+                    color: isDark ? '#A1A1AA' : '#71717A',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  {readingTime && <span>{readingTime} min read</span>}
+                  {wordCount && <span>{wordCount.toLocaleString()} words</span>}
+                </div>
+              )}
+
+              <hr
+                style={{
+                  border: 'none',
+                  borderTop: `1px solid ${isDark ? '#27272A' : '#E4E4E7'}`,
+                  marginTop: '1.5rem',
+                }}
+              />
+            </div>
+          ) : (
+            <ContentHero
+              title={displayTitle}
+              heroSummary={heroSummary}
+              readingTimeMinutes={readingTime}
+              wordCount={wordCount}
+              isDark={isDark}
+            />
+          )}
         </div>
 
         {/* Video */}

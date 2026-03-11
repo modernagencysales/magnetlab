@@ -160,6 +160,7 @@ export async function updatePolishedContent(
   }
 
   const polishedContent = validation.data.polishedContent as unknown as PolishedContent;
+  const newTitle = validation.data.title as string | undefined;
 
   // Recalculate word count metadata
   let wordCount = 0;
@@ -180,10 +181,15 @@ export async function updatePolishedContent(
   const currentData = await leadMagnetsRepo.findLeadMagnetScoped(scope, id, 'polished_content');
   const oldContent = currentData?.polished_content as PolishedContent | null;
 
+  const updateFields: Record<string, unknown> = { polished_content: polishedContent };
+  if (newTitle) {
+    updateFields.title = newTitle;
+  }
+
   const result = await leadMagnetsRepo.updateLeadMagnetWithSelect(
     scope,
     id,
-    { polished_content: polishedContent },
+    updateFields,
     'polished_content'
   );
 
