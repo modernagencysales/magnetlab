@@ -17,7 +17,12 @@ import type {
   IntakeData,
   ProgramSop,
 } from '@/lib/types/accelerator';
-import { ENROLLMENT_COLUMNS, MODULE_COLUMNS, DELIVERABLE_COLUMNS } from '@/lib/types/accelerator';
+import {
+  ENROLLMENT_COLUMNS,
+  MODULE_COLUMNS,
+  DELIVERABLE_COLUMNS,
+  SOP_COLUMNS,
+} from '@/lib/types/accelerator';
 
 const LOG_CTX = 'accelerator-program';
 
@@ -284,9 +289,7 @@ export async function getSopsByModule(moduleId: ModuleId): Promise<ProgramSop[]>
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from('program_sops')
-    .select(
-      'id, module_id, sop_number, title, content, quality_bars, deliverables, tools_used, dependencies, version'
-    )
+    .select(SOP_COLUMNS)
     .eq('module_id', moduleId)
     .order('sop_number');
 

@@ -4,6 +4,7 @@
 import {
   getEnrollmentByUserId,
   createEnrollment,
+  updateEnrollmentIntake,
   getModulesByEnrollment,
   updateModuleStatus,
   getDeliverablesByEnrollment,
@@ -110,6 +111,27 @@ describe('accelerator-program service', () => {
       const result = await createEnrollment('u1', ['m0', 'm1']);
       expect(result).toEqual(enrollment);
       expect(mockInsert).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('updateEnrollmentIntake', () => {
+    it('updates intake data and sets onboarding timestamp', async () => {
+      const mockResult = { error: null };
+      // The chain ends with .eq() not .single(), so mock eq to resolve
+      mockEq.mockResolvedValue(mockResult);
+
+      const intakeData = {
+        business_description: 'B2B SaaS',
+        target_audience: 'CTOs',
+        revenue_range: 'under_5k' as const,
+        linkedin_frequency: 'weekly' as const,
+        channels_of_interest: ['linkedin', 'email'],
+        primary_goal: 'generate leads',
+      };
+
+      const result = await updateEnrollmentIntake('e1', intakeData);
+      expect(result).toBe(true);
+      expect(mockUpdate).toHaveBeenCalled();
     });
   });
 
