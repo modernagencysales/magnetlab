@@ -139,6 +139,8 @@ export async function buildSubAgentConfig(
     'get_guided_steps',
     'get_metrics',
     'get_metrics_summary',
+    'get_enrollment_status',
+    'check_usage',
   ];
 
   // Troubleshooter gets additional metric tools
