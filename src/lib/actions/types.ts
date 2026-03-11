@@ -7,12 +7,24 @@ export interface ActionResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
-  displayHint?: 'post_preview' | 'knowledge_list' | 'plan' | 'idea_list' | 'calendar' | 'text';
+  displayHint?:
+    | 'post_preview'
+    | 'knowledge_list'
+    | 'plan'
+    | 'idea_list'
+    | 'calendar'
+    | 'text'
+    | 'deliverable_card'
+    | 'quality_check'
+    | 'task_board'
+    | 'approval_card'
+    | 'metrics_card'
+    | 'onboarding_intake';
 }
 
 export type ActionHandler = (
   ctx: ActionContext,
-  params: Record<string, unknown>,
+  params: Record<string, unknown>
 ) => Promise<ActionResult>;
 
 export interface ActionDefinition {
