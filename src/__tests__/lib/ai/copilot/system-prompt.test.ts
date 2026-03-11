@@ -21,6 +21,7 @@ jest.mock('@/lib/ai/content-pipeline/voice-prompt-builder', () => ({
 const mockFrom = jest.fn();
 jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(() => ({ from: mockFrom })),
+  getSupabaseAdminClient: jest.fn(() => ({ from: mockFrom })),
 }));
 
 function createChain(data: unknown = null) {
@@ -55,9 +56,7 @@ describe('buildCopilotSystemPrompt', () => {
         return createChain({ voice_profile: { tone: 'direct' }, full_name: 'Tim', title: 'CEO' });
       }
       if (table === 'copilot_memories') {
-        return createChain([
-          { rule: 'Never use bullet points', category: 'structure' },
-        ]);
+        return createChain([{ rule: 'Never use bullet points', category: 'structure' }]);
       }
       if (table === 'cp_pipeline_posts') {
         return createChain([]);
@@ -111,7 +110,8 @@ describe('buildCopilotSystemPrompt', () => {
         return createChain([
           {
             draft_content: 'Here is my post about building a great team culture',
-            final_content: 'Here is my final post about building a great team culture and leadership',
+            final_content:
+              'Here is my final post about building a great team culture and leadership',
             engagement_stats: { impressions: 1200, comments: 15, likes: 85 },
             published_at: new Date().toISOString(),
           },
@@ -218,9 +218,7 @@ describe('buildCopilotSystemPrompt', () => {
         return createChain([{ id: 'conv-1' }]);
       }
       if (table === 'copilot_messages') {
-        return createChain([
-          { feedback: { rating: 'up', note: 'Good response' } },
-        ]);
+        return createChain([{ feedback: { rating: 'up', note: 'Good response' } }]);
       }
       return createChain();
     });
