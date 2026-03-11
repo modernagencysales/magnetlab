@@ -89,15 +89,19 @@ describe('accelerator-enrollment', () => {
         stripe_customer_id: 'cus_123',
       };
 
-      // First call: insert enrollment
+      // First call: idempotency check (not found)
+      const idempotencyChain = createChain(null, { code: 'PGRST116' });
+      // Second call: insert enrollment
       const insertChain = createChain(enrollment);
-      // Second call: insert module rows
+      // Third call: insert module rows
       const moduleChain = createChain([]);
 
       let callCount = 0;
       mockFrom.mockImplementation(() => {
         callCount++;
-        return callCount === 1 ? insertChain : moduleChain;
+        if (callCount === 1) return idempotencyChain;
+        if (callCount === 2) return insertChain;
+        return moduleChain;
       });
 
       const result = await createPaidEnrollment('user-1', 'cus_123', 'pi_123');
@@ -105,7 +109,14 @@ describe('accelerator-enrollment', () => {
     });
 
     it('returns null on insert error', async () => {
-      mockFrom.mockReturnValue(createChain(null, { message: 'Unique constraint' }));
+      let callCount = 0;
+      mockFrom.mockImplementation(() => {
+        callCount++;
+        // First call: idempotency check (not found)
+        if (callCount === 1) return createChain(null, { code: 'PGRST116' });
+        // Second call: insert fails
+        return createChain(null, { message: 'Unique constraint' });
+      });
 
       const result = await createPaidEnrollment('user-1', 'cus_123', 'pi_123');
       expect(result).toBeNull();
@@ -120,13 +131,16 @@ describe('accelerator-enrollment', () => {
         stripe_customer_id: 'cus_123',
       };
 
+      const idempotencyChain = createChain(null, { code: 'PGRST116' });
       const insertChain = createChain(enrollment);
       const moduleChain = createChain([]);
 
       let callCount = 0;
       mockFrom.mockImplementation(() => {
         callCount++;
-        return callCount === 1 ? insertChain : moduleChain;
+        if (callCount === 1) return idempotencyChain;
+        if (callCount === 2) return insertChain;
+        return moduleChain;
       });
 
       await createPaidEnrollment('user-1', 'cus_123', 'pi_123');
@@ -142,19 +156,39 @@ describe('accelerator-enrollment', () => {
         stripe_customer_id: 'cus_456',
       };
 
+      const idempotencyChain = createChain(null, { code: 'PGRST116' });
       const insertChain = createChain(enrollment);
       const moduleChain = createChain([]);
 
       let callCount = 0;
       mockFrom.mockImplementation(() => {
         callCount++;
-        return callCount === 1 ? insertChain : moduleChain;
+        if (callCount === 1) return idempotencyChain;
+        if (callCount === 2) return insertChain;
+        return moduleChain;
       });
 
       (initializeSystemSchedules as jest.Mock).mockRejectedValueOnce(new Error('schedule error'));
 
       const result = await createPaidEnrollment('user-2', 'cus_456', 'pi_456');
       expect(result).toEqual(enrollment);
+    });
+
+    it('returns existing enrollment when payment intent already processed (idempotent)', async () => {
+      const existing = {
+        id: 'e1',
+        user_id: 'user-1',
+        status: 'active',
+        stripe_customer_id: 'cus_123',
+      };
+
+      // Idempotency check finds existing enrollment
+      mockFrom.mockReturnValue(createChain(existing));
+
+      const result = await createPaidEnrollment('user-1', 'cus_123', 'pi_123');
+      expect(result).toEqual(existing);
+      // Only 1 call — the idempotency lookup. No insert attempted.
+      expect(mockFrom).toHaveBeenCalledTimes(1);
     });
   });
 });

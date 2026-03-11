@@ -37,7 +37,15 @@ export default function AcceleratorChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const { messages, isLoading, subAgentActive, sendMessage, handleFeedback } = useAcceleratorChat({
+  const {
+    messages,
+    isLoading,
+    subAgentActive,
+    connectionError,
+    sendMessage,
+    retryLastMessage,
+    handleFeedback,
+  } = useAcceleratorChat({
     conversationId,
     onConversationId,
     onStateChange,
@@ -114,6 +122,47 @@ export default function AcceleratorChat({
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {/* Retry banner */}
+      {connectionError && (
+        <div className="flex items-center justify-between border-t bg-red-50 px-4 py-2 dark:bg-red-900/20">
+          <span className="text-xs text-red-600 dark:text-red-400">
+            Connection lost. Your last message was not delivered.
+          </span>
+          <button
+            onClick={retryLastMessage}
+            disabled={isLoading}
+            className="flex items-center gap-1 rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+          >
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" className="shrink-0">
+              <path
+                d="M1.5 6a4.5 4.5 0 0 1 7.7-3.2M10.5 6a4.5 4.5 0 0 1-7.7 3.2"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+              />
+              <path
+                d="M9.5 1v2.5H7"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M2.5 11V8.5H5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Input */}
       <div className="border-t bg-background px-4 py-3">

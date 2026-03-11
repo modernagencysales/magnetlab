@@ -34,7 +34,9 @@ interface UseAcceleratorChatReturn {
   messages: ChatMessage[];
   isLoading: boolean;
   subAgentActive: string | null;
+  connectionError: boolean;
   sendMessage: (text: string) => Promise<void>;
+  retryLastMessage: () => void;
   handleFeedback: (rating: 'positive' | 'negative', note?: string) => void;
 }
 
@@ -84,6 +86,8 @@ export function useAcceleratorChat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [subAgentActive, setSubAgentActive] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState(false);
+  const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -97,6 +101,8 @@ export function useAcceleratorChat({
       };
       setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
+      setConnectionError(false);
+      setLastUserMessage(text);
 
       // Placeholder assistant message to stream into
       const assistantMsgId = `assistant-${Date.now()}`;
@@ -233,17 +239,20 @@ export function useAcceleratorChat({
           parseSSELines([buffer], handleSSEEvent);
         }
       } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Connection failed';
+        setConnectionError(true);
         setMessages((prev) => [
           ...prev,
           {
             id: `error-${Date.now()}`,
             role: 'assistant' as const,
-            content: `Error: ${err instanceof Error ? err.message : 'Connection failed'}`,
+            content: `Connection lost: ${errorMsg}. Click "Retry" to resend your message.`,
             createdAt: new Date().toISOString(),
           },
         ]);
       } finally {
         setIsLoading(false);
+        setSubAgentActive(null);
         // Clean up empty assistant messages left behind
         setMessages((prev) => prev.filter((m) => m.role !== 'assistant' || m.content.trim()));
       }
@@ -267,9 +276,24 @@ export function useAcceleratorChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusModule]);
 
+  const retryLastMessage = useCallback(() => {
+    if (!lastUserMessage || isLoading) return;
+    // Remove the error message before retrying
+    setMessages((prev) => prev.filter((m) => !m.id.startsWith('error-')));
+    sendMessage(lastUserMessage);
+  }, [lastUserMessage, isLoading, sendMessage]);
+
   const handleFeedback = useCallback((_rating: 'positive' | 'negative', _note?: string) => {
     // Feedback handling — can be expanded to POST /api/copilot/conversations/:id/feedback
   }, []);
 
-  return { messages, isLoading, subAgentActive, sendMessage, handleFeedback };
+  return {
+    messages,
+    isLoading,
+    subAgentActive,
+    connectionError,
+    sendMessage,
+    retryLastMessage,
+    handleFeedback,
+  };
 }

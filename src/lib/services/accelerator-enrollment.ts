@@ -64,13 +64,20 @@ export async function getEnrollmentByPaymentId(
 
 // ─── Create ─────────────────────────────────────────────
 
-/** Create a paid enrollment with all modules unlocked. */
+/** Create a paid enrollment with all modules unlocked.
+ *  Idempotent: returns existing enrollment if payment intent was already processed. */
 export async function createPaidEnrollment(
   userId: string,
   stripeCustomerId: string,
   paymentIntentId: string
 ): Promise<ProgramEnrollment | null> {
   const supabase = getSupabaseAdminClient();
+
+  // Idempotency: check if this payment intent was already processed
+  if (paymentIntentId) {
+    const existing = await getEnrollmentByPaymentId(paymentIntentId);
+    if (existing) return existing;
+  }
 
   const { data: enrollment, error: enrollError } = await supabase
     .from('program_enrollments')
@@ -86,6 +93,10 @@ export async function createPaidEnrollment(
     .single();
 
   if (enrollError || !enrollment) {
+    // Handle race condition: another webhook may have created it between our check and insert
+    if (enrollError?.code === '23505' && paymentIntentId) {
+      return getEnrollmentByPaymentId(paymentIntentId);
+    }
     logError(LOG_CTX, enrollError, { userId, stripeCustomerId });
     return null;
   }
