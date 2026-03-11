@@ -3,7 +3,7 @@
 
 -- ─── Enrollments ─────────────────────────────────────────
 
-CREATE TABLE program_enrollments (
+CREATE TABLE IF NOT EXISTS program_enrollments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   enrolled_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -23,7 +23,7 @@ CREATE INDEX idx_program_enrollments_status ON program_enrollments(user_id, stat
 
 -- ─── Usage Events (append-only) ─────────────────────────
 
-CREATE TABLE program_usage_events (
+CREATE TABLE IF NOT EXISTS program_usage_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   enrollment_id UUID NOT NULL REFERENCES program_enrollments(id) ON DELETE CASCADE,
   event_type TEXT NOT NULL,
@@ -35,7 +35,7 @@ CREATE INDEX idx_program_usage_events_period ON program_usage_events(enrollment_
 
 -- ─── Module Progress ─────────────────────────────────────
 
-CREATE TABLE program_modules (
+CREATE TABLE IF NOT EXISTS program_modules (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   enrollment_id UUID NOT NULL REFERENCES program_enrollments(id) ON DELETE CASCADE,
   module_id TEXT NOT NULL,
@@ -53,7 +53,7 @@ CREATE INDEX idx_program_modules_enrollment ON program_modules(enrollment_id);
 
 -- ─── Deliverables ────────────────────────────────────────
 
-CREATE TABLE program_deliverables (
+CREATE TABLE IF NOT EXISTS program_deliverables (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   enrollment_id UUID NOT NULL REFERENCES program_enrollments(id) ON DELETE CASCADE,
   module_id TEXT NOT NULL,
@@ -71,7 +71,7 @@ CREATE INDEX idx_program_deliverables_enrollment_status ON program_deliverables(
 
 -- ─── SOP Registry ────────────────────────────────────────
 
-CREATE TABLE program_sops (
+CREATE TABLE IF NOT EXISTS program_sops (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   module_id TEXT NOT NULL,
   sop_number TEXT NOT NULL,
@@ -94,20 +94,20 @@ CREATE INDEX idx_program_sops_module ON program_sops(module_id);
 -- The API route authenticates via NextAuth and filters by user_id.
 
 ALTER TABLE program_enrollments ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Service role full access" ON program_enrollments FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "Service role full access to program_enrollments" ON program_enrollments FOR ALL USING (auth.role() = 'service_role');
 CREATE POLICY "Users read own enrollments" ON program_enrollments FOR SELECT USING (user_id = auth.uid());
 
 ALTER TABLE program_usage_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Service role full access" ON program_usage_events FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "Service role full access to program_usage_events" ON program_usage_events FOR ALL USING (auth.role() = 'service_role');
 
 ALTER TABLE program_modules ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Service role full access" ON program_modules FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "Service role full access to program_modules" ON program_modules FOR ALL USING (auth.role() = 'service_role');
 
 ALTER TABLE program_deliverables ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Service role full access" ON program_deliverables FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "Service role full access to program_deliverables" ON program_deliverables FOR ALL USING (auth.role() = 'service_role');
 
 ALTER TABLE program_sops ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Service role full access" ON program_sops FOR ALL USING (auth.role() = 'service_role');
+CREATE POLICY "Service role full access to program_sops" ON program_sops FOR ALL USING (auth.role() = 'service_role');
 CREATE POLICY "Anyone can read SOPs" ON program_sops FOR SELECT USING (true);
 
 -- ─── Updated-at Triggers ─────────────────────────────────
