@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { buildCopilotSystemPrompt } from '@/lib/ai/copilot/system-prompt';
-import { getToolDefinitions } from '@/lib/actions';
 import type { ActionContext } from '@/lib/actions';
 import { logError } from '@/lib/utils/logger';
 import { detectCorrectionSignal, extractMemories } from '@/lib/ai/copilot/memory-extractor';
@@ -10,6 +9,12 @@ import { hasAcceleratorAccess } from '@/lib/services/accelerator-enrollment';
 import { buildClaudeMessages } from '@/lib/ai/copilot/chat-history';
 import type { DbMessage } from '@/lib/ai/copilot/chat-history';
 import { runAgentLoop } from '@/lib/ai/copilot/chat-agent-loop';
+import {
+  getOrCreateConversation,
+  saveUserMessage,
+  touchConversation,
+} from '@/lib/ai/copilot/chat-conversation';
+import { buildChatTools } from '@/lib/ai/copilot/chat-tools';
 
 interface ChatRequest {
   message: string;
@@ -63,45 +68,21 @@ export async function POST(req: NextRequest) {
     const supabase = createSupabaseAdminClient();
 
     // Get or create conversation
-    let conversationId = body.conversationId;
-    if (conversationId) {
-      // C1 FIX: Verify conversation belongs to authenticated user
-      const { data: existing } = await supabase
-        .from('copilot_conversations')
-        .select('id')
-        .eq('id', conversationId)
-        .eq('user_id', userId)
-        .single();
-
-      if (!existing) {
-        return new Response(JSON.stringify({ error: 'Conversation not found' }), { status: 404 });
-      }
-    } else {
-      const { data: conv, error: convError } = await supabase
-        .from('copilot_conversations')
-        .insert({
-          user_id: userId,
-          entity_type: body.pageContext?.entityType || null,
-          entity_id: body.pageContext?.entityId || null,
-          title: body.message.slice(0, 100),
-        })
-        .select('id')
-        .single();
-
-      if (convError || !conv) {
-        return new Response(JSON.stringify({ error: 'Failed to create conversation' }), {
-          status: 500,
-        });
-      }
-      conversationId = conv.id;
+    const convResult = await getOrCreateConversation(
+      userId,
+      body.conversationId,
+      body.message,
+      body.pageContext
+    );
+    if ('error' in convResult) {
+      return new Response(JSON.stringify({ error: convResult.error }), {
+        status: convResult.status,
+      });
     }
+    const conversationId = convResult.conversationId;
 
     // Save user message
-    await supabase.from('copilot_messages').insert({
-      conversation_id: conversationId,
-      role: 'user',
-      content: body.message,
-    });
+    await saveUserMessage(conversationId, body.message);
 
     // Fire-and-forget: extract memories if correction signal detected
     if (detectCorrectionSignal(body.message)) {
@@ -156,46 +137,8 @@ export async function POST(req: NextRequest) {
     // Build system prompt
     const systemPrompt = await buildCopilotSystemPrompt(userId, body.pageContext);
 
-    // Get tool definitions
-    const tools = getToolDefinitions();
-
-    // Add sub-agent dispatch tool for Accelerator
-    const allTools = [
-      ...tools,
-      {
-        name: 'dispatch_sub_agent',
-        description:
-          'Dispatch a specialist sub-agent for deep module work. The sub-agent runs independently and returns a handoff summary.',
-        input_schema: {
-          type: 'object',
-          properties: {
-            agent_type: {
-              type: 'string',
-              enum: [
-                'icp',
-                'lead_magnet',
-                'content',
-                'troubleshooter',
-                'tam',
-                'outreach',
-                'linkedin_ads',
-                'operating_system',
-              ],
-              description: 'Which specialist to dispatch',
-            },
-            context: {
-              type: 'string',
-              description: 'Summary of what the user needs help with',
-            },
-            user_message: {
-              type: 'string',
-              description: 'The user message to forward to the sub-agent',
-            },
-          },
-          required: ['agent_type', 'context', 'user_message'],
-        },
-      },
-    ];
+    // Get tool definitions (base actions + sub-agent dispatch)
+    const allTools = buildChatTools();
 
     // Create SSE stream
     const encoder = new TextEncoder();
@@ -225,7 +168,7 @@ export async function POST(req: NextRequest) {
             systemPrompt,
             tools: allTools,
             initialMessages: claudeMessages,
-            conversationId: conversationId!,
+            conversationId,
             userId,
             actionCtx,
             cachedEnrollmentCheck,
@@ -233,10 +176,7 @@ export async function POST(req: NextRequest) {
           });
 
           // Update conversation timestamp
-          await supabase
-            .from('copilot_conversations')
-            .update({ updated_at: new Date().toISOString() })
-            .eq('id', conversationId);
+          await touchConversation(conversationId);
 
           send('done', { conversationId, iterations });
         } catch (error) {

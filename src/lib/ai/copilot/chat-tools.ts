@@ -6,11 +6,11 @@ import { getToolDefinitions } from '@/lib/actions';
 
 // ─── Types ───────────────────────────────────────────────
 
-interface ToolDefinition {
+type ToolDefinition = {
   name: string;
   description: string;
   input_schema: Record<string, unknown>;
-}
+};
 
 // ─── Constants ───────────────────────────────────────────
 
@@ -50,7 +50,7 @@ const SUB_AGENT_DISPATCH_TOOL: ToolDefinition = {
 
 // ─── Builder ─────────────────────────────────────────────
 
-export function buildChatTools(): ToolDefinition[] {
+export function buildChatTools(): Record<string, unknown>[] {
   const baseTools = getToolDefinitions();
-  return [...baseTools, SUB_AGENT_DISPATCH_TOOL];
+  return [...baseTools, SUB_AGENT_DISPATCH_TOOL] as Record<string, unknown>[];
 }
