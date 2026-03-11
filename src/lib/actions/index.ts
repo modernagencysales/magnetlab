@@ -8,6 +8,7 @@ import './lead-magnets';
 import './funnels';
 import './email';
 import './program';
+import './providers';
 
 // Re-export the executor and registry
 export { executeAction, actionRequiresConfirmation } from './executor';
