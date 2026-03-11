@@ -20,7 +20,8 @@ export interface ActionResult<T = unknown> {
     | 'approval_card'
     | 'metrics_card'
     | 'onboarding_intake'
-    | 'enrollment_card';
+    | 'enrollment_card'
+    | 'checkout_card';
 }
 
 export type ActionHandler = (

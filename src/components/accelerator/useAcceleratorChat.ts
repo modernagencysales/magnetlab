@@ -48,7 +48,7 @@ function parseSSELines(lines: string[], handler: SSEEventHandler): void {
         const data = JSON.parse(line.slice(6));
         handler(currentEvent, data);
       } catch {
-        /* ignore JSON parse errors */
+        console.warn('SSE parse error', { line });
       }
       currentEvent = '';
     } else if (line === '') {

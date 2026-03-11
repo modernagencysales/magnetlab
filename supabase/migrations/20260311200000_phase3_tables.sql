@@ -71,11 +71,11 @@ ALTER TABLE diagnostic_rules ENABLE ROW LEVEL SECURITY;
 
 -- Service role full access (accessed via server-side services only)
 CREATE POLICY "Service role full access on metrics" ON program_metrics
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
 CREATE POLICY "Service role full access on schedules" ON program_schedules
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
 CREATE POLICY "Service role full access on rules" ON diagnostic_rules
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
 
 -- Users can read their own metrics and schedules
 CREATE POLICY "Users read own metrics" ON program_metrics

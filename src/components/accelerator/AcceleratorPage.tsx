@@ -31,8 +31,8 @@ export default function AcceleratorPage({ userId: _userId }: AcceleratorPageProp
         setEnrolled(data.enrolled ?? false);
         setProgramState(data.programState ?? null);
       }
-    } catch {
-      /* Non-critical — panel shows empty state gracefully */
+    } catch (err) {
+      console.error('Failed to load program state', err);
       setEnrolled(false);
     }
   }, []);

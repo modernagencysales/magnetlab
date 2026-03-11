@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { MODULE_IDS, MODULE_NAMES } from '@/lib/types/accelerator';
 import type { ModuleId } from '@/lib/types/accelerator';
+import { startEnrollment } from '@/frontend/api/accelerator';
 
 // ─── Constants ───────────────────────────────────────────
 
@@ -43,18 +44,9 @@ export default function EnrollmentCTA() {
     setError(null);
 
     try {
-      const res = await fetch('/api/accelerator/enroll', { method: 'POST' });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error ?? 'Failed to start checkout');
-      }
-
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-      } else {
-        throw new Error('No checkout URL returned');
-      }
+      const { url } = await startEnrollment();
+      if (!url) throw new Error('No checkout URL returned');
+      window.location.href = url;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       setLoading(false);

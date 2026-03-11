@@ -141,11 +141,12 @@ export async function buildSubAgentConfig(
     'get_metrics_summary',
     'get_enrollment_status',
     'check_usage',
+    'create_support_ticket',
   ];
 
   // Troubleshooter gets additional metric tools
   if (agentType === 'troubleshooter') {
-    relevantToolNames.push('get_metric_history', 'list_schedules', 'create_support_ticket');
+    relevantToolNames.push('get_metric_history', 'list_schedules');
   }
   const filteredTools = allTools.filter((t) => relevantToolNames.includes(t.name));
 
