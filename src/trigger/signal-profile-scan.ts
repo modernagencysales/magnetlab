@@ -29,11 +29,14 @@ export const signalProfileScan = schedules.task({
 
     let totalLeads = 0;
 
-    // Step 1: Fetch active profile monitors
+    // Step 1: Fetch active profile monitors (exclude content_strategy — handled by creative strategy tasks)
     const { data: monitors, error: fetchError } = await supabase
       .from('signal_profile_monitors')
-      .select('*')
+      .select(
+        'id, user_id, linkedin_profile_url, name, headline, is_active, last_scraped_at, heyreach_campaign_id, monitor_type, created_at, updated_at'
+      )
       .eq('is_active', true)
+      .in('monitor_type', ['competitor', 'influencer'])
       .limit(20);
 
     if (fetchError) {
@@ -47,7 +50,7 @@ export const signalProfileScan = schedules.task({
     }
 
     // Step 2: Filter to profiles due for scraping (60 min interval)
-    const dueMonitors = monitors.filter(m => shouldScrapeProfile(m.last_scraped_at));
+    const dueMonitors = monitors.filter((m) => shouldScrapeProfile(m.last_scraped_at));
 
     logger.info(`Profile monitors: ${dueMonitors.length} due of ${monitors.length} active`);
 
@@ -136,12 +139,14 @@ export const signalProfileScan = schedules.task({
 
             // Get reactions for this post
             const reactionsResult = await getPostReactions(postUrl);
-            const reactions: HarvestPostReaction[] = reactionsResult.error ? [] : reactionsResult.data;
+            const reactions: HarvestPostReaction[] = reactionsResult.error
+              ? []
+              : reactionsResult.data;
 
             // Map comments to engager format
             const commentEngagers = comments
-              .filter(c => c.actor?.linkedinUrl)
-              .map(c => ({
+              .filter((c) => c.actor?.linkedinUrl)
+              .map((c) => ({
                 linkedinUrl: c.actor.linkedinUrl,
                 name: c.actor.name,
                 headline: c.actor.position,
@@ -151,8 +156,8 @@ export const signalProfileScan = schedules.task({
 
             // Map reactions to engager format
             const reactionEngagers = reactions
-              .filter(r => r.actor?.linkedinUrl)
-              .map(r => ({
+              .filter((r) => r.actor?.linkedinUrl)
+              .map((r) => ({
                 linkedinUrl: r.actor.linkedinUrl,
                 name: r.actor.name,
                 headline: r.actor.position,
