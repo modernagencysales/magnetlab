@@ -196,7 +196,7 @@ export function BroadcastModal({ post, profiles, onClose, onBroadcast }: Broadca
 
           {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
               <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
               {error}
             </div>

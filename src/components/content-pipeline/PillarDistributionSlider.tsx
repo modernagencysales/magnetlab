@@ -75,7 +75,7 @@ export function PillarDistributionSlider({
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Pillar Distribution</span>
         <div className="flex items-center gap-2">
-          {!isValid && <span className="text-xs text-red-500">Total: {total}% (must be 100%)</span>}
+          {!isValid && <span className="text-xs text-destructive">Total: {total}% (must be 100%)</span>}
           <Button variant="ghost" size="sm" onClick={autoBalance} disabled={disabled}>
             Auto-balance
           </Button>

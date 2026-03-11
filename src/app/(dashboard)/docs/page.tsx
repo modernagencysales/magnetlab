@@ -43,6 +43,7 @@ const categories = [
 export default function DocsHubPage() {
   return (
     <PageContainer maxWidth="xl">
+      <div className="space-y-6">
       <PageTitle
         title="Documentation"
         description="Everything you need to build high-converting lead magnets with MagnetLab."
@@ -53,7 +54,7 @@ export default function DocsHubPage() {
           const Icon = cat.icon;
           return (
             <Link key={cat.href} href={cat.href} className="group">
-              <Card className="h-full transition-colors hover:border-primary/50">
+              <Card className="h-full border-border transition-colors hover:border-primary/50">
                 <CardContent className="p-5">
                   <IconWrapper variant={cat.variant} size="md">
                     <Icon />
@@ -65,6 +66,7 @@ export default function DocsHubPage() {
             </Link>
           );
         })}
+      </div>
       </div>
     </PageContainer>
   );

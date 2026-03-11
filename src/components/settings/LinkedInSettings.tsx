@@ -90,7 +90,7 @@ export function LinkedInSettings({ isConnected, accountName }: LinkedInSettingsP
             size="sm"
             onClick={handleDisconnect}
             disabled={loading}
-            className="text-red-500 hover:text-red-600"
+            className="text-destructive hover:opacity-80"
           >
             {loading ? (
               <>
@@ -116,7 +116,7 @@ export function LinkedInSettings({ isConnected, accountName }: LinkedInSettingsP
       {feedback && (
         <p
           className={`mt-3 flex items-center gap-2 text-sm ${
-            feedback.type === 'success' ? 'text-green-600' : 'text-red-500'
+            feedback.type === 'success' ? 'text-green-600' : 'text-destructive'
           }`}
         >
           {feedback.type === 'success' ? (

@@ -10,13 +10,15 @@ export const metadata = {
 export default function AnalyticsPage() {
   return (
     <PageContainer maxWidth="xl">
-      <PageTitle
-        title="Analytics"
-        description="Track your funnel performance and lead generation."
-      />
-      <Suspense fallback={<LoadingCard count={4} />}>
-        <AnalyticsOverview />
-      </Suspense>
+      <div className="space-y-6">
+        <PageTitle
+          title="Analytics"
+          description="Track your funnel performance and lead generation."
+        />
+        <Suspense fallback={<LoadingCard count={4} />}>
+          <AnalyticsOverview />
+        </Suspense>
+      </div>
     </PageContainer>
   );
 }

@@ -59,13 +59,13 @@ const SENTIMENT_LABELS: Record<SentimentScore, string> = {
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-green-600 dark:text-green-400';
   if (score >= 50) return 'text-yellow-600 dark:text-yellow-400';
-  return 'text-zinc-500 dark:text-zinc-400';
+  return 'text-muted-foreground';
 }
 
 function scoreBg(score: number): string {
   if (score >= 80) return 'bg-green-100 dark:bg-green-900/30';
   if (score >= 50) return 'bg-yellow-100 dark:bg-yellow-900/30';
-  return 'bg-zinc-100 dark:bg-zinc-800/50';
+  return 'bg-muted';
 }
 
 // ─── Props ──────────────────────────────────────────────────
@@ -212,7 +212,7 @@ export function SignalLeadDetail({ lead, onClose, onExclude, onPush }: SignalLea
                   className={
                     lead.icp_match
                       ? 'text-green-600 dark:text-green-400 font-medium'
-                      : 'text-zinc-500 font-medium'
+                      : 'text-muted-foreground font-medium'
                   }
                 >
                   {lead.icp_match ? 'Yes' : 'No'}

@@ -195,7 +195,7 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
           ref={panelRef}
           role="dialog"
           aria-label="Send feedback"
-          className="fixed bottom-20 right-6 z-[9999] w-[380px] max-w-[calc(100vw-3rem)] animate-in slide-in-from-bottom-2 fade-in duration-200 rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl"
+          className="fixed bottom-20 right-6 z-[9999] w-[380px] max-w-[calc(100vw-3rem)] animate-in slide-in-from-bottom-2 fade-in duration-200 rounded-xl border border-border bg-card shadow-2xl"
         >
           {/* Success state */}
           {status === 'success' ? (
@@ -203,25 +203,25 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/20">
                 <Check className="h-6 w-6 text-green-400" />
               </div>
-              <p className="text-sm font-medium text-zinc-200">Feedback sent!</p>
+              <p className="text-sm font-medium text-foreground">Feedback sent!</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
               {/* Header */}
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-zinc-100">Send Feedback</h3>
+                <h3 className="text-sm font-semibold">Send Feedback</h3>
                 <button
                   type="button"
                   onClick={close}
                   aria-label="Close feedback"
-                  className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
               {/* Type toggle */}
-              <div className="flex gap-1 rounded-lg bg-zinc-800 p-1">
+              <div className="flex gap-1 rounded-lg bg-muted p-1">
                 {TYPE_OPTIONS.map(({ value, label, icon: Icon }) => (
                   <button
                     key={value}
@@ -231,7 +231,7 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
                       type === value
                         ? 'bg-violet-600 text-white shadow-sm'
-                        : 'text-zinc-400 hover:text-zinc-200'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -243,7 +243,7 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
               {/* Severity (bugs only) */}
               {type === 'bug' && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-zinc-400">
+                  <label className="text-xs font-medium text-muted-foreground">
                     How much does this block you?
                   </label>
                   <div className="grid grid-cols-2 gap-1.5">
@@ -256,7 +256,7 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
                         className={`rounded-md px-2.5 py-1.5 text-xs transition-all ${
                           severity === value
                             ? 'bg-violet-600/20 text-violet-300 ring-1 ring-violet-500/50'
-                            : 'bg-zinc-800 text-zinc-400 hover:text-zinc-300'
+                            : 'bg-muted text-muted-foreground hover:text-foreground'
                         }`}
                       >
                         {label}
@@ -268,7 +268,7 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
 
               {/* Title */}
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="feedback-title" className="text-xs font-medium text-zinc-400">
+                <label htmlFor="feedback-title" className="text-xs font-medium text-muted-foreground">
                   Title
                 </label>
                 <input
@@ -286,13 +286,13 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
                   }
                   required
                   maxLength={120}
-                  className="rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
                 />
               </div>
 
               {/* Description */}
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="feedback-description" className="text-xs font-medium text-zinc-400">
+                <label htmlFor="feedback-description" className="text-xs font-medium text-muted-foreground">
                   Description
                 </label>
                 <textarea
@@ -303,16 +303,16 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
                   required
                   maxLength={2000}
                   rows={4}
-                  className="resize-none rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
+                  className="resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
                 />
-                <span className="text-right text-[10px] text-zinc-500">
+                <span className="text-right text-[10px] text-muted-foreground">
                   {description.length}/2000
                 </span>
               </div>
 
               {/* Error */}
               {status === 'error' && (
-                <p className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
                   {errorMessage}
                 </p>
               )}

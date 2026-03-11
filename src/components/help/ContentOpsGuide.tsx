@@ -47,7 +47,7 @@ function CollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border-border">
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/50"
@@ -146,7 +146,7 @@ export function ContentOpsGuide() {
 
         {/* ──────── Daily Routine ──────── */}
         <TabsContent value="daily">
-          <Card>
+          <Card className="border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock size={18} className="text-primary" />
@@ -208,7 +208,7 @@ export function ContentOpsGuide() {
 
         {/* ──────── Weekly Routine ──────── */}
         <TabsContent value="weekly">
-          <Card>
+          <Card className="border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CalendarDays size={18} className="text-primary" />
@@ -314,8 +314,8 @@ export function ContentOpsGuide() {
 
         {/* ──────── Style Feedback ──────── */}
         <TabsContent value="style">
-          <div className="space-y-4">
-            <Card>
+          <div className="space-y-6">
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles size={18} className="text-primary" />
@@ -344,7 +344,7 @@ export function ContentOpsGuide() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle>Quick-Tag Chips</CardTitle>
               </CardHeader>
@@ -370,7 +370,7 @@ export function ContentOpsGuide() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle>Writing Style Notes</CardTitle>
               </CardHeader>
@@ -381,7 +381,7 @@ export function ContentOpsGuide() {
                 </p>
 
                 <div className="space-y-3">
-                  <div className="rounded-lg border p-3">
+                  <div className="rounded-lg border border-border p-3">
                     <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
                       Good note
                     </p>
@@ -391,7 +391,7 @@ export function ContentOpsGuide() {
                       together&apos;.&quot;
                     </p>
                   </div>
-                  <div className="rounded-lg border p-3">
+                  <div className="rounded-lg border border-border p-3">
                     <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
                       Good note
                     </p>
@@ -400,8 +400,8 @@ export function ContentOpsGuide() {
                       statement.&quot;
                     </p>
                   </div>
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="mb-1 text-xs font-semibold text-destructive">
                       Less helpful
                     </p>
                     <p className="text-sm text-muted-foreground italic">

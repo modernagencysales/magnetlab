@@ -200,7 +200,7 @@ export function CSVTemplateImporter({ onClose, onImported }: CSVTemplateImporter
           </div>
         )}
 
-        {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
       </div>
     </div>
   );

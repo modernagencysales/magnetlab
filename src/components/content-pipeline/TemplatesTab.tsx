@@ -260,7 +260,7 @@ export function TemplatesTab() {
                         size="icon-sm"
                         onClick={() => handleDelete(template.id)}
                       >
-                        <X className="h-3.5 w-3.5 text-red-400" />
+                        <X className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     </div>
                   </div>

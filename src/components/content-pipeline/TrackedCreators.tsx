@@ -129,7 +129,7 @@ export function TrackedCreators() {
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => removeCreator(c.id)}
-                  className="ml-2 flex-shrink-0 text-muted-foreground hover:text-red-500"
+                  className="ml-2 flex-shrink-0 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

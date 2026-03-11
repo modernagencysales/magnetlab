@@ -81,7 +81,7 @@ export function QuickWriteModal({ onClose, onPostCreated, profileId }: QuickWrit
               />
             </div>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button
               className="w-full"

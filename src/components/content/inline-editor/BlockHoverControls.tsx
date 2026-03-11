@@ -141,7 +141,7 @@ export function BlockHoverControls({
             <button
               type="button"
               onClick={handleDelete}
-              className="flex w-full items-center gap-2 text-xs rounded px-2 py-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10"
             >
               <Trash2 size={14} />
               Delete

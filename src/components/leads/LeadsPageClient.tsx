@@ -184,10 +184,11 @@ export function LeadsPageClient({
 
   return (
     <PageContainer maxWidth="xl">
-      <PageTitle
-        title="Leads"
-        description={`${total} total leads captured`}
-        actions={
+      <div className="space-y-6">
+        <PageTitle
+          title="Leads"
+          description={`${total} total leads captured`}
+          actions={
           <Button
             variant="outline"
             size="sm"
@@ -202,10 +203,10 @@ export function LeadsPageClient({
             Export CSV
           </Button>
         }
-      />
+        />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           label="Qualified"
           value={qualifiedCount}
@@ -214,23 +215,23 @@ export function LeadsPageClient({
         <StatCard
           label="Not Qualified"
           value={unqualifiedCount}
-          icon={<XCircle className="text-red-500" />}
+          icon={<XCircle className="text-destructive" />}
         />
         <StatCard
           label="Pending"
           value={pendingCount}
           icon={<Clock className="text-amber-500" />}
         />
-      </div>
+        </div>
 
-      {/* Search & Filters */}
-      <div className="space-y-3">
-        <div className="flex gap-3">
-          <SearchInput
+        {/* Search & Filters */}
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <SearchInput
             placeholder="Search by email or name..."
             value={search}
             onValueChange={setSearch}
-            className="flex-1"
+            className="min-w-0 flex-1 sm:max-w-xs"
           />
           <Button
             variant={
@@ -241,17 +242,17 @@ export function LeadsPageClient({
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
           >
-            <Filter className="h-4 w-4 mr-1" />
+            <Filter className="mr-1 h-4 w-4" />
             Filters
             <ChevronDown
-              className={`h-3.5 w-3.5 ml-1 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+              className={`ml-1 h-3.5 w-3.5 transition-transform ${showFilters ? 'rotate-180' : ''}`}
             />
           </Button>
-        </div>
+          </div>
 
         {showFilters && (
           <Card>
-            <CardContent className="flex gap-4 p-3">
+            <CardContent className="flex gap-4 p-4">
               <div className="flex-1">
                 <label className="text-xs font-medium text-muted-foreground">Funnel</label>
                 <select
@@ -288,26 +289,26 @@ export function LeadsPageClient({
             </CardContent>
           </Card>
         )}
-      </div>
-
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
-          <p className="text-xs text-red-800 dark:text-red-200">{error}</p>
         </div>
-      )}
 
-      {/* Leads Table */}
-      {loading ? (
-        <LoadingCard count={3} />
-      ) : leads.length === 0 ? (
-        <EmptyState
+          {error && (
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
+        {/* Leads Table */}
+        {loading ? (
+          <LoadingCard count={3} />
+        ) : leads.length === 0 ? (
+          <EmptyState
           icon={<Mail />}
           title="No leads yet"
           description="Leads will appear here once people sign up through your funnel pages."
-        />
-      ) : (
-        <>
-          <Card>
+          />
+        ) : (
+          <>
+            <Card>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -371,11 +372,11 @@ export function LeadsPageClient({
                 ))}
               </TableBody>
             </Table>
-          </Card>
+            </Card>
 
-          {/* Pagination */}
-          {total > limit && (
-            <div className="flex items-center justify-between">
+            {/* Pagination */}
+            {total > limit && (
+              <div className="flex items-center justify-between pt-4">
               <p className="text-xs text-muted-foreground">
                 Showing {page * limit + 1} to {Math.min((page + 1) * limit, total)} of {total}
               </p>
@@ -397,10 +398,11 @@ export function LeadsPageClient({
                   Next
                 </Button>
               </div>
-            </div>
-          )}
-        </>
-      )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Lead Detail Modal */}
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>

@@ -93,36 +93,38 @@ async function MagnetsContent() {
 
   return (
     <PageContainer maxWidth="xl">
-      <PageTitle
-        title="Lead Magnets"
-        description={`${items.length} lead magnet${items.length !== 1 ? 's' : ''} created`}
-        actions={
-          <Button asChild>
-            <Link href="/create">
-              <Plus className="h-4 w-4 mr-1" />
-              Create New
-            </Link>
-          </Button>
-        }
-      />
+      <div className="space-y-6">
+        <PageTitle
+          title="Lead Magnets"
+          description={`${items.length} lead magnet${items.length !== 1 ? 's' : ''} created`}
+          actions={
+            <Button asChild>
+              <Link href="/create">
+                <Plus className="mr-1 h-4 w-4" />
+                Create New
+              </Link>
+            </Button>
+          }
+        />
 
-      {items.length > 0 ? (
-        <MagnetsListClient items={items} totalCount={items.length} />
-      ) : (
-        <EmptyState
+        {items.length > 0 ? (
+          <MagnetsListClient items={items} totalCount={items.length} />
+        ) : (
+          <EmptyState
           icon={<Magnet />}
           title="No lead magnets yet"
           description="Create your first lead magnet to start capturing leads."
           action={
             <Button asChild>
               <Link href="/create">
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="mr-1 h-4 w-4" />
                 Create Your First Lead Magnet
               </Link>
             </Button>
           }
-        />
-      )}
+          />
+        )}
+      </div>
     </PageContainer>
   );
 }

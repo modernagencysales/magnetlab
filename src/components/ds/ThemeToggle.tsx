@@ -47,13 +47,13 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ isDark: controlledIsDark, onT
     <button
       type="button"
       onClick={handleClick}
-      className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+      className="p-2 rounded-lg hover:bg-muted transition-colors"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       {isDark ? (
-        <Sun className="w-5 h-5 text-zinc-400 hover:text-zinc-200" />
+        <Sun className="w-5 h-5 text-muted-foreground hover:text-foreground" />
       ) : (
-        <Moon className="w-5 h-5 text-zinc-600 hover:text-zinc-800" />
+        <Moon className="w-5 h-5 text-muted-foreground hover:text-foreground" />
       )}
     </button>
   );

@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth';
 import { isSuperAdmin } from '@/lib/auth/super-admin';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { PageContainer } from '@magnetlab/magnetui';
 import { PromptList } from '@/components/admin/PromptList';
 import { redirect } from 'next/navigation';
 
@@ -18,14 +19,16 @@ export default async function AdminPromptsPage() {
     .order('name');
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">AI Prompts</h1>
-        <p className="text-sm text-zinc-500 mt-1">
+    <PageContainer maxWidth="xl">
+      <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">AI Prompts</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           View, edit, and version all AI prompt templates used in content production.
         </p>
       </div>
       <PromptList prompts={prompts ?? []} />
-    </div>
+      </div>
+    </PageContainer>
   );
 }

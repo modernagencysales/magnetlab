@@ -202,10 +202,10 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
   const unclusteredTags = tags.filter((t) => !clusteredTagNames.has(t.tag_name));
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Hero Section */}
-      <div className="mb-6 rounded-xl border bg-card p-8">
-        <div className="flex items-center gap-3 mb-4">
+      <div className="rounded-lg border border-border bg-card p-6">
+        <div className="mb-4 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
             <Brain className="h-6 w-6 text-primary" />
           </div>
@@ -218,23 +218,23 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
         </div>
 
         {/* Search + Sort */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1 sm:max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
               value={query}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full py-3 pl-10 pr-4 text-base"
+              className="h-10 w-full pl-10"
               placeholder="Search your knowledge base..."
             />
           </div>
-          <div className="relative">
-            <ArrowUpDown className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <div className="relative w-full sm:w-auto sm:min-w-[140px]">
+            <ArrowUpDown className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <select
               value={sort}
               onChange={(e) => handleSortChange(e.target.value as SortOption)}
-              className="h-full appearance-none rounded-lg border border-border bg-background py-3 pl-10 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-10 w-full appearance-none rounded-lg border border-border bg-background pl-10 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -247,7 +247,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         {CATEGORIES.map((cat) => (
           <button
             key={cat.value}
@@ -263,7 +263,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
           </button>
         ))}
 
-        <span className="mx-1 text-muted-foreground/30">|</span>
+        <span className="hidden text-muted-foreground/40 sm:inline">|</span>
 
         {SPEAKERS.map((spk) => (
           <button
@@ -282,7 +282,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
 
         {activeTag && (
           <>
-            <span className="mx-1 text-muted-foreground/30">|</span>
+            <span className="hidden text-muted-foreground/40 sm:inline">|</span>
             <button
               onClick={() => handleTagClick(activeTag)}
               className="flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
@@ -299,7 +299,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : entries.length === 0 && !tags.length ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
+        <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <Brain className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-muted-foreground">
             {query ? 'No results found' : 'No knowledge entries yet'}
@@ -314,14 +314,14 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
         <div>
           {/* Tag Clusters + Cloud (browse mode) */}
           {!query && tags.length > 0 && (
-            <div className="mb-6">
-              <div className="mb-3 flex items-center justify-between">
+            <div>
+              <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-semibold uppercase text-muted-foreground">
                   Knowledge Topics
                 </h3>
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={() => setShowManualEntry(true)}>
-                    <Plus className="h-3 w-3" />
+                    <Plus className="mr-1 h-3 w-3" />
                     Add Knowledge
                   </Button>
                   <Button
@@ -331,9 +331,9 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
                     disabled={clustering || tags.length < 4}
                   >
                     {clustering ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                     ) : (
-                      <Sparkles className="h-3 w-3" />
+                      <Sparkles className="mr-1 h-3 w-3" />
                     )}
                     {clustering ? 'Organizing...' : 'Organize Tags'}
                   </Button>
@@ -342,12 +342,12 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
 
               {/* Cluster Groups */}
               {clusters.length > 0 ? (
-                <div className="space-y-2 mb-4">
+                <div className="mb-4 space-y-3">
                   {clusters.map((cluster) => (
-                    <div key={cluster.id} className="rounded-lg border bg-card">
+                    <div key={cluster.id} className="rounded-lg border border-border bg-card">
                       <button
                         onClick={() => toggleCluster(cluster.id)}
-                        className="flex w-full items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
+                        className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted/50"
                       >
                         <div className="flex items-center gap-2">
                           {expandedClusters.has(cluster.id) ? (
@@ -385,7 +385,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
 
                   {/* Unclustered tags */}
                   {unclusteredTags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-2">
+                    <div className="flex flex-wrap gap-2 pt-3">
                       {unclusteredTags.slice(0, 15).map((tag) => (
                         <button
                           key={tag.tag_name}
@@ -401,7 +401,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
                 </div>
               ) : (
                 /* Flat tag cloud (no clusters yet) */
-                <div className="mb-6 flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
                   {tags.slice(0, 20).map((tag) => (
                     <button
                       key={tag.tag_name}
@@ -427,7 +427,7 @@ export function KnowledgeBrainTab({ teamId }: { teamId?: string } = {}) {
           )}
 
           {/* Results */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             {entries.map((entry) => (
               <KnowledgeEntryCard
                 key={entry.id}

@@ -36,7 +36,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
 
   return (
     <Badge variant={config.variant} className={className}>
-      {config.spinning && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+      {config.spinning && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
       {config.label}
     </Badge>
   );

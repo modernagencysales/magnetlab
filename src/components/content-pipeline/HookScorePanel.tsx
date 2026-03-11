@@ -32,19 +32,19 @@ const BREAKDOWN_LABELS: { key: keyof HookScoreData['breakdown']; label: string }
 function scoreColor(score: number): string {
   if (score >= 8) return 'text-green-500';
   if (score >= 5) return 'text-amber-500';
-  return 'text-red-500';
+  return 'text-destructive';
 }
 
 function barColor(score: number): string {
   if (score >= 8) return 'bg-green-500';
   if (score >= 5) return 'bg-amber-500';
-  return 'bg-red-500';
+  return 'bg-destructive';
 }
 
 function scoreBgRing(score: number): string {
   if (score >= 8) return 'border-green-500/30';
   if (score >= 5) return 'border-amber-500/30';
-  return 'border-red-500/30';
+  return 'border-destructive/30';
 }
 
 export function HookScorePanel({ postId, initialScore, onVariantsGenerated }: HookScorePanelProps) {

@@ -180,7 +180,7 @@ export function ResendSettings({ isConnected, lastVerifiedAt, metadata }: Resend
             size="sm"
             onClick={handleDisconnect}
             disabled={loading}
-            className="text-red-500 hover:text-red-600"
+            className="text-destructive hover:opacity-80"
           >
             {loading ? (
               <>
@@ -261,7 +261,7 @@ export function ResendSettings({ isConnected, lastVerifiedAt, metadata }: Resend
           )}
 
           {status.error && (
-            <p className="flex items-center gap-2 text-sm text-red-500">
+            <p className="flex items-center gap-2 text-sm text-destructive">
               <XCircle className="h-4 w-4" />
               {status.error}
             </p>

@@ -42,7 +42,7 @@ export function ConversationInput({ onSend, onCancel, isStreaming }: Conversatio
           variant="ghost"
           size="icon-sm"
           onClick={onCancel}
-          className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+          className="text-destructive hover:bg-destructive/10"
           aria-label="Stop generating"
         >
           <Square className="w-4 h-4" />

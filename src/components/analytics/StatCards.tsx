@@ -55,7 +55,7 @@ export function StatCards({ totals }: StatCardsProps) {
         const Icon = stat.icon;
         const value = totals[stat.key];
         return (
-          <Card key={stat.key}>
+          <Card key={stat.key} className="border-border">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <div className={`rounded-lg p-2 ${stat.bg}`}>

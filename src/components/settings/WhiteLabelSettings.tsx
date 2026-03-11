@@ -169,7 +169,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                   size="icon-sm"
                   onClick={handleDeleteDomain}
                   disabled={domainDeleting}
-                  className="text-red-500 hover:text-red-600"
+                  className="text-destructive hover:opacity-80"
                 >
                   {domainDeleting ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -365,7 +365,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
           </p>
         )}
         {domainError && (
-          <p className="flex items-center gap-2 text-sm text-red-500">
+          <p className="flex items-center gap-2 text-sm text-destructive">
             <XCircle className="h-4 w-4" />
             {domainError}
           </p>
@@ -499,7 +499,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
             </div>
 
             {brandingError && (
-              <p className="flex items-center gap-2 text-sm text-red-500">
+              <p className="flex items-center gap-2 text-sm text-destructive">
                 <XCircle className="h-4 w-4" />
                 {brandingError}
               </p>
@@ -562,7 +562,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                   size="icon-sm"
                   onClick={handleDeleteEmailDomain}
                   disabled={emailDomainDeleting}
-                  className="text-red-500 hover:text-red-600"
+                  className="text-destructive hover:opacity-80"
                 >
                   {emailDomainDeleting ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -715,7 +715,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
                   </p>
                 )}
                 {fromEmailError && (
-                  <p className="flex items-center gap-2 text-sm text-red-500">
+                  <p className="flex items-center gap-2 text-sm text-destructive">
                     <XCircle className="h-4 w-4" />
                     {fromEmailError}
                   </p>
@@ -760,7 +760,7 @@ export function WhiteLabelSettings({ plan }: WhiteLabelSettingsProps) {
           </p>
         )}
         {emailDomainError && (
-          <p className="flex items-center gap-2 text-sm text-red-500">
+          <p className="flex items-center gap-2 text-sm text-destructive">
             <XCircle className="h-4 w-4" />
             {emailDomainError}
           </p>

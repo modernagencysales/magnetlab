@@ -72,9 +72,9 @@ export function UsernameSettings({ currentUsername }: UsernameSettingsProps) {
         </div>
 
         {error && (
-          <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <p className="text-sm">{error}</p>
           </div>
         )}
 

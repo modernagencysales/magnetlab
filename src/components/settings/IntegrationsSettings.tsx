@@ -35,7 +35,7 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="border-border">
         <CardHeader>
           <div className="flex items-center gap-3">
             <Link2 className="h-5 w-5 text-primary" />
@@ -83,8 +83,8 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
 
           <Separator />
           <div id="crm">
-            <h3 className="text-sm font-semibold mb-1">CRM</h3>
-            <p className="text-xs text-muted-foreground mb-3">
+            <h3 className="text-sm font-semibold mb-2">CRM</h3>
+            <p className="text-xs text-muted-foreground mb-4">
               Push leads to your CRM when they opt in to your funnels.
             </p>
             <GoHighLevelSettings
@@ -99,8 +99,8 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
 
           <Separator />
           <div id="delivery">
-            <h3 className="text-sm font-semibold mb-1">LinkedIn Delivery</h3>
-            <p className="text-xs text-muted-foreground mb-3">
+            <h3 className="text-sm font-semibold mb-2">LinkedIn Delivery</h3>
+            <p className="text-xs text-muted-foreground mb-4">
               Deliver lead magnets to leads via LinkedIn DM campaigns.
             </p>
             <HeyReachSettings
@@ -111,8 +111,8 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
 
           <Separator />
           <div id="pixels">
-            <h3 className="text-sm font-semibold mb-1">Tracking Pixels</h3>
-            <p className="text-xs text-muted-foreground mb-3">
+            <h3 className="text-sm font-semibold mb-2">Tracking Pixels</h3>
+            <p className="text-xs text-muted-foreground mb-4">
               Add conversion tracking to your funnel pages. Events fire both client-side and
               server-side for maximum accuracy.
             </p>
@@ -121,8 +121,8 @@ export function IntegrationsSettings({ integrations }: IntegrationsSettingsProps
 
           <Separator />
           <div id="widgets">
-            <h3 className="text-sm font-semibold mb-1">Widgets</h3>
-            <p className="text-xs text-muted-foreground mb-3">
+            <h3 className="text-sm font-semibold mb-2">Widgets</h3>
+            <p className="text-xs text-muted-foreground mb-4">
               Add floating widgets to your content pages.
             </p>
             <div className="space-y-4 mt-4">

@@ -167,7 +167,7 @@ export function CompanyMonitors() {
                       onClick={() => handleDelete(company.id)}
                       title="Remove company"
                     >
-                      <Trash2 className="h-4 w-4 text-red-400" />
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                 </div>
@@ -206,7 +206,7 @@ export function CompanyMonitors() {
         </>
       )}
 
-      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
     </div>
   );
 }

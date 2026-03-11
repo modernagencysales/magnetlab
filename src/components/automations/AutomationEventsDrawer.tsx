@@ -86,12 +86,12 @@ const EVENT_CONFIG: Record<string, { label: string; className: string; icon: Rea
   },
   dm_failed: {
     label: 'DM Failed',
-    className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+    className: 'bg-destructive/10 text-destructive border-destructive/20',
     icon: <XCircle className="h-3 w-3" />,
   },
   error: {
     label: 'Error',
-    className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+    className: 'bg-destructive/10 text-destructive border-destructive/20',
     icon: <XCircle className="h-3 w-3" />,
   },
   enrichment_started: {
@@ -106,7 +106,7 @@ const EVENT_CONFIG: Record<string, { label: string; className: string; icon: Rea
   },
   enrichment_failed: {
     label: 'Enrichment Failed',
-    className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+    className: 'bg-destructive/10 text-destructive border-destructive/20',
     icon: <XCircle className="h-3 w-3" />,
   },
   plusvibe_pushed: {
@@ -116,14 +116,14 @@ const EVENT_CONFIG: Record<string, { label: string; className: string; icon: Rea
   },
   plusvibe_push_failed: {
     label: 'PlusVibe Failed',
-    className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+    className: 'bg-destructive/10 text-destructive border-destructive/20',
     icon: <XCircle className="h-3 w-3" />,
   },
 };
 
 const DEFAULT_EVENT_CONFIG = {
   label: 'Event',
-  className: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20',
+  className: 'bg-muted text-muted-foreground border-border',
   icon: <MessageSquare className="h-3 w-3" />,
 };
 
@@ -259,7 +259,7 @@ export function AutomationEventsDrawer({
 
           {/* Error */}
           {error && (
-            <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
@@ -307,7 +307,7 @@ export function AutomationEventsDrawer({
 
                         {/* Commenter name */}
                         {event.commenter_name && (
-                          <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
+                          <p className="text-xs font-medium text-foreground">
                             {event.commenter_name}
                           </p>
                         )}
@@ -328,7 +328,7 @@ export function AutomationEventsDrawer({
 
                         {/* Error */}
                         {event.error && (
-                          <p className="text-xs text-red-500 dark:text-red-400">{event.error}</p>
+                          <p className="text-xs text-destructive">{event.error}</p>
                         )}
 
                         {/* Reply with Link button */}
@@ -350,7 +350,7 @@ export function AutomationEventsDrawer({
                             className={`text-xs flex items-center gap-1.5 mt-1 ${
                               result.success
                                 ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-red-600 dark:text-red-400'
+                                : 'text-destructive'
                             }`}
                           >
                             {result.success ? (
@@ -366,7 +366,7 @@ export function AutomationEventsDrawer({
                         {isReplying && (
                           <div className="mt-2 space-y-2 p-3 rounded-lg border bg-muted/30">
                             <textarea
-                              className="w-full text-xs rounded-md border bg-background px-3 py-2 min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 text-zinc-900 dark:text-zinc-100 placeholder:text-muted-foreground"
+                              className="w-full text-xs rounded-md border bg-background px-3 py-2 min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 text-foreground placeholder:text-muted-foreground"
                               value={replyText}
                               onChange={(e) => setReplyText(e.target.value)}
                               placeholder="Write your reply..."

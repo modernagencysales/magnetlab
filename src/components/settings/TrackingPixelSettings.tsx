@@ -142,7 +142,7 @@ function MetaPixelCard({ integration }: { integration?: Integration }) {
             size="sm"
             onClick={handleDisconnect}
             disabled={disconnecting}
-            className="text-red-500 hover:text-red-600"
+            className="text-destructive hover:opacity-80"
           >
             {disconnecting ? (
               <>
@@ -236,7 +236,7 @@ function MetaPixelCard({ integration }: { integration?: Integration }) {
 
           {result && (
             <p
-              className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-red-500'}`}
+              className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-destructive'}`}
             >
               {result.success ? (
                 <CheckCircle className="h-4 w-4" />
@@ -379,7 +379,7 @@ function LinkedInInsightCard({ integration }: { integration?: Integration }) {
             size="sm"
             onClick={handleDisconnect}
             disabled={disconnecting}
-            className="text-red-500 hover:text-red-600"
+            className="text-destructive hover:opacity-80"
           >
             {disconnecting ? (
               <>
@@ -472,7 +472,7 @@ function LinkedInInsightCard({ integration }: { integration?: Integration }) {
 
           {result && (
             <p
-              className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-red-500'}`}
+              className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-destructive'}`}
             >
               {result.success ? (
                 <CheckCircle className="h-4 w-4" />

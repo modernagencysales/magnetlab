@@ -2,7 +2,7 @@ import { CopilotMemorySettings } from '@/components/settings/CopilotMemorySettin
 
 export default function CopilotSettingsPage() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <CopilotMemorySettings />
     </div>
   );

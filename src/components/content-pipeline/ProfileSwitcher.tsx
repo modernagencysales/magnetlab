@@ -42,10 +42,10 @@ export function ProfileSwitcher({
   const selected = profiles.find((p) => p.id === selectedProfileId);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <span className="text-sm text-muted-foreground">Viewing as:</span>
       <Select value={selectedProfileId || ''} onValueChange={(v) => onProfileChange(v || null)}>
-        <SelectTrigger className="w-[200px]">
+        <SelectTrigger className="h-9 w-[200px]">
           <SelectValue placeholder="All Members" />
         </SelectTrigger>
         <SelectContent>

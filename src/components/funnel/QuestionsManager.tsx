@@ -309,8 +309,8 @@ export function QuestionsManager({
       )}
 
       {error && (
-        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+          {error}
         </div>
       )}
 
@@ -371,7 +371,7 @@ export function QuestionsManager({
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => handleDeleteQuestion(question.id)}
-                  className="text-muted-foreground hover:text-red-500"
+                  className="text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -554,7 +554,7 @@ export function QuestionsManager({
                                   qualifyingAnswer: updatedQualifying,
                                 });
                               }}
-                              className="p-1 text-muted-foreground hover:text-red-500"
+                              className="p-1 text-muted-foreground hover:text-destructive"
                             >
                               <X className="h-3.5 w-3.5" />
                             </Button>
@@ -732,7 +732,7 @@ export function QuestionsManager({
                         setNewOptions(newOptions.filter((_, i) => i !== idx));
                         setNewQualifyingOptions(newQualifyingOptions.filter((o) => o !== opt));
                       }}
-                      className="p-1 text-muted-foreground hover:text-red-500"
+                      className="p-1 text-muted-foreground hover:text-destructive"
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>

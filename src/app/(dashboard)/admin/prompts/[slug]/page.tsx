@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth';
 import { isSuperAdmin } from '@/lib/auth/super-admin';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { PageContainer } from '@magnetlab/magnetui';
 import { PromptEditor } from '@/components/admin/PromptEditor';
 import { notFound, redirect } from 'next/navigation';
 
@@ -31,11 +32,8 @@ export default async function PromptEditorPage({
     .order('version', { ascending: false });
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <PromptEditor
-        prompt={prompt}
-        versions={versions ?? []}
-      />
-    </div>
+    <PageContainer maxWidth="xl">
+      <PromptEditor prompt={prompt} versions={versions ?? []} />
+    </PageContainer>
   );
 }

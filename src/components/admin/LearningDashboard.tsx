@@ -153,7 +153,7 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* ── Section 1: Summary Stats ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -184,22 +184,22 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
         {patternFrequencies.length === 0 ? (
           <EmptyState message="No edit patterns detected yet. Patterns are classified automatically as content is edited." />
         ) : (
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
+          <div className="rounded-lg border border-border bg-card p-5">
             <div className="space-y-3">
               {patternFrequencies.map(({ pattern, count }) => {
                 const widthPercent = Math.round((count / maxPatternCount) * 100);
                 return (
                   <div key={pattern} className="flex items-center gap-3">
-                    <span className="text-xs text-zinc-600 dark:text-zinc-400 w-40 shrink-0 truncate font-medium">
+                    <span className="text-xs text-muted-foreground w-40 shrink-0 truncate font-medium">
                       {formatPatternLabel(pattern)}
                     </span>
-                    <div className="flex-1 h-5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-violet-500 rounded-full transition-all duration-300"
                         style={{ width: `${widthPercent}%` }}
                       />
                     </div>
-                    <span className="text-xs text-zinc-500 w-8 text-right tabular-nums">
+                    <span className="text-xs text-muted-foreground w-8 text-right tabular-nums">
                       {count}
                     </span>
                   </div>
@@ -230,7 +230,7 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
         {recentEdits.length === 0 ? (
           <EmptyState message="No edits recorded in the last 30 days." />
         ) : (
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+          <div className="rounded-lg border border-border bg-card overflow-hidden">
             <div className="max-h-[600px] overflow-y-auto">
               {recentEdits.map((edit, index) => {
                 const patterns = edit.auto_classified_changes?.patterns ?? [];
@@ -239,12 +239,12 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
                     key={edit.id}
                     className={`flex items-start gap-4 px-5 py-3.5 ${
                       index % 2 === 0
-                        ? 'bg-white dark:bg-zinc-900'
-                        : 'bg-zinc-50 dark:bg-zinc-900/50'
+                        ? 'bg-card'
+                        : 'bg-muted/50'
                     }`}
                   >
                     {/* Date */}
-                    <span className="text-xs text-zinc-400 w-20 shrink-0 pt-0.5">
+                    <span className="text-xs text-muted-foreground w-20 shrink-0 pt-0.5">
                       {formatRelativeDate(edit.created_at)}
                     </span>
 
@@ -252,7 +252,7 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
                     <span
                       className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${
                         CONTENT_TYPE_COLORS[edit.content_type] ??
-                        'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                        'bg-muted text-muted-foreground'
                       }`}
                     >
                       {edit.content_type}
@@ -274,17 +274,17 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
                         </div>
                       )}
                       {edit.ceo_note && (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-1">
+                        <p className="text-xs text-muted-foreground line-clamp-1">
                           {edit.ceo_note}
                         </p>
                       )}
                       {patterns.length === 0 && !edit.ceo_note && (
-                        <span className="text-xs text-zinc-400 italic">No patterns or notes</span>
+                        <span className="text-xs text-muted-foreground italic">No patterns or notes</span>
                       )}
                     </div>
 
                     {/* Profile name */}
-                    <span className="text-xs text-zinc-400 shrink-0">
+                    <span className="text-xs text-muted-foreground shrink-0">
                       {profileNames[edit.profile_id] ?? 'Unknown'}
                     </span>
                   </div>
@@ -302,12 +302,12 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
 
 function StatCard({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
+    <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-center gap-2 mb-3">
         {icon}
-        <span className="text-xs text-zinc-400 uppercase tracking-wider font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{label}</span>
       </div>
-      <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">{value}</p>
+      <p className="text-3xl font-bold tabular-nums">{value}</p>
     </div>
   );
 }
@@ -315,16 +315,16 @@ function StatCard({ icon, value, label }: { icon: React.ReactNode; value: number
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="flex items-center gap-2 mb-4">
-      <span className="text-zinc-400">{icon}</span>
-      <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{title}</h2>
+      <span className="text-muted-foreground">{icon}</span>
+      <h2 className="text-sm font-semibold">{title}</h2>
     </div>
   );
 }
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 p-8 text-center">
-      <p className="text-sm text-zinc-400">{message}</p>
+    <div className="rounded-lg border border-border border-dashed bg-muted/50 p-8 text-center">
+      <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }
@@ -338,13 +338,13 @@ function VoiceProfileCard({ profile }: { profile: Profile }) {
   const maxCount = topPatterns.length > 0 ? topPatterns[0].count : 1;
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
+    <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <h3 className="text-sm font-semibold">
             {profile.full_name}
           </h3>
-          {vp.tone && <p className="text-xs text-zinc-400 mt-0.5">Tone: {vp.tone}</p>}
+          {vp.tone && <p className="text-xs text-muted-foreground mt-0.5">Tone: {vp.tone}</p>}
         </div>
         <div className="text-right">
           <Badge variant="purple">v{vp.evolution_version ?? 0}</Badge>
@@ -353,18 +353,18 @@ function VoiceProfileCard({ profile }: { profile: Profile }) {
 
       {/* Metadata */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-4 text-xs">
-        <div className="text-zinc-400">Last evolved</div>
-        <div className="text-zinc-600 dark:text-zinc-300">
+        <div className="text-muted-foreground">Last evolved</div>
+        <div>
           {vp.last_evolved ? formatDate(vp.last_evolved) : 'Never'}
         </div>
-        <div className="text-zinc-400">Positive examples</div>
-        <div className="text-zinc-600 dark:text-zinc-300">{vp.positive_examples?.length ?? 0}</div>
+        <div className="text-muted-foreground">Positive examples</div>
+        <div>{vp.positive_examples?.length ?? 0}</div>
       </div>
 
       {/* Top edit patterns */}
       {topPatterns.length > 0 ? (
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium mb-2">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
             Top edit patterns
           </p>
           <div className="space-y-2">
@@ -372,16 +372,16 @@ function VoiceProfileCard({ profile }: { profile: Profile }) {
               const widthPercent = Math.round((p.count / maxCount) * 100);
               return (
                 <div key={p.pattern} className="flex items-center gap-2">
-                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 w-28 shrink-0 truncate">
+                  <span className="text-[11px] text-muted-foreground w-28 shrink-0 truncate">
                     {formatPatternLabel(p.pattern)}
                   </span>
-                  <div className="flex-1 h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-violet-500/70 rounded-full"
                       style={{ width: `${widthPercent}%` }}
                     />
                   </div>
-                  <span className="text-[10px] text-zinc-400 w-6 text-right tabular-nums">
+                  <span className="text-[10px] text-muted-foreground w-6 text-right tabular-nums">
                     {p.count}
                   </span>
                 </div>
@@ -390,7 +390,7 @@ function VoiceProfileCard({ profile }: { profile: Profile }) {
           </div>
         </div>
       ) : (
-        <p className="text-xs text-zinc-400 italic">No edit patterns yet</p>
+        <p className="text-xs text-muted-foreground italic">No edit patterns yet</p>
       )}
     </div>
   );

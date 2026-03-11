@@ -95,7 +95,7 @@ function RateCard({
 }) {
   const colorClasses = {
     good: 'text-green-600 dark:text-green-400',
-    bad: 'text-red-600 dark:text-red-400',
+    bad: 'text-destructive',
     neutral: 'text-foreground',
   };
 
@@ -163,8 +163,8 @@ export function EmailAnalytics() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
         </div>
       )}
 
@@ -283,8 +283,8 @@ export function EmailAnalytics() {
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-red-100 p-2.5 dark:bg-red-950">
-                        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      <div className="rounded-lg bg-destructive/10 p-2.5">
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Bounced</p>
@@ -340,7 +340,7 @@ export function EmailAnalytics() {
               )}
             </>
           ) : (
-            <div className="rounded-lg border border-dashed p-12 text-center">
+            <div className="rounded-lg border border-border border-dashed p-12 text-center">
               <Mail className="mx-auto h-12 w-12 text-muted-foreground/50" />
               <h3 className="mt-4 text-lg font-medium">No email events tracked yet</h3>
               <p className="mt-2 text-sm text-muted-foreground">

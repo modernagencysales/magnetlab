@@ -458,7 +458,7 @@ function SaveIndicator({ state }: { state: SaveState }) {
         'flex items-center gap-1 text-[10px] font-medium',
         state === 'saving' && 'text-muted-foreground',
         state === 'saved' && 'text-green-600 dark:text-green-400',
-        state === 'error' && 'text-red-600 dark:text-red-400'
+        state === 'error' && 'text-destructive'
       )}
     >
       {state === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}

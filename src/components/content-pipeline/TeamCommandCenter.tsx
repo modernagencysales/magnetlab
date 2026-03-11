@@ -106,7 +106,7 @@ export function TeamCommandCenter({ teamId }: TeamCommandCenterProps) {
                 <span
                   className={cn(
                     'mt-1 h-2 w-2 flex-shrink-0 rounded-full',
-                    c.severity === 'high' && 'bg-red-500',
+                    c.severity === 'high' && 'bg-destructive',
                     c.severity === 'medium' && 'bg-orange-500',
                     c.severity === 'low' && 'bg-yellow-500'
                   )}

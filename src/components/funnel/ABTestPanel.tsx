@@ -368,8 +368,8 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+            {error}
           </div>
         )}
 
@@ -443,8 +443,8 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+            {error}
           </div>
         )}
 
@@ -644,8 +644,8 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+            {error}
           </div>
         )}
 
@@ -782,7 +782,7 @@ export function ABTestPanel({ funnelPageId }: ABTestPanelProps) {
                 variant="outline"
                 onClick={handleDelete}
                 disabled={actionLoading}
-                className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+                className="border-destructive/20 text-destructive hover:bg-destructive/10"
               >
                 Delete
               </Button>

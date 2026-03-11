@@ -88,9 +88,9 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Month Navigation */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <Button
           variant="ghost"
           size="icon-sm"
@@ -122,7 +122,7 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
 
       {/* Empty state hint */}
       {!loading && posts.length === 0 && onCreatePost && (
-        <div className="mb-4 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 text-center">
+        <div className="rounded-lg border border-dashed border-border bg-primary/5 p-4 text-center">
           <p className="text-sm text-muted-foreground">Click any date to create a post</p>
         </div>
       )}
@@ -134,7 +134,7 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
       ) : (
         <>
           {/* Day Headers */}
-          <div className="mb-1 grid grid-cols-7 gap-px">
+          <div className="mb-2 grid grid-cols-7 gap-px">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
               <div key={day} className="py-1 text-center text-xs font-medium text-muted-foreground">
                 {day}
@@ -143,7 +143,7 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-px rounded-lg border overflow-hidden">
+          <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-border">
             {days.map((day) => {
               const dayPosts = getPostsForDay(day);
               const isToday = today ? isSameDay(day, today) : false;

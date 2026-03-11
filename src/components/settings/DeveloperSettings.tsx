@@ -117,7 +117,7 @@ export function DeveloperSettings() {
             compromised keys immediately.
           </p>
 
-          <div className="mb-6 rounded-lg border p-4">
+          <div className="mb-6 rounded-lg border border-border p-4">
             <p className="mb-3 text-sm font-medium">Create New API Key</p>
             <div className="flex gap-2">
               <Input
@@ -140,8 +140,8 @@ export function DeveloperSettings() {
             </div>
 
             {apiKeyError && (
-              <p className="mt-2 flex items-center gap-2 text-sm text-red-500">
-                <XCircle className="h-4 w-4" />
+              <p className="mt-2 flex items-center gap-2 text-sm text-destructive">
+                <XCircle className="h-4 w-4 mr-1" />
                 {apiKeyError}
               </p>
             )}
@@ -196,7 +196,7 @@ export function DeveloperSettings() {
                 {apiKeys.map((key) => (
                   <div
                     key={key.id}
-                    className={`flex items-center justify-between rounded-lg border p-3 ${
+                    className={`flex items-center justify-between rounded-lg border border-border p-3 ${
                       !key.isActive ? 'opacity-60' : ''
                     }`}
                   >
@@ -225,7 +225,7 @@ export function DeveloperSettings() {
                         size="sm"
                         onClick={() => handleRevokeApiKey(key.id, key.name)}
                         disabled={loading === `revoke-${key.id}`}
-                        className="ml-4 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="ml-4 text-destructive hover:bg-destructive/10"
                       >
                         {loading === `revoke-${key.id}` ? (
                           <Loader2 className="h-4 w-4 animate-spin" />

@@ -119,7 +119,7 @@ export function SubscriberTable() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 items-center gap-2">
@@ -149,11 +149,11 @@ export function SubscriberTable() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-            <Upload className="h-4 w-4" />
+            <Upload className="h-4 w-4 mr-1" />
             Import CSV
           </Button>
           <Button onClick={() => setAddDialogOpen(true)}>
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 mr-1" />
             Add Subscriber
           </Button>
         </div>
@@ -161,8 +161,8 @@ export function SubscriberTable() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
         </div>
       )}
 
@@ -172,7 +172,7 @@ export function SubscriberTable() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : subscribers.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
+        <div className="rounded-lg border border-border border-dashed p-12 text-center">
           <Mail className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">No subscribers yet</h3>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -180,20 +180,20 @@ export function SubscriberTable() {
           </p>
           <div className="mt-6 flex items-center justify-center gap-2">
             <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-              <Upload className="h-4 w-4" />
+              <Upload className="h-4 w-4 mr-1" />
               Import CSV
             </Button>
             <Button onClick={() => setAddDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4 mr-1" />
               Add Subscriber
             </Button>
           </div>
         </div>
       ) : (
         <>
-          <div className="rounded-lg border overflow-hidden">
+          <div className="rounded-lg border border-border overflow-hidden">
             <table className="w-full">
-              <thead className="bg-muted/50">
+              <thead className="bg-muted/30">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Email

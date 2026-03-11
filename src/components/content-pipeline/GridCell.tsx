@@ -28,7 +28,7 @@ function getStatusColor(status: string): string {
     case 'published':
       return 'border-l-blue-500';
     default:
-      return 'border-l-zinc-300 dark:border-l-zinc-600';
+      return 'border-l-border';
   }
 }
 
@@ -43,7 +43,7 @@ function getStatusDotColor(status: string): string {
     case 'published':
       return 'bg-blue-500';
     default:
-      return 'bg-zinc-400';
+      return 'bg-muted-foreground';
   }
 }
 

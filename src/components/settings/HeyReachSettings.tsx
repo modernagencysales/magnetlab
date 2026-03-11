@@ -169,7 +169,7 @@ export function HeyReachSettings({ isConnected, lastVerifiedAt }: HeyReachSettin
               size="sm"
               onClick={handleDisconnect}
               disabled={disconnecting}
-              className="text-red-500 hover:text-red-600"
+              className="text-destructive hover:opacity-80"
             >
               {disconnecting ? (
                 <>
@@ -255,7 +255,7 @@ export function HeyReachSettings({ isConnected, lastVerifiedAt }: HeyReachSettin
       )}
 
       {feedback?.type === 'error' && (
-        <p className="mt-3 flex items-center gap-2 text-sm text-red-500">
+        <p className="mt-3 flex items-center gap-2 text-sm text-destructive">
           <XCircle className="h-4 w-4" />
           {feedback.message}
         </p>

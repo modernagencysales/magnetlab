@@ -91,7 +91,7 @@ export function CatalogCard({ item, isOwner, baseUrl, onUpdate }: CatalogCardPro
   };
 
   return (
-    <Card className="transition-colors hover:border-primary/30">
+    <Card className="border-border transition-colors hover:border-primary/30">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">

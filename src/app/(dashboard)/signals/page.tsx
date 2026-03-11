@@ -9,11 +9,13 @@ export default function SignalsPage() {
 
   return (
     <PageContainer maxWidth="xl">
-      <PageTitle
-        title="Signal Leads"
-        description="LinkedIn intent signals — leads discovered through keyword monitoring, competitor tracking, and engagement analysis"
-      />
-      <SignalLeadsTable />
+      <div className="space-y-6">
+        <PageTitle
+          title="Signal Leads"
+          description="LinkedIn intent signals — leads discovered through keyword monitoring, competitor tracking, and engagement analysis"
+        />
+        <SignalLeadsTable />
+      </div>
     </PageContainer>
   );
 }

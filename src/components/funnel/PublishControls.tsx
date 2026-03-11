@@ -94,7 +94,7 @@ export function PublishControls({ funnel, setFunnel, username }: PublishControls
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div
-            className={`w-2 h-2 rounded-full ${funnel.isPublished ? 'bg-green-500' : 'bg-zinc-400'}`}
+            className={`w-2 h-2 rounded-full ${funnel.isPublished ? 'bg-green-500' : 'bg-muted-foreground'}`}
           />
           <h3 className="font-semibold">{funnel.isPublished ? 'Published' : 'Not Published'}</h3>
         </div>
@@ -114,9 +114,9 @@ export function PublishControls({ funnel, setFunnel, username }: PublishControls
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <p className="text-sm">{error}</p>
         </div>
       )}
 
@@ -221,9 +221,9 @@ export function PublishControls({ funnel, setFunnel, username }: PublishControls
               <p className="text-xl font-semibold text-green-600">{stats.qualified}</p>
               <p className="text-xs text-green-600/80">Qualified</p>
             </div>
-            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-2 text-center">
-              <p className="text-xl font-semibold text-red-600">{stats.unqualified}</p>
-              <p className="text-xs text-red-600/80">Unqualified</p>
+            <div className="rounded-lg bg-destructive/10 p-2 text-center">
+              <p className="text-xl font-semibold text-destructive">{stats.unqualified}</p>
+              <p className="text-xs text-destructive/80">Unqualified</p>
             </div>
           </div>
 

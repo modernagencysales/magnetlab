@@ -64,6 +64,7 @@ export function CatalogView({ catalog: initialCatalog, owner, isOwner }: Catalog
         }
       />
 
+      <div className="space-y-6">
       <SearchInput
         value={search}
         onValueChange={setSearch}
@@ -94,6 +95,7 @@ export function CatalogView({ catalog: initialCatalog, owner, isOwner }: Catalog
           ))}
         </div>
       )}
+      </div>
     </PageContainer>
   );
 }

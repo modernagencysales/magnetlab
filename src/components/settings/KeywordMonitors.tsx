@@ -131,7 +131,7 @@ export function KeywordMonitors() {
                       onClick={() => handleDelete(kw.id)}
                       title="Remove keyword"
                     >
-                      <Trash2 className="h-4 w-4 text-red-400" />
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                 </div>
@@ -164,7 +164,7 @@ export function KeywordMonitors() {
         </>
       )}
 
-      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
     </div>
   );
 }

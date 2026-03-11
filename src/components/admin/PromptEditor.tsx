@@ -179,25 +179,25 @@ export function PromptEditor({ prompt, versions }: Props) {
       <div className="mb-6">
         <Link
           href="/admin/prompts"
-          className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 mb-3 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to prompts
         </Link>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{prompt.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{prompt.name}</h1>
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
               isActive
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                : 'bg-muted text-muted-foreground'
             }`}
           >
             {isActive ? 'Active' : 'Inactive'}
           </span>
         </div>
-        <p className="text-xs font-mono text-zinc-400 mt-1">{prompt.slug}</p>
-        {prompt.description && <p className="text-sm text-zinc-500 mt-1">{prompt.description}</p>}
+        <p className="text-xs font-mono text-muted-foreground mt-1">{prompt.slug}</p>
+        {prompt.description && <p className="text-sm text-muted-foreground mt-1">{prompt.description}</p>}
       </div>
 
       {/* Main content: editor + sidebar */}
@@ -205,14 +205,14 @@ export function PromptEditor({ prompt, versions }: Props) {
         {/* Left panel - Editor */}
         <div className="min-w-0">
           {/* Tab bar */}
-          <div className="flex border-b border-zinc-200 dark:border-zinc-700 mb-0">
+          <div className="flex border-b border-border mb-0">
             <button
               type="button"
               onClick={() => setActiveTab('system')}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'system'
                   ? 'border-violet-500 text-violet-600 dark:text-violet-400'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               System Prompt
@@ -223,7 +223,7 @@ export function PromptEditor({ prompt, versions }: Props) {
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'user'
                   ? 'border-violet-500 text-violet-600 dark:text-violet-400'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               User Prompt
@@ -231,7 +231,7 @@ export function PromptEditor({ prompt, versions }: Props) {
           </div>
 
           {/* Variable hint */}
-          <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-t-0 border-zinc-200 dark:border-zinc-700 px-3 py-2 text-xs text-zinc-500">
+          <div className="bg-muted/50 border border-t-0 border-border px-3 py-2 text-xs text-muted-foreground">
             Use{' '}
             <code className="font-mono text-violet-600 dark:text-violet-400">
               {'{{variable_name}}'}
@@ -247,12 +247,12 @@ export function PromptEditor({ prompt, versions }: Props) {
                 ? setSystemPrompt(e.target.value)
                 : setUserPrompt(e.target.value)
             }
-            className="w-full min-h-[400px] p-4 font-mono text-sm text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 border border-t-0 border-zinc-200 dark:border-zinc-700 rounded-b-lg resize-y focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-inset"
+            className="w-full min-h-[400px] p-4 font-mono text-sm text-foreground bg-background border border-t-0 border-border rounded-b-lg resize-y focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-inset"
             spellCheck={false}
           />
 
           {/* Bottom bar */}
-          <div className="mt-4 flex items-center gap-3 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+          <div className="mt-4 flex items-center gap-3 p-4 rounded-lg border border-border bg-card">
             <Input
               type="text"
               placeholder="What changed? (optional)"
@@ -271,7 +271,7 @@ export function PromptEditor({ prompt, versions }: Props) {
                 className={`text-sm font-medium ${
                   saveMessage === 'Saved!'
                     ? 'text-green-600 dark:text-green-400'
-                    : 'text-red-600 dark:text-red-400'
+                    : 'text-destructive'
                 }`}
               >
                 {saveMessage}
@@ -288,7 +288,7 @@ export function PromptEditor({ prompt, versions }: Props) {
             >
               {showHistory ? 'Hide Version History' : 'Show Version History'}
               {versions.length > 0 && (
-                <span className="ml-1.5 text-xs text-zinc-400">({versions.length})</span>
+                <span className="ml-1.5 text-xs text-muted-foreground">({versions.length})</span>
               )}
             </button>
             {showHistory && (
@@ -308,8 +308,8 @@ export function PromptEditor({ prompt, versions }: Props) {
         <div className="space-y-6">
           {/* Variables Reference */}
           {prompt.variables && prompt.variables.length > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                 Variables Reference
               </h3>
               <div className="space-y-3">
@@ -318,9 +318,9 @@ export function PromptEditor({ prompt, versions }: Props) {
                     <code className="font-mono text-violet-600 dark:text-violet-400 font-medium">
                       {`{{${v.name}}}`}
                     </code>
-                    <p className="text-zinc-600 dark:text-zinc-300 mt-0.5">{v.description}</p>
+                    <p className="text-muted-foreground mt-0.5">{v.description}</p>
                     {v.example && (
-                      <p className="text-zinc-400 mt-0.5 truncate" title={v.example}>
+                      <p className="text-muted-foreground mt-0.5 truncate" title={v.example}>
                         e.g. {v.example}
                       </p>
                     )}
@@ -331,17 +331,17 @@ export function PromptEditor({ prompt, versions }: Props) {
           )}
 
           {/* Model Configuration */}
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Model Configuration
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-zinc-500 mb-1">Model</label>
+                <label className="block text-xs text-muted-foreground mb-1">Model</label>
                 <select
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
                 >
                   {MODEL_OPTIONS.map((m) => (
                     <option key={m} value={m}>
@@ -351,7 +351,7 @@ export function PromptEditor({ prompt, versions }: Props) {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-zinc-500 mb-1">Temperature</label>
+                <label className="block text-xs text-muted-foreground mb-1">Temperature</label>
                 <Input
                   type="number"
                   step="0.1"
@@ -362,7 +362,7 @@ export function PromptEditor({ prompt, versions }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-500 mb-1">Max Tokens</label>
+                <label className="block text-xs text-muted-foreground mb-1">Max Tokens</label>
                 <Input
                   type="number"
                   step="100"
@@ -375,8 +375,8 @@ export function PromptEditor({ prompt, versions }: Props) {
           </div>
 
           {/* Status */}
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Status
             </h3>
             <label className="flex items-center gap-3 cursor-pointer">
@@ -384,11 +384,11 @@ export function PromptEditor({ prompt, versions }: Props) {
                 type="checkbox"
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
-                className="h-4 w-4 rounded border-zinc-300 text-violet-600 focus:ring-violet-500"
+                className="h-4 w-4 rounded border-border text-violet-600 focus:ring-violet-500"
               />
-              <span className="text-sm text-zinc-700 dark:text-zinc-300">Active</span>
+              <span className="text-sm text-foreground">Active</span>
             </label>
-            <p className="text-[11px] text-zinc-400 mt-2">
+            <p className="text-[11px] text-muted-foreground mt-2">
               Disabling falls back to the hardcoded default prompt.
             </p>
           </div>
@@ -398,32 +398,32 @@ export function PromptEditor({ prompt, versions }: Props) {
       {/* Test Result Modal */}
       {showTestModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <div className="w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col rounded-lg border border-border bg-card shadow-xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground">
                 Test Result
               </h3>
               <button
                 type="button"
                 onClick={() => setShowTestModal(false)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 text-sm"
+                className="text-muted-foreground hover:text-foreground text-sm"
               >
                 Close
               </button>
             </div>
             <div className="flex-1 overflow-auto p-4">
               {testing && (
-                <div className="text-center py-8 text-zinc-500 text-sm">
+                <div className="text-center py-8 text-muted-foreground text-sm">
                   Running test with example variables...
                 </div>
               )}
               {testError && (
-                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 text-sm">
+                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                   {testError}
                 </div>
               )}
               {testResult && (
-                <pre className="whitespace-pre-wrap text-sm text-zinc-800 dark:text-zinc-200 font-mono">
+                <pre className="whitespace-pre-wrap text-sm text-foreground font-mono">
                   {testResult}
                 </pre>
               )}

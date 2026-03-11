@@ -30,7 +30,7 @@ function getInterpretation(value: number, interpretations: ResultInterpretation[
 const COLOR_CLASSES: Record<ResultInterpretation['color'], { bg: string; text: string; border: string }> = {
   green: { bg: 'bg-green-500/10', text: 'text-green-700 dark:text-green-400', border: 'border-green-500/30' },
   yellow: { bg: 'bg-yellow-500/10', text: 'text-yellow-700 dark:text-yellow-400', border: 'border-yellow-500/30' },
-  red: { bg: 'bg-red-500/10', text: 'text-red-700 dark:text-red-400', border: 'border-red-500/30' },
+  red: { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-destructive/30' },
 };
 
 function renderInput(

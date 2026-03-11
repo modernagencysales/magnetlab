@@ -180,12 +180,12 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
               {readiness.ready ? (
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
               ) : (
-                <XCircle className="h-5 w-5 text-red-500" />
+                <XCircle className="h-5 w-5 text-destructive" />
               )}
               <span
                 className={cn(
                   'font-semibold text-sm',
-                  readiness.ready ? 'text-green-600' : 'text-red-600'
+                  readiness.ready ? 'text-green-600' : 'text-destructive'
                 )}
               >
                 {readiness.ready ? 'Ready' : 'Not Ready'}
@@ -218,7 +218,7 @@ export function GapAnalysis({ teamId }: { teamId?: string }) {
           {gaps.map((gap) => {
             const scoreColor =
               gap.coverage_score < 0.3
-                ? 'bg-red-500'
+                ? 'bg-destructive'
                 : gap.coverage_score < 0.6
                   ? 'bg-yellow-500'
                   : 'bg-green-500';

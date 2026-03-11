@@ -202,11 +202,11 @@ export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
   const filteredNonWriting = filteredIdeas.filter((i) => i.status !== 'writing');
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Filter Bar */}
-      <div className="mb-6 space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
@@ -230,8 +230,9 @@ export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
           </div>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className={cn(showFilters && 'bg-muted')}
+            className={cn('gap-1.5', showFilters && 'bg-muted')}
           >
             <Filter className="h-4 w-4" />
             Filters
@@ -240,7 +241,7 @@ export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
         </div>
 
         {showFilters && (
-          <div className="flex flex-wrap gap-3 rounded-lg border bg-card p-4">
+          <div className="flex flex-wrap gap-4 rounded-lg border border-border bg-card p-4">
             <div className="relative">
               <select
                 value={statusFilter}
@@ -289,15 +290,15 @@ export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
 
       {/* Currently Writing Section — always visible when ideas are being written */}
       {writingIdeas.length > 0 && (
-        <div className="mb-6">
-          <div className="mb-3 flex items-center gap-2">
+        <div>
+          <div className="mb-4 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-yellow-500 animate-pulse" />
             <h3 className="text-sm font-semibold">AI Writing ({writingIdeas.length})</h3>
             <span className="text-xs text-muted-foreground">
               Posts will appear in Drafts when complete
             </span>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             {writingIdeas.map((idea) => (
               <div
                 key={idea.id}

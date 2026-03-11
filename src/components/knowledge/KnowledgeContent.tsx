@@ -84,19 +84,20 @@ export function KnowledgeContent() {
 
   return (
     <PageContainer maxWidth="xl">
-      <PageTitle
-        title="Knowledge"
-        description="Import transcripts and build your AI knowledge base"
-        actions={
-          <ProfileSwitcher
-            selectedProfileId={selectedProfileId}
-            onProfileChange={onProfileChange}
-          />
-        }
-      />
+      <div className="space-y-6">
+        <PageTitle
+          title="Knowledge"
+          description="Import transcripts and build your AI knowledge base"
+          actions={
+            <ProfileSwitcher
+              selectedProfileId={selectedProfileId}
+              onProfileChange={onProfileChange}
+            />
+          }
+        />
 
-      {/* Tabs */}
-      <div className="flex gap-1.5 overflow-x-auto">
+        {/* Tabs */}
+        <div className="flex gap-2 overflow-x-auto">
         {TABS.map((tab) => (
           <Button
             key={tab.id}
@@ -104,14 +105,14 @@ export function KnowledgeContent() {
             size="sm"
             onClick={() => handleTabChange(tab.id)}
           >
-            <tab.icon className="h-3.5 w-3.5 mr-1.5" />
+            <tab.icon className="mr-1.5 h-3.5 w-3.5" />
             {tab.label}
           </Button>
         ))}
-      </div>
+        </div>
 
-      {/* Tab Content */}
-      <Suspense fallback={<TabLoader />}>
+        {/* Tab Content */}
+        <Suspense fallback={<TabLoader />}>
         {!teamContextReady ? (
           <TabLoader />
         ) : (
@@ -120,7 +121,8 @@ export function KnowledgeContent() {
             {activeTab === 'brain' && <KnowledgeBrainTab teamId={teamId} />}
           </>
         )}
-      </Suspense>
+        </Suspense>
+      </div>
     </PageContainer>
   );
 }

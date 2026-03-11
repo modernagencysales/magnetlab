@@ -124,9 +124,9 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
   if (editing) {
     return (
       <div className="rounded-lg border border-primary/30 bg-card p-4">
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* Category + Speaker row */}
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-4 sm:flex-row sm:gap-3">
             <div className="flex-1">
               <Label className="mb-1.5">Category</Label>
               <Select
@@ -200,12 +200,12 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving}>
-              <X className="h-3.5 w-3.5" /> Cancel
+              <X className="mr-1 h-3.5 w-3.5" /> Cancel
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving || !editContent.trim()}>
-              <Check className="h-3.5 w-3.5" /> {saving ? 'Saving...' : 'Save'}
+              <Check className="mr-1 h-3.5 w-3.5" /> {saving ? 'Saving...' : 'Save'}
             </Button>
           </div>
         </div>
@@ -214,10 +214,10 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
   }
 
   return (
-    <div className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30">
+    <div className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/30">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="mb-2 flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <span
               className={cn('rounded-full px-2 py-1 text-xs font-medium', categoryConfig.className)}
             >
@@ -252,7 +252,7 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
                 onClick={() => setConfirmDelete(true)}
                 title="Delete"
               >
-                <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
               </Button>
             )}
             {confirmDelete && (
@@ -271,7 +271,7 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
 
       {/* Tags */}
       {entry.tags?.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           {entry.tags.map((tag) => (
             <span
               key={tag}
@@ -285,7 +285,7 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
 
       {/* Collapsible context */}
       {entry.context && (
-        <div className="mt-3">
+        <div className="mt-3 border-t border-border pt-3">
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -294,7 +294,7 @@ export function KnowledgeEntryCard({ entry, onUpdate, onDelete }: KnowledgeEntry
             Context
           </button>
           {expanded && (
-            <p className="mt-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground leading-relaxed">
+            <p className="mt-2 rounded-md bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">
               {entry.context}
             </p>
           )}

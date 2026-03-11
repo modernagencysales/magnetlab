@@ -186,15 +186,15 @@ export function ThemeEditor({
                 className={`h-12 rounded mb-2 ${
                   style === 'solid'
                     ? theme === 'dark'
-                      ? 'bg-zinc-900'
-                      : 'bg-zinc-100'
+                      ? 'bg-muted'
+                      : 'bg-muted'
                     : style === 'gradient'
                       ? theme === 'dark'
-                        ? 'bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900'
-                        : 'bg-gradient-to-br from-zinc-100 via-white to-zinc-100'
+                        ? 'bg-gradient-to-br from-muted via-muted/80 to-muted'
+                        : 'bg-gradient-to-br from-muted via-background to-muted'
                       : theme === 'dark'
-                        ? 'bg-zinc-900 bg-[radial-gradient(circle_at_center,_rgba(139,92,246,0.1)_0%,_transparent_50%)]'
-                        : 'bg-zinc-100 bg-[radial-gradient(circle_at_center,_rgba(139,92,246,0.1)_0%,_transparent_50%)]'
+                        ? 'bg-muted bg-[radial-gradient(circle_at_center,_rgba(139,92,246,0.1)_0%,_transparent_50%)]'
+                        : 'bg-muted bg-[radial-gradient(circle_at_center,_rgba(139,92,246,0.1)_0%,_transparent_50%)]'
                 }`}
               />
               <span className="text-sm font-medium capitalize">{style}</span>
@@ -269,7 +269,7 @@ export function ThemeEditor({
           </p>
           {brandMessage && (
             <p
-              className={`text-xs ${brandMessage.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+              className={`text-xs ${brandMessage.type === 'success' ? 'text-green-600' : 'text-destructive'}`}
             >
               {brandMessage.text}
             </p>

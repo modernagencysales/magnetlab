@@ -44,7 +44,7 @@ export function FeedbackWidget({ onFeedback, existingFeedback }: FeedbackWidgetP
           className={
             existingFeedback?.rating === 'positive'
               ? 'text-emerald-500'
-              : 'text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400'
+              : 'text-muted-foreground hover:text-foreground'
           }
           aria-label="Good response"
         >
@@ -56,8 +56,8 @@ export function FeedbackWidget({ onFeedback, existingFeedback }: FeedbackWidgetP
           onClick={handleNegative}
           className={
             existingFeedback?.rating === 'negative'
-              ? 'text-red-500'
-              : 'text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400'
+              ? 'text-destructive'
+              : 'text-muted-foreground hover:text-foreground'
           }
           aria-label="Bad response"
         >
@@ -91,7 +91,7 @@ export function FeedbackWidget({ onFeedback, existingFeedback }: FeedbackWidgetP
             variant="ghost"
             size="icon-sm"
             onClick={skipNote}
-            className="text-zinc-400 hover:text-zinc-500"
+            className="text-muted-foreground hover:text-foreground"
             aria-label="Skip note"
           >
             <X className="w-3 h-3" />

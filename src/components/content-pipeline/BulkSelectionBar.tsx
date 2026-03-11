@@ -69,7 +69,7 @@ export function BulkSelectionBar({
           size="sm"
           onClick={onDelete}
           disabled={isProcessing}
-          className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+          className="border-destructive/30 text-destructive hover:bg-destructive/10"
         >
           <Trash2 className="h-3.5 w-3.5 mr-1.5" />
           Delete

@@ -300,7 +300,7 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
                   ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                   : sequence.status === 'synced'
                     ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
+                    : 'bg-muted text-muted-foreground'
               }`}
             >
               {sequence.status === 'active' && <CheckCircle className="h-3 w-3" />}
@@ -313,9 +313,9 @@ export function EmailSequenceTab({ leadMagnetId }: EmailSequenceTabProps) {
 
       {/* Messages */}
       {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <AlertCircle className="h-5 w-5 text-red-500" />
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-destructive">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">{error}</p>
         </div>
       )}
 

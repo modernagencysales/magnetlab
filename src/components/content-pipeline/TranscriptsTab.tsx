@@ -139,87 +139,73 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Stats */}
-      <div className="mb-6 grid grid-cols-3 gap-4">
-        <div className="rounded-lg border bg-card p-4">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm text-muted-foreground">Total Transcripts</p>
           <p className="mt-1 text-2xl font-semibold">{totalTranscripts}</p>
         </div>
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm text-muted-foreground">Ideas Extracted</p>
           <p className="mt-1 text-2xl font-semibold">{ideasExtracted}</p>
         </div>
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm text-muted-foreground">Knowledge Entries</p>
           <p className="mt-1 text-2xl font-semibold">{knowledgeExtracted}</p>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="mb-4 flex justify-end gap-2">
-        <Button variant="outline" onClick={() => setShowConnectGuide(true)}>
-          <Link2 className="h-4 w-4" />
+      <div className="flex justify-end gap-3">
+        <Button variant="outline" size="sm" onClick={() => setShowConnectGuide(true)}>
+          <Link2 className="mr-1.5 h-4 w-4" />
           Connect Recorder
         </Button>
-        <Button onClick={() => setShowAddModal(true)}>
-          <Plus className="h-4 w-4" />
+        <Button size="sm" onClick={() => setShowAddModal(true)}>
+          <Plus className="mr-1.5 h-4 w-4" />
           Add Transcript
         </Button>
       </div>
 
       {/* Table */}
       {transcripts.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
+        <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <Mic className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-base font-medium">No transcripts yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Get started by connecting your meeting recorder or pasting a transcript
           </p>
           <div className="mt-6 flex justify-center gap-3">
-            <Button onClick={() => setShowConnectGuide(true)}>
-              <Link2 className="h-4 w-4" />
+            <Button size="sm" onClick={() => setShowConnectGuide(true)}>
+              <Link2 className="mr-1.5 h-4 w-4" />
               Connect Recorder
             </Button>
-            <Button variant="outline" onClick={() => setShowAddModal(true)}>
-              <Plus className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={() => setShowAddModal(true)}>
+              <Plus className="mr-1.5 h-4 w-4" />
               Paste or Upload
             </Button>
           </div>
         </div>
       ) : (
-        <div className="rounded-lg border overflow-hidden">
-          <table className="w-full">
+        <div className="overflow-hidden rounded-lg border border-border">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="bg-muted/50">
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                  Title
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                  Speaker
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                  Source
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                  Type
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase sr-only">
-                  Actions
-                </th>
+              <tr className="border-b border-border bg-muted/30 text-left text-xs font-medium uppercase text-muted-foreground">
+                <th className="px-4 py-3">Title</th>
+                <th className="px-4 py-3">Speaker</th>
+                <th className="px-4 py-3">Source</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right sr-only">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-border">
               {transcripts.map((t) => {
                 const SourceIcon = SOURCE_ICONS[t.source] || Clipboard;
                 return (
-                  <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                  <tr key={t.id} className="transition-colors hover:bg-muted/50">
                     <td className="px-4 py-3 text-sm font-medium">
                       <button
                         onClick={() => setViewingId(t.id)}
@@ -316,7 +302,7 @@ export function TranscriptsTab({ profileId }: TranscriptsTabProps) {
                           {deletingId === t.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <Trash2 className="h-4 w-4 text-red-400" />
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           )}
                         </Button>
                       </div>

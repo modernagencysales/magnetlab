@@ -57,7 +57,7 @@ export function ScreenshotGallery({
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {!canGenerate && screenshotUrls.length === 0 && (
         <p className="text-sm text-muted-foreground">

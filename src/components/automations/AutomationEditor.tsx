@@ -292,7 +292,7 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
                     <button
                       type="button"
                       onClick={() => removeKeyword(kw)}
-                      className="ml-0.5 rounded-full p-0.5 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"
+                      className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-muted"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -331,7 +331,7 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
                 type="checkbox"
                 checked={autoConnect}
                 onChange={(e) => setAutoConnect(e.target.checked)}
-                className="h-4 w-4 rounded border-zinc-300 text-violet-500 focus:ring-violet-500"
+                className="h-4 w-4 rounded border-border text-violet-500 focus:ring-violet-500"
               />
               <span className="text-sm">Auto-connect</span>
             </label>
@@ -340,7 +340,7 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
                 type="checkbox"
                 checked={autoLike}
                 onChange={(e) => setAutoLike(e.target.checked)}
-                className="h-4 w-4 rounded border-zinc-300 text-violet-500 focus:ring-violet-500"
+                className="h-4 w-4 rounded border-border text-violet-500 focus:ring-violet-500"
               />
               <span className="text-sm">Auto-like comment</span>
             </label>
@@ -392,13 +392,13 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
           </div>
 
           {/* Follow-up section */}
-          <div className="space-y-3 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
+          <div className="space-y-3 rounded-lg border border-border p-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={enableFollowUp}
                 onChange={(e) => setEnableFollowUp(e.target.checked)}
-                className="h-4 w-4 rounded border-zinc-300 text-violet-500 focus:ring-violet-500"
+                className="h-4 w-4 rounded border-border text-violet-500 focus:ring-violet-500"
               />
               <span className="text-sm font-medium">Enable Follow-up</span>
             </label>
@@ -438,7 +438,7 @@ export function AutomationEditor({ open, automation, onClose, onSave }: Automati
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-400">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
             {error}
           </div>
         )}

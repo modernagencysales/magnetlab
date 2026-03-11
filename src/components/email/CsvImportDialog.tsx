@@ -177,7 +177,7 @@ export function CsvImportDialog({ open, onOpenChange, onSuccess }: CsvImportDial
               </Button>
             </div>
             {error && (
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+              <div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                 {error}
               </div>
             )}
@@ -199,7 +199,7 @@ export function CsvImportDialog({ open, onOpenChange, onSuccess }: CsvImportDial
                 {preview.valid.length} valid
               </span>
               {preview.invalid.length > 0 && (
-                <span className="inline-flex items-center gap-1 text-red-600">
+                <span className="inline-flex items-center gap-1 text-destructive">
                   <AlertCircle className="h-4 w-4" />
                   {preview.invalid.length} invalid
                 </span>
@@ -244,30 +244,30 @@ export function CsvImportDialog({ open, onOpenChange, onSuccess }: CsvImportDial
             {/* Invalid rows */}
             {preview.invalid.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-red-600">Invalid rows:</p>
-                <div className="rounded-lg border border-red-200 dark:border-red-900 overflow-hidden">
+                <p className="text-sm font-medium text-destructive">Invalid rows:</p>
+                <div className="overflow-hidden rounded-lg border border-destructive/20">
                   <table className="w-full text-sm">
-                    <thead className="bg-red-50 dark:bg-red-950/50">
+                    <thead className="bg-destructive/5">
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-red-700 dark:text-red-300 uppercase">
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase text-destructive">
                           Row
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-red-700 dark:text-red-300 uppercase">
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase text-destructive">
                           Email
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-red-700 dark:text-red-300 uppercase">
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase text-destructive">
                           Reason
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-red-100 dark:divide-red-900">
+                    <tbody className="divide-y divide-border">
                       {preview.invalid.map((row, idx) => (
                         <tr key={idx}>
-                          <td className="px-3 py-2 text-red-700 dark:text-red-300">{row.row}</td>
-                          <td className="px-3 py-2 text-red-700 dark:text-red-300">
+                          <td className="px-3 py-2 text-destructive">{row.row}</td>
+                          <td className="px-3 py-2 text-destructive">
                             {row.email || '(empty)'}
                           </td>
-                          <td className="px-3 py-2 text-red-700 dark:text-red-300">{row.reason}</td>
+                          <td className="px-3 py-2 text-destructive">{row.reason}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -277,7 +277,7 @@ export function CsvImportDialog({ open, onOpenChange, onSuccess }: CsvImportDial
             )}
 
             {error && (
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+              <div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                 {error}
               </div>
             )}

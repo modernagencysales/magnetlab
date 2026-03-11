@@ -198,10 +198,10 @@ export function SignalLeadsTable() {
   // ── Render ───────────────────────────────────────────────
 
   return (
-    <>
+    <div className="space-y-6">
       {/* Filters */}
-      <div className="mb-6 space-y-4">
-        <div className="flex gap-4">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant={showFilters || hasActiveFilters ? 'default' : 'outline'}
             size="sm"
@@ -212,7 +212,7 @@ export function SignalLeadsTable() {
                 : ''
             }
           >
-            <Filter className="h-4 w-4 mr-1.5" />
+            <Filter className="mr-1.5 h-4 w-4" />
             Filters
             <ChevronDown
               className={`h-4 w-4 ml-1 transition-transform ${showFilters ? 'rotate-180' : ''}`}
@@ -229,7 +229,7 @@ export function SignalLeadsTable() {
                 disabled={bulkLoading}
                 className="bg-primary hover:bg-primary/90"
               >
-                <Send className="h-3.5 w-3.5 mr-1.5" />
+                <Send className="mr-1.5 h-3.5 w-3.5" />
                 Push to HeyReach
               </Button>
               <Button
@@ -237,9 +237,9 @@ export function SignalLeadsTable() {
                 size="sm"
                 onClick={handleBulkExclude}
                 disabled={bulkLoading}
-                className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
-                <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                <XCircle className="mr-1.5 h-3.5 w-3.5" />
                 Exclude
               </Button>
             </div>
@@ -247,7 +247,7 @@ export function SignalLeadsTable() {
         </div>
 
         {showFilters && (
-          <div className="flex flex-wrap gap-4 rounded-lg border bg-muted/30 p-4">
+          <div className="flex flex-wrap gap-4 rounded-lg border border-border bg-muted/30 p-4">
             {/* Status */}
             <div className="min-w-[140px]">
               <label className="text-xs font-medium text-muted-foreground">Status</label>
@@ -316,8 +316,8 @@ export function SignalLeadsTable() {
 
       {/* Error */}
       {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
@@ -327,7 +327,7 @@ export function SignalLeadsTable() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : leads.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
+        <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <Radio className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">No signal leads yet</h3>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -337,9 +337,9 @@ export function SignalLeadsTable() {
         </div>
       ) : (
         <>
-          <div className="rounded-lg border overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/30">
                 <tr>
                   <th className="px-4 py-3 text-left">
                     <input
@@ -382,7 +382,7 @@ export function SignalLeadsTable() {
                 {leads.map((lead) => (
                   <tr
                     key={lead.id}
-                    className="hover:bg-muted/30 cursor-pointer"
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
                     onClick={() => setSelectedLead(lead)}
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -444,7 +444,7 @@ export function SignalLeadsTable() {
 
           {/* Pagination */}
           {total > limit && (
-            <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center justify-between pt-4">
               <p className="text-sm text-muted-foreground">
                 Showing {startIndex} to {endIndex} of {total}
               </p>
@@ -537,6 +537,6 @@ export function SignalLeadsTable() {
           }}
         />
       )}
-    </>
+    </div>
   );
 }

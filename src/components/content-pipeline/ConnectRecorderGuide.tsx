@@ -357,7 +357,7 @@ export function ConnectRecorderGuide({ onClose }: ConnectRecorderGuideProps) {
                 <p className="text-sm text-muted-foreground">
                   POST to your webhook URL with this JSON body:
                 </p>
-                <pre className="overflow-x-auto rounded-lg bg-zinc-950 p-3 text-xs text-zinc-200">
+                <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-xs text-muted-foreground">
                   {`{
   "source": "your-tool-name",
   "recording_id": "unique-id",

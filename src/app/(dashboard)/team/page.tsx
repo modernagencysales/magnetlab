@@ -263,16 +263,17 @@ export default function TeamPage() {
         />
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 p-3 text-xs text-red-700 dark:text-red-400">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
             {error}
           </div>
         )}
         {success && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950 p-3 text-xs text-emerald-700 dark:text-emerald-400">
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950 p-3 text-sm text-emerald-700 dark:text-emerald-400">
             {success}
           </div>
         )}
 
+        <div className="space-y-6">
         {/* Team Settings (owner only) */}
         {isOwner && (
           <SectionContainer title="Team Settings">
@@ -328,7 +329,7 @@ export default function TeamPage() {
             ) : undefined
           }
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {profiles.map((profile) => (
               <Card key={profile.id}>
                 <CardContent className="p-4">
@@ -370,7 +371,7 @@ export default function TeamPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => removeProfile(profile.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400"
+                          className="text-destructive hover:bg-destructive/10"
                         >
                           Remove
                         </Button>
@@ -382,6 +383,7 @@ export default function TeamPage() {
             ))}
           </div>
         </SectionContainer>
+        </div>
 
         {/* Profile Editor Modal */}
         <Dialog
@@ -614,16 +616,17 @@ export default function TeamPage() {
       />
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 p-3 text-xs text-red-700 dark:text-red-400">
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
       {success && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950 p-3 text-xs text-emerald-700 dark:text-emerald-400">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950 p-3 text-sm text-emerald-700 dark:text-emerald-400">
           {success}
         </div>
       )}
 
+      <div className="space-y-6">
       {/* Create team form */}
       {showCreateForm && (
         <Card>
@@ -676,7 +679,7 @@ export default function TeamPage() {
       {/* Owned teams */}
       {ownedTeams.length > 0 && (
         <SectionContainer title="Your Teams">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {ownedTeams.map((t) => (
               <Card key={t.teamId}>
                 <CardContent className="p-4">
@@ -708,7 +711,7 @@ export default function TeamPage() {
       {/* Member teams */}
       {memberTeams.length > 0 && (
         <SectionContainer title="Teams You Belong To">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {memberTeams.map((t) => (
               <Card key={t.teamId}>
                 <CardContent className="p-4">
@@ -744,6 +747,7 @@ export default function TeamPage() {
           }
         />
       )}
+      </div>
     </PageContainer>
   );
 }

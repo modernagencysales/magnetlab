@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getDataScope } from '@/lib/utils/team-context';
 import { checkTeamRole } from '@/lib/auth/rbac';
+import { PageContainer } from '@magnetlab/magnetui';
 import { MagnetDetail } from '@/components/magnets/MagnetDetail';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
 import {
@@ -161,8 +162,9 @@ export default async function MagnetDetailPage({ params }: PageProps) {
   const archetypeName = ARCHETYPE_NAMES[leadMagnet.archetype as keyof typeof ARCHETYPE_NAMES] || leadMagnet.archetype;
 
   return (
-    <Suspense>
-      <MagnetDetail
+    <PageContainer maxWidth="xl">
+      <Suspense>
+        <MagnetDetail
         leadMagnet={leadMagnet}
         existingFunnel={existingFunnel}
         existingQuestions={existingQuestions}
@@ -170,6 +172,7 @@ export default async function MagnetDetailPage({ params }: PageProps) {
         archetypeName={archetypeName}
         connectedEmailProviders={connectedEmailProviders}
       />
-    </Suspense>
+      </Suspense>
+    </PageContainer>
   );
 }

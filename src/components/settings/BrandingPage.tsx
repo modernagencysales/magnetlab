@@ -104,7 +104,7 @@ export function BrandingPage({ brandKit, plan }: BrandingPageProps) {
             Set default values for new funnel pages. You can override these on individual funnels.
           </p>
 
-          <div className="rounded-lg border p-4">
+          <div className="rounded-lg border border-border p-4">
             <p className="mb-2 text-sm font-medium">Default Thank You Page Video</p>
             <p className="mb-3 text-xs text-muted-foreground">
               This video will automatically appear on new funnel thank you pages. Supports YouTube,
@@ -136,8 +136,8 @@ export function BrandingPage({ brandKit, plan }: BrandingPageProps) {
                   </p>
                 )}
                 {defaultVslUrlError && (
-                  <p className="mt-2 flex items-center gap-2 text-sm text-red-500">
-                    <XCircle className="h-4 w-4" />
+                  <p className="mt-2 flex items-center gap-2 text-sm text-destructive">
+                    <XCircle className="h-4 w-4 mr-1" />
                     {defaultVslUrlError}
                   </p>
                 )}
@@ -145,7 +145,7 @@ export function BrandingPage({ brandKit, plan }: BrandingPageProps) {
             )}
           </div>
 
-          <div className="rounded-lg border p-4 mt-4">
+          <div className="rounded-lg border border-border p-4 mt-4">
             <FunnelTemplateSettings
               currentTemplate={defaultFunnelTemplate}
               onSaved={setDefaultFunnelTemplate}

@@ -69,7 +69,7 @@ function LoadingSkeleton() {
       {/* Stat cards skeleton */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
-          <Card key={i}>
+          <Card key={i} className="border-border">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <Skeleton className="h-9 w-9 rounded-lg" />
@@ -85,7 +85,7 @@ function LoadingSkeleton() {
       {/* Charts skeleton */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {[...Array(2)].map((_, i) => (
-          <Card key={i}>
+          <Card key={i} className="border-border">
             <CardHeader>
               <Skeleton className="h-5 w-32" />
             </CardHeader>
@@ -96,7 +96,7 @@ function LoadingSkeleton() {
         ))}
       </div>
       {/* UTM skeleton */}
-      <Card>
+      <Card className="border-border">
         <CardHeader>
           <Skeleton className="h-5 w-40" />
         </CardHeader>
@@ -162,7 +162,7 @@ export function AnalyticsOverview() {
   return (
     <div className="space-y-6">
       {/* Date range selector */}
-      <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit">
+      <div className="flex w-fit items-center gap-0.5 rounded-lg bg-muted p-1">
         {RANGE_OPTIONS.map((option) => (
           <Button
             key={option.value}
@@ -176,8 +176,8 @@ export function AnalyticsOverview() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
@@ -190,7 +190,7 @@ export function AnalyticsOverview() {
 
           {/* Charts row */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Card>
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle className="text-base">Page Views</CardTitle>
               </CardHeader>
@@ -206,7 +206,7 @@ export function AnalyticsOverview() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle className="text-base">Leads Captured</CardTitle>
               </CardHeader>
@@ -224,7 +224,7 @@ export function AnalyticsOverview() {
           </div>
 
           {/* UTM Breakdown */}
-          <Card>
+          <Card className="border-border">
             <CardHeader>
               <CardTitle className="text-base">Traffic Sources (UTM)</CardTitle>
             </CardHeader>
@@ -235,7 +235,7 @@ export function AnalyticsOverview() {
 
           {/* Content Pipeline */}
           {data.contentStats && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-2">
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-muted-foreground" />
                 <h2 className="text-base font-semibold">Content Pipeline</h2>
@@ -261,7 +261,7 @@ export function AnalyticsOverview() {
           )}
 
           {/* Sub-page links */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-muted-foreground" />
               <Link
@@ -284,7 +284,7 @@ export function AnalyticsOverview() {
 
           {/* Funnel list */}
           {funnels.length > 0 && (
-            <Card>
+            <Card className="border-border">
               <CardHeader>
                 <CardTitle className="text-base">Your Funnels</CardTitle>
               </CardHeader>
@@ -294,7 +294,7 @@ export function AnalyticsOverview() {
                     <Link
                       key={funnel.id}
                       href={`/analytics/funnel/${funnel.id}`}
-                      className="flex items-center justify-between py-3 first:pt-0 last:pb-0 hover:opacity-80 transition-opacity"
+                      className="flex items-center justify-between py-3 transition-opacity first:pt-0 last:pb-0 hover:opacity-80"
                     >
                       <div className="flex items-center gap-3">
                         <div className="rounded-lg bg-muted p-2">
@@ -302,7 +302,7 @@ export function AnalyticsOverview() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">{getFunnelName(funnel)}</p>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             /{funnel.slug}
                             {!funnel.is_published && <Badge variant="orange">Draft</Badge>}
                           </p>

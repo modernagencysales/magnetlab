@@ -151,7 +151,7 @@ export function LeadsTable({ funnelId, leadMagnetId }: LeadsTableProps) {
                           Yes
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs text-red-500">
+                        <span className="inline-flex items-center gap-1 text-xs text-destructive">
                           <XCircle className="h-3 w-3" />
                           No
                         </span>

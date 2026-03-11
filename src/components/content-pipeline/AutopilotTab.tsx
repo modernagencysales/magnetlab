@@ -193,14 +193,14 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-lg border bg-card p-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm text-muted-foreground">Buffer Size</p>
           <p className="mt-1 text-2xl font-semibold">
             {autopilotStatus?.bufferSize || 0} posts ready
           </p>
         </div>
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm text-muted-foreground">Next Post</p>
           <p className="mt-1 text-2xl font-semibold">
             {autopilotStatus?.nextScheduledSlot
@@ -208,9 +208,9 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
               : 'No slot'}
           </p>
         </div>
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm text-muted-foreground">Pillar Balance</p>
-          <div className="mt-1 flex items-center gap-2 flex-wrap">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             {autopilotStatus?.pillarCounts &&
               Object.entries(autopilotStatus.pillarCounts).map(([pillar, count]) =>
                 count > 0 ? (
@@ -229,15 +229,15 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
 
       {/* Buffer Queue */}
       <div>
-        <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">Buffer Queue</h3>
+        <h3 className="mb-4 text-sm font-semibold uppercase text-muted-foreground">Buffer Queue</h3>
         {buffer.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-8 text-center">
+          <div className="rounded-lg border border-dashed border-border p-8 text-center">
             <p className="text-sm text-muted-foreground">
               Buffer is empty. Run autopilot to fill it.
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {buffer.map((post, i) => (
               <BufferQueueCard
                 key={post.id}
@@ -255,18 +255,18 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
 
       {/* Posting Schedule */}
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase text-muted-foreground">
             Posting Schedule
           </h3>
           <Button variant="outline" size="sm" onClick={() => setShowAddSlot(!showAddSlot)}>
-            <Plus className="h-3 w-3" />
+            <Plus className="mr-1 h-3 w-3" />
             Add Slot
           </Button>
         </div>
 
         {showAddSlot && (
-          <div className="mb-4 rounded-lg border bg-card p-4">
+          <div className="mb-4 rounded-lg border border-border bg-card p-4">
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <Label className="mb-1">Time</Label>
@@ -349,7 +349,7 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
                     variant="ghost"
                     size="icon-sm"
                     onClick={() => handleDeleteSlot(slot.id)}
-                    className="text-muted-foreground hover:text-red-500"
+                    className="text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>

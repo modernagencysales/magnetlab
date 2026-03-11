@@ -40,7 +40,7 @@ function StatusBadge({ status }: { status: Automation['status'] }) {
   const { label, variant, dotStatus } = config[status];
   return (
     <Badge variant={variant}>
-      <StatusDot status={dotStatus} size="sm" pulse={status === 'running'} className="mr-1" />
+      <StatusDot status={dotStatus} size="sm" pulse={status === 'running'} className="mr-1.5" />
       {label}
     </Badge>
   );
@@ -146,53 +146,54 @@ export function AutomationList() {
 
   return (
     <PageContainer maxWidth="xl">
-      <PageTitle
-        title="Automations"
-        description="Auto-DM LinkedIn commenters on your posts"
-        actions={
-          <Button onClick={handleCreate} size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            New Automation
-          </Button>
-        }
-      />
+      <div className="space-y-6">
+        <PageTitle
+          title="Automations"
+          description="Auto-DM LinkedIn commenters on your posts"
+          actions={
+            <Button onClick={handleCreate} size="sm">
+              <Plus className="mr-1 h-4 w-4" />
+              New Automation
+            </Button>
+          }
+        />
 
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-xs text-red-700 dark:text-red-400">
-          {error}
-        </div>
-      )}
+        {/* Error */}
+        {error && (
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
 
-      {/* Empty state */}
-      {!error && automations.length === 0 && (
+        {/* Empty state */}
+        {!error && automations.length === 0 && (
         <EmptyState
           icon={<Bot />}
           title="No automations yet"
           description="Create one to auto-DM commenters on your posts. Set keywords to match, craft a DM template, and let it run."
           action={
             <Button onClick={handleCreate} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               Create Automation
             </Button>
           }
-        />
-      )}
+          />
+        )}
 
-      {/* Automation cards */}
-      <div className="grid gap-3">
+        {/* Automation cards */}
+        <div className="grid gap-4">
         {automations.map((automation) => (
-          <Card key={automation.id} className="group">
+          <Card key={automation.id} className="group border-border">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                     <Bot className="h-4 w-4 text-primary" />
                   </div>
                   <div className="min-w-0">
                     <CardTitle className="text-sm truncate">{automation.name}</CardTitle>
                     {automation.post_social_id && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {automation.post_social_id}
                       </p>
                     )}
@@ -201,8 +202,8 @@ export function AutomationList() {
                 <StatusBadge status={automation.status} />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-4">
+            <CardContent className="pt-0">
+              <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5" />
                   <span>
@@ -212,7 +213,7 @@ export function AutomationList() {
                 </div>
 
                 {automation.keywords.length > 0 && (
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex min-w-0 items-center gap-1.5">
                     <span className="shrink-0">Keywords:</span>
                     <span className="truncate max-w-[200px]">
                       {automation.keywords.slice(0, 5).join(', ')}
@@ -238,31 +239,31 @@ export function AutomationList() {
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : automation.status === 'running' ? (
                     <>
-                      <Pause className="h-3.5 w-3.5 mr-1" />
+                      <Pause className="mr-1 h-3.5 w-3.5" />
                       Pause
                     </>
                   ) : (
                     <>
-                      <Play className="h-3.5 w-3.5 mr-1" />
+                      <Play className="mr-1 h-3.5 w-3.5" />
                       Start
                     </>
                   )}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setActivityTarget(automation)}>
-                  <Activity className="h-3.5 w-3.5 mr-1" />
+                  <Activity className="mr-1 h-3.5 w-3.5" />
                   Activity
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => handleEdit(automation)}>
-                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  <Pencil className="mr-1 h-3.5 w-3.5" />
                   Edit
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setDeleteTarget(automation)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  <Trash2 className="mr-1 h-3.5 w-3.5" />
                   Delete
                 </Button>
               </div>
@@ -305,7 +306,7 @@ export function AutomationList() {
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                   Deleting...
                 </>
               ) : (
@@ -315,6 +316,7 @@ export function AutomationList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </PageContainer>
   );
 }

@@ -173,7 +173,7 @@ function formatTrend(current: number, previous: number) {
 
 function ChecklistItem({ label, done, href }: { label: string; done: boolean; href: string }) {
   const content = (
-    <div className="flex items-center gap-3 py-2">
+    <div className="flex items-center gap-3 py-2.5">
       {done ? (
         <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
       ) : (
@@ -191,7 +191,7 @@ function ChecklistItem({ label, done, href }: { label: string; done: boolean; hr
   if (done) return content;
 
   return (
-    <Link href={href} className="block hover:bg-muted/50 -mx-2 px-2 rounded-lg transition-colors">
+    <Link href={href} className="-mx-2 block rounded-md px-2 py-2.5 transition-colors hover:bg-muted/50">
       {content}
     </Link>
   );
@@ -239,24 +239,25 @@ async function DashboardContent() {
 
   return (
     <PageContainer maxWidth="xl">
-      {/* Welcome Modal (client component) */}
-      <DashboardWelcomeClient isNewUser={isNewUser} />
+      <div className="space-y-6">
+        {/* Welcome Modal (client component) */}
+        <DashboardWelcomeClient isNewUser={isNewUser} />
 
-      {/* Welcome Header */}
-      <PageTitle
-        title={userName ? `Welcome back, ${userName}` : 'Welcome to MagnetLab'}
-        description={
-          isNewUser
-            ? 'Get started by creating your first lead magnet or importing transcripts.'
-            : "Here's an overview of your activity."
-        }
-      />
+        {/* Welcome Header */}
+        <PageTitle
+          title={userName ? `Welcome back, ${userName}` : 'Welcome to MagnetLab'}
+          description={
+            isNewUser
+              ? 'Get started by creating your first lead magnet or importing transcripts.'
+              : "Here's an overview of your activity."
+          }
+        />
 
-      {/* How MagnetLab Works — new user only */}
-      {isNewUser && (
-        <div className="grid gap-4 sm:grid-cols-3">
+        {/* How MagnetLab Works — new user only */}
+        {isNewUser && (
+          <div className="grid gap-4 sm:grid-cols-3">
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="p-4 text-center">
               <IconWrapper variant="primary" size="lg" className="mx-auto mb-3">
                 <Plus className="h-6 w-6" />
               </IconWrapper>
@@ -267,7 +268,7 @@ async function DashboardContent() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="p-4 text-center">
               <IconWrapper variant="success" size="lg" className="mx-auto mb-3">
                 <Globe className="h-6 w-6" />
               </IconWrapper>
@@ -278,7 +279,7 @@ async function DashboardContent() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6 text-center">
+            <CardContent className="p-4 text-center">
               <IconWrapper variant="info" size="lg" className="mx-auto mb-3">
                 <Users className="h-6 w-6" />
               </IconWrapper>
@@ -289,13 +290,13 @@ async function DashboardContent() {
             </CardContent>
           </Card>
         </div>
-      )}
+        )}
 
-      {/* Continue where you left off */}
-      {!isNewUser && stats.recentDraft && (
-        <Card className="border-primary/20 bg-primary/5 hover:border-primary/30 hover:shadow-md transition-all">
+        {/* Continue where you left off */}
+        {!isNewUser && stats.recentDraft && (
+          <Card className="border-primary/20 bg-primary/5 hover:border-primary/30 transition-colors hover:shadow-sm">
           <CardContent className="p-0">
-            <Link href={`/magnets/${stats.recentDraft.id}`} className="flex items-center gap-4 p-5">
+            <Link href={`/magnets/${stats.recentDraft.id}`} className="flex items-center gap-4 p-4">
               <IconWrapper variant="primary" size="md">
                 <Magnet className="h-5 w-5" />
               </IconWrapper>
@@ -307,10 +308,10 @@ async function DashboardContent() {
             </Link>
           </CardContent>
         </Card>
-      )}
+        )}
 
-      {/* Stats Row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Stats Row */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MagnetStatCard
           label="Lead Magnets"
           value={stats.leadMagnets}
@@ -329,23 +330,23 @@ async function DashboardContent() {
           description={formatTrend(stats.leadsThisWeek, stats.leadsLastWeek)}
         />
         <MagnetStatCard label="Posts" value={stats.posts} icon={<FileText className="h-5 w-5" />} />
-      </div>
-      <div className="flex justify-end -mt-2">
-        <Link
-          href="/analytics"
-          className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1"
-        >
-          View detailed analytics <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
+        </div>
+        <div className="flex justify-end">
+          <Link
+            href="/analytics"
+            className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1"
+          >
+            View detailed analytics <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="mb-4 text-lg font-semibold">Quick Actions</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
+        {/* Quick Actions */}
+        <section>
+          <h2 className="mb-4 text-base font-semibold">Quick Actions</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
           <Link href="/create" className="group">
-            <Card className="h-full transition-all hover:border-primary hover:shadow-lg">
-              <CardContent className="flex items-center gap-4 p-5">
+            <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-sm">
+              <CardContent className="flex items-center gap-4 p-4">
                 <IconWrapper
                   variant="primary"
                   size="lg"
@@ -365,8 +366,8 @@ async function DashboardContent() {
           </Link>
 
           <Link href="/knowledge" className="group">
-            <Card className="h-full transition-all hover:border-primary hover:shadow-lg">
-              <CardContent className="flex items-center gap-4 p-5">
+            <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-sm">
+              <CardContent className="flex items-center gap-4 p-4">
                 <IconWrapper
                   variant="primary"
                   size="lg"
@@ -386,8 +387,8 @@ async function DashboardContent() {
           </Link>
 
           <Link href="/posts" className="group">
-            <Card className="h-full transition-all hover:border-primary hover:shadow-lg">
-              <CardContent className="flex items-center gap-4 p-5">
+            <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-sm">
+              <CardContent className="flex items-center gap-4 p-4">
                 <IconWrapper
                   variant="primary"
                   size="lg"
@@ -404,16 +405,16 @@ async function DashboardContent() {
             </Card>
           </Link>
         </div>
-      </div>
+        </section>
 
-      {/* What to do next — contextual cards for active users */}
-      {!isNewUser && stats.magnetsWithoutFunnels.length > 0 && (
-        <div>
-          <h2 className="mb-4 text-lg font-semibold">What to do next</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+        {/* What to do next — contextual cards for active users */}
+        {!isNewUser && stats.magnetsWithoutFunnels.length > 0 && (
+          <section>
+            <h2 className="mb-4 text-base font-semibold">What to do next</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
             {stats.magnetsWithoutFunnels.map((m) => (
               <Link key={m.id} href={`/magnets/${m.id}?tab=funnel`} className="group">
-                <Card className="transition-all hover:border-primary hover:shadow-md">
+                <Card className="transition-colors hover:border-primary/50 hover:shadow-sm">
                   <CardContent className="flex items-center gap-3 p-4">
                     <IconWrapper variant="warning" size="sm">
                       <Globe className="h-4 w-4" />
@@ -429,41 +430,42 @@ async function DashboardContent() {
                 </Card>
               </Link>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Getting Started Checklist */}
-      {!allComplete && (
-        <Card>
-          <CardContent className="p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Getting Started</h2>
-              <span className="text-sm text-muted-foreground">
-                {completedCount} of {checklistItems.length} complete
-              </span>
             </div>
-            <div className="mb-4 h-2 overflow-hidden rounded-full bg-muted">
+          </section>
+        )}
+
+        {/* Getting Started Checklist */}
+        {!allComplete && (
+          <Card>
+            <CardContent className="p-8">
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-base font-semibold">Getting Started</h2>
+                <span className="text-sm text-muted-foreground">
+                  {completedCount} of {checklistItems.length} complete
+                </span>
+              </div>
+              <div className="mb-6 h-2 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-primary transition-all"
                 style={{
                   width: `${(completedCount / checklistItems.length) * 100}%`,
                 }}
-              />
-            </div>
-            <div className="divide-y">
-              {checklistItems.map((item) => (
-                <ChecklistItem
-                  key={item.label}
-                  label={item.label}
-                  done={item.done}
-                  href={item.href}
                 />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </div>
+              <div className="divide-y divide-border">
+                {checklistItems.map((item) => (
+                  <ChecklistItem
+                    key={item.label}
+                    label={item.label}
+                    done={item.done}
+                    href={item.href}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </PageContainer>
   );
 }

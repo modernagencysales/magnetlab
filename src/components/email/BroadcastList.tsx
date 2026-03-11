@@ -93,16 +93,16 @@ export function BroadcastList() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-destructive">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">{error}</p>
         </div>
       )}
 
       {broadcasts.length === 0 ? (
-        <div className="rounded-xl border bg-card p-12 text-center">
+        <div className="rounded-xl border border-border bg-card p-12 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Send className="h-8 w-8 text-primary" />
           </div>
@@ -112,9 +112,9 @@ export function BroadcastList() {
           </p>
           <Button onClick={handleCreateBroadcast} disabled={creating}>
             {creating ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
             ) : (
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-1" />
             )}
             Create Your First Broadcast
           </Button>
@@ -124,9 +124,9 @@ export function BroadcastList() {
           <div className="flex justify-end">
             <Button onClick={handleCreateBroadcast} disabled={creating}>
               {creating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
               ) : (
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-1" />
               )}
               Create Broadcast
             </Button>
@@ -137,7 +137,7 @@ export function BroadcastList() {
               <button
                 key={broadcast.id}
                 onClick={() => router.push(`/email/broadcasts/${broadcast.id}`)}
-                className="group rounded-xl border bg-card p-5 text-left transition-all hover:border-primary hover:shadow-lg"
+                className="group rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-primary hover:shadow-lg"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <Badge variant={STATUS_VARIANTS[broadcast.status]} className="gap-1">

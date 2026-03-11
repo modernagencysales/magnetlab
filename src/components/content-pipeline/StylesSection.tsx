@@ -11,7 +11,7 @@ import * as stylesApi from '@/frontend/api/content-pipeline/styles';
 const TONE_COLORS: Record<StyleProfile['tone'], string> = {
   conversational: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   professional: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-  provocative: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  provocative: 'bg-destructive/10 text-destructive',
   educational: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   inspirational: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
 };
@@ -180,7 +180,7 @@ export function StylesSection() {
                       onClick={() => handleDelete(style.id)}
                       title="Delete style"
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </div>
                 </div>

@@ -12,7 +12,7 @@ export const metadata = {
 export default function SignalsPage() {
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="border-border">
         <CardHeader>
           <div className="flex items-center gap-3">
             <Settings2 className="h-5 w-5 text-primary" />
@@ -37,7 +37,7 @@ export default function SignalsPage() {
         </CardContent>
       </Card>
 
-      <Card id="competitors">
+      <Card id="competitors" className="border-border">
         <CardContent className="pt-6">
           <CompetitorMonitoring />
         </CardContent>

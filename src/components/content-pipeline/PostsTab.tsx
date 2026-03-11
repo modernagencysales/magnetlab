@@ -36,7 +36,7 @@ const REVIEW_FILTERS: { value: ReviewCategory; label: string; className: string 
   {
     value: 'needs_rewrite',
     label: 'Rewrite',
-    className: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+    className: 'bg-destructive/10 text-destructive',
   },
 ];
 
@@ -275,7 +275,7 @@ export function PostsTab({ profileId, teamId }: PostsTabProps) {
                         onClick={() => handleDelete(post.id)}
                         title="Delete"
                       >
-                        <Trash2 className="h-4 w-4 text-red-400" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </div>

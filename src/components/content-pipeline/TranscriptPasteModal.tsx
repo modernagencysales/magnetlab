@@ -264,7 +264,7 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
                             e.stopPropagation();
                             setFile(null);
                           }}
-                          className="mt-2 text-xs text-red-500 hover:underline"
+                          className="mt-2 text-xs text-destructive hover:underline"
                         >
                           Remove
                         </button>
@@ -297,7 +297,7 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
             </div>
 
             {error && (
-              <div className="mt-3 rounded-lg border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+              <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
                 {error}
               </div>
             )}

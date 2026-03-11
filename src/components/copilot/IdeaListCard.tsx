@@ -21,7 +21,7 @@ const TYPE_COLORS: Record<string, string> = {
   thought_leadership: 'bg-violet-100 text-violet-700',
   personal_story: 'bg-green-100 text-green-700',
   how_to: 'bg-blue-100 text-blue-700',
-  contrarian: 'bg-red-100 text-red-700',
+  contrarian: 'bg-destructive/10 text-destructive',
   case_study: 'bg-amber-100 text-amber-700',
   listicle: 'bg-cyan-100 text-cyan-700',
   question: 'bg-purple-100 text-purple-700',

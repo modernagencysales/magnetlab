@@ -169,7 +169,7 @@ function IntegrationRow({
           size="icon-sm"
           onClick={handleRemove}
           disabled={removing}
-          className="text-muted-foreground hover:text-red-500"
+          className="text-muted-foreground hover:text-destructive"
         >
           {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
         </Button>
@@ -368,7 +368,7 @@ function AddIntegrationForm({
       )}
 
       {error && (
-        <p className="flex items-center gap-2 text-sm text-red-500">
+        <p className="flex items-center gap-2 text-sm text-destructive">
           <XCircle className="h-4 w-4" />
           {error}
         </p>
@@ -540,7 +540,7 @@ function GHLFunnelToggle({ funnelPageId }: { funnelPageId: string }) {
       )}
 
       {error && (
-        <p className="flex items-center gap-2 text-xs text-red-500">
+        <p className="flex items-center gap-2 text-xs text-destructive">
           <XCircle className="h-3 w-3" />
           {error}
         </p>
@@ -791,7 +791,7 @@ function HeyReachFunnelToggle({
       )}
 
       {error && (
-        <p className="flex items-center gap-2 text-xs text-red-500">
+        <p className="flex items-center gap-2 text-xs text-destructive">
           <XCircle className="h-3 w-3" />
           {error}
         </p>

@@ -40,7 +40,7 @@ const PROVIDERS: ProviderConfig[] = [
     authType: 'api_key',
     helpUrl: 'https://app.kit.com/account_settings/developer_settings',
     helpLabel: 'Kit Developer Settings',
-    iconColor: 'text-red-500',
+    iconColor: 'text-destructive',
   },
   {
     id: 'mailerlite',
@@ -255,7 +255,7 @@ function ProviderCard({
               size="sm"
               onClick={handleDisconnect}
               disabled={disconnecting}
-              className="text-red-500 hover:text-red-600"
+              className="text-destructive hover:opacity-80"
             >
               {disconnecting ? (
                 <>
@@ -364,7 +364,7 @@ function ProviderCard({
       {feedback && (
         <p
           className={`mt-3 flex items-center gap-2 text-sm ${
-            feedback.type === 'success' ? 'text-green-600' : 'text-red-500'
+            feedback.type === 'success' ? 'text-green-600' : 'text-destructive'
           }`}
         >
           {feedback.type === 'success' ? (

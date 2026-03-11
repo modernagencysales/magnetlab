@@ -29,8 +29,8 @@ export function LibraryTab({ profileId }: LibraryTabProps) {
   const [section, setSection] = useState<LibrarySection>('templates');
 
   return (
-    <div>
-      <div className="mb-6 flex gap-2">
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-3">
         <button
           onClick={() => setSection('templates')}
           className={cn(

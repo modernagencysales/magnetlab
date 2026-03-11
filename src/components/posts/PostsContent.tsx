@@ -99,19 +99,20 @@ export function PostsContent({ initialBufferLow, initialIdeas, initialPosts }: P
 
   return (
     <PageContainer maxWidth="xl">
-      <PageTitle
-        title="Posts"
-        description="Manage your content ideas, drafts, and publishing schedule"
-        actions={
-          <ProfileSwitcher
-            selectedProfileId={selectedProfileId}
-            onProfileChange={onProfileChange}
-          />
-        }
-      />
+      <div className="space-y-6">
+        <PageTitle
+          title="Posts"
+          description="Manage your content ideas, drafts, and publishing schedule"
+          actions={
+            <ProfileSwitcher
+              selectedProfileId={selectedProfileId}
+              onProfileChange={onProfileChange}
+            />
+          }
+        />
 
-      {/* Tabs */}
-      <div className="flex gap-1.5 overflow-x-auto">
+        {/* Tabs */}
+        <div className="flex gap-2 overflow-x-auto">
         {TABS.map((tab) => (
           <Button
             key={tab.id}
@@ -119,17 +120,17 @@ export function PostsContent({ initialBufferLow, initialIdeas, initialPosts }: P
             size="sm"
             onClick={() => handleTabChange(tab.id)}
           >
-            <tab.icon className="h-3.5 w-3.5 mr-1.5" />
+            <tab.icon className="mr-1.5 h-3.5 w-3.5" />
             {tab.label}
             {tab.id === 'autopilot' && bufferLow && (
               <StatusDot status="warning" size="sm" pulse className="ml-1.5" />
             )}
           </Button>
         ))}
-      </div>
+        </div>
 
-      {/* Tab Content */}
-      <Suspense fallback={<TabLoader />}>
+        {/* Tab Content */}
+        <Suspense fallback={<TabLoader />}>
         {activeTab === 'pipeline' && (
           <PipelineView
             key={refreshKey}
@@ -146,12 +147,12 @@ export function PostsContent({ initialBufferLow, initialIdeas, initialPosts }: P
         {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
         {activeTab === 'library' && <LibraryTab />}
         {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}
-      </Suspense>
+        </Suspense>
 
-      {/* Quick Write FAB */}
+        {/* Quick Write FAB */}
       <button
         onClick={() => setShowQuickWrite(true)}
-        className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+        className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
         title="Quick Write"
       >
         <Sparkles className="h-5 w-5" />
@@ -166,7 +167,8 @@ export function PostsContent({ initialBufferLow, initialIdeas, initialPosts }: P
           }}
           profileId={selectedProfileId}
         />
-      )}
+        )}
+      </div>
     </PageContainer>
   );
 }

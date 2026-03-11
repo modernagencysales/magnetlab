@@ -245,7 +245,7 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
                 size="icon-sm"
                 onClick={() => handleDelete(section.id)}
                 disabled={deletingId === section.id}
-                className="text-muted-foreground hover:text-red-500"
+                className="text-muted-foreground hover:text-destructive"
                 title="Delete"
               >
                 {deletingId === section.id ? (

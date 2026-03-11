@@ -134,7 +134,7 @@ export function WeeklyGrid({
                 <span
                   className={cn(
                     'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card',
-                    profile.linkedin_connected ? 'bg-green-500' : 'bg-red-400'
+                    profile.linkedin_connected ? 'bg-green-500' : 'bg-destructive'
                   )}
                   title={profile.linkedin_connected ? 'LinkedIn connected' : 'Not connected'}
                 />

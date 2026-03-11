@@ -100,7 +100,7 @@ export function PipelineView({
           <div
             key={card.label}
             className={cn(
-              'rounded-xl border p-4 transition-colors',
+              'rounded-lg border border-border p-4 transition-colors',
               card.bgColor
             )}
           >

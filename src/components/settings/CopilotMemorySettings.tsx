@@ -87,7 +87,7 @@ export function CopilotMemorySettings() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-primary" />
@@ -105,7 +105,7 @@ export function CopilotMemorySettings() {
       </p>
 
       {showAddForm && (
-        <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/50">
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-3">
           <Input
             value={newRule}
             onChange={(e) => setNewRule(e.target.value)}
@@ -144,7 +144,7 @@ export function CopilotMemorySettings() {
           {memories.map((m) => (
             <div
               key={m.id}
-              className={`flex items-center justify-between p-3 rounded-lg border ${
+              className={`flex items-center justify-between rounded-lg border border-border p-3 ${
                 m.active ? 'bg-card' : 'bg-muted/50 opacity-60'
               }`}
             >
@@ -178,7 +178,7 @@ export function CopilotMemorySettings() {
                   size="icon-sm"
                   onClick={() => deleteMemory(m.id)}
                   aria-label="Delete"
-                  className="text-muted-foreground hover:text-red-500"
+                  className="text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>

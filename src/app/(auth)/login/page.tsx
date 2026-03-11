@@ -62,17 +62,17 @@ function LoginForm() {
   };
 
   return (
-    <Card className="mt-8">
-      <CardContent className="p-8">
+    <Card className="mt-6">
+      <CardContent className="p-6">
         {/* Sign In / Create Account tabs */}
-        <div className="mb-6 flex rounded-lg bg-muted p-1">
+        <div className="mb-4 flex rounded-md bg-muted p-0.5">
           <button
             type="button"
             onClick={() => {
               setMode('signin');
               setError('');
             }}
-            className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+            className={`flex-1 rounded py-1.5 text-sm font-medium transition-colors ${
               mode === 'signin'
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -86,7 +86,7 @@ function LoginForm() {
               setMode('signup');
               setError('');
             }}
-            className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+            className={`flex-1 rounded py-1.5 text-sm font-medium transition-colors ${
               mode === 'signup'
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -97,7 +97,7 @@ function LoginForm() {
         </div>
 
         {(error || callbackError) && (
-          <div className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error ||
               (callbackError === 'CredentialsSignin'
                 ? 'Invalid email or password'
@@ -135,18 +135,18 @@ function LoginForm() {
           Continue with Google
         </Button>
 
-        <div className="relative my-6">
+        <div className="relative my-4">
           <Separator />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-card px-2 text-xs uppercase text-muted-foreground">or</span>
-          </div>
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+            or
+          </span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
-            <div className="relative mt-2">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative mt-1.5">
+              <Mail className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
@@ -154,15 +154,15 @@ function LoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                className="pl-10"
+                className="pl-9"
               />
             </div>
           </div>
 
           <div>
             <Label htmlFor="password">{mode === 'signup' ? 'Create a Password' : 'Password'}</Label>
-            <div className="relative mt-2">
-              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative mt-1.5">
+              <Lock className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="password"
                 type="password"
@@ -173,13 +173,13 @@ function LoginForm() {
                 }
                 required
                 minLength={6}
-                className="pl-10"
+                className="pl-9"
               />
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          <Button type="submit" className="w-full gap-2" disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : null}
             {loading
               ? mode === 'signup'
                 ? 'Creating account...'
@@ -190,7 +190,7 @@ function LoginForm() {
           </Button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-muted-foreground">
+        <p className="mt-4 text-center text-xs text-muted-foreground">
           {mode === 'signin' ? (
             <>
               Don&apos;t have an account?{' '}
@@ -222,23 +222,23 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-md px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-4 py-6">
+      <div className="flex w-full max-w-sm flex-1 min-h-0 flex-col justify-center">
         <div className="text-center">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-              <Magnet className="h-7 w-7 text-primary-foreground" />
+          <Link href="/" className="inline-block">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+              <Magnet className="h-5 w-5 text-primary-foreground" />
             </div>
           </Link>
-          <h1 className="mt-6 text-3xl font-bold">Welcome to MagnetLab</h1>
-          <p className="mt-2 text-muted-foreground">Create lead magnets your ICP will love</p>
+          <h1 className="mt-4 text-xl font-semibold">Welcome to MagnetLab</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Create lead magnets your ICP will love</p>
         </div>
 
         <Suspense
           fallback={
-            <Card className="mt-8">
-              <CardContent className="p-8">
-                <Skeleton className="h-64 w-full" />
+            <Card className="mt-6">
+              <CardContent className="p-6">
+                <Skeleton className="h-48 w-full" />
               </CardContent>
             </Card>
           }
@@ -246,15 +246,11 @@ export default function LoginPage() {
           <LoginForm />
         </Suspense>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-4 text-center text-xs text-muted-foreground">
           By signing in, you agree to our{' '}
-          <Link href="/terms" className="underline hover:text-foreground">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link href="/privacy" className="underline hover:text-foreground">
-            Privacy Policy
-          </Link>
+          <Link href="/terms" className="underline hover:text-foreground">Terms</Link>
+          {' '}&{' '}
+          <Link href="/privacy" className="underline hover:text-foreground">Privacy</Link>
         </p>
       </div>
     </div>

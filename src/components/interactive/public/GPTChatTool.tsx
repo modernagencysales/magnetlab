@@ -354,7 +354,7 @@ export function GPTChatTool({ config, leadMagnetId, theme, primaryColor }: GPTCh
         {/* Error message */}
         {error && (
           <div className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm ${
-            isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-600'
+            'bg-destructive/10 text-destructive'
           }`}>
             <AlertCircle className="h-4 w-4 shrink-0" />
             {error}

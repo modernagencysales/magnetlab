@@ -13,7 +13,7 @@ const KNOWLEDGE_TYPE_COLORS: Record<string, string> = {
   insight: 'bg-purple-500',
   story: 'bg-green-500',
   question: 'bg-yellow-500',
-  objection: 'bg-red-500',
+  objection: 'bg-destructive',
   mistake: 'bg-orange-500',
   decision: 'bg-indigo-500',
   market_intel: 'bg-teal-500',

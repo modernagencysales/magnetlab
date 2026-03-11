@@ -253,9 +253,9 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
           <ArrowLeft className="h-4 w-4 mr-1.5" />
           Back to Broadcasts
         </Button>
-        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-          <p className="text-sm text-red-800 dark:text-red-200">{error || 'Broadcast not found'}</p>
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-destructive">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">{error || 'Broadcast not found'}</p>
         </div>
       </div>
     );
@@ -294,10 +294,10 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
 
       {/* Failed state banner */}
       {isFailed && (
-        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-950">
+        <div className="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-destructive">
           <div className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
-            <p className="text-sm text-red-800 dark:text-red-200">
+            <XCircle className="h-5 w-5 shrink-0" />
+            <p className="text-sm">
               This broadcast failed to send. You can retry by resetting it to draft.
             </p>
           </div>

@@ -40,7 +40,7 @@ export function AccountSettings({
   return (
     <div className="space-y-6">
       {/* Profile Section */}
-      <Card>
+      <Card className="border-border">
         <CardHeader>
           <div className="flex items-center gap-3">
             <User className="h-5 w-5 text-primary" />
@@ -48,7 +48,7 @@ export function AccountSettings({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4 mb-6">
+          <div className="mb-6 flex items-center gap-4">
             {user?.image ? (
               <Image
                 src={user.image}
@@ -73,7 +73,7 @@ export function AccountSettings({
       </Card>
 
       {/* Subscription Section */}
-      <Card id="billing">
+      <Card id="billing" className="border-border">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -121,7 +121,7 @@ export function AccountSettings({
 
       {/* Brand Kit Summary */}
       {brandKitDescription && (
-        <Card>
+        <Card className="border-border">
           <CardHeader>
             <CardTitle>Brand Kit</CardTitle>
           </CardHeader>
@@ -133,7 +133,7 @@ export function AccountSettings({
             </p>
             <Link
               href="/create"
-              className="mt-4 inline-block text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              className="mt-4 inline-block text-sm font-medium text-primary transition-colors hover:text-primary/80"
             >
               Update Brand Kit
             </Link>

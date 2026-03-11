@@ -194,10 +194,10 @@ export default function PagesPage() {
   if (loading) {
     return (
       <PageContainer maxWidth="xl">
-        <div className="space-y-4">
+        <div className="space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
-          <div className="grid gap-4 sm:grid-cols-3 mt-8">
+          <div className="grid gap-4 sm:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-24 rounded-lg" />
             ))}
@@ -212,13 +212,13 @@ export default function PagesPage() {
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" asChild>
           <Link href="/pages/import">
-            <Upload className="h-4 w-4 mr-1" />
+            <Upload className="mr-1 h-4 w-4" />
             Import
           </Link>
         </Button>
         <Button size="sm" asChild>
           <Link href="/pages/new">
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="mr-1 h-4 w-4" />
             Create Page
           </Link>
         </Button>
@@ -244,26 +244,27 @@ export default function PagesPage() {
 
   return (
     <PageContainer maxWidth="xl">
-      <PageTitle
-        title="Pages & Assets"
-        description="Manage your funnel pages, libraries, and external resources"
-        actions={tabActions[activeTab]}
-      />
+      <div className="space-y-6">
+        <PageTitle
+          title="Pages & Assets"
+          description="Manage your funnel pages, libraries, and external resources"
+          actions={tabActions[activeTab]}
+        />
 
-      {!user?.username && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
-          <p className="text-xs text-amber-800 dark:text-amber-200">
-            <strong>Set a username</strong> to enable public page URLs.{' '}
-            <Link href="/settings" className="underline hover:no-underline">
-              Go to Settings
-            </Link>
-          </p>
-        </div>
-      )}
+        {!user?.username && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              <strong>Set a username</strong> to enable public page URLs.{' '}
+              <Link href="/settings" className="underline hover:no-underline">
+                Go to Settings
+              </Link>
+            </p>
+          </div>
+        )}
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
-        <TabsList>
-          <TabsTrigger value="pages">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
+        <TabsList variant="pill" className="mb-6">
+          <TabsTrigger value="pages" variant="pill">
             Funnel Pages
             {pages.length > 0 && (
               <Badge variant="count" className="ml-1.5">
@@ -271,7 +272,7 @@ export default function PagesPage() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="libraries">
+          <TabsTrigger value="libraries" variant="pill">
             Libraries
             {libraries.length > 0 && (
               <Badge variant="count" className="ml-1.5">
@@ -279,7 +280,7 @@ export default function PagesPage() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="resources">
+          <TabsTrigger value="resources" variant="pill">
             External Resources
             {resources.length > 0 && (
               <Badge variant="count" className="ml-1.5">
@@ -289,7 +290,7 @@ export default function PagesPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pages">
+        <TabsContent value="pages" className="mt-0">
           {pages.length === 0 ? (
             <EmptyState
               icon={<Globe />}
@@ -299,13 +300,13 @@ export default function PagesPage() {
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" asChild>
                     <Link href="/pages/import">
-                      <Upload className="h-4 w-4 mr-1" />
+                      <Upload className="mr-1 h-4 w-4" />
                       Import
                     </Link>
                   </Button>
                   <Button size="sm" asChild>
                     <Link href="/pages/new">
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="mr-1 h-4 w-4" />
                       Create Page
                     </Link>
                   </Button>
@@ -317,7 +318,7 @@ export default function PagesPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="libraries">
+        <TabsContent value="libraries" className="mt-0">
           {libraries.length === 0 ? (
             <EmptyState
               icon={<span className="text-2xl">📚</span>}
@@ -326,14 +327,14 @@ export default function PagesPage() {
               action={
                 <Button size="sm" asChild>
                   <Link href="/assets/libraries/new">
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Plus className="mr-1 h-4 w-4" />
                     Create Library
                   </Link>
                 </Button>
               }
             />
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               {libraries.map((lib) => (
                 <Card key={lib.id}>
                   <CardContent className="flex items-center justify-between p-4">
@@ -348,7 +349,7 @@ export default function PagesPage() {
                     </div>
                     <Button variant="ghost" size="sm" asChild>
                       <Link href={`/assets/libraries/${lib.id}`}>
-                        <Edit className="h-3.5 w-3.5 mr-1" />
+                        <Edit className="mr-1 h-3.5 w-3.5" />
                         Manage
                       </Link>
                     </Button>
@@ -359,7 +360,7 @@ export default function PagesPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="resources">
+        <TabsContent value="resources" className="mt-0">
           {resources.length === 0 ? (
             <EmptyState
               icon={<span className="text-2xl">🔗</span>}
@@ -368,14 +369,14 @@ export default function PagesPage() {
               action={
                 <Button size="sm" asChild>
                   <Link href="/assets/external/new">
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Plus className="mr-1 h-4 w-4" />
                     Add Resource
                   </Link>
                 </Button>
               }
             />
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               {resources.map((resource) => (
                 <Card key={resource.id}>
                   <CardContent className="flex items-center justify-between p-4">
@@ -392,7 +393,7 @@ export default function PagesPage() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       {resource.clickCount > 0 && (
-                        <span className="text-xs text-muted-foreground mr-2">
+                        <span className="mr-2 text-xs text-muted-foreground">
                           {resource.clickCount} clicks
                         </span>
                       )}
@@ -406,7 +407,7 @@ export default function PagesPage() {
                         size="icon-sm"
                         onClick={() => handleDeleteResource(resource.id)}
                         disabled={deletingResource === resource.id}
-                        className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                        className="text-muted-foreground hover:text-destructive"
                       >
                         {deletingResource === resource.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -421,7 +422,8 @@ export default function PagesPage() {
             </div>
           )}
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      </div>
     </PageContainer>
   );
 }

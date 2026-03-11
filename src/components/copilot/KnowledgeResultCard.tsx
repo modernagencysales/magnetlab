@@ -23,7 +23,7 @@ const TYPE_COLORS: Record<string, string> = {
   insight: 'bg-purple-100 text-purple-700',
   story: 'bg-green-100 text-green-700',
   question: 'bg-amber-100 text-amber-700',
-  objection: 'bg-red-100 text-red-700',
+  objection: 'bg-destructive/10 text-destructive',
   mistake: 'bg-orange-100 text-orange-700',
   decision: 'bg-cyan-100 text-cyan-700',
   market_intel: 'bg-emerald-100 text-emerald-700',

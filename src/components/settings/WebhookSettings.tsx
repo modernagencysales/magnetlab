@@ -132,8 +132,8 @@ export function WebhookSettings() {
       {showForm && (
         <form onSubmit={handleCreate} className="rounded-lg border bg-card p-4 space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+              {error}
             </div>
           )}
 
@@ -200,7 +200,7 @@ export function WebhookSettings() {
                 <div className="flex items-center gap-2">
                   <span
                     className={`w-2 h-2 rounded-full ${
-                      webhook.isActive ? 'bg-green-500' : 'bg-zinc-400'
+                      webhook.isActive ? 'bg-green-500' : 'bg-muted-foreground'
                     }`}
                   />
                   <h4 className="font-medium truncate">{webhook.name}</h4>
@@ -209,7 +209,7 @@ export function WebhookSettings() {
                 {testResult?.id === webhook.id && (
                   <p
                     className={`text-xs mt-2 ${
-                      testResult.success ? 'text-green-600' : 'text-red-500'
+                      testResult.success ? 'text-green-600' : 'text-destructive'
                     }`}
                   >
                     {testResult.success ? (
@@ -252,7 +252,7 @@ export function WebhookSettings() {
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => handleDelete(webhook.id)}
-                  className="text-muted-foreground hover:text-red-500"
+                  className="text-muted-foreground hover:text-destructive"
                   title="Delete webhook"
                 >
                   <Trash2 className="h-4 w-4" />

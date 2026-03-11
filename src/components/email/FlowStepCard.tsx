@@ -122,9 +122,9 @@ export function FlowStepCard({
       {isExpanded && (
         <div className="border-t p-4 space-y-4">
           {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
-              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <p className="text-sm">{error}</p>
             </div>
           )}
 
@@ -206,7 +206,7 @@ export function FlowStepCard({
                       size="sm"
                       onClick={handleDelete}
                       disabled={deleting}
-                      className="bg-red-600 hover:bg-red-700 text-white"
+                      className="bg-destructive text-white hover:opacity-90"
                     >
                       {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Delete'}
                     </Button>
@@ -224,7 +224,7 @@ export function FlowStepCard({
                     variant="ghost"
                     size="sm"
                     onClick={() => setConfirmDelete(true)}
-                    className="text-red-500 hover:text-red-700"
+                    className="text-destructive hover:opacity-80"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete

@@ -139,7 +139,7 @@ export function WizardContainer() {
 
       <PageContainer maxWidth="lg">
         {error && (
-          <div className="mb-6 flex items-center justify-between rounded-lg bg-destructive/10 p-4 text-destructive">
+          <div className="mb-6 flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-destructive">
             <span>{error}</span>
             <Button
               variant="ghost"

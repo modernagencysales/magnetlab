@@ -134,8 +134,8 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
         </p>
 
         {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+            {error}
           </div>
         )}
 
@@ -199,8 +199,8 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       </p>
 
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
         </div>
       )}
 

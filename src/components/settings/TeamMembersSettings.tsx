@@ -116,7 +116,7 @@ export function TeamMembersSettings() {
         </div>
 
         {error && (
-          <p className="mt-2 flex items-center gap-2 text-sm text-red-500">
+          <p className="mt-2 flex items-center gap-2 text-sm text-destructive">
             <XCircle className="h-4 w-4" />
             {error}
           </p>
@@ -179,7 +179,7 @@ export function TeamMembersSettings() {
                   size="icon-sm"
                   onClick={() => handleRemove(member.id, member.email)}
                   disabled={removing === member.id}
-                  className="ml-4 text-red-500 hover:text-red-600"
+                  className="ml-4 text-destructive hover:opacity-80"
                 >
                   {removing === member.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

@@ -24,10 +24,8 @@ const CODE_LANGUAGES = [
   'text',
 ];
 
-const inputClass = (isDark: boolean) =>
-  `w-full rounded border px-2 py-1.5 text-sm bg-background ${
-    isDark ? 'border-zinc-700' : 'border-zinc-300'
-  } focus:outline-none focus:ring-1 focus:ring-violet-500`;
+const inputClass =
+  'w-full rounded border border-border px-2 py-1.5 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-violet-500';
 
 const labelClass = 'text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground';
 
@@ -47,7 +45,7 @@ function CodeEditor({
         <select
           value={block.language || 'text'}
           onChange={(e) => onChange({ language: e.target.value })}
-          className={inputClass(isDark)}
+          className={inputClass}
         >
           {CODE_LANGUAGES.map((lang) => (
             <option key={lang} value={lang}>
@@ -62,7 +60,7 @@ function CodeEditor({
           value={block.content}
           onChange={(e) => onChange({ content: e.target.value })}
           placeholder="Enter code..."
-          className={`${inputClass(isDark)} font-mono`}
+          className={`${inputClass} font-mono`}
           style={{ minHeight: '160px', whiteSpace: 'pre', tabSize: 2 }}
         />
       </div>
@@ -87,7 +85,7 @@ function ImageEditor({
           value={block.src || ''}
           onChange={(e) => onChange({ src: e.target.value })}
           placeholder="https://example.com/image.jpg"
-          className={inputClass(isDark)}
+          className={inputClass}
         />
       </div>
       <div>
@@ -96,7 +94,7 @@ function ImageEditor({
           value={block.alt || ''}
           onChange={(e) => onChange({ alt: e.target.value })}
           placeholder="Describe the image..."
-          className={inputClass(isDark)}
+          className={inputClass}
         />
       </div>
       <div>
@@ -105,7 +103,7 @@ function ImageEditor({
           value={block.caption || ''}
           onChange={(e) => onChange({ caption: e.target.value })}
           placeholder="Image caption (optional)"
-          className={inputClass(isDark)}
+          className={inputClass}
         />
       </div>
     </div>
@@ -129,7 +127,7 @@ function EmbedEditor({
           value={block.url || ''}
           onChange={(e) => onChange({ url: e.target.value })}
           placeholder="YouTube, Loom, or Vimeo URL"
-          className={inputClass(isDark)}
+          className={inputClass}
         />
       </div>
     </div>
@@ -153,7 +151,7 @@ function AccordionEditor({
           value={block.title || ''}
           onChange={(e) => onChange({ title: e.target.value })}
           placeholder="Accordion title..."
-          className={inputClass(isDark)}
+          className={inputClass}
         />
       </div>
       <div>
@@ -162,7 +160,7 @@ function AccordionEditor({
           value={block.content}
           onChange={(e) => onChange({ content: e.target.value })}
           placeholder="Accordion content..."
-          className={inputClass(isDark)}
+          className={inputClass}
           style={{ minHeight: '100px' }}
         />
       </div>
@@ -188,7 +186,7 @@ function NumberedItemEditor({
             type="number"
             value={block.number ?? 1}
             onChange={(e) => onChange({ number: parseInt(e.target.value) || 1 })}
-            className={`${inputClass(isDark)} text-center`}
+            className={`${inputClass} text-center`}
           />
         </div>
         <div className="flex-1">
@@ -197,7 +195,7 @@ function NumberedItemEditor({
             value={block.title || ''}
             onChange={(e) => onChange({ title: e.target.value })}
             placeholder="Item title..."
-            className={inputClass(isDark)}
+            className={inputClass}
           />
         </div>
       </div>
@@ -207,7 +205,7 @@ function NumberedItemEditor({
           value={block.category || ''}
           onChange={(e) => onChange({ category: e.target.value })}
           placeholder="e.g. Critical, Important, Quick Win"
-          className={inputClass(isDark)}
+          className={inputClass}
         />
       </div>
       <div>
@@ -216,7 +214,7 @@ function NumberedItemEditor({
           value={block.content}
           onChange={(e) => onChange({ content: e.target.value })}
           placeholder="Short description..."
-          className={inputClass(isDark)}
+          className={inputClass}
           style={{ minHeight: '80px' }}
         />
       </div>
@@ -226,7 +224,7 @@ function NumberedItemEditor({
           value={block.detail || ''}
           onChange={(e) => onChange({ detail: e.target.value })}
           placeholder="Extended detail shown when expanded (optional)"
-          className={inputClass(isDark)}
+          className={inputClass}
           style={{ minHeight: '80px' }}
         />
       </div>
@@ -251,7 +249,7 @@ function StatCardEditor({
           value={block.content}
           onChange={(e) => onChange({ content: e.target.value })}
           placeholder="35%, 2.3x, $50k+..."
-          className={inputClass(isDark)}
+          className={inputClass}
         />
       </div>
       <div>
@@ -259,7 +257,7 @@ function StatCardEditor({
         <select
           value={block.style || 'info'}
           onChange={(e) => onChange({ style: e.target.value as CalloutStyle })}
-          className={inputClass(isDark)}
+          className={inputClass}
         >
           <option value="info">Info (Blue)</option>
           <option value="warning">Warning (Amber)</option>
@@ -272,7 +270,7 @@ function StatCardEditor({
           value={block.title || ''}
           onChange={(e) => onChange({ title: e.target.value })}
           placeholder="What the stat means..."
-          className={inputClass(isDark)}
+          className={inputClass}
         />
       </div>
     </div>
@@ -334,21 +332,13 @@ function TableEditor({
         <span className={labelClass}>Table</span>
         <button
           onClick={addColumn}
-          className={`rounded border px-2 py-0.5 text-xs ${
-            isDark
-              ? 'border-zinc-700 text-zinc-400 hover:bg-zinc-800'
-              : 'border-zinc-300 text-zinc-600 hover:bg-zinc-100'
-          }`}
+          className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted"
         >
           + Column
         </button>
         <button
           onClick={addRow}
-          className={`rounded border px-2 py-0.5 text-xs ${
-            isDark
-              ? 'border-zinc-700 text-zinc-400 hover:bg-zinc-800'
-              : 'border-zinc-300 text-zinc-600 hover:bg-zinc-100'
-          }`}
+          className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted"
         >
           + Row
         </button>
@@ -364,12 +354,12 @@ function TableEditor({
                       value={header}
                       onChange={(e) => updateHeader(colIdx, e.target.value)}
                       placeholder={`Header ${colIdx + 1}`}
-                      className={`${inputClass(isDark)} font-semibold`}
+                      className={`${inputClass} font-semibold`}
                     />
                     {headers.length > 1 && (
                       <button
                         onClick={() => removeColumn(colIdx)}
-                        className="shrink-0 rounded p-0.5 text-red-500 hover:bg-red-500/10"
+                        className="shrink-0 rounded p-0.5 text-destructive hover:bg-destructive/10"
                       >
                         <X size={10} />
                       </button>
@@ -389,7 +379,7 @@ function TableEditor({
                       value={cell}
                       onChange={(e) => updateCell(rowIdx, cellIdx, e.target.value)}
                       placeholder="Cell value"
-                      className={inputClass(isDark)}
+                      className={inputClass}
                     />
                   </td>
                 ))}
@@ -397,7 +387,7 @@ function TableEditor({
                   {rows.length > 1 && (
                     <button
                       onClick={() => removeRow(rowIdx)}
-                      className="rounded p-0.5 text-red-500 hover:bg-red-500/10"
+                      className="rounded p-0.5 text-destructive hover:bg-destructive/10"
                     >
                       <X size={10} />
                     </button>
@@ -497,13 +487,9 @@ export function StructuredBlockOverlay({
       {/* Gear icon -- visible on hover or when popover is open */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`absolute -right-2 -top-2 z-10 rounded-full border bg-popover p-1 shadow-sm transition-opacity duration-150 ${
+        className={`absolute -right-2 -top-2 z-10 rounded-full border border-border bg-popover p-1 shadow-sm text-muted-foreground transition-opacity duration-150 ${
           isHovered || isOpen ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{
-          borderColor: isDark ? '#27272A' : '#E4E4E7',
-          color: isDark ? '#A1A1AA' : '#71717A',
-        }}
         aria-label="Edit block settings"
       >
         <Settings size={14} />
@@ -513,10 +499,7 @@ export function StructuredBlockOverlay({
       {isOpen && editor && (
         <div
           ref={popoverRef}
-          className="absolute right-0 top-8 z-50 w-[400px] rounded-lg border bg-popover p-4 shadow-xl"
-          style={{
-            borderColor: isDark ? '#27272A' : '#E4E4E7',
-          }}
+          className="absolute right-0 top-8 z-50 w-[400px] rounded-lg border border-border bg-popover p-4 shadow-xl"
         >
           {/* Header */}
           <div className="mb-3 flex items-center justify-between">

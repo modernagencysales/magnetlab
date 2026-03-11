@@ -165,9 +165,9 @@ export function FocusedCard({
                     }}
                   />
                   <MenuButton
-                    icon={<Trash2 className="h-3.5 w-3.5 text-red-500" />}
+                    icon={<Trash2 className="h-3.5 w-3.5 text-destructive" />}
                     label="Delete"
-                    className="text-red-600"
+                    className="text-destructive"
                     onClick={() => {
                       onAction('delete');
                       setShowMenu(false);
@@ -197,9 +197,9 @@ export function FocusedCard({
                     />
                   )}
                   <MenuButton
-                    icon={<Trash2 className="h-3.5 w-3.5 text-red-500" />}
+                    icon={<Trash2 className="h-3.5 w-3.5 text-destructive" />}
                     label="Delete"
-                    className="text-red-600"
+                    className="text-destructive"
                     onClick={() => {
                       onAction('delete');
                       setShowMenu(false);

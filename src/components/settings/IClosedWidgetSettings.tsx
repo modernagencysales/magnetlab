@@ -97,7 +97,7 @@ export function IClosedWidgetSettings({ integration }: IClosedWidgetSettingsProp
           <button
             onClick={handleDisconnect}
             disabled={disconnecting}
-            className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+            className="text-sm font-medium text-destructive transition-colors hover:opacity-80"
           >
             {disconnecting ? (
               <span className="flex items-center gap-2">
@@ -134,7 +134,7 @@ export function IClosedWidgetSettings({ integration }: IClosedWidgetSettingsProp
           </button>
 
           {result && (
-            <p className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-red-500'}`}>
+            <p className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-destructive'}`}>
               {result.success ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
               {result.message}
             </p>
