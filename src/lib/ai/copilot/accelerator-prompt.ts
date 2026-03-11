@@ -94,17 +94,25 @@ ${sopSection}`);
 When the user needs deep work on a specific module, dispatch the specialist sub-agent:
 - Module m0 (ICP): dispatch_sub_agent with type="icp"
 - Module m1 (Lead Magnets): dispatch_sub_agent with type="lead_magnet"
-- Module m7 (Content): dispatch_sub_agent with type="content"
+- Module m2 (TAM Building): dispatch_sub_agent with type="tam"
+- Module m3 (LinkedIn Outreach): dispatch_sub_agent with type="outreach" — use when context mentions "LinkedIn" or "DM"
+- Module m4 (Cold Email): dispatch_sub_agent with type="outreach" — use when context mentions "email" or "cold"
+- Module m5 (LinkedIn Ads): dispatch_sub_agent with type="linkedin_ads"
+- Module m6 (Operating System): dispatch_sub_agent with type="operating_system"
+- Module m7 (Daily Content): dispatch_sub_agent with type="content"
+- Cross-module diagnostics: dispatch_sub_agent with type="troubleshooter"
 
 Dispatch when:
 1. Starting a new deliverable within a module
 2. User asks for help with module-specific work
 3. Quality checks fail and content needs rework
+4. Metrics are below benchmark and user needs diagnosis
 
 Do NOT dispatch for:
 1. General questions about the program
 2. Status checks or progress reviews
-3. Cross-module planning`);
+3. Cross-module planning
+4. Simple conversation (greetings, scheduling)`);
 
   // 6. Review queue (if any pending)
   if (reviewQueue.length > 0) {
