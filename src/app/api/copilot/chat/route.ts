@@ -5,7 +5,6 @@ import { buildCopilotSystemPrompt } from '@/lib/ai/copilot/system-prompt';
 import type { ActionContext } from '@/lib/actions';
 import { logError } from '@/lib/utils/logger';
 import { detectCorrectionSignal, extractMemories } from '@/lib/ai/copilot/memory-extractor';
-import { hasAcceleratorAccess } from '@/lib/services/accelerator-enrollment';
 import { getEnrollmentByUserId } from '@/lib/services/accelerator-program';
 import { checkUsageAllocation, trackUsageEvent } from '@/lib/services/accelerator-usage';
 import { buildClaudeMessages } from '@/lib/ai/copilot/chat-history';
@@ -43,19 +42,21 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
 
-    // ─── Enrollment Access Check ────────────────────────
+    // ─── Enrollment Access + Usage Check ─────────────────
     // Accelerator features require a paid enrollment.
     // Non-accelerator copilot usage (page-context help) is not gated.
-    // Result cached to avoid duplicate DB queries in sub-agent dispatch.
+    // Single query: getEnrollmentByUserId returns the full enrollment or null.
     const isAcceleratorRequest =
       body.message?.toLowerCase().includes('accelerator') ||
       body.pageContext?.page?.includes('accelerator');
 
     let cachedEnrollmentCheck: boolean | null = null;
+    let enrollmentId: string | undefined;
 
     if (isAcceleratorRequest) {
-      cachedEnrollmentCheck = await hasAcceleratorAccess(userId);
-      if (!cachedEnrollmentCheck) {
+      const enrollment = await getEnrollmentByUserId(userId);
+      cachedEnrollmentCheck = !!enrollment;
+      if (!enrollment) {
         return new Response(
           JSON.stringify({
             error: 'GTM Accelerator requires enrollment.',
@@ -65,24 +66,16 @@ export async function POST(req: NextRequest) {
           { status: 403 }
         );
       }
-    }
-
-    // ─── Usage Quota Enforcement ──────────────────────────
-    let enrollmentId: string | undefined;
-    if (isAcceleratorRequest && cachedEnrollmentCheck) {
-      const enrollment = await getEnrollmentByUserId(userId);
-      if (enrollment) {
-        enrollmentId = enrollment.id;
-        const { withinLimits, usage, limits } = await checkUsageAllocation(enrollment.id);
-        if (!withinLimits) {
-          return new Response(
-            JSON.stringify({
-              error: `Monthly usage limit reached (${usage.sessions}/${limits.sessions} sessions, ${usage.deliverables}/${limits.deliverables} deliverables). Resets next month.`,
-              code: 'USAGE_LIMIT_EXCEEDED',
-            }),
-            { status: 429 }
-          );
-        }
+      enrollmentId = enrollment.id;
+      const { withinLimits, usage, limits } = await checkUsageAllocation(enrollment.id);
+      if (!withinLimits) {
+        return new Response(
+          JSON.stringify({
+            error: `Monthly usage limit reached (${usage.sessions}/${limits.sessions} sessions, ${usage.deliverables}/${limits.deliverables} deliverables). Resets next month.`,
+            code: 'USAGE_LIMIT_EXCEEDED',
+          }),
+          { status: 429 }
+        );
       }
     }
 

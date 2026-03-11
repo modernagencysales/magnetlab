@@ -112,9 +112,10 @@ export function useAcceleratorChat({
           setMessages(hydrated);
         }
       })
-      .catch(() => {
-        // Conversation may have been deleted — start fresh
-        historyLoadedRef.current = false;
+      .catch((err) => {
+        // Conversation may have been deleted or expired — clear stale ID and start fresh
+        console.warn('[accelerator] Failed to load conversation history:', err?.message || err);
+        localStorage.removeItem('accelerator_conversation_id');
       });
   }, [conversationId]);
 

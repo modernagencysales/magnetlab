@@ -11,7 +11,9 @@ jest.mock('@/lib/auth', () => ({
 }));
 
 // Build a chainable mock that supports all Supabase methods
-function createChainableMock(resolvedValue: { data: unknown; error: unknown } = { data: null, error: null }) {
+function createChainableMock(
+  resolvedValue: { data: unknown; error: unknown } = { data: null, error: null }
+) {
   const chain: Record<string, jest.Mock> = {};
   const methods = ['from', 'select', 'insert', 'update', 'eq', 'order', 'limit', 'single'];
 
@@ -28,7 +30,9 @@ function createChainableMock(resolvedValue: { data: unknown; error: unknown } = 
   chain.single.mockResolvedValue(resolvedValue);
 
   // Make the chain itself thenable so `await supabase.from(...).insert(...)` works
-  (chain as Record<string, unknown>).then = (resolve: (val: { data: unknown; error: unknown }) => void) => {
+  (chain as Record<string, unknown>).then = (
+    resolve: (val: { data: unknown; error: unknown }) => void
+  ) => {
     return Promise.resolve(resolvedValue).then(resolve);
   };
 
@@ -96,6 +100,19 @@ jest.mock('@/lib/ai/copilot/memory-extractor', () => ({
   extractMemories: jest.fn().mockResolvedValue([]),
 }));
 
+// Mock accelerator enrollment + usage
+const mockGetEnrollmentByUserId = jest.fn();
+const mockCheckUsageAllocation = jest.fn();
+const mockTrackUsageEvent = jest.fn();
+
+jest.mock('@/lib/services/accelerator-program', () => ({
+  getEnrollmentByUserId: (...args: unknown[]) => mockGetEnrollmentByUserId(...args),
+}));
+jest.mock('@/lib/services/accelerator-usage', () => ({
+  checkUsageAllocation: (...args: unknown[]) => mockCheckUsageAllocation(...args),
+  trackUsageEvent: (...args: unknown[]) => mockTrackUsageEvent(...args),
+}));
+
 describe('POST /api/copilot/chat', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -134,6 +151,74 @@ describe('POST /api/copilot/chat', () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
   });
+
+  // ─── Accelerator Enrollment + Usage ────────────────────
+
+  it('returns 403 for accelerator requests without enrollment', async () => {
+    mockGetEnrollmentByUserId.mockResolvedValue(null);
+
+    const req = new NextRequest('http://localhost/api/copilot/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Help', pageContext: { page: 'accelerator' } }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.code).toBe('ENROLLMENT_REQUIRED');
+  });
+
+  it('returns 429 when accelerator usage exceeds monthly limits', async () => {
+    mockGetEnrollmentByUserId.mockResolvedValue({ id: 'enroll-1', status: 'active' });
+    mockCheckUsageAllocation.mockResolvedValue({
+      withinLimits: false,
+      usage: { sessions: 31, deliverables: 5, api_calls: 100 },
+      limits: { sessions: 30, deliverables: 15, api_calls: 500 },
+    });
+
+    const req = new NextRequest('http://localhost/api/copilot/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Help', pageContext: { page: 'accelerator' } }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(429);
+    const json = await res.json();
+    expect(json.code).toBe('USAGE_LIMIT_EXCEEDED');
+  });
+
+  it('allows accelerator requests when within usage limits', async () => {
+    mockGetEnrollmentByUserId.mockResolvedValue({ id: 'enroll-1', status: 'active' });
+    mockCheckUsageAllocation.mockResolvedValue({
+      withinLimits: true,
+      usage: { sessions: 5, deliverables: 2, api_calls: 50 },
+      limits: { sessions: 30, deliverables: 15, api_calls: 500 },
+    });
+    mockTrackUsageEvent.mockResolvedValue(undefined);
+
+    const req = new NextRequest('http://localhost/api/copilot/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Help', pageContext: { page: 'accelerator' } }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('text/event-stream');
+  });
+
+  it('skips enrollment check for non-accelerator requests', async () => {
+    const req = new NextRequest('http://localhost/api/copilot/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Hello', pageContext: { page: 'dashboard' } }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(mockGetEnrollmentByUserId).not.toHaveBeenCalled();
+    expect(mockCheckUsageAllocation).not.toHaveBeenCalled();
+  });
+
+  // ─── Conversation Creation ────────────────────────────
 
   it('creates conversation when conversationId not provided and returns SSE stream', async () => {
     const req = new NextRequest('http://localhost/api/copilot/chat', {
