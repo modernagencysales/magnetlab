@@ -7,6 +7,7 @@ import { getSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError } from '@/lib/utils/logger';
 import type {
   CapabilityType,
+  ProviderConfig,
   ProviderRegistryEntry,
   DmOutreachProvider,
   EmailOutreachProvider,
@@ -131,7 +132,7 @@ export async function saveProviderConfig(
 export async function getProviderConfig(
   userId: string,
   capability: CapabilityType
-): Promise<Record<string, unknown> | null> {
+): Promise<ProviderConfig | null> {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from('provider_configs')
@@ -140,6 +141,11 @@ export async function getProviderConfig(
     .eq('capability', capability)
     .single();
 
-  if (error || !data) return null;
-  return data;
+  if (error) {
+    if (error.code !== 'PGRST116') {
+      logError(LOG_CTX, error, { userId, capability });
+    }
+    return null;
+  }
+  return data as ProviderConfig | null;
 }

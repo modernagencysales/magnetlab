@@ -179,8 +179,8 @@ export function parseHandoff(text: string, defaultHandoff: SubAgentHandoff): Sub
         needs_escalation: parsed.needs_escalation || false,
         summary: parsed.summary || text.slice(0, 200),
       };
-    } catch {
-      // Fall through to default
+    } catch (error) {
+      logError(LOG_CTX, error, { context: 'parseHandoff', textLength: text.length });
     }
   }
 

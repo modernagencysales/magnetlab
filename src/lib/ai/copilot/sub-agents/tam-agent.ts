@@ -3,6 +3,8 @@
  *  enrichment waterfall, email validation, and activity-based segmentation.
  *  Never imports NextRequest, NextResponse, or cookies. */
 
+import type { IntakeData, CoachingMode } from '@/lib/types/accelerator';
+
 interface SopData {
   title: string;
   content: string;
@@ -10,8 +12,8 @@ interface SopData {
 }
 
 interface UserContext {
-  intake_data: unknown;
-  coaching_mode: 'do_it' | 'guide_me' | 'teach_me';
+  intake_data: IntakeData | null;
+  coaching_mode: CoachingMode;
 }
 
 export function buildTamAgentPrompt(sops: SopData[], ctx: UserContext): string {
@@ -78,7 +80,7 @@ Each segment should have:
 
   // ─── User Context ─────────────────────────────────────
   if (ctx.intake_data) {
-    const intake = ctx.intake_data as Record<string, unknown>;
+    const intake = ctx.intake_data;
     sections.push(`## User Context
 Business: ${intake.business_description || 'Not provided'}
 Target Audience: ${intake.target_audience || 'Not provided'}

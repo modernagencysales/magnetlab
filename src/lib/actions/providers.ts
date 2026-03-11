@@ -69,9 +69,9 @@ registerAction({
       success: true,
       data: {
         configured: true,
-        provider_id: (config as Record<string, unknown>).provider_id,
+        provider_id: config.provider_id,
         connected,
-        verified_at: (config as Record<string, unknown>).verified_at,
+        verified_at: config.verified_at,
       },
       displayHint: 'text',
     };

@@ -36,7 +36,8 @@ export class PlusVibeEmailProvider implements EmailOutreachProvider {
     try {
       const res = await this.request('/campaign/list', 'GET');
       return res.ok;
-    } catch {
+    } catch (error) {
+      logError(LOG_CTX, error, { method: 'testConnection' });
       return false;
     }
   }
@@ -62,7 +63,7 @@ export class PlusVibeEmailProvider implements EmailOutreachProvider {
     try {
       const res = await this.request(
         `/analytics/campaign/summary?campaign_id=${campaignId}`,
-        'GET',
+        'GET'
       );
       if (!res.ok) return { sent: 0, opened: 0, replied: 0, bounced: 0 };
       const json = await res.json();
@@ -86,9 +87,7 @@ export class PlusVibeEmailProvider implements EmailOutreachProvider {
       const json = await res.json();
       const accounts = json.data || [];
       return accounts.map((acc: Record<string, unknown>) => {
-        const startedAt = acc.warmup_started_at
-          ? new Date(acc.warmup_started_at as string)
-          : null;
+        const startedAt = acc.warmup_started_at ? new Date(acc.warmup_started_at as string) : null;
         const daysSinceStart = startedAt
           ? Math.floor((Date.now() - startedAt.getTime()) / 86400000)
           : 0;
@@ -105,10 +104,7 @@ export class PlusVibeEmailProvider implements EmailOutreachProvider {
     }
   }
 
-  async addLeadsToCampaign(
-    campaignId: string,
-    leads: OutreachLead[],
-  ): Promise<{ added: number }> {
+  async addLeadsToCampaign(campaignId: string, leads: OutreachLead[]): Promise<{ added: number }> {
     try {
       const res = await this.request('/lead/add', 'POST', {
         campaign_id: campaignId,
