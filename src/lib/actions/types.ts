@@ -19,7 +19,8 @@ export interface ActionResult<T = unknown> {
     | 'task_board'
     | 'approval_card'
     | 'metrics_card'
-    | 'onboarding_intake';
+    | 'onboarding_intake'
+    | 'enrollment_card';
 }
 
 export type ActionHandler = (
