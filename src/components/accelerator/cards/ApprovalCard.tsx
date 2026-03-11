@@ -18,7 +18,13 @@ export function ApprovalCard({ data, onApply }: ApprovalCardProps) {
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
       <div className="flex items-center gap-2">
-        <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0 text-amber-500">
+        <svg
+          aria-hidden="true"
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          className="shrink-0 text-amber-500"
+        >
           <path
             d="M8 1L1 14h14L8 1z"
             fill="none"
@@ -43,7 +49,13 @@ export function ApprovalCard({ data, onApply }: ApprovalCardProps) {
               key={i}
               className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400"
             >
-              <svg width="10" height="10" viewBox="0 0 10 10" className="mt-0.5 shrink-0">
+              <svg
+                aria-hidden="true"
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                className="mt-0.5 shrink-0"
+              >
                 <circle cx="5" cy="5" r="2" fill="currentColor" />
               </svg>
               {item}

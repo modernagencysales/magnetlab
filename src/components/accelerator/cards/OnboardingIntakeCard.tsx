@@ -1,6 +1,7 @@
 'use client';
 
-/** Onboarding Intake Card. Multiple-choice question with radio/checkbox options. */
+/** Onboarding Intake Card. Multiple-choice question with radio/checkbox options.
+ *  Never imports server-only modules or NextResponse. */
 
 import { useState } from 'react';
 
@@ -63,7 +64,13 @@ export function OnboardingIntakeCard({ data, onApply }: OnboardingIntakeCardProp
             <span className="shrink-0">
               {isMulti ? (
                 selected.includes(opt.value) ? (
-                  <svg width="14" height="14" viewBox="0 0 14 14" className="text-violet-600">
+                  <svg
+                    aria-hidden="true"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    className="text-violet-600"
+                  >
                     <rect x="1" y="1" width="12" height="12" rx="2" fill="currentColor" />
                     <path
                       d="M4 7l2 2 4-4"
@@ -76,6 +83,7 @@ export function OnboardingIntakeCard({ data, onApply }: OnboardingIntakeCardProp
                   </svg>
                 ) : (
                   <svg
+                    aria-hidden="true"
                     width="14"
                     height="14"
                     viewBox="0 0 14 14"
@@ -94,12 +102,19 @@ export function OnboardingIntakeCard({ data, onApply }: OnboardingIntakeCardProp
                   </svg>
                 )
               ) : selected.includes(opt.value) ? (
-                <svg width="14" height="14" viewBox="0 0 14 14" className="text-violet-600">
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  className="text-violet-600"
+                >
                   <circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
                   <circle cx="7" cy="7" r="3.5" fill="currentColor" />
                 </svg>
               ) : (
                 <svg
+                  aria-hidden="true"
                   width="14"
                   height="14"
                   viewBox="0 0 14 14"

@@ -21,7 +21,7 @@ interface MetricsCardProps {
 function TrendArrow({ trend }: { trend: 'up' | 'down' | 'neutral' }) {
   if (trend === 'up') {
     return (
-      <svg width="12" height="12" viewBox="0 0 12 12" className="text-green-500">
+      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" className="text-green-500">
         <path
           d="M6 10V3M6 3L3 6M6 3l3 3"
           stroke="currentColor"
@@ -34,7 +34,7 @@ function TrendArrow({ trend }: { trend: 'up' | 'down' | 'neutral' }) {
   }
   if (trend === 'down') {
     return (
-      <svg width="12" height="12" viewBox="0 0 12 12" className="text-red-500">
+      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" className="text-red-500">
         <path
           d="M6 2v7M6 9L3 6M6 9l3-3"
           stroke="currentColor"
@@ -46,7 +46,13 @@ function TrendArrow({ trend }: { trend: 'up' | 'down' | 'neutral' }) {
     );
   }
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" className="text-muted-foreground">
+    <svg
+      aria-hidden="true"
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      className="text-muted-foreground"
+    >
       <path
         d="M2 6h8M10 6L7 3M10 6L7 9"
         stroke="currentColor"

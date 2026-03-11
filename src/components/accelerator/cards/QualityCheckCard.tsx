@@ -21,7 +21,13 @@ interface QualityCheckCardProps {
 function CheckResultIcon({ passed }: { passed: boolean }) {
   if (passed) {
     return (
-      <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0 text-green-500">
+      <svg
+        aria-hidden="true"
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        className="shrink-0 text-green-500"
+      >
         <circle cx="8" cy="8" r="7" fill="currentColor" />
         <path
           d="M5 8l2 2 4-4"
@@ -35,7 +41,13 @@ function CheckResultIcon({ passed }: { passed: boolean }) {
     );
   }
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0 text-red-500">
+    <svg
+      aria-hidden="true"
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      className="shrink-0 text-red-500"
+    >
       <circle cx="8" cy="8" r="7" fill="currentColor" />
       <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
@@ -45,7 +57,13 @@ function CheckResultIcon({ passed }: { passed: boolean }) {
 function CheckItemIcon({ passed }: { passed: boolean }) {
   if (passed) {
     return (
-      <svg width="12" height="12" viewBox="0 0 12 12" className="mt-0.5 shrink-0 text-green-500">
+      <svg
+        aria-hidden="true"
+        width="12"
+        height="12"
+        viewBox="0 0 12 12"
+        className="mt-0.5 shrink-0 text-green-500"
+      >
         <path
           d="M2.5 6l2.5 2.5 4.5-5"
           stroke="currentColor"
@@ -58,7 +76,13 @@ function CheckItemIcon({ passed }: { passed: boolean }) {
     );
   }
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" className="mt-0.5 shrink-0 text-red-500">
+    <svg
+      aria-hidden="true"
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      className="mt-0.5 shrink-0 text-red-500"
+    >
       <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );

@@ -78,6 +78,7 @@ export default function AcceleratorChat({
       {subAgentActive && (
         <div className="flex items-center gap-2 border-b bg-violet-50 px-4 py-2 text-xs text-violet-700 dark:bg-violet-900/20 dark:text-violet-300">
           <svg
+            aria-hidden="true"
             width="14"
             height="14"
             viewBox="0 0 14 14"
@@ -132,7 +133,7 @@ export default function AcceleratorChat({
             disabled={!input.trim() || isLoading}
             className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700 disabled:opacity-50"
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" className="shrink-0">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" className="shrink-0">
               <path
                 d="M1 7h10M8 4l3 3-3 3"
                 stroke="currentColor"

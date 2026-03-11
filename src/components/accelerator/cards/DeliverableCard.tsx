@@ -3,6 +3,8 @@
 /** Deliverable Card. Preview with type, status badge, validation, and action buttons.
  *  Never imports server-only modules or NextResponse. */
 
+import type { ReactElement } from 'react';
+
 // ─── Types ──────────────────────────────────────────────
 
 interface DeliverableCardProps {
@@ -19,11 +21,11 @@ interface DeliverableCardProps {
 
 // ─── Status Styling ─────────────────────────────────────
 
-const STATUS_STYLES: Record<string, { bg: string; icon: JSX.Element }> = {
+const STATUS_STYLES: Record<string, { bg: string; icon: ReactElement }> = {
   in_progress: {
     bg: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
     icon: (
-      <svg width="10" height="10" viewBox="0 0 10 10" className="animate-spin">
+      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className="animate-spin">
         <circle
           cx="5"
           cy="5"
@@ -39,7 +41,7 @@ const STATUS_STYLES: Record<string, { bg: string; icon: JSX.Element }> = {
   pending_review: {
     bg: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
     icon: (
-      <svg width="10" height="10" viewBox="0 0 10 10">
+      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10">
         <circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" strokeWidth="1.5" />
         <circle cx="5" cy="5" r="1.5" fill="currentColor" />
       </svg>
@@ -48,7 +50,7 @@ const STATUS_STYLES: Record<string, { bg: string; icon: JSX.Element }> = {
   approved: {
     bg: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
     icon: (
-      <svg width="10" height="10" viewBox="0 0 10 10">
+      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10">
         <path
           d="M2.5 5l2 2 3.5-4"
           stroke="currentColor"
@@ -63,7 +65,7 @@ const STATUS_STYLES: Record<string, { bg: string; icon: JSX.Element }> = {
   rejected: {
     bg: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
     icon: (
-      <svg width="10" height="10" viewBox="0 0 10 10">
+      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10">
         <path d="M3 3l4 4M7 3l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     ),

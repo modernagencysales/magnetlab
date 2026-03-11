@@ -19,7 +19,13 @@ interface TaskBoardCardProps {
 function StepIcon({ status }: { status: TaskStep['status'] }) {
   if (status === 'complete') {
     return (
-      <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0 text-green-500">
+      <svg
+        aria-hidden="true"
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        className="shrink-0 text-green-500"
+      >
         <circle cx="8" cy="8" r="7" fill="currentColor" />
         <path
           d="M5 8l2 2 4-4"
@@ -34,14 +40,26 @@ function StepIcon({ status }: { status: TaskStep['status'] }) {
   }
   if (status === 'active') {
     return (
-      <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0 text-blue-500">
+      <svg
+        aria-hidden="true"
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        className="shrink-0 text-blue-500"
+      >
         <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
         <circle cx="8" cy="8" r="3" fill="currentColor" className="animate-pulse" />
       </svg>
     );
   }
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0 text-muted-foreground/40">
+    <svg
+      aria-hidden="true"
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      className="shrink-0 text-muted-foreground/40"
+    >
       <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
@@ -72,7 +90,7 @@ export function TaskBoardCard({ data }: TaskBoardCardProps) {
         <div className="mb-2 h-1 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full bg-green-500 transition-all"
-            style={{ width: `${steps.length > 0 ? (completedCount / steps.length) * 100 : 0}%` }}
+            style={{ width: `${(completedCount / steps.length) * 100}%` }}
           />
         </div>
       )}

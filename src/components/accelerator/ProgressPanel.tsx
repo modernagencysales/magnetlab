@@ -19,7 +19,13 @@ function StatusIcon({ status }: { status: string }) {
   switch (status) {
     case 'completed':
       return (
-        <svg width={size} height={size} viewBox="0 0 16 16" className="text-green-500">
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+          className="text-green-500"
+        >
           <circle cx="8" cy="8" r="7" fill="currentColor" />
           <path
             d="M5 8l2 2 4-4"
@@ -33,14 +39,26 @@ function StatusIcon({ status }: { status: string }) {
       );
     case 'active':
       return (
-        <svg width={size} height={size} viewBox="0 0 16 16" className="text-blue-500">
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+          className="text-blue-500"
+        >
           <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
           <circle cx="8" cy="8" r="4" fill="currentColor" className="animate-pulse" />
         </svg>
       );
     case 'blocked':
       return (
-        <svg width={size} height={size} viewBox="0 0 16 16" className="text-red-400">
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+          className="text-red-400"
+        >
           <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
           <path
             d="M5.5 5.5l5 5M10.5 5.5l-5 5"
@@ -52,7 +70,13 @@ function StatusIcon({ status }: { status: string }) {
       );
     case 'skipped':
       return (
-        <svg width={size} height={size} viewBox="0 0 16 16" className="text-muted-foreground/50">
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+          className="text-muted-foreground/50"
+        >
           <circle
             cx="8"
             cy="8"
@@ -66,7 +90,13 @@ function StatusIcon({ status }: { status: string }) {
       );
     default: // not_started
       return (
-        <svg width={size} height={size} viewBox="0 0 16 16" className="text-muted-foreground/40">
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+          className="text-muted-foreground/40"
+        >
           <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
         </svg>
       );
@@ -95,7 +125,13 @@ export default function ProgressPanel({ programState, onModuleClick }: ProgressP
     return (
       <aside className="flex w-80 flex-col border-l bg-muted/30 p-6">
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-          <svg width="32" height="32" viewBox="0 0 16 16" className="text-muted-foreground/30">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+            className="text-muted-foreground/30"
+          >
             <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
             <path d="M8 4v4l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
@@ -123,6 +159,7 @@ export default function ProgressPanel({ programState, onModuleClick }: ProgressP
           height="14"
           viewBox="0 0 14 14"
           fill="none"
+          aria-hidden="true"
           className={`transition-transform ${collapsed ? 'rotate-180' : ''}`}
         >
           <path
@@ -252,13 +289,58 @@ function ModuleRow({
   );
 }
 
+function DeliverableStatusIcon({ status }: { status: string }) {
+  if (status === 'approved') {
+    return (
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 10 10"
+        aria-hidden="true"
+        className="shrink-0 text-green-500"
+      >
+        <path
+          d="M2.5 5l2 2 3.5-4"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+  if (status === 'rejected') {
+    return (
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 10 10"
+        aria-hidden="true"
+        className="shrink-0 text-red-500"
+      >
+        <path d="M3 3l4 4M7 3l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  const colorClass = DELIVERABLE_STATUS_COLORS[status] || 'text-muted-foreground';
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      aria-hidden="true"
+      className={`shrink-0 ${colorClass}`}
+    >
+      <circle cx="5" cy="5" r="2.5" fill="currentColor" />
+    </svg>
+  );
+}
+
 function DeliverableRow({ deliverable }: { deliverable: ProgramDeliverable }) {
-  const colorClass = DELIVERABLE_STATUS_COLORS[deliverable.status] || 'text-muted-foreground';
   return (
     <li className="flex items-center gap-2 text-xs">
-      <span className={`${colorClass} font-medium`}>
-        {deliverable.status === 'approved' ? '✓' : deliverable.status === 'rejected' ? '✗' : '•'}
-      </span>
+      <DeliverableStatusIcon status={deliverable.status} />
       <span className="flex-1 truncate">{deliverable.deliverable_type.replace(/_/g, ' ')}</span>
       <span className="text-muted-foreground">
         {MODULE_NAMES[deliverable.module_id as ModuleId]?.split(' ')[0]}

@@ -30,7 +30,7 @@ function ModuleIcon({ id }: { id: ModuleId }) {
   switch (id) {
     case 'm0': // ICP — crosshair
       return (
-        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+        <svg aria-hidden="true" width={s} height={s} viewBox="0 0 16 16" className={cls}>
           <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
           <circle cx="8" cy="8" r="2.5" fill="currentColor" />
           <path
@@ -43,7 +43,7 @@ function ModuleIcon({ id }: { id: ModuleId }) {
       );
     case 'm1': // Lead magnets — magnet
       return (
-        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+        <svg aria-hidden="true" width={s} height={s} viewBox="0 0 16 16" className={cls}>
           <path
             d="M4 3v5a4 4 0 008 0V3"
             fill="none"
@@ -56,7 +56,7 @@ function ModuleIcon({ id }: { id: ModuleId }) {
       );
     case 'm2': // TAM — map
       return (
-        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+        <svg aria-hidden="true" width={s} height={s} viewBox="0 0 16 16" className={cls}>
           <path
             d="M2 3l4 2v8l-4-2zM6 5l4-2v8l-4 2zM10 3l4 2v8l-4-2z"
             fill="none"
@@ -68,7 +68,7 @@ function ModuleIcon({ id }: { id: ModuleId }) {
       );
     case 'm3': // LinkedIn — chat bubble
       return (
-        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+        <svg aria-hidden="true" width={s} height={s} viewBox="0 0 16 16" className={cls}>
           <path
             d="M2 3h12v8H6l-3 2v-2H2z"
             fill="none"
@@ -86,7 +86,7 @@ function ModuleIcon({ id }: { id: ModuleId }) {
       );
     case 'm4': // Cold email — envelope
       return (
-        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+        <svg aria-hidden="true" width={s} height={s} viewBox="0 0 16 16" className={cls}>
           <rect
             x="1.5"
             y="3.5"
@@ -108,7 +108,7 @@ function ModuleIcon({ id }: { id: ModuleId }) {
       );
     case 'm5': // Ads — megaphone
       return (
-        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+        <svg aria-hidden="true" width={s} height={s} viewBox="0 0 16 16" className={cls}>
           <path
             d="M2 6h2v4H2zM4 6l8-3v10L4 10z"
             fill="none"
@@ -126,7 +126,7 @@ function ModuleIcon({ id }: { id: ModuleId }) {
       );
     case 'm6': // Operations — gear
       return (
-        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+        <svg aria-hidden="true" width={s} height={s} viewBox="0 0 16 16" className={cls}>
           <circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
           <path
             d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.4 1.4M11.55 11.55l1.4 1.4M3.05 12.95l1.4-1.4M11.55 4.45l1.4-1.4"
@@ -138,7 +138,7 @@ function ModuleIcon({ id }: { id: ModuleId }) {
       );
     case 'm7': // Content — pencil
       return (
-        <svg width={s} height={s} viewBox="0 0 16 16" className={cls}>
+        <svg aria-hidden="true" width={s} height={s} viewBox="0 0 16 16" className={cls}>
           <path
             d="M10.5 2.5l3 3L5.5 13.5H2.5v-3z"
             fill="none"
