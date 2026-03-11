@@ -7,6 +7,8 @@ import { executeAction, actionRequiresConfirmation, getToolDefinitions } from '@
 import type { ActionContext } from '@/lib/actions';
 import { logError } from '@/lib/utils/logger';
 import { detectCorrectionSignal, extractMemories } from '@/lib/ai/copilot/memory-extractor';
+import { dispatchSubAgent } from '@/lib/ai/copilot/sub-agent-dispatch';
+import type { SubAgentType } from '@/lib/types/accelerator';
 
 const MAX_ITERATIONS = 15;
 
@@ -63,7 +65,9 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (convError || !conv) {
-        return new Response(JSON.stringify({ error: 'Failed to create conversation' }), { status: 500 });
+        return new Response(JSON.stringify({ error: 'Failed to create conversation' }), {
+          status: 500,
+        });
       }
       conversationId = conv.id;
     }
@@ -86,23 +90,31 @@ export async function POST(req: NextRequest) {
 
       const context = (recentMsgs || [])
         .reverse()
-        .filter((m: { role: string; content: string | null }) => m.role === 'user' || m.role === 'assistant')
-        .map((m: { role: string; content: string | null }) => ({ role: m.role, content: m.content || '' }));
+        .filter(
+          (m: { role: string; content: string | null }) =>
+            m.role === 'user' || m.role === 'assistant'
+        )
+        .map((m: { role: string; content: string | null }) => ({
+          role: m.role,
+          content: m.content || '',
+        }));
 
-      extractMemories(userId, context).then(async (memories) => {
-        if (memories.length > 0) {
-          await supabase.from('copilot_memories').insert(
-            memories.map(m => ({
-              user_id: userId,
-              rule: m.rule,
-              category: m.category,
-              confidence: m.confidence,
-              source: 'conversation' as const,
-              conversation_id: conversationId,
-            }))
-          );
-        }
-      }).catch(() => {});
+      extractMemories(userId, context)
+        .then(async (memories) => {
+          if (memories.length > 0) {
+            await supabase.from('copilot_memories').insert(
+              memories.map((m) => ({
+                user_id: userId,
+                rule: m.rule,
+                category: m.category,
+                confidence: m.confidence,
+                source: 'conversation' as const,
+                conversation_id: conversationId,
+              }))
+            );
+          }
+        })
+        .catch(() => {});
     }
 
     // Load conversation history (last 50 messages)
@@ -116,7 +128,10 @@ export async function POST(req: NextRequest) {
 
     // C2 FIX: Build messages with deterministic tool IDs from message row IDs
     // Group consecutive tool_call + tool_result pairs for correct multi-tool handling
-    const claudeMessages: Array<{ role: 'user' | 'assistant'; content: string | Array<Record<string, unknown>> }> = [];
+    const claudeMessages: Array<{
+      role: 'user' | 'assistant';
+      content: string | Array<Record<string, unknown>>;
+    }> = [];
     const historyArr = history || [];
 
     for (let i = 0; i < historyArr.length; i++) {
@@ -133,12 +148,21 @@ export async function POST(req: NextRequest) {
         while (i < historyArr.length && historyArr[i].role === 'tool_call') {
           const tc = historyArr[i];
           const toolId = `tool_${tc.id}`;
-          toolUseBlocks.push({ type: 'tool_use', id: toolId, name: tc.tool_name || '', input: tc.tool_args || {} });
+          toolUseBlocks.push({
+            type: 'tool_use',
+            id: toolId,
+            name: tc.tool_name || '',
+            input: tc.tool_args || {},
+          });
 
           // Look for matching tool_result immediately after
           if (i + 1 < historyArr.length && historyArr[i + 1].role === 'tool_result') {
             const tr = historyArr[i + 1];
-            toolResultBlocks.push({ type: 'tool_result', tool_use_id: toolId, content: JSON.stringify(tr.tool_result) });
+            toolResultBlocks.push({
+              type: 'tool_result',
+              tool_use_id: toolId,
+              content: JSON.stringify(tr.tool_result),
+            });
             i += 2;
           } else {
             i++;
@@ -161,6 +185,35 @@ export async function POST(req: NextRequest) {
 
     // Get tool definitions
     const tools = getToolDefinitions();
+
+    // Add sub-agent dispatch tool for Accelerator
+    const allTools = [
+      ...tools,
+      {
+        name: 'dispatch_sub_agent',
+        description:
+          'Dispatch a specialist sub-agent for deep module work. The sub-agent runs independently and returns a handoff summary.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            agent_type: {
+              type: 'string',
+              enum: ['icp', 'lead_magnet', 'content', 'troubleshooter'],
+              description: 'Which specialist to dispatch',
+            },
+            context: {
+              type: 'string',
+              description: 'Summary of what the user needs help with',
+            },
+            user_message: {
+              type: 'string',
+              description: 'The user message to forward to the sub-agent',
+            },
+          },
+          required: ['agent_type', 'context', 'user_message'],
+        },
+      },
+    ];
 
     // Create SSE stream
     const encoder = new TextEncoder();
@@ -198,7 +251,7 @@ export async function POST(req: NextRequest) {
               model: 'claude-sonnet-4-20250514',
               max_tokens: 4096,
               system: systemPrompt,
-              tools: tools as Parameters<typeof client.messages.create>[0]['tools'],
+              tools: allTools as Parameters<typeof client.messages.create>[0]['tools'],
               messages: currentMessages as Parameters<typeof client.messages.create>[0]['messages'],
             });
 
@@ -215,11 +268,15 @@ export async function POST(req: NextRequest) {
 
             // I4 FIX: Collect ALL tool_use blocks first, then execute them,
             // then send a single user message with all tool_results
-            const toolUseBlocks = response.content.filter(b => b.type === 'tool_use');
+            const toolUseBlocks = response.content.filter((b) => b.type === 'tool_use');
             const hasToolUse = toolUseBlocks.length > 0;
 
             if (hasToolUse) {
-              const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string }> = [];
+              const toolResults: Array<{
+                type: 'tool_result';
+                tool_use_id: string;
+                content: string;
+              }> = [];
 
               for (const block of toolUseBlocks) {
                 const needsConfirmation = actionRequiresConfirmation(block.name);
@@ -266,8 +323,31 @@ export async function POST(req: NextRequest) {
                     content: JSON.stringify(pendingResult),
                   });
                 } else {
-                  // Execute the action
-                  const result = await executeAction(actionCtx, block.name, block.input as Record<string, unknown>);
+                  // Execute the action (with special sub-agent dispatch handling)
+                  let result;
+                  if (block.name === 'dispatch_sub_agent') {
+                    const input = block.input as {
+                      agent_type: SubAgentType;
+                      context: string;
+                      user_message: string;
+                    };
+                    const { buildSubAgentConfig } =
+                      await import('@/lib/ai/copilot/sub-agents/config');
+                    const subConfig = await buildSubAgentConfig(
+                      input.agent_type,
+                      input.context,
+                      input.user_message,
+                      userId
+                    );
+                    const handoff = await dispatchSubAgent(subConfig, actionCtx, send);
+                    result = { success: true, data: handoff, displayHint: 'text' as const };
+                  } else {
+                    result = await executeAction(
+                      actionCtx,
+                      block.name,
+                      block.input as Record<string, unknown>
+                    );
+                  }
 
                   send('tool_result', { name: block.name, result, id: block.id });
 
@@ -293,9 +373,10 @@ export async function POST(req: NextRequest) {
                 ...currentMessages,
                 {
                   role: 'assistant' as const,
-                  content: response.content.map(b => {
+                  content: response.content.map((b) => {
                     if (b.type === 'text') return { type: 'text' as const, text: b.text };
-                    if (b.type === 'tool_use') return { type: 'tool_use' as const, id: b.id, name: b.name, input: b.input };
+                    if (b.type === 'tool_use')
+                      return { type: 'tool_use' as const, id: b.id, name: b.name, input: b.input };
                     return b;
                   }) as Record<string, unknown>[],
                 },
@@ -312,7 +393,8 @@ export async function POST(req: NextRequest) {
                 conversation_id: conversationId,
                 role: 'assistant',
                 content: assistantText,
-                tokens_used: (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0),
+                tokens_used:
+                  (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0),
               });
             }
 
