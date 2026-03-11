@@ -6,6 +6,8 @@
 import { registerAction } from './registry';
 import {
   getProgramState,
+  getEnrollmentByUserId,
+  getDeliverablesByEnrollment,
   updateModuleStatus,
   createDeliverable,
   updateDeliverableStatus,
@@ -278,7 +280,15 @@ registerAction({
     },
     required: ['deliverable_id'],
   },
-  handler: async (_ctx, params: { deliverable_id: string }) => {
+  handler: async (ctx, params: { deliverable_id: string }) => {
+    const enrollment = await getEnrollmentByUserId(ctx.userId);
+    if (!enrollment) return { success: false, error: 'No active enrollment found.' };
+
+    const deliverables = await getDeliverablesByEnrollment(enrollment.id);
+    if (!deliverables.some((d) => d.id === params.deliverable_id)) {
+      return { success: false, error: 'Deliverable not found in your enrollment.' };
+    }
+
     const result = await updateDeliverableStatus(
       params.deliverable_id,
       'approved' as DeliverableStatus
@@ -298,7 +308,15 @@ registerAction({
     },
     required: ['deliverable_id'],
   },
-  handler: async (_ctx, params: { deliverable_id: string; feedback?: string }) => {
+  handler: async (ctx, params: { deliverable_id: string; feedback?: string }) => {
+    const enrollment = await getEnrollmentByUserId(ctx.userId);
+    if (!enrollment) return { success: false, error: 'No active enrollment found.' };
+
+    const deliverables = await getDeliverablesByEnrollment(enrollment.id);
+    if (!deliverables.some((d) => d.id === params.deliverable_id)) {
+      return { success: false, error: 'Deliverable not found in your enrollment.' };
+    }
+
     const validationResult = params.feedback
       ? { passed: false, checks: [], feedback: params.feedback }
       : undefined;

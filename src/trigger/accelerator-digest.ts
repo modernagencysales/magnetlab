@@ -72,7 +72,7 @@ export const acceleratorDigest = task({
       );
     } else {
       for (const mod of summary.modules) {
-        digestLines.push(`**Module ${mod.module_id.toUpperCase()}**`);
+        digestLines.push(`<strong>Module ${mod.module_id.toUpperCase()}</strong>`);
         for (const m of mod.metrics) {
           const indicator = m.status === 'below' ? '⚠️' : m.status === 'above' ? '✅' : '➡️';
           digestLines.push(`  ${indicator} ${m.metric_key}: ${m.value}`);

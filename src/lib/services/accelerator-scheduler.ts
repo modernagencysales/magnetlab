@@ -12,9 +12,19 @@ const LOG_CTX = 'accelerator-scheduler';
 
 // ─── Cron Helpers ────────────────────────────────────────
 
-/** Simple cron next-run calculator. Supports standard 5-field cron (min hour dom month dow). */
+/** Simple cron next-run calculator. Supports minute, hour, and day-of-week fields only.
+ *  Day-of-month and month fields must be '*' or the function throws. */
 export function computeNextRun(cronExpression: string, from: Date = new Date()): Date {
-  const [minStr, hourStr, , , dowStr] = cronExpression.split(' ');
+  const parts = cronExpression.split(' ');
+  if (parts.length !== 5) {
+    throw new Error(`Invalid cron expression: expected 5 fields, got ${parts.length}`);
+  }
+  const [minStr, hourStr, domStr, monthStr, dowStr] = parts;
+  if (domStr !== '*' || monthStr !== '*') {
+    throw new Error(
+      `Unsupported cron expression: day-of-month and month must be '*'. Got: ${cronExpression}`
+    );
+  }
   const minute = parseInt(minStr, 10);
   const hour = parseInt(hourStr, 10);
   const targetDow = dowStr === '*' ? null : parseInt(dowStr, 10);

@@ -5,6 +5,7 @@
 jest.mock('@/lib/services/accelerator-program', () => ({
   getProgramState: jest.fn(),
   getEnrollmentByUserId: jest.fn(),
+  getDeliverablesByEnrollment: jest.fn(),
   updateModuleStatus: jest.fn(),
   createDeliverable: jest.fn(),
   updateDeliverableStatus: jest.fn(),
@@ -19,14 +20,25 @@ jest.mock('@/lib/services/accelerator-usage', () => ({
 }));
 
 import { executeAction } from '@/lib/actions';
-import { updateDeliverableStatus } from '@/lib/services/accelerator-program';
+import {
+  getEnrollmentByUserId,
+  getDeliverablesByEnrollment,
+  updateDeliverableStatus,
+} from '@/lib/services/accelerator-program';
 
 import '@/lib/actions/program';
 
 const ctx = { userId: 'user-1', teamId: null, sessionId: 'sess-1' };
 
 describe('review queue actions', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Default: user has enrollment and deliverable
+    (getEnrollmentByUserId as jest.Mock).mockResolvedValue({ id: 'enroll-1' });
+    (getDeliverablesByEnrollment as jest.Mock).mockResolvedValue([
+      { id: 'd-1', enrollment_id: 'enroll-1' },
+    ]);
+  });
 
   it('approve_review_item sets status to approved', async () => {
     (updateDeliverableStatus as jest.Mock).mockResolvedValue({ id: 'd-1', status: 'approved' });
@@ -49,9 +61,19 @@ describe('review queue actions', () => {
     );
   });
 
-  it('approve_review_item fails gracefully', async () => {
-    (updateDeliverableStatus as jest.Mock).mockResolvedValue(null);
+  it('approve_review_item fails without enrollment', async () => {
+    (getEnrollmentByUserId as jest.Mock).mockResolvedValue(null);
+    const result = await executeAction(ctx, 'approve_review_item', { deliverable_id: 'd-1' });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('enrollment');
+  });
+
+  it('approve_review_item rejects deliverable from other enrollment', async () => {
+    (getDeliverablesByEnrollment as jest.Mock).mockResolvedValue([
+      { id: 'd-other', enrollment_id: 'enroll-1' },
+    ]);
     const result = await executeAction(ctx, 'approve_review_item', { deliverable_id: 'd-bad' });
     expect(result.success).toBe(false);
+    expect(result.error).toContain('not found');
   });
 });

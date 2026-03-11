@@ -148,6 +148,18 @@ export const acceleratorCollectMetrics = task({
               value: Math.round(avgImpressions),
               source: 'magnetlab',
             });
+
+            const avgEngagement =
+              withStats.reduce((sum: number, p: Record<string, unknown>) => {
+                const stats = p.engagement_stats as Record<string, number>;
+                return sum + (stats?.engagement_rate || stats?.likes || 0);
+              }, 0) / withStats.length;
+            metrics.push({
+              module_id: 'm7',
+              metric_key: 'content_avg_engagement',
+              value: Math.round(avgEngagement * 100) / 100,
+              source: 'magnetlab',
+            });
           }
         }
       } catch (err) {
