@@ -3,7 +3,7 @@
  *  Loads SOPs, user context, and agent-specific prompts. */
 
 import type { SubAgentConfig } from '../sub-agent-dispatch';
-import type { SubAgentType, ModuleId, CoachingMode } from '@/lib/types/accelerator';
+import type { SubAgentType, ModuleId, CoachingMode, DiagnosticRule } from '@/lib/types/accelerator';
 import { getToolDefinitions } from '@/lib/actions';
 import { getSopsByModule, getEnrollmentByUserId } from '@/lib/services/accelerator-program';
 import { buildIcpAgentPrompt } from './icp-agent';
@@ -11,6 +11,9 @@ import { buildLeadMagnetAgentPrompt } from './lead-magnet-agent';
 import { buildContentAgentPrompt } from './content-agent';
 import { buildTamAgentPrompt } from './tam-agent';
 import { buildOutreachAgentPrompt } from './outreach-agent';
+import { buildTroubleshooterPrompt } from './troubleshooter-agent';
+import { getDiagnosticRules, matchRulesToMetrics } from '@/lib/services/accelerator-troubleshooter';
+import { getLatestMetrics } from '@/lib/services/accelerator-metrics';
 
 // ─── Agent → Module Mapping ──────────────────────────────
 
@@ -79,10 +82,34 @@ export async function buildSubAgentConfig(
       systemPrompt = buildOutreachAgentPrompt(sopData, userContext, focus);
       break;
     }
-    case 'troubleshooter':
-      // Stub for Phase 3
-      systemPrompt = `You are the Troubleshooter agent. Help diagnose issues with: ${context}`;
+    case 'troubleshooter': {
+      if (!enrollment) {
+        systemPrompt =
+          'No active enrollment found. Ask the user to enroll in the accelerator first.';
+        break;
+      }
+      const latestMetrics = await getLatestMetrics(enrollment.id);
+      const metricsSnapshot = latestMetrics.map((m) => ({
+        metric_key: m.metric_key,
+        value: m.value,
+        status: m.status,
+      }));
+
+      // Collect rules from all active modules and match
+      const allRules: DiagnosticRule[] = [];
+      for (const mod of ['m0', 'm1', 'm2', 'm3', 'm4', 'm7'] as const) {
+        const rules = await getDiagnosticRules(mod);
+        allRules.push(...rules);
+      }
+      const triggered = matchRulesToMetrics(allRules, metricsSnapshot);
+
+      systemPrompt = buildTroubleshooterPrompt(
+        triggered,
+        metricsSnapshot,
+        userContext.coaching_mode
+      );
       break;
+    }
     default:
       systemPrompt = `You are a GTM specialist. Help with: ${context}`;
   }
@@ -100,7 +127,14 @@ export async function buildSubAgentConfig(
     'check_provider_status',
     'configure_provider',
     'get_guided_steps',
+    'get_metrics',
+    'get_metrics_summary',
   ];
+
+  // Troubleshooter gets additional metric tools
+  if (agentType === 'troubleshooter') {
+    relevantToolNames.push('get_metric_history', 'list_schedules');
+  }
   const filteredTools = allTools.filter((t) => relevantToolNames.includes(t.name));
 
   return {
