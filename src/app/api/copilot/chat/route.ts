@@ -9,6 +9,7 @@ import { logError } from '@/lib/utils/logger';
 import { detectCorrectionSignal, extractMemories } from '@/lib/ai/copilot/memory-extractor';
 import { dispatchSubAgent } from '@/lib/ai/copilot/sub-agent-dispatch';
 import type { SubAgentType } from '@/lib/types/accelerator';
+import { hasAcceleratorAccess } from '@/lib/services/accelerator-enrollment';
 
 const MAX_ITERATIONS = 15;
 
@@ -36,6 +37,29 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id;
+
+    // ─── Enrollment Access Check ────────────────────────
+    // Accelerator features require a paid enrollment.
+    // Non-accelerator copilot usage (page-context help) is not gated.
+    const isAcceleratorRequest =
+      body.message?.toLowerCase().includes('accelerator') ||
+      body.message?.toLowerCase().includes('module') ||
+      body.pageContext?.page?.includes('accelerator');
+
+    if (isAcceleratorRequest) {
+      const hasAccess = await hasAcceleratorAccess(userId);
+      if (!hasAccess) {
+        return new Response(
+          JSON.stringify({
+            error: 'GTM Accelerator requires enrollment.',
+            code: 'ENROLLMENT_REQUIRED',
+            enrollUrl: '/api/accelerator/enroll',
+          }),
+          { status: 403 }
+        );
+      }
+    }
+
     const supabase = createSupabaseAdminClient();
 
     // Get or create conversation
@@ -335,21 +359,32 @@ export async function POST(req: NextRequest) {
                   // Execute the action (with special sub-agent dispatch handling)
                   let result;
                   if (block.name === 'dispatch_sub_agent') {
-                    const input = block.input as {
-                      agent_type: SubAgentType;
-                      context: string;
-                      user_message: string;
-                    };
-                    const { buildSubAgentConfig } =
-                      await import('@/lib/ai/copilot/sub-agents/config');
-                    const subConfig = await buildSubAgentConfig(
-                      input.agent_type,
-                      input.context,
-                      input.user_message,
-                      userId
-                    );
-                    const handoff = await dispatchSubAgent(subConfig, actionCtx, send);
-                    result = { success: true, data: handoff, displayHint: 'text' as const };
+                    // Verify enrollment before dispatching accelerator sub-agents
+                    const hasEnrollment = await hasAcceleratorAccess(userId);
+                    if (!hasEnrollment) {
+                      result = {
+                        success: false,
+                        error:
+                          'Accelerator enrollment required. Purchase at /api/accelerator/enroll',
+                        displayHint: 'text' as const,
+                      };
+                    } else {
+                      const input = block.input as {
+                        agent_type: SubAgentType;
+                        context: string;
+                        user_message: string;
+                      };
+                      const { buildSubAgentConfig } =
+                        await import('@/lib/ai/copilot/sub-agents/config');
+                      const subConfig = await buildSubAgentConfig(
+                        input.agent_type,
+                        input.context,
+                        input.user_message,
+                        userId
+                      );
+                      const handoff = await dispatchSubAgent(subConfig, actionCtx, send);
+                      result = { success: true, data: handoff, displayHint: 'text' as const };
+                    }
                   } else {
                     result = await executeAction(
                       actionCtx,
