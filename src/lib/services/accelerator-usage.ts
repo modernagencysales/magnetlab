@@ -30,9 +30,7 @@ export async function trackUsageEvent(
   }
 }
 
-export async function checkUsageAllocation(
-  enrollmentId: string
-): Promise<{
+export async function checkUsageAllocation(enrollmentId: string): Promise<{
   withinLimits: boolean;
   usage: Record<string, number>;
   limits: Record<string, number>;
@@ -42,22 +40,37 @@ export async function checkUsageAllocation(
   periodStart.setDate(1);
   periodStart.setHours(0, 0, 0, 0);
 
-  const { data, error } = await supabase
-    .from('program_usage_events')
-    .select('event_type')
-    .eq('enrollment_id', enrollmentId)
-    .gte('created_at', periodStart.toISOString());
+  // Three parallel count queries — DB-level aggregation instead of loading all rows
+  const [sessions, deliverables, apiCalls] = await Promise.all([
+    supabase
+      .from('program_usage_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('enrollment_id', enrollmentId)
+      .eq('event_type', 'session_start')
+      .gte('created_at', periodStart.toISOString()),
+    supabase
+      .from('program_usage_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('enrollment_id', enrollmentId)
+      .eq('event_type', 'deliverable_created')
+      .gte('created_at', periodStart.toISOString()),
+    supabase
+      .from('program_usage_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('enrollment_id', enrollmentId)
+      .eq('event_type', 'api_call')
+      .gte('created_at', periodStart.toISOString()),
+  ]);
 
-  if (error || !data) {
-    logError(LOG_CTX, error, { enrollmentId });
+  if (sessions.error || deliverables.error || apiCalls.error) {
+    logError(LOG_CTX, sessions.error ?? deliverables.error ?? apiCalls.error, { enrollmentId });
     return { withinLimits: true, usage: {}, limits: DEFAULT_MONTHLY_ALLOCATION };
   }
 
   const usage = {
-    sessions: data.filter((e: { event_type: string }) => e.event_type === 'session_start').length,
-    deliverables: data.filter((e: { event_type: string }) => e.event_type === 'deliverable_created')
-      .length,
-    api_calls: data.filter((e: { event_type: string }) => e.event_type === 'api_call').length,
+    sessions: sessions.count ?? 0,
+    deliverables: deliverables.count ?? 0,
+    api_calls: apiCalls.count ?? 0,
   };
 
   const withinLimits =
