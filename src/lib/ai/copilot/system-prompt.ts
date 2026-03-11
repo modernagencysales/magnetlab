@@ -104,7 +104,9 @@ export async function buildCopilotSystemPrompt(
   }
 
   if (profile?.full_name) {
-    sections.push(`\n## User Info\nName: ${profile.full_name}${profile.title ? `, ${profile.title}` : ''}`);
+    sections.push(
+      `\n## User Info\nName: ${profile.full_name}${profile.title ? `, ${profile.title}` : ''}`
+    );
   }
 
   // 3. Active memories
@@ -136,7 +138,7 @@ export async function buildCopilotSystemPrompt(
     .order('published_at', { ascending: false })
     .limit(5);
 
-  const performanceSection = buildPerformanceSection(topPosts as TopPost[] || []);
+  const performanceSection = buildPerformanceSection((topPosts as TopPost[]) || []);
   if (performanceSection) {
     sections.push('\n' + performanceSection);
   }
@@ -158,12 +160,25 @@ export async function buildCopilotSystemPrompt(
       .gte('created_at', thirtyDaysAgo);
 
     const negativeNotes = ((negFeedback as { feedback: FeedbackPayload }[]) || [])
-      .filter(m => m.feedback?.rating === 'down' && m.feedback?.note)
-      .map(m => m.feedback.note as string);
+      .filter((m) => m.feedback?.rating === 'down' && m.feedback?.note)
+      .map((m) => m.feedback.note as string);
 
     const feedbackSection = buildFeedbackSection(negativeNotes);
     if (feedbackSection) {
       sections.push('\n' + feedbackSection);
+    }
+  }
+
+  // 5.5 Accelerator context (if enrolled)
+  const { getEnrollmentByUserId } = await import('@/lib/services/accelerator-program');
+  const { getProgramState } = await import('@/lib/services/accelerator-program');
+  const enrollment = await getEnrollmentByUserId(userId);
+  if (enrollment) {
+    const { buildAcceleratorPromptSection } = await import('./accelerator-prompt');
+    const programState = await getProgramState(userId);
+    if (programState) {
+      const acceleratorSection = await buildAcceleratorPromptSection(userId, programState);
+      sections.push('\n' + acceleratorSection);
     }
   }
 
@@ -172,7 +187,9 @@ export async function buildCopilotSystemPrompt(
     sections.push(`\n## Current Page Context`);
     sections.push(`The user is on: ${pageContext.page}`);
     if (pageContext.entityType && pageContext.entityId) {
-      sections.push(`Viewing ${pageContext.entityType}: ${pageContext.entityTitle || pageContext.entityId}`);
+      sections.push(
+        `Viewing ${pageContext.entityType}: ${pageContext.entityTitle || pageContext.entityId}`
+      );
     }
   }
 
