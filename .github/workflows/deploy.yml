@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure') &&
       github.event.workflow_run.head_branch == 'main'
     environment:
       name: dev
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure') &&
       startsWith(github.event.workflow_run.head_branch, 'release/')
     environment:
       name: production
