@@ -9,6 +9,8 @@ import { getSopsByModule, getEnrollmentByUserId } from '@/lib/services/accelerat
 import { buildIcpAgentPrompt } from './icp-agent';
 import { buildLeadMagnetAgentPrompt } from './lead-magnet-agent';
 import { buildContentAgentPrompt } from './content-agent';
+import { buildTamAgentPrompt } from './tam-agent';
+import { buildOutreachAgentPrompt } from './outreach-agent';
 
 // ─── Agent → Module Mapping ──────────────────────────────
 
@@ -58,13 +60,25 @@ export async function buildSubAgentConfig(
       systemPrompt = buildContentAgentPrompt(sopData, userContext);
       break;
     case 'tam':
-      // Stub for Phase 2 — TAM Builder agent
-      systemPrompt = `You are the TAM Builder agent. Help build and qualify a target account list with: ${context}`;
+      systemPrompt = buildTamAgentPrompt(sopData, userContext);
       break;
-    case 'outreach':
-      // Stub for Phase 2 — Outreach Setup agent (LinkedIn DM + Cold Email)
-      systemPrompt = `You are the Outreach Setup agent. Help configure LinkedIn DM and cold email campaigns with: ${context}`;
+    case 'outreach': {
+      const focus =
+        context.toLowerCase().includes('email') || context.toLowerCase().includes('cold')
+          ? ('email' as const)
+          : ('linkedin' as const);
+      if (focus === 'email') {
+        const m4Sops = await getSopsByModule('m4');
+        const m4SopData = m4Sops.map((s) => ({
+          title: s.title,
+          content: s.content,
+          quality_bars: s.quality_bars as unknown[],
+        }));
+        sopData.push(...m4SopData);
+      }
+      systemPrompt = buildOutreachAgentPrompt(sopData, userContext, focus);
       break;
+    }
     case 'troubleshooter':
       // Stub for Phase 3
       systemPrompt = `You are the Troubleshooter agent. Help diagnose issues with: ${context}`;
@@ -82,6 +96,10 @@ export async function buildSubAgentConfig(
     'validate_deliverable',
     'update_module_progress',
     'save_intake_data',
+    'list_providers',
+    'check_provider_status',
+    'configure_provider',
+    'get_guided_steps',
   ];
   const filteredTools = allTools.filter((t) => relevantToolNames.includes(t.name));
 

@@ -10,7 +10,7 @@ interface SopData {
 }
 
 interface UserContext {
-  intake_data: Record<string, unknown> | null;
+  intake_data: unknown;
   coaching_mode: 'do_it' | 'guide_me' | 'teach_me';
 }
 
@@ -78,10 +78,11 @@ Each segment should have:
 
   // ─── User Context ─────────────────────────────────────
   if (ctx.intake_data) {
+    const intake = ctx.intake_data as Record<string, unknown>;
     sections.push(`## User Context
-Business: ${ctx.intake_data.business_description || 'Not provided'}
-Target Audience: ${ctx.intake_data.target_audience || 'Not provided'}
-Primary Goal: ${ctx.intake_data.primary_goal || 'Not provided'}`);
+Business: ${intake.business_description || 'Not provided'}
+Target Audience: ${intake.target_audience || 'Not provided'}
+Primary Goal: ${intake.primary_goal || 'Not provided'}`);
   }
 
   // ─── SOPs ─────────────────────────────────────────────

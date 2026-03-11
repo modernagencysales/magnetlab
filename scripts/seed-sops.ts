@@ -21,10 +21,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const DWY_PLAYBOOK_PATH = '/Users/timlife/Documents/claude code/dwy-playbook/docs/sops';
 
-// Phase 1 modules
+// Phase 1 + Phase 2 modules
 const MODULE_DIRS: Record<string, string> = {
   m0: 'module-0-positioning',
   m1: 'module-1-lead-magnets',
+  m2: 'module-2-tam-building',
+  m3: 'module-3-linkedin-outreach',
+  m4: 'module-4-cold-email',
   m7: 'module-7-daily-content',
 };
 

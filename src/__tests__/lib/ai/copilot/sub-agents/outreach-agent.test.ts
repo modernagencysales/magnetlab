@@ -2,16 +2,21 @@
  * @jest-environment node
  */
 import { buildOutreachAgentPrompt } from '@/lib/ai/copilot/sub-agents/outreach-agent';
+import type { IntakeData } from '@/lib/types/accelerator';
 
 describe('buildOutreachAgentPrompt', () => {
   const baseSops = [
     { title: 'HeyReach Connection', content: 'Set up HeyReach...', quality_bars: [] },
   ];
   const baseCtx = {
-    intake_data: { business_description: 'B2B SaaS', target_audience: 'CTOs' } as Record<
-      string,
-      unknown
-    >,
+    intake_data: {
+      business_description: 'B2B SaaS',
+      target_audience: 'CTOs',
+      revenue_range: 'under_5k',
+      linkedin_frequency: 'weekly',
+      channels_of_interest: [],
+      primary_goal: 'generate leads',
+    } as IntakeData,
     coaching_mode: 'guide_me' as const,
   };
 
