@@ -266,3 +266,47 @@ registerAction({
     return { success: true, data: { saved: true }, displayHint: 'text' };
   },
 });
+
+registerAction({
+  name: 'approve_review_item',
+  description:
+    'Approve a pending review item (e.g., a scheduled deliverable). Sets status to approved.',
+  parameters: {
+    properties: {
+      deliverable_id: { type: 'string', description: 'Deliverable UUID to approve' },
+    },
+    required: ['deliverable_id'],
+  },
+  handler: async (_ctx, params: { deliverable_id: string }) => {
+    const result = await updateDeliverableStatus(
+      params.deliverable_id,
+      'approved' as DeliverableStatus
+    );
+    if (!result) return { success: false, error: 'Failed to approve item.' };
+    return { success: true, data: result, displayHint: 'deliverable_card' };
+  },
+});
+
+registerAction({
+  name: 'reject_review_item',
+  description: 'Reject a pending review item with optional feedback. Sets status to rejected.',
+  parameters: {
+    properties: {
+      deliverable_id: { type: 'string', description: 'Deliverable UUID to reject' },
+      feedback: { type: 'string', description: 'Reason for rejection' },
+    },
+    required: ['deliverable_id'],
+  },
+  handler: async (_ctx, params: { deliverable_id: string; feedback?: string }) => {
+    const validationResult = params.feedback
+      ? { passed: false, checks: [], feedback: params.feedback }
+      : undefined;
+    const result = await updateDeliverableStatus(
+      params.deliverable_id,
+      'rejected' as DeliverableStatus,
+      validationResult
+    );
+    if (!result) return { success: false, error: 'Failed to reject item.' };
+    return { success: true, data: result, displayHint: 'deliverable_card' };
+  },
+});
