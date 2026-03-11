@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
             );
           }
         })
-        .catch(() => {});
+        .catch((err) => logError('copilot/memory-extraction', err, { userId, conversationId }));
     }
 
     // Load conversation history (last 50 messages)
