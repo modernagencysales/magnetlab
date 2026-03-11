@@ -38,7 +38,13 @@ export type MetricKey =
   | 'content_avg_impressions'
   | 'content_avg_engagement'
   | 'funnel_opt_in_rate'
-  | 'funnel_page_views';
+  | 'funnel_page_views'
+  | 'ads_spend'
+  | 'ads_cpl'
+  | 'ads_ctr'
+  | 'ads_roas'
+  | 'os_weekly_reviews'
+  | 'os_daily_sessions';
 
 export type MetricStatus = 'above' | 'at' | 'below';
 
@@ -168,7 +174,11 @@ export type DeliverableType =
   | 'content_plan'
   | 'post_drafts'
   | 'metrics_digest'
-  | 'diagnostic_report';
+  | 'diagnostic_report'
+  | 'ad_campaign'
+  | 'ad_targeting'
+  | 'weekly_ritual'
+  | 'operating_playbook';
 
 export interface ProgramDeliverable {
   id: string;
@@ -258,7 +268,9 @@ export type SubAgentType =
   | 'content'
   | 'tam'
   | 'outreach'
-  | 'troubleshooter';
+  | 'troubleshooter'
+  | 'linkedin_ads'
+  | 'operating_system';
 
 export interface SubAgentHandoff {
   deliverables_created: Array<{ type: DeliverableType; entity_id?: string; entity_type?: string }>;
@@ -276,7 +288,8 @@ export type AcceleratorDisplayHint =
   | 'approval_card'
   | 'quality_check'
   | 'metrics_card'
-  | 'onboarding_intake';
+  | 'onboarding_intake'
+  | 'enrollment_card';
 
 // ─── DB Column Constants ─────────────────────────────────
 

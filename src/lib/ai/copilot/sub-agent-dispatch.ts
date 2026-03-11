@@ -160,6 +160,8 @@ function getSubAgentLabel(type: SubAgentType): string {
     tam: 'Bringing in the TAM Builder specialist...',
     outreach: 'Bringing in the Outreach Setup specialist...',
     troubleshooter: 'Running diagnostics...',
+    linkedin_ads: 'Bringing in the LinkedIn Ads specialist...',
+    operating_system: 'Bringing in the Operating System specialist...',
   };
   return labels[type];
 }

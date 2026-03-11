@@ -24,6 +24,8 @@ const AGENT_MODULE_MAP: Record<SubAgentType, ModuleId> = {
   tam: 'm2',
   outreach: 'm3', // Covers M3 (LinkedIn) + M4 (Cold Email)
   troubleshooter: 'm0', // Troubleshooter is cross-module, default to m0
+  linkedin_ads: 'm5',
+  operating_system: 'm6',
 };
 
 // ─── Config Builder ──────────────────────────────────────

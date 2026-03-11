@@ -28,6 +28,12 @@ export const METRIC_BENCHMARKS: Record<MetricKey, { low: number; high: number }>
   content_avg_engagement: { low: 2, high: 8 },
   funnel_opt_in_rate: { low: 15, high: 40 },
   funnel_page_views: { low: 50, high: 500 },
+  ads_spend: { low: 1500, high: 10000 },
+  ads_cpl: { low: 20, high: 150 },
+  ads_ctr: { low: 0.3, high: 0.8 },
+  ads_roas: { low: 1, high: 5 },
+  os_weekly_reviews: { low: 3, high: 4 },
+  os_daily_sessions: { low: 4, high: 7 },
 };
 
 // ─── Status Computation ──────────────────────────────────
