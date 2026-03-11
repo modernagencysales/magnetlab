@@ -78,6 +78,7 @@ CREATE TABLE cs_play_results (
   tested_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE UNIQUE INDEX idx_cs_play_results_post ON cs_play_results(post_id);
 CREATE INDEX idx_cs_play_results_play ON cs_play_results(play_id);
 
 -- ─── cs_play_templates ───────────────────────────────────────────────────────

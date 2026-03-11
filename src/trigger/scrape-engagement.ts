@@ -320,7 +320,7 @@ export const scrapeEngagement = schedules.task({
                   play_id: post.play_id,
                   post_id: post.id,
                   account_id: isAnonymous ? null : post.user_id,
-                  reactions: result.likers,
+                  likes: result.likers,
                   comments: result.comments,
                   multiplier,
                   is_anonymous: isAnonymous,
