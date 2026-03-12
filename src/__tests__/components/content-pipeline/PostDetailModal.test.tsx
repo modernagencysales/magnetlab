@@ -7,25 +7,9 @@ import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import type { PipelinePost } from '@/lib/types/content-pipeline';
 
-// Mock TipTap editor (won't work in jsdom)
-jest.mock('@/components/content/inline-editor/TipTapTextBlock', () => ({
-  TipTapTextBlock: ({ content, onChange }: { content: string; onChange: (c: string) => void }) => (
-    <textarea data-testid="tiptap-mock" value={content} onChange={e => onChange(e.target.value)} />
-  ),
-}));
-
-// Mock UI components that are purely presentational
-jest.mock('@/components/content-pipeline/LinkedInPreview', () => ({
-  LinkedInPreview: ({ content }: { content: string }) => <div data-testid="linkedin-preview">{content}</div>,
-}));
-jest.mock('@/components/content-pipeline/DeviceToggle', () => ({
-  DeviceToggle: () => <div data-testid="device-toggle" />,
-}));
-jest.mock('@/components/content-pipeline/HookOnlyToggle', () => ({
-  HookOnlyToggle: ({ enabled }: { enabled: boolean }) => <button data-testid="hook-only-toggle">{enabled ? 'On' : 'Off'}</button>,
-}));
-jest.mock('@/components/content-pipeline/HookScorePanel', () => ({
-  HookScorePanel: () => <div data-testid="hook-score-panel">Hook Analysis</div>,
+// Mock PostPreview (uses LinkedInPreview) - component displays content via PostPreview
+jest.mock('@/components/content-pipeline/PostPreview', () => ({
+  PostPreview: ({ content }: { content: string }) => <div data-testid="linkedin-preview">{content}</div>,
 }));
 
 // Mock StatusBadge
@@ -153,15 +137,7 @@ describe('PostDetailModal', () => {
     });
   });
 
-  it('renders the editor (TipTap mock textarea)', async () => {
-    render(<PostDetailModal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByTestId('tiptap-mock')).toBeInTheDocument();
-    });
-    expect(screen.getByTestId('tiptap-mock')).toHaveValue('Test post content for the editor.');
-  });
-
-  it('renders the LinkedIn preview', async () => {
+  it('renders the post content in preview', async () => {
     render(<PostDetailModal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByTestId('linkedin-preview')).toBeInTheDocument();
@@ -169,19 +145,12 @@ describe('PostDetailModal', () => {
     expect(screen.getByTestId('linkedin-preview')).toHaveTextContent('Test post content for the editor.');
   });
 
-  it('renders Hook Only toggle', async () => {
+  it('renders Hook Score', async () => {
     render(<PostDetailModal {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByTestId('hook-only-toggle')).toBeInTheDocument();
+      expect(screen.getByText('Hook Score:')).toBeInTheDocument();
     });
-  });
-
-  it('renders Hook Score Panel', async () => {
-    render(<PostDetailModal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByTestId('hook-score-panel')).toBeInTheDocument();
-    });
-    expect(screen.getByTestId('hook-score-panel')).toHaveTextContent('Hook Analysis');
+    expect(screen.getByText('7/10')).toBeInTheDocument();
   });
 
   it('renders action buttons (Polish, Copy, Schedule)', async () => {
@@ -200,13 +169,6 @@ describe('PostDetailModal', () => {
     });
   });
 
-  it('renders Device Toggle', async () => {
-    render(<PostDetailModal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByTestId('device-toggle')).toBeInTheDocument();
-    });
-  });
-
   it('shows the post status badge', async () => {
     render(<PostDetailModal {...defaultProps} />);
     await waitFor(() => {
@@ -222,7 +184,7 @@ describe('PostDetailModal', () => {
     };
     render(<PostDetailModal {...defaultProps} post={publishedPost} />);
     await waitFor(() => {
-      expect(screen.getByTestId('tiptap-mock')).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
     expect(screen.queryByText('Publish to LinkedIn')).not.toBeInTheDocument();
   });

@@ -5,9 +5,10 @@
   "packageManager": "pnpm@10.30.0",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "pnpm --filter @magnetlab/magnetui build && next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "test": "jest",

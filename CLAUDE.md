@@ -199,7 +199,8 @@ Tests in `src/__tests__/` mirror source structure (api/, components/, lib/). Use
 
 ## Deployment
 
-- **Vercel**: `vercel --prod` (auto-deploy broken for private org repos)
+- **Vercel**: GitHub Actions deploy on CI success. See [docs/deployment-standards.md](docs/deployment-standards.md).
+- **Branch mapping**: `main` → dev (preview); `release/*` → production
 - **Trigger.dev**: `TRIGGER_SECRET_KEY=tr_prod_DB3vrdcduJYcXF19rrEB pnpm dlx trigger.dev@4.3.3 deploy`
 - **DO NOT** add Trigger.dev deploy to Vercel build
 
@@ -233,8 +234,11 @@ Detailed docs for each feature live in `docs/`. Consult these when working on a 
 | Engagement Cold Email Pipeline | [docs/engagement-email-pipeline.md](docs/engagement-email-pipeline.md) |
 | Email Sequences | [docs/email-sequences.md](docs/email-sequences.md) |
 | Testing Strategy | [docs/testing-strategy.md](docs/testing-strategy.md) |
+| Deployment Standards | [docs/deployment-standards.md](docs/deployment-standards.md) |
+| Development Workflow | [docs/development-workflow.md](docs/development-workflow.md) |
 | Frontend Architecture | [docs/frontend-refactor-plan.md](docs/frontend-refactor-plan.md) |
 | Coding Standards | [docs/coding-standards.md](docs/coding-standards.md) |
+| Docs Index | [docs/README.md](docs/README.md) |
 
 ## Post-Feature Workflow
 
