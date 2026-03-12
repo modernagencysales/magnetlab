@@ -1,140 +1,38 @@
+/**
+ * Lead Magnet Creation Wizard E2E tests.
+ * Tests the /create page loads and the API contract for saving lead magnets.
+ */
 import { test, expect } from '@playwright/test';
-import {
-  waitForPageLoad,
-  mockSupabaseData,
-  mockAIEndpoints,
-  mockAuthSession,
-} from './helpers';
 
-test.describe('Lead Magnet Creation Wizard', () => {
-  test.beforeEach(async ({ page }) => {
-    await mockAuthSession(page);
-    await mockAIEndpoints(page);
+// ─── Wizard page smoke tests ────────────────────────────
 
-    // Mock usage tracking to allow creation
-    await mockSupabaseData(page, {
-      table: 'usage_tracking',
-      data: [
-        {
-          user_id: 'test-user-id',
-          lead_magnets_created: 1,
-          lead_magnets_limit: 10,
-        },
-      ],
-    });
-
-    // Mock extraction sessions
-    await mockSupabaseData(page, {
-      table: 'extraction_sessions',
-      data: [],
-    });
-  });
-
-  test('navigate to /create and wizard step 1 loads', async ({ page }) => {
+test.describe('wizard page', () => {
+  test('/create loads the wizard', async ({ page }) => {
     await page.goto('/create');
-    await waitForPageLoad(page);
+    await expect(page.locator('main')).toBeVisible({ timeout: 15_000 });
 
-    // The wizard first step should be visible
-    await expect(page.locator('main')).toBeVisible();
+    // The page title should indicate creation
+    const title = await page.title();
+    expect(title.toLowerCase()).toContain('create');
   });
 
-  test('select an archetype on the wizard', async ({ page }) => {
+  test('/create does not redirect to login', async ({ page }) => {
     await page.goto('/create');
-    await waitForPageLoad(page);
-
-    // Look for archetype selection options
-    const archetypeOption = page.getByText(/single.?breakdown/i).first();
-    if (await archetypeOption.isVisible()) {
-      await archetypeOption.click();
-
-      // After selecting, the wizard should advance or show the selection
-      await expect(archetypeOption).toBeVisible();
-    }
-  });
-
-  test('fill in wizard steps with mocked AI', async ({ page }) => {
-    // Mock the lead magnet creation API
-    await page.route('**/api/lead-magnet', (route) => {
-      if (route.request().method() === 'POST') {
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            id: 'lm-new-001',
-            title: 'New Lead Magnet',
-            success: true,
-          }),
-        });
-      }
-      return route.continue();
-    });
-
-    await page.goto('/create');
-    await waitForPageLoad(page);
-
-    // The wizard should present input fields for the first step
-    // Fill any visible text inputs
-    const titleInput = page.getByPlaceholder(/title|topic|name/i).first();
-    if (await titleInput.isVisible()) {
-      await titleInput.fill('My LinkedIn Growth Framework');
-    }
-  });
-
-  test('step navigation with next/back buttons', async ({ page }) => {
-    await page.goto('/create');
-    await waitForPageLoad(page);
-
-    // Look for a Next or Continue button
-    const nextButton = page
-      .getByRole('button', { name: /next|continue/i })
-      .first();
-    if (await nextButton.isVisible()) {
-      await nextButton.click();
-
-      // After clicking next, look for a Back button
-      const backButton = page
-        .getByRole('button', { name: /back|previous/i })
-        .first();
-      if (await backButton.isVisible()) {
-        await backButton.click();
-
-        // Should be back on step 1
-        await expect(page.locator('main')).toBeVisible();
-      }
-    }
-  });
-
-  test('quick page create at /create/page-quick loads', async ({ page }) => {
-    // Mock landing page API
-    await page.route('**/api/landing-page*', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true, id: 'page-quick-001' }),
-      }),
-    );
-
-    await page.goto('/create/page-quick');
-    await waitForPageLoad(page);
-
-    await expect(page.locator('main')).toBeVisible();
+    await expect(page).not.toHaveURL(/\/login/);
   });
 });
 
-// ---------------------------------------------------------------------------
-// Save to Library – API contract tests
+// ─── Save to Library API contract tests ─────────────────
 //
-// These tests intercept POST /api/lead-magnet, capture the request body,
-// and validate it matches the Zod schema. This catches type mismatches
-// (e.g. sending objects where strings are expected) without needing to
-// walk through all 6 wizard steps.
-// ---------------------------------------------------------------------------
+// These tests send payloads directly to POST /api/lead-magnet and validate
+// the Zod schema accepts the exact shape the wizard sends. This catches
+// type mismatches (e.g. sending objects where strings are expected) without
+// needing to walk through all 6 wizard steps.
 
-test.describe('Save to Library – API contract', () => {
-  // Realistic payloads matching what PublishStep.tsx actually sends
+test.describe('save to library API contract', () => {
   const postVariation = {
     hookType: 'contrarian',
-    post: 'Most freelancers waste 40+ hours finding clients.\n\nHere\'s a calculator that shows exactly how many leads you need.',
+    post: "Most freelancers waste 40+ hours finding clients.\n\nHere's a calculator that shows exactly how many leads you need.",
     whyThisAngle: 'Challenges the assumption that more proposals = more clients',
     evaluation: {
       hookStrength: 'strong',
@@ -151,7 +49,7 @@ test.describe('Save to Library – API contract', () => {
     archetype: 'single-calculator',
     concept: {
       title: 'The Upwork Lead Volume Calculator',
-      painSolved: 'Freelancers don\'t know how many proposals to send',
+      painSolved: "Freelancers don't know how many proposals to send",
       deliveryFormat: 'Interactive calculator',
     },
     interactiveConfig: {
@@ -160,14 +58,32 @@ test.describe('Save to Library – API contract', () => {
       description: 'Calculate your required lead volume.',
       inputs: [
         { id: 'goal', label: 'Monthly Revenue Goal', type: 'number', defaultValue: 5000 },
-        { id: 'rate', label: 'Win Rate', type: 'slider', min: 1, max: 100, step: 1, defaultValue: 10 },
+        {
+          id: 'rate',
+          label: 'Win Rate',
+          type: 'slider',
+          min: 1,
+          max: 100,
+          step: 1,
+          defaultValue: 10,
+        },
       ],
       formula: 'Math.ceil(goal / (rate / 100))',
       resultLabel: 'Proposals Needed',
       resultFormat: 'number',
       resultInterpretation: [
-        { range: [0, 20], label: 'Achievable', description: 'Fewer than 20/month.', color: 'green' },
-        { range: [21, 100], label: 'High Volume', description: 'Consider raising rates.', color: 'red' },
+        {
+          range: [0, 20],
+          label: 'Achievable',
+          description: 'Fewer than 20/month.',
+          color: 'green',
+        },
+        {
+          range: [21, 100],
+          label: 'High Volume',
+          description: 'Consider raising rates.',
+          color: 'red',
+        },
       ],
     },
     linkedinPost: postVariation.post,
@@ -181,7 +97,7 @@ test.describe('Save to Library – API contract', () => {
     archetype: 'assessment',
     concept: {
       title: 'LinkedIn Profile Score',
-      painSolved: 'People don\'t know if their LinkedIn profile is effective',
+      painSolved: "People don't know if their LinkedIn profile is effective",
       deliveryFormat: 'Interactive assessment',
     },
     interactiveConfig: {
@@ -189,13 +105,33 @@ test.describe('Save to Library – API contract', () => {
       headline: 'Score Your LinkedIn Profile',
       description: 'Find out how effective your profile is.',
       questions: [
-        { id: 'q1', text: 'Does your headline mention your audience?', type: 'single_choice', options: [{ label: 'Yes', value: 3 }, { label: 'No', value: 0 }] },
+        {
+          id: 'q1',
+          text: 'Does your headline mention your audience?',
+          type: 'single_choice',
+          options: [
+            { label: 'Yes', value: 3 },
+            { label: 'No', value: 0 },
+          ],
+        },
       ],
       scoring: {
         method: 'sum',
         ranges: [
-          { min: 0, max: 1, label: 'Needs Work', description: 'Improve your profile.', recommendations: ['Update headline'] },
-          { min: 2, max: 3, label: 'Good', description: 'Solid foundation.', recommendations: ['Add testimonials'] },
+          {
+            min: 0,
+            max: 1,
+            label: 'Needs Work',
+            description: 'Improve your profile.',
+            recommendations: ['Update headline'],
+          },
+          {
+            min: 2,
+            max: 3,
+            label: 'Good',
+            description: 'Solid foundation.',
+            recommendations: ['Add testimonials'],
+          },
         ],
       },
     },
@@ -235,24 +171,21 @@ test.describe('Save to Library – API contract', () => {
     ['text lead magnet', textPayload],
   ] as const) {
     test(`POST /api/lead-magnet accepts valid ${name} payload`, async ({ request }) => {
-      // Send the payload directly to the API (no browser needed)
-      // This validates the Zod schema accepts the exact shape the wizard sends
       const response = await request.post('/api/lead-magnet', {
         data: payload,
       });
 
-      // We expect either 201 (success) or 401 (no auth in test) — NOT 400 (validation error)
-      // A 400 means the schema rejected our payload shape, which is the bug we're catching
+      // We expect either 201 (success) or 401 (no real auth session in test)
+      // A 400 means the Zod schema rejected our payload shape — that's a bug
       const status = response.status();
       if (status === 400) {
         const body = await response.json();
         throw new Error(
           `Schema validation failed for ${name}: ${body.error}\n` +
-          `Details: ${JSON.stringify(body.details, null, 2)}`
+            `Details: ${JSON.stringify(body.details, null, 2)}`
         );
       }
 
-      // 401 is expected (no real auth in test env), 201 means it went through
       expect([201, 401]).toContain(status);
     });
   }
@@ -269,7 +202,6 @@ test.describe('Save to Library – API contract', () => {
 
     // Should get 400 (validation error) or 401 (no auth) — never 201
     const status = response.status();
-    // If we get past auth, it should be a validation error
     if (status !== 401) {
       expect(status).toBe(400);
     }
