@@ -126,6 +126,82 @@
 
 ---
 
+## Teams Feature — Full Audit
+
+> The teams feature has two systemic issues that cause most of the bugs below:
+> 1. **No cache invalidation after team switch** — `router.push('/')` without `router.refresh()` serves stale server-rendered pages
+> 2. **Dual scoping strategies** — core tables use `team_id`, content pipeline tables use `team_profile_id`. The generic `applyScope()` only handles `team_id`, so it breaks on content pipeline tables.
+
+### P0 (Critical)
+
+**T1: No `router.refresh()` after team switch — root cause of "content disappearing"**
+- `src/app/team-select/page.tsx:46` — `router.push('/')` without `router.refresh()`
+- `src/app/(dashboard)/team/page.tsx:115` — same issue
+- No `revalidatePath()` calls anywhere for team switching
+- No `export const dynamic = 'force-dynamic'` on any dashboard page
+- **Fix:** Call `router.refresh()` after `router.push('/')`, or use a server action with `revalidatePath('/', 'layout')`
+
+**T2: Analytics page crashes in team mode — `applyScope()` on `cp_pipeline_posts`**
+- `src/server/repositories/analytics.repo.ts:24` — applies `.eq('team_id', teamId)` but `cp_pipeline_posts` has NO `team_id` column (uses `team_profile_id`)
+- PostgREST returns 400, crashing analytics for all team users
+- **Fix:** Use `team_profile_id`-based scoping (same as `posts.repo.ts`)
+
+**T3: Dashboard home shows wrong counts in team mode**
+- `src/app/(dashboard)/page.tsx:73-85` — hardcodes `.eq('user_id', userId)` for `cp_call_transcripts`, `cp_pipeline_posts`, `brand_kits`
+- Team members (non-owners) see zero counts
+- **Fix:** Use `applyScope()` for tables with `team_id`, `team_profile_id` pattern for posts
+
+**T4: Bulk page import creates records without `team_id`**
+- `src/server/services/funnels.service.ts:764` — omits `team_id` on lead magnet + funnel page inserts
+- Records invisible in team mode
+- **Fix:** Accept `scope: DataScope`, include `team_id: scope.teamId || null`
+
+**T5: DFY automation webhook creates lead magnets without `team_id`**
+- `src/server/services/webhooks-incoming.service.ts:298` — passes `null` for `team_id`
+- **Fix:** Resolve user's team context and pass appropriate `team_id`
+
+### P1 (High)
+
+**T6: Email system broken for personal-mode users**
+- All email API routes (subscribers, broadcasts, flows) use `requireTeamScope()`
+- Returns "No team found for this user" for users without a team
+- Entire email system non-functional for personal-mode users
+- **Fix:** Fall back to `user_id` scoping, or show clear UI message
+
+**T7: Autopilot buffer status ignores team context**
+- `src/lib/services/autopilot.ts:448` — `getBufferStatus(userId)` hardcodes `.eq('user_id', userId)`
+- Team members see empty buffer + incorrect "Buffer Low" warning
+- **Fix:** Accept `DataScope`, use `team_profile_id` scoping
+
+**T8: Content pipeline dual scoping strategy causes data gaps**
+- `posts.repo.ts` and `ideas.repo.ts` use `team_profile_id` (correct)
+- `analytics.repo.ts` uses `applyScope()` with `team_id` (wrong for `cp_` tables)
+- **Fix:** Analytics repo should use `team_profile_id` for posts/ideas
+
+**T9: `external.service.ts` inconsistent `team_id` in creation paths**
+- Line 92: passes `null` for `team_id`
+- Line 145: correctly passes `teamId`
+- **Fix:** Pass resolved `teamId` in both paths
+
+### P2 (Medium)
+
+**T10: Wizard drafts don't update `team_id` on team switch**
+- `src/server/repositories/wizard-draft.repo.ts:53-56` — `updateDraft()` filters by `user_id` only
+- Draft started in personal mode invisible after switching to team
+- **Fix:** Update `team_id` when draft is modified in different team context
+
+**T11: `funnel_leads` backfill misses pre-team records**
+- Migration `20260217000000_multi_team.sql:25` — only backfills where `user_id = owner_id`
+- Historical leads from before team creation have NULL `team_id`, invisible in team mode
+- **Fix:** Backfill based on `funnel_page.team_id`
+
+**T12: No `force-dynamic` on any dashboard Server Component**
+- All pages under `src/app/(dashboard)/` lack `export const dynamic = 'force-dynamic'`
+- Cookie reads via `getDataScope()` should mark pages dynamic, but safer to be explicit
+- **Fix:** Add `export const dynamic = 'force-dynamic'` to all dashboard pages using `getDataScope()`
+
+---
+
 ## Test Suite Status
 
 ### Jest (unit/integration): 128/139 passing
