@@ -44,15 +44,12 @@ export function ProfileSwitcher({
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm text-muted-foreground">Viewing as:</span>
-      <Select
-        value={selectedProfileId || '__all__'}
-        onValueChange={(v) => onProfileChange(v === '__all__' ? null : v)}
-      >
+      <Select value={selectedProfileId || ''} onValueChange={(v) => onProfileChange(v || null)}>
         <SelectTrigger className="h-9 w-[200px]">
           <SelectValue placeholder="All Members" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">All Members</SelectItem>
+          <SelectItem value="">All Members</SelectItem>
           {profiles.map((p) => (
             <SelectItem key={p.id} value={p.id}>
               {p.full_name}

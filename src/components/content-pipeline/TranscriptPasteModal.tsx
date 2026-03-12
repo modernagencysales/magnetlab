@@ -36,7 +36,7 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [teamProfiles, setTeamProfiles] = useState<TeamProfile[]>([]);
-  const [speakerProfileId, setSpeakerProfileId] = useState<string>('__auto__');
+  const [speakerProfileId, setSpeakerProfileId] = useState<string>('');
 
   useEffect(() => {
     teamsApi
@@ -92,8 +92,7 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
         await transcriptsApi.createTranscript({
           title: title.trim() || undefined,
           transcript: transcript.trim(),
-          speakerProfileId:
-            speakerProfileId === '__auto__' ? undefined : speakerProfileId || undefined,
+          speakerProfileId: speakerProfileId || undefined,
         });
         setSuccess(true);
         setTimeout(() => {
@@ -200,7 +199,7 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
                       <SelectValue placeholder="Auto-detect / Default" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__auto__">Auto-detect / Default</SelectItem>
+                      <SelectItem value="">Auto-detect / Default</SelectItem>
                       {teamProfiles.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.full_name}

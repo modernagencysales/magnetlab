@@ -530,10 +530,10 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
             <div>
               <Label>Font Family</Label>
               <Select
-                value={fontUrl ? '__custom__' : fontFamily || '__default__'}
+                value={fontUrl ? '__custom__' : fontFamily}
                 onValueChange={(value) => {
                   if (value === '__custom__') return;
-                  handleFontFamilyChange(value === '__default__' ? '' : value);
+                  handleFontFamilyChange(value);
                 }}
                 disabled={!!fontUrl}
               >
@@ -541,7 +541,7 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
                   <SelectValue placeholder="System Default" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__default__">System Default</SelectItem>
+                  <SelectItem value="">System Default</SelectItem>
                   {GOOGLE_FONTS.map((f) => (
                     <SelectItem key={f} value={f}>
                       {f}
