@@ -191,7 +191,7 @@ export async function handleResend(payload: {
   return { received: true };
 }
 
-/** Handle Attio webhook: dedupe then trigger import task. */
+/** Handle Attio webhook: trigger import task (dedup handled inside task after user resolution). */
 export async function handleAttio(event: {
   event_type: string;
   id: { meeting_id: string; call_recording_id: string };
@@ -204,11 +204,6 @@ export async function handleAttio(event: {
     return { success: false, error: 'ATTIO_DEFAULT_USER_ID not configured' };
   }
   const { call_recording_id, meeting_id } = event.id;
-  const externalId = `attio:${call_recording_id}`;
-  const existing = await cpTranscriptsRepo.findTranscriptByExternalIdAndUser(externalId, userId);
-  if (existing) {
-    return { success: true, duplicate: true, transcript_id: existing.id };
-  }
   await tasks.trigger('import-attio-recording', {
     meetingId: meeting_id,
     callRecordingId: call_recording_id,

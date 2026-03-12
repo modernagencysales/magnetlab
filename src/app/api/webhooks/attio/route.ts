@@ -25,15 +25,13 @@ export async function POST(request: NextRequest) {
     const result = await webhooksIncomingService.handleAttio(event);
 
     if (!result.success && result.error) {
-      const status =
-        result.error === 'ATTIO_DEFAULT_USER_ID not configured' ? 500 : 401;
+      const status = result.error === 'ATTIO_DEFAULT_USER_ID not configured' ? 500 : 401;
       return NextResponse.json({ error: result.error }, { status });
     }
 
     return NextResponse.json({
       success: result.success,
       ...(result.skipped && { skipped: true }),
-      ...(result.duplicate && { duplicate: true, transcript_id: result.transcript_id }),
       ...(result.accepted && { accepted: true }),
     });
   } catch (error) {
