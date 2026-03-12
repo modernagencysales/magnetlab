@@ -202,6 +202,84 @@
 
 ---
 
+## Code Review — Additional Bugs Found
+
+### Security
+
+**S1: Unipile webhook has NO authentication**
+- `src/app/api/webhooks/unipile/route.ts:7-9` — zero auth. Anyone can POST to overwrite user integrations or trigger background tasks with arbitrary data.
+- **Fix:** Add shared secret verification (like Grain/Fireflies webhooks use `?secret=` param)
+
+**S2: `findLeadMagnetByOwner` missing `user_id` filter — authorization bypass**
+- `src/server/repositories/lead-magnets.repo.ts:56-64` — accepts `userId` param but never filters by it. Query only filters by `id`.
+- Callers in `external.service.ts` (lines 839, 983, 1005, 1022) don't do secondary `user_id` check — any authenticated external API user can access any other user's lead magnet by ID.
+- **Fix:** Add `.eq('user_id', userId)` to the query
+
+**S3: Thankyou page leaks lead email via props**
+- `src/app/p/[username]/[slug]/thankyou/page.tsx:181-188,295` — `leadId` from query param is unauthenticated. Any visitor who guesses a UUID can read another lead's email from serialized React props.
+- **Fix:** Verify the visitor is the lead (e.g., session token match)
+
+**S4: Admin import-subscribers route missing superadmin check**
+- `src/app/api/admin/import-subscribers/route.ts:8-11` — only checks `session?.user?.id`, not `isSuperAdmin()`. Any authenticated user can bulk-import subscribers to any team.
+- **Fix:** Add `isSuperAdmin()` guard
+
+**S5: Resend webhook signature verification is optional**
+- `src/app/api/webhooks/resend/route.ts:14-37` — if `RESEND_WEBHOOK_SECRET` env var is unset, accepts ALL requests. Could corrupt email analytics.
+- **Fix:** Fail closed — reject requests if secret is not configured
+
+**S6: FontLoader CSS injection risk on public pages**
+- `src/components/funnel/public/FontLoader.tsx:40` — `fontUrl` interpolated into `<style>` via `dangerouslySetInnerHTML`. `isValidStorageUrl()` checks hostname but not path/query injection.
+- **Fix:** Stricter URL validation (allowlist path patterns)
+
+### Data Bugs
+
+**D1: Signal enrich task processes ALL users' events (discarded query filter)**
+- `src/trigger/signal-enrich-and-score.ts:187` — Supabase query builder is immutable: `.in()` returns new query but result is not reassigned. The `user_id` filter is silently discarded, burning AI credits on all users' events.
+- **Fix:** `unscoredQuery = unscoredQuery.in('user_id', sentimentUserIds)`
+
+**D2: Subscriber-sync webhook passes unnormalized email**
+- `src/app/api/webhooks/subscriber-sync/route.ts:59-60` — normalizes email on line 43 but passes original `p.email` to service. Creates duplicate subscriber records with mixed-case emails.
+- **Fix:** Pass `email` (normalized) instead of `p.email`
+
+**D3: `deleteFunnelIntegration` rejects GoHighLevel and HeyReach**
+- `src/server/services/funnels.service.ts:731` — uses `isEmailMarketingProvider()` (only 4 providers) instead of `isValidFunnelProvider()` (6 providers). Users can save GHL/HeyReach integrations but can never delete them.
+- **Fix:** Use `isValidFunnelProvider()` for the delete validation
+
+**D4: Hardcoded author "Tim Keen" in all generated lead magnet content**
+- `src/lib/ai/generate-lead-magnet-content.ts:23-24` — every user's generated content references Tim Keen's credentials
+- **Fix:** Pass user's actual name/context from brand kit or profile
+
+### Frontend Bugs
+
+**F1: Qualification filter on Leads page is inverted**
+- `src/components/leads/LeadsPageClient.tsx:103,284-286` — select options use `value="true"/"false"` but filter checks `=== 'qualified'`. Selecting "Qualified Only" shows unqualified leads instead.
+- **Fix:** Change `'qualified'` to `'true'` on line 103
+
+**F2: Broadcast retry doesn't actually reset status to draft**
+- `src/components/email/BroadcastEditor.tsx:222-239` — `handleRetry` sends update without `status: 'draft'`. Shows success toast but broadcast stays in failed state.
+- **Fix:** Include `status: 'draft'` in update payload
+
+**F3: Double API call on every Leads search keystroke**
+- `src/components/leads/LeadsPageClient.tsx:137-153` — two `useEffect` hooks both trigger `fetchLeads` on search change: one immediate, one debounced at 300ms. Doubles API load, causes table flicker.
+- **Fix:** Remove `search` from `fetchLeads` useCallback deps, only trigger via debounced effect
+
+**F4: Auto-save on funnel tab switch saves stale data**
+- `src/frontend/hooks/useFunnelBuilder.ts:215,276-284` — `handleSave` captures form state via closure. Auto-save effect depends only on `[activeTab]`, so it fires with stale values.
+- **Fix:** Wrap `handleSave` in `useCallback` with form values as deps
+
+**F5: `isPolling` is always false during active polling**
+- `src/frontend/hooks/useBackgroundJob.ts:99,102` — `startPolling` sets `true` then immediately calls `stopPolling()` which sets `false`. React batches = false wins.
+- **Fix:** Clear intervals/timeouts directly without calling `stopPolling()`
+
+### Remaining `select('*')` usage (13 queries across 5 files)
+- `lead-magnets.repo.ts:27,74`
+- `signals.repo.ts:14,71,220`
+- `linkedin.repo.ts:67,121,132`
+- `admin.repo.ts:23,34,45,80`
+- `cp-transcripts.repo.ts:127`
+
+---
+
 ## Test Suite Status
 
 ### Jest (unit/integration): 128/139 passing
