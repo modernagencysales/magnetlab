@@ -111,6 +111,21 @@
 
 ---
 
+## Bug 8: "Failed to create flow" on Email > Flows
+
+- **Severity:** High (email flows feature completely broken)
+- **Page:** `/email/flows` — clicking "Create Your First Flow"
+- **Error:** "Failed to create flow"
+- **Root cause:** The `email_flows` table was originally created by gtm-system with `tenant_id UUID NOT NULL`. Magnetlab's migration used `CREATE TABLE IF NOT EXISTS` — a no-op since the table already existed with different columns. A fix migration (`20260224100000_email_system_fix_columns.sql`) added `team_id` and `user_id` columns but **never made `tenant_id` nullable**. The magnetlab insert sets `team_id` + `user_id` but never sets `tenant_id`, causing a NOT NULL constraint violation.
+- **Files:**
+  - `src/server/repositories/email.repo.ts:339-353` — insert never sets `tenant_id`
+  - `src/server/services/email.service.ts:219` — `createFlow()` call
+  - `src/app/api/email/flows/route.ts:52` — returns "Failed to create flow"
+  - `supabase/migrations/20260224100000_email_system_fix_columns.sql` — fix migration that missed `tenant_id`
+- **Fix:** Migration: `ALTER TABLE email_flows ALTER COLUMN tenant_id DROP NOT NULL;` — same fix needed for `email_flow_contacts` table.
+
+---
+
 ## Test Suite Status
 
 ### Jest (unit/integration): 128/139 passing
