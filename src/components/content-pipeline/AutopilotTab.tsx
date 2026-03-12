@@ -52,7 +52,7 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
   // Add slot form
   const [showAddSlot, setShowAddSlot] = useState(false);
   const [newSlotTime, setNewSlotTime] = useState('09:00');
-  const [newSlotDay, setNewSlotDay] = useState<string>('');
+  const [newSlotDay, setNewSlotDay] = useState<string>('__any__');
   const [newSlotTimezone, setNewSlotTimezone] = useState('UTC');
   const [addingSlot, setAddingSlot] = useState(false);
   const [showBusinessContext, setShowBusinessContext] = useState(false);
@@ -125,7 +125,7 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
     try {
       await scheduleApi.createSlot({
         time_of_day: newSlotTime,
-        day_of_week: newSlotDay ? parseInt(newSlotDay) : null,
+        day_of_week: newSlotDay && newSlotDay !== '__any__' ? parseInt(newSlotDay) : null,
         timezone: newSlotTimezone,
       });
       setShowAddSlot(false);
@@ -283,7 +283,7 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
                     <SelectValue placeholder="Any day" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any day</SelectItem>
+                    <SelectItem value="__any__">Any day</SelectItem>
                     {DAYS.map((d, i) => (
                       <SelectItem key={i} value={String(i)}>
                         {d}
