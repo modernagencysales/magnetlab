@@ -91,7 +91,7 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
   // Find user by username
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('id, name, image')
+    .select('id, name, avatar_url')
     .eq('username', username)
     .single();
 
@@ -247,7 +247,7 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       isOwner={canEdit}
       archetype={leadMagnet.archetype as string | null}
       authorName={user.name || null}
-      authorAvatarUrl={user.image || null}
+      authorAvatarUrl={user.avatar_url || null}
       interactiveConfig={leadMagnet.interactive_config as InteractiveConfig | null}
       leadMagnetId={leadMagnet.id}
       funnelPageId={funnel.id}
