@@ -4,21 +4,17 @@
  * Never imported by 'use client' files.
  */
 
-import { createSupabaseAdminClient } from "@/lib/utils/supabase-server";
-import type { DataScope } from "@/lib/utils/team-context";
-import type {
-  PipelinePost,
-  PostStatus,
-  PolishStatus,
-} from "@/lib/types/content-pipeline";
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import type { DataScope } from '@/lib/utils/team-context';
+import type { PipelinePost, PostStatus, PolishStatus } from '@/lib/types/content-pipeline';
 
 // ─── Select column sets ────────────────────────────────────────────────────
 
 const POST_LIST_COLUMNS =
-  "id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, team_profile_id, created_at, updated_at";
+  'id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, team_profile_id, created_at, updated_at';
 
 const POST_SINGLE_COLUMNS =
-  "id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, enable_automation, automation_config, scrape_engagement, heyreach_campaign_id, last_engagement_scrape_at, engagement_scrape_count, created_at, updated_at";
+  'id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, enable_automation, automation_config, scrape_engagement, heyreach_campaign_id, last_engagement_scrape_at, engagement_scrape_count, created_at, updated_at';
 
 // ─── Filter types ──────────────────────────────────────────────────────────
 
@@ -106,10 +102,10 @@ export interface ProfileNameMap {
 async function getTeamProfileIds(teamId: string): Promise<string[]> {
   const supabase = createSupabaseAdminClient();
   const { data: profiles } = await supabase
-    .from("team_profiles")
-    .select("id")
-    .eq("team_id", teamId)
-    .eq("status", "active");
+    .from('team_profiles')
+    .select('id')
+    .eq('team_id', teamId)
+    .eq('status', 'active');
   return profiles?.map((p) => p.id) ?? [];
 }
 
@@ -117,32 +113,32 @@ async function getTeamProfileIds(teamId: string): Promise<string[]> {
 
 export async function findPosts(
   scope: DataScope,
-  filters: PostFilters = {},
+  filters: PostFilters = {}
 ): Promise<PipelinePost[]> {
   const supabase = createSupabaseAdminClient();
   const { limit = 50, status, isBuffer, teamProfileId } = filters;
 
   let query = supabase
-    .from("cp_pipeline_posts")
+    .from('cp_pipeline_posts')
     .select(POST_LIST_COLUMNS)
-    .order("created_at", { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   // Posts use team_profile_id scoping, not team_id
-  if (scope.type === "team" && scope.teamId) {
+  if (scope.type === 'team' && scope.teamId) {
     const profileIds = await getTeamProfileIds(scope.teamId);
     if (profileIds.length > 0) {
-      query = query.in("team_profile_id", profileIds);
+      query = query.in('team_profile_id', profileIds);
     } else {
-      query = query.eq("user_id", scope.userId);
+      query = query.eq('user_id', scope.userId);
     }
   } else {
-    query = query.eq("user_id", scope.userId);
+    query = query.eq('user_id', scope.userId);
   }
 
-  if (status) query = query.eq("status", status);
-  if (isBuffer !== undefined) query = query.eq("is_buffer", isBuffer);
-  if (teamProfileId) query = query.eq("team_profile_id", teamProfileId);
+  if (status) query = query.eq('status', status);
+  if (isBuffer !== undefined) query = query.eq('is_buffer', isBuffer);
+  if (teamProfileId) query = query.eq('team_profile_id', teamProfileId);
 
   const { data, error } = await query;
   if (error) throw new Error(`posts.findPosts: ${error.message}`);
@@ -152,27 +148,27 @@ export async function findPosts(
 export async function findPostsByDateRange(
   scope: DataScope,
   start: string,
-  end: string,
+  end: string
 ): Promise<PipelinePost[]> {
   const supabase = createSupabaseAdminClient();
 
   let query = supabase
-    .from("cp_pipeline_posts")
+    .from('cp_pipeline_posts')
     .select(POST_LIST_COLUMNS)
-    .not("scheduled_time", "is", null)
-    .gte("scheduled_time", start)
-    .lte("scheduled_time", end)
-    .order("scheduled_time", { ascending: true });
+    .not('scheduled_time', 'is', null)
+    .gte('scheduled_time', start)
+    .lte('scheduled_time', end)
+    .order('scheduled_time', { ascending: true });
 
-  if (scope.type === "team" && scope.teamId) {
+  if (scope.type === 'team' && scope.teamId) {
     const profileIds = await getTeamProfileIds(scope.teamId);
     if (profileIds.length > 0) {
-      query = query.in("team_profile_id", profileIds);
+      query = query.in('team_profile_id', profileIds);
     } else {
-      query = query.eq("user_id", scope.userId);
+      query = query.eq('user_id', scope.userId);
     }
   } else {
-    query = query.eq("user_id", scope.userId);
+    query = query.eq('user_id', scope.userId);
   }
 
   const { data, error } = await query;
@@ -182,16 +178,13 @@ export async function findPostsByDateRange(
 
 // ─── Single-item queries (always user-scoped — posts belong to users) ──────
 
-export async function findPostById(
-  userId: string,
-  id: string,
-): Promise<PipelinePost | null> {
+export async function findPostById(userId: string, id: string): Promise<PipelinePost | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("cp_pipeline_posts")
+    .from('cp_pipeline_posts')
     .select(POST_SINGLE_COLUMNS)
-    .eq("id", id)
-    .eq("user_id", userId)
+    .eq('id', id)
+    .eq('user_id', userId)
     .single();
   if (error) return null;
   return data;
@@ -200,7 +193,7 @@ export async function findPostById(
 /** Minimal fetch used before updates to compute edit diffs. */
 export async function findPostSnapshot(
   userId: string,
-  id: string,
+  id: string
 ): Promise<{
   draft_content: string | null;
   final_content: string | null;
@@ -208,10 +201,10 @@ export async function findPostSnapshot(
 } | null> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
-    .from("cp_pipeline_posts")
-    .select("draft_content, final_content, team_profile_id")
-    .eq("id", id)
-    .eq("user_id", userId)
+    .from('cp_pipeline_posts')
+    .select('draft_content, final_content, team_profile_id')
+    .eq('id', id)
+    .eq('user_id', userId)
     .single();
   return data ?? null;
 }
@@ -219,7 +212,7 @@ export async function findPostSnapshot(
 /** Fetch needed fields for polish operation. */
 export async function findPostForPolish(
   userId: string,
-  id: string,
+  id: string
 ): Promise<{
   draft_content: string | null;
   final_content: string | null;
@@ -227,10 +220,10 @@ export async function findPostForPolish(
 } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("cp_pipeline_posts")
-    .select("draft_content, final_content, team_profile_id")
-    .eq("id", id)
-    .eq("user_id", userId)
+    .from('cp_pipeline_posts')
+    .select('draft_content, final_content, team_profile_id')
+    .eq('id', id)
+    .eq('user_id', userId)
     .single();
   if (error) return null;
   return data;
@@ -239,7 +232,7 @@ export async function findPostForPolish(
 /** Fetch needed fields for publish operation. */
 export async function findPostForPublish(
   userId: string,
-  id: string,
+  id: string
 ): Promise<{
   id: string;
   draft_content: string | null;
@@ -249,12 +242,10 @@ export async function findPostForPublish(
 } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("cp_pipeline_posts")
-    .select(
-      "id, user_id, draft_content, final_content, scheduled_time, status, lead_magnet_id",
-    )
-    .eq("id", id)
-    .eq("user_id", userId)
+    .from('cp_pipeline_posts')
+    .select('id, user_id, draft_content, final_content, scheduled_time, status, lead_magnet_id')
+    .eq('id', id)
+    .eq('user_id', userId)
     .single();
   if (error) return null;
   return data;
@@ -263,7 +254,7 @@ export async function findPostForPublish(
 /** Fetch needed fields for schedule operation. */
 export async function findPostForSchedule(
   userId: string,
-  id: string,
+  id: string
 ): Promise<{
   draft_content: string | null;
   final_content: string | null;
@@ -272,10 +263,10 @@ export async function findPostForSchedule(
 } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("cp_pipeline_posts")
-    .select("id, draft_content, final_content, status, scheduled_time")
-    .eq("id", id)
-    .eq("user_id", userId)
+    .from('cp_pipeline_posts')
+    .select('id, draft_content, final_content, status, scheduled_time')
+    .eq('id', id)
+    .eq('user_id', userId)
     .single();
   if (error) return null;
   return data;
@@ -284,14 +275,14 @@ export async function findPostForSchedule(
 /** Fetch needed fields for retry operation. */
 export async function findPostForRetry(
   userId: string,
-  id: string,
+  id: string
 ): Promise<{ id: string; status: PostStatus } | null> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
-    .from("cp_pipeline_posts")
-    .select("id, status, user_id")
-    .eq("id", id)
-    .eq("user_id", userId)
+    .from('cp_pipeline_posts')
+    .select('id, status, user_id')
+    .eq('id', id)
+    .eq('user_id', userId)
     .single();
   return data ?? null;
 }
@@ -299,7 +290,7 @@ export async function findPostForRetry(
 /** Fetch post engagement config fields. */
 export async function findPostEngagementConfig(
   userId: string,
-  id: string,
+  id: string
 ): Promise<{
   scrape_engagement: boolean;
   heyreach_campaign_id: string | null;
@@ -308,12 +299,12 @@ export async function findPostEngagementConfig(
 } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("cp_pipeline_posts")
+    .from('cp_pipeline_posts')
     .select(
-      "id, scrape_engagement, heyreach_campaign_id, last_engagement_scrape_at, engagement_scrape_count",
+      'id, scrape_engagement, heyreach_campaign_id, last_engagement_scrape_at, engagement_scrape_count'
     )
-    .eq("id", id)
-    .eq("user_id", userId)
+    .eq('id', id)
+    .eq('user_id', userId)
     .single();
   if (error) return null;
   return data;
@@ -334,10 +325,21 @@ export interface PostCreateInput {
   team_profile_id?: string | null;
 }
 
-export async function createPost(
-  userId: string,
-  input: PostCreateInput,
-): Promise<PipelinePost> {
+export interface AgentPostMetadata {
+  title?: string | null;
+  pillar?: string | null;
+  content_type?: string | null;
+}
+
+export interface AgentPostCreateInput {
+  body: string;
+  title?: string | null;
+  pillar?: string | null;
+  content_type?: string | null;
+  team_profile_id?: string | null;
+}
+
+export async function createPost(userId: string, input: PostCreateInput): Promise<PipelinePost> {
   const supabase = createSupabaseAdminClient();
   const row = {
     user_id: userId,
@@ -346,69 +348,106 @@ export async function createPost(
     dm_template: input.dm_template ?? null,
     cta_word: input.cta_word ?? null,
     variations: input.variations ?? null,
-    status: input.status ?? "draft",
+    status: input.status ?? 'draft',
     hook_score: input.hook_score ?? null,
     polish_status: input.polish_status ?? null,
     polish_notes: input.polish_notes ?? null,
     team_profile_id: input.team_profile_id ?? null,
   };
-  const { data, error } = await supabase
-    .from("cp_pipeline_posts")
-    .insert(row)
-    .select()
-    .single();
+  const { data, error } = await supabase.from('cp_pipeline_posts').insert(row).select().single();
   if (error) throw new Error(`posts.createPost: ${error.message}`);
+  return data as PipelinePost;
+}
+
+/** Create a post authored directly by the MCP agent (no AI generation step). */
+export async function createAgentPost(
+  userId: string,
+  input: AgentPostCreateInput
+): Promise<PipelinePost> {
+  const supabase = createSupabaseAdminClient();
+
+  const agentMetadata: AgentPostMetadata = {};
+  if (input.title != null) agentMetadata.title = input.title;
+  if (input.pillar != null) agentMetadata.pillar = input.pillar;
+  if (input.content_type != null) agentMetadata.content_type = input.content_type;
+
+  const row = {
+    user_id: userId,
+    draft_content: input.body,
+    final_content: null,
+    status: 'draft' as PostStatus,
+    source: 'agent',
+    agent_metadata: Object.keys(agentMetadata).length > 0 ? agentMetadata : null,
+    team_profile_id: input.team_profile_id ?? null,
+  };
+
+  const { data, error } = await supabase.from('cp_pipeline_posts').insert(row).select().single();
+  if (error) throw new Error(`posts.createAgentPost: ${error.message}`);
   return data as PipelinePost;
 }
 
 /** List draft posts for external review-content (by user_id or team_profile_id). */
 export async function findDraftPostsForReview(
   userId: string,
-  teamProfileId?: string | null,
-): Promise<Array<{ id: string; final_content: string | null; draft_content: string | null; hook_score: number | null }>> {
+  teamProfileId?: string | null
+): Promise<
+  Array<{
+    id: string;
+    final_content: string | null;
+    draft_content: string | null;
+    hook_score: number | null;
+  }>
+> {
   const supabase = createSupabaseAdminClient();
   let query = supabase
-    .from("cp_pipeline_posts")
-    .select("id, final_content, draft_content, hook_score")
-    .eq("status", "draft");
+    .from('cp_pipeline_posts')
+    .select('id, final_content, draft_content, hook_score')
+    .eq('status', 'draft');
   if (teamProfileId) {
-    query = query.eq("team_profile_id", teamProfileId);
+    query = query.eq('team_profile_id', teamProfileId);
   } else {
-    query = query.eq("user_id", userId);
+    query = query.eq('user_id', userId);
   }
   const { data, error } = await query;
   if (error) throw new Error(`posts.findDraftPostsForReview: ${error.message}`);
-  return (data ?? []) as Array<{ id: string; final_content: string | null; draft_content: string | null; hook_score: number | null }>;
+  return (data ?? []) as Array<{
+    id: string;
+    final_content: string | null;
+    draft_content: string | null;
+    hook_score: number | null;
+  }>;
 }
 
 /** Update post review_data by id (for external review-content). */
 export async function updatePostReviewData(
   userId: string,
   postId: string,
-  reviewData: Record<string, unknown>,
+  reviewData: Record<string, unknown>
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase
-    .from("cp_pipeline_posts")
+    .from('cp_pipeline_posts')
     .update({ review_data: reviewData })
-    .eq("id", postId)
-    .eq("user_id", userId);
+    .eq('id', postId)
+    .eq('user_id', userId);
   if (error) throw new Error(`posts.updatePostReviewData: ${error.message}`);
 }
 
 /** Bulk insert pipeline posts (for external import-posts). */
-export async function insertPipelinePostsBulk(rows: Array<{
-  user_id: string;
-  team_profile_id: string | null;
-  status: string;
-  draft_content: string;
-  final_content: string;
-}>): Promise<Array<{ id: string; status: string }>> {
+export async function insertPipelinePostsBulk(
+  rows: Array<{
+    user_id: string;
+    team_profile_id: string | null;
+    status: string;
+    draft_content: string;
+    final_content: string;
+  }>
+): Promise<Array<{ id: string; status: string }>> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("cp_pipeline_posts")
+    .from('cp_pipeline_posts')
     .insert(rows)
-    .select("id, status");
+    .select('id, status');
   if (error) throw new Error(`posts.insertPipelinePostsBulk: ${error.message}`);
   return (data ?? []) as Array<{ id: string; status: string }>;
 }
@@ -416,14 +455,14 @@ export async function insertPipelinePostsBulk(rows: Array<{
 export async function updatePost(
   userId: string,
   id: string,
-  updates: Record<string, unknown>,
+  updates: Record<string, unknown>
 ): Promise<PipelinePost> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("cp_pipeline_posts")
+    .from('cp_pipeline_posts')
     .update(updates)
-    .eq("id", id)
-    .eq("user_id", userId)
+    .eq('id', id)
+    .eq('user_id', userId)
     .select()
     .single();
   if (error) throw new Error(`posts.updatePost: ${error.message}`);
@@ -433,10 +472,10 @@ export async function updatePost(
 export async function deletePost(userId: string, id: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase
-    .from("cp_pipeline_posts")
+    .from('cp_pipeline_posts')
     .delete()
-    .eq("id", id)
-    .eq("user_id", userId);
+    .eq('id', id)
+    .eq('user_id', userId);
   if (error) throw new Error(`posts.deletePost: ${error.message}`);
 }
 
@@ -448,14 +487,10 @@ export async function updateLeadMagnetPublishState(
     linkedin_post_id: string | null;
     publish_provider: string;
     status: string;
-  },
+  }
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
-  await supabase
-    .from("lead_magnets")
-    .update(payload)
-    .eq("id", leadMagnetId)
-    .eq("user_id", userId);
+  await supabase.from('lead_magnets').update(payload).eq('id', leadMagnetId).eq('user_id', userId);
 }
 
 // ─── Engagement queries ────────────────────────────────────────────────────
@@ -474,32 +509,32 @@ export async function getPostEngagementData(postId: string): Promise<{
     { data: recentEngagements },
   ] = await Promise.all([
     supabase
-      .from("cp_post_engagements")
-      .select("id", { count: "exact", head: true })
-      .eq("post_id", postId)
-      .eq("engagement_type", "comment"),
+      .from('cp_post_engagements')
+      .select('id', { count: 'exact', head: true })
+      .eq('post_id', postId)
+      .eq('engagement_type', 'comment'),
     supabase
-      .from("cp_post_engagements")
-      .select("id", { count: "exact", head: true })
-      .eq("post_id", postId)
-      .eq("engagement_type", "reaction"),
+      .from('cp_post_engagements')
+      .select('id', { count: 'exact', head: true })
+      .eq('post_id', postId)
+      .eq('engagement_type', 'reaction'),
     supabase
-      .from("cp_post_engagements")
-      .select("id", { count: "exact", head: true })
-      .eq("post_id", postId)
-      .not("linkedin_url", "is", null),
+      .from('cp_post_engagements')
+      .select('id', { count: 'exact', head: true })
+      .eq('post_id', postId)
+      .not('linkedin_url', 'is', null),
     supabase
-      .from("cp_post_engagements")
-      .select("id", { count: "exact", head: true })
-      .eq("post_id", postId)
-      .not("heyreach_pushed_at", "is", null),
+      .from('cp_post_engagements')
+      .select('id', { count: 'exact', head: true })
+      .eq('post_id', postId)
+      .not('heyreach_pushed_at', 'is', null),
     supabase
-      .from("cp_post_engagements")
+      .from('cp_post_engagements')
       .select(
-        "id, provider_id, engagement_type, reaction_type, comment_text, first_name, last_name, linkedin_url, heyreach_pushed_at, engaged_at, created_at",
+        'id, provider_id, engagement_type, reaction_type, comment_text, first_name, last_name, linkedin_url, heyreach_pushed_at, engaged_at, created_at'
       )
-      .eq("post_id", postId)
-      .order("created_at", { ascending: false })
+      .eq('post_id', postId)
+      .order('created_at', { ascending: false })
       .limit(50),
   ]);
 
@@ -517,7 +552,7 @@ export async function getPostEngagementData(postId: string): Promise<{
 export async function updateEngagementConfig(
   userId: string,
   id: string,
-  updates: EngagementConfigUpdate,
+  updates: EngagementConfigUpdate
 ): Promise<{
   id: string;
   scrape_engagement: boolean;
@@ -525,11 +560,11 @@ export async function updateEngagementConfig(
 }> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("cp_pipeline_posts")
+    .from('cp_pipeline_posts')
     .update(updates)
-    .eq("id", id)
-    .eq("user_id", userId)
-    .select("id, scrape_engagement, heyreach_campaign_id")
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select('id, scrape_engagement, heyreach_campaign_id')
     .single();
   if (error) throw new Error(`posts.updateEngagementConfig: ${error.message}`);
   return data;
@@ -537,30 +572,28 @@ export async function updateEngagementConfig(
 
 // ─── Enrichment helpers ────────────────────────────────────────────────────
 
-export async function getProfileNameMap(
-  profileIds: string[],
-): Promise<ProfileNameMap> {
+export async function getProfileNameMap(profileIds: string[]): Promise<ProfileNameMap> {
   if (profileIds.length === 0) return {};
   const supabase = createSupabaseAdminClient();
   const { data: profiles } = await supabase
-    .from("team_profiles")
-    .select("id, full_name, title")
-    .in("id", profileIds);
+    .from('team_profiles')
+    .select('id, full_name, title')
+    .in('id', profileIds);
   if (!profiles) return {};
   return Object.fromEntries(
-    profiles.map((p) => [p.id, { full_name: p.full_name, title: p.title }]),
+    profiles.map((p) => [p.id, { full_name: p.full_name, title: p.title }])
   );
 }
 
 /** Fetch a team profile's voice_profile for polish. */
 export async function getTeamProfileVoice(
-  profileId: string,
+  profileId: string
 ): Promise<Record<string, unknown> | null> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
-    .from("team_profiles")
-    .select("voice_profile")
-    .eq("id", profileId)
+    .from('team_profiles')
+    .select('voice_profile')
+    .eq('id', profileId)
     .single();
   return (data?.voice_profile as Record<string, unknown>) ?? null;
 }

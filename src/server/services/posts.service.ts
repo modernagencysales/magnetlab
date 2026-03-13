@@ -16,6 +16,7 @@ import type {
   PostUpdateInput,
   EngagementConfigUpdate,
   PostEngagementData,
+  AgentPostCreateInput,
 } from '@/server/repositories/posts.repo';
 
 // ─── Response types ────────────────────────────────────────────────────────
@@ -103,6 +104,13 @@ export async function getPostEngagement(
 }
 
 // ─── Write operations ──────────────────────────────────────────────────────
+
+export async function createAgentPost(
+  userId: string,
+  input: AgentPostCreateInput
+): Promise<PipelinePost> {
+  return postsRepo.createAgentPost(userId, input);
+}
 
 export async function updatePost(
   userId: string,
