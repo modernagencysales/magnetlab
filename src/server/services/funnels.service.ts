@@ -20,6 +20,8 @@ import { validateSectionPlacement } from '@/lib/validations/section-rules';
 import { slugify } from '@/lib/utils';
 import { isEmailMarketingProvider } from '@/lib/integrations/email-marketing';
 import { polishLeadMagnetContent } from '@/lib/ai/lead-magnet-generator';
+import { getArchetypeSchema, ARCHETYPES } from '@/lib/schemas/archetypes';
+import type { Archetype } from '@/lib/schemas/archetypes';
 import {
   generateOptinContent,
   generateDefaultOptinContent,
@@ -326,6 +328,72 @@ export async function deleteFunnel(scope: DataScope, id: string): Promise<void> 
 
 // ─── Publish ───────────────────────────────────────────────────────────────
 
+type ValidateContentResult =
+  | { valid: true }
+  | {
+      valid: false;
+      missing_fields: string[];
+      suggested_tool: string;
+      archetype_schema_hint: string;
+      message: string;
+    };
+
+/**
+ * Validates a lead magnet's `content` field against its archetype publish schema.
+ * Returns a structured result so callers can build actionable error responses.
+ * Does NOT throw — callers decide how to surface errors.
+ */
+export function validateContentForPublish(
+  content: unknown,
+  archetype: string
+): ValidateContentResult {
+  // content is null / missing
+  if (content === null || content === undefined) {
+    return {
+      valid: false,
+      missing_fields: ['content'],
+      suggested_tool: 'update_lead_magnet',
+      archetype_schema_hint: `Call get_archetype_schema('${archetype}') to see required fields.`,
+      message: 'Cannot publish: content is missing. Use update_lead_magnet to add it.',
+    };
+  }
+
+  // Unknown archetype — fail gracefully
+  if (!ARCHETYPES.includes(archetype as Archetype)) {
+    return {
+      valid: false,
+      missing_fields: ['archetype'],
+      suggested_tool: 'update_lead_magnet',
+      archetype_schema_hint: `Unknown archetype '${archetype}'. Call get_archetype_schema to see valid archetypes.`,
+      message: `Cannot publish: unknown archetype '${archetype}'.`,
+    };
+  }
+
+  const { publishSchema } = getArchetypeSchema(archetype as Archetype);
+  const result = publishSchema.safeParse(content);
+
+  if (result.success) return { valid: true };
+
+  // Build a human-readable field path list from Zod issues
+  const missingFields = result.error.issues.map((issue) => {
+    const path = issue.path.length > 0 ? `content.${issue.path.join('.')}` : 'content';
+    return path;
+  });
+  // Deduplicate (multiple issues on the same field)
+  const uniqueFields = [...new Set(missingFields)];
+
+  const fieldList = uniqueFields.join(', ');
+  const verb = uniqueFields.length === 1 ? 'is' : 'are';
+
+  return {
+    valid: false,
+    missing_fields: uniqueFields,
+    suggested_tool: 'update_lead_magnet',
+    archetype_schema_hint: `Call get_archetype_schema('${archetype}') to see required fields.`,
+    message: `Cannot publish: ${fieldList} ${verb} missing (or invalid). Use update_lead_magnet to add them.`,
+  };
+}
+
 export async function publishFunnel(
   scope: DataScope,
   id: string,
@@ -362,8 +430,25 @@ export async function publishFunnel(
         (funnel.lead_magnets as { id: string }).id
       );
       const hasExternalUrl = !!(lm as Record<string, unknown> | null)?.external_url;
+
+      // New content field validation (MCP v2 agent-native path)
+      // Only runs when a lead magnet has a `content` field set (new path).
+      // Does not affect legacy extracted_content/polished_content validation below.
+      if (lm && lm.archetype && lm.content !== undefined) {
+        const validation = validateContentForPublish(lm.content, lm.archetype as string);
+        if (!validation.valid) {
+          throw Object.assign(new Error(validation.message), {
+            statusCode: 400,
+            missing_fields: validation.missing_fields,
+            suggested_tool: validation.suggested_tool,
+            archetype_schema_hint: validation.archetype_schema_hint,
+          });
+        }
+      }
+
+      // Legacy content guard (extracted_content / polished_content pipeline)
       const polishedLen = lm?.polished_content ? JSON.stringify(lm.polished_content).length : 0;
-      if (!hasExternalUrl && !lm?.extracted_content && polishedLen < 3000) {
+      if (!hasExternalUrl && !lm?.extracted_content && polishedLen < 3000 && !lm?.content) {
         throw Object.assign(
           new Error(
             "This lead magnet doesn't have enough content to publish. Generate content first, then try again."
