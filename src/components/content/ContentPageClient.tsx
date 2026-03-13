@@ -9,6 +9,7 @@ import { PolishedContentRenderer } from './PolishedContentRenderer';
 import { InlineContentEditor } from './inline-editor';
 import { TipTapTextBlock } from './inline-editor/TipTapTextBlock';
 import { ExtractedContentRenderer } from './ExtractedContentRenderer';
+import { PromptVaultRenderer } from './PromptVaultRenderer';
 import { ContentFooter } from './ContentFooter';
 import { VideoEmbed } from '@/components/funnel/public/VideoEmbed';
 import { BookCallDrawer } from './BookCallDrawer';
@@ -47,6 +48,9 @@ interface ContentPageClientProps {
   leadId?: string | null;
   isQualified?: boolean | null;
   hasQuestions?: boolean;
+  archetype?: string | null;
+  authorName?: string | null;
+  authorAvatarUrl?: string | null;
   interactiveConfig?: InteractiveConfig | null;
   sections?: FunnelPageSection[];
   hideBranding?: boolean;
@@ -72,6 +76,9 @@ export function ContentPageClient({
   leadId,
   isQualified = null,
   hasQuestions = false,
+  archetype,
+  authorName,
+  authorAvatarUrl,
   interactiveConfig,
   sections = [],
   hideBranding,
@@ -102,6 +109,9 @@ export function ContentPageClient({
 
   // The content to display (edited or original)
   const displayContent = isEditing ? editContent : savedContent;
+
+  // Vault mode: focused-toolkit with polished content renders its own hero/search
+  const isVaultMode = archetype === 'focused-toolkit' && !!displayContent && !isEditing;
 
   // Build TOC sections
   const tocSections = displayContent
@@ -202,121 +212,123 @@ export function ContentPageClient({
           padding: '2rem 1.5rem',
         }}
       >
-        {/* Hero */}
-        <div style={{ maxWidth: '700px' }}>
-          {isEditing && editContent ? (
-            <div style={{ marginBottom: '2.5rem' }}>
-              {/* Editable Title */}
-              <div style={{ marginBottom: '1rem' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: isDark ? '#71717A' : '#A1A1AA',
-                    marginBottom: '0.375rem',
-                  }}
-                >
-                  Title
-                </label>
-                <h1
-                  ref={titleRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onBlur={(e) => setEditTitle(e.currentTarget.textContent || '')}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const text = e.clipboardData.getData('text/plain');
-                    document.execCommand('insertText', false, text);
-                  }}
-                  style={{
-                    fontSize: '2rem',
-                    fontWeight: 600,
-                    letterSpacing: '-0.02em',
-                    lineHeight: '2.5rem',
-                    color: isDark ? '#FAFAFA' : '#09090B',
-                    margin: 0,
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '0.5rem',
-                    border: `1px dashed ${isDark ? '#3F3F46' : '#D4D4D8'}`,
-                    outline: 'none',
-                    cursor: 'text',
-                  }}
-                >
-                  {editTitle}
-                </h1>
-              </div>
-
-              {/* Editable Subheader */}
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: isDark ? '#71717A' : '#A1A1AA',
-                    marginBottom: '0.375rem',
-                  }}
-                >
-                  Subheader
-                </label>
-                <div
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '0.5rem',
-                    border: `1px dashed ${isDark ? '#3F3F46' : '#D4D4D8'}`,
-                  }}
-                >
-                  <TipTapTextBlock
-                    content={editContent.heroSummary}
-                    onChange={(val) => setEditContent({ ...editContent, heroSummary: val })}
-                    placeholder="Hero summary..."
+        {/* Hero (skipped in vault mode — vault renders its own) */}
+        {!isVaultMode && (
+          <div style={{ maxWidth: '700px' }}>
+            {isEditing && editContent ? (
+              <div style={{ marginBottom: '2.5rem' }}>
+                {/* Editable Title */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <label
                     style={{
-                      fontSize: '1.125rem',
-                      lineHeight: '1.75rem',
-                      color: isDark ? '#E4E4E7' : '#27272A',
+                      display: 'block',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      color: isDark ? '#71717A' : '#A1A1AA',
+                      marginBottom: '0.375rem',
                     }}
-                  />
+                  >
+                    Title
+                  </label>
+                  <h1
+                    ref={titleRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) => setEditTitle(e.currentTarget.textContent || '')}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const text = e.clipboardData.getData('text/plain');
+                      document.execCommand('insertText', false, text);
+                    }}
+                    style={{
+                      fontSize: '2rem',
+                      fontWeight: 600,
+                      letterSpacing: '-0.02em',
+                      lineHeight: '2.5rem',
+                      color: isDark ? '#FAFAFA' : '#09090B',
+                      margin: 0,
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '0.5rem',
+                      border: `1px dashed ${isDark ? '#3F3F46' : '#D4D4D8'}`,
+                      outline: 'none',
+                      cursor: 'text',
+                    }}
+                  >
+                    {editTitle}
+                  </h1>
                 </div>
-              </div>
 
-              {(readingTime || wordCount) && (
-                <div
+                {/* Editable Subheader */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      color: isDark ? '#71717A' : '#A1A1AA',
+                      marginBottom: '0.375rem',
+                    }}
+                  >
+                    Subheader
+                  </label>
+                  <div
+                    style={{
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '0.5rem',
+                      border: `1px dashed ${isDark ? '#3F3F46' : '#D4D4D8'}`,
+                    }}
+                  >
+                    <TipTapTextBlock
+                      content={editContent.heroSummary}
+                      onChange={(val) => setEditContent({ ...editContent, heroSummary: val })}
+                      placeholder="Hero summary..."
+                      style={{
+                        fontSize: '1.125rem',
+                        lineHeight: '1.75rem',
+                        color: isDark ? '#E4E4E7' : '#27272A',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {(readingTime || wordCount) && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '1.25rem',
+                      alignItems: 'center',
+                      color: isDark ? '#A1A1AA' : '#71717A',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    {readingTime && <span>{readingTime} min read</span>}
+                    {wordCount && <span>{wordCount.toLocaleString()} words</span>}
+                  </div>
+                )}
+
+                <hr
                   style={{
-                    display: 'flex',
-                    gap: '1.25rem',
-                    alignItems: 'center',
-                    color: isDark ? '#A1A1AA' : '#71717A',
-                    fontSize: '0.875rem',
+                    border: 'none',
+                    borderTop: `1px solid ${isDark ? '#27272A' : '#E4E4E7'}`,
+                    marginTop: '1.5rem',
                   }}
-                >
-                  {readingTime && <span>{readingTime} min read</span>}
-                  {wordCount && <span>{wordCount.toLocaleString()} words</span>}
-                </div>
-              )}
-
-              <hr
-                style={{
-                  border: 'none',
-                  borderTop: `1px solid ${isDark ? '#27272A' : '#E4E4E7'}`,
-                  marginTop: '1.5rem',
-                }}
+                />
+              </div>
+            ) : (
+              <ContentHero
+                title={displayTitle}
+                heroSummary={heroSummary}
+                readingTimeMinutes={readingTime}
+                wordCount={wordCount}
+                isDark={isDark}
               />
-            </div>
-          ) : (
-            <ContentHero
-              title={displayTitle}
-              heroSummary={heroSummary}
-              readingTimeMinutes={readingTime}
-              wordCount={wordCount}
-              isDark={isDark}
-            />
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Video */}
         {vslUrl && (
@@ -345,6 +357,14 @@ export function ContentPageClient({
                 primaryColor={primaryColor}
                 onChange={setEditContent}
               />
+            ) : displayContent && archetype === 'focused-toolkit' ? (
+              <PromptVaultRenderer
+                content={displayContent}
+                isDark={isDark}
+                primaryColor={primaryColor}
+                authorName={authorName}
+                authorAvatarUrl={authorAvatarUrl}
+              />
             ) : displayContent ? (
               <PolishedContentRenderer
                 content={displayContent}
@@ -356,8 +376,8 @@ export function ContentPageClient({
             ) : null}
           </div>
 
-          {/* TOC sidebar */}
-          {!isEditing && tocSections.length > 1 && (
+          {/* TOC sidebar (hidden in vault mode — vault has its own search/filter) */}
+          {!isEditing && !isVaultMode && tocSections.length > 1 && (
             <TableOfContents sections={tocSections} isDark={isDark} primaryColor={primaryColor} />
           )}
         </div>
