@@ -1,6 +1,7 @@
 /**
  * Analytics Repository
  * ALL Supabase for analytics overview, engagement, email, funnel detail.
+ * Never imports NextRequest, NextResponse, or cookies.
  */
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
@@ -113,7 +114,9 @@ export async function getPageViewsAndLeads(
   };
 }
 
-export async function getPublishedPostsByUserId(userId: string): Promise<
+export async function getPublishedPostsByUserId(
+  userId: string
+): Promise<
   {
     id: string;
     title: string | null;
@@ -286,4 +289,93 @@ export async function getFunnelDetailViewsAndLeads(
       created_at: string;
     }[],
   };
+}
+
+// ─── Performance Insights ───────────────────────────────────────────────────
+
+export type FunnelPageRow = { id: string; lead_magnet_id: string };
+export type LeadMagnetRow = { id: string; title: string; archetype: string };
+
+/**
+ * Fetch funnel pages (id + lead_magnet_id) scoped to user/team.
+ */
+export async function getFunnelPagesWithMagnet(scope: DataScope): Promise<FunnelPageRow[]> {
+  const supabase = createSupabaseAdminClient();
+  const query = applyScope(supabase.from('funnel_pages').select('id, lead_magnet_id'), scope);
+  const { data, error } = await query;
+  if (error) throw new Error(`analytics.getFunnelPagesWithMagnet: ${error.message}`);
+  return (data ?? []) as FunnelPageRow[];
+}
+
+/**
+ * Fetch lead magnets (id, title, archetype) for a set of IDs.
+ */
+export async function getLeadMagnetsByIds(ids: string[]): Promise<LeadMagnetRow[]> {
+  if (ids.length === 0) return [];
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('lead_magnets')
+    .select('id, title, archetype')
+    .in('id', ids);
+  if (error) throw new Error(`analytics.getLeadMagnetsByIds: ${error.message}`);
+  return (data ?? []) as LeadMagnetRow[];
+}
+
+/**
+ * Fetch funnel_leads for a set of funnel_page_ids, optionally filtered by startDate.
+ * startDate is ISO date string (YYYY-MM-DD); omit for all_time.
+ */
+export async function getFunnelLeadsByPageIds(
+  funnelPageIds: string[],
+  startDate: string | null
+): Promise<{ funnel_page_id: string; created_at: string }[]> {
+  if (funnelPageIds.length === 0) return [];
+  const supabase = createSupabaseAdminClient();
+  let query = supabase
+    .from('funnel_leads')
+    .select('funnel_page_id, created_at')
+    .in('funnel_page_id', funnelPageIds);
+  if (startDate) {
+    query = query.gte('created_at', `${startDate}T00:00:00Z`);
+  }
+  const { data, error } = await query;
+  if (error) throw new Error(`analytics.getFunnelLeadsByPageIds: ${error.message}`);
+  return (data ?? []) as { funnel_page_id: string; created_at: string }[];
+}
+
+/**
+ * Fetch page_views for a set of funnel_page_ids, optionally filtered by startDate.
+ */
+export async function getPageViewsByPageIds(
+  funnelPageIds: string[],
+  startDate: string | null
+): Promise<{ funnel_page_id: string; view_date: string }[]> {
+  if (funnelPageIds.length === 0) return [];
+  const supabase = createSupabaseAdminClient();
+  let query = supabase
+    .from('page_views')
+    .select('funnel_page_id, view_date')
+    .in('funnel_page_id', funnelPageIds);
+  if (startDate) {
+    query = query.gte('view_date', startDate);
+  }
+  const { data, error } = await query;
+  if (error) throw new Error(`analytics.getPageViewsByPageIds: ${error.message}`);
+  return (data ?? []) as { funnel_page_id: string; view_date: string }[];
+}
+
+/**
+ * Fetch knowledge topics for a user (slug, display_name, entry_count).
+ */
+export async function getKnowledgeTopics(
+  userId: string
+): Promise<{ slug: string; display_name: string; entry_count: number }[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('cp_knowledge_topics')
+    .select('slug, display_name, entry_count')
+    .eq('user_id', userId)
+    .order('entry_count', { ascending: false });
+  if (error) throw new Error(`analytics.getKnowledgeTopics: ${error.message}`);
+  return (data ?? []) as { slug: string; display_name: string; entry_count: number }[];
 }
