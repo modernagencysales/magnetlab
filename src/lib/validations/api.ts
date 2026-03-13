@@ -632,6 +632,38 @@ export type CreatePostCampaignInput = z.infer<typeof CreatePostCampaignSchema>;
 export type UpdatePostCampaignInput = z.infer<typeof UpdatePostCampaignSchema>;
 
 // ============================================
+// CONTENT PIPELINE SCHEMAS
+// ============================================
+
+export const CreateAgentPostSchema = z.object({
+  body: z.string().min(1, 'body is required'),
+  title: z.string().optional(),
+  pillar: z
+    .enum([
+      'moments_that_matter',
+      'teaching_promotion',
+      'human_personal',
+      'collaboration_social_proof',
+    ])
+    .optional(),
+  content_type: z
+    .enum([
+      'story',
+      'insight',
+      'tip',
+      'framework',
+      'case_study',
+      'question',
+      'listicle',
+      'contrarian',
+      'lead_magnet',
+    ])
+    .optional(),
+});
+
+export type CreateAgentPostInput = z.infer<typeof CreateAgentPostSchema>;
+
+// ============================================
 // VALIDATION HELPER
 // ============================================
 
