@@ -139,12 +139,16 @@ export class MagnetLabClient {
     return this.request<{ success: boolean }>('DELETE', `/lead-magnet/${id}`);
   }
 
-  /** Compound action: launch a lead magnet end-to-end. */
+  /** Compound action: create + funnel + publish a lead magnet end-to-end. */
   async launchLeadMagnet(data: {
-    lead_magnet_id: string;
-    slug?: string;
-    funnel_overrides?: Record<string, unknown>;
-    activate_email_sequence?: boolean;
+    title: string;
+    archetype: Archetype;
+    content: Record<string, unknown>;
+    slug: string;
+    funnel_theme?: string;
+    email_sequence?: {
+      emails: Array<{ subject: string; body: string; delay_days: number }>;
+    };
   }) {
     return this.request<unknown>('POST', `/lead-magnet/launch`, data);
   }
@@ -326,12 +330,15 @@ export class MagnetLabClient {
     return this.request<unknown>('POST', `/content-pipeline/posts/${id}/publish`, {});
   }
 
-  /** Compound action: schedule a full content week. */
+  /** Compound action: schedule a full content week with agent-authored posts. */
   async scheduleContentWeek(data: {
-    start_date?: string;
-    posts_per_day?: number;
-    pillars?: ContentPillar[];
-    auto_approve?: boolean;
+    posts: Array<{
+      body: string;
+      title?: string;
+      pillar?: ContentPillar;
+      content_type?: ContentType;
+    }>;
+    week_start?: string;
   }) {
     return this.request<unknown>('POST', `/content-pipeline/posts/schedule-week`, data);
   }
