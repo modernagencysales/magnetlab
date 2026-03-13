@@ -399,31 +399,41 @@ describe('Handler Routing — All 37 Tools', () => {
   describe('Compound Actions', () => {
     it('magnetlab_launch_lead_magnet passes all params', async () => {
       await callTool(client, 'magnetlab_launch_lead_magnet', {
-        lead_magnet_id: 'lm-1',
+        title: 'My Guide',
+        archetype: 'single-breakdown',
+        content: { headline: 'Test' },
         slug: 'my-guide',
-        funnel_overrides: { optin_headline: 'Custom' },
-        activate_email_sequence: true,
+        funnel_theme: 'dark',
+        email_sequence: {
+          emails: [{ subject: 'Welcome', body: 'Hi', delay_days: 0 }],
+        },
       });
       expect(client.launchLeadMagnet).toHaveBeenCalledWith({
-        lead_magnet_id: 'lm-1',
+        title: 'My Guide',
+        archetype: 'single-breakdown',
+        content: { headline: 'Test' },
         slug: 'my-guide',
-        funnel_overrides: { optin_headline: 'Custom' },
-        activate_email_sequence: true,
+        funnel_theme: 'dark',
+        email_sequence: {
+          emails: [{ subject: 'Welcome', body: 'Hi', delay_days: 0 }],
+        },
       });
     });
 
     it('magnetlab_schedule_content_week passes all params', async () => {
       await callTool(client, 'magnetlab_schedule_content_week', {
-        start_date: '2026-03-16',
-        posts_per_day: 2,
-        pillars: ['teaching_promotion', 'human_personal'],
-        auto_approve: false,
+        posts: [
+          { body: 'Post 1', pillar: 'teaching_promotion' },
+          { body: 'Post 2', pillar: 'human_personal' },
+        ],
+        week_start: '2026-03-16',
       });
       expect(client.scheduleContentWeek).toHaveBeenCalledWith({
-        start_date: '2026-03-16',
-        posts_per_day: 2,
-        pillars: ['teaching_promotion', 'human_personal'],
-        auto_approve: false,
+        posts: [
+          { body: 'Post 1', pillar: 'teaching_promotion' },
+          { body: 'Post 2', pillar: 'human_personal' },
+        ],
+        week_start: '2026-03-16',
       });
     });
   });
