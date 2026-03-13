@@ -2,7 +2,7 @@
 
 import type {
   Archetype,
-  LeadMagnetStatus,
+  LeadMagnetStatusV2,
   FunnelTheme,
   BackgroundStyle,
   FunnelTargetType,
@@ -13,7 +13,6 @@ import type {
   KnowledgeType,
   ReadinessGoal,
   PipelinePostStatus,
-  ExtractContentType,
 } from './constants.js';
 
 const DEFAULT_BASE_URL = 'https://www.magnetlab.app/api';
@@ -103,7 +102,7 @@ export class MagnetLabClient {
   // Lead Magnets
   // ============================================================
 
-  async listLeadMagnets(params?: { status?: LeadMagnetStatus; limit?: number; offset?: number }) {
+  async listLeadMagnets(params?: { status?: LeadMagnetStatusV2; limit?: number; offset?: number }) {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
     if (params?.limit) searchParams.set('limit', String(params.limit));
@@ -368,7 +367,7 @@ export class MagnetLabClient {
     return this.request<unknown>('POST', `/brand-kit`, params);
   }
 
-  async extractBusinessContext(params: { content: string; contentType?: ExtractContentType }) {
+  async extractBusinessContext(params: { content: string; contentType?: string }) {
     return this.aiRequest<unknown>('POST', `/brand-kit/extract`, params);
   }
 

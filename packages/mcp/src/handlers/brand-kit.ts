@@ -1,5 +1,4 @@
-import { MagnetLabClient } from '../client.js'
-import type { ExtractContentType } from '../constants.js'
+import { MagnetLabClient } from '../client.js';
 
 /**
  * Handle brand kit tool calls.
@@ -11,7 +10,7 @@ export async function handleBrandKitTools(
 ): Promise<unknown> {
   switch (name) {
     case 'magnetlab_get_brand_kit':
-      return client.getBrandKit()
+      return client.getBrandKit();
 
     case 'magnetlab_update_brand_kit':
       return client.updateBrandKit({
@@ -28,15 +27,15 @@ export async function handleBrandKitTools(
         audienceTools: args.audience_tools as string[] | undefined,
         preferredTone: args.preferred_tone as string | undefined,
         styleProfile: args.style_profile as unknown,
-      })
+      });
 
     case 'magnetlab_extract_business_context':
       return client.extractBusinessContext({
         content: args.content as string,
-        contentType: args.content_type as ExtractContentType | undefined,
-      })
+        contentType: args.content_type as string | undefined,
+      });
 
     default:
-      throw new Error(`Unknown brand kit tool: ${name}`)
+      throw new Error(`Unknown brand kit tool: ${name}`);
   }
 }
