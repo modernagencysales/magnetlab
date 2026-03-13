@@ -35,7 +35,7 @@ const handlerMap: Record<string, Handler> = {
   magnetlab_update_lead_magnet: handleLeadMagnetTools,
   magnetlab_delete_lead_magnet: handleLeadMagnetTools,
 
-  // Funnels (8)
+  // Funnels (7)
   magnetlab_list_funnels: handleFunnelTools,
   magnetlab_get_funnel: handleFunnelTools,
   magnetlab_create_funnel: handleFunnelTools,

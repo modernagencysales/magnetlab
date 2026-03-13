@@ -1,7 +1,7 @@
 /** Compound handler. Dispatches 2 compound action tools to MagnetLabClient methods. Never imports HTTP or DB directly. */
 
 import type { MagnetLabClient } from '../client.js';
-import type { ContentPillar } from '../constants.js';
+import type { Archetype, ContentPillar, ContentType } from '../constants.js';
 
 export async function handleCompoundTools(
   name: string,
@@ -11,18 +11,25 @@ export async function handleCompoundTools(
   switch (name) {
     case 'magnetlab_launch_lead_magnet':
       return client.launchLeadMagnet({
-        lead_magnet_id: args.lead_magnet_id as string,
-        slug: args.slug as string | undefined,
-        funnel_overrides: args.funnel_overrides as Record<string, unknown> | undefined,
-        activate_email_sequence: args.activate_email_sequence as boolean | undefined,
+        title: args.title as string,
+        archetype: args.archetype as Archetype,
+        content: args.content as Record<string, unknown>,
+        slug: args.slug as string,
+        funnel_theme: args.funnel_theme as string | undefined,
+        email_sequence: args.email_sequence as
+          | { emails: Array<{ subject: string; body: string; delay_days: number }> }
+          | undefined,
       });
 
     case 'magnetlab_schedule_content_week':
       return client.scheduleContentWeek({
-        start_date: args.start_date as string | undefined,
-        posts_per_day: args.posts_per_day as number | undefined,
-        pillars: args.pillars as ContentPillar[] | undefined,
-        auto_approve: args.auto_approve as boolean | undefined,
+        posts: args.posts as Array<{
+          body: string;
+          title?: string;
+          pillar?: ContentPillar;
+          content_type?: ContentType;
+        }>,
+        week_start: args.week_start as string | undefined,
       });
 
     default:

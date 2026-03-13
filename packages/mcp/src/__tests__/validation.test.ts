@@ -562,48 +562,76 @@ describe('Validation Schemas', () => {
   describe('magnetlab_launch_lead_magnet', () => {
     it('accepts minimal input', () => {
       const result = validateToolArgs('magnetlab_launch_lead_magnet', {
-        lead_magnet_id: 'lm-1',
+        title: 'My Guide',
+        archetype: 'single-breakdown',
+        content: { headline: 'Test' },
+        slug: 'my-guide',
       });
-      expect(result).toMatchObject({ lead_magnet_id: 'lm-1' });
+      expect(result).toMatchObject({ title: 'My Guide', slug: 'my-guide' });
     });
 
     it('accepts all optional fields', () => {
       const result = validateToolArgs('magnetlab_launch_lead_magnet', {
-        lead_magnet_id: 'lm-1',
+        title: 'My Guide',
+        archetype: 'single-breakdown',
+        content: { headline: 'Test' },
         slug: 'my-guide',
-        funnel_overrides: { theme: 'dark' },
-        activate_email_sequence: true,
+        funnel_theme: 'dark',
+        email_sequence: {
+          emails: [{ subject: 'Welcome', body: 'Hi there', delay_days: 0 }],
+        },
       });
-      expect(result).toMatchObject({ slug: 'my-guide', activate_email_sequence: true });
+      expect(result).toMatchObject({ funnel_theme: 'dark' });
+      expect(result).toHaveProperty('email_sequence');
     });
 
-    it('rejects missing lead_magnet_id', () => {
+    it('rejects missing required fields', () => {
       expect(() => validateToolArgs('magnetlab_launch_lead_magnet', {})).toThrow();
+      expect(() => validateToolArgs('magnetlab_launch_lead_magnet', { title: 'Test' })).toThrow();
+    });
+
+    it('rejects invalid slug format', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_launch_lead_magnet', {
+          title: 'My Guide',
+          archetype: 'single-breakdown',
+          content: { headline: 'Test' },
+          slug: 'INVALID SLUG',
+        })
+      ).toThrow();
     });
   });
 
   describe('magnetlab_schedule_content_week', () => {
-    it('accepts empty args', () => {
-      const result = validateToolArgs('magnetlab_schedule_content_week', {});
-      expect(result).toBeDefined();
+    it('accepts minimal input with one post', () => {
+      const result = validateToolArgs('magnetlab_schedule_content_week', {
+        posts: [{ body: 'Hello world' }],
+      });
+      expect(result).toHaveProperty('posts');
     });
 
     it('accepts all optional fields', () => {
       const result = validateToolArgs('magnetlab_schedule_content_week', {
-        start_date: '2026-03-17',
-        posts_per_day: 2,
-        pillars: ['teaching_promotion', 'human_personal'],
-        auto_approve: true,
+        posts: [
+          { body: 'Post 1', pillar: 'teaching_promotion', content_type: 'tip' },
+          { body: 'Post 2', title: 'Second', pillar: 'human_personal' },
+        ],
+        week_start: '2026-03-17',
       });
-      expect(result).toMatchObject({ posts_per_day: 2, auto_approve: true });
+      expect(result).toMatchObject({ week_start: '2026-03-17' });
     });
 
-    it('rejects invalid pillar in array', () => {
-      expect(() =>
-        validateToolArgs('magnetlab_schedule_content_week', {
-          pillars: ['invalid_pillar'],
-        })
-      ).toThrow();
+    it('rejects empty posts array', () => {
+      expect(() => validateToolArgs('magnetlab_schedule_content_week', { posts: [] })).toThrow();
+    });
+
+    it('rejects more than 7 posts', () => {
+      const posts = Array.from({ length: 8 }, (_, i) => ({ body: `Post ${i}` }));
+      expect(() => validateToolArgs('magnetlab_schedule_content_week', { posts })).toThrow();
+    });
+
+    it('rejects missing posts', () => {
+      expect(() => validateToolArgs('magnetlab_schedule_content_week', {})).toThrow();
     });
   });
 

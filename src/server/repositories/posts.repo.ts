@@ -11,10 +11,10 @@ import type { PipelinePost, PostStatus, PolishStatus } from '@/lib/types/content
 // ─── Select column sets ────────────────────────────────────────────────────
 
 const POST_LIST_COLUMNS =
-  'id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, team_profile_id, created_at, updated_at';
+  'id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, team_profile_id, source, agent_metadata, created_at, updated_at';
 
 const POST_SINGLE_COLUMNS =
-  'id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, enable_automation, automation_config, scrape_engagement, heyreach_campaign_id, last_engagement_scrape_at, engagement_scrape_count, created_at, updated_at';
+  'id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, enable_automation, automation_config, scrape_engagement, heyreach_campaign_id, last_engagement_scrape_at, engagement_scrape_count, source, agent_metadata, created_at, updated_at';
 
 // ─── Filter types ──────────────────────────────────────────────────────────
 
@@ -381,7 +381,11 @@ export async function createAgentPost(
     team_profile_id: input.team_profile_id ?? null,
   };
 
-  const { data, error } = await supabase.from('cp_pipeline_posts').insert(row).select().single();
+  const { data, error } = await supabase
+    .from('cp_pipeline_posts')
+    .insert(row)
+    .select(POST_SINGLE_COLUMNS)
+    .single();
   if (error) throw new Error(`posts.createAgentPost: ${error.message}`);
   return data as PipelinePost;
 }

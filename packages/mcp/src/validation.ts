@@ -297,18 +297,49 @@ export const toolSchemas: Record<string, z.ZodType> = {
   // ── Compound Actions (2) ──────────────────────────────────────────────────
 
   magnetlab_launch_lead_magnet: z.object({
-    lead_magnet_id: uuidField,
-    slug: z.string().optional(),
-    funnel_overrides: z.record(z.unknown()).optional(),
-    activate_email_sequence: z.boolean().optional(),
+    title: z.string().min(1, 'title is required'),
+    archetype: z.enum(archetypeValues, {
+      message: `archetype must be one of: ${ARCHETYPES.join(', ')}`,
+    }),
+    content: z.record(z.unknown()),
+    slug: z
+      .string()
+      .min(1)
+      .max(100)
+      .regex(/^[a-z0-9][a-z0-9-]*$/, {
+        message: 'slug must be lowercase alphanumeric with hyphens',
+      }),
+    funnel_theme: z.enum(['dark', 'light', 'modern'] as [string, ...string[]]).optional(),
+    email_sequence: z
+      .object({
+        emails: z.array(
+          z.object({
+            subject: z.string().min(1),
+            body: z.string().min(1),
+            delay_days: z.number().int().min(0),
+          })
+        ),
+      })
+      .optional(),
     team_id: teamIdField,
   }),
 
   magnetlab_schedule_content_week: z.object({
-    start_date: z.string().optional(),
-    posts_per_day: z.number().int().min(1).max(5).optional(),
-    pillars: z.array(z.enum(contentPillarValues)).optional(),
-    auto_approve: z.boolean().optional(),
+    posts: z
+      .array(
+        z.object({
+          body: z.string().min(1, 'body is required'),
+          title: z.string().optional(),
+          pillar: z.enum(contentPillarValues).optional(),
+          content_type: z.enum(contentTypeValues).optional(),
+        })
+      )
+      .min(1, 'at least one post is required')
+      .max(7, 'maximum 7 posts per week'),
+    week_start: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'week_start must be YYYY-MM-DD')
+      .optional(),
     team_id: teamIdField,
   }),
 
