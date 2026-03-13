@@ -663,6 +663,70 @@ export const CreateAgentPostSchema = z.object({
 
 export type CreateAgentPostInput = z.infer<typeof CreateAgentPostSchema>;
 
+const agentPostItemSchema = z.object({
+  body: z.string().min(1, 'body is required'),
+  title: z.string().optional(),
+  pillar: z
+    .enum([
+      'moments_that_matter',
+      'teaching_promotion',
+      'human_personal',
+      'collaboration_social_proof',
+    ])
+    .optional(),
+  content_type: z
+    .enum([
+      'story',
+      'insight',
+      'tip',
+      'framework',
+      'case_study',
+      'question',
+      'listicle',
+      'contrarian',
+      'lead_magnet',
+    ])
+    .optional(),
+});
+
+export const ScheduleWeekSchema = z.object({
+  posts: z
+    .array(agentPostItemSchema)
+    .min(1, 'at least one post is required')
+    .max(7, 'maximum 7 posts per week'),
+  week_start: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'week_start must be an ISO date (YYYY-MM-DD)')
+    .optional(),
+});
+
+export type ScheduleWeekInput = z.infer<typeof ScheduleWeekSchema>;
+
+// ============================================
+// EMAIL SEQUENCE SCHEMAS
+// ============================================
+
+/**
+ * MCP agent full-replace payload for PUT /api/email-sequence/[leadMagnetId]
+ * Replaces the entire sequence atomically. Old emails are removed, new ones saved.
+ */
+export const SaveEmailSequenceSchema = z.object({
+  emails: z
+    .array(
+      z.object({
+        subject: z.string().min(1, 'email subject is required'),
+        body: z.string().min(1, 'email body is required'),
+        delay_days: z.number().int().min(0),
+      })
+    )
+    .min(0),
+  subject_lines: z.array(z.string()).optional(),
+  from_name: z.string().optional(),
+  reply_to: z.string().email().optional(),
+});
+
+export type SaveEmailSequenceInput = z.infer<typeof SaveEmailSequenceSchema>;
+
 // ============================================
 // VALIDATION HELPER
 // ============================================
