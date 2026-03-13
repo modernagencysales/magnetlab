@@ -1,8 +1,7 @@
-import { MagnetLabClient } from '../client.js'
+/** Lead handler. Dispatches 3 lead management tools to MagnetLabClient methods. Never imports HTTP or DB directly. */
 
-/**
- * Handle lead management tool calls.
- */
+import type { MagnetLabClient } from '../client.js';
+
 export async function handleLeadTools(
   name: string,
   args: Record<string, unknown>,
@@ -17,16 +16,19 @@ export async function handleLeadTools(
         search: args.search as string | undefined,
         limit: args.limit as number | undefined,
         offset: args.offset as number | undefined,
-      })
+      });
+
+    case 'magnetlab_get_lead':
+      return client.getLead(args.id as string);
 
     case 'magnetlab_export_leads':
       return client.exportLeads({
         funnelId: args.funnel_id as string | undefined,
         leadMagnetId: args.lead_magnet_id as string | undefined,
         qualified: args.qualified as boolean | undefined,
-      })
+      });
 
     default:
-      throw new Error(`Unknown lead tool: ${name}`)
+      throw new Error(`Unknown lead tool: ${name}`);
   }
 }

@@ -1,9 +1,8 @@
-import { MagnetLabClient } from '../client.js'
-import type { FunnelTheme, BackgroundStyle, FunnelTargetType } from '../constants.js'
+/** Funnel handler. Dispatches 8 funnel tools to MagnetLabClient methods. Never imports HTTP or DB directly. */
 
-/**
- * Handle funnel related tool calls.
- */
+import type { MagnetLabClient } from '../client.js';
+import type { FunnelTheme, BackgroundStyle, FunnelTargetType } from '../constants.js';
+
 export async function handleFunnelTools(
   name: string,
   args: Record<string, unknown>,
@@ -11,17 +10,10 @@ export async function handleFunnelTools(
 ): Promise<unknown> {
   switch (name) {
     case 'magnetlab_list_funnels':
-      return client.listFunnels()
+      return client.listFunnels();
 
     case 'magnetlab_get_funnel':
-      return client.getFunnel(args.id as string)
-
-    case 'magnetlab_get_funnel_by_target':
-      return client.getFunnelByTarget({
-        leadMagnetId: args.lead_magnet_id as string | undefined,
-        libraryId: args.library_id as string | undefined,
-        externalResourceId: args.external_resource_id as string | undefined,
-      })
+      return client.getFunnel(args.id as string);
 
     case 'magnetlab_create_funnel':
       return client.createFunnel({
@@ -43,7 +35,7 @@ export async function handleFunnelTools(
         backgroundStyle: args.background_style as BackgroundStyle | undefined,
         logoUrl: args.logo_url as string | undefined,
         qualificationFormId: args.qualification_form_id as string | undefined,
-      })
+      });
 
     case 'magnetlab_update_funnel':
       return client.updateFunnel(args.id as string, {
@@ -69,21 +61,18 @@ export async function handleFunnelTools(
         homepageUrl: args.homepage_url as string | null | undefined,
         homepageLabel: args.homepage_label as string | null | undefined,
         sendResourceEmail: args.send_resource_email as boolean | undefined,
-      })
+      });
 
     case 'magnetlab_delete_funnel':
-      return client.deleteFunnel(args.id as string)
+      return client.deleteFunnel(args.id as string);
 
     case 'magnetlab_publish_funnel':
-      return client.publishFunnel(args.id as string)
+      return client.publishFunnel(args.id as string);
 
     case 'magnetlab_unpublish_funnel':
-      return client.unpublishFunnel(args.id as string)
-
-    case 'magnetlab_generate_funnel_content':
-      return client.generateFunnelContent({ leadMagnetId: args.lead_magnet_id as string })
+      return client.unpublishFunnel(args.id as string);
 
     default:
-      throw new Error(`Unknown funnel tool: ${name}`)
+      throw new Error(`Unknown funnel tool: ${name}`);
   }
 }
