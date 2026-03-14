@@ -12,7 +12,7 @@ import type { DataScope } from '@/lib/utils/team-context';
 // ─── Column sets ────────────────────────────────────────────────────────────
 
 const LM_DETAIL_COLUMNS =
-  'id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, status, published_at, created_at, updated_at';
+  'id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, status, published_at, created_at, updated_at, content, content_version';
 
 const BRAND_KIT_COLUMNS =
   'id, user_id, business_description, business_type, credibility_markers, sender_name, saved_ideation_result, ideation_generated_at, urgent_pains, templates, processes, tools, frequent_questions, results, success_example, audience_tools, preferred_tone, style_profile, best_video_url, best_video_title, content_links, community_url, created_at, updated_at';
@@ -21,7 +21,7 @@ const BRAND_KIT_COLUMNS =
 
 export async function findLeadMagnets(
   scope: DataScope,
-  opts: { status?: string | null; limit?: number; offset?: number },
+  opts: { status?: string | null; limit?: number; offset?: number }
 ) {
   const supabase = createSupabaseAdminClient();
   let query = applyScope(supabase.from('lead_magnets').select('*', { count: 'exact' }), scope)
@@ -37,7 +37,7 @@ export async function findLeadMagnetById(scope: DataScope, id: string) {
   const supabase = createSupabaseAdminClient();
   const { data } = await applyScope(
     supabase.from('lead_magnets').select(LM_DETAIL_COLUMNS).eq('id', id),
-    scope,
+    scope
   ).single();
   return data ?? null;
 }
@@ -47,7 +47,7 @@ export async function findLeadMagnetScoped(scope: DataScope, id: string, columns
   const supabase = createSupabaseAdminClient();
   const { data } = await applyScope(
     supabase.from('lead_magnets').select(columns).eq('id', id),
-    scope,
+    scope
   ).single();
   return data ?? null;
 }
@@ -55,11 +55,7 @@ export async function findLeadMagnetScoped(scope: DataScope, id: string, columns
 /** Ownership-only check (used by catalog route which bypasses team scope). */
 export async function findLeadMagnetByOwner(userId: string, id: string) {
   const supabase = createSupabaseAdminClient();
-  const { data } = await supabase
-    .from('lead_magnets')
-    .select('id, user_id')
-    .eq('id', id)
-    .single();
+  const { data } = await supabase.from('lead_magnets').select('id, user_id').eq('id', id).single();
   return data ?? null;
 }
 
@@ -82,7 +78,9 @@ export async function findLeadMagnetsByUserId(
 }
 
 /** Get basic lead magnet by id only (for external stats — no user filter). */
-export async function findLeadMagnetByIdBasic(id: string): Promise<{ id: string; title: string | null; created_at: string; updated_at: string } | null> {
+export async function findLeadMagnetByIdBasic(
+  id: string
+): Promise<{ id: string; title: string | null; created_at: string; updated_at: string } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('lead_magnets')
@@ -129,7 +127,7 @@ export async function incrementUsageRpc(userId: string, limitType: string) {
 export async function createLeadMagnet(
   userId: string,
   teamId: string | null,
-  fields: Record<string, unknown>,
+  fields: Record<string, unknown>
 ) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -145,7 +143,7 @@ export async function createLeadMagnetSelect(
   userId: string,
   teamId: string | null,
   fields: Record<string, unknown>,
-  selectCols: string,
+  selectCols: string
 ) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -161,12 +159,12 @@ export async function createLeadMagnetSelect(
 export async function updateLeadMagnet(
   scope: DataScope,
   id: string,
-  updates: Record<string, unknown>,
+  updates: Record<string, unknown>
 ) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await applyScope(
     supabase.from('lead_magnets').update(updates).eq('id', id),
-    scope,
+    scope
   )
     .select()
     .single();
@@ -179,12 +177,12 @@ export async function updateLeadMagnetWithSelect(
   scope: DataScope,
   id: string,
   updates: Record<string, unknown>,
-  selectCols: string,
+  selectCols: string
 ) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await applyScope(
     supabase.from('lead_magnets').update(updates).eq('id', id),
-    scope,
+    scope
   )
     .select(selectCols)
     .single();
@@ -196,12 +194,12 @@ export async function updateLeadMagnetWithSelect(
 export async function updateLeadMagnetNoReturn(
   scope: DataScope,
   id: string,
-  updates: Record<string, unknown>,
+  updates: Record<string, unknown>
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await applyScope(
     supabase.from('lead_magnets').update(updates).eq('id', id),
-    scope,
+    scope
   );
   if (error) throw new Error(`lead-magnets.updateLeadMagnetNoReturn: ${error.message}`);
 }
@@ -210,7 +208,7 @@ export async function updateLeadMagnetNoReturn(
 export async function updateLeadMagnetByOwner(
   userId: string,
   id: string,
-  updates: Record<string, unknown>,
+  updates: Record<string, unknown>
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase
@@ -222,10 +220,7 @@ export async function updateLeadMagnetByOwner(
 }
 
 /** Update lead magnet by id only (for verified webhooks e.g. gtm-callback). */
-export async function updateLeadMagnetByIdUnscoped(
-  id: string,
-  updates: Record<string, unknown>,
-) {
+export async function updateLeadMagnetByIdUnscoped(id: string, updates: Record<string, unknown>) {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase.from('lead_magnets').update(updates).eq('id', id);
   return { error };
@@ -249,10 +244,7 @@ export async function deleteLeadMagnetWithCascade(scope: DataScope, id: string):
     await supabase.from('funnel_pages').delete().eq('lead_magnet_id', id);
   }
 
-  const { error } = await applyScope(
-    supabase.from('lead_magnets').delete().eq('id', id),
-    scope,
-  );
+  const { error } = await applyScope(supabase.from('lead_magnets').delete().eq('id', id), scope);
   if (error) throw new Error(`lead-magnets.deleteLeadMagnetWithCascade: ${error.message}`);
 }
 
@@ -260,6 +252,29 @@ export async function deleteLeadMagnetWithCascade(scope: DataScope, id: string):
 export async function deleteLeadMagnetById(id: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
   await supabase.from('lead_magnets').delete().eq('id', id);
+}
+
+// ─── Content deep-merge update ───────────────────────────────────────────────
+
+/** Atomic update of content + content_version with optional optimistic lock. */
+export async function updateLeadMagnetContent(
+  scope: DataScope,
+  id: string,
+  content: Record<string, unknown>,
+  contentVersion: number
+) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await applyScope(
+    supabase
+      .from('lead_magnets')
+      .update({ content, content_version: contentVersion, updated_at: new Date().toISOString() })
+      .eq('id', id),
+    scope
+  )
+    .select(LM_DETAIL_COLUMNS)
+    .single();
+  if (error) throw new Error(`lead-magnets.updateLeadMagnetContent: ${error.message}`);
+  return data;
 }
 
 // ─── Brand kit ───────────────────────────────────────────────────────────────
@@ -274,9 +289,14 @@ export async function getBrandKitByUserId(userId: string) {
   return data ?? null;
 }
 
-export async function upsertBrandKit(userId: string, context: Record<string, unknown>): Promise<void> {
+export async function upsertBrandKit(
+  userId: string,
+  context: Record<string, unknown>
+): Promise<void> {
   const supabase = createSupabaseAdminClient();
-  await supabase.from('brand_kits').upsert({ user_id: userId, ...context }, { onConflict: 'user_id' });
+  await supabase
+    .from('brand_kits')
+    .upsert({ user_id: userId, ...context }, { onConflict: 'user_id' });
 }
 
 // ─── Background jobs ─────────────────────────────────────────────────────────
@@ -284,7 +304,7 @@ export async function upsertBrandKit(userId: string, context: Record<string, unk
 export async function createBackgroundJob(
   userId: string,
   jobType: string,
-  input: unknown,
+  input: unknown
 ): Promise<{ id: string }> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -292,16 +312,14 @@ export async function createBackgroundJob(
     .insert({ user_id: userId, job_type: jobType, status: 'pending', input })
     .select('id')
     .single();
-  if (error || !data) throw new Error(`lead-magnets.createBackgroundJob: ${error?.message ?? 'no data'}`);
+  if (error || !data)
+    throw new Error(`lead-magnets.createBackgroundJob: ${error?.message ?? 'no data'}`);
   return data;
 }
 
 export async function updateJobTriggerId(jobId: string, triggerTaskId: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
-  await supabase
-    .from('background_jobs')
-    .update({ trigger_task_id: triggerTaskId })
-    .eq('id', jobId);
+  await supabase.from('background_jobs').update({ trigger_task_id: triggerTaskId }).eq('id', jobId);
 }
 
 // ─── Funnel page helpers (screenshots + import) ──────────────────────────────
@@ -328,18 +346,16 @@ export async function checkSlugExists(scope: DataScope, slug: string): Promise<b
   const supabase = createSupabaseAdminClient();
   const { data } = await applyScope(
     supabase.from('funnel_pages').select('id').eq('slug', slug),
-    scope,
+    scope
   ).single();
   return !!data;
 }
 
-export async function createFunnelPageWithRetry(fields: Record<string, unknown>): Promise<{ id: string }> {
+export async function createFunnelPageWithRetry(
+  fields: Record<string, unknown>
+): Promise<{ id: string }> {
   const supabase = createSupabaseAdminClient();
-  let { data, error } = await supabase
-    .from('funnel_pages')
-    .insert(fields)
-    .select('id')
-    .single();
+  let { data, error } = await supabase.from('funnel_pages').insert(fields).select('id').single();
   if (error?.code === '23505') {
     const slug = `${String(fields.slug)}-${Date.now().toString(36).slice(-4)}`;
     ({ data, error } = await supabase
@@ -348,7 +364,8 @@ export async function createFunnelPageWithRetry(fields: Record<string, unknown>)
       .select('id')
       .single());
   }
-  if (error || !data) throw new Error(`lead-magnets.createFunnelPageWithRetry: ${error?.message ?? 'no data'}`);
+  if (error || !data)
+    throw new Error(`lead-magnets.createFunnelPageWithRetry: ${error?.message ?? 'no data'}`);
   return data;
 }
 
@@ -359,7 +376,7 @@ export async function uploadScreenshotToStorage(
   leadMagnetId: string,
   prefix: string,
   size: string,
-  buffer: Buffer,
+  buffer: Buffer
 ): Promise<string> {
   const supabase = createSupabaseAdminClient();
   const path = `screenshots/${userId}/${leadMagnetId}/${prefix}-${size}.png`;

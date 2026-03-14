@@ -1,118 +1,158 @@
+/** MCP tool argument validation. Named Zod schema for every tool — no passthrough. */
+
 import { z } from 'zod';
 import {
   ARCHETYPES,
-  IDEA_STATUS,
+  BACKGROUND_STYLES,
+  CONTENT_PILLARS,
+  CONTENT_TYPES,
+  EMAIL_SEQUENCE_STATUS,
+  FUNNEL_TARGET_TYPES,
+  FUNNEL_THEMES,
   KNOWLEDGE_CATEGORIES,
   KNOWLEDGE_TYPES,
-  READINESS_GOALS,
+  LEAD_MAGNET_STATUS_V2,
+  PIPELINE_POST_STATUS,
 } from './constants.js';
 
-// Convert readonly tuples to mutable arrays for z.enum compatibility
+// ─── Enum Helpers ─────────────────────────────────────────────────────────────
+
 const archetypeValues = [...ARCHETYPES] as [string, ...string[]];
-const ideaStatusValues = [...IDEA_STATUS] as [string, ...string[]];
+const leadMagnetStatusValues = [...LEAD_MAGNET_STATUS_V2] as [string, ...string[]];
+const funnelThemeValues = [...FUNNEL_THEMES] as [string, ...string[]];
+const backgroundStyleValues = [...BACKGROUND_STYLES] as [string, ...string[]];
+const targetTypeValues = [...FUNNEL_TARGET_TYPES] as [string, ...string[]];
+const emailSequenceStatusValues = [...EMAIL_SEQUENCE_STATUS] as [string, ...string[]];
+const postStatusValues = [...PIPELINE_POST_STATUS] as [string, ...string[]];
 const knowledgeCategoryValues = [...KNOWLEDGE_CATEGORIES] as [string, ...string[]];
 const knowledgeTypeValues = [...KNOWLEDGE_TYPES] as [string, ...string[]];
-const readinessGoalValues = [...READINESS_GOALS] as [string, ...string[]];
+const contentPillarValues = [...CONTENT_PILLARS] as [string, ...string[]];
+const contentTypeValues = [...CONTENT_TYPES] as [string, ...string[]];
 
-// Schemas for tools that require strict argument validation
-export const toolSchemas = {
-  // Lead Magnet tools
-  magnetlab_get_lead_magnet: z.object({
-    id: z.string().min(1, 'id is required'),
+// ─── Shared Field Schemas ─────────────────────────────────────────────────────
+
+const teamIdField = z.string().optional();
+const uuidField = z.string().min(1);
+const paginationLimit = z.number().min(1).max(100).default(50).optional();
+const paginationOffset = z.number().min(0).default(0).optional();
+
+// ─── Tool Schemas (37 tools) ─────────────────────────────────────────────────
+
+export const toolSchemas: Record<string, z.ZodType> = {
+  // ── Lead Magnets (5) ──────────────────────────────────────────────────────
+
+  magnetlab_list_lead_magnets: z.object({
+    status: z.enum(leadMagnetStatusValues).optional(),
+    limit: paginationLimit,
+    offset: paginationOffset,
+    team_id: teamIdField,
   }),
+
+  magnetlab_get_lead_magnet: z.object({
+    id: uuidField,
+    team_id: teamIdField,
+  }),
+
   magnetlab_create_lead_magnet: z.object({
     title: z.string().min(1, 'title is required'),
     archetype: z.enum(archetypeValues, {
       message: `archetype must be one of: ${ARCHETYPES.join(', ')}`,
     }),
+    concept: z.record(z.unknown()).optional(),
+    team_id: teamIdField,
   }),
+
+  magnetlab_update_lead_magnet: z.object({
+    id: uuidField,
+    content: z.record(z.unknown()),
+    expected_version: z.number().int().optional(),
+    team_id: teamIdField,
+  }),
+
   magnetlab_delete_lead_magnet: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_get_lead_magnet_stats: z.object({
-    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
-  }),
-  magnetlab_analyze_competitor: z.object({
-    url: z.string().url('url must be a valid URL'),
-  }),
-  magnetlab_analyze_transcript: z.object({
-    transcript: z.string().min(50, 'transcript must be at least 50 characters'),
+    id: uuidField,
+    team_id: teamIdField,
   }),
 
-  // Ideation tools
-  magnetlab_ideate_lead_magnets: z.object({
-    business_description: z.string().min(1, 'business_description is required'),
-    business_type: z.string().min(1, 'business_type is required'),
-  }),
-  magnetlab_extract_content: z.object({
-    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
-    archetype: z.enum(archetypeValues),
-    concept: z.record(z.unknown()),
-    answers: z.record(z.string()),
-  }),
-  magnetlab_generate_content: z.object({
-    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
-    archetype: z.enum(archetypeValues),
-    concept: z.record(z.unknown()),
-    answers: z.record(z.string()),
-  }),
-  magnetlab_write_linkedin_posts: z.object({
-    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
-    lead_magnet_title: z.string().min(1, 'lead_magnet_title is required'),
-    contents: z.string().min(1, 'contents is required'),
-    problem_solved: z.string().min(1, 'problem_solved is required'),
-  }),
-  magnetlab_polish_lead_magnet: z.object({
-    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
-  }),
-  magnetlab_get_job_status: z.object({
-    job_id: z.string().min(1, 'job_id is required'),
+  // ── Funnels (7) ───────────────────────────────────────────────────────────
+
+  magnetlab_list_funnels: z.object({
+    team_id: teamIdField,
   }),
 
-  // Funnel tools
   magnetlab_get_funnel: z.object({
-    id: z.string().min(1, 'id is required'),
+    id: uuidField,
+    team_id: teamIdField,
   }),
+
   magnetlab_create_funnel: z.object({
+    lead_magnet_id: z.string().optional(),
+    library_id: z.string().optional(),
+    external_resource_id: z.string().optional(),
+    target_type: z.enum(targetTypeValues).optional(),
     slug: z.string().min(1, 'slug is required'),
+    optin_headline: z.string().optional(),
+    optin_subline: z.string().optional(),
+    optin_button_text: z.string().optional(),
+    optin_social_proof: z.string().optional(),
+    thankyou_headline: z.string().optional(),
+    thankyou_subline: z.string().optional(),
+    vsl_url: z.string().optional(),
+    calendly_url: z.string().optional(),
+    theme: z.enum(funnelThemeValues).optional(),
+    primary_color: z.string().optional(),
+    background_style: z.enum(backgroundStyleValues).optional(),
+    logo_url: z.string().optional(),
+    qualification_form_id: z.string().optional(),
+    team_id: teamIdField,
   }),
+
   magnetlab_update_funnel: z.object({
-    id: z.string().min(1, 'id is required'),
+    id: uuidField,
+    slug: z.string().optional(),
+    optin_headline: z.string().optional(),
+    optin_subline: z.string().optional(),
+    optin_button_text: z.string().optional(),
+    optin_social_proof: z.string().optional(),
+    thankyou_headline: z.string().optional(),
+    thankyou_subline: z.string().optional(),
+    vsl_url: z.string().optional(),
+    calendly_url: z.string().optional(),
+    theme: z.enum(funnelThemeValues).optional(),
+    primary_color: z.string().optional(),
+    background_style: z.enum(backgroundStyleValues).optional(),
+    logo_url: z.string().optional(),
+    qualification_form_id: z.string().nullable().optional(),
+    qualification_pass_message: z.string().nullable().optional(),
+    qualification_fail_message: z.string().nullable().optional(),
+    redirect_trigger: z
+      .enum(['none', 'immediate', 'after_qualification'] as [string, ...string[]])
+      .optional(),
+    redirect_url: z.string().nullable().optional(),
+    redirect_fail_url: z.string().nullable().optional(),
+    homepage_url: z.string().nullable().optional(),
+    homepage_label: z.string().nullable().optional(),
+    send_resource_email: z.boolean().optional(),
+    team_id: teamIdField,
   }),
+
   magnetlab_delete_funnel: z.object({
-    id: z.string().min(1, 'id is required'),
+    id: uuidField,
+    team_id: teamIdField,
   }),
+
   magnetlab_publish_funnel: z.object({
-    id: z.string().min(1, 'id is required'),
+    id: uuidField,
+    team_id: teamIdField,
   }),
+
   magnetlab_unpublish_funnel: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_generate_funnel_content: z.object({
-    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
+    id: uuidField,
+    team_id: teamIdField,
   }),
 
-  // Email sequence tools
-  magnetlab_get_email_sequence: z.object({
-    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
-  }),
-  magnetlab_generate_email_sequence: z.object({
-    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
-  }),
-  magnetlab_update_email_sequence: z.object({
-    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
-  }),
-  magnetlab_activate_email_sequence: z.object({
-    lead_magnet_id: z.string().min(1, 'lead_magnet_id is required'),
-  }),
+  // ── Knowledge (5) ─────────────────────────────────────────────────────────
 
-  // Content pipeline tools
-  magnetlab_submit_transcript: z.object({
-    transcript: z.string().min(100, 'transcript must be at least 100 characters'),
-  }),
-  magnetlab_delete_transcript: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
   magnetlab_search_knowledge: z.object({
     query: z.string().min(1).optional(),
     category: z.enum(knowledgeCategoryValues).optional(),
@@ -120,204 +160,220 @@ export const toolSchemas = {
     topic: z.string().optional(),
     min_quality: z.number().int().min(1).max(5).optional(),
     since: z.string().optional(),
+    team_id: teamIdField,
   }),
+
+  magnetlab_browse_knowledge: z.object({
+    category: z.enum(knowledgeCategoryValues).optional(),
+    tag: z.string().optional(),
+    limit: z.number().min(1).max(100).default(20).optional(),
+    team_id: teamIdField,
+  }),
+
+  magnetlab_get_knowledge_clusters: z.object({
+    team_id: teamIdField,
+  }),
+
   magnetlab_ask_knowledge: z.object({
     question: z.string().min(3, 'question must be at least 3 characters'),
+    team_id: teamIdField,
   }),
-  magnetlab_knowledge_readiness: z.object({
-    topic: z.string().min(1, 'topic is required'),
-    goal: z.enum(readinessGoalValues, {
-      message: `goal must be one of: ${READINESS_GOALS.join(', ')}`,
-    }),
+
+  magnetlab_submit_transcript: z.object({
+    transcript: z.string().min(100, 'transcript must be at least 100 characters'),
+    title: z.string().optional(),
+    team_id: teamIdField,
   }),
-  magnetlab_export_knowledge: z.object({
-    topic: z.string().min(1, 'topic is required'),
-    format: z.enum(['structured', 'markdown', 'json'] as [string, ...string[]]).optional(),
+
+  // ── Posts (6) ─────────────────────────────────────────────────────────────
+
+  magnetlab_list_posts: z.object({
+    status: z.enum(postStatusValues).optional(),
+    is_buffer: z.boolean().optional(),
+    limit: paginationLimit,
+    team_id: teamIdField,
   }),
-  magnetlab_topic_detail: z.object({
-    slug: z.string().min(1, 'slug is required'),
-  }),
-  magnetlab_get_idea: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_update_idea_status: z.object({
-    idea_id: z.string().min(1, 'idea_id is required'),
-    status: z.enum(ideaStatusValues, {
-      message: `status must be one of: ${IDEA_STATUS.join(', ')}`,
-    }),
-  }),
-  magnetlab_delete_idea: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_write_post_from_idea: z.object({
-    idea_id: z.string().min(1, 'idea_id is required'),
-  }),
+
   magnetlab_get_post: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_update_post: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_delete_post: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_polish_post: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_publish_post: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_schedule_post: z.object({
-    post_id: z.string().min(1, 'post_id is required'),
-    scheduled_time: z.string().min(1, 'scheduled_time is required'),
-  }),
-  magnetlab_get_posts_by_date_range: z.object({
-    start_date: z.string().min(1, 'start_date is required'),
-    end_date: z.string().min(1, 'end_date is required'),
-  }),
-  magnetlab_quick_write: z.object({
-    topic: z.string().min(1, 'topic is required'),
-  }),
-  magnetlab_create_posting_slot: z.object({
-    day_of_week: z.number().min(0).max(6),
-    time: z.string().min(1, 'time is required'),
-  }),
-  magnetlab_delete_posting_slot: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_approve_plan: z.object({
-    plan_id: z.string().min(1, 'plan_id is required'),
-  }),
-  magnetlab_update_business_context: z.object({
-    context: z.record(z.unknown()),
-  }),
-  magnetlab_extract_writing_style: z.object({
-    linkedin_url: z.string().url('linkedin_url must be a valid URL'),
-  }),
-  magnetlab_get_writing_style: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_match_template: z.object({
-    idea_id: z.string().min(1, 'idea_id is required'),
+    id: uuidField,
+    team_id: teamIdField,
   }),
 
-  // Email system tools — Flows
-  magnetlab_get_email_flow: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_create_email_flow: z.object({
-    name: z.string().min(1, 'name is required').max(200),
-    trigger_type: z.enum(['lead_magnet', 'manual']),
-  }),
-  magnetlab_update_email_flow: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_delete_email_flow: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_add_flow_step: z.object({
-    flow_id: z.string().min(1, 'flow_id is required'),
-    step_number: z.number().int().min(0),
-    subject: z.string().min(1, 'subject is required').max(500),
+  magnetlab_create_post: z.object({
     body: z.string().min(1, 'body is required'),
-    delay_days: z.number().int().min(0).max(365),
-  }),
-  magnetlab_generate_flow_emails: z.object({
-    flow_id: z.string().min(1, 'flow_id is required'),
-  }),
-
-  // Email system tools — Broadcasts
-  magnetlab_get_broadcast: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_update_broadcast: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-  magnetlab_send_broadcast: z.object({
-    id: z.string().min(1, 'id is required'),
+    title: z.string().optional(),
+    pillar: z.enum(contentPillarValues).optional(),
+    content_type: z.enum(contentTypeValues).optional(),
+    team_id: teamIdField,
   }),
 
-  // Email system tools — Subscribers
-  magnetlab_add_subscriber: z.object({
-    email: z.string().email('email must be a valid email address'),
-  }),
-  magnetlab_unsubscribe: z.object({
-    id: z.string().min(1, 'id is required'),
-  }),
-
-  // Brand kit tools
-  magnetlab_extract_business_context: z.object({
-    content: z.string().min(50, 'content must be at least 50 characters'),
+  magnetlab_update_post: z.object({
+    id: uuidField,
+    draft_content: z.string().optional(),
+    final_content: z.string().optional(),
+    status: z.enum(postStatusValues).optional(),
+    team_id: teamIdField,
   }),
 
-  // Swipe file tools
-  magnetlab_submit_to_swipe_file: z.object({
-    content: z.string().min(1, 'content is required'),
-    type: z.string().min(1, 'type is required'),
-    niche: z.string().min(1, 'niche is required'),
+  magnetlab_delete_post: z.object({
+    id: uuidField,
+    team_id: teamIdField,
   }),
 
-  // Library tools
-  magnetlab_get_library: z.object({
-    id: z.string().min(1, 'id is required'),
+  magnetlab_publish_post: z.object({
+    id: uuidField,
+    team_id: teamIdField,
   }),
-  magnetlab_create_library: z.object({
-    name: z.string().min(1, 'name is required'),
+
+  // ── Email Sequences (3) ───────────────────────────────────────────────────
+
+  magnetlab_get_email_sequence: z.object({
+    lead_magnet_id: uuidField,
+    team_id: teamIdField,
   }),
-  magnetlab_update_library: z.object({
-    id: z.string().min(1, 'id is required'),
+
+  magnetlab_save_email_sequence: z.object({
+    lead_magnet_id: uuidField,
+    emails: z
+      .array(
+        z.object({
+          day: z.number().int().min(0),
+          subject: z.string().min(1, 'subject is required'),
+          body: z.string().min(1, 'body is required'),
+          replyTrigger: z.string().optional(),
+        })
+      )
+      .optional(),
+    status: z.enum(emailSequenceStatusValues).optional(),
+    team_id: teamIdField,
   }),
-  magnetlab_delete_library: z.object({
-    id: z.string().min(1, 'id is required'),
+
+  magnetlab_activate_email_sequence: z.object({
+    lead_magnet_id: uuidField,
+    team_id: teamIdField,
   }),
-  magnetlab_list_library_items: z.object({
-    library_id: z.string().min(1, 'library_id is required'),
+
+  // ── Leads (3) ─────────────────────────────────────────────────────────────
+
+  magnetlab_list_leads: z.object({
+    funnel_id: z.string().optional(),
+    lead_magnet_id: z.string().optional(),
+    qualified: z.boolean().optional(),
+    search: z.string().optional(),
+    limit: paginationLimit,
+    offset: paginationOffset,
+    team_id: teamIdField,
   }),
-  magnetlab_create_library_item: z.object({
-    library_id: z.string().min(1, 'library_id is required'),
+
+  magnetlab_get_lead: z.object({
+    id: uuidField,
+    team_id: teamIdField,
+  }),
+
+  magnetlab_export_leads: z.object({
+    funnel_id: z.string().optional(),
+    lead_magnet_id: z.string().optional(),
+    qualified: z.boolean().optional(),
+    team_id: teamIdField,
+  }),
+
+  // ── Schema / Introspection (3) ────────────────────────────────────────────
+
+  magnetlab_list_archetypes: z.object({
+    team_id: teamIdField,
+  }),
+
+  magnetlab_get_archetype_schema: z.object({
+    archetype: z.enum(archetypeValues, {
+      message: `archetype must be one of: ${ARCHETYPES.join(', ')}`,
+    }),
+    team_id: teamIdField,
+  }),
+
+  magnetlab_get_business_context: z.object({
+    team_id: teamIdField,
+  }),
+
+  // ── Compound Actions (2) ──────────────────────────────────────────────────
+
+  magnetlab_launch_lead_magnet: z.object({
     title: z.string().min(1, 'title is required'),
+    archetype: z.enum(archetypeValues, {
+      message: `archetype must be one of: ${ARCHETYPES.join(', ')}`,
+    }),
+    content: z.record(z.unknown()),
+    slug: z
+      .string()
+      .min(1)
+      .max(100)
+      .regex(/^[a-z0-9][a-z0-9-]*$/, {
+        message: 'slug must be lowercase alphanumeric with hyphens',
+      }),
+    funnel_theme: z.enum(['dark', 'light', 'modern'] as [string, ...string[]]).optional(),
+    email_sequence: z
+      .object({
+        emails: z.array(
+          z.object({
+            subject: z.string().min(1),
+            body: z.string().min(1),
+            delay_days: z.number().int().min(0),
+          })
+        ),
+      })
+      .optional(),
+    team_id: teamIdField,
   }),
 
-  // Qualification form tools
-  magnetlab_get_qualification_form: z.object({
-    id: z.string().min(1, 'id is required'),
+  magnetlab_schedule_content_week: z.object({
+    posts: z
+      .array(
+        z.object({
+          body: z.string().min(1, 'body is required'),
+          title: z.string().optional(),
+          pillar: z.enum(contentPillarValues).optional(),
+          content_type: z.enum(contentTypeValues).optional(),
+        })
+      )
+      .min(1, 'at least one post is required')
+      .max(7, 'maximum 7 posts per week'),
+    week_start: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'week_start must be YYYY-MM-DD')
+      .optional(),
+    team_id: teamIdField,
   }),
-  magnetlab_create_qualification_form: z.object({
-    name: z.string().min(1, 'name is required'),
+
+  // ── Feedback / Analytics (2) ──────────────────────────────────────────────
+
+  magnetlab_get_performance_insights: z.object({
+    period: z.enum(['7d', '30d', '90d'] as [string, ...string[]]).optional(),
+    team_id: teamIdField,
   }),
-  magnetlab_list_questions: z.object({
-    form_id: z.string().min(1, 'form_id is required'),
+
+  magnetlab_get_recommendations: z.object({
+    team_id: teamIdField,
   }),
-  magnetlab_create_question: z.object({
-    form_id: z.string().min(1, 'form_id is required'),
-    question_text: z.string().min(1, 'question_text is required'),
-    question_type: z.enum(['text', 'single_choice', 'multi_choice']),
-  }),
-} as const;
+
+  // ── Account (1) ───────────────────────────────────────────────────────────
+
+  magnetlab_list_teams: z.object({}),
+};
+
+// ─── Validation Function ──────────────────────────────────────────────────────
 
 export type ToolName = keyof typeof toolSchemas;
 
-export type ValidationResult<T> = { success: true; data: T } | { success: false; error: string };
-
 /**
- * Validate tool arguments against the schema for the given tool.
- * Returns success with parsed data if valid, or failure with error message.
- * Tools without schemas pass through unchanged.
+ * Validate tool arguments against the matching Zod schema.
+ * Throws if the tool name is unknown or args fail validation.
  */
-export function validateToolArgs<T>(toolName: string, args: unknown): ValidationResult<T> {
-  const schema = toolSchemas[toolName as ToolName];
-
-  // Tools without explicit schemas pass through
+export function validateToolArgs(
+  toolName: string,
+  args: Record<string, unknown>
+): Record<string, unknown> {
+  const schema = toolSchemas[toolName];
   if (!schema) {
-    return { success: true, data: args as T };
+    throw new Error(`Unknown tool: ${toolName}`);
   }
-
-  const result = schema.safeParse(args);
-  if (!result.success) {
-    const issues = result.error.issues || [];
-    const errors = issues.map((e: { message: string }) => e.message).join(', ');
-    return { success: false, error: errors || 'Validation failed' };
-  }
-
-  return { success: true, data: result.data as T };
+  return schema.parse(args) as Record<string, unknown>;
 }

@@ -2,8 +2,10 @@
  * Leads Service
  */
 
-import * as leadsRepo from "@/server/repositories/leads.repo";
-import type { DataScope } from "@/lib/utils/team-context";
+import * as leadsRepo from '@/server/repositories/leads.repo';
+import type { DataScope } from '@/lib/utils/team-context';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LeadWithFunnel {
   id: string;
@@ -37,9 +39,53 @@ export interface LeadListItem {
   leadMagnetTitle: string | null;
 }
 
+interface LeadDetailRow {
+  id: string;
+  funnel_page_id: string;
+  lead_magnet_id: string;
+  user_id: string;
+  team_id: string | null;
+  email: string;
+  name: string | null;
+  is_qualified: boolean | null;
+  qualification_answers: Record<string, string> | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  created_at: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  linkedin_url: string | null;
+  heyreach_delivery_status: string | null;
+  funnel_pages: {
+    slug: string;
+    optin_headline: string;
+    lead_magnets: { title: string } | null;
+  } | null;
+}
+
+export interface LeadDetail {
+  id: string;
+  funnelPageId: string;
+  leadMagnetId: string;
+  email: string;
+  name: string | null;
+  isQualified: boolean | null;
+  qualificationAnswers: Record<string, string> | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  createdAt: string;
+  linkedinUrl: string | null;
+  heyreachDeliveryStatus: string | null;
+  funnelSlug: string | null;
+  funnelHeadline: string | null;
+  leadMagnetTitle: string | null;
+}
+
 export async function getLeads(
   scope: DataScope,
-  filters: leadsRepo.LeadFilters,
+  filters: leadsRepo.LeadFilters
 ): Promise<{ leads: LeadListItem[]; total: number; limit: number; offset: number }> {
   const { data, count } = await leadsRepo.findLeads(scope, filters);
   const leads = (data as LeadWithFunnel[]).map((lead) => ({
@@ -65,9 +111,9 @@ export async function getLeads(
 }
 
 function escapeCSV(value: string): string {
-  if (!value) return "";
+  if (!value) return '';
   const escaped = value.replace(/"/g, '""');
-  if (escaped.includes(",") || escaped.includes("\n") || escaped.includes('"')) {
+  if (escaped.includes(',') || escaped.includes('\n') || escaped.includes('"')) {
     return `"${escaped}"`;
   }
   return escaped;
@@ -75,53 +121,82 @@ function escapeCSV(value: string): string {
 
 export async function exportLeadsCsv(
   scope: DataScope,
-  filters: Omit<leadsRepo.LeadFilters, "limit" | "offset">,
+  filters: Omit<leadsRepo.LeadFilters, 'limit' | 'offset'>
 ): Promise<{ csv: string; filename: string }> {
   const data = await leadsRepo.findLeadsForExport(scope, filters);
   if (!data || data.length === 0) {
-    const err = Object.assign(new Error("No leads to export"), { statusCode: 404 });
+    const err = Object.assign(new Error('No leads to export'), { statusCode: 404 });
     throw err;
   }
   const headers = [
-    "email",
-    "name",
-    "qualified",
-    "lead_magnet",
-    "funnel_slug",
-    "answers",
-    "utm_source",
-    "utm_medium",
-    "utm_campaign",
-    "created_at",
+    'email',
+    'name',
+    'qualified',
+    'lead_magnet',
+    'funnel_slug',
+    'answers',
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'created_at',
   ];
-  const rows = (data as Array<{
-    email: string;
-    name: string | null;
-    is_qualified: boolean | null;
-    qualification_answers: Record<string, string> | null;
-    utm_source: string | null;
-    utm_medium: string | null;
-    utm_campaign: string | null;
-    created_at: string;
-    lead_magnets: { title: string } | null;
-    funnel_pages: { slug: string } | null;
-  }>).map((lead) => {
+  const rows = (
+    data as Array<{
+      email: string;
+      name: string | null;
+      is_qualified: boolean | null;
+      qualification_answers: Record<string, string> | null;
+      utm_source: string | null;
+      utm_medium: string | null;
+      utm_campaign: string | null;
+      created_at: string;
+      lead_magnets: { title: string } | null;
+      funnel_pages: { slug: string } | null;
+    }>
+  ).map((lead) => {
     const leadMagnet = lead.lead_magnets;
     const funnelPage = lead.funnel_pages;
     return [
       escapeCSV(lead.email),
-      escapeCSV(lead.name || ""),
-      lead.is_qualified === null ? "" : lead.is_qualified ? "yes" : "no",
-      escapeCSV(leadMagnet?.title || ""),
-      escapeCSV(funnelPage?.slug || ""),
-      escapeCSV(lead.qualification_answers ? JSON.stringify(lead.qualification_answers) : ""),
-      escapeCSV(lead.utm_source || ""),
-      escapeCSV(lead.utm_medium || ""),
-      escapeCSV(lead.utm_campaign || ""),
+      escapeCSV(lead.name || ''),
+      lead.is_qualified === null ? '' : lead.is_qualified ? 'yes' : 'no',
+      escapeCSV(leadMagnet?.title || ''),
+      escapeCSV(funnelPage?.slug || ''),
+      escapeCSV(lead.qualification_answers ? JSON.stringify(lead.qualification_answers) : ''),
+      escapeCSV(lead.utm_source || ''),
+      escapeCSV(lead.utm_medium || ''),
+      escapeCSV(lead.utm_campaign || ''),
       lead.created_at,
-    ].join(",");
+    ].join(',');
   });
-  const csv = [headers.join(","), ...rows].join("\n");
-  const date = new Date().toISOString().split("T")[0];
+  const csv = [headers.join(','), ...rows].join('\n');
+  const date = new Date().toISOString().split('T')[0];
   return { csv, filename: `leads-export-${date}.csv` };
+}
+
+// ─── Single lead ──────────────────────────────────────────────────────────────
+
+export async function getLeadById(scope: DataScope, id: string): Promise<LeadDetail | null> {
+  const raw = await leadsRepo.findLeadById(scope, id);
+  if (!raw) return null;
+
+  const lead = raw as LeadDetailRow;
+  return {
+    id: lead.id,
+    funnelPageId: lead.funnel_page_id,
+    leadMagnetId: lead.lead_magnet_id,
+    email: lead.email,
+    name: lead.name,
+    isQualified: lead.is_qualified,
+    qualificationAnswers: lead.qualification_answers,
+    utmSource: lead.utm_source,
+    utmMedium: lead.utm_medium,
+    utmCampaign: lead.utm_campaign,
+    createdAt: lead.created_at,
+    linkedinUrl: lead.linkedin_url,
+    heyreachDeliveryStatus: lead.heyreach_delivery_status,
+    funnelSlug: lead.funnel_pages?.slug ?? null,
+    funnelHeadline: lead.funnel_pages?.optin_headline ?? null,
+    leadMagnetTitle: lead.funnel_pages?.lead_magnets?.title ?? null,
+  };
 }

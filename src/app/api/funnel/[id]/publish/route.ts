@@ -26,6 +26,13 @@ export async function POST(request: Request, { params }: RouteParams) {
   } catch (error) {
     const status = funnelsService.getStatusCode(error);
     const message = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status });
+    // Include enriched fields if present (publish content validation errors)
+    const enriched = error && typeof error === 'object' ? (error as Record<string, unknown>) : {};
+    const body: Record<string, unknown> = { error: message };
+    if (enriched.missing_fields !== undefined) body.missing_fields = enriched.missing_fields;
+    if (enriched.suggested_tool !== undefined) body.suggested_tool = enriched.suggested_tool;
+    if (enriched.archetype_schema_hint !== undefined)
+      body.archetype_schema_hint = enriched.archetype_schema_hint;
+    return NextResponse.json(body, { status });
   }
 }

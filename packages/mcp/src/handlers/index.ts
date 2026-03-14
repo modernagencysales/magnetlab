@@ -1,27 +1,96 @@
-import { MagnetLabClient } from '../client.js'
-import { handleLeadMagnetTools } from './lead-magnets.js'
-import { handleIdeationTools } from './ideation.js'
-import { handleFunnelTools } from './funnels.js'
-import { handleLeadTools } from './leads.js'
-import { handleAnalyticsTools } from './analytics.js'
-import { handleBrandKitTools } from './brand-kit.js'
-import { handleEmailSequenceTools } from './email-sequences.js'
-import { handleContentPipelineTools } from './content-pipeline.js'
-import { handleSwipeFileTools } from './swipe-file.js'
-import { handleLibraryTools } from './libraries.js'
-import { handleQualificationFormTools } from './qualification-forms.js'
-import { handleEmailSystemTools } from './email-system.js'
-import { toolCategories } from '../tools/index.js'
-import { validateToolArgs } from '../validation.js'
+/** Handler dispatcher. Routes all 37 tool calls to domain handlers via flat lookup map. Never contains business logic. */
+
+import type { MagnetLabClient } from '../client.js';
+import { validateToolArgs } from '../validation.js';
+import { handleLeadMagnetTools } from './lead-magnets.js';
+import { handleFunnelTools } from './funnels.js';
+import { handleKnowledgeTools } from './knowledge.js';
+import { handlePostTools } from './posts.js';
+import { handleEmailTools } from './email.js';
+import { handleLeadTools } from './leads.js';
+import { handleSchemaTools } from './schema.js';
+import { handleCompoundTools } from './compound.js';
+import { handleFeedbackTools } from './feedback.js';
+import { handleAccountTools } from './account.js';
+
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 export type ToolResult = {
-  content: Array<{ type: 'text'; text: string }>
-}
+  content: Array<{ type: 'text'; text: string }>;
+};
+
+type Handler = (
+  name: string,
+  args: Record<string, unknown>,
+  client: MagnetLabClient
+) => Promise<unknown>;
+
+// ─── Handler Map ────────────────────────────────────────────────────────────
+
+const handlerMap: Record<string, Handler> = {
+  // Lead magnets (5)
+  magnetlab_list_lead_magnets: handleLeadMagnetTools,
+  magnetlab_get_lead_magnet: handleLeadMagnetTools,
+  magnetlab_create_lead_magnet: handleLeadMagnetTools,
+  magnetlab_update_lead_magnet: handleLeadMagnetTools,
+  magnetlab_delete_lead_magnet: handleLeadMagnetTools,
+
+  // Funnels (7)
+  magnetlab_list_funnels: handleFunnelTools,
+  magnetlab_get_funnel: handleFunnelTools,
+  magnetlab_create_funnel: handleFunnelTools,
+  magnetlab_update_funnel: handleFunnelTools,
+  magnetlab_delete_funnel: handleFunnelTools,
+  magnetlab_publish_funnel: handleFunnelTools,
+  magnetlab_unpublish_funnel: handleFunnelTools,
+
+  // Knowledge (5)
+  magnetlab_search_knowledge: handleKnowledgeTools,
+  magnetlab_browse_knowledge: handleKnowledgeTools,
+  magnetlab_get_knowledge_clusters: handleKnowledgeTools,
+  magnetlab_ask_knowledge: handleKnowledgeTools,
+  magnetlab_submit_transcript: handleKnowledgeTools,
+
+  // Posts (6)
+  magnetlab_list_posts: handlePostTools,
+  magnetlab_get_post: handlePostTools,
+  magnetlab_create_post: handlePostTools,
+  magnetlab_update_post: handlePostTools,
+  magnetlab_delete_post: handlePostTools,
+  magnetlab_publish_post: handlePostTools,
+
+  // Email sequences (3)
+  magnetlab_get_email_sequence: handleEmailTools,
+  magnetlab_save_email_sequence: handleEmailTools,
+  magnetlab_activate_email_sequence: handleEmailTools,
+
+  // Leads (3)
+  magnetlab_list_leads: handleLeadTools,
+  magnetlab_get_lead: handleLeadTools,
+  magnetlab_export_leads: handleLeadTools,
+
+  // Schema / introspection (3)
+  magnetlab_list_archetypes: handleSchemaTools,
+  magnetlab_get_archetype_schema: handleSchemaTools,
+  magnetlab_get_business_context: handleSchemaTools,
+
+  // Compound actions (2)
+  magnetlab_launch_lead_magnet: handleCompoundTools,
+  magnetlab_schedule_content_week: handleCompoundTools,
+
+  // Feedback / analytics (2)
+  magnetlab_get_performance_insights: handleFeedbackTools,
+  magnetlab_get_recommendations: handleFeedbackTools,
+
+  // Account (1)
+  magnetlab_list_teams: handleAccountTools,
+};
+
+// ─── Dispatcher ─────────────────────────────────────────────────────────────
 
 /**
  * Main dispatcher for MCP tool calls.
- * Routes tool calls to the appropriate category handler based on tool name.
- * Validates required arguments before dispatching to handlers.
+ * Validates args via Zod, routes to the matching domain handler, and wraps results.
  */
 export async function handleToolCall(
   name: string,
@@ -29,82 +98,26 @@ export async function handleToolCall(
   client: MagnetLabClient
 ): Promise<ToolResult> {
   try {
-    // Validate args before calling handler
-    const validation = validateToolArgs(name, args)
-    if (!validation.success) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({ error: validation.error }),
-          },
-        ],
-      }
-    }
-
-    let result: unknown
-
-    // Route to appropriate handler based on tool category
-    if (toolCategories.leadMagnets.includes(name)) {
-      result = await handleLeadMagnetTools(name, args, client)
-    } else if (toolCategories.ideation.includes(name)) {
-      result = await handleIdeationTools(name, args, client)
-    } else if (toolCategories.funnels.includes(name)) {
-      result = await handleFunnelTools(name, args, client)
-    } else if (toolCategories.leads.includes(name)) {
-      result = await handleLeadTools(name, args, client)
-    } else if (toolCategories.analytics.includes(name)) {
-      result = await handleAnalyticsTools(name, args, client)
-    } else if (toolCategories.brandKit.includes(name)) {
-      result = await handleBrandKitTools(name, args, client)
-    } else if (toolCategories.emailSequences.includes(name)) {
-      result = await handleEmailSequenceTools(name, args, client)
-    } else if (toolCategories.contentPipeline.includes(name)) {
-      result = await handleContentPipelineTools(name, args, client)
-    } else if (toolCategories.swipeFile.includes(name)) {
-      result = await handleSwipeFileTools(name, args, client)
-    } else if (toolCategories.libraries.includes(name)) {
-      result = await handleLibraryTools(name, args, client)
-    } else if (toolCategories.qualificationForms.includes(name)) {
-      result = await handleQualificationFormTools(name, args, client)
-    } else if (toolCategories.emailSystem.includes(name)) {
-      result = await handleEmailSystemTools(name, args, client)
-    } else {
-      throw new Error(`Unknown tool: ${name}`)
-    }
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(result, null, 2),
-        },
-      ],
-    }
+    const validated = validateToolArgs(name, args);
+    const handler = handlerMap[name];
+    if (!handler) throw new Error(`Unknown tool: ${name}`);
+    const result = await handler(name, validated, client);
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            error: error instanceof Error ? error.message : 'Unknown error',
-          }),
-        },
-      ],
-    }
+    const message = error instanceof Error ? error.message : String(error);
+    return { content: [{ type: 'text', text: JSON.stringify({ error: message }, null, 2) }] };
   }
 }
 
-// Re-export individual handlers for testing
-export { handleLeadMagnetTools } from './lead-magnets.js'
-export { handleIdeationTools } from './ideation.js'
-export { handleFunnelTools } from './funnels.js'
-export { handleLeadTools } from './leads.js'
-export { handleAnalyticsTools } from './analytics.js'
-export { handleBrandKitTools } from './brand-kit.js'
-export { handleEmailSequenceTools } from './email-sequences.js'
-export { handleContentPipelineTools } from './content-pipeline.js'
-export { handleSwipeFileTools } from './swipe-file.js'
-export { handleLibraryTools } from './libraries.js'
-export { handleQualificationFormTools } from './qualification-forms.js'
-export { handleEmailSystemTools } from './email-system.js'
+// ─── Re-exports ─────────────────────────────────────────────────────────────
+
+export { handleLeadMagnetTools } from './lead-magnets.js';
+export { handleFunnelTools } from './funnels.js';
+export { handleKnowledgeTools } from './knowledge.js';
+export { handlePostTools } from './posts.js';
+export { handleEmailTools } from './email.js';
+export { handleLeadTools } from './leads.js';
+export { handleSchemaTools } from './schema.js';
+export { handleCompoundTools } from './compound.js';
+export { handleFeedbackTools } from './feedback.js';
+export { handleAccountTools } from './account.js';
