@@ -13,26 +13,14 @@ export async function listTeams(userId: string) {
   const memberships = await getMergedMemberships(userId);
   const owned = memberships.filter((m) => m.role === 'owner');
   const member = memberships.filter((m) => m.role === 'member');
-  // Flat `teams` array for MCP tools — each entry has id, name, role
-  const teams = memberships.map((m) => ({
-    id: m.teamId,
-    name: m.teamName,
-    role: m.role,
-  }));
-  return { owned, member, teams };
+  return { owned, member };
 }
 
 export async function createTeam(
   userId: string,
-  payload: {
-    name: string;
-    description?: string;
-    industry?: string;
-    target_audience?: string;
-    shared_goal?: string;
-  },
+  payload: { name: string; description?: string; industry?: string; target_audience?: string; shared_goal?: string },
   userEmail: string | null,
-  userName: string | null
+  userName: string | null,
 ) {
   const team = await teamRepo.createTeam(userId, {
     name: payload.name.trim(),
@@ -41,21 +29,20 @@ export async function createTeam(
     target_audience: payload.target_audience?.trim() || null,
     shared_goal: payload.shared_goal?.trim() || null,
   });
-  const teamId = team.id as string;
-  await teamRepo.addOwnerProfile(teamId, userId, userEmail, userName || 'Owner');
+  const teamId = (team.id as string);
+  await teamRepo.addOwnerProfile(
+    teamId,
+    userId,
+    userEmail,
+    userName || 'Owner',
+  );
   return { team };
 }
 
 export async function updateTeam(
   userId: string,
   teamId: string,
-  payload: {
-    name?: string;
-    description?: string;
-    industry?: string;
-    target_audience?: string;
-    shared_goal?: string;
-  }
+  payload: { name?: string; description?: string; industry?: string; target_audience?: string; shared_goal?: string },
 ) {
   const role = await checkTeamRole(userId, teamId);
   if (!hasMinimumRole(role, 'owner')) return { error: 'FORBIDDEN' as const };
@@ -64,8 +51,7 @@ export async function updateTeam(
   if (payload.name !== undefined) updates.name = payload.name.trim();
   if (payload.description !== undefined) updates.description = payload.description?.trim() || null;
   if (payload.industry !== undefined) updates.industry = payload.industry?.trim() || null;
-  if (payload.target_audience !== undefined)
-    updates.target_audience = payload.target_audience?.trim() || null;
+  if (payload.target_audience !== undefined) updates.target_audience = payload.target_audience?.trim() || null;
   if (payload.shared_goal !== undefined) updates.shared_goal = payload.shared_goal?.trim() || null;
 
   const team = await teamRepo.updateTeam(teamId, updates);
@@ -97,7 +83,7 @@ export async function createProfile(
     bio?: string | null;
     expertise_areas?: string[];
     voice_profile?: Record<string, unknown>;
-  }
+  },
 ) {
   const team = await teamRepo.getOwnerTeamByUserId(userId);
   if (!team) return { error: 'NOT_FOUND' as const };
@@ -152,7 +138,7 @@ export async function updateProfile(
     expertise_areas?: string[];
     voice_profile?: Record<string, unknown>;
     avatar_url?: string | null;
-  }
+  },
 ) {
   const profile = await teamRepo.getProfileByIdWithTeam(profileId);
   if (!profile) return { error: 'NOT_FOUND' as const };
@@ -170,8 +156,7 @@ export async function updateProfile(
   if (payload.full_name !== undefined) updates.full_name = payload.full_name.trim();
   if (payload.title !== undefined) updates.title = payload.title?.trim() || null;
   if (payload.email !== undefined) updates.email = payload.email?.trim().toLowerCase() || null;
-  if (payload.linkedin_url !== undefined)
-    updates.linkedin_url = payload.linkedin_url?.trim() || null;
+  if (payload.linkedin_url !== undefined) updates.linkedin_url = payload.linkedin_url?.trim() || null;
   if (payload.bio !== undefined) updates.bio = payload.bio?.trim() || null;
   if (payload.expertise_areas !== undefined) updates.expertise_areas = payload.expertise_areas;
   if (payload.voice_profile !== undefined) updates.voice_profile = payload.voice_profile;
@@ -195,8 +180,7 @@ export async function deleteProfile(userId: string, profileId: string) {
 
   const role = await checkTeamRole(userId, profile.team_id);
   if (!hasMinimumRole(role, 'owner')) return { error: 'FORBIDDEN' as const };
-  if (profile.role === 'owner')
-    return { error: 'VALIDATION' as const, message: 'Cannot remove the team owner profile' };
+  if (profile.role === 'owner') return { error: 'VALIDATION' as const, message: 'Cannot remove the team owner profile' };
 
   await teamRepo.setTeamProfileRemoved(profileId);
   logTeamActivity({

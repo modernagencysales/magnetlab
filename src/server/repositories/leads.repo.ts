@@ -2,38 +2,9 @@
  * Leads Repository (funnel_leads)
  */
 
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { applyScope } from '@/lib/utils/team-context';
-import type { DataScope } from '@/lib/utils/team-context';
-
-// ─── Column selects ───────────────────────────────────────────────────────────
-
-const SELECT_LEAD_DETAIL = `
-  id,
-  funnel_page_id,
-  lead_magnet_id,
-  user_id,
-  team_id,
-  email,
-  name,
-  is_qualified,
-  qualification_answers,
-  utm_source,
-  utm_medium,
-  utm_campaign,
-  created_at,
-  ip_address,
-  user_agent,
-  linkedin_url,
-  heyreach_delivery_status,
-  funnel_pages!inner (
-    slug,
-    optin_headline,
-    lead_magnets (
-      title
-    )
-  )
-`;
+import { createSupabaseAdminClient } from "@/lib/utils/supabase-server";
+import { applyScope } from "@/lib/utils/team-context";
+import type { DataScope } from "@/lib/utils/team-context";
 
 const SELECT_LEADS_WITH_FUNNEL = `
   id,
@@ -78,20 +49,20 @@ export interface LeadFilters {
 
 export async function findLeads(
   scope: DataScope,
-  filters: LeadFilters
+  filters: LeadFilters,
 ): Promise<{ data: unknown[]; count: number }> {
   const supabase = createSupabaseAdminClient();
   let query = applyScope(
-    supabase.from('funnel_leads').select(SELECT_LEADS_WITH_FUNNEL, { count: 'exact' }),
-    scope
+    supabase.from("funnel_leads").select(SELECT_LEADS_WITH_FUNNEL, { count: "exact" }),
+    scope,
   )
-    .order('created_at', { ascending: false })
+    .order("created_at", { ascending: false })
     .range(filters.offset ?? 0, (filters.offset ?? 0) + (filters.limit ?? 50) - 1);
 
-  if (filters.funnelPageId) query = query.eq('funnel_page_id', filters.funnelPageId);
-  if (filters.leadMagnetId) query = query.eq('lead_magnet_id', filters.leadMagnetId);
-  if (filters.qualified === true) query = query.eq('is_qualified', true);
-  else if (filters.qualified === false) query = query.eq('is_qualified', false);
+  if (filters.funnelPageId) query = query.eq("funnel_page_id", filters.funnelPageId);
+  if (filters.leadMagnetId) query = query.eq("lead_magnet_id", filters.leadMagnetId);
+  if (filters.qualified === true) query = query.eq("is_qualified", true);
+  else if (filters.qualified === false) query = query.eq("is_qualified", false);
   if (filters.search) {
     query = query.or(`email.ilike.%${filters.search}%,name.ilike.%${filters.search}%`);
   }
@@ -105,30 +76,22 @@ const MAX_EXPORT = 10000;
 
 export async function findLeadsForExport(
   scope: DataScope,
-  filters: Omit<LeadFilters, 'limit' | 'offset'>
+  filters: Omit<LeadFilters, "limit" | "offset">,
 ): Promise<unknown[]> {
   const supabase = createSupabaseAdminClient();
-  let query = applyScope(supabase.from('funnel_leads').select(SELECT_LEADS_EXPORT), scope)
-    .order('created_at', { ascending: false })
+  let query = applyScope(
+    supabase.from("funnel_leads").select(SELECT_LEADS_EXPORT),
+    scope,
+  )
+    .order("created_at", { ascending: false })
     .limit(MAX_EXPORT);
 
-  if (filters.funnelPageId) query = query.eq('funnel_page_id', filters.funnelPageId);
-  if (filters.leadMagnetId) query = query.eq('lead_magnet_id', filters.leadMagnetId);
-  if (filters.qualified === true) query = query.eq('is_qualified', true);
-  else if (filters.qualified === false) query = query.eq('is_qualified', false);
+  if (filters.funnelPageId) query = query.eq("funnel_page_id", filters.funnelPageId);
+  if (filters.leadMagnetId) query = query.eq("lead_magnet_id", filters.leadMagnetId);
+  if (filters.qualified === true) query = query.eq("is_qualified", true);
+  else if (filters.qualified === false) query = query.eq("is_qualified", false);
 
   const { data, error } = await query;
   if (error) throw new Error(`leads.findForExport: ${error.message}`);
   return data ?? [];
-}
-
-export async function findLeadById(scope: DataScope, id: string): Promise<unknown | null> {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await applyScope(
-    supabase.from('funnel_leads').select(SELECT_LEAD_DETAIL).eq('id', id),
-    scope
-  ).maybeSingle();
-
-  if (error) throw new Error(`leads.findById: ${error.message}`);
-  return data ?? null;
 }

@@ -1,256 +1,11 @@
 /**
  * Analytics Service
- * Builds overview, engagement, email, funnel-detail, performance-insights, and recommendations.
- * Never imports NextRequest, NextResponse, or cookies.
+ * Builds overview, engagement, email, and funnel-detail responses.
  */
 
 import { VALID_RANGES, parseDays, buildDateRange, type Range } from '@/lib/utils/analytics-helpers';
 import type { DataScope } from '@/lib/utils/team-context';
 import * as analyticsRepo from '@/server/repositories/analytics.repo';
-
-// ─── Performance Insights ────────────────────────────────────────────────────
-
-export const VALID_PERIODS = ['last_7_days', 'last_30_days', 'last_90_days', 'all_time'] as const;
-export type Period = (typeof VALID_PERIODS)[number];
-
-function periodToStartDate(period: Period): string | null {
-  if (period === 'all_time') return null;
-  const days = period === 'last_7_days' ? 7 : period === 'last_30_days' ? 30 : 90;
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().split('T')[0];
-}
-
-export interface ArchetypeStat {
-  archetype: string;
-  leads: number;
-  conversion_rate: number;
-}
-
-export interface LeadMagnetStat {
-  id: string;
-  title: string;
-  leads: number;
-  views: number;
-}
-
-export interface PerformanceInsightsResult {
-  top_archetypes: ArchetypeStat[];
-  top_lead_magnets: LeadMagnetStat[];
-  totals: {
-    total_leads: number;
-    total_views: number;
-    avg_conversion_rate: number;
-  };
-  period: Period;
-}
-
-export async function getPerformanceInsights(
-  scope: DataScope,
-  period: Period
-): Promise<PerformanceInsightsResult> {
-  const startDate = periodToStartDate(period);
-
-  const funnelPages = await analyticsRepo.getFunnelPagesWithMagnet(scope);
-  if (funnelPages.length === 0) {
-    return {
-      top_archetypes: [],
-      top_lead_magnets: [],
-      totals: { total_leads: 0, total_views: 0, avg_conversion_rate: 0 },
-      period,
-    };
-  }
-
-  const funnelPageIds = funnelPages.map((fp) => fp.id);
-  const leadMagnetIds = [...new Set(funnelPages.map((fp) => fp.lead_magnet_id).filter(Boolean))];
-
-  const [leads, views, leadMagnets] = await Promise.all([
-    analyticsRepo.getFunnelLeadsByPageIds(funnelPageIds, startDate),
-    analyticsRepo.getPageViewsByPageIds(funnelPageIds, startDate),
-    analyticsRepo.getLeadMagnetsByIds(leadMagnetIds),
-  ]);
-
-  // Build lookup: funnelPageId → leadMagnetId
-  const pageToMagnet = new Map<string, string>();
-  for (const fp of funnelPages) {
-    if (fp.lead_magnet_id) pageToMagnet.set(fp.id, fp.lead_magnet_id);
-  }
-
-  // Build lookup: leadMagnetId → LeadMagnetRow
-  const magnetById = new Map(leadMagnets.map((lm) => [lm.id, lm]));
-
-  // Per-magnet lead/view counts
-  const magnetLeads = new Map<string, number>();
-  const magnetViews = new Map<string, number>();
-
-  for (const lead of leads) {
-    const magId = pageToMagnet.get(lead.funnel_page_id);
-    if (magId) magnetLeads.set(magId, (magnetLeads.get(magId) ?? 0) + 1);
-  }
-  for (const view of views) {
-    const magId = pageToMagnet.get(view.funnel_page_id);
-    if (magId) magnetViews.set(magId, (magnetViews.get(magId) ?? 0) + 1);
-  }
-
-  // top_lead_magnets: all magnets with activity, sorted by leads desc
-  const top_lead_magnets: LeadMagnetStat[] = leadMagnets
-    .map((lm) => ({
-      id: lm.id,
-      title: lm.title,
-      leads: magnetLeads.get(lm.id) ?? 0,
-      views: magnetViews.get(lm.id) ?? 0,
-    }))
-    .filter((lm) => lm.leads > 0 || lm.views > 0)
-    .sort((a, b) => b.leads - a.leads);
-
-  // Per-archetype lead/view counts
-  const archetypeLeads = new Map<string, number>();
-  const archetypeViews = new Map<string, number>();
-
-  for (const [magId, count] of magnetLeads) {
-    const lm = magnetById.get(magId);
-    if (lm) archetypeLeads.set(lm.archetype, (archetypeLeads.get(lm.archetype) ?? 0) + count);
-  }
-  for (const [magId, count] of magnetViews) {
-    const lm = magnetById.get(magId);
-    if (lm) archetypeViews.set(lm.archetype, (archetypeViews.get(lm.archetype) ?? 0) + count);
-  }
-
-  const top_archetypes: ArchetypeStat[] = Array.from(archetypeLeads.entries())
-    .map(([archetype, arcLeads]) => {
-      const arcViews = archetypeViews.get(archetype) ?? 0;
-      return {
-        archetype,
-        leads: arcLeads,
-        conversion_rate: arcViews > 0 ? Math.round((arcLeads / arcViews) * 100) : 0,
-      };
-    })
-    .sort((a, b) => b.leads - a.leads);
-
-  const totalLeads = leads.length;
-  const totalViews = views.length;
-
-  return {
-    top_archetypes,
-    top_lead_magnets,
-    totals: {
-      total_leads: totalLeads,
-      total_views: totalViews,
-      avg_conversion_rate: totalViews > 0 ? Math.round((totalLeads / totalViews) * 100) : 0,
-    },
-    period,
-  };
-}
-
-// ─── Recommendations (Phase 1 Stub) ─────────────────────────────────────────
-
-export interface Suggestion {
-  type: 'content_gap' | 'performance' | 'general';
-  message: string;
-}
-
-export interface RecommendationsResult {
-  phase: 'stub';
-  note: string;
-  suggestions: Suggestion[];
-}
-
-export async function getRecommendations(scope: DataScope): Promise<RecommendationsResult> {
-  const userId = scope.userId;
-
-  // Collect data in parallel; errors in either should surface (not swallowed)
-  const [topics, funnelPages] = await Promise.all([
-    analyticsRepo.getKnowledgeTopics(userId),
-    analyticsRepo.getFunnelPagesWithMagnet(scope),
-  ]);
-
-  const suggestions: Suggestion[] = [];
-
-  // ─── Content gap: expertise with no lead magnet ──────────────────────────
-  if (topics.length > 0 && funnelPages.length === 0) {
-    const topTopic = topics[0];
-    suggestions.push({
-      type: 'content_gap',
-      message: `You have expertise in "${topTopic.display_name}" but no lead magnet for it yet. This could be your first conversion asset.`,
-    });
-  } else if (topics.length > 0 && funnelPages.length > 0) {
-    // Surface top uncovered topic (simple heuristic for Phase 1)
-    const topTopic = topics[0];
-    suggestions.push({
-      type: 'content_gap',
-      message: `Your top knowledge topic is "${topTopic.display_name}" (${topTopic.entry_count} entries). Consider creating a dedicated lead magnet to convert that expertise into leads.`,
-    });
-  }
-
-  // ─── Performance: surface best-converting archetype ──────────────────────
-  if (funnelPages.length > 0) {
-    const funnelPageIds = funnelPages.map((fp) => fp.id);
-    const leadMagnetIds = [...new Set(funnelPages.map((fp) => fp.lead_magnet_id).filter(Boolean))];
-
-    const [leads, views, leadMagnets] = await Promise.all([
-      analyticsRepo.getFunnelLeadsByPageIds(funnelPageIds, null),
-      analyticsRepo.getPageViewsByPageIds(funnelPageIds, null),
-      analyticsRepo.getLeadMagnetsByIds(leadMagnetIds),
-    ]);
-
-    const pageToMagnet = new Map<string, string>();
-    for (const fp of funnelPages) {
-      if (fp.lead_magnet_id) pageToMagnet.set(fp.id, fp.lead_magnet_id);
-    }
-
-    const magnetById = new Map(leadMagnets.map((lm) => [lm.id, lm]));
-    const archetypeLeads = new Map<string, number>();
-    const archetypeViews = new Map<string, number>();
-
-    for (const lead of leads) {
-      const magId = pageToMagnet.get(lead.funnel_page_id);
-      if (magId) {
-        const lm = magnetById.get(magId);
-        if (lm) archetypeLeads.set(lm.archetype, (archetypeLeads.get(lm.archetype) ?? 0) + 1);
-      }
-    }
-    for (const view of views) {
-      const magId = pageToMagnet.get(view.funnel_page_id);
-      if (magId) {
-        const lm = magnetById.get(magId);
-        if (lm) archetypeViews.set(lm.archetype, (archetypeViews.get(lm.archetype) ?? 0) + 1);
-      }
-    }
-
-    // Only surface performance insight if there are ≥2 archetypes with data
-    const archetypeStats = Array.from(archetypeLeads.entries())
-      .map(([archetype, arcLeads]) => {
-        const arcViews = archetypeViews.get(archetype) ?? 0;
-        return { archetype, leads: arcLeads, rate: arcViews > 0 ? arcLeads / arcViews : 0 };
-      })
-      .filter((a) => a.leads > 0);
-
-    if (archetypeStats.length >= 2) {
-      archetypeStats.sort((a, b) => b.rate - a.rate);
-      const best = archetypeStats[0];
-      const worst = archetypeStats[archetypeStats.length - 1];
-      if (best.rate > 0 && worst.rate >= 0 && best.archetype !== worst.archetype) {
-        const ratio = worst.rate > 0 ? (best.rate / worst.rate).toFixed(1) : 'significantly';
-        suggestions.push({
-          type: 'performance',
-          message: `Your ${best.archetype} lead magnets convert ${ratio}x better than ${worst.archetype}. Consider creating more in the ${best.archetype} format.`,
-        });
-      }
-    } else if (archetypeStats.length === 1) {
-      const best = archetypeStats[0];
-      suggestions.push({
-        type: 'performance',
-        message: `Your ${best.archetype} lead magnets are generating leads. Try a second archetype to see what resonates best with your audience.`,
-      });
-    }
-  }
-
-  return {
-    phase: 'stub',
-    note: 'Full intelligence in Phase 4',
-    suggestions,
-  };
-}
 
 export function getValidRanges(): readonly string[] {
   return VALID_RANGES;
@@ -290,8 +45,7 @@ export async function getOverview(scope: DataScope, range: Range) {
   const { views, leads } = await analyticsRepo.getPageViewsAndLeads(funnelIds, startDate);
 
   const viewsByDateMap = new Map<string, number>();
-  for (const v of views)
-    viewsByDateMap.set(v.view_date, (viewsByDateMap.get(v.view_date) || 0) + 1);
+  for (const v of views) viewsByDateMap.set(v.view_date, (viewsByDateMap.get(v.view_date) || 0) + 1);
   const leadsByDateMap = new Map<string, number>();
   for (const l of leads) {
     const date = l.created_at.split('T')[0];
@@ -374,12 +128,7 @@ export async function getEngagement(userId: string) {
   }));
 
   return {
-    totals: {
-      comments: totalComments,
-      reactions: totalReactions,
-      dmsSent: totalDmsSent,
-      dmsFailed: totalDmsFailed,
-    },
+    totals: { comments: totalComments, reactions: totalReactions, dmsSent: totalDmsSent, dmsFailed: totalDmsFailed },
     byPost,
   };
 }
@@ -415,9 +164,7 @@ export async function getEmailAnalytics(userId: string, range: string) {
           magnetStats[lmId].sent++;
         }
         break;
-      case 'delivered':
-        delivered++;
-        break;
+      case 'delivered': delivered++; break;
       case 'opened':
         opened++;
         if (lmId) {
@@ -432,9 +179,7 @@ export async function getEmailAnalytics(userId: string, range: string) {
           magnetStats[lmId].clicked++;
         }
         break;
-      case 'bounced':
-        bounced++;
-        break;
+      case 'bounced': bounced++; break;
     }
   }
 
@@ -447,13 +192,7 @@ export async function getEmailAnalytics(userId: string, range: string) {
   };
 
   const magnetIds = Object.keys(magnetStats);
-  let byMagnet: Array<{
-    leadMagnetId: string;
-    title: string;
-    sent: number;
-    opened: number;
-    clicked: number;
-  }> = [];
+  let byMagnet: Array<{ leadMagnetId: string; title: string; sent: number; opened: number; clicked: number }> = [];
   if (magnetIds.length > 0) {
     const titleMap = await analyticsRepo.getLeadMagnetTitles(magnetIds);
     byMagnet = magnetIds
@@ -471,29 +210,21 @@ export async function getFunnelDetail(scope: DataScope, funnelId: string, range:
   const dateRange = buildDateRange(days);
   const startDate = dateRange[0];
 
-  const { optinViews, thankyouViews, leads } = await analyticsRepo.getFunnelDetailViewsAndLeads(
-    funnelId,
-    startDate
-  );
+  const { optinViews, thankyouViews, leads } = await analyticsRepo.getFunnelDetailViewsAndLeads(funnelId, startDate);
 
   const viewsByDateMap = new Map<string, number>();
-  for (const v of optinViews)
-    viewsByDateMap.set(v.view_date, (viewsByDateMap.get(v.view_date) || 0) + 1);
+  for (const v of optinViews) viewsByDateMap.set(v.view_date, (viewsByDateMap.get(v.view_date) || 0) + 1);
   const leadsByDateMap = new Map<string, number>();
   for (const l of leads) {
     const date = l.created_at.split('T')[0];
     leadsByDateMap.set(date, (leadsByDateMap.get(date) || 0) + 1);
   }
   const thankyouViewsByDateMap = new Map<string, number>();
-  for (const v of thankyouViews)
-    thankyouViewsByDateMap.set(v.view_date, (thankyouViewsByDateMap.get(v.view_date) || 0) + 1);
+  for (const v of thankyouViews) thankyouViewsByDateMap.set(v.view_date, (thankyouViewsByDateMap.get(v.view_date) || 0) + 1);
 
   const viewsByDay = dateRange.map((date) => ({ date, views: viewsByDateMap.get(date) || 0 }));
   const leadsByDay = dateRange.map((date) => ({ date, leads: leadsByDateMap.get(date) || 0 }));
-  const thankyouViewsByDay = dateRange.map((date) => ({
-    date,
-    views: thankyouViewsByDateMap.get(date) || 0,
-  }));
+  const thankyouViewsByDay = dateRange.map((date) => ({ date, views: thankyouViewsByDateMap.get(date) || 0 }));
 
   let totalResponded = 0;
   for (const l of leads) {
@@ -519,11 +250,9 @@ export async function getFunnelDetail(scope: DataScope, funnelId: string, range:
     leads: leads.length,
     qualified: totalQualified,
     responded: totalResponded,
-    conversionRate:
-      optinViews.length > 0 ? Math.round((leads.length / optinViews.length) * 100) : 0,
+    conversionRate: optinViews.length > 0 ? Math.round((leads.length / optinViews.length) * 100) : 0,
     qualificationRate: leads.length > 0 ? Math.round((totalQualified / leads.length) * 100) : 0,
-    responseRate:
-      thankyouViews.length > 0 ? Math.round((totalResponded / thankyouViews.length) * 100) : 0,
+    responseRate: thankyouViews.length > 0 ? Math.round((totalResponded / thankyouViews.length) * 100) : 0,
   };
 
   return {

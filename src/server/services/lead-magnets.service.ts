@@ -144,61 +144,6 @@ export async function updateCatalogFields(
   await leadMagnetsRepo.updateLeadMagnetByOwner(userId, id, updates);
 }
 
-// ─── Content deep-merge update ───────────────────────────────────────────────
-
-/**
- * Shallow-merge patch into current content.
- * - New keys are added, existing keys are replaced.
- * - Arrays are replaced wholesale (not appended).
- * - Explicit `null` values delete that key.
- */
-export function applyContentPatch(
-  current: Record<string, unknown> | null,
-  patch: Record<string, unknown>
-): Record<string, unknown> {
-  const result = { ...(current ?? {}) };
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === null) {
-      delete result[key];
-    } else {
-      result[key] = value;
-    }
-  }
-  return result;
-}
-
-/**
- * Read-patch-write with content_version optimistic locking.
- * If `expectedVersion` is provided and doesn't match, throws 409 Conflict.
- */
-export async function updateLeadMagnetContent(
-  scope: DataScope,
-  id: string,
-  contentPatch: Record<string, unknown>,
-  expectedVersion?: number
-) {
-  const current = await leadMagnetsRepo.findLeadMagnetById(scope, id);
-  if (!current) throw Object.assign(new Error('Lead magnet not found'), { statusCode: 404 });
-
-  if (expectedVersion !== undefined && current.content_version !== expectedVersion) {
-    throw Object.assign(
-      new Error(
-        `Version conflict: expected ${expectedVersion}, current ${current.content_version}`
-      ),
-      { statusCode: 409 }
-    );
-  }
-
-  const merged = applyContentPatch(current.content as Record<string, unknown> | null, contentPatch);
-
-  return leadMagnetsRepo.updateLeadMagnetContent(
-    scope,
-    id,
-    merged,
-    ((current.content_version as number | null) ?? 1) + 1
-  );
-}
-
 // ─── Content update (in-place editing) ──────────────────────────────────────
 
 export async function updatePolishedContent(

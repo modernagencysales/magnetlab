@@ -1,40 +1,31 @@
-/** Lead magnet CRUD tools (5). Maps 1:1 to MagnetLabClient methods. */
-
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { Tool } from '@modelcontextprotocol/sdk/types.js'
 
 export const leadMagnetTools: Tool[] = [
   {
     name: 'magnetlab_list_lead_magnets',
-    description: 'List all lead magnets. Returns title, archetype, status, and creation date.',
+    description:
+      'List all lead magnets for the current user. Returns title, archetype, status, and creation date. Use the status filter to find drafts, published, or in-progress lead magnets.',
     inputSchema: {
       type: 'object',
       properties: {
         status: {
           type: 'string',
-          enum: ['draft', 'published', 'archived'],
-          description: 'Filter by status',
+          enum: ['draft', 'extracting', 'generating', 'content_ready', 'complete', 'published'],
+          description: 'Filter by lead magnet status',
         },
-        limit: { type: 'number', default: 50, description: 'Max results (1-100)' },
+        limit: { type: 'number', default: 50, description: 'Max results to return (1-100)' },
         offset: { type: 'number', default: 0, description: 'Offset for pagination' },
-        team_id: {
-          type: 'string',
-          description: 'Team ID to scope this operation. Omit for primary team.',
-        },
       },
     },
   },
   {
     name: 'magnetlab_get_lead_magnet',
     description:
-      'Get full details of a single lead magnet including its content, archetype, status, and content_version for optimistic locking.',
+      'Get full details of a single lead magnet including its concept, extracted content, generated content, LinkedIn posts, post variations, DM template, and CTA word.',
     inputSchema: {
       type: 'object',
       properties: {
         id: { type: 'string', description: 'Lead magnet UUID' },
-        team_id: {
-          type: 'string',
-          description: 'Team ID to scope this operation. Omit for primary team.',
-        },
       },
       required: ['id'],
     },
@@ -42,7 +33,7 @@ export const leadMagnetTools: Tool[] = [
   {
     name: 'magnetlab_create_lead_magnet',
     description:
-      'Create a new lead magnet. Choose an archetype and provide a title. Use magnetlab_get_archetype_schema first to understand what content fields the archetype requires.',
+      'Create a new lead magnet. Choose an archetype (e.g. single-breakdown, focused-toolkit, assessment) and provide a title. Optionally include concept data, extracted content, or post variations if pre-generated.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -63,55 +54,56 @@ export const leadMagnetTools: Tool[] = [
           ],
           description: 'Content archetype/format',
         },
-        concept: { type: 'object', description: 'Optional concept data from ideation' },
-        team_id: {
-          type: 'string',
-          description: 'Team ID to scope this operation. Omit for primary team.',
-        },
+        concept: { type: 'object', description: 'Concept data (optional, from ideation)' },
       },
       required: ['title', 'archetype'],
     },
   },
   {
-    name: 'magnetlab_update_lead_magnet',
-    description:
-      'Update lead magnet content using deep-merge semantics. Pass only the fields you want to change. Arrays are replaced entirely. Set a field to null to remove it. Optionally pass expected_version for optimistic locking.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'Lead magnet UUID' },
-        content: {
-          type: 'object',
-          description:
-            'Content fields to merge. Only include fields you want to change. Arrays replace entirely; null removes a field.',
-        },
-        expected_version: {
-          type: 'number',
-          description:
-            'Content version for optimistic locking. Get from magnetlab_get_lead_magnet. If the version has changed, the update is rejected.',
-        },
-        team_id: {
-          type: 'string',
-          description: 'Team ID to scope this operation. Omit for primary team.',
-        },
-      },
-      required: ['id', 'content'],
-    },
-  },
-  {
     name: 'magnetlab_delete_lead_magnet',
-    description:
-      'Permanently delete a lead magnet. Also removes associated funnel pages and leads.',
+    description: 'Permanently delete a lead magnet. This also removes associated funnel pages and leads.',
     inputSchema: {
       type: 'object',
       properties: {
         id: { type: 'string', description: 'Lead magnet UUID to delete' },
-        team_id: {
-          type: 'string',
-          description: 'Team ID to scope this operation. Omit for primary team.',
-        },
       },
       required: ['id'],
     },
   },
-];
+  {
+    name: 'magnetlab_get_lead_magnet_stats',
+    description:
+      'Get performance statistics for a specific lead magnet: page views, leads captured, and conversion rate.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lead_magnet_id: { type: 'string', description: 'Lead magnet UUID' },
+      },
+      required: ['lead_magnet_id'],
+    },
+  },
+  {
+    name: 'magnetlab_analyze_competitor',
+    description:
+      'Analyze a competitor URL to extract insights for lead magnet ideation. Provide a URL to a landing page, lead magnet, or content piece.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL of the competitor content to analyze' },
+      },
+      required: ['url'],
+    },
+  },
+  {
+    name: 'magnetlab_analyze_transcript',
+    description:
+      'Analyze a sales call or podcast transcript to extract lead magnet ideas, pain points, and content themes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        transcript: { type: 'string', description: 'Full text of the transcript to analyze' },
+      },
+      required: ['transcript'],
+    },
+  },
+]
