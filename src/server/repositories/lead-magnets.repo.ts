@@ -11,6 +11,9 @@ import type { DataScope } from '@/lib/utils/team-context';
 
 // ─── Column sets ────────────────────────────────────────────────────────────
 
+const LM_LIST_COLUMNS =
+  'id, user_id, title, archetype, status, content_version, published_at, created_at, updated_at';
+
 const LM_DETAIL_COLUMNS =
   'id, user_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, status, published_at, created_at, updated_at, content, content_version';
 
@@ -24,7 +27,10 @@ export async function findLeadMagnets(
   opts: { status?: string | null; limit?: number; offset?: number }
 ) {
   const supabase = createSupabaseAdminClient();
-  let query = applyScope(supabase.from('lead_magnets').select('*', { count: 'exact' }), scope)
+  let query = applyScope(
+    supabase.from('lead_magnets').select(LM_LIST_COLUMNS, { count: 'exact' }),
+    scope
+  )
     .order('created_at', { ascending: false })
     .range(opts.offset ?? 0, (opts.offset ?? 0) + (opts.limit ?? 50) - 1);
   if (opts.status) query = query.eq('status', opts.status);
@@ -84,7 +90,7 @@ export async function findLeadMagnetsByUserId(
   const supabase = createSupabaseAdminClient();
   let query = supabase
     .from('lead_magnets')
-    .select('*', { count: 'exact' })
+    .select(LM_LIST_COLUMNS, { count: 'exact' })
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .range(opts.offset ?? 0, (opts.offset ?? 0) + (opts.limit ?? 50) - 1);
