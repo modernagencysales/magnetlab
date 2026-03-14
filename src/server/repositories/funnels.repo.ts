@@ -397,7 +397,7 @@ export async function getLeadMagnetForPublish(userId: string, leadMagnetId: stri
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('lead_magnets')
-    .select('id, extracted_content, polished_content, concept')
+    .select('id, extracted_content, polished_content, concept, content, archetype')
     .eq('id', leadMagnetId)
     .eq('user_id', userId)
     .single();

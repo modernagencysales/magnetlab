@@ -1,341 +1,293 @@
-import { describe, it, expect } from 'vitest'
-import { tools, toolsByName, toolCategories, discoveryCategories } from '../tools/index.js'
-import {
-  categoryTools,
-  executeGatewayTool,
-  toolHelpTool,
-  guideTool,
-  workflowRecipes,
-  categoryToolToKey,
-  getCategoryLabel,
-  getCategoryToolCount,
-  DiscoveryCategoryKey,
-} from '../tools/category-tools.js'
+/** Tool registration tests for MCP v2. Verifies 37 tools, naming, schemas, and no old tools. */
+
+import { describe, it, expect } from 'vitest';
+import { tools, toolsByName } from '../tools/index.js';
+
+// ─── All 37 expected tool names ────────────────────────────────────────────────
+
+const EXPECTED_TOOL_NAMES = [
+  // Lead Magnets (5)
+  'magnetlab_list_lead_magnets',
+  'magnetlab_get_lead_magnet',
+  'magnetlab_create_lead_magnet',
+  'magnetlab_update_lead_magnet',
+  'magnetlab_delete_lead_magnet',
+  // Funnels (7)
+  'magnetlab_list_funnels',
+  'magnetlab_get_funnel',
+  'magnetlab_create_funnel',
+  'magnetlab_update_funnel',
+  'magnetlab_delete_funnel',
+  'magnetlab_publish_funnel',
+  'magnetlab_unpublish_funnel',
+  // Knowledge (5)
+  'magnetlab_search_knowledge',
+  'magnetlab_browse_knowledge',
+  'magnetlab_get_knowledge_clusters',
+  'magnetlab_ask_knowledge',
+  'magnetlab_submit_transcript',
+  // Posts (6)
+  'magnetlab_list_posts',
+  'magnetlab_get_post',
+  'magnetlab_create_post',
+  'magnetlab_update_post',
+  'magnetlab_delete_post',
+  'magnetlab_publish_post',
+  // Email Sequences (3)
+  'magnetlab_get_email_sequence',
+  'magnetlab_save_email_sequence',
+  'magnetlab_activate_email_sequence',
+  // Leads (3)
+  'magnetlab_list_leads',
+  'magnetlab_get_lead',
+  'magnetlab_export_leads',
+  // Schema / Introspection (3)
+  'magnetlab_list_archetypes',
+  'magnetlab_get_archetype_schema',
+  'magnetlab_get_business_context',
+  // Compound Actions (2)
+  'magnetlab_launch_lead_magnet',
+  'magnetlab_schedule_content_week',
+  // Feedback / Analytics (2)
+  'magnetlab_get_performance_insights',
+  'magnetlab_get_recommendations',
+  // Account (1)
+  'magnetlab_list_teams',
+] as const;
+
+// ─── Old tools that must NOT exist ────────────────────────────────────────────
+
+const REMOVED_TOOLS = [
+  'magnetlab_execute',
+  'magnetlab_tool_help',
+  'magnetlab_guide',
+  'magnetlab_content_writing',
+  'magnetlab_content_scheduling',
+  'magnetlab_ideation',
+  'magnetlab_brand_kit',
+  'magnetlab_email_system',
+  'magnetlab_email_sequences',
+  'magnetlab_funnels',
+  'magnetlab_lead_magnets',
+  'magnetlab_libraries',
+  'magnetlab_qualification_forms',
+  'magnetlab_swipe_file',
+  'magnetlab_knowledge',
+];
+
+// ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('Tool Registration', () => {
-  it('exports exactly 106 tools', () => {
-    expect(tools).toHaveLength(106)
-  })
+  it('exports exactly 37 tools', () => {
+    expect(tools).toHaveLength(37);
+  });
 
   it('all tools have unique names', () => {
-    const names = tools.map((t) => t.name)
-    const unique = new Set(names)
-    expect(unique.size).toBe(names.length)
-  })
+    const names = tools.map((t) => t.name);
+    const unique = new Set(names);
+    expect(unique.size).toBe(names.length);
+  });
 
   it('all tools have descriptions', () => {
     for (const tool of tools) {
-      expect(tool.description, `${tool.name} missing description`).toBeTruthy()
-      expect(tool.description!.length, `${tool.name} description too short`).toBeGreaterThan(10)
+      expect(tool.description, `${tool.name} missing description`).toBeTruthy();
+      expect(tool.description!.length, `${tool.name} description too short`).toBeGreaterThan(10);
     }
-  })
+  });
 
   it('all tools have valid inputSchema with type "object"', () => {
     for (const tool of tools) {
-      expect(tool.inputSchema, `${tool.name} missing inputSchema`).toBeDefined()
+      expect(tool.inputSchema, `${tool.name} missing inputSchema`).toBeDefined();
       expect(tool.inputSchema.type, `${tool.name} inputSchema.type should be "object"`).toBe(
         'object'
-      )
+      );
     }
-  })
+  });
 
   it('all tool names start with "magnetlab_"', () => {
     for (const tool of tools) {
-      expect(tool.name, `${tool.name} should start with magnetlab_`).toMatch(/^magnetlab_/)
+      expect(tool.name, `${tool.name} should start with magnetlab_`).toMatch(/^magnetlab_/);
     }
-  })
+  });
 
-  it('toolsByName map contains all tools', () => {
-    expect(toolsByName.size).toBe(tools.length)
+  it('toolsByName map has 37 entries', () => {
+    expect(toolsByName.size).toBe(37);
+  });
+
+  it('toolsByName contains all tools and references correct objects', () => {
     for (const tool of tools) {
-      expect(toolsByName.has(tool.name), `toolsByName missing ${tool.name}`).toBe(true)
-      expect(toolsByName.get(tool.name)).toBe(tool)
+      expect(toolsByName.has(tool.name), `toolsByName missing ${tool.name}`).toBe(true);
+      expect(toolsByName.get(tool.name)).toBe(tool);
     }
-  })
+  });
+});
 
-  it('every tool name is in exactly one handler category', () => {
-    const allCategorized = Object.values(toolCategories).flat()
-    const categorizedSet = new Set(allCategorized)
+describe('Expected Tool Names', () => {
+  it('every expected tool name is registered', () => {
+    for (const name of EXPECTED_TOOL_NAMES) {
+      expect(toolsByName.has(name), `missing expected tool: ${name}`).toBe(true);
+    }
+  });
 
-    expect(categorizedSet.size).toBe(allCategorized.length)
-
+  it('every registered tool is in the expected list', () => {
+    const expectedSet = new Set(EXPECTED_TOOL_NAMES);
     for (const tool of tools) {
-      expect(categorizedSet.has(tool.name), `${tool.name} not in any handler category`).toBe(true)
-    }
-
-    for (const name of allCategorized) {
-      expect(toolsByName.has(name), `handler category references unknown tool: ${name}`).toBe(true)
-    }
-  })
-
-  describe('handler category sizes', () => {
-    const expectedCounts: Record<string, number> = {
-      leadMagnets: 7,
-      ideation: 6,
-      funnels: 9,
-      leads: 2,
-      analytics: 1,
-      brandKit: 3,
-      emailSequences: 4,
-      contentPipeline: 44,
-      swipeFile: 3,
-      libraries: 7,
-      qualificationForms: 5,
-      emailSystem: 15,
-    }
-
-    for (const [category, expected] of Object.entries(expectedCounts)) {
-      it(`${category} has ${expected} tools`, () => {
-        const actual = (toolCategories as Record<string, string[]>)[category]
-        expect(actual, `category ${category} not found`).toBeDefined()
-        expect(actual.length).toBe(expected)
-      })
-    }
-  })
-
-  describe('required fields in inputSchema', () => {
-    it('tools with required fields list them as arrays', () => {
-      for (const tool of tools) {
-        const schema = tool.inputSchema as { required?: unknown }
-        if (schema.required !== undefined) {
-          expect(
-            Array.isArray(schema.required),
-            `${tool.name} required should be an array`
-          ).toBe(true)
-        }
-      }
-    })
-
-    it('required fields reference defined properties', () => {
-      for (const tool of tools) {
-        const schema = tool.inputSchema as {
-          properties?: Record<string, unknown>
-          required?: string[]
-        }
-        if (schema.required && schema.properties) {
-          for (const req of schema.required) {
-            expect(
-              req in schema.properties,
-              `${tool.name}: required field "${req}" not in properties`
-            ).toBe(true)
-          }
-        }
-      }
-    })
-  })
-})
-
-describe('Discovery Categories', () => {
-  it('every tool in discovery categories is a real tool', () => {
-    for (const [cat, names] of Object.entries(discoveryCategories)) {
-      for (const name of names) {
-        expect(toolsByName.has(name), `${cat} references unknown tool: ${name}`).toBe(true)
-      }
-    }
-  })
-
-  it('every real tool appears in at least one discovery category', () => {
-    const allDiscovered = new Set(Object.values(discoveryCategories).flat())
-    for (const tool of tools) {
-      expect(allDiscovered.has(tool.name), `${tool.name} not in any discovery category`).toBe(true)
-    }
-  })
-
-  it('content pipeline is split into knowledge, writing, and scheduling', () => {
-    expect(discoveryCategories.knowledge.length).toBe(14)
-    expect(discoveryCategories.contentWriting.length).toBe(19)
-    expect(discoveryCategories.contentScheduling.length).toBe(11)
-
-    // Total should equal original 44
-    const total =
-      discoveryCategories.knowledge.length +
-      discoveryCategories.contentWriting.length +
-      discoveryCategories.contentScheduling.length
-    expect(total).toBe(44)
-  })
-
-  it('leadMagnets discovery includes leads and analytics tools', () => {
-    expect(discoveryCategories.leadMagnets).toContain('magnetlab_list_leads')
-    expect(discoveryCategories.leadMagnets).toContain('magnetlab_export_leads')
-    expect(discoveryCategories.leadMagnets).toContain('magnetlab_get_funnel_stats')
-    // Original 7 lead magnet tools + 2 leads + 1 analytics = 10
-    expect(discoveryCategories.leadMagnets.length).toBe(10)
-  })
-
-  describe('discovery category sizes', () => {
-    const expectedCounts: Record<string, number> = {
-      knowledge: 14,
-      contentWriting: 19,
-      contentScheduling: 11,
-      leadMagnets: 10,
-      ideation: 6,
-      funnels: 9,
-      brandKit: 3,
-      emailSequences: 4,
-      emailSystem: 15,
-      swipeFile: 3,
-      libraries: 7,
-      qualificationForms: 5,
-    }
-
-    for (const [category, expected] of Object.entries(expectedCounts)) {
-      it(`${category} has ${expected} tools`, () => {
-        const actual = (discoveryCategories as Record<string, string[]>)[category]
-        expect(actual, `discovery category ${category} not found`).toBeDefined()
-        expect(actual.length).toBe(expected)
-      })
-    }
-  })
-})
-
-describe('Category Discovery Tools', () => {
-  it('creates exactly 12 category tools (11 categories after merging)', () => {
-    // 11 discovery categories + not 12 — leads & analytics merged into leadMagnets
-    expect(categoryTools).toHaveLength(Object.keys(discoveryCategories).length)
-  })
-
-  it('all category tools have unique names', () => {
-    const names = categoryTools.map((t) => t.name)
-    const unique = new Set(names)
-    expect(unique.size).toBe(names.length)
-  })
-
-  it('all category tool names start with "magnetlab_"', () => {
-    for (const tool of categoryTools) {
-      expect(tool.name).toMatch(/^magnetlab_/)
-    }
-  })
-
-  it('all category tools have descriptions', () => {
-    for (const tool of categoryTools) {
-      expect(tool.description).toBeTruthy()
-      expect(tool.description!.length).toBeGreaterThan(10)
-    }
-  })
-
-  it('category tool names do not collide with real tool names', () => {
-    const realNames = new Set(tools.map((t) => t.name))
-    for (const tool of categoryTools) {
-      expect(realNames.has(tool.name), `${tool.name} collides with a real tool`).toBe(false)
-    }
-  })
-
-  it('categoryToolToKey maps every category tool to a valid discovery category', () => {
-    const categoryKeys = new Set(Object.keys(discoveryCategories))
-    for (const tool of categoryTools) {
-      const key = categoryToolToKey.get(tool.name)
-      expect(key, `${tool.name} not in categoryToolToKey`).toBeDefined()
-      expect(categoryKeys.has(key!), `${tool.name} maps to unknown category: ${key}`).toBe(true)
-    }
-  })
-
-  it('every discovery category has a category tool', () => {
-    const mappedCategories = new Set(categoryToolToKey.values())
-    for (const key of Object.keys(discoveryCategories)) {
       expect(
-        mappedCategories.has(key as DiscoveryCategoryKey),
-        `discovery category ${key} has no category tool`
-      ).toBe(true)
+        expectedSet.has(tool.name as (typeof EXPECTED_TOOL_NAMES)[number]),
+        `unexpected tool: ${tool.name}`
+      ).toBe(true);
     }
-  })
+  });
 
-  it('getCategoryLabel returns non-empty labels', () => {
-    for (const key of Object.keys(discoveryCategories)) {
-      const label = getCategoryLabel(key as DiscoveryCategoryKey)
-      expect(label).toBeTruthy()
-      expect(label.length).toBeGreaterThan(0)
+  it('expected list has exactly 37 entries', () => {
+    expect(EXPECTED_TOOL_NAMES).toHaveLength(37);
+  });
+});
+
+describe('No Old/Removed Tools', () => {
+  for (const oldTool of REMOVED_TOOLS) {
+    it(`${oldTool} is not registered`, () => {
+      expect(toolsByName.has(oldTool), `removed tool still present: ${oldTool}`).toBe(false);
+    });
+  }
+});
+
+describe('inputSchema Structure', () => {
+  it('tools with required fields list them as arrays', () => {
+    for (const tool of tools) {
+      const schema = tool.inputSchema as { required?: unknown };
+      if (schema.required !== undefined) {
+        expect(Array.isArray(schema.required), `${tool.name} required should be an array`).toBe(
+          true
+        );
+      }
     }
-  })
+  });
 
-  it('getCategoryToolCount matches actual category sizes', () => {
-    for (const [key, names] of Object.entries(discoveryCategories)) {
-      expect(getCategoryToolCount(key as DiscoveryCategoryKey)).toBe(names.length)
+  it('required fields reference defined properties', () => {
+    for (const tool of tools) {
+      const schema = tool.inputSchema as {
+        properties?: Record<string, unknown>;
+        required?: string[];
+      };
+      if (schema.required && schema.properties) {
+        for (const req of schema.required) {
+          expect(
+            req in schema.properties,
+            `${tool.name}: required field "${req}" not in properties`
+          ).toBe(true);
+        }
+      }
     }
-  })
-})
+  });
 
-describe('Execute Gateway Tool', () => {
-  it('has the correct name', () => {
-    expect(executeGatewayTool.name).toBe('magnetlab_execute')
-  })
-
-  it('requires the "tool" parameter', () => {
-    const schema = executeGatewayTool.inputSchema as { required?: string[] }
-    expect(schema.required).toContain('tool')
-  })
-
-  it('has "tool" and "arguments" properties', () => {
-    const schema = executeGatewayTool.inputSchema as { properties?: Record<string, unknown> }
-    expect(schema.properties).toHaveProperty('tool')
-    expect(schema.properties).toHaveProperty('arguments')
-  })
-
-  it('does not collide with any real or category tool name', () => {
-    expect(toolsByName.has('magnetlab_execute')).toBe(false)
-    const categoryNames = new Set(categoryTools.map((t) => t.name))
-    expect(categoryNames.has('magnetlab_execute')).toBe(false)
-  })
-})
-
-describe('Tool Help Tool', () => {
-  it('has the correct name', () => {
-    expect(toolHelpTool.name).toBe('magnetlab_tool_help')
-  })
-
-  it('requires the "tool" parameter', () => {
-    const schema = toolHelpTool.inputSchema as { required?: string[] }
-    expect(schema.required).toContain('tool')
-  })
-
-  it('does not collide with any real or category tool name', () => {
-    expect(toolsByName.has('magnetlab_tool_help')).toBe(false)
-    const categoryNames = new Set(categoryTools.map((t) => t.name))
-    expect(categoryNames.has('magnetlab_tool_help')).toBe(false)
-  })
-})
-
-describe('Guide Tool', () => {
-  it('has the correct name', () => {
-    expect(guideTool.name).toBe('magnetlab_guide')
-  })
-
-  it('requires the "task" parameter', () => {
-    const schema = guideTool.inputSchema as { required?: string[] }
-    expect(schema.required).toContain('task')
-  })
-
-  it('has enum of available tasks', () => {
-    const schema = guideTool.inputSchema as { properties?: Record<string, { enum?: string[] }> }
-    expect(schema.properties?.task?.enum).toBeDefined()
-    expect(schema.properties!.task!.enum!.length).toBeGreaterThan(0)
-  })
-
-  it('every enum task has a workflow recipe', () => {
-    const schema = guideTool.inputSchema as { properties?: Record<string, { enum?: string[] }> }
-    const tasks = schema.properties!.task!.enum!
-    for (const task of tasks) {
-      expect(workflowRecipes[task], `missing recipe for task: ${task}`).toBeTruthy()
+  it('every tool has a properties key in its inputSchema', () => {
+    for (const tool of tools) {
+      const schema = tool.inputSchema as { properties?: unknown };
+      expect(schema.properties, `${tool.name} missing properties in inputSchema`).toBeDefined();
     }
-  })
+  });
+});
 
-  it('every recipe references magnetlab_execute', () => {
-    for (const [task, recipe] of Object.entries(workflowRecipes)) {
-      if (task === 'list_tasks') continue
-      expect(recipe, `recipe "${task}" should reference magnetlab_execute`).toContain(
-        'magnetlab_execute'
-      )
-    }
-  })
+describe('Tool Group Sizes', () => {
+  // Verify group sizes by counting prefixes in sorted names
+  const toolNames = tools.map((t) => t.name);
 
-  it('create_lead_magnet recipe references knowledge search', () => {
-    expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_search_knowledge')
-    expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_ask_knowledge')
-    expect(workflowRecipes['create_lead_magnet']).toContain('magnetlab_knowledge_readiness')
-  })
+  it('has 5 lead magnet tools', () => {
+    const lmTools = toolNames.filter(
+      (n) =>
+        n.startsWith('magnetlab_list_lead_magnets') ||
+        n.startsWith('magnetlab_get_lead_magnet') ||
+        n.startsWith('magnetlab_create_lead_magnet') ||
+        n.startsWith('magnetlab_update_lead_magnet') ||
+        n.startsWith('magnetlab_delete_lead_magnet')
+    );
+    expect(lmTools).toHaveLength(5);
+  });
 
-  it('does not collide with any real or category tool name', () => {
-    expect(toolsByName.has('magnetlab_guide')).toBe(false)
-    const categoryNames = new Set(categoryTools.map((t) => t.name))
-    expect(categoryNames.has('magnetlab_guide')).toBe(false)
-  })
-})
+  it('has 7 funnel tools', () => {
+    const funnelTools = toolNames.filter(
+      (n) =>
+        n === 'magnetlab_list_funnels' ||
+        n === 'magnetlab_get_funnel' ||
+        n === 'magnetlab_create_funnel' ||
+        n === 'magnetlab_update_funnel' ||
+        n === 'magnetlab_delete_funnel' ||
+        n === 'magnetlab_publish_funnel' ||
+        n === 'magnetlab_unpublish_funnel'
+    );
+    expect(funnelTools).toHaveLength(7);
+  });
+
+  it('has 5 knowledge tools', () => {
+    const knowledgeTools = toolNames.filter(
+      (n) =>
+        n === 'magnetlab_search_knowledge' ||
+        n === 'magnetlab_browse_knowledge' ||
+        n === 'magnetlab_get_knowledge_clusters' ||
+        n === 'magnetlab_ask_knowledge' ||
+        n === 'magnetlab_submit_transcript'
+    );
+    expect(knowledgeTools).toHaveLength(5);
+  });
+
+  it('has 6 post tools', () => {
+    const postTools = toolNames.filter(
+      (n) =>
+        n === 'magnetlab_list_posts' ||
+        n === 'magnetlab_get_post' ||
+        n === 'magnetlab_create_post' ||
+        n === 'magnetlab_update_post' ||
+        n === 'magnetlab_delete_post' ||
+        n === 'magnetlab_publish_post'
+    );
+    expect(postTools).toHaveLength(6);
+  });
+
+  it('has 3 email sequence tools', () => {
+    const emailTools = toolNames.filter(
+      (n) =>
+        n === 'magnetlab_get_email_sequence' ||
+        n === 'magnetlab_save_email_sequence' ||
+        n === 'magnetlab_activate_email_sequence'
+    );
+    expect(emailTools).toHaveLength(3);
+  });
+
+  it('has 3 lead tools', () => {
+    const leadToolNames = toolNames.filter(
+      (n) =>
+        n === 'magnetlab_list_leads' || n === 'magnetlab_get_lead' || n === 'magnetlab_export_leads'
+    );
+    expect(leadToolNames).toHaveLength(3);
+  });
+
+  it('has 3 schema/introspection tools', () => {
+    const schemaTools = toolNames.filter(
+      (n) =>
+        n === 'magnetlab_list_archetypes' ||
+        n === 'magnetlab_get_archetype_schema' ||
+        n === 'magnetlab_get_business_context'
+    );
+    expect(schemaTools).toHaveLength(3);
+  });
+
+  it('has 2 compound action tools', () => {
+    const compoundTools = toolNames.filter(
+      (n) => n === 'magnetlab_launch_lead_magnet' || n === 'magnetlab_schedule_content_week'
+    );
+    expect(compoundTools).toHaveLength(2);
+  });
+
+  it('has 2 feedback/analytics tools', () => {
+    const feedbackTools = toolNames.filter(
+      (n) => n === 'magnetlab_get_performance_insights' || n === 'magnetlab_get_recommendations'
+    );
+    expect(feedbackTools).toHaveLength(2);
+  });
+
+  it('has 1 account tool', () => {
+    const accountTools = toolNames.filter((n) => n === 'magnetlab_list_teams');
+    expect(accountTools).toHaveLength(1);
+  });
+});
