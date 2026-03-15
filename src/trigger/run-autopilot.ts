@@ -1,5 +1,6 @@
 import { task, logger } from '@trigger.dev/sdk/v3';
 import { runNightlyBatch } from '@/lib/services/autopilot';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
 interface RunAutopilotPayload {
   userId: string;
@@ -8,16 +9,41 @@ interface RunAutopilotPayload {
   autoPublish?: boolean;
   teamId?: string;
   profileId?: string;
+  engagementId?: string;
 }
 
 export const runAutopilot = task({
   id: 'run-autopilot',
   maxDuration: 300,
-  retry: { maxAttempts: 2 },
+  retry: {
+    maxAttempts: 5,
+    factor: 2,
+    minTimeoutInMs: 30_000,
+    maxTimeoutInMs: 480_000,
+  },
   run: async (payload: RunAutopilotPayload) => {
-    const { userId, postsPerBatch = 3, bufferTarget = 5, autoPublish = false, teamId, profileId } = payload;
+    const {
+      userId,
+      postsPerBatch = 3,
+      bufferTarget = 5,
+      autoPublish = false,
+      teamId,
+      profileId,
+    } = payload;
 
     logger.info('Running autopilot', { userId, postsPerBatch, bufferTarget, profileId });
+
+    // Check if content ideas exist — transcript may not have been processed yet
+    const supabase = createSupabaseAdminClient();
+    const { count } = await supabase
+      .from('cp_content_ideas')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'extracted');
+
+    if (!count || count === 0) {
+      throw new Error('No content ideas available — transcript may not have been processed yet');
+    }
 
     const result = await runNightlyBatch({
       userId,
