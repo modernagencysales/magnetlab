@@ -42,19 +42,22 @@ export async function handleTranscript(userId: string, payload: UniversalTranscr
     return { success: true, duplicate: true, transcript_id: existing.id };
   }
 
-  const { data: transcript, error: insertError } = await cpTranscriptsRepo.insertTranscriptFromWebhook({
-    user_id: userId,
-    source,
-    external_id: externalId,
-    title: payload.title ?? null,
-    call_date: payload.date ?? null,
-    duration_minutes: payload.duration_minutes ?? null,
-    participants: payload.participants ?? null,
-    raw_transcript: payload.transcript,
-  });
+  const { data: transcript, error: insertError } =
+    await cpTranscriptsRepo.insertTranscriptFromWebhook({
+      user_id: userId,
+      source,
+      external_id: externalId,
+      title: payload.title ?? null,
+      call_date: payload.date ?? null,
+      duration_minutes: payload.duration_minutes ?? null,
+      participants: payload.participants ?? null,
+      raw_transcript: payload.transcript,
+    });
 
   if (insertError || !transcript) {
-    logError('webhooks/transcript', new Error(String(insertError?.message)), { step: 'failed_to_insert_transcript' });
+    logError('webhooks/transcript', new Error(String(insertError?.message)), {
+      step: 'failed_to_insert_transcript',
+    });
     return { success: false, error: 'Failed to save transcript' };
   }
 
@@ -64,7 +67,9 @@ export async function handleTranscript(userId: string, payload: UniversalTranscr
       transcriptId: transcript.id,
     });
   } catch (triggerError) {
-    logWarn('webhooks/transcript', 'Failed to trigger process-transcript', { detail: String(triggerError) });
+    logWarn('webhooks/transcript', 'Failed to trigger process-transcript', {
+      detail: String(triggerError),
+    });
   }
 
   return { success: true, transcript_id: transcript.id };
@@ -156,7 +161,8 @@ export async function handleResend(payload: {
     let linkUrl: string | null = null;
     let bounceType: string | null = null;
     if (eventType === 'clicked' && payload.data?.click?.link) linkUrl = payload.data.click.link;
-    if (eventType === 'bounced' && payload.data?.bounce?.type) bounceType = payload.data.bounce.type;
+    if (eventType === 'bounced' && payload.data?.bounce?.type)
+      bounceType = payload.data.bounce.type;
 
     const insertResult = await publicRepo.insertEmailEvent({
       email_id: emailId,
@@ -290,6 +296,8 @@ export async function handleDfy(payload: {
   archetype?: string;
   businessContext?: Record<string, unknown>;
   engagementId?: string;
+  postsPerBatch?: number;
+  bufferTarget?: number;
 }) {
   if (payload.action === 'create_lead_magnet') {
     try {
@@ -305,35 +313,42 @@ export async function handleDfy(payload: {
         },
       });
       const handle = await tasks.trigger('create-lead-magnet-pipeline', {
-      userId: payload.userId,
-      userName: null,
-      username: null,
-      archetype,
-      businessContext: {
-        businessDescription: (ctx as { businessDescription?: string }).businessDescription || `${(ctx as { company?: string }).company || 'Business'} in ${(ctx as { industry?: string }).industry || 'their industry'}`,
-        credibilityMarkers: ((ctx as { credibilityMarkers?: string[] }).credibilityMarkers) || [],
-        urgentPains: ((ctx as { urgentPains?: string[] }).urgentPains) || [],
-        processes: ((ctx as { processes?: string[] }).processes) || [],
-        tools: ((ctx as { tools?: string[] }).tools) || [],
-        results: ((ctx as { results?: string[] }).results) || [],
-        frequentQuestions: ((ctx as { frequentQuestions?: string[] }).frequentQuestions) || [],
-      },
-      autoPublishFunnel: false,
-      autoSchedulePost: false,
-      leadMagnetId: magnet.id,
-    });
+        userId: payload.userId,
+        userName: null,
+        username: null,
+        archetype,
+        businessContext: {
+          businessDescription:
+            (ctx as { businessDescription?: string }).businessDescription ||
+            `${(ctx as { company?: string }).company || 'Business'} in ${(ctx as { industry?: string }).industry || 'their industry'}`,
+          credibilityMarkers: (ctx as { credibilityMarkers?: string[] }).credibilityMarkers || [],
+          urgentPains: (ctx as { urgentPains?: string[] }).urgentPains || [],
+          processes: (ctx as { processes?: string[] }).processes || [],
+          tools: (ctx as { tools?: string[] }).tools || [],
+          results: (ctx as { results?: string[] }).results || [],
+          frequentQuestions: (ctx as { frequentQuestions?: string[] }).frequentQuestions || [],
+        },
+        autoPublishFunnel: false,
+        autoSchedulePost: false,
+        leadMagnetId: magnet.id,
+        engagementId: payload.engagementId,
+      });
       return { success: true, leadMagnetId: magnet.id, runId: handle.id };
     } catch (err) {
       logError('webhooks/dfy', err, { step: 'create_lead_magnet_record' });
-      return { success: false, error: err instanceof Error ? err.message : 'Failed to create lead magnet' };
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to create lead magnet',
+      };
     }
   }
   if (payload.action === 'trigger_autopilot') {
     const handle = await tasks.trigger('run-autopilot', {
       userId: payload.userId,
-      postsPerBatch: 3,
-      bufferTarget: 5,
+      postsPerBatch: payload.postsPerBatch ?? 3,
+      bufferTarget: payload.bufferTarget ?? 5,
       autoPublish: false,
+      engagementId: payload.engagementId,
     });
     return { success: true, runId: handle.id };
   }
@@ -360,9 +375,15 @@ export async function handleSubscriberSync(payload: {
     first_name: payload.first_name?.trim() || existing?.first_name || null,
     last_name: payload.last_name?.trim() || existing?.last_name || null,
     company: payload.company?.trim() || existing?.company || null,
-    metadata: { ...((existing?.metadata as Record<string, unknown>) || {}), ...(payload.metadata || {}) },
+    metadata: {
+      ...((existing?.metadata as Record<string, unknown>) || {}),
+      ...(payload.metadata || {}),
+    },
   };
-  const { data: subscriber, error } = await emailRepo.upsertSubscriberSync(payload.team_id, upsertData);
+  const { data: subscriber, error } = await emailRepo.upsertSubscriberSync(
+    payload.team_id,
+    upsertData
+  );
   if (error) return { success: false, error: error.message };
   return { success: true, subscriber, merged: !!existing };
 }
