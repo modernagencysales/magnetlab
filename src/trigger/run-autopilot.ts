@@ -1,6 +1,7 @@
 import { task, logger } from '@trigger.dev/sdk/v3';
 import { runNightlyBatch } from '@/lib/services/autopilot';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { fireDfyCallback } from '@/server/services/dfy-callback';
 
 interface RunAutopilotPayload {
   userId: string;
@@ -86,6 +87,22 @@ export const runAutopilot = task({
           });
         }
       }
+    }
+
+    // Fire DFY callback if this was triggered by an engagement
+    if (payload.engagementId) {
+      fireDfyCallback({
+        engagement_id: payload.engagementId,
+        automation_type: 'content_calendar',
+        status: 'completed',
+        result: {
+          posts_created: result.postsCreated,
+          posts_scheduled: result.postsScheduled,
+          ideas_processed: result.ideasProcessed,
+        },
+      }).catch(() => {
+        // Fire-and-forget — already logged inside fireDfyCallback
+      });
     }
 
     return result;

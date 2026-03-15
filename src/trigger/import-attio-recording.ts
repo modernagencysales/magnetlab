@@ -67,15 +67,43 @@ export const importAttioRecording = task({
     const durationMinutes = meeting ? calcDurationMinutes(meeting.start, meeting.end) : null;
     const participants = meeting ? extractParticipants(meeting) : [];
     const speakerNames = extractSpeakerNames(segmentsRes.data);
-    const speakerMap = meeting
-      ? buildSpeakerMap(meeting.participants, speakerNames)
-      : null;
+    const speakerMap = meeting ? buildSpeakerMap(meeting.participants, speakerNames) : null;
+
+    // ─── DFY User Routing ──────────────────────────────────────────────
+    // Check if this recording matches a DFY client engagement.
+    // If so, route the transcript to the client's magnetlab user instead of the default.
+    let resolvedUserId = userId;
+    try {
+      if (participants.length > 0) {
+        const { data: match } = await supabase
+          .from('dfy_engagements')
+          .select('magnetlab_user_id')
+          .in('client_email', participants)
+          .not('magnetlab_user_id', 'is', null)
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+
+        if (match?.magnetlab_user_id) {
+          resolvedUserId = match.magnetlab_user_id;
+          logger.info('DFY client match — routing transcript to magnetlab user', {
+            magnetlabUserId: resolvedUserId,
+            originalUserId: userId,
+          });
+        }
+      }
+    } catch (err) {
+      // Fallback to original user on error — DFY routing is best-effort
+      logger.warn('DFY user routing failed, using original userId', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
 
     // Insert
     const { data: saved, error: insertError } = await supabase
       .from('cp_call_transcripts')
       .insert({
-        user_id: userId,
+        user_id: resolvedUserId,
         source: 'attio',
         external_id: externalId,
         title,
@@ -101,7 +129,7 @@ export const importAttioRecording = task({
 
     // Trigger AI processing pipeline
     await tasks.trigger<typeof processTranscript>('process-transcript', {
-      userId,
+      userId: resolvedUserId,
       transcriptId: saved.id,
     });
 
