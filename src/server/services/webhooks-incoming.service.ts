@@ -297,6 +297,8 @@ export async function handleDfy(payload: {
   archetype?: string;
   businessContext?: Record<string, unknown>;
   engagementId?: string;
+  postsPerBatch?: number;
+  bufferTarget?: number;
 }) {
   if (payload.action === 'create_lead_magnet') {
     try {
@@ -331,6 +333,7 @@ export async function handleDfy(payload: {
         autoPublishFunnel: false,
         autoSchedulePost: false,
         leadMagnetId: magnet.id,
+        engagementId: payload.engagementId,
       });
       return { success: true, leadMagnetId: magnet.id, runId: handle.id };
     } catch (err) {
@@ -344,9 +347,10 @@ export async function handleDfy(payload: {
   if (payload.action === 'trigger_autopilot') {
     const handle = await tasks.trigger('run-autopilot', {
       userId: payload.userId,
-      postsPerBatch: 3,
-      bufferTarget: 5,
+      postsPerBatch: payload.postsPerBatch ?? 3,
+      bufferTarget: payload.bufferTarget ?? 5,
       autoPublish: false,
+      engagementId: payload.engagementId,
     });
     return { success: true, runId: handle.id };
   }
