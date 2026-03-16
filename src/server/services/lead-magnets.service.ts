@@ -86,6 +86,7 @@ export async function createLeadMagnet(scope: DataScope, body: Record<string, un
     concept: v.concept,
     extracted_content: v.extractedContent,
     interactive_config: v.interactiveConfig,
+    external_url: v.externalUrl,
     linkedin_post: v.linkedinPost,
     post_variations: v.postVariations,
     dm_template: v.dmTemplate,
