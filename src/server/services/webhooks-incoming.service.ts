@@ -290,7 +290,7 @@ export async function handleGtmCallback(payload: {
   return { success: false, error: `Unknown event type: ${payload.event}` };
 }
 
-/** Handle DFY webhook: create_lead_magnet or trigger_autopilot. */
+/** Handle DFY webhook: create_lead_magnet, trigger_autopilot, or run_dfy_content_pipeline. */
 export async function handleDfy(payload: {
   action: string;
   userId: string;
@@ -299,6 +299,9 @@ export async function handleDfy(payload: {
   engagementId?: string;
   postsPerBatch?: number;
   bufferTarget?: number;
+  transcriptText?: string;
+  blueprintProspectId?: string;
+  clientName?: string;
 }) {
   if (payload.action === 'create_lead_magnet') {
     try {
@@ -351,6 +354,16 @@ export async function handleDfy(payload: {
       bufferTarget: payload.bufferTarget ?? 5,
       autoPublish: false,
       engagementId: payload.engagementId,
+    });
+    return { success: true, runId: handle.id };
+  }
+  if (payload.action === 'run_dfy_content_pipeline') {
+    const handle = await tasks.trigger('dfy-content-pipeline', {
+      userId: payload.userId,
+      engagementId: payload.engagementId,
+      transcriptText: payload.transcriptText,
+      blueprintProspectId: payload.blueprintProspectId,
+      clientName: payload.clientName,
     });
     return { success: true, runId: handle.id };
   }
