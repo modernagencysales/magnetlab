@@ -203,7 +203,6 @@ export const completeBlueprintPostsTask = task({
       enable_automation: false,
       scrape_engagement: false,
       engagement_scrape_count: 0,
-      image_urls: [],
     }));
 
     const { data: insertedPosts, error: insertError } = await supabase
