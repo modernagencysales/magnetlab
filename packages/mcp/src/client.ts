@@ -123,12 +123,17 @@ export class MagnetLabClient {
     archetype: Archetype;
     concept?: unknown;
     extractedContent?: unknown;
+    externalUrl?: string;
     linkedinPost?: string;
     postVariations?: unknown;
     dmTemplate?: string;
     ctaWord?: string;
   }) {
     return this.request<unknown>('POST', `/lead-magnet`, params);
+  }
+
+  async updateLeadMagnet(id: string, params: Record<string, unknown>) {
+    return this.request<unknown>('PUT', `/lead-magnet/${id}`, params);
   }
 
   async deleteLeadMagnet(id: string) {

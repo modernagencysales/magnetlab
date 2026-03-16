@@ -536,16 +536,34 @@ describe('Validation Schemas', () => {
       const result = validateToolArgs('magnetlab_create_question', {
         form_id: 'form-1',
         question_text: 'What is your role?',
-        question_type: 'single_choice',
+        answer_type: 'multiple_choice',
       });
       expect(result.success).toBe(true);
     });
 
-    it('rejects invalid question_type', () => {
+    it('accepts yes_no answer type', () => {
+      const result = validateToolArgs('magnetlab_create_question', {
+        form_id: 'form-1',
+        question_text: 'Are you a founder?',
+        answer_type: 'yes_no',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects invalid answer_type', () => {
       const result = validateToolArgs('magnetlab_create_question', {
         form_id: 'form-1',
         question_text: 'What is your role?',
-        question_type: 'dropdown',
+        answer_type: 'dropdown',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects old single_choice value', () => {
+      const result = validateToolArgs('magnetlab_create_question', {
+        form_id: 'form-1',
+        question_text: 'What is your role?',
+        answer_type: 'single_choice',
       });
       expect(result.success).toBe(false);
     });
