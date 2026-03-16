@@ -18,6 +18,10 @@ interface DfyContentPipelinePayload {
   transcriptText?: string;
   blueprintProspectId?: string;
   clientName?: string;
+  /** If provided, create/verify magnetlab account before running pipeline */
+  clientEmail?: string;
+  clientLinkedinUrl?: string;
+  clientCompany?: string;
 }
 
 // ─── Task ───────────────────────────────────────────────────────────────────
@@ -27,7 +31,16 @@ export const dfyContentPipelineTask = task({
   maxDuration: 900, // 15 min — orchestrator, sub-tasks have own timeouts
   retry: { maxAttempts: 1 },
   run: async (payload: DfyContentPipelinePayload) => {
-    const { userId, engagementId, transcriptText, blueprintProspectId, clientName } = payload;
+    const {
+      engagementId,
+      transcriptText,
+      blueprintProspectId,
+      clientName,
+      clientEmail,
+      clientLinkedinUrl,
+      clientCompany,
+    } = payload;
+    let { userId } = payload;
     const supabase = createSupabaseAdminClient();
 
     logger.info('Starting DFY content pipeline', {
@@ -41,6 +54,65 @@ export const dfyContentPipelineTask = task({
     let transcriptId: string | null = null;
     let totalPosts = 0;
     const errors: string[] = [];
+
+    // ─── Step 0: Ensure magnetlab account exists ─────────────────────────
+
+    if (clientEmail) {
+      try {
+        const magnetlabUrl =
+          process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://magnetlab.app';
+        const apiKey = process.env.EXTERNAL_API_KEY;
+        if (!apiKey) {
+          logger.warn('EXTERNAL_API_KEY not set — skipping account creation');
+        } else {
+          const res = await fetch(`${magnetlabUrl}/api/external/create-account`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              email: clientEmail,
+              full_name: clientName || clientEmail.split('@')[0],
+              linkedin_url: clientLinkedinUrl,
+              company: clientCompany,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const createdUserId = data.data?.user_id;
+            if (createdUserId && !userId) {
+              userId = createdUserId;
+              logger.info('Created/verified magnetlab account', {
+                userId: createdUserId,
+                alreadyExisted: data.data?.already_existed,
+              });
+              // Update the engagement with the magnetlab_user_id
+              await supabase
+                .from('dfy_engagements')
+                .update({ magnetlab_user_id: createdUserId })
+                .eq('id', engagementId);
+            }
+          } else {
+            const errText = await res.text().catch(() => 'unknown');
+            logger.error('Failed to create magnetlab account', {
+              status: res.status,
+              error: errText,
+            });
+          }
+        }
+      } catch (err) {
+        logger.error('Account creation failed — continuing with existing userId', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    if (!userId) {
+      throw new Error(
+        'No userId available — cannot run content pipeline without a magnetlab account'
+      );
+    }
 
     // ─── Step 1: Insert transcript ──────────────────────────────────────
 

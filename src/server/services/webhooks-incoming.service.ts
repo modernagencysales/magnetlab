@@ -301,6 +301,9 @@ export async function handleDfy(payload: {
   transcriptText?: string;
   blueprintProspectId?: string;
   clientName?: string;
+  clientEmail?: string;
+  clientLinkedinUrl?: string;
+  clientCompany?: string;
 }) {
   if (payload.action === 'create_lead_magnet') {
     try {
@@ -362,6 +365,9 @@ export async function handleDfy(payload: {
       transcriptText: payload.transcriptText,
       blueprintProspectId: payload.blueprintProspectId,
       clientName: payload.clientName,
+      clientEmail: payload.clientEmail,
+      clientLinkedinUrl: payload.clientLinkedinUrl,
+      clientCompany: payload.clientCompany,
     });
     return { success: true, runId: handle.id };
   }
