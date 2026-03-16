@@ -1,6 +1,7 @@
 import { schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach/client';
+import { isLinkedInUrlInAnyCampaign } from '@/server/repositories/post-campaigns.repo';
 
 // ============================================
 // CRON TASK: every 30 minutes
@@ -67,11 +68,27 @@ export const signalPushHeyreach = schedules.task({
 
         logger.info(`Found ${leads.length} qualified leads for user ${config.user_id}`);
 
+        // Step 3b: Filter out leads already tracked in post campaigns (avoid double-outreach)
+        const filteredLeads = [];
+        for (const lead of leads) {
+          const inCampaign = await isLinkedInUrlInAnyCampaign(lead.linkedin_url);
+          if (inCampaign) {
+            logger.info('Skipping lead — already in post campaign', {
+              linkedin_url: lead.linkedin_url,
+            });
+          } else {
+            filteredLeads.push(lead);
+          }
+        }
+
+        if (filteredLeads.length === 0) {
+          logger.info('All qualified leads already in post campaigns', { userId: config.user_id });
+          continue;
+        }
+
         // Step 3c: Map leads to HeyReach format
-        const heyreachLeads = leads.map(lead => ({
-          profileUrl: lead.linkedin_url.endsWith('/')
-            ? lead.linkedin_url
-            : `${lead.linkedin_url}/`,
+        const heyreachLeads = filteredLeads.map((lead) => ({
+          profileUrl: lead.linkedin_url.endsWith('/') ? lead.linkedin_url : `${lead.linkedin_url}/`,
           firstName: lead.first_name || undefined,
           lastName: lead.last_name || undefined,
           customVariables: {
@@ -86,7 +103,7 @@ export const signalPushHeyreach = schedules.task({
 
         if (result.success) {
           // Step 3e: Mark leads as pushed
-          const leadIds = leads.map(l => l.id);
+          const leadIds = filteredLeads.map((l) => l.id);
           const now = new Date().toISOString();
 
           const { error: updateError } = await supabase
@@ -105,15 +122,15 @@ export const signalPushHeyreach = schedules.task({
               error: updateError.message,
             });
           } else {
-            totalPushed += leads.length;
-            logger.info(`Pushed ${leads.length} leads to HeyReach`, {
+            totalPushed += filteredLeads.length;
+            logger.info(`Pushed ${filteredLeads.length} leads to HeyReach`, {
               userId: config.user_id,
               campaignId,
             });
           }
         } else {
           // Step 3f: Record error for retry
-          const leadIds = leads.map(l => l.id);
+          const leadIds = filteredLeads.map((l) => l.id);
           const errorMsg = result.error || 'Unknown HeyReach push error';
 
           const { error: updateError } = await supabase
