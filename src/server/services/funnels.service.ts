@@ -355,14 +355,15 @@ export async function publishFunnel(
       });
     }
 
-    // Lead magnet content guard
+    // Lead magnet content guard — skip for external URL lead magnets
     if (funnel.lead_magnets) {
       const lm = await funnelsRepo.getLeadMagnetForPublish(
         scope.userId,
         (funnel.lead_magnets as { id: string }).id
       );
+      const hasExternalUrl = !!(lm as Record<string, unknown> | null)?.external_url;
       const polishedLen = lm?.polished_content ? JSON.stringify(lm.polished_content).length : 0;
-      if (!lm?.extracted_content && polishedLen < 3000) {
+      if (!hasExternalUrl && !lm?.extracted_content && polishedLen < 3000) {
         throw Object.assign(
           new Error(
             "This lead magnet doesn't have enough content to publish. Generate content first, then try again."

@@ -213,6 +213,7 @@ export const createLeadMagnetSchema = z.object({
   concept: conceptSchema.nullable().optional(),
   extractedContent: extractedContentSchema.nullable().optional(),
   interactiveConfig: interactiveConfigSchema.nullable().optional(),
+  externalUrl: z.string().url().nullable().optional(),
   linkedinPost: z.string().nullable().optional(),
   postVariations: z
     .array(
