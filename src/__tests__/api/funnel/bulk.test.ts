@@ -21,6 +21,10 @@ jest.mock('@/lib/auth/api-key', () => ({
   resolveUserId: jest.fn(),
 }));
 
+jest.mock('@/lib/utils/team-context', () => ({
+  getDataScope: jest.fn().mockResolvedValue({ type: 'personal', userId: 'user-123', teamId: null }),
+}));
+
 import { resolveUserId } from '@/lib/auth/api-key';
 const mockResolveUserId = resolveUserId as jest.MockedFunction<typeof resolveUserId>;
 
@@ -70,7 +74,13 @@ describe('POST /api/funnel/bulk', () => {
 
     // Mock user profile defaults
     mockSupabaseClient.single.mockResolvedValueOnce({
-      data: { default_theme: 'dark', default_primary_color: '#8b5cf6', default_background_style: 'solid', default_logo_url: null, username: 'testuser' },
+      data: {
+        default_theme: 'dark',
+        default_primary_color: '#8b5cf6',
+        default_background_style: 'solid',
+        default_logo_url: null,
+        username: 'testuser',
+      },
       error: null,
     });
 
@@ -92,11 +102,13 @@ describe('POST /api/funnel/bulk', () => {
     const request = new Request('http://localhost:3000/api/funnel/bulk', {
       method: 'POST',
       body: JSON.stringify({
-        pages: [{
-          title: 'Test Page',
-          optinHeadline: 'Get the guide',
-          leadMagnetUrl: 'https://example.com/guide.pdf',
-        }],
+        pages: [
+          {
+            title: 'Test Page',
+            optinHeadline: 'Get the guide',
+            leadMagnetUrl: 'https://example.com/guide.pdf',
+          },
+        ],
       }),
     });
     const response = await POST(request);

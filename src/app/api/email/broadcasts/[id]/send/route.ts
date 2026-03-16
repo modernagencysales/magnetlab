@@ -20,12 +20,16 @@ export async function POST(_request: Request, { params }: RouteParams) {
     if (!isValidUUID(id)) return ApiErrors.validationError('Invalid broadcast ID format');
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const result = await emailService.sendBroadcast(scope.teamId, id, session.user.id);
     if (!result.success) {
       if (result.error === 'not_found') return ApiErrors.notFound('Broadcast');
-      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
+      if (result.error === 'validation')
+        return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to send broadcast');
     }
     return NextResponse.json({

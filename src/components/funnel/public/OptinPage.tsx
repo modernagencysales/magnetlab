@@ -144,7 +144,15 @@ export function OptinPage({
       <div className="w-full max-w-md space-y-8 text-center">
         {/* Logo */}
         {logoUrl && (
-          <Image src={logoUrl} alt="Logo" width={120} height={48} className="h-12 w-auto mx-auto" unoptimized />
+          <Image
+            src={logoUrl}
+            alt="Logo"
+            width={120}
+            height={48}
+            className="h-12 w-auto mx-auto"
+            unoptimized
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
         )}
 
         {/* Headline */}

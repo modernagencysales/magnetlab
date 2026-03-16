@@ -20,7 +20,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
     if (!isValidUUID(id)) return ApiErrors.validationError('Invalid broadcast ID format');
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const result = await emailService.getBroadcastPreviewCount(scope.teamId, id);
     if (!result.success) {

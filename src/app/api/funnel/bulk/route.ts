@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import { resolveUserId } from '@/lib/auth/api-key';
+import { getDataScope } from '@/lib/utils/team-context';
 import { validateBody, bulkCreatePagesSchema } from '@/lib/validations/api';
 import * as funnelsService from '@/server/services/funnels.service';
 
@@ -15,7 +16,12 @@ export async function POST(request: Request) {
       return ApiErrors.validationError(validation.error, validation.details);
     }
 
-    const result = await funnelsService.bulkCreateFunnels(userId, validation.data.pages);
+    const scope = await getDataScope(userId);
+    const result = await funnelsService.bulkCreateFunnels(
+      userId,
+      validation.data.pages,
+      scope.teamId
+    );
     return NextResponse.json(result);
   } catch (error) {
     logApiError('funnel/bulk', error);

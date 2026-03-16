@@ -194,12 +194,15 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
               {teamProfiles.length > 1 && (
                 <div>
                   <Label className="mb-1">Speaker</Label>
-                  <Select value={speakerProfileId} onValueChange={setSpeakerProfileId}>
+                  <Select
+                    value={speakerProfileId || 'auto'}
+                    onValueChange={(v) => setSpeakerProfileId(v === 'auto' ? '' : v)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Auto-detect / Default" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Auto-detect / Default</SelectItem>
+                      <SelectItem value="auto">Auto-detect / Default</SelectItem>
                       {teamProfiles.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.full_name}

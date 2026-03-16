@@ -278,12 +278,15 @@ export function AutopilotTab({ profileId }: AutopilotTabProps) {
               </div>
               <div>
                 <Label className="mb-1">Day (optional)</Label>
-                <Select value={newSlotDay} onValueChange={setNewSlotDay}>
+                <Select
+                  value={newSlotDay || 'any'}
+                  onValueChange={(v) => setNewSlotDay(v === 'any' ? '' : v)}
+                >
                   <SelectTrigger className="w-[130px]">
                     <SelectValue placeholder="Any day" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any day</SelectItem>
+                    <SelectItem value="any">Any day</SelectItem>
                     {DAYS.map((d, i) => (
                       <SelectItem key={i} value={String(i)}>
                         {d}

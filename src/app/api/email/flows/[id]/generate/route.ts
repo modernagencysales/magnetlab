@@ -22,7 +22,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let stepCount = 5;
     try {
       const body = await request.json();
-      if (body?.stepCount && typeof body.stepCount === 'number' && body.stepCount >= 1 && body.stepCount <= 10) {
+      if (
+        body?.stepCount &&
+        typeof body.stepCount === 'number' &&
+        body.stepCount >= 1 &&
+        body.stepCount <= 10
+      ) {
         stepCount = body.stepCount;
       }
     } catch {
@@ -30,9 +35,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
-    const result = await emailService.generateFlowSteps(scope.teamId, flowId, session.user.id, stepCount);
+    const result = await emailService.generateFlowSteps(
+      scope.teamId,
+      flowId,
+      session.user.id,
+      stepCount
+    );
     if (!result.success) {
       if (result.error === 'not_found') return ApiErrors.notFound('Flow');
       return ApiErrors.databaseError('Failed to generate flow steps');

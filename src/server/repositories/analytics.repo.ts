@@ -21,23 +21,46 @@ export async function getContentPipelineStats(scope: DataScope): Promise<{
   knowledgeCount: number;
 }> {
   const supabase = createSupabaseAdminClient();
-  const postsQuery = applyScope(supabase.from('cp_pipeline_posts').select('status'), scope);
+
+  // cp_pipeline_posts uses team_profile_id, not team_id — can't use applyScope
+  let postsQuery = supabase.from('cp_pipeline_posts').select('status');
+  if (scope.type === 'team' && scope.teamId) {
+    const { data: profiles } = await supabase
+      .from('team_profiles')
+      .select('id')
+      .eq('team_id', scope.teamId)
+      .eq('status', 'active');
+    const profileIds = profiles?.map((p) => p.id) ?? [];
+    if (profileIds.length > 0) {
+      postsQuery = postsQuery.in('team_profile_id', profileIds);
+    } else {
+      postsQuery = postsQuery.eq('user_id', scope.userId);
+    }
+  } else {
+    postsQuery = postsQuery.eq('user_id', scope.userId);
+  }
+
   const transcriptsQuery = applyScope(
     supabase.from('cp_call_transcripts').select('id', { count: 'exact', head: true }),
-    scope,
+    scope
   );
   const knowledgeQuery = applyScope(
     supabase.from('cp_knowledge_entries').select('id', { count: 'exact', head: true }),
-    scope,
+    scope
   );
   const [postsRes, transcriptsRes, knowledgeRes] = await Promise.all([
     postsQuery,
     transcriptsQuery,
     knowledgeQuery,
   ]);
-  if (postsRes.error) throw new Error(`analytics.getContentPipelineStats posts: ${postsRes.error.message}`);
-  if (transcriptsRes.error) throw new Error(`analytics.getContentPipelineStats transcripts: ${transcriptsRes.error.message}`);
-  if (knowledgeRes.error) throw new Error(`analytics.getContentPipelineStats knowledge: ${knowledgeRes.error.message}`);
+  if (postsRes.error)
+    throw new Error(`analytics.getContentPipelineStats posts: ${postsRes.error.message}`);
+  if (transcriptsRes.error)
+    throw new Error(
+      `analytics.getContentPipelineStats transcripts: ${transcriptsRes.error.message}`
+    );
+  if (knowledgeRes.error)
+    throw new Error(`analytics.getContentPipelineStats knowledge: ${knowledgeRes.error.message}`);
   return {
     posts: (postsRes.data ?? []) as { status: string }[],
     transcriptsCount: transcriptsRes.count ?? 0,
@@ -47,10 +70,15 @@ export async function getContentPipelineStats(scope: DataScope): Promise<{
 
 export async function getPageViewsAndLeads(
   funnelIds: string[],
-  startDate: string,
+  startDate: string
 ): Promise<{
   views: { funnel_page_id: string; view_date: string }[];
-  leads: { funnel_page_id: string; is_qualified: boolean | null; utm_source: string | null; created_at: string }[];
+  leads: {
+    funnel_page_id: string;
+    is_qualified: boolean | null;
+    utm_source: string | null;
+    created_at: string;
+  }[];
 }> {
   if (funnelIds.length === 0) {
     return { views: [], leads: [] };
@@ -70,15 +98,29 @@ export async function getPageViewsAndLeads(
       .gte('created_at', `${startDate}T00:00:00Z`)
       .order('created_at'),
   ]);
-  if (viewsRes.error) throw new Error(`analytics.getPageViewsAndLeads views: ${viewsRes.error.message}`);
-  if (leadsRes.error) throw new Error(`analytics.getPageViewsAndLeads leads: ${leadsRes.error.message}`);
+  if (viewsRes.error)
+    throw new Error(`analytics.getPageViewsAndLeads views: ${viewsRes.error.message}`);
+  if (leadsRes.error)
+    throw new Error(`analytics.getPageViewsAndLeads leads: ${leadsRes.error.message}`);
   return {
     views: (viewsRes.data ?? []) as { funnel_page_id: string; view_date: string }[],
-    leads: (leadsRes.data ?? []) as { funnel_page_id: string; is_qualified: boolean | null; utm_source: string | null; created_at: string }[],
+    leads: (leadsRes.data ?? []) as {
+      funnel_page_id: string;
+      is_qualified: boolean | null;
+      utm_source: string | null;
+      created_at: string;
+    }[],
   };
 }
 
-export async function getPublishedPostsByUserId(userId: string): Promise<{ id: string; title: string | null; published_at: string | null; linkedin_post_id: string | null }[]> {
+export async function getPublishedPostsByUserId(userId: string): Promise<
+  {
+    id: string;
+    title: string | null;
+    published_at: string | null;
+    linkedin_post_id: string | null;
+  }[]
+> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('cp_pipeline_posts')
@@ -87,10 +129,17 @@ export async function getPublishedPostsByUserId(userId: string): Promise<{ id: s
     .eq('status', 'published')
     .order('published_at', { ascending: false });
   if (error) throw new Error(`analytics.getPublishedPostsByUserId: ${error.message}`);
-  return (data ?? []) as { id: string; title: string | null; published_at: string | null; linkedin_post_id: string | null }[];
+  return (data ?? []) as {
+    id: string;
+    title: string | null;
+    published_at: string | null;
+    linkedin_post_id: string | null;
+  }[];
 }
 
-export async function getEngagementsByPostIds(postIds: string[]): Promise<{ post_id: string; engagement_type: string }[]> {
+export async function getEngagementsByPostIds(
+  postIds: string[]
+): Promise<{ post_id: string; engagement_type: string }[]> {
   if (postIds.length === 0) return [];
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -101,7 +150,10 @@ export async function getEngagementsByPostIds(postIds: string[]): Promise<{ post
   return (data ?? []) as { post_id: string; engagement_type: string }[];
 }
 
-export async function getAutomationsAndEvents(userId: string, postIds: string[]): Promise<{
+export async function getAutomationsAndEvents(
+  userId: string,
+  postIds: string[]
+): Promise<{
   automationToPost: Record<string, string>;
   events: { automation_id: string; event_type: string }[];
 }> {
@@ -126,14 +178,18 @@ export async function getAutomationsAndEvents(userId: string, postIds: string[])
     .select('automation_id, event_type')
     .in('automation_id', automationIds)
     .in('event_type', ['dm_sent', 'dm_failed']);
-  if (eventsError) throw new Error(`analytics.getAutomationsAndEvents events: ${eventsError.message}`);
+  if (eventsError)
+    throw new Error(`analytics.getAutomationsAndEvents events: ${eventsError.message}`);
   return {
     automationToPost,
     events: (events ?? []) as { automation_id: string; event_type: string }[],
   };
 }
 
-export async function getEmailEventsByUserId(userId: string, startIso: string): Promise<{ event_type: string; lead_magnet_id: string | null }[]> {
+export async function getEmailEventsByUserId(
+  userId: string,
+  startIso: string
+): Promise<{ event_type: string; lead_magnet_id: string | null }[]> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('email_events')
@@ -158,12 +214,12 @@ export async function getLeadMagnetTitles(ids: string[]): Promise<Record<string,
 
 export async function getFunnelByIdAndScope(
   funnelId: string,
-  scope: DataScope,
+  scope: DataScope
 ): Promise<{ id: string; slug: string; optin_headline: string } | null> {
   const supabase = createSupabaseAdminClient();
   const query = applyScope(
     supabase.from('funnel_pages').select('id, slug, optin_headline').eq('id', funnelId),
-    scope,
+    scope
   );
   const { data, error } = await query.single();
   if (error || !data) return null;
@@ -172,11 +228,19 @@ export async function getFunnelByIdAndScope(
 
 export async function getFunnelDetailViewsAndLeads(
   funnelId: string,
-  startDate: string,
+  startDate: string
 ): Promise<{
   optinViews: { view_date: string }[];
   thankyouViews: { view_date: string }[];
-  leads: { id: string; email: string; name: string | null; is_qualified: boolean | null; qualification_answers: unknown; utm_source: string | null; created_at: string }[];
+  leads: {
+    id: string;
+    email: string;
+    name: string | null;
+    is_qualified: boolean | null;
+    qualification_answers: unknown;
+    utm_source: string | null;
+    created_at: string;
+  }[];
 }> {
   const supabase = createSupabaseAdminClient();
   const [optinRes, thankyouRes, leadsRes] = await Promise.all([
@@ -201,12 +265,25 @@ export async function getFunnelDetailViewsAndLeads(
       .gte('created_at', `${startDate}T00:00:00Z`)
       .order('created_at'),
   ]);
-  if (optinRes.error) throw new Error(`analytics.getFunnelDetailViewsAndLeads optin: ${optinRes.error.message}`);
-  if (thankyouRes.error) throw new Error(`analytics.getFunnelDetailViewsAndLeads thankyou: ${thankyouRes.error.message}`);
-  if (leadsRes.error) throw new Error(`analytics.getFunnelDetailViewsAndLeads leads: ${leadsRes.error.message}`);
+  if (optinRes.error)
+    throw new Error(`analytics.getFunnelDetailViewsAndLeads optin: ${optinRes.error.message}`);
+  if (thankyouRes.error)
+    throw new Error(
+      `analytics.getFunnelDetailViewsAndLeads thankyou: ${thankyouRes.error.message}`
+    );
+  if (leadsRes.error)
+    throw new Error(`analytics.getFunnelDetailViewsAndLeads leads: ${leadsRes.error.message}`);
   return {
     optinViews: (optinRes.data ?? []) as { view_date: string }[],
     thankyouViews: (thankyouRes.data ?? []) as { view_date: string }[],
-    leads: (leadsRes.data ?? []) as { id: string; email: string; name: string | null; is_qualified: boolean | null; qualification_answers: unknown; utm_source: string | null; created_at: string }[],
+    leads: (leadsRes.data ?? []) as {
+      id: string;
+      email: string;
+      name: string | null;
+      is_qualified: boolean | null;
+      qualification_answers: unknown;
+      utm_source: string | null;
+      created_at: string;
+    }[],
   };
 }

@@ -8,8 +8,17 @@ import * as webhooksIncomingService from '@/server/services/webhooks-incoming.se
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VALID_SOURCES = [
-  'lead_magnet', 'manual', 'import', 'csv_import', 'resend_import',
-  'positive_reply', 'purchaser', 'meeting', 'heyreach', 'plusvibe', 'gtm_sync',
+  'lead_magnet',
+  'manual',
+  'import',
+  'csv_import',
+  'resend_import',
+  'positive_reply',
+  'purchaser',
+  'meeting',
+  'heyreach',
+  'plusvibe',
+  'gtm_sync',
 ];
 
 export async function POST(request: NextRequest) {
@@ -57,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await webhooksIncomingService.handleSubscriberSync({
-      email: p.email as string,
+      email,
       team_id: p.team_id as string,
       first_name: p.first_name as string | undefined,
       last_name: p.last_name as string | undefined,

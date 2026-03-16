@@ -20,7 +20,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!isValidUUID(flowId)) return ApiErrors.validationError('Invalid flow ID');
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));

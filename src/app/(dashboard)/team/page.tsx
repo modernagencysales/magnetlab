@@ -112,6 +112,7 @@ export default function TeamPage() {
 
   const enterTeam = (teamId: string) => {
     document.cookie = `ml-team-context=${teamId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+    router.refresh();
     router.push('/');
   };
 
@@ -274,115 +275,123 @@ export default function TeamPage() {
         )}
 
         <div className="space-y-6">
-        {/* Team Settings (owner only) */}
-        {isOwner && (
-          <SectionContainer title="Team Settings">
-            <Card>
-              <CardContent className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField label="Team Name" htmlFor="team-name">
-                    <Input
-                      id="team-name"
-                      value={teamName}
-                      onChange={(e) => setTeamName(e.target.value)}
-                    />
-                  </FormField>
-                  <FormField label="Industry" htmlFor="team-industry">
-                    <Input
-                      id="team-industry"
-                      value={teamIndustry}
-                      onChange={(e) => setTeamIndustry(e.target.value)}
-                    />
-                  </FormField>
-                  <FormField label="Shared Goal" htmlFor="team-goal">
-                    <Input
-                      id="team-goal"
-                      value={teamGoal}
-                      onChange={(e) => setTeamGoal(e.target.value)}
-                    />
-                  </FormField>
-                </div>
-                <Button onClick={updateTeam} disabled={saving} size="sm" className="mt-4">
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Settings'
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          </SectionContainer>
-        )}
-
-        {/* Profiles */}
-        <SectionContainer
-          title="Team Profiles"
-          actions={
-            isOwner ? (
-              <Button size="sm" onClick={() => openProfileModal()}>
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Add Profile
-              </Button>
-            ) : undefined
-          }
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {profiles.map((profile) => (
-              <Card key={profile.id}>
+          {/* Team Settings (owner only) */}
+          {isOwner && (
+            <SectionContainer title="Team Settings">
+              <Card>
                 <CardContent className="p-4">
-                  {profile.is_default && (
-                    <Badge variant="blue" className="mb-2">
-                      Default
-                    </Badge>
-                  )}
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar size="sm">
-                      {profile.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
-                      <AvatarFallback name={profile.full_name}>
-                        {profile.full_name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{profile.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{profile.title || 'No title'}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField label="Team Name" htmlFor="team-name">
+                      <Input
+                        id="team-name"
+                        value={teamName}
+                        onChange={(e) => setTeamName(e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label="Industry" htmlFor="team-industry">
+                      <Input
+                        id="team-industry"
+                        value={teamIndustry}
+                        onChange={(e) => setTeamIndustry(e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label="Shared Goal" htmlFor="team-goal">
+                      <Input
+                        id="team-goal"
+                        value={teamGoal}
+                        onChange={(e) => setTeamGoal(e.target.value)}
+                      />
+                    </FormField>
+                  </div>
+                  <Button onClick={updateTeam} disabled={saving} size="sm" className="mt-4">
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Settings'
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </SectionContainer>
+          )}
+
+          {/* Profiles */}
+          <SectionContainer
+            title="Team Profiles"
+            actions={
+              isOwner ? (
+                <Button size="sm" onClick={() => openProfileModal()}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add Profile
+                </Button>
+              ) : undefined
+            }
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {profiles.map((profile) => (
+                <Card key={profile.id}>
+                  <CardContent className="p-4">
+                    {profile.is_default && (
+                      <Badge variant="blue" className="mb-2">
+                        Default
+                      </Badge>
+                    )}
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar size="sm">
+                        {profile.avatar_url ? (
+                          <AvatarImage src={profile.avatar_url} alt="" />
+                        ) : null}
+                        <AvatarFallback name={profile.full_name}>
+                          {profile.full_name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{profile.full_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {profile.title || 'No title'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground mb-3">
-                    {profile.email || 'No email'}
-                    <span className="mx-1.5">·</span>
-                    <Badge variant={profile.status === 'active' ? 'green' : 'orange'}>
-                      {profile.status}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Voice:{' '}
-                    {profile.voice_profile?.tone ? profile.voice_profile.tone : 'Not configured'}
-                  </p>
-                  {isOwner && (
-                    <div className="flex gap-1.5">
-                      <Button variant="outline" size="sm" onClick={() => openProfileModal(profile)}>
-                        Edit
-                      </Button>
-                      {profile.role !== 'owner' && (
+                    <div className="text-xs text-muted-foreground mb-3">
+                      {profile.email || 'No email'}
+                      <span className="mx-1.5">·</span>
+                      <Badge variant={profile.status === 'active' ? 'green' : 'orange'}>
+                        {profile.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Voice:{' '}
+                      {profile.voice_profile?.tone ? profile.voice_profile.tone : 'Not configured'}
+                    </p>
+                    {isOwner && (
+                      <div className="flex gap-1.5">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => removeProfile(profile.id)}
-                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => openProfileModal(profile)}
                         >
-                          Remove
+                          Edit
                         </Button>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </SectionContainer>
+                        {profile.role !== 'owner' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeProfile(profile.id)}
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </SectionContainer>
         </div>
 
         {/* Profile Editor Modal */}
@@ -627,126 +636,126 @@ export default function TeamPage() {
       )}
 
       <div className="space-y-6">
-      {/* Create team form */}
-      {showCreateForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Team</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField label="Team Name" required>
-                <Input
-                  placeholder="e.g. Client A"
-                  value={newTeamName}
-                  onChange={(e) => setNewTeamName(e.target.value)}
-                />
-              </FormField>
-              <FormField label="Industry">
-                <Input
-                  placeholder="e.g. B2B SaaS"
-                  value={newTeamIndustry}
-                  onChange={(e) => setNewTeamIndustry(e.target.value)}
-                />
-              </FormField>
-              <FormField label="Shared Goal">
-                <Input
-                  placeholder="e.g. Build thought leadership"
-                  value={newTeamGoal}
-                  onChange={(e) => setNewTeamGoal(e.target.value)}
-                />
-              </FormField>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={createTeam} disabled={!newTeamName.trim() || saving} size="sm">
-                {saving ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                    Creating...
-                  </>
-                ) : (
-                  'Create Team'
-                )}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowCreateForm(false)}>
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* Create team form */}
+        {showCreateForm && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Create New Team</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField label="Team Name" required>
+                  <Input
+                    placeholder="e.g. Client A"
+                    value={newTeamName}
+                    onChange={(e) => setNewTeamName(e.target.value)}
+                  />
+                </FormField>
+                <FormField label="Industry">
+                  <Input
+                    placeholder="e.g. B2B SaaS"
+                    value={newTeamIndustry}
+                    onChange={(e) => setNewTeamIndustry(e.target.value)}
+                  />
+                </FormField>
+                <FormField label="Shared Goal">
+                  <Input
+                    placeholder="e.g. Build thought leadership"
+                    value={newTeamGoal}
+                    onChange={(e) => setNewTeamGoal(e.target.value)}
+                  />
+                </FormField>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={createTeam} disabled={!newTeamName.trim() || saving} size="sm">
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Team'
+                  )}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowCreateForm(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Owned teams */}
-      {ownedTeams.length > 0 && (
-        <SectionContainer title="Your Teams">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ownedTeams.map((t) => (
-              <Card key={t.teamId}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-medium text-xs shrink-0">
-                      {t.teamName.substring(0, 2).toUpperCase()}
+        {/* Owned teams */}
+        {ownedTeams.length > 0 && (
+          <SectionContainer title="Your Teams">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ownedTeams.map((t) => (
+                <Card key={t.teamId}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-medium text-xs shrink-0">
+                        {t.teamName.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{t.teamName}</p>
+                        <Badge variant="blue">Owner</Badge>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{t.teamName}</p>
-                      <Badge variant="blue">Owner</Badge>
+                    <div className="flex gap-1.5">
+                      <Button size="sm" className="flex-1" onClick={() => enterTeam(t.teamId)}>
+                        Enter
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => openManage(t.teamId)}>
+                        <Settings className="h-3.5 w-3.5 mr-1" />
+                        Manage
+                      </Button>
                     </div>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <Button size="sm" className="flex-1" onClick={() => enterTeam(t.teamId)}>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </SectionContainer>
+        )}
+
+        {/* Member teams */}
+        {memberTeams.length > 0 && (
+          <SectionContainer title="Teams You Belong To">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {memberTeams.map((t) => (
+                <Card key={t.teamId}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-medium text-xs shrink-0">
+                        {t.teamName.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{t.teamName}</p>
+                        <Badge variant="green">Member</Badge>
+                      </div>
+                    </div>
+                    <Button size="sm" className="w-full" onClick={() => enterTeam(t.teamId)}>
                       Enter
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => openManage(t.teamId)}>
-                      <Settings className="h-3.5 w-3.5 mr-1" />
-                      Manage
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </SectionContainer>
-      )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </SectionContainer>
+        )}
 
-      {/* Member teams */}
-      {memberTeams.length > 0 && (
-        <SectionContainer title="Teams You Belong To">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {memberTeams.map((t) => (
-              <Card key={t.teamId}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-medium text-xs shrink-0">
-                      {t.teamName.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{t.teamName}</p>
-                      <Badge variant="green">Member</Badge>
-                    </div>
-                  </div>
-                  <Button size="sm" className="w-full" onClick={() => enterTeam(t.teamId)}>
-                    Enter
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </SectionContainer>
-      )}
-
-      {memberships.length === 0 && !showCreateForm && (
-        <EmptyState
-          icon={<UsersIcon />}
-          title="No teams yet"
-          description="Create your first team to get started."
-          action={
-            <Button size="sm" onClick={() => setShowCreateForm(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              Create Team
-            </Button>
-          }
-        />
-      )}
+        {memberships.length === 0 && !showCreateForm && (
+          <EmptyState
+            icon={<UsersIcon />}
+            title="No teams yet"
+            description="Create your first team to get started."
+            action={
+              <Button size="sm" onClick={() => setShowCreateForm(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Create Team
+              </Button>
+            }
+          />
+        )}
       </div>
     </PageContainer>
   );

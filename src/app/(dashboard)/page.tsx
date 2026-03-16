@@ -56,6 +56,23 @@ async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
+  // cp_pipeline_posts uses team_profile_id, not team_id — build query before Promise.all
+  let postsQuery = supabase.from('cp_pipeline_posts').select('id', { count: 'exact', head: true });
+  if (scope.type === 'team' && scope.teamId) {
+    const { data: profiles } = await supabase
+      .from('team_profiles')
+      .select('id')
+      .eq('team_id', scope.teamId)
+      .eq('status', 'active');
+    const profileIds = profiles?.map((p) => p.id) ?? [];
+    postsQuery =
+      profileIds.length > 0
+        ? postsQuery.in('team_profile_id', profileIds)
+        : postsQuery.eq('user_id', userId);
+  } else {
+    postsQuery = postsQuery.eq('user_id', userId);
+  }
+
   const [
     leadMagnetsRes,
     leadsRes,
@@ -70,19 +87,16 @@ async function fetchDashboardStats(userId: string): Promise<DashboardStats> {
   ] = await Promise.all([
     applyScope(supabase.from('lead_magnets').select('id', { count: 'exact', head: true }), scope),
     applyScope(supabase.from('funnel_leads').select('id', { count: 'exact', head: true }), scope),
-    supabase
-      .from('cp_call_transcripts')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId),
-    supabase
-      .from('cp_pipeline_posts')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId),
+    applyScope(
+      supabase.from('cp_call_transcripts').select('id', { count: 'exact', head: true }),
+      scope
+    ),
+    postsQuery,
     applyScope(
       supabase.from('funnel_pages').select('id, lead_magnet_id', { count: 'exact' }),
       scope
     ),
-    supabase.from('brand_kits').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    applyScope(supabase.from('brand_kits').select('id', { count: 'exact', head: true }), scope),
     applyScope(
       supabase
         .from('lead_magnets')
@@ -191,7 +205,10 @@ function ChecklistItem({ label, done, href }: { label: string; done: boolean; hr
   if (done) return content;
 
   return (
-    <Link href={href} className="-mx-2 block rounded-md px-2 py-2.5 transition-colors hover:bg-muted/50">
+    <Link
+      href={href}
+      className="-mx-2 block rounded-md px-2 py-2.5 transition-colors hover:bg-muted/50"
+    >
       {content}
     </Link>
   );
@@ -256,80 +273,89 @@ async function DashboardContent() {
         {/* How MagnetLab Works — new user only */}
         {isNewUser && (
           <div className="grid gap-4 sm:grid-cols-3">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <IconWrapper variant="primary" size="lg" className="mx-auto mb-3">
-                <Plus className="h-6 w-6" />
-              </IconWrapper>
-              <h3 className="mb-1 font-semibold">1. Create</h3>
-              <p className="text-sm text-muted-foreground">
-                Build a lead magnet from your expertise using AI
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <IconWrapper variant="success" size="lg" className="mx-auto mb-3">
-                <Globe className="h-6 w-6" />
-              </IconWrapper>
-              <h3 className="mb-1 font-semibold">2. Publish</h3>
-              <p className="text-sm text-muted-foreground">
-                Create a funnel page and share it on LinkedIn
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <IconWrapper variant="info" size="lg" className="mx-auto mb-3">
-                <Users className="h-6 w-6" />
-              </IconWrapper>
-              <h3 className="mb-1 font-semibold">3. Capture</h3>
-              <p className="text-sm text-muted-foreground">
-                Collect leads and grow your audience automatically
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <IconWrapper variant="primary" size="lg" className="mx-auto mb-3">
+                  <Plus className="h-6 w-6" />
+                </IconWrapper>
+                <h3 className="mb-1 font-semibold">1. Create</h3>
+                <p className="text-sm text-muted-foreground">
+                  Build a lead magnet from your expertise using AI
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <IconWrapper variant="success" size="lg" className="mx-auto mb-3">
+                  <Globe className="h-6 w-6" />
+                </IconWrapper>
+                <h3 className="mb-1 font-semibold">2. Publish</h3>
+                <p className="text-sm text-muted-foreground">
+                  Create a funnel page and share it on LinkedIn
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <IconWrapper variant="info" size="lg" className="mx-auto mb-3">
+                  <Users className="h-6 w-6" />
+                </IconWrapper>
+                <h3 className="mb-1 font-semibold">3. Capture</h3>
+                <p className="text-sm text-muted-foreground">
+                  Collect leads and grow your audience automatically
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Continue where you left off */}
         {!isNewUser && stats.recentDraft && (
           <Card className="border-primary/20 bg-primary/5 hover:border-primary/30 transition-colors hover:shadow-sm">
-          <CardContent className="p-0">
-            <Link href={`/magnets/${stats.recentDraft.id}`} className="flex items-center gap-4 p-4">
-              <IconWrapper variant="primary" size="md">
-                <Magnet className="h-5 w-5" />
-              </IconWrapper>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-medium text-primary">Continue where you left off</div>
-                <div className="font-semibold truncate">{stats.recentDraft.title}</div>
-              </div>
-              <ArrowRight className="h-4 w-4 shrink-0 text-primary/40" />
-            </Link>
-          </CardContent>
-        </Card>
+            <CardContent className="p-0">
+              <Link
+                href={`/magnets/${stats.recentDraft.id}`}
+                className="flex items-center gap-4 p-4"
+              >
+                <IconWrapper variant="primary" size="md">
+                  <Magnet className="h-5 w-5" />
+                </IconWrapper>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium text-primary">
+                    Continue where you left off
+                  </div>
+                  <div className="font-semibold truncate">{stats.recentDraft.title}</div>
+                </div>
+                <ArrowRight className="h-4 w-4 shrink-0 text-primary/40" />
+              </Link>
+            </CardContent>
+          </Card>
         )}
 
         {/* Stats Row */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MagnetStatCard
-          label="Lead Magnets"
-          value={stats.leadMagnets}
-          icon={<Magnet className="h-5 w-5" />}
-        />
-        <MagnetStatCard
-          label="Page Views"
-          value={stats.viewsThisWeek + stats.viewsLastWeek}
-          icon={<Eye className="h-5 w-5" />}
-          description={formatTrend(stats.viewsThisWeek, stats.viewsLastWeek)}
-        />
-        <MagnetStatCard
-          label="Leads Captured"
-          value={stats.leads}
-          icon={<Users className="h-5 w-5" />}
-          description={formatTrend(stats.leadsThisWeek, stats.leadsLastWeek)}
-        />
-        <MagnetStatCard label="Posts" value={stats.posts} icon={<FileText className="h-5 w-5" />} />
+          <MagnetStatCard
+            label="Lead Magnets"
+            value={stats.leadMagnets}
+            icon={<Magnet className="h-5 w-5" />}
+          />
+          <MagnetStatCard
+            label="Page Views"
+            value={stats.viewsThisWeek + stats.viewsLastWeek}
+            icon={<Eye className="h-5 w-5" />}
+            description={formatTrend(stats.viewsThisWeek, stats.viewsLastWeek)}
+          />
+          <MagnetStatCard
+            label="Leads Captured"
+            value={stats.leads}
+            icon={<Users className="h-5 w-5" />}
+            description={formatTrend(stats.leadsThisWeek, stats.leadsLastWeek)}
+          />
+          <MagnetStatCard
+            label="Posts"
+            value={stats.posts}
+            icon={<FileText className="h-5 w-5" />}
+          />
         </div>
         <div className="flex justify-end">
           <Link
@@ -344,67 +370,67 @@ async function DashboardContent() {
         <section>
           <h2 className="mb-4 text-base font-semibold">Quick Actions</h2>
           <div className="grid gap-4 sm:grid-cols-3">
-          <Link href="/create" className="group">
-            <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-sm">
-              <CardContent className="flex items-center gap-4 p-4">
-                <IconWrapper
-                  variant="primary"
-                  size="lg"
-                  className="transition-colors group-hover:bg-primary/20"
-                >
-                  <Plus className="h-6 w-6" />
-                </IconWrapper>
-                <div className="min-w-0">
-                  <div className="font-semibold group-hover:text-primary">Create Lead Magnet</div>
-                  <div className="text-sm text-muted-foreground">
-                    Extract your expertise into content
+            <Link href="/create" className="group">
+              <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-sm">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <IconWrapper
+                    variant="primary"
+                    size="lg"
+                    className="transition-colors group-hover:bg-primary/20"
+                  >
+                    <Plus className="h-6 w-6" />
+                  </IconWrapper>
+                  <div className="min-w-0">
+                    <div className="font-semibold group-hover:text-primary">Create Lead Magnet</div>
+                    <div className="text-sm text-muted-foreground">
+                      Extract your expertise into content
+                    </div>
                   </div>
-                </div>
-                <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-              </CardContent>
-            </Card>
-          </Link>
+                  <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </CardContent>
+              </Card>
+            </Link>
 
-          <Link href="/knowledge" className="group">
-            <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-sm">
-              <CardContent className="flex items-center gap-4 p-4">
-                <IconWrapper
-                  variant="primary"
-                  size="lg"
-                  className="transition-colors group-hover:bg-primary/20"
-                >
-                  <Upload className="h-6 w-6" />
-                </IconWrapper>
-                <div className="min-w-0">
-                  <div className="font-semibold group-hover:text-primary">Upload Transcript</div>
-                  <div className="text-sm text-muted-foreground">
-                    Import calls for AI extraction
+            <Link href="/knowledge" className="group">
+              <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-sm">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <IconWrapper
+                    variant="primary"
+                    size="lg"
+                    className="transition-colors group-hover:bg-primary/20"
+                  >
+                    <Upload className="h-6 w-6" />
+                  </IconWrapper>
+                  <div className="min-w-0">
+                    <div className="font-semibold group-hover:text-primary">Upload Transcript</div>
+                    <div className="text-sm text-muted-foreground">
+                      Import calls for AI extraction
+                    </div>
                   </div>
-                </div>
-                <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-              </CardContent>
-            </Card>
-          </Link>
+                  <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </CardContent>
+              </Card>
+            </Link>
 
-          <Link href="/posts" className="group">
-            <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-sm">
-              <CardContent className="flex items-center gap-4 p-4">
-                <IconWrapper
-                  variant="primary"
-                  size="lg"
-                  className="transition-colors group-hover:bg-primary/20"
-                >
-                  <PenTool className="h-6 w-6" />
-                </IconWrapper>
-                <div className="min-w-0">
-                  <div className="font-semibold group-hover:text-primary">Write a Post</div>
-                  <div className="text-sm text-muted-foreground">Create LinkedIn content</div>
-                </div>
-                <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
+            <Link href="/posts" className="group">
+              <Card className="h-full transition-colors hover:border-primary/50 hover:shadow-sm">
+                <CardContent className="flex items-center gap-4 p-4">
+                  <IconWrapper
+                    variant="primary"
+                    size="lg"
+                    className="transition-colors group-hover:bg-primary/20"
+                  >
+                    <PenTool className="h-6 w-6" />
+                  </IconWrapper>
+                  <div className="min-w-0">
+                    <div className="font-semibold group-hover:text-primary">Write a Post</div>
+                    <div className="text-sm text-muted-foreground">Create LinkedIn content</div>
+                  </div>
+                  <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
         </section>
 
         {/* What to do next — contextual cards for active users */}
@@ -412,24 +438,24 @@ async function DashboardContent() {
           <section>
             <h2 className="mb-4 text-base font-semibold">What to do next</h2>
             <div className="grid gap-4 sm:grid-cols-2">
-            {stats.magnetsWithoutFunnels.map((m) => (
-              <Link key={m.id} href={`/magnets/${m.id}?tab=funnel`} className="group">
-                <Card className="transition-colors hover:border-primary/50 hover:shadow-sm">
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <IconWrapper variant="warning" size="sm">
-                      <Globe className="h-4 w-4" />
-                    </IconWrapper>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate group-hover:text-primary">
-                        {m.title}
+              {stats.magnetsWithoutFunnels.map((m) => (
+                <Link key={m.id} href={`/magnets/${m.id}?tab=funnel`} className="group">
+                  <Card className="transition-colors hover:border-primary/50 hover:shadow-sm">
+                    <CardContent className="flex items-center gap-3 p-4">
+                      <IconWrapper variant="warning" size="sm">
+                        <Globe className="h-4 w-4" />
+                      </IconWrapper>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate group-hover:text-primary">
+                          {m.title}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Needs a funnel page</div>
                       </div>
-                      <div className="text-xs text-muted-foreground">Needs a funnel page</div>
-                    </div>
-                    <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground/40 group-hover:text-primary" />
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                      <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground/40 group-hover:text-primary" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
             </div>
           </section>
         )}
@@ -445,11 +471,11 @@ async function DashboardContent() {
                 </span>
               </div>
               <div className="mb-6 h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{
-                  width: `${(completedCount / checklistItems.length) * 100}%`,
-                }}
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{
+                    width: `${(completedCount / checklistItems.length) * 100}%`,
+                  }}
                 />
               </div>
               <div className="divide-y divide-border">

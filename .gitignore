@@ -57,3 +57,5 @@ test-results/
 
 # Local data dumps (use scripts/fixtures/ for committed sample data)
 data/
+
+*.log

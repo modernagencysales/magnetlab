@@ -15,7 +15,10 @@ export async function GET() {
     if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const result = await emailService.listFlows(scope.teamId);
     if (!result.success) return ApiErrors.databaseError('Failed to list flows');
@@ -41,7 +44,10 @@ export async function POST(request: Request) {
     }
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     if (parsed.data.trigger_type === 'lead_magnet' && !parsed.data.trigger_lead_magnet_id) {
       return ApiErrors.validationError(
@@ -56,7 +62,8 @@ export async function POST(request: Request) {
       trigger_lead_magnet_id: parsed.data.trigger_lead_magnet_id ?? null,
     });
     if (!result.success) {
-      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
+      if (result.error === 'validation')
+        return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to create flow');
     }
     return NextResponse.json({ flow: result.flow }, { status: 201 });

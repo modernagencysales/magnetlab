@@ -20,6 +20,10 @@ jest.mock('@/lib/utils/logger', () => ({
   logInfo: jest.fn(),
 }));
 
+jest.mock('@/lib/auth/super-admin', () => ({
+  isSuperAdmin: jest.fn().mockResolvedValue(true),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
@@ -46,7 +50,7 @@ function authenticatedSession(userId = TEST_USER_ID) {
  * Each from() returns an independent chain.
  */
 function createMockSupabase(
-  fromResults: Array<{ data: unknown; error: unknown; count?: number | null }>,
+  fromResults: Array<{ data: unknown; error: unknown; count?: number | null }>
 ) {
   let callIndex = 0;
   const capturedUpserts: unknown[] = [];
@@ -60,7 +64,7 @@ function createMockSupabase(
       const chain: Record<string, unknown> = {
         then: (
           onFulfilled?: (value: unknown) => unknown,
-          onRejected?: (reason: unknown) => unknown,
+          onRejected?: (reason: unknown) => unknown
         ) => resolve().then(onFulfilled, onRejected),
       };
 

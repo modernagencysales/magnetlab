@@ -23,7 +23,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
     if (!isValidUUID(id)) return ApiErrors.validationError('Invalid broadcast ID format');
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const result = await emailService.getBroadcast(scope.teamId, id);
     if (!result.success) {
@@ -55,7 +58,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const result = await emailService.updateBroadcast(
       scope.teamId,
@@ -69,7 +75,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
     );
     if (!result.success) {
       if (result.error === 'not_found') return ApiErrors.notFound('Broadcast');
-      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
+      if (result.error === 'validation')
+        return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to update broadcast');
     }
     return NextResponse.json({ broadcast: result.broadcast });
@@ -88,12 +95,16 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     if (!isValidUUID(id)) return ApiErrors.validationError('Invalid broadcast ID format');
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const result = await emailService.deleteBroadcast(scope.teamId, id);
     if (!result.success) {
       if (result.error === 'not_found') return ApiErrors.notFound('Broadcast');
-      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
+      if (result.error === 'validation')
+        return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to delete broadcast');
     }
     return new NextResponse(null, { status: 204 });
