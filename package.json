@@ -38,7 +38,7 @@
     "@tiptap/starter-kit": "^3.20.0",
     "@tiptap/suggestion": "^3.20.0",
     "@trigger.dev/build": "^4.3.3",
-    "@trigger.dev/sdk": "4.3.3",
+    "@trigger.dev/sdk": "4.4.1",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -104,7 +104,7 @@
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
       "prettier --write",
-      "eslint --max-warnings 0"
+      "eslint --max-warnings 0 --no-warn-ignored"
     ]
   }
 }

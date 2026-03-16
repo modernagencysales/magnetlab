@@ -1,4 +1,4 @@
-import { Tool } from '@modelcontextprotocol/sdk/types.js'
+import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 export const qualificationFormTools: Tool[] = [
   {
@@ -23,7 +23,8 @@ export const qualificationFormTools: Tool[] = [
   },
   {
     name: 'magnetlab_create_qualification_form',
-    description: 'Create a new qualification form. Add questions to it afterward, then attach it to a funnel page.',
+    description:
+      'Create a new qualification form. Add questions to it afterward, then attach it to a funnel page.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -51,24 +52,30 @@ export const qualificationFormTools: Tool[] = [
       properties: {
         form_id: { type: 'string', description: 'Qualification form UUID' },
         question_text: { type: 'string', description: 'The question text' },
-        question_type: {
+        answer_type: {
           type: 'string',
-          enum: ['text', 'single_choice', 'multi_choice'],
-          description: 'Question type',
+          enum: ['yes_no', 'text', 'textarea', 'multiple_choice'],
+          description: 'Answer type: yes_no, text, textarea, or multiple_choice',
         },
         options: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Answer options (for choice types)',
+          description: 'Answer options (required for multiple_choice, at least 2)',
         },
-        qualifying_answers: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Which answers qualify the lead',
+        qualifying_answer: {
+          description:
+            'Which answer(s) qualify the lead. String for yes_no ("yes"/"no"), array of strings for multiple_choice.',
         },
-        is_required: { type: 'boolean', description: 'Whether the question is required' },
+        is_qualifying: {
+          type: 'boolean',
+          description: 'Whether this question is used to qualify leads (default: true for yes_no)',
+        },
+        is_required: {
+          type: 'boolean',
+          description: 'Whether the question is required (default: true)',
+        },
       },
-      required: ['form_id', 'question_text', 'question_type'],
+      required: ['form_id', 'question_text', 'answer_type'],
     },
   },
-]
+];

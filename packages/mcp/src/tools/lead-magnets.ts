@@ -1,4 +1,4 @@
-import { Tool } from '@modelcontextprotocol/sdk/types.js'
+import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 export const leadMagnetTools: Tool[] = [
   {
@@ -55,13 +55,57 @@ export const leadMagnetTools: Tool[] = [
           description: 'Content archetype/format',
         },
         concept: { type: 'object', description: 'Concept data (optional, from ideation)' },
+        external_url: {
+          type: 'string',
+          description:
+            'External URL for the lead magnet resource (e.g. Notion page, PDF, external site). If set, delivery links point here instead of hosted content.',
+        },
       },
       required: ['title', 'archetype'],
     },
   },
   {
+    name: 'magnetlab_update_lead_magnet',
+    description:
+      'Update an existing lead magnet. Change title, external URL, status, or other fields. Only provided fields are updated.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Lead magnet UUID' },
+        title: { type: 'string', description: 'New title' },
+        external_url: { type: 'string', description: 'External URL for the resource' },
+        archetype: {
+          type: 'string',
+          enum: [
+            'single-breakdown',
+            'single-system',
+            'focused-toolkit',
+            'single-calculator',
+            'focused-directory',
+            'mini-training',
+            'one-story',
+            'prompt',
+            'assessment',
+            'workflow',
+          ],
+          description: 'Content archetype/format',
+        },
+        status: {
+          type: 'string',
+          enum: ['draft', 'extracting', 'generating', 'content_ready', 'complete', 'published'],
+          description: 'Lead magnet status',
+        },
+        pain_point: { type: 'string', description: 'Pain point the lead magnet solves' },
+        target_audience: { type: 'string', description: 'Target audience description' },
+        short_description: { type: 'string', description: 'Short description for catalog' },
+      },
+      required: ['id'],
+    },
+  },
+  {
     name: 'magnetlab_delete_lead_magnet',
-    description: 'Permanently delete a lead magnet. This also removes associated funnel pages and leads.',
+    description:
+      'Permanently delete a lead magnet. This also removes associated funnel pages and leads.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -106,4 +150,4 @@ export const leadMagnetTools: Tool[] = [
       required: ['transcript'],
     },
   },
-]
+];

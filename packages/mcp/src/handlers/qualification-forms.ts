@@ -1,4 +1,4 @@
-import { MagnetLabClient } from '../client.js'
+import { MagnetLabClient } from '../client.js';
 
 /**
  * Handle qualification form tool calls.
@@ -10,23 +10,40 @@ export async function handleQualificationFormTools(
 ): Promise<unknown> {
   switch (name) {
     case 'magnetlab_list_qualification_forms':
-      return client.listQualificationForms()
+      return client.listQualificationForms();
 
     case 'magnetlab_get_qualification_form':
-      return client.getQualificationForm(args.id as string)
+      return client.getQualificationForm(args.id as string);
 
     case 'magnetlab_create_qualification_form':
-      return client.createQualificationForm({ name: args.name as string })
+      return client.createQualificationForm({ name: args.name as string });
 
     case 'magnetlab_list_questions':
-      return client.listQuestions(args.form_id as string)
+      return client.listQuestions(args.form_id as string);
 
     case 'magnetlab_create_question': {
-      const { form_id, ...rest } = args
-      return client.createQuestion(form_id as string, rest)
+      const {
+        form_id,
+        question_text,
+        answer_type,
+        options,
+        qualifying_answer,
+        is_qualifying,
+        is_required,
+        ...rest
+      } = args;
+      return client.createQuestion(form_id as string, {
+        questionText: question_text,
+        answerType: answer_type,
+        ...(options !== undefined && { options }),
+        ...(qualifying_answer !== undefined && { qualifyingAnswer: qualifying_answer }),
+        ...(is_qualifying !== undefined && { isQualifying: is_qualifying }),
+        ...(is_required !== undefined && { isRequired: is_required }),
+        ...rest,
+      });
     }
 
     default:
-      throw new Error(`Unknown qualification form tool: ${name}`)
+      throw new Error(`Unknown qualification form tool: ${name}`);
   }
 }
