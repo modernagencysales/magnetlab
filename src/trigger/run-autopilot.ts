@@ -15,7 +15,7 @@ interface RunAutopilotPayload {
 
 export const runAutopilot = task({
   id: 'run-autopilot',
-  maxDuration: 300,
+  maxDuration: 600, // 10 min — increased from 5 min for larger batches
   retry: {
     maxAttempts: 5,
     factor: 2,
