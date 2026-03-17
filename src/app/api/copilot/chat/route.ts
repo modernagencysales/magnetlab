@@ -58,14 +58,19 @@ export async function POST(req: NextRequest) {
           entity_type: body.pageContext?.entityType || null,
           entity_id: body.pageContext?.entityId || null,
           title: body.message.slice(0, 100),
+          model: 'claude-sonnet-4-6-20250514',
         })
         .select('id')
         .single();
 
       if (convError || !conv) {
-        return new Response(JSON.stringify({ error: 'Failed to create conversation' }), {
-          status: 500,
-        });
+        logError('copilot/chat', convError, { step: 'create_conversation', userId });
+        return new Response(
+          JSON.stringify({ error: convError?.message || 'Failed to create conversation' }),
+          {
+            status: 500,
+          }
+        );
       }
       conversationId = conv.id;
     }
