@@ -42,6 +42,34 @@ export async function PUT(request: Request, { params }: RouteParams) {
   }
 }
 
+export async function PATCH(request: Request, { params }: RouteParams) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return ApiErrors.unauthorized();
+
+    const { id } = await params;
+    const body = await request.json();
+    const { content, expected_version } = body;
+
+    if (!content || typeof content !== 'object' || Array.isArray(content)) {
+      return NextResponse.json({ error: 'content object required' }, { status: 400 });
+    }
+
+    const scope = await getDataScope(session.user.id);
+    const data = await leadMagnetsService.updateLeadMagnetContent(
+      scope,
+      id,
+      content,
+      expected_version
+    );
+    return NextResponse.json(data);
+  } catch (error) {
+    const status = leadMagnetsService.getStatusCode(error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();

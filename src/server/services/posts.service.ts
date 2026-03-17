@@ -5,10 +5,12 @@
  */
 
 import * as postsRepo from '@/server/repositories/posts.repo';
+import * as cpSlotsRepo from '@/server/repositories/cp-schedule-slots.repo';
 import { polishPost as aiPolishPost } from '@/lib/ai/content-pipeline/post-polish';
 import { getUserLinkedInPublisher } from '@/lib/integrations/linkedin-publisher';
 import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 import { requireTeamScope } from '@/lib/utils/team-context';
+import { logError } from '@/lib/utils/logger';
 import type { DataScope } from '@/lib/utils/team-context';
 import type { PipelinePost, PostStatus, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 import type {
@@ -16,6 +18,7 @@ import type {
   PostUpdateInput,
   EngagementConfigUpdate,
   PostEngagementData,
+  AgentPostCreateInput,
 } from '@/server/repositories/posts.repo';
 
 // ─── Response types ────────────────────────────────────────────────────────
@@ -34,6 +37,23 @@ export interface PublishResult {
   success: true;
   linkedin_post_id: string | null;
   provider: string;
+}
+
+// Day name lookup: JS getUTCDay() 0=Sun, 1=Mon, … 6=Sat
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export interface ScheduledPostSummary {
+  id: string;
+  body: string;
+  scheduled_for: string;
+  slot_day: string;
+}
+
+export interface ScheduleWeekResult {
+  scheduled_posts: ScheduledPostSummary[];
+  slots_used: number;
+  slots_available: number;
+  overflow?: number;
 }
 
 const ALLOWED_UPDATE_FIELDS: (keyof PostUpdateInput)[] = [
@@ -58,6 +78,22 @@ const VALID_POST_STATUSES: PostStatus[] = [
   'failed',
   'publish_failed',
 ];
+
+// ─── Internal helpers ─────────────────────────────────────────────────────
+
+/** Resolve the first active team_profile_id for a team (for agent post creation). */
+async function resolveFirstTeamProfileId(teamId: string): Promise<string | null> {
+  const { createSupabaseAdminClient } = await import('@/lib/utils/supabase-server');
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('team_profiles')
+    .select('id')
+    .eq('team_id', teamId)
+    .eq('status', 'active')
+    .limit(1)
+    .single();
+  return data?.id ?? null;
+}
 
 // ─── Read operations ───────────────────────────────────────────────────────
 
@@ -103,6 +139,143 @@ export async function getPostEngagement(
 }
 
 // ─── Write operations ──────────────────────────────────────────────────────
+
+export async function createAgentPost(
+  scope: DataScope,
+  input: AgentPostCreateInput
+): Promise<PipelinePost> {
+  // Resolve team_profile_id when in team scope (posts use profile-based scoping)
+  if (scope.type === 'team' && scope.teamId && !input.team_profile_id) {
+    const profileId = await resolveFirstTeamProfileId(scope.teamId);
+    if (profileId) {
+      input = { ...input, team_profile_id: profileId };
+    }
+  }
+  return postsRepo.createAgentPost(scope.userId, input);
+}
+
+/**
+ * Resolves the upcoming Monday on or after the given date.
+ * If `weekStart` is provided and is already a Monday, use it.
+ * Otherwise returns the next Monday from today (UTC).
+ */
+function resolveWeekStart(weekStart?: string): Date {
+  const base = weekStart ? new Date(`${weekStart}T00:00:00Z`) : new Date();
+  // Snap to the Monday of base's week (UTC)
+  const day = base.getUTCDay(); // 0=Sun,1=Mon,...6=Sat
+  const daysToMonday = day === 0 ? 1 : day === 1 ? 0 : 8 - day;
+  const monday = new Date(base);
+  monday.setUTCDate(base.getUTCDate() + daysToMonday);
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday;
+}
+
+/**
+ * Compound action: create multiple posts and distribute them across
+ * the user's active posting slots for the given week.
+ */
+export async function scheduleWeek(
+  scope: DataScope,
+  posts: AgentPostCreateInput[],
+  weekStart?: string
+): Promise<ScheduleWeekResult> {
+  const userId = scope.userId;
+
+  // Resolve team_profile_id once for all posts in the batch
+  let teamProfileId: string | null = null;
+  if (scope.type === 'team' && scope.teamId) {
+    teamProfileId = await resolveFirstTeamProfileId(scope.teamId);
+  }
+
+  // ─── 1. Load posting slots ─────────────────────────────────────────────
+  const { data: slots, error: slotsError } = await cpSlotsRepo.listSlots(userId);
+  if (slotsError) {
+    logError('cp/posts/schedule-week', slotsError, { step: 'slots_fetch_error' });
+    throw Object.assign(new Error('Failed to load posting slots'), { statusCode: 500 });
+  }
+
+  const activeSlots = slots.filter((s) => s.is_active);
+  if (activeSlots.length === 0) {
+    throw Object.assign(
+      new Error(
+        'No active posting slots configured. Add posting slots in your content settings before scheduling.'
+      ),
+      { statusCode: 400 }
+    );
+  }
+
+  // ─── 2. Build slot timestamps for the target week ─────────────────────
+  const weekMonday = resolveWeekStart(weekStart);
+
+  // Sort slots: by day_of_week (null last), then time_of_day
+  const sortedSlots = [...activeSlots].sort((a, b) => {
+    const dayA = a.day_of_week ?? 7;
+    const dayB = b.day_of_week ?? 7;
+    if (dayA !== dayB) return dayA - dayB;
+    return (a.time_of_day ?? '').localeCompare(b.time_of_day ?? '');
+  });
+
+  // Map each slot to a concrete UTC datetime within the target week.
+  // day_of_week: 0=Sun,1=Mon,…6=Sat. weekMonday is Monday (JS day 1).
+  // If day_of_week is null, skip it (slot has no fixed day — not usable for week scheduling).
+  const slotDatetimes: Array<{ datetime: Date; dayName: string }> = [];
+  for (const slot of sortedSlots) {
+    if (slot.day_of_week == null) continue;
+    const [hh, mm] = (slot.time_of_day ?? '09:00').split(':').map(Number);
+    // Offset from Monday: Mon=1→0, Tue=2→1, Wed=3→2, Thu=4→3, Fri=5→4, Sat=6→5, Sun=0→6
+    const offsetFromMonday = slot.day_of_week === 0 ? 6 : slot.day_of_week - 1;
+    const slotDate = new Date(weekMonday);
+    slotDate.setUTCDate(weekMonday.getUTCDate() + offsetFromMonday);
+    slotDate.setUTCHours(hh ?? 9, mm ?? 0, 0, 0);
+    slotDatetimes.push({ datetime: slotDate, dayName: DAY_NAMES[slot.day_of_week] });
+  }
+
+  if (slotDatetimes.length === 0) {
+    throw Object.assign(
+      new Error(
+        'No posting slots have a day_of_week set. Configure days for your slots before scheduling a week.'
+      ),
+      { statusCode: 400 }
+    );
+  }
+
+  // ─── 3. Create posts and assign to slots ──────────────────────────────
+  const fitsCount = Math.min(posts.length, slotDatetimes.length);
+  const overflow = posts.length > slotDatetimes.length ? posts.length - slotDatetimes.length : 0;
+
+  const scheduledPosts: ScheduledPostSummary[] = [];
+
+  for (let i = 0; i < fitsCount; i++) {
+    const postInput = posts[i];
+    const { datetime, dayName } = slotDatetimes[i];
+    const scheduledFor = datetime.toISOString();
+
+    const inputWithProfile =
+      teamProfileId && !postInput.team_profile_id
+        ? { ...postInput, team_profile_id: teamProfileId }
+        : postInput;
+    const created = await postsRepo.createAgentPost(userId, inputWithProfile);
+
+    await postsRepo.updatePost(userId, created.id, {
+      status: 'scheduled' as PostStatus,
+      scheduled_time: scheduledFor,
+    });
+
+    scheduledPosts.push({
+      id: created.id,
+      body: postInput.body,
+      scheduled_for: scheduledFor,
+      slot_day: dayName,
+    });
+  }
+
+  return {
+    scheduled_posts: scheduledPosts,
+    slots_used: fitsCount,
+    slots_available: slotDatetimes.length,
+    ...(overflow > 0 ? { overflow } : {}),
+  };
+}
 
 export async function updatePost(
   userId: string,

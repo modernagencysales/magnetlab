@@ -1,58 +1,42 @@
+/** Funnel CRUD + publish tools (7). Maps 1:1 to MagnetLabClient methods. */
+
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
 export const funnelTools: Tool[] = [
   {
     name: 'magnetlab_list_funnels',
     description:
-      'List funnel pages for the current user. Returns funnel ID, slug, headline, theme, publish status, and target (lead magnet, library, or external resource). Paginated.',
+      'List all funnel pages. Returns funnel ID, slug, headline, theme, publish status, and target (lead magnet, library, or external resource).',
     inputSchema: {
       type: 'object',
       properties: {
-        limit: { type: 'number', default: 20, description: 'Max results to return (1-100)' },
-        offset: { type: 'number', default: 0, description: 'Offset for pagination' },
+        team_id: {
+          type: 'string',
+          description: 'Team ID to scope this operation. Omit for primary team.',
+        },
       },
     },
   },
   {
     name: 'magnetlab_get_funnel',
     description:
-      'Get full details of a funnel page including all opt-in and thank-you copy, theme settings, qualification form, and publish status.',
+      'Get full details of a funnel page including opt-in and thank-you copy, theme settings, qualification form, and publish status.',
     inputSchema: {
       type: 'object',
       properties: {
         id: { type: 'string', description: 'Funnel page UUID' },
+        team_id: {
+          type: 'string',
+          description: 'Team ID to scope this operation. Omit for primary team.',
+        },
       },
       required: ['id'],
     },
   },
   {
-    name: 'magnetlab_get_funnel_by_target',
-    description:
-      'Find the funnel page associated with a specific lead magnet, library, or external resource. Useful to check if a funnel already exists before creating one.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        lead_magnet_id: {
-          type: 'string',
-          description: 'Lead magnet UUID (for lead_magnet target)',
-        },
-        library_id: { type: 'string', description: 'Library UUID (for library target)' },
-        external_resource_id: {
-          type: 'string',
-          description: 'External resource UUID (for external_resource target)',
-        },
-      },
-    },
-  },
-  {
     name: 'magnetlab_create_funnel',
     description:
-      'Create a new funnel/opt-in page. Must target a lead magnet, library, or external resource. ' +
-      'Defaults when fields are omitted: headline=target title, subline=null, ' +
-      'button_text="Get Free Access", social_proof=null (do NOT fabricate — use real data or omit), ' +
-      'thankyou_headline="Thanks! Check your email.", theme=brand kit or "dark", ' +
-      'color=brand kit or "#8b5cf6", background=brand kit or "solid". ' +
-      "Sections are auto-populated from the user's default template and brand kit.",
+      'Create a new funnel/opt-in page. Must target a lead magnet, library, or external resource. Provide a slug (URL-safe name) and optionally customize headline, subline, button text, thank-you copy, theme, colors, and VSL/Calendly URLs.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -87,7 +71,10 @@ export const funnelTools: Tool[] = [
         },
         thankyou_subline: { type: 'string', description: 'Thank you page subheadline' },
         vsl_url: { type: 'string', description: 'Video URL to embed on thank-you page' },
-        calendly_url: { type: 'string', description: 'Calendly URL for booking on thank-you page' },
+        calendly_url: {
+          type: 'string',
+          description: 'Calendly URL for booking on thank-you page',
+        },
         theme: {
           type: 'string',
           enum: ['light', 'dark'],
@@ -106,6 +93,10 @@ export const funnelTools: Tool[] = [
         qualification_form_id: {
           type: 'string',
           description: 'Qualification form UUID to attach (filters leads)',
+        },
+        team_id: {
+          type: 'string',
+          description: 'Team ID to scope this operation. Omit for primary team.',
         },
       },
       required: ['slug'],
@@ -160,6 +151,10 @@ export const funnelTools: Tool[] = [
           type: 'boolean',
           description: 'Whether to auto-send resource delivery email on opt-in',
         },
+        team_id: {
+          type: 'string',
+          description: 'Team ID to scope this operation. Omit for primary team.',
+        },
       },
       required: ['id'],
     },
@@ -172,6 +167,10 @@ export const funnelTools: Tool[] = [
       type: 'object',
       properties: {
         id: { type: 'string', description: 'Funnel page UUID' },
+        team_id: {
+          type: 'string',
+          description: 'Team ID to scope this operation. Omit for primary team.',
+        },
       },
       required: ['id'],
     },
@@ -179,11 +178,15 @@ export const funnelTools: Tool[] = [
   {
     name: 'magnetlab_publish_funnel',
     description:
-      'Publish a funnel page to make it publicly accessible. Returns the live URL (e.g. /p/username/slug). Requires the user to have a username set. Auto-polishes lead magnet content on first publish.',
+      'Publish a funnel page to make it publicly accessible. Returns the live URL. Requires the user to have a username set.',
     inputSchema: {
       type: 'object',
       properties: {
         id: { type: 'string', description: 'Funnel page UUID' },
+        team_id: {
+          type: 'string',
+          description: 'Team ID to scope this operation. Omit for primary team.',
+        },
       },
       required: ['id'],
     },
@@ -195,164 +198,12 @@ export const funnelTools: Tool[] = [
       type: 'object',
       properties: {
         id: { type: 'string', description: 'Funnel page UUID' },
+        team_id: {
+          type: 'string',
+          description: 'Team ID to scope this operation. Omit for primary team.',
+        },
       },
       required: ['id'],
-    },
-  },
-  {
-    name: 'magnetlab_generate_funnel_content',
-    description:
-      'Auto-generate opt-in page copy (headline, subline, button text) based on the lead magnet content using AI.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        lead_magnet_id: {
-          type: 'string',
-          description: 'Lead magnet UUID to generate funnel copy for',
-        },
-      },
-      required: ['lead_magnet_id'],
-    },
-  },
-  {
-    name: 'magnetlab_list_sections',
-    description:
-      'List all sections for a funnel page. Returns section type, variant, page location, sort order, visibility, and config for each section.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        funnel_id: { type: 'string', description: 'Funnel page UUID' },
-      },
-      required: ['funnel_id'],
-    },
-  },
-  {
-    name: 'magnetlab_create_section',
-    description:
-      'Add a new section to a funnel page. Sections are building blocks like hero, logo_bar, steps, testimonial, marketing_block, section_bridge, stats_bar, feature_grid, or social_proof_wall. ' +
-      'Each section type has its own config schema. Variant controls the layout style (e.g. "centered", "timeline", "grid").',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        funnel_id: { type: 'string', description: 'Funnel page UUID' },
-        section_type: {
-          type: 'string',
-          enum: [
-            'logo_bar',
-            'steps',
-            'testimonial',
-            'marketing_block',
-            'section_bridge',
-            'hero',
-            'stats_bar',
-            'feature_grid',
-            'social_proof_wall',
-          ],
-          description: 'Type of section to create',
-        },
-        page_location: {
-          type: 'string',
-          enum: ['optin', 'thankyou', 'content'],
-          description: 'Which page this section appears on',
-        },
-        variant: {
-          type: 'string',
-          description:
-            "Layout variant for the section (e.g. 'centered', 'timeline', 'grid'). Defaults to 'default'.",
-        },
-        sort_order: {
-          type: 'number',
-          description: 'Position order (0-999). Auto-assigned if omitted.',
-        },
-        is_visible: {
-          type: 'boolean',
-          description: 'Whether section is visible (default: true)',
-        },
-        config: {
-          type: 'object',
-          description: 'Section-specific configuration (varies by section_type)',
-        },
-      },
-      required: ['funnel_id', 'section_type', 'page_location', 'config'],
-    },
-  },
-  {
-    name: 'magnetlab_update_section',
-    description:
-      'Update an existing funnel section. Change its config, variant, visibility, sort order, or page location. Only provided fields are updated.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        funnel_id: { type: 'string', description: 'Funnel page UUID' },
-        section_id: { type: 'string', description: 'Section UUID' },
-        variant: {
-          type: 'string',
-          description: "Layout variant for the section (e.g. 'centered', 'timeline', 'grid')",
-        },
-        sort_order: { type: 'number', description: 'Position order (0-999)' },
-        is_visible: { type: 'boolean', description: 'Whether section is visible' },
-        page_location: {
-          type: 'string',
-          enum: ['optin', 'thankyou', 'content'],
-          description: 'Move section to a different page',
-        },
-        config: {
-          type: 'object',
-          description: 'Section-specific configuration (varies by section_type)',
-        },
-      },
-      required: ['funnel_id', 'section_id'],
-    },
-  },
-  {
-    name: 'magnetlab_delete_section',
-    description: 'Remove a section from a funnel page. This is permanent.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        funnel_id: { type: 'string', description: 'Funnel page UUID' },
-        section_id: { type: 'string', description: 'Section UUID' },
-      },
-      required: ['funnel_id', 'section_id'],
-    },
-  },
-  {
-    name: 'magnetlab_restyle_funnel',
-    description:
-      'Generate an AI-powered branding plan for a funnel. Provide a style prompt (e.g. "more corporate", "clean and minimal") and/or example URLs. Returns a structured plan with proposed theme, color, font, background, and section changes that you can review before applying.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        funnel_id: { type: 'string', description: 'Funnel page UUID to restyle' },
-        prompt: {
-          type: 'string',
-          description:
-            'Style direction (e.g. "make it more corporate", "luxury feel", "clean and minimal")',
-        },
-        urls: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Up to 3 example URLs — AI analyzes their visual style via screenshots',
-        },
-      },
-      required: ['funnel_id'],
-    },
-  },
-  {
-    name: 'magnetlab_apply_restyle',
-    description:
-      'Apply a reviewed restyle plan to a funnel. Pass the plan object (from magnetlab_restyle_funnel) after reviewing and optionally modifying it. Updates theme, colors, fonts, background, and adds/removes/reorders sections.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        funnel_id: { type: 'string', description: 'Funnel page UUID' },
-        plan: {
-          type: 'object',
-          description:
-            'The RestylePlan object (from magnetlab_restyle_funnel output, possibly modified)',
-        },
-      },
-      required: ['funnel_id', 'plan'],
     },
   },
 ];
