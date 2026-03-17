@@ -264,9 +264,7 @@ export function CsvImportDialog({ open, onOpenChange, onSuccess }: CsvImportDial
                       {preview.invalid.map((row, idx) => (
                         <tr key={idx}>
                           <td className="px-3 py-2 text-destructive">{row.row}</td>
-                          <td className="px-3 py-2 text-destructive">
-                            {row.email || '(empty)'}
-                          </td>
+                          <td className="px-3 py-2 text-destructive">{row.email || '(empty)'}</td>
                           <td className="px-3 py-2 text-destructive">{row.reason}</td>
                         </tr>
                       ))}

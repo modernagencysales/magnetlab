@@ -64,6 +64,18 @@ export async function findLeadMagnetByOwner(userId: string, id: string) {
   return data ?? null;
 }
 
+/** Fetch lead magnet with content fields, verified by owner. Used for post generation. */
+export async function findLeadMagnetByOwnerFull(userId: string, id: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('lead_magnets')
+    .select('id, user_id, title, archetype, concept, extracted_content, polished_content')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+  return data ?? null;
+}
+
 /** List lead magnets by user_id (for external API). */
 export async function findLeadMagnetsByUserId(
   userId: string,

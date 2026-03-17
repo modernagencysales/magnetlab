@@ -7,9 +7,27 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import posthog from 'posthog-js';
 import {
-  Magnet, Settings, Plus, LogOut, Globe, Users, UsersRound,
-  ChevronDown, PenTool, Menu, X, Sun, Moon,
-  ArrowLeftRight, Home, Brain, Bot, BookOpen, Mail, HelpCircle, Shield,
+  Magnet,
+  Settings,
+  Plus,
+  LogOut,
+  Globe,
+  Users,
+  UsersRound,
+  ChevronDown,
+  PenTool,
+  Menu,
+  X,
+  Sun,
+  Moon,
+  ArrowLeftRight,
+  Home,
+  Brain,
+  Bot,
+  BookOpen,
+  Mail,
+  HelpCircle,
+  Shield,
   Radio,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -127,7 +145,10 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
         <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-lg border border-border bg-card p-1 shadow-lg">
           <Link
             href="/create"
-            onClick={() => { setOpen(false); onNavigate?.(); }}
+            onClick={() => {
+              setOpen(false);
+              onNavigate?.();
+            }}
             className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs transition-colors hover:bg-muted"
           >
             <Magnet size={14} className="text-violet-500" />
@@ -135,7 +156,10 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
           <Link
             href="/pages/new"
-            onClick={() => { setOpen(false); onNavigate?.(); }}
+            onClick={() => {
+              setOpen(false);
+              onNavigate?.();
+            }}
             className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs transition-colors hover:bg-muted"
           >
             <Globe size={14} className="text-emerald-500" />
@@ -143,7 +167,10 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
           <Link
             href="/posts?quick_write=1"
-            onClick={() => { setOpen(false); onNavigate?.(); }}
+            onClick={() => {
+              setOpen(false);
+              onNavigate?.();
+            }}
             className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs transition-colors hover:bg-muted"
           >
             <PenTool size={14} className="text-blue-500" />
@@ -152,7 +179,10 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
           <div className="mx-2 my-1 h-px bg-border" />
           <Link
             href="/assets/libraries/new"
-            onClick={() => { setOpen(false); onNavigate?.(); }}
+            onClick={() => {
+              setOpen(false);
+              onNavigate?.();
+            }}
             className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs transition-colors hover:bg-muted"
           >
             <span className="text-sm">📚</span>
@@ -160,7 +190,10 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
           <Link
             href="/assets/external/new"
-            onClick={() => { setOpen(false); onNavigate?.(); }}
+            onClick={() => {
+              setOpen(false);
+              onNavigate?.();
+            }}
             className="flex items-center gap-2.5 rounded-md px-3 py-2 text-xs transition-colors hover:bg-muted"
           >
             <span className="text-sm">🔗</span>
@@ -174,7 +207,13 @@ function CreateDropdown({ onNavigate }: { onNavigate?: () => void }) {
 
 // ─── Nav link ────────────────────────────────────────────
 
-function NavLink({ href, label, icon: Icon, activePrefix, onNavigate }: {
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  activePrefix,
+  onNavigate,
+}: {
   href: string;
   label: string;
   icon: typeof Home;
@@ -183,9 +222,10 @@ function NavLink({ href, label, icon: Icon, activePrefix, onNavigate }: {
 }) {
   const pathname = usePathname();
   const matchPath = activePrefix || href;
-  const isActive = href === '/'
-    ? pathname === '/'
-    : pathname === matchPath || pathname.startsWith(matchPath + '/');
+  const isActive =
+    href === '/'
+      ? pathname === '/'
+      : pathname === matchPath || pathname.startsWith(matchPath + '/');
 
   // data-tour attribute for product tour targeting
   const tourId = href === '/' ? 'home' : href.slice(1);
@@ -197,9 +237,7 @@ function NavLink({ href, label, icon: Icon, activePrefix, onNavigate }: {
       data-tour={tourId}
       className={cn(
         'flex items-center gap-2.5 w-full p-2 rounded-lg text-xs font-medium transition-all',
-        isActive
-          ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400'
-          : 'hover:bg-muted'
+        isActive ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'hover:bg-muted'
       )}
     >
       <Icon
@@ -213,7 +251,12 @@ function NavLink({ href, label, icon: Icon, activePrefix, onNavigate }: {
 
 // ─── Sidebar content (shared between desktop + mobile) ──
 
-function SidebarContent({ user, teamContext, isSuperAdmin, onNavigate }: {
+function SidebarContent({
+  user,
+  teamContext,
+  isSuperAdmin,
+  onNavigate,
+}: {
   user: User;
   teamContext?: TeamContext | null;
   isSuperAdmin?: boolean;
@@ -229,11 +272,7 @@ function SidebarContent({ user, teamContext, isSuperAdmin, onNavigate }: {
     <div className="flex h-full flex-col">
       {/* ── Header ── */}
       <div className="border-b border-border bg-card p-5">
-        <Link
-          href="/"
-          onClick={onNavigate}
-          className="mb-4 flex items-center gap-2.5"
-        >
+        <Link href="/" onClick={onNavigate} className="mb-4 flex items-center gap-2.5">
           <div className="w-8 h-8 bg-violet-500 rounded-lg flex items-center justify-center text-white shrink-0">
             <Magnet size={16} />
           </div>
@@ -297,9 +336,7 @@ function SidebarContent({ user, teamContext, isSuperAdmin, onNavigate }: {
             </div>
           )}
           <div className="truncate">
-            <p className="truncate text-sm font-medium">
-              {displayLabel}
-            </p>
+            <p className="truncate text-sm font-medium">{displayLabel}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -307,7 +344,9 @@ function SidebarContent({ user, teamContext, isSuperAdmin, onNavigate }: {
           <button
             type="button"
             onClick={() => {
-              try { posthog.reset(); } catch {}
+              try {
+                posthog.reset();
+              } catch {}
               signOut({ callbackUrl: '/login' });
             }}
             className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
@@ -360,7 +399,11 @@ export function DashboardNav({ user, teamContext, isSuperAdmin }: DashboardNavPr
             className="fixed inset-0 bg-black/50 dark:bg-black/70 z-30 lg:hidden backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-card lg:hidden" role="navigation" aria-label="Main navigation">
+          <aside
+            className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-card lg:hidden"
+            role="navigation"
+            aria-label="Main navigation"
+          >
             <div className="flex h-14 items-center justify-end border-b border-border px-3">
               <button
                 onClick={() => setMobileOpen(false)}
@@ -381,7 +424,11 @@ export function DashboardNav({ user, teamContext, isSuperAdmin }: DashboardNavPr
       )}
 
       {/* ── Desktop sidebar ── */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-card border-r border-border flex-col lg:flex" role="navigation" aria-label="Main navigation">
+      <aside
+        className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-card border-r border-border flex-col lg:flex"
+        role="navigation"
+        aria-label="Main navigation"
+      >
         <SidebarContent user={user} teamContext={teamContext} isSuperAdmin={isSuperAdmin} />
       </aside>
     </>

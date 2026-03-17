@@ -3,10 +3,12 @@ import {
   qualificationQuestionFromRow,
   funnelLeadFromRow,
   webhookConfigFromRow,
+  funnelPageSectionFromRow,
   type FunnelPageRow,
   type QualificationQuestionRow,
   type FunnelLeadRow,
   type WebhookConfigRow,
+  type FunnelPageSectionRow,
 } from '@/lib/types/funnel';
 
 describe('Funnel Type Conversions', () => {
@@ -41,6 +43,8 @@ describe('Funnel Type Conversions', () => {
       homepage_label: null,
       send_resource_email: true,
       thankyou_layout: 'survey_first',
+      font_family: null,
+      font_url: null,
       is_published: true,
       published_at: '2025-01-26T00:00:00Z',
       created_at: '2025-01-25T00:00:00Z',
@@ -80,6 +84,8 @@ describe('Funnel Type Conversions', () => {
         homepageLabel: null,
         sendResourceEmail: true,
         thankyouLayout: 'survey_first',
+        fontFamily: null,
+        fontUrl: null,
         isPublished: true,
         publishedAt: '2025-01-26T00:00:00Z',
         createdAt: '2025-01-25T00:00:00Z',
@@ -275,6 +281,75 @@ describe('Funnel Type Conversions', () => {
       const result = webhookConfigFromRow(inactiveRow);
 
       expect(result.isActive).toBe(false);
+    });
+  });
+
+  describe('funnelPageSectionFromRow', () => {
+    const mockRow: FunnelPageSectionRow = {
+      id: 'section-123',
+      funnel_page_id: 'funnel-456',
+      section_type: 'hero',
+      page_location: 'optin',
+      sort_order: 0,
+      is_visible: true,
+      variant: 'centered',
+      config: { headline: 'Welcome', subline: 'Get started today' },
+      created_at: '2026-03-01T00:00:00Z',
+      updated_at: '2026-03-02T00:00:00Z',
+    };
+
+    it('should convert snake_case row to camelCase object with variant', () => {
+      const result = funnelPageSectionFromRow(mockRow);
+
+      expect(result).toEqual({
+        id: 'section-123',
+        funnelPageId: 'funnel-456',
+        sectionType: 'hero',
+        pageLocation: 'optin',
+        sortOrder: 0,
+        isVisible: true,
+        variant: 'centered',
+        config: { headline: 'Welcome', subline: 'Get started today' },
+        createdAt: '2026-03-01T00:00:00Z',
+        updatedAt: '2026-03-02T00:00:00Z',
+      });
+    });
+
+    it('should default variant to "default" when row variant is empty', () => {
+      const rowWithEmptyVariant: FunnelPageSectionRow = {
+        ...mockRow,
+        variant: '',
+      };
+      const result = funnelPageSectionFromRow(rowWithEmptyVariant);
+
+      expect(result.variant).toBe('default');
+    });
+
+    it('should preserve specific variant values', () => {
+      const rowWithVariant: FunnelPageSectionRow = {
+        ...mockRow,
+        section_type: 'stats_bar',
+        variant: 'animated-counters',
+        config: { items: [{ value: '100+', label: 'Clients' }] },
+      };
+      const result = funnelPageSectionFromRow(rowWithVariant);
+
+      expect(result.variant).toBe('animated-counters');
+      expect(result.sectionType).toBe('stats_bar');
+    });
+
+    it('should handle all new section types', () => {
+      const newTypes = ['hero', 'stats_bar', 'feature_grid', 'social_proof_wall'] as const;
+
+      for (const sectionType of newTypes) {
+        const row: FunnelPageSectionRow = {
+          ...mockRow,
+          section_type: sectionType,
+          variant: 'default',
+        };
+        const result = funnelPageSectionFromRow(row);
+        expect(result.sectionType).toBe(sectionType);
+      }
     });
   });
 });

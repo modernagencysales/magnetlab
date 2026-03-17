@@ -9,7 +9,7 @@ import {
   Sparkles,
   Copy,
   Calendar,
-  ExternalLink,
+  Maximize2,
   PenLine,
   ChevronDown,
   Linkedin,
@@ -19,12 +19,6 @@ import { Button, Badge, Textarea } from '@magnetlab/magnetui';
 import { PillarBadge } from './PillarBadge';
 import { StatusBadge } from './StatusBadge';
 import type { ContentIdea, PipelinePost, ReviewData } from '@/lib/types/content-pipeline';
-import {
-  schedulePost,
-  publishPost,
-  updatePost,
-  polishPost,
-} from '@/frontend/api/content-pipeline/posts';
 
 type DetailItem =
   | { type: 'idea'; data: ContentIdea }
@@ -206,11 +200,19 @@ function PostDetail({
     async (text: string) => {
       setSaveState('saving');
       try {
-        await updatePost(post.id, { draft_content: text, final_content: null });
-        setSaveState('saved');
-        onContentUpdate(post.id, text);
-        if (savedTimeout.current) clearTimeout(savedTimeout.current);
-        savedTimeout.current = setTimeout(() => setSaveState('idle'), 2000);
+        const response = await fetch(`/api/content-pipeline/posts/${post.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draft_content: text, final_content: null }),
+        });
+        if (response.ok) {
+          setSaveState('saved');
+          onContentUpdate(post.id, text);
+          if (savedTimeout.current) clearTimeout(savedTimeout.current);
+          savedTimeout.current = setTimeout(() => setSaveState('idle'), 2000);
+        } else {
+          setSaveState('error');
+        }
       } catch {
         setSaveState('error');
       }
@@ -240,8 +242,10 @@ function PostDetail({
   const handlePolish = async () => {
     setPolishing(true);
     try {
-      await polishPost(post.id);
-      onRefresh();
+      const response = await fetch(`/api/content-pipeline/posts/${post.id}/polish`, {
+        method: 'POST',
+      });
+      if (response.ok) onRefresh();
     } catch {
       // Silent
     } finally {
@@ -251,8 +255,12 @@ function PostDetail({
 
   const handleSchedule = async () => {
     try {
-      await schedulePost(post.id);
-      onRefresh();
+      const response = await fetch('/api/content-pipeline/posts/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post_id: post.id }),
+      });
+      if (response.ok) onRefresh();
     } catch {
       // Silent
     }
@@ -262,10 +270,17 @@ function PostDetail({
     setPublishing(true);
     setPublishError(null);
     try {
-      await publishPost(post.id);
-      onRefresh();
-    } catch (err) {
-      setPublishError(err instanceof Error ? err.message : 'Failed to publish');
+      const response = await fetch(`/api/content-pipeline/posts/${post.id}/publish`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (response.ok) {
+        onRefresh();
+      } else {
+        setPublishError(data.error || 'Failed to publish');
+      }
+    } catch {
+      setPublishError('Network error. Please try again.');
     } finally {
       setPublishing(false);
     }
@@ -425,7 +440,7 @@ function PostDetail({
         )}
         <div className="flex-1" />
         <Button variant="outline" size="sm" onClick={() => onOpenModal(post)}>
-          <ExternalLink className="h-3.5 w-3.5 mr-1" />
+          <Maximize2 className="h-3.5 w-3.5 mr-1" />
           Full Editor
         </Button>
       </div>
@@ -449,7 +464,7 @@ function PostDetail({
 
 // ─── Save Indicator ───────────────────────────────────────
 
-function SaveIndicator({ state }: { state: SaveState }) {
+export function SaveIndicator({ state }: { state: SaveState }) {
   if (state === 'idle') return null;
 
   return (

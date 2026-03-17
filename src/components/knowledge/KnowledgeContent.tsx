@@ -98,29 +98,29 @@ export function KnowledgeContent() {
 
         {/* Tabs */}
         <div className="flex gap-2 overflow-x-auto">
-        {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleTabChange(tab.id)}
-          >
-            <tab.icon className="mr-1.5 h-3.5 w-3.5" />
-            {tab.label}
-          </Button>
-        ))}
+          {TABS.map((tab) => (
+            <Button
+              key={tab.id}
+              variant={activeTab === tab.id ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleTabChange(tab.id)}
+            >
+              <tab.icon className="mr-1.5 h-3.5 w-3.5" />
+              {tab.label}
+            </Button>
+          ))}
         </div>
 
         {/* Tab Content */}
         <Suspense fallback={<TabLoader />}>
-        {!teamContextReady ? (
-          <TabLoader />
-        ) : (
-          <>
-            {activeTab === 'transcripts' && <TranscriptsTab profileId={selectedProfileId} />}
-            {activeTab === 'brain' && <KnowledgeBrainTab teamId={teamId} />}
-          </>
-        )}
+          {!teamContextReady ? (
+            <TabLoader />
+          ) : (
+            <>
+              {activeTab === 'transcripts' && <TranscriptsTab profileId={selectedProfileId} />}
+              {activeTab === 'brain' && <KnowledgeBrainTab teamId={teamId} />}
+            </>
+          )}
         </Suspense>
       </div>
     </PageContainer>

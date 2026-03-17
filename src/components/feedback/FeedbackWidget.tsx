@@ -268,7 +268,10 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
 
               {/* Title */}
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="feedback-title" className="text-xs font-medium text-muted-foreground">
+                <label
+                  htmlFor="feedback-title"
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   Title
                 </label>
                 <input
@@ -292,7 +295,10 @@ export function FeedbackWidget({ userEmail, userId }: FeedbackWidgetProps) {
 
               {/* Description */}
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="feedback-description" className="text-xs font-medium text-muted-foreground">
+                <label
+                  htmlFor="feedback-description"
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   Description
                 </label>
                 <textarea

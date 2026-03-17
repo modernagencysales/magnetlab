@@ -15,9 +15,7 @@ export function PromptDiffViewer({ oldText, newText, oldLabel, newLabel }: Props
   return (
     <div className="border border-border rounded-lg overflow-hidden">
       <div className="flex text-xs font-medium border-b border-border">
-        <div className="flex-1 bg-destructive/10 px-3 py-2 text-destructive">
-          {oldLabel}
-        </div>
+        <div className="flex-1 bg-destructive/10 px-3 py-2 text-destructive">{oldLabel}</div>
         <div className="flex-1 px-3 py-2 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400">
           {newLabel}
         </div>

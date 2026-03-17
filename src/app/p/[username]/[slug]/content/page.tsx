@@ -6,7 +6,12 @@ import { checkTeamRole } from '@/lib/auth/rbac';
 import { ContentPageClient } from '@/components/content/ContentPageClient';
 import { funnelPageSectionFromRow, type FunnelPageSectionRow } from '@/lib/types/funnel';
 import type { Metadata } from 'next';
-import type { PolishedContent, ExtractedContent, LeadMagnetConcept, InteractiveConfig } from '@/lib/types/lead-magnet';
+import type {
+  PolishedContent,
+  ExtractedContent,
+  LeadMagnetConcept,
+  InteractiveConfig,
+} from '@/lib/types/lead-magnet';
 
 export const revalidate = 300;
 
@@ -97,7 +102,8 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
   // Fetch funnel page (no is_published filter — we check access after)
   const { data: funnel, error: funnelError } = await supabase
     .from('funnel_pages')
-    .select(`
+    .select(
+      `
       id,
       lead_magnet_id,
       slug,
@@ -111,7 +117,8 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       vsl_url,
       calendly_url,
       team_id
-    `)
+    `
+    )
     .eq('user_id', user.id)
     .eq('slug', slug)
     .single();
@@ -125,7 +132,9 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
   // Get lead magnet with content
   const { data: leadMagnet, error: lmError } = await supabase
     .from('lead_magnets')
-    .select('id, title, extracted_content, polished_content, concept, thumbnail_url, interactive_config, team_id, archetype')
+    .select(
+      'id, title, extracted_content, polished_content, concept, thumbnail_url, interactive_config, team_id, archetype'
+    )
     .eq('id', funnel.lead_magnet_id)
     .single();
 
@@ -154,7 +163,11 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
     notFound();
   }
 
-  if (!leadMagnet.extracted_content && !leadMagnet.polished_content && !leadMagnet.interactive_config) {
+  if (
+    !leadMagnet.extracted_content &&
+    !leadMagnet.polished_content &&
+    !leadMagnet.interactive_config
+  ) {
     notFound();
   }
 
@@ -183,13 +196,15 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
   // Fetch page sections for content
   const { data: sectionRows } = await supabase
     .from('funnel_page_sections')
-    .select('id, funnel_page_id, section_type, page_location, sort_order, is_visible, config, created_at, updated_at')
+    .select(
+      'id, funnel_page_id, section_type, page_location, sort_order, is_visible, config, created_at, updated_at'
+    )
     .eq('funnel_page_id', funnel.id)
     .eq('page_location', 'content')
     .eq('is_visible', true)
     .order('sort_order', { ascending: true });
 
-  const sections = (sectionRows as FunnelPageSectionRow[] || []).map(funnelPageSectionFromRow);
+  const sections = ((sectionRows as FunnelPageSectionRow[]) || []).map(funnelPageSectionFromRow);
 
   // Fetch iClosed widget integration for the page owner
   let iClosedWidgetId: string | null = null;

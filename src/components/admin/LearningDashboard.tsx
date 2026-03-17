@@ -238,9 +238,7 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
                   <div
                     key={edit.id}
                     className={`flex items-start gap-4 px-5 py-3.5 ${
-                      index % 2 === 0
-                        ? 'bg-card'
-                        : 'bg-muted/50'
+                      index % 2 === 0 ? 'bg-card' : 'bg-muted/50'
                     }`}
                   >
                     {/* Date */}
@@ -251,8 +249,7 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
                     {/* Content type badge */}
                     <span
                       className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${
-                        CONTENT_TYPE_COLORS[edit.content_type] ??
-                        'bg-muted text-muted-foreground'
+                        CONTENT_TYPE_COLORS[edit.content_type] ?? 'bg-muted text-muted-foreground'
                       }`}
                     >
                       {edit.content_type}
@@ -279,7 +276,9 @@ export function LearningDashboard({ editActivity, profiles }: LearningDashboardP
                         </p>
                       )}
                       {patterns.length === 0 && !edit.ceo_note && (
-                        <span className="text-xs text-muted-foreground italic">No patterns or notes</span>
+                        <span className="text-xs text-muted-foreground italic">
+                          No patterns or notes
+                        </span>
                       )}
                     </div>
 
@@ -305,7 +304,9 @@ function StatCard({ icon, value, label }: { icon: React.ReactNode; value: number
     <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-center gap-2 mb-3">
         {icon}
-        <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+          {label}
+        </span>
       </div>
       <p className="text-3xl font-bold tabular-nums">{value}</p>
     </div>
@@ -341,9 +342,7 @@ function VoiceProfileCard({ profile }: { profile: Profile }) {
     <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold">
-            {profile.full_name}
-          </h3>
+          <h3 className="text-sm font-semibold">{profile.full_name}</h3>
           {vp.tone && <p className="text-xs text-muted-foreground mt-0.5">Tone: {vp.tone}</p>}
         </div>
         <div className="text-right">
@@ -354,9 +353,7 @@ function VoiceProfileCard({ profile }: { profile: Profile }) {
       {/* Metadata */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-4 text-xs">
         <div className="text-muted-foreground">Last evolved</div>
-        <div>
-          {vp.last_evolved ? formatDate(vp.last_evolved) : 'Never'}
-        </div>
+        <div>{vp.last_evolved ? formatDate(vp.last_evolved) : 'Never'}</div>
         <div className="text-muted-foreground">Positive examples</div>
         <div>{vp.positive_examples?.length ?? 0}</div>
       </div>

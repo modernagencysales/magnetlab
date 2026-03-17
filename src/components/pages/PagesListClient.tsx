@@ -2,7 +2,17 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Search, ArrowUpDown, Eye, Users, Globe, Calendar, BookOpen, ExternalLink, Link2 } from 'lucide-react';
+import {
+  Search,
+  ArrowUpDown,
+  Eye,
+  Users,
+  Globe,
+  Calendar,
+  BookOpen,
+  ExternalLink,
+  Link2,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface PageListItem {
@@ -81,8 +91,7 @@ export default function PagesListClient({ items }: { items: PageListItem[] }) {
       const q = search.toLowerCase();
       result = result.filter(
         (item) =>
-          item.headline.toLowerCase().includes(q) ||
-          item.connectedName.toLowerCase().includes(q)
+          item.headline.toLowerCase().includes(q) || item.connectedName.toLowerCase().includes(q)
       );
     }
 
@@ -117,11 +126,11 @@ export default function PagesListClient({ items }: { items: PageListItem[] }) {
         <div className="flex items-center gap-3">
           {/* Status filter pills */}
           <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-0.5">
-            {([
+            {[
               { value: 'all' as StatusFilter, label: 'All', count: items.length },
               { value: 'published' as StatusFilter, label: 'Published', count: publishedCount },
               { value: 'draft' as StatusFilter, label: 'Draft', count: draftCount },
-            ]).map((pill) => (
+            ].map((pill) => (
               <button
                 key={pill.value}
                 onClick={() => setStatusFilter(pill.value)}
@@ -180,7 +189,10 @@ export default function PagesListClient({ items }: { items: PageListItem[] }) {
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} className="group border-b border-border last:border-0 transition-colors hover:bg-muted/50">
+                <tr
+                  key={item.id}
+                  className="group border-b border-border last:border-0 transition-colors hover:bg-muted/50"
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
                       <Link
@@ -263,8 +275,8 @@ export default function PagesListClient({ items }: { items: PageListItem[] }) {
                           item.conversionRate >= 20
                             ? 'bg-emerald-500/10 text-emerald-600'
                             : item.conversionRate >= 10
-                            ? 'bg-yellow-500/10 text-yellow-600'
-                            : 'bg-muted text-muted-foreground'
+                              ? 'bg-yellow-500/10 text-yellow-600'
+                              : 'bg-muted text-muted-foreground'
                         )}
                       >
                         {item.conversionRate.toFixed(1)}%
@@ -339,8 +351,8 @@ export default function PagesListClient({ items }: { items: PageListItem[] }) {
                   item.conversionRate >= 20
                     ? 'bg-emerald-500/10 text-emerald-600'
                     : item.conversionRate >= 10
-                    ? 'bg-yellow-500/10 text-yellow-600'
-                    : 'bg-muted text-muted-foreground'
+                      ? 'bg-yellow-500/10 text-yellow-600'
+                      : 'bg-muted text-muted-foreground'
                 )}
               >
                 {item.conversionRate.toFixed(1)}%

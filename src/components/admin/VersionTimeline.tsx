@@ -62,16 +62,15 @@ export function VersionTimeline({
       {versions.map((version) => {
         const isExpanded = expandedId === version.id;
         return (
-          <div
-            key={version.id}
-            className="rounded-lg border border-border bg-card"
-          >
+          <div key={version.id} className="rounded-lg border border-border bg-card">
             {/* Version header */}
             <div className="flex items-start justify-between p-3 gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="purple">v{version.version}</Badge>
-                  <span className="text-xs text-muted-foreground">{timeAgo(version.created_at)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {timeAgo(version.created_at)}
+                  </span>
                 </div>
                 <p className="text-xs line-clamp-1 text-muted-foreground">
                   {version.change_note || <span className="italic">No note</span>}

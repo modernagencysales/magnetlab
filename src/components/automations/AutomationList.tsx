@@ -167,155 +167,156 @@ export function AutomationList() {
 
         {/* Empty state */}
         {!error && automations.length === 0 && (
-        <EmptyState
-          icon={<Bot />}
-          title="No automations yet"
-          description="Create one to auto-DM commenters on your posts. Set keywords to match, craft a DM template, and let it run."
-          action={
-            <Button onClick={handleCreate} size="sm">
-              <Plus className="mr-1 h-4 w-4" />
-              Create Automation
-            </Button>
-          }
+          <EmptyState
+            icon={<Bot />}
+            title="No automations yet"
+            description="Create one to auto-DM commenters on your posts. Set keywords to match, craft a DM template, and let it run."
+            action={
+              <Button onClick={handleCreate} size="sm">
+                <Plus className="mr-1 h-4 w-4" />
+                Create Automation
+              </Button>
+            }
           />
         )}
 
         {/* Automation cards */}
         <div className="grid gap-4">
-        {automations.map((automation) => (
-          <Card key={automation.id} className="group border-border">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <Bot className="h-4 w-4 text-primary" />
+          {automations.map((automation) => (
+            <Card key={automation.id} className="group border-border">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Bot className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <CardTitle className="text-sm truncate">{automation.name}</CardTitle>
+                      {automation.post_social_id && (
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {automation.post_social_id}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <CardTitle className="text-sm truncate">{automation.name}</CardTitle>
-                    {automation.post_social_id && (
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {automation.post_social_id}
-                      </p>
-                    )}
-                  </div>
+                  <StatusBadge status={automation.status} />
                 </div>
-                <StatusBadge status={automation.status} />
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5" />
-                  <span>
-                    {automation.leads_captured} lead{automation.leads_captured !== 1 ? 's' : ''}{' '}
-                    captured
-                  </span>
-                </div>
-
-                {automation.keywords.length > 0 && (
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="shrink-0">Keywords:</span>
-                    <span className="truncate max-w-[200px]">
-                      {automation.keywords.slice(0, 5).join(', ')}
-                      {automation.keywords.length > 5 && ` +${automation.keywords.length - 5} more`}
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" />
+                    <span>
+                      {automation.leads_captured} lead{automation.leads_captured !== 1 ? 's' : ''}{' '}
+                      captured
                     </span>
                   </div>
-                )}
 
-                {automation.auto_connect && <Badge variant="outline">Auto-connect</Badge>}
-                {automation.auto_like && <Badge variant="outline">Auto-like</Badge>}
-                {automation.plusvibe_campaign_id && <Badge variant="outline">PlusVibe</Badge>}
-                {automation.enable_follow_up && <Badge variant="outline">Follow-up</Badge>}
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleToggleStatus(automation)}
-                  disabled={togglingId === automation.id}
-                >
-                  {togglingId === automation.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : automation.status === 'running' ? (
-                    <>
-                      <Pause className="mr-1 h-3.5 w-3.5" />
-                      Pause
-                    </>
-                  ) : (
-                    <>
-                      <Play className="mr-1 h-3.5 w-3.5" />
-                      Start
-                    </>
+                  {automation.keywords.length > 0 && (
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="shrink-0">Keywords:</span>
+                      <span className="truncate max-w-[200px]">
+                        {automation.keywords.slice(0, 5).join(', ')}
+                        {automation.keywords.length > 5 &&
+                          ` +${automation.keywords.length - 5} more`}
+                      </span>
+                    </div>
                   )}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setActivityTarget(automation)}>
-                  <Activity className="mr-1 h-3.5 w-3.5" />
-                  Activity
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleEdit(automation)}>
-                  <Pencil className="mr-1 h-3.5 w-3.5" />
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDeleteTarget(automation)}
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="mr-1 h-3.5 w-3.5" />
-                  Delete
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
-      {/* Editor dialog */}
-      <AutomationEditor
-        open={editorOpen}
-        automation={editingAutomation}
-        onClose={handleEditorClose}
-        onSave={handleEditorSave}
-      />
+                  {automation.auto_connect && <Badge variant="outline">Auto-connect</Badge>}
+                  {automation.auto_like && <Badge variant="outline">Auto-like</Badge>}
+                  {automation.plusvibe_campaign_id && <Badge variant="outline">PlusVibe</Badge>}
+                  {automation.enable_follow_up && <Badge variant="outline">Follow-up</Badge>}
+                </div>
 
-      {/* Activity drawer */}
-      <AutomationEventsDrawer
-        automationId={activityTarget?.id || null}
-        automationName={activityTarget?.name || ''}
-        optInUrl={activityTarget?.opt_in_url || null}
-        open={!!activityTarget}
-        onClose={() => setActivityTarget(null)}
-      />
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleToggleStatus(automation)}
+                    disabled={togglingId === automation.id}
+                  >
+                    {togglingId === automation.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : automation.status === 'running' ? (
+                      <>
+                        <Pause className="mr-1 h-3.5 w-3.5" />
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play className="mr-1 h-3.5 w-3.5" />
+                        Start
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setActivityTarget(automation)}>
+                    <Activity className="mr-1 h-3.5 w-3.5" />
+                    Activity
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(automation)}>
+                    <Pencil className="mr-1 h-3.5 w-3.5" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDeleteTarget(automation)}
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="mr-1 h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-      {/* Delete confirmation dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Automation</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This action cannot
-              be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-              {deleting ? (
-                <>
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                'Delete'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {/* Editor dialog */}
+        <AutomationEditor
+          open={editorOpen}
+          automation={editingAutomation}
+          onClose={handleEditorClose}
+          onSave={handleEditorSave}
+        />
+
+        {/* Activity drawer */}
+        <AutomationEventsDrawer
+          automationId={activityTarget?.id || null}
+          automationName={activityTarget?.name || ''}
+          optInUrl={activityTarget?.opt_in_url || null}
+          open={!!activityTarget}
+          onClose={() => setActivityTarget(null)}
+        />
+
+        {/* Delete confirmation dialog */}
+        <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Automation</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This action cannot
+                be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                {deleting ? (
+                  <>
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </PageContainer>
   );

@@ -110,12 +110,7 @@ function BubbleToolbar({ editor }: ToolbarProps) {
     if (!url) {
       editor.chain().focus().unsetLink().run();
     } else {
-      editor
-        .chain()
-        .focus()
-        .extendMarkRange('link')
-        .setLink({ href: url })
-        .run();
+      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
     }
     setShowLinkInput(false);
   };
@@ -134,8 +129,7 @@ function BubbleToolbar({ editor }: ToolbarProps) {
   };
 
   if (showLinkInput) {
-    const existingHref =
-      (editor.getAttributes('link').href as string) || '';
+    const existingHref = (editor.getAttributes('link').href as string) || '';
     return (
       <LinkInput
         initialUrl={existingHref}
@@ -214,11 +208,7 @@ function BubbleToolbar({ editor }: ToolbarProps) {
         aria-label={isLink ? 'Unlink' : 'Link'}
         title={isLink ? 'Remove link' : 'Add link'}
       >
-        {isLink ? (
-          <Unlink className="h-4 w-4" />
-        ) : (
-          <LinkIcon className="h-4 w-4" />
-        )}
+        {isLink ? <Unlink className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
       </button>
     </div>
   );
@@ -284,9 +274,7 @@ export function TipTapTextBlock({
       },
     },
     onUpdate: ({ editor: updatedEditor }) => {
-      const markdown = tiptapDocToMarkdown(
-        updatedEditor.getJSON() as unknown as TiptapDoc,
-      );
+      const markdown = tiptapDocToMarkdown(updatedEditor.getJSON() as unknown as TiptapDoc);
       lastContentRef.current = markdown;
       onChangeRef.current(markdown);
       if (onCharacterCountRef.current) {
@@ -311,10 +299,7 @@ export function TipTapTextBlock({
   }, []);
 
   return (
-    <div
-      className={`tiptap-text-block ${className || ''}`}
-      style={style}
-    >
+    <div className={`tiptap-text-block ${className || ''}`} style={style}>
       {editor && (
         <BubbleMenu
           editor={editor}

@@ -44,16 +44,15 @@ export function FunnelTemplateSettings({ currentTemplate, onSaved }: FunnelTempl
       <div>
         <h3 className="text-lg font-medium">Default Funnel Template</h3>
         <p className="text-sm text-muted-foreground">
-          New funnels will use this template to pre-populate page sections. You can customize sections per funnel afterward.
+          New funnels will use this template to pre-populate page sections. You can customize
+          sections per funnel afterward.
         </p>
       </div>
 
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {FUNNEL_TEMPLATES.map(template => {
+        {FUNNEL_TEMPLATES.map((template) => {
           const isSelected = selected === template.id;
           const sectionCount = template.sections.length;
           return (
@@ -82,7 +81,9 @@ export function FunnelTemplateSettings({ currentTemplate, onSaved }: FunnelTempl
               </div>
               <p className="text-sm text-muted-foreground">{template.description}</p>
               <p className="text-xs text-muted-foreground mt-2">
-                {sectionCount === 0 ? 'No sections' : `${sectionCount} section${sectionCount !== 1 ? 's' : ''} across pages`}
+                {sectionCount === 0
+                  ? 'No sections'
+                  : `${sectionCount} section${sectionCount !== 1 ? 's' : ''} across pages`}
               </p>
             </button>
           );

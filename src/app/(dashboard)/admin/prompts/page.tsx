@@ -21,13 +21,13 @@ export default async function AdminPromptsPage() {
   return (
     <PageContainer maxWidth="xl">
       <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">AI Prompts</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          View, edit, and version all AI prompt templates used in content production.
-        </p>
-      </div>
-      <PromptList prompts={prompts ?? []} />
+        <div>
+          <h1 className="text-2xl font-bold">AI Prompts</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            View, edit, and version all AI prompt templates used in content production.
+          </p>
+        </div>
+        <PromptList prompts={prompts ?? []} />
       </div>
     </PageContainer>
   );

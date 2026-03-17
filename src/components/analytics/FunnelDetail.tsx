@@ -204,10 +204,7 @@ export function FunnelDetail({ funnelId }: FunnelDetailProps) {
       {error && (
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-6 text-center text-destructive">
           <p className="text-sm font-medium">{error}</p>
-          <Link
-            href="/analytics"
-            className="mt-3 inline-block text-sm underline hover:opacity-80"
-          >
+          <Link href="/analytics" className="mt-3 inline-block text-sm underline hover:opacity-80">
             Return to Analytics
           </Link>
         </div>

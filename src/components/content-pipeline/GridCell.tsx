@@ -69,7 +69,14 @@ function formatSlotTime(time: string): string {
   return `${h12}:${m} ${suffix}`;
 }
 
-export function GridCell({ post, slotTime, hasSlot, onCellClick, onContextMenu, isToday }: GridCellProps) {
+export function GridCell({
+  post,
+  slotTime,
+  hasSlot,
+  onCellClick,
+  onContextMenu,
+  isToday,
+}: GridCellProps) {
   // No slot — blank cell
   if (!hasSlot && !post) {
     return (
@@ -93,9 +100,7 @@ export function GridCell({ post, slotTime, hasSlot, onCellClick, onContextMenu, 
           isToday && 'ring-2 ring-blue-400/30'
         )}
       >
-        {slotTime && (
-          <span className="text-[10px] font-medium">{formatSlotTime(slotTime)}</span>
-        )}
+        {slotTime && <span className="text-[10px] font-medium">{formatSlotTime(slotTime)}</span>}
         <span className="text-[10px]">+ Assign</span>
       </button>
     );
@@ -123,24 +128,22 @@ export function GridCell({ post, slotTime, hasSlot, onCellClick, onContextMenu, 
       >
         {/* Top row: time + status dot */}
         <div className="flex items-center gap-1.5">
-          <span className={cn('h-1.5 w-1.5 rounded-full flex-shrink-0', getStatusDotColor(post.status))} />
-          {time && (
-            <span className="text-[10px] text-muted-foreground">{time}</span>
-          )}
+          <span
+            className={cn('h-1.5 w-1.5 rounded-full flex-shrink-0', getStatusDotColor(post.status))}
+          />
+          {time && <span className="text-[10px] text-muted-foreground">{time}</span>}
         </div>
 
         {/* Hook preview */}
-        {preview && (
-          <p className="text-[11px] leading-tight line-clamp-2 font-medium">
-            {preview}
-          </p>
-        )}
+        {preview && <p className="text-[11px] leading-tight line-clamp-2 font-medium">{preview}</p>}
 
         {/* Bottom row: broadcast badge */}
         {post.broadcast_group_id && (
           <div className="flex items-center gap-0.5 mt-auto">
             <Users className="h-2.5 w-2.5 text-purple-500" />
-            <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">Broadcast</span>
+            <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">
+              Broadcast
+            </span>
           </div>
         )}
       </button>

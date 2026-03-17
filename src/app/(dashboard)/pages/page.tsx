@@ -263,165 +263,165 @@ export default function PagesPage() {
         )}
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
-        <TabsList variant="pill" className="mb-6">
-          <TabsTrigger value="pages" variant="pill">
-            Funnel Pages
-            {pages.length > 0 && (
-              <Badge variant="count" className="ml-1.5">
-                {pages.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="libraries" variant="pill">
-            Libraries
-            {libraries.length > 0 && (
-              <Badge variant="count" className="ml-1.5">
-                {libraries.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="resources" variant="pill">
-            External Resources
-            {resources.length > 0 && (
-              <Badge variant="count" className="ml-1.5">
-                {resources.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+          <TabsList variant="pill" className="mb-6">
+            <TabsTrigger value="pages" variant="pill">
+              Funnel Pages
+              {pages.length > 0 && (
+                <Badge variant="count" className="ml-1.5">
+                  {pages.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="libraries" variant="pill">
+              Libraries
+              {libraries.length > 0 && (
+                <Badge variant="count" className="ml-1.5">
+                  {libraries.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="resources" variant="pill">
+              External Resources
+              {resources.length > 0 && (
+                <Badge variant="count" className="ml-1.5">
+                  {resources.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="pages" className="mt-0">
-          {pages.length === 0 ? (
-            <EmptyState
-              icon={<Globe />}
-              title="No pages yet"
-              description="Create a capture page to start collecting leads."
-              action={
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/pages/import">
-                      <Upload className="mr-1 h-4 w-4" />
-                      Import
-                    </Link>
-                  </Button>
-                  <Button size="sm" asChild>
-                    <Link href="/pages/new">
-                      <Plus className="mr-1 h-4 w-4" />
-                      Create Page
-                    </Link>
-                  </Button>
-                </div>
-              }
-            />
-          ) : (
-            <PagesListClient items={pageListItems} />
-          )}
-        </TabsContent>
-
-        <TabsContent value="libraries" className="mt-0">
-          {libraries.length === 0 ? (
-            <EmptyState
-              icon={<span className="text-2xl">📚</span>}
-              title="No libraries yet"
-              description="Libraries let you group multiple lead magnets and external resources into a single shareable page."
-              action={
-                <Button size="sm" asChild>
-                  <Link href="/assets/libraries/new">
-                    <Plus className="mr-1 h-4 w-4" />
-                    Create Library
-                  </Link>
-                </Button>
-              }
-            />
-          ) : (
-            <div className="grid gap-4">
-              {libraries.map((lib) => (
-                <Card key={lib.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-lg">
-                        {lib.icon}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{lib.name}</p>
-                        <p className="text-xs text-muted-foreground">/{lib.slug}</p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/assets/libraries/${lib.id}`}>
-                        <Edit className="mr-1 h-3.5 w-3.5" />
-                        Manage
+          <TabsContent value="pages" className="mt-0">
+            {pages.length === 0 ? (
+              <EmptyState
+                icon={<Globe />}
+                title="No pages yet"
+                description="Create a capture page to start collecting leads."
+                action={
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/pages/import">
+                        <Upload className="mr-1 h-4 w-4" />
+                        Import
                       </Link>
                     </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+                    <Button size="sm" asChild>
+                      <Link href="/pages/new">
+                        <Plus className="mr-1 h-4 w-4" />
+                        Create Page
+                      </Link>
+                    </Button>
+                  </div>
+                }
+              />
+            ) : (
+              <PagesListClient items={pageListItems} />
+            )}
+          </TabsContent>
 
-        <TabsContent value="resources" className="mt-0">
-          {resources.length === 0 ? (
-            <EmptyState
-              icon={<span className="text-2xl">🔗</span>}
-              title="No external resources yet"
-              description="Add links to external content like YouTube videos, tools, or guides. Track clicks when used in libraries."
-              action={
-                <Button size="sm" asChild>
-                  <Link href="/assets/external/new">
-                    <Plus className="mr-1 h-4 w-4" />
-                    Add Resource
-                  </Link>
-                </Button>
-              }
-            />
-          ) : (
-            <div className="grid gap-4">
-              {resources.map((resource) => (
-                <Card key={resource.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-lg">
-                        {resource.icon}
+          <TabsContent value="libraries" className="mt-0">
+            {libraries.length === 0 ? (
+              <EmptyState
+                icon={<span className="text-2xl">📚</span>}
+                title="No libraries yet"
+                description="Libraries let you group multiple lead magnets and external resources into a single shareable page."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/assets/libraries/new">
+                      <Plus className="mr-1 h-4 w-4" />
+                      Create Library
+                    </Link>
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="grid gap-4">
+                {libraries.map((lib) => (
+                  <Card key={lib.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-lg">
+                          {lib.icon}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{lib.name}</p>
+                          <p className="text-xs text-muted-foreground">/{lib.slug}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium">{resource.title}</p>
-                        <p className="text-xs text-muted-foreground truncate max-w-xs">
-                          {resource.url}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {resource.clickCount > 0 && (
-                        <span className="mr-2 text-xs text-muted-foreground">
-                          {resource.clickCount} clicks
-                        </span>
-                      )}
-                      <Button variant="ghost" size="icon-sm" asChild>
-                        <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/assets/libraries/${lib.id}`}>
+                          <Edit className="mr-1 h-3.5 w-3.5" />
+                          Manage
+                        </Link>
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleDeleteResource(resource.id)}
-                        disabled={deletingResource === resource.id}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        {deletingResource === resource.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3.5 w-3.5" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="resources" className="mt-0">
+            {resources.length === 0 ? (
+              <EmptyState
+                icon={<span className="text-2xl">🔗</span>}
+                title="No external resources yet"
+                description="Add links to external content like YouTube videos, tools, or guides. Track clicks when used in libraries."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/assets/external/new">
+                      <Plus className="mr-1 h-4 w-4" />
+                      Add Resource
+                    </Link>
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="grid gap-4">
+                {resources.map((resource) => (
+                  <Card key={resource.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-lg">
+                          {resource.icon}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{resource.title}</p>
+                          <p className="text-xs text-muted-foreground truncate max-w-xs">
+                            {resource.url}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {resource.clickCount > 0 && (
+                          <span className="mr-2 text-xs text-muted-foreground">
+                            {resource.clickCount} clicks
+                          </span>
                         )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+                        <Button variant="ghost" size="icon-sm" asChild>
+                          <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleDeleteResource(resource.id)}
+                          disabled={deletingResource === resource.id}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          {deletingResource === resource.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
     </PageContainer>

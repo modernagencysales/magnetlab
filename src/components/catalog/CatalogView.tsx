@@ -65,36 +65,36 @@ export function CatalogView({ catalog: initialCatalog, owner, isOwner }: Catalog
       />
 
       <div className="space-y-6">
-      <SearchInput
-        value={search}
-        onValueChange={setSearch}
-        placeholder="Search by title, pain point, or audience..."
-        clearable
-      />
-
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<Magnet />}
-          title={search ? `No lead magnets match "${search}"` : 'No lead magnets yet'}
-          description={
-            search
-              ? 'Try adjusting your search terms.'
-              : 'Create your first lead magnet to get started.'
-          }
+        <SearchInput
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Search by title, pain point, or audience..."
+          clearable
         />
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((item) => (
-            <CatalogCard
-              key={item.id}
-              item={item}
-              isOwner={isOwner}
-              baseUrl={baseUrl}
-              onUpdate={handleUpdate}
-            />
-          ))}
-        </div>
-      )}
+
+        {filtered.length === 0 ? (
+          <EmptyState
+            icon={<Magnet />}
+            title={search ? `No lead magnets match "${search}"` : 'No lead magnets yet'}
+            description={
+              search
+                ? 'Try adjusting your search terms.'
+                : 'Create your first lead magnet to get started.'
+            }
+          />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((item) => (
+              <CatalogCard
+                key={item.id}
+                item={item}
+                isOwner={isOwner}
+                baseUrl={baseUrl}
+                onUpdate={handleUpdate}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </PageContainer>
   );

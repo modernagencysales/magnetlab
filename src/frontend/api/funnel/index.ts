@@ -1,8 +1,9 @@
 /**
- * Funnel API (client): CRUD, sections, publish, theme, generate-content.
+ * Funnel API (client): CRUD, sections, publish, theme, generate-content, restyle.
  */
 
 import { apiClient } from '../client';
+import type { RestylePlan, SectionConfig } from '@/lib/types/funnel';
 
 export interface GetFunnelByTargetParams {
   leadMagnetId?: string;
@@ -10,7 +11,26 @@ export interface GetFunnelByTargetParams {
   externalResourceId?: string;
 }
 
-export async function getFunnelByTarget(params: GetFunnelByTargetParams): Promise<{ funnel: unknown }> {
+export interface CreateSectionBody {
+  sectionType: string;
+  pageLocation: string;
+  sortOrder?: number;
+  variant?: string;
+  config?: SectionConfig | Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface UpdateSectionBody {
+  isVisible?: boolean;
+  sortOrder?: number;
+  variant?: string;
+  config?: SectionConfig | Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export async function getFunnelByTarget(
+  params: GetFunnelByTargetParams
+): Promise<{ funnel: unknown }> {
   const searchParams = new URLSearchParams();
   if (params.leadMagnetId) searchParams.set('leadMagnetId', params.leadMagnetId);
   if (params.libraryId) searchParams.set('libraryId', params.libraryId);
@@ -27,7 +47,10 @@ export async function getFunnel(id: string): Promise<{ funnel: unknown }> {
   return apiClient.get<{ funnel: unknown }>(`/funnel/${id}`);
 }
 
-export async function updateFunnel(id: string, body: Record<string, unknown>): Promise<{ funnel: unknown }> {
+export async function updateFunnel(
+  id: string,
+  body: Record<string, unknown>
+): Promise<{ funnel: unknown }> {
   return apiClient.put<{ funnel: unknown }>(`/funnel/${id}`, body);
 }
 
@@ -39,14 +62,17 @@ export async function getSections(funnelId: string): Promise<{ sections: unknown
   return apiClient.get<{ sections: unknown[] }>(`/funnel/${funnelId}/sections`);
 }
 
-export async function createSection(funnelId: string, body: Record<string, unknown>): Promise<{ section: unknown }> {
+export async function createSection(
+  funnelId: string,
+  body: CreateSectionBody
+): Promise<{ section: unknown }> {
   return apiClient.post<{ section: unknown }>(`/funnel/${funnelId}/sections`, body);
 }
 
 export async function updateSection(
   funnelId: string,
   sectionId: string,
-  body: Record<string, unknown>
+  body: UpdateSectionBody
 ): Promise<{ section: unknown }> {
   return apiClient.put<{ section: unknown }>(`/funnel/${funnelId}/sections/${sectionId}`, body);
 }
@@ -59,10 +85,15 @@ export async function resetSections(
   funnelId: string,
   pageLocation: 'optin' | 'thankyou' | 'content'
 ): Promise<{ sections: unknown[] }> {
-  return apiClient.post<{ sections: unknown[] }>(`/funnel/${funnelId}/sections/reset`, { pageLocation });
+  return apiClient.post<{ sections: unknown[] }>(`/funnel/${funnelId}/sections/reset`, {
+    pageLocation,
+  });
 }
 
-export async function publishFunnel(id: string, publish: boolean): Promise<Record<string, unknown>> {
+export async function publishFunnel(
+  id: string,
+  publish: boolean
+): Promise<Record<string, unknown>> {
   return apiClient.post<Record<string, unknown>>(`/funnel/${id}/publish`, { publish });
 }
 
@@ -74,7 +105,10 @@ export async function reapplyBrand(funnelId: string): Promise<Record<string, unk
   return apiClient.post<Record<string, unknown>>(`/funnel/${funnelId}/reapply-brand`, {});
 }
 
-export async function generateFunnelContent(leadMagnetId: string, useAI?: boolean): Promise<{ content: unknown }> {
+export async function generateFunnelContent(
+  leadMagnetId: string,
+  useAI?: boolean
+): Promise<{ content: unknown }> {
   return apiClient.post<{ content: unknown }>('/funnel/generate-content', { leadMagnetId, useAI });
 }
 
@@ -86,7 +120,10 @@ export async function getQuestions(funnelId: string): Promise<{ questions: unkno
   return apiClient.get<{ questions: unknown[] }>(`/funnel/${funnelId}/questions`);
 }
 
-export async function createQuestion(funnelId: string, body: Record<string, unknown>): Promise<{ question: unknown }> {
+export async function createQuestion(
+  funnelId: string,
+  body: Record<string, unknown>
+): Promise<{ question: unknown }> {
   return apiClient.post<{ question: unknown }>(`/funnel/${funnelId}/questions`, body);
 }
 
@@ -102,6 +139,23 @@ export async function deleteQuestion(funnelId: string, questionId: string): Prom
   await apiClient.delete(`/funnel/${funnelId}/questions/${questionId}`);
 }
 
-export async function reorderQuestions(funnelId: string, questionIds: string[]): Promise<{ success: boolean }> {
+export async function reorderQuestions(
+  funnelId: string,
+  questionIds: string[]
+): Promise<{ success: boolean }> {
   return apiClient.patch<{ success: boolean }>(`/funnel/${funnelId}/questions`, { questionIds });
+}
+
+export async function generateRestylePlan(
+  funnelId: string,
+  input: { prompt?: string; urls?: string[] }
+): Promise<{ plan: RestylePlan }> {
+  return apiClient.post<{ plan: RestylePlan }>(`/funnel/${funnelId}/restyle`, input);
+}
+
+export async function applyRestylePlan(
+  funnelId: string,
+  plan: RestylePlan
+): Promise<Record<string, unknown>> {
+  return apiClient.post<Record<string, unknown>>(`/funnel/${funnelId}/apply-restyle`, { plan });
 }

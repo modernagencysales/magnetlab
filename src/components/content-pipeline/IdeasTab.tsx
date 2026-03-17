@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Lightbulb,
   Loader2,
+  Magnet,
   Search,
   Filter,
   ChevronDown,
@@ -24,6 +25,7 @@ import type {
 } from '@/lib/types/content-pipeline';
 import { useIdeas } from '@/frontend/hooks/api/useIdeas';
 import { useWriteFromIdea, useArchiveIdea } from '@/frontend/hooks/api/useIdeasMutations';
+import { useCopilot } from '@/components/copilot/CopilotProvider';
 
 const STATUSES: { value: IdeaStatus | ''; label: string }[] = [
   { value: '', label: 'All Statuses' },
@@ -99,6 +101,7 @@ export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
   const { mutate: archiveIdeaMutate } = useArchiveIdea(() => {
     fetchIdeas(true);
   });
+  const { open: openCopilot, sendMessage: sendCopilotMessage } = useCopilot();
 
   const handleWritePost = useCallback(
     async (ideaId: string) => {
@@ -415,20 +418,36 @@ export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
                     </Button>
                   )}
                   {(idea.status === 'extracted' || idea.status === 'selected') && (
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleWritePost(idea.id);
-                      }}
-                      disabled={writingId === idea.id}
-                    >
-                      {writingId === idea.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        'Write Post'
-                      )}
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openCopilot();
+                          sendCopilotMessage(
+                            `Create a lead magnet from this idea: "${idea.title}". ${idea.core_insight || ''}`
+                          );
+                        }}
+                      >
+                        <Magnet className="h-3 w-3 mr-1" />
+                        Create Lead Magnet
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleWritePost(idea.id);
+                        }}
+                        disabled={writingId === idea.id}
+                      >
+                        {writingId === idea.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          'Write Post'
+                        )}
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>

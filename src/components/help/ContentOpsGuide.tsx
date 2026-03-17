@@ -401,9 +401,7 @@ export function ContentOpsGuide() {
                     </p>
                   </div>
                   <div className="rounded-lg border border-border p-3">
-                    <p className="mb-1 text-xs font-semibold text-destructive">
-                      Less helpful
-                    </p>
+                    <p className="mb-1 text-xs font-semibold text-destructive">Less helpful</p>
                     <p className="text-sm text-muted-foreground italic">
                       &quot;Fix the tone.&quot;
                     </p>

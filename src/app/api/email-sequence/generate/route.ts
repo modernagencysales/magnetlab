@@ -4,8 +4,10 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { checkResourceLimit } from '@/lib/auth/plan-limits';
+import { getScopeForResource } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import * as emailSequenceService from '@/server/services/email-sequence.service';
+import { getLeadMagnetTeamId } from '@/server/repositories/email-sequence.repo';
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +36,9 @@ export async function POST(request: Request) {
       return ApiErrors.validationError('leadMagnetId is required');
     }
 
-    const result = await emailSequenceService.generate(leadMagnetId, useAI, session.user.id);
+    const teamId = await getLeadMagnetTeamId(leadMagnetId);
+    const scope = await getScopeForResource(session.user.id, teamId);
+    const result = await emailSequenceService.generate(leadMagnetId, useAI, scope);
 
     if (!result.success) {
       if (result.error === 'not_found') return ApiErrors.notFound('Lead magnet');

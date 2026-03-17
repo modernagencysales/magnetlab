@@ -41,9 +41,7 @@ export interface StyleExtractionInput {
  * Analyze a collection of posts and extract the author's writing style
  * using Claude Opus 4.5 for deep analysis
  */
-export async function extractWritingStyle(
-  input: StyleExtractionInput
-): Promise<ExtractedStyle> {
+export async function extractWritingStyle(input: StyleExtractionInput): Promise<ExtractedStyle> {
   if (input.posts.length === 0) {
     throw new Error('No posts provided for style analysis');
   }

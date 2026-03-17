@@ -93,48 +93,48 @@ export function PromptList({ prompts }: { prompts: PromptSummary[] }) {
       )}
 
       <div className="space-y-6">
-      {Object.entries(grouped).map(([category, items]) => (
-        <div key={category} className="space-y-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {CATEGORY_LABELS[category] ?? category}
-          </h2>
-          <div className="grid gap-4">
-            {items.map((prompt) => (
-              <Link
-                key={prompt.slug}
-                href={`/admin/prompts/${prompt.slug}`}
-                className="block rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/50"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium">
-                        {prompt.name}
-                      </span>
-                      <span
-                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                          prompt.is_active
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        {prompt.is_active ? 'Active' : 'Inactive'}
-                      </span>
+        {Object.entries(grouped).map(([category, items]) => (
+          <div key={category} className="space-y-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {CATEGORY_LABELS[category] ?? category}
+            </h2>
+            <div className="grid gap-4">
+              {items.map((prompt) => (
+                <Link
+                  key={prompt.slug}
+                  href={`/admin/prompts/${prompt.slug}`}
+                  className="block rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium">{prompt.name}</span>
+                        <span
+                          className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                            prompt.is_active
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {prompt.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      {prompt.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {prompt.description}
+                        </p>
+                      )}
                     </div>
-                    {prompt.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-1">{prompt.description}</p>
-                    )}
+                    <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+                      <span className="font-mono">{prompt.model}</span>
+                      <span>{formatDate(prompt.updated_at)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
-                    <span className="font-mono">{prompt.model}</span>
-                    <span>{formatDate(prompt.updated_at)}</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
       </div>
     </div>
   );

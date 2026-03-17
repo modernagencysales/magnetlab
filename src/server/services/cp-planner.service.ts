@@ -108,12 +108,12 @@ export async function generate(
     };
   }
 
-  const dist = payload.pillar_distribution || {
+  const dist = (payload.pillar_distribution || {
     moments_that_matter: 25,
     teaching_promotion: 35,
     human_personal: 20,
     collaboration_social_proof: 20,
-  };
+  }) as { moments_that_matter: number; teaching_promotion: number; human_personal: number; collaboration_social_proof: number };
 
   const result = await generateWeekPlan({
     userId,

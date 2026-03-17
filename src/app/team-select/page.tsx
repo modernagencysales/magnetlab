@@ -45,12 +45,14 @@ export default function TeamSelectPage() {
     document.cookie = `ml-team-context=${teamId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
     router.refresh();
     router.push('/');
+    router.refresh();
   };
 
   const selectPersonal = () => {
     document.cookie = `ml-team-context=personal; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
     router.refresh();
     router.push('/');
+    router.refresh();
   };
 
   if (loading) {

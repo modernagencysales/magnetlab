@@ -82,7 +82,8 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
           const isLong = entry.content.length > 100;
           const displayContent =
             isExpanded || !isLong ? entry.content : entry.content.slice(0, 100) + '...';
-          const typeColor = TYPE_COLORS[entry.knowledge_type || ''] || 'bg-muted text-muted-foreground';
+          const typeColor =
+            TYPE_COLORS[entry.knowledge_type || ''] || 'bg-muted text-muted-foreground';
 
           return (
             <div key={entry.id || index} className="border border-border rounded-md p-2">
@@ -137,7 +138,9 @@ export function KnowledgeResultCard({ data, onApply }: Props) {
         })}
       </div>
 
-      {moreCount > 0 && <p className="text-xs text-muted-foreground mt-2 text-center">+{moreCount} more</p>}
+      {moreCount > 0 && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">+{moreCount} more</p>
+      )}
     </div>
   );
 }

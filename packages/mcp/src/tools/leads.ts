@@ -15,7 +15,7 @@ export const leadTools: Tool[] = [
           description: 'Filter by qualification status (true = qualified, false = unqualified)',
         },
         search: { type: 'string', description: 'Search by email or name (case-insensitive)' },
-        limit: { type: 'number', default: 50, description: 'Max results (1-100)' },
+        limit: { type: 'number', default: 20, description: 'Max results (1-100)' },
         offset: { type: 'number', default: 0, description: 'Pagination offset' },
       },
     },

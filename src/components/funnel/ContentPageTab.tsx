@@ -13,7 +13,6 @@ import {
 import { Button } from '@magnetlab/magnetui';
 import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
 import { useBackgroundJob } from '@/frontend/hooks/useBackgroundJob';
-import * as leadMagnetApi from '@/frontend/api/lead-magnet';
 
 interface ContentPageTabProps {
   leadMagnet: LeadMagnet;
@@ -24,6 +23,7 @@ interface ContentPageTabProps {
     polishedAt: string,
     extractedContent?: ExtractedContent
   ) => void;
+  onEditContent?: () => void;
 }
 
 interface ContentJobResult {
@@ -51,7 +51,13 @@ function createBlankContent(title: string): PolishedContent {
   };
 }
 
-export function ContentPageTab({ leadMagnet, username, slug, onPolished }: ContentPageTabProps) {
+export function ContentPageTab({
+  leadMagnet,
+  username,
+  slug,
+  onPolished,
+  onEditContent,
+}: ContentPageTabProps) {
   const [error, setError] = useState<string | null>(null);
 
   const onComplete = useCallback(
@@ -81,7 +87,22 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
     setError(null);
 
     try {
-      const { jobId } = await leadMagnetApi.polishLeadMagnet(leadMagnet.id);
+      const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/polish`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        let errorMsg = 'Failed to polish content';
+        try {
+          const data = await response.json();
+          errorMsg = data.error || errorMsg;
+        } catch {
+          // Non-JSON response (e.g. Vercel timeout)
+        }
+        throw new Error(errorMsg);
+      }
+
+      const { jobId } = await response.json();
       startPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to polish content');
@@ -92,7 +113,22 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
     setError(null);
 
     try {
-      const { jobId } = await leadMagnetApi.generateLeadMagnetContent(leadMagnet.id);
+      const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/generate-content`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        let errorMsg = 'Failed to generate content';
+        try {
+          const data = await response.json();
+          errorMsg = data.error || errorMsg;
+        } catch {
+          // Non-JSON response (e.g. Vercel timeout)
+        }
+        throw new Error(errorMsg);
+      }
+
+      const { jobId } = await response.json();
       startPolling(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate content');
@@ -107,17 +143,25 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
       try {
         const now = new Date().toISOString();
         const contentToSave = { ...blank, polishedAt: now };
-        const { polishedContent: saved } = await leadMagnetApi.updateLeadMagnetContent(
-          leadMagnet.id,
-          {
-            polishedContent: contentToSave,
+        const response = await fetch(`/api/lead-magnet/${leadMagnet.id}/content`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ polishedContent: contentToSave }),
+        });
+        if (!response.ok) {
+          let errorMsg = 'Failed to create content';
+          try {
+            const data = await response.json();
+            errorMsg = data.error || errorMsg;
+          } catch {
+            // Non-JSON response (e.g. Vercel timeout)
           }
-        );
-        onPolished(saved as PolishedContent, now);
-        // Redirect to inline editor
-        if (contentUrl) {
-          window.open(`${contentUrl}?edit=true`, '_blank');
+          throw new Error(errorMsg);
         }
+        const { polishedContent: saved } = await response.json();
+        onPolished(saved, now);
+        // Open inline editor
+        if (onEditContent) onEditContent();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create content');
       }
@@ -240,25 +284,48 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished }: Conte
         </div>
       )}
 
-      {/* Edit Content link → inline editor on live page */}
-      {polished && contentUrl && (
-        <Button variant="outline" onClick={() => window.open(`${contentUrl}?edit=true`, '_blank')}>
+      {/* Edit Content → open inline full-page editor (primary action) */}
+      {polished && onEditContent && (
+        <Button
+          onClick={onEditContent}
+          className="w-full bg-violet-500 hover:bg-violet-600 text-white"
+        >
           <PenLine className="h-4 w-4 mr-2" />
           Edit Content
         </Button>
       )}
 
-      {/* Re-polish (only if extracted content exists) */}
-      {hasExtracted && (
-        <Button variant="outline" onClick={handlePolish} disabled={isAiLoading}>
-          {isAiLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Sparkles className="h-4 w-4 mr-2" />
-          )}
-          Re-polish Content
-        </Button>
-      )}
+      {/* Secondary actions row */}
+      <div className="flex items-center gap-3">
+        {/* Open content page in new tab */}
+        {contentUrl && (
+          <a
+            href={contentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open Content Page
+          </a>
+        )}
+
+        {/* Re-polish (only if extracted content exists) */}
+        {hasExtracted && (
+          <button
+            onClick={handlePolish}
+            disabled={isAiLoading}
+            className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/50 disabled:opacity-50"
+          >
+            {isAiLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Re-polish Content
+          </button>
+        )}
+      </div>
     </div>
   );
 }

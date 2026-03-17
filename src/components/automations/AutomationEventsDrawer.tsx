@@ -327,9 +327,7 @@ export function AutomationEventsDrawer({
                         )}
 
                         {/* Error */}
-                        {event.error && (
-                          <p className="text-xs text-destructive">{event.error}</p>
-                        )}
+                        {event.error && <p className="text-xs text-destructive">{event.error}</p>}
 
                         {/* Reply with Link button */}
                         {canReply(event.event_type) && !isReplying && (

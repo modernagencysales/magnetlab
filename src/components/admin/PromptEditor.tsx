@@ -197,7 +197,9 @@ export function PromptEditor({ prompt, versions }: Props) {
           </span>
         </div>
         <p className="text-xs font-mono text-muted-foreground mt-1">{prompt.slug}</p>
-        {prompt.description && <p className="text-sm text-muted-foreground mt-1">{prompt.description}</p>}
+        {prompt.description && (
+          <p className="text-sm text-muted-foreground mt-1">{prompt.description}</p>
+        )}
       </div>
 
       {/* Main content: editor + sidebar */}
@@ -400,9 +402,7 @@ export function PromptEditor({ prompt, versions }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col rounded-lg border border-border bg-card shadow-xl">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <h3 className="text-sm font-semibold text-foreground">
-                Test Result
-              </h3>
+              <h3 className="text-sm font-semibold text-foreground">Test Result</h3>
               <button
                 type="button"
                 onClick={() => setShowTestModal(false)}

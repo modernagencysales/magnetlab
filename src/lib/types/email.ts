@@ -61,6 +61,23 @@ export interface EmailGenerationContext {
 
   // Resource delivery
   resourceUrl?: string;
+
+  // AI Brain context (enriches emails with real expertise when available)
+  brainPosition?: {
+    thesis?: string;
+    key_arguments?: string[];
+    unique_data_points?: Array<{ claim: string; evidence_strength?: string }>;
+    stories?: Array<{ hook: string; arc: string; lesson: string }>;
+    differentiators?: string[];
+    voice_markers?: string[];
+    coverage_gaps?: string[];
+    specific_recommendations?: Array<{ recommendation: string; reasoning: string }>;
+  };
+  brainEntries?: Array<{
+    content: string;
+    knowledge_type?: string;
+    quality_score?: number;
+  }>;
 }
 
 // ============================================

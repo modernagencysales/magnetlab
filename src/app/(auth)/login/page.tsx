@@ -15,7 +15,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const callbackError = searchParams.get('error');
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const callbackUrl = searchParams.get('callbackUrl') || '/magnets';
   const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
 
@@ -231,7 +231,9 @@ export default function LoginPage() {
             </div>
           </Link>
           <h1 className="mt-4 text-xl font-semibold">Welcome to MagnetLab</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create lead magnets your ICP will love</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create lead magnets your ICP will love
+          </p>
         </div>
 
         <Suspense
@@ -248,9 +250,13 @@ export default function LoginPage() {
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
           By signing in, you agree to our{' '}
-          <Link href="/terms" className="underline hover:text-foreground">Terms</Link>
-          {' '}&{' '}
-          <Link href="/privacy" className="underline hover:text-foreground">Privacy</Link>
+          <Link href="/terms" className="underline hover:text-foreground">
+            Terms
+          </Link>{' '}
+          &{' '}
+          <Link href="/privacy" className="underline hover:text-foreground">
+            Privacy
+          </Link>
         </p>
       </div>
     </div>

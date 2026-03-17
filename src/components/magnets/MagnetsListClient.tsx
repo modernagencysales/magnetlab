@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, ArrowUpDown, Eye, Users, Globe, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
+import { useCopilot } from '@/components/copilot/CopilotProvider';
 
 export interface MagnetListItem {
   id: string;
@@ -62,6 +63,7 @@ export default function MagnetsListClient({
   items: MagnetListItem[];
   totalCount: number;
 }) {
+  const { open, sendMessage, startNewConversation } = useCopilot();
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortOption>('newest');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -105,11 +107,11 @@ export default function MagnetsListClient({
         <div className="flex items-center gap-3">
           {/* Status filter pills */}
           <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-0.5">
-            {([
+            {[
               { value: 'all' as StatusFilter, label: 'All', count: totalCount },
               { value: 'live' as StatusFilter, label: 'Live', count: liveCount },
               { value: 'draft' as StatusFilter, label: 'Draft', count: draftCount },
-            ]).map((pill) => (
+            ].map((pill) => (
               <button
                 key={pill.value}
                 onClick={() => setStatusFilter(pill.value)}
@@ -164,11 +166,15 @@ export default function MagnetsListClient({
                 <th className="px-4 py-3 text-right">Leads</th>
                 <th className="px-4 py-3 text-right">Conv.</th>
                 <th className="px-4 py-3 text-right">Created</th>
+                <th className="px-4 py-3 text-right"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} className="group border-b border-border last:border-0 transition-colors hover:bg-muted/50">
+                <tr
+                  key={item.id}
+                  className="group border-b border-border last:border-0 transition-colors hover:bg-muted/50"
+                >
                   <td className="px-4 py-3">
                     <Link
                       href={`/magnets/${item.id}`}
@@ -179,7 +185,8 @@ export default function MagnetsListClient({
                   </td>
                   <td className="px-4 py-3">
                     <span className="rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-                      {ARCHETYPE_NAMES[item.archetype as keyof typeof ARCHETYPE_NAMES] || item.archetype}
+                      {ARCHETYPE_NAMES[item.archetype as keyof typeof ARCHETYPE_NAMES] ||
+                        item.archetype}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -223,8 +230,8 @@ export default function MagnetsListClient({
                           item.conversionRate >= 20
                             ? 'bg-emerald-500/10 text-emerald-600'
                             : item.conversionRate >= 10
-                            ? 'bg-yellow-500/10 text-yellow-600'
-                            : 'bg-muted text-muted-foreground'
+                              ? 'bg-yellow-500/10 text-yellow-600'
+                              : 'bg-muted text-muted-foreground'
                         )}
                       >
                         {item.conversionRate.toFixed(1)}%
@@ -238,6 +245,22 @@ export default function MagnetsListClient({
                       <Calendar className="h-3 w-3" />
                       {formatShortDate(item.createdAt)}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        startNewConversation();
+                        open();
+                        sendMessage(
+                          `Generate LinkedIn posts for my lead magnet "${item.title}" (ID: ${item.id})`
+                        );
+                      }}
+                      className="rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
+                    >
+                      Generate Posts
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -255,54 +278,69 @@ export default function MagnetsListClient({
       {/* Mobile compact cards */}
       <div className="flex flex-col gap-3 md:hidden">
         {filtered.map((item) => (
-          <Link
+          <div
             key={item.id}
-            href={`/magnets/${item.id}`}
-            className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/50"
+            className="rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/50"
           >
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{item.title}</p>
-              <div className="mt-1 flex items-center gap-2">
+            <Link href={`/magnets/${item.id}`} className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{item.title}</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                      item.isLive
+                        ? 'bg-emerald-500/10 text-emerald-600'
+                        : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                    )}
+                  >
+                    {item.isLive && <Globe className="h-3 w-3" />}
+                    {item.isLive ? 'Live' : 'Draft'}
+                  </span>
+                  {item.leads > 0 && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Users className="h-3 w-3" />
+                      {item.leads}
+                    </span>
+                  )}
+                  {item.views > 0 && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Eye className="h-3 w-3" />
+                      {item.views}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {item.conversionRate !== null && (
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-                    item.isLive
+                    'ml-3 shrink-0 rounded-md px-2 py-0.5 text-xs font-medium',
+                    item.conversionRate >= 20
                       ? 'bg-emerald-500/10 text-emerald-600'
-                      : 'bg-muted text-muted-foreground'
+                      : item.conversionRate >= 10
+                        ? 'bg-yellow-500/10 text-yellow-600'
+                        : 'bg-muted text-muted-foreground'
                   )}
                 >
-                  {item.isLive && <Globe className="h-3 w-3" />}
-                  {item.isLive ? 'Live' : 'Draft'}
+                  {item.conversionRate.toFixed(1)}%
                 </span>
-                {item.leads > 0 && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    {item.leads}
-                  </span>
-                )}
-                {item.views > 0 && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Eye className="h-3 w-3" />
-                    {item.views}
-                  </span>
-                )}
-              </div>
-            </div>
-            {item.conversionRate !== null && (
-              <span
-                className={cn(
-                  'ml-3 shrink-0 rounded-md px-2 py-0.5 text-xs font-medium',
-                  item.conversionRate >= 20
-                    ? 'bg-emerald-500/10 text-emerald-600'
-                    : item.conversionRate >= 10
-                    ? 'bg-yellow-500/10 text-yellow-600'
-                    : 'bg-muted text-muted-foreground'
-                )}
+              )}
+            </Link>
+            <div className="mt-2 flex justify-end">
+              <button
+                onClick={() => {
+                  startNewConversation();
+                  open();
+                  sendMessage(
+                    `Generate LinkedIn posts for my lead magnet "${item.title}" (ID: ${item.id})`
+                  );
+                }}
+                className="rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
               >
-                {item.conversionRate.toFixed(1)}%
-              </span>
-            )}
-          </Link>
+                Generate Posts
+              </button>
+            </div>
+          </div>
         ))}
 
         {filtered.length === 0 && (

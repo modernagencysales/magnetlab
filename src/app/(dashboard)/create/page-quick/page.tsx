@@ -67,7 +67,9 @@ export default function QuickCreatePage() {
             <div>
               <label htmlFor="description" className="mb-2 block text-sm font-medium">
                 Describe what you&apos;re offering{' '}
-                <span className="text-muted-foreground">(optional — helps AI write better copy)</span>
+                <span className="text-muted-foreground">
+                  (optional — helps AI write better copy)
+                </span>
               </label>
               <textarea
                 id="description"

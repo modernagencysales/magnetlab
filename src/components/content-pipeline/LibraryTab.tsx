@@ -6,16 +6,44 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 const TemplatesTab = dynamic(
-  () => import('@/components/content-pipeline/TemplatesTab').then((m) => ({ default: m.TemplatesTab })),
-  { ssr: false, loading: () => <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div> }
+  () =>
+    import('@/components/content-pipeline/TemplatesTab').then((m) => ({ default: m.TemplatesTab })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  }
 );
 const SwipeFileContent = dynamic(
-  () => import('@/components/swipe-file/SwipeFileContent').then((m) => ({ default: m.SwipeFileContent })),
-  { ssr: false, loading: () => <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div> }
+  () =>
+    import('@/components/swipe-file/SwipeFileContent').then((m) => ({
+      default: m.SwipeFileContent,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  }
 );
 const StylesSection = dynamic(
-  () => import('@/components/content-pipeline/StylesSection').then((m) => ({ default: m.StylesSection })),
-  { ssr: false, loading: () => <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div> }
+  () =>
+    import('@/components/content-pipeline/StylesSection').then((m) => ({
+      default: m.StylesSection,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  }
 );
 
 type LibrarySection = 'templates' | 'inspiration' | 'styles';

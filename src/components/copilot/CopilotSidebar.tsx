@@ -135,9 +135,7 @@ export function CopilotSidebar() {
                 >
                   <MessageSquare className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground truncate">
-                      {conv.title || 'Untitled'}
-                    </p>
+                    <p className="text-sm text-foreground truncate">{conv.title || 'Untitled'}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(conv.updatedAt).toLocaleDateString()}
                     </p>

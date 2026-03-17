@@ -238,6 +238,7 @@ Detailed docs for each feature live in `docs/`. Consult these when working on a 
 | Development Workflow | [docs/development-workflow.md](docs/development-workflow.md) |
 | Frontend Architecture | [docs/frontend-refactor-plan.md](docs/frontend-refactor-plan.md) |
 | Coding Standards | [docs/coding-standards.md](docs/coding-standards.md) |
+| AI Standards Learning Loop | [docs/standards-learning-loop.md](docs/standards-learning-loop.md) |
 | Docs Index | [docs/README.md](docs/README.md) |
 
 ## Post-Feature Workflow
@@ -248,3 +249,115 @@ After completing any new feature:
 2. **Code review** -- trigger `superpowers:requesting-code-review`
 3. **Resolve issues** -- fix all critical and important findings
 4. **Update docs** -- add feature documentation to `docs/` and link from the Feature Documentation table above
+
+## Funnel Restyler (Mar 2026)
+
+AI-powered funnel restyling — takes text prompts ("make it more corporate") and/or example URLs, generates a structured branding plan, user reviews/tweaks individual items, then applies.
+
+### Architecture
+
+```
+User input (prompt + optional URLs)
+  → POST /api/funnel/[id]/restyle
+  → restyle.service.ts
+    → If URLs: Claude Vision analyzes screenshots for style signals
+    → Builds prompt with current funnel state + style intent
+    → Claude generates structured branding plan (JSON)
+  → Returns plan to caller (MCP or UI)
+  → User reviews, removes items they don't want
+  → POST /api/funnel/[id]/apply-restyle
+    → Updates funnel fields (theme, color, font, background)
+    → Adds/removes/reorders sections
+```
+
+### What Changes
+
+- **Field changes:** theme (dark/light), primaryColor, backgroundStyle, fontFamily, fontUrl
+- **Section changes:** add/remove/reorder logo_bar, steps, testimonial, marketing_block, section_bridge
+- **Does NOT change:** text content, qualification questions, integrations
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/ai/restyle/plan-generator.ts` | Prompt builder, vision prompt, plan parser |
+| `src/server/services/restyle.service.ts` | Orchestrates plan generation and application |
+| `src/app/api/funnel/[id]/restyle/route.ts` | Generate plan API |
+| `src/app/api/funnel/[id]/apply-restyle/route.ts` | Apply plan API |
+| `src/components/funnel/RestylePanel.tsx` | UI panel (Restyle with AI section) |
+| `src/components/funnel/ThemeEditor.tsx` | Hosts RestylePanel in theme tab |
+| `packages/mcp/src/tools/funnels.ts` | MCP tool definitions |
+| `packages/mcp/src/handlers/funnels.ts` | MCP handler wiring |
+| `packages/mcp/src/client.ts` | MCP client methods |
+
+### MCP Tools
+
+- `magnetlab_restyle_funnel` — generate plan: `{ funnel_id, prompt?, urls? }`
+- `magnetlab_apply_restyle` — apply plan: `{ funnel_id, plan }`
+
+## Enhanced Page Builder (Mar 2026)
+
+9 section types with named layout variants, position rules engine, and scroll animations. AI picks sections/variants on creation; user refines via restyler.
+
+### Section Types & Variants
+
+| Type | Variants | Max Per Page |
+|------|----------|-------------|
+| hero | centered, split-image, full-bleed-gradient | 1 (optin only) |
+| logo_bar | inline, grid | 1 (optin only) |
+| stats_bar | inline, cards, animated-counters | 1 |
+| steps | numbered, timeline, icon-cards | 1 |
+| feature_grid | icon-top, icon-left, minimal | 1 |
+| testimonial | quote-card, highlight, avatar | 2 |
+| social_proof_wall | grid, carousel, stacked | 1 |
+| section_bridge | divider, accent-bar, gradient-fade | 3 |
+| marketing_block | feature-card, benefit, faq-accordion, cta-banner | 3 |
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/types/funnel.ts` | SECTION_VARIANTS, new config interfaces |
+| `src/lib/validations/section-rules.ts` | Position rules engine |
+| `src/lib/validations/api.ts` | Variant-specific Zod schemas |
+| `src/lib/ai/funnel-generation/section-generator.ts` | AI section generation prompts |
+| `src/components/funnel/animations/` | ScrollReveal, useCountUp hooks |
+| `src/components/ds/HeroSection.tsx` | Hero renderer (3 variants) |
+| `src/components/ds/StatsBar.tsx` | Stats bar renderer (3 variants) |
+| `src/components/ds/FeatureGrid.tsx` | Feature grid renderer (3 variants) |
+| `src/components/ds/SocialProofWall.tsx` | Social proof wall renderer (3 variants) |
+| `src/components/funnel/section-editors/` | Config editors for each section type |
+
+### MCP Tools
+
+- `magnetlab_list_sections` — list sections for a funnel
+- `magnetlab_create_section` — create with type, variant, config
+- `magnetlab_update_section` — update variant, config, visibility
+- `magnetlab_delete_section` — remove section
+
+## AI Standards Learning Loop (Mar 2026)
+
+Automated workflow for AI-to-developer feature handoff and coding standards improvement.
+
+### How It Works
+
+1. **Feature Handoff** — When a PR is opened from `early-users/*` to `main` with Claude co-authored commits, a Linear issue is auto-created in the "Experimental Feature Pipeline" project
+2. **Standards Review** — When that PR is merged, Claude Sonnet analyzes the diff between AI code and developer-refined code, categorizes findings, creates a Linear issue, and opens a draft PR proposing coding standards updates
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `.github/workflows/feature-handoff.yml` | PR opened → Linear issue creation |
+| `.github/workflows/standards-review.yml` | PR merged → diff analysis trigger |
+| `.github/scripts/analyze-standards.ts` | Claude Sonnet analysis + Linear + draft PR |
+
+### Linear Configuration
+
+- **Project:** Experimental Feature Pipeline (`43e6d56e-b1dc-43bd-8631-d99070bb942b`)
+- **Labels:** `ai-built`, `needs-dev-review`, `standards-review`, `magnetlab`
+
+### GitHub Secrets
+
+- `ANTHROPIC_API_KEY_STANDARDS` — Dedicated workspace key (spend-limited)
+- `LINEAR_API_KEY` — For creating issues

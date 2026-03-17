@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getDataScope } from '@/lib/utils/team-context';
+import { getScopeForResource } from '@/lib/utils/team-context';
 import { ApiErrors, isValidUUID } from '@/lib/api/errors';
 import * as funnelsService from '@/server/services/funnels.service';
+import { getFunnelTeamId } from '@/server/repositories/funnels.repo';
 import type { PageLocation } from '@/lib/types/funnel';
 
 interface RouteParams {
@@ -23,7 +24,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     const validLocations: PageLocation[] = ['optin', 'thankyou', 'content'];
     if (!validLocations.includes(pageLocation)) return ApiErrors.validationError('Invalid pageLocation');
 
-    const scope = await getDataScope(session.user.id);
+    const teamId = await getFunnelTeamId(id);
+    const scope = await getScopeForResource(session.user.id, teamId);
     const sections = await funnelsService.resetSections(scope, id, pageLocation);
     return NextResponse.json({ sections });
   } catch (error) {

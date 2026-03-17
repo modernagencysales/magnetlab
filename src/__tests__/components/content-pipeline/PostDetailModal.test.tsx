@@ -9,7 +9,9 @@ import type { PipelinePost } from '@/lib/types/content-pipeline';
 
 // Mock PostPreview (uses LinkedInPreview) - component displays content via PostPreview
 jest.mock('@/components/content-pipeline/PostPreview', () => ({
-  PostPreview: ({ content }: { content: string }) => <div data-testid="linkedin-preview">{content}</div>,
+  PostPreview: ({ content }: { content: string }) => (
+    <div data-testid="linkedin-preview">{content}</div>
+  ),
 }));
 
 // Mock StatusBadge
@@ -28,14 +30,24 @@ jest.mock('lucide-react', () => ({
   Loader2: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-loader" {...props} />,
   Copy: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-copy" {...props} />,
   Check: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-check" {...props} />,
-  Sparkles: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-sparkles" {...props} />,
-  Calendar: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-calendar" {...props} />,
+  Sparkles: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-sparkles" {...props} />
+  ),
+  Calendar: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-calendar" {...props} />
+  ),
   Send: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-send" {...props} />,
-  Linkedin: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-linkedin" {...props} />,
+  Linkedin: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-linkedin" {...props} />
+  ),
   Users: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-users" {...props} />,
   Zap: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-zap" {...props} />,
-  MessageSquare: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-message-square" {...props} />,
-  FileText: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-file-text" {...props} />,
+  MessageSquare: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-message-square" {...props} />
+  ),
+  FileText: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-file-text" {...props} />
+  ),
 }));
 
 // Mock fetch globally for profile data
@@ -44,18 +56,23 @@ global.fetch = jest.fn().mockImplementation((url: string) => {
     return Promise.resolve({
       ok: true,
       json: async () => ({
-        profiles: [{
-          id: 'p1',
-          full_name: 'Tim Smith',
-          title: 'CEO',
-          avatar_url: null,
-          is_default: true,
-        }],
+        profiles: [
+          {
+            id: 'p1',
+            full_name: 'Tim Smith',
+            title: 'CEO',
+            avatar_url: null,
+            is_default: true,
+          },
+        ],
       }),
     });
   }
   if (url.includes('/engagement')) {
-    return Promise.resolve({ ok: true, json: async () => ({ stats: null, config: { scrape_engagement: false } }) });
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({ stats: null, config: { scrape_engagement: false } }),
+    });
   }
   if (url.includes('/automations')) {
     return Promise.resolve({ ok: true, json: async () => ({ automations: [] }) });
@@ -117,18 +134,23 @@ describe('PostDetailModal', () => {
         return Promise.resolve({
           ok: true,
           json: async () => ({
-            profiles: [{
-              id: 'p1',
-              full_name: 'Tim Smith',
-              title: 'CEO',
-              avatar_url: null,
-              is_default: true,
-            }],
+            profiles: [
+              {
+                id: 'p1',
+                full_name: 'Tim Smith',
+                title: 'CEO',
+                avatar_url: null,
+                is_default: true,
+              },
+            ],
           }),
         });
       }
       if (url.includes('/engagement')) {
-        return Promise.resolve({ ok: true, json: async () => ({ stats: null, config: { scrape_engagement: false } }) });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ stats: null, config: { scrape_engagement: false } }),
+        });
       }
       if (url.includes('/automations')) {
         return Promise.resolve({ ok: true, json: async () => ({ automations: [] }) });
@@ -142,7 +164,9 @@ describe('PostDetailModal', () => {
     await waitFor(() => {
       expect(screen.getByTestId('linkedin-preview')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('linkedin-preview')).toHaveTextContent('Test post content for the editor.');
+    expect(screen.getByTestId('linkedin-preview')).toHaveTextContent(
+      'Test post content for the editor.'
+    );
   });
 
   it('renders Hook Score', async () => {

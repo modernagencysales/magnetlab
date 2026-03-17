@@ -5,6 +5,7 @@ import { Palette, Sun, Moon, X, Link as LinkIcon, RefreshCw, Loader2 } from 'luc
 import { Button, Input } from '@magnetlab/magnetui';
 import type { FunnelTheme, BackgroundStyle } from '@/lib/types/funnel';
 import * as funnelApi from '@/frontend/api/funnel';
+import { RestylePanel } from './RestylePanel';
 
 interface ThemeEditorProps {
   theme: FunnelTheme;
@@ -92,6 +93,14 @@ export function ThemeEditor({
 
   return (
     <div className="space-y-6">
+      {/* Restyle with AI */}
+      {funnelId && (
+        <>
+          <RestylePanel funnelId={funnelId} onApplied={() => onBrandApplied?.()} />
+          <hr className="border-border" />
+        </>
+      )}
+
       {/* Theme Mode */}
       <div className="space-y-3">
         <label className="block text-sm font-medium">

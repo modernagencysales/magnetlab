@@ -84,26 +84,26 @@ export default function ConnectEmailList() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border bg-muted/30">
-              <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Webhook Field</th>
-              <th className="text-left px-4 py-3 font-semibold text-muted-foreground">What It Contains</th>
+              <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
+                Webhook Field
+              </th>
+              <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
+                What It Contains
+              </th>
               <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Map To</th>
             </tr>
           </thead>
           <tbody>
             <tr className="border-b border-border">
               <td className="px-4 py-3">
-                <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                  data.email
-                </code>
+                <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">data.email</code>
               </td>
               <td className="px-4 py-3">Lead&apos;s email address</td>
               <td className="px-4 py-3">Email field</td>
             </tr>
             <tr className="border-b border-border">
               <td className="px-4 py-3">
-                <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                  data.name
-                </code>
+                <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">data.name</code>
               </td>
               <td className="px-4 py-3">Lead&apos;s name</td>
               <td className="px-4 py-3">Name / First Name field</td>

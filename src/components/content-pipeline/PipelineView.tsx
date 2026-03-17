@@ -25,12 +25,8 @@ function computeStats(
   posts: PipelinePost[],
   profileId?: string | null
 ): HeroStats {
-  const filteredIdeas = profileId
-    ? ideas.filter((i) => i.team_profile_id === profileId)
-    : ideas;
-  const filteredPosts = profileId
-    ? posts.filter((p) => p.team_profile_id === profileId)
-    : posts;
+  const filteredIdeas = profileId ? ideas.filter((i) => i.team_profile_id === profileId) : ideas;
+  const filteredPosts = profileId ? posts.filter((p) => p.team_profile_id === profileId) : posts;
   const now = new Date();
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const draftOrReviewing = filteredPosts.filter(
@@ -39,9 +35,7 @@ function computeStats(
   const reviewing = draftOrReviewing.filter((p) => p.status === 'reviewing');
   const scheduledSoon = filteredPosts.filter(
     (p) =>
-      p.status === 'scheduled' &&
-      p.scheduled_time &&
-      new Date(p.scheduled_time) <= sevenDaysFromNow
+      p.status === 'scheduled' && p.scheduled_time && new Date(p.scheduled_time) <= sevenDaysFromNow
   );
   return {
     readyToWrite: filteredIdeas.length,
@@ -99,10 +93,7 @@ export function PipelineView({
         {cards.map((card) => (
           <div
             key={card.label}
-            className={cn(
-              'rounded-lg border border-border p-4 transition-colors',
-              card.bgColor
-            )}
+            className={cn('rounded-lg border border-border p-4 transition-colors', card.bgColor)}
           >
             <div className="flex items-center gap-3">
               <div className={cn('rounded-lg bg-background p-2 shadow-sm')}>

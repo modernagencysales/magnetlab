@@ -78,9 +78,7 @@ export function LibraryPageClient({
       style={{ '--primary-color': primaryColor } as React.CSSProperties}
     >
       {/* Header */}
-      <header
-        className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-lg"
-      >
+      <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="mx-auto max-w-6xl px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -92,11 +90,7 @@ export function LibraryPageClient({
               )}
               <div>
                 <h1 className="text-lg font-semibold">{library.name}</h1>
-                {userName && (
-                  <p className="text-sm text-muted-foreground">
-                    by {userName}
-                  </p>
-                )}
+                {userName && <p className="text-sm text-muted-foreground">by {userName}</p>}
               </div>
             </div>
             {userAvatar && (
@@ -116,9 +110,7 @@ export function LibraryPageClient({
       <main className="mx-auto max-w-6xl px-4 py-8">
         {/* Description */}
         {library.description && (
-          <p className="mb-8 text-lg text-muted-foreground">
-            {library.description}
-          </p>
+          <p className="mb-8 text-lg text-muted-foreground">{library.description}</p>
         )}
 
         {/* Search */}

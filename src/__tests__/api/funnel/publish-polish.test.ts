@@ -13,11 +13,31 @@ jest.mock('@/lib/auth', () => ({
   auth: jest.fn(() => Promise.resolve(currentSession)),
 }));
 
-// Mock team-context
+// Mock team-context — route uses getScopeForResource (not getDataScope)
 jest.mock('@/lib/utils/team-context', () => ({
-  getDataScope: jest.fn((userId: string) => Promise.resolve({ type: 'user', userId })),
-  applyScope: jest.fn(),
+  getScopeForResource: jest.fn((userId: string) => Promise.resolve({ type: 'user', userId })),
 }));
+
+// Mock funnels repo — route calls getFunnelTeamId before service
+jest.mock('@/server/repositories/funnels.repo', () => ({
+  getFunnelTeamId: jest.fn(() => Promise.resolve(null)),
+}));
+
+// Mock API errors — route uses isValidUUID from errors module
+jest.mock('@/lib/api/errors', () => {
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return {
+    ApiErrors: {
+      unauthorized: jest.fn(
+        () => new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+      ),
+      validationError: jest.fn(
+        (msg: string) => new Response(JSON.stringify({ error: msg }), { status: 400 })
+      ),
+    },
+    isValidUUID: jest.fn((id: string) => UUID_REGEX.test(id)),
+  };
+});
 
 // Mock funnels service
 const mockPublishFunnel = jest.fn();
@@ -89,6 +109,7 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
         isPublished: true,
         url: 'http://localhost:3000/p/testuser/test-slug',
       },
+      publicUrl: 'http://localhost:3000/p/testuser/test-slug',
     };
     mockPublishFunnel.mockResolvedValue(publishResult);
 
@@ -107,6 +128,7 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
         id: funnelUUID4,
         isPublished: false,
       },
+      publicUrl: null,
     };
     mockPublishFunnel.mockResolvedValue(publishResult);
 
@@ -127,6 +149,7 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
         isPublished: true,
         url: 'http://localhost:3000/p/testuser/test-slug',
       },
+      publicUrl: 'http://localhost:3000/p/testuser/test-slug',
     };
     mockPublishFunnel.mockResolvedValue(publishResult);
 
@@ -141,7 +164,10 @@ describe('POST /api/funnel/[id]/publish - Auto-polish', () => {
   });
 
   it('should call service with correct scope, id, and publish flag', async () => {
-    mockPublishFunnel.mockResolvedValue({ funnel: { id: funnelUUID3, isPublished: true } });
+    mockPublishFunnel.mockResolvedValue({
+      funnel: { id: funnelUUID3, isPublished: true },
+      publicUrl: null,
+    });
 
     const { request, params } = makeRequest(funnelUUID3, { publish: true });
 

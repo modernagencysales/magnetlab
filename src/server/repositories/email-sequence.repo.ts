@@ -22,6 +22,18 @@ export async function getLeadMagnetForUser(leadMagnetId: string, userId: string)
   return { data, error: null };
 }
 
+export async function getLeadMagnetByScope(leadMagnetId: string, scope: DataScope) {
+  const supabase = createSupabaseAdminClient();
+  let q = supabase
+    .from('lead_magnets')
+    .select('id, user_id, team_id, title, archetype, concept, extracted_content')
+    .eq('id', leadMagnetId);
+  q = applyScope(q, scope);
+  const { data, error } = await q.single();
+  if (error || !data) return { data: null, error };
+  return { data, error: null };
+}
+
 export async function getBrandKitForUser(userId: string) {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
@@ -32,10 +44,33 @@ export async function getBrandKitForUser(userId: string) {
   return data;
 }
 
+export async function getBrandKitByScope(scope: DataScope) {
+  const supabase = createSupabaseAdminClient();
+  let q = supabase
+    .from('brand_kits')
+    .select('business_description, sender_name, best_video_url, best_video_title, content_links, community_url');
+  q = applyScope(q, scope);
+  const { data } = await q.single();
+  return data;
+}
+
 export async function getUserName(userId: string): Promise<string | null> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase.from('users').select('name').eq('id', userId).single();
   return data?.name ?? null;
+}
+
+// ----- Unscoped lookups (for cross-team scope resolution) -----
+
+/** Get a lead magnet's team_id by ID, without scope filtering. Used to resolve cross-team scope. */
+export async function getLeadMagnetTeamId(leadMagnetId: string): Promise<string | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('lead_magnets')
+    .select('team_id')
+    .eq('id', leadMagnetId)
+    .maybeSingle();
+  return data?.team_id ?? null;
 }
 
 // ----- Email sequence CRUD -----
@@ -125,5 +160,16 @@ export async function setEmailSequenceStatusActive(sequenceId: string, userId: s
     .eq('user_id', userId)
     .select()
     .single();
+  return { data, error };
+}
+
+export async function setEmailSequenceStatusActiveByScope(sequenceId: string, scope: DataScope) {
+  const supabase = createSupabaseAdminClient();
+  let q = supabase
+    .from('email_sequences')
+    .update({ status: 'active' })
+    .eq('id', sequenceId);
+  q = applyScope(q, scope);
+  const { data, error } = await q.select().single();
   return { data, error };
 }

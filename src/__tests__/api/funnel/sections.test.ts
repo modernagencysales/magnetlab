@@ -2,75 +2,43 @@
  * @jest-environment node
  */
 
-import { GET, POST } from '@/app/api/funnel/[id]/sections/route';
-
 // Mock auth
 jest.mock('@/lib/auth', () => ({
   auth: jest.fn(),
 }));
 
-// Mock Supabase
-jest.mock('@/lib/utils/supabase-server', () => ({
-  createSupabaseAdminClient: jest.fn(),
-}));
-
-// Mock team-context (routes now use getDataScope/applyScope for multi-team scoping)
+// Mock team-context — route uses getScopeForResource
 jest.mock('@/lib/utils/team-context', () => ({
-  getDataScope: jest.fn((userId: string) => Promise.resolve({ type: 'user', userId })),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  applyScope: jest.fn((query: any, scope: any) => query.eq('user_id', scope.userId)),
+  getScopeForResource: jest.fn((userId: string) => Promise.resolve({ type: 'user', userId })),
 }));
 
+// Mock funnels repo — route calls getFunnelTeamId
+jest.mock('@/server/repositories/funnels.repo', () => ({
+  getFunnelTeamId: jest.fn(() => Promise.resolve(null)),
+}));
+
+// Mock API errors
+jest.mock('@/lib/api/errors', () => ({
+  ApiErrors: {
+    unauthorized: jest.fn(
+      () => new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+    ),
+  },
+}));
+
+// Mock funnels service
+const mockGetSections = jest.fn();
+const mockCreateSection = jest.fn();
+const mockGetStatusCode = jest.fn().mockReturnValue(500);
+
+jest.mock('@/server/services/funnels.service', () => ({
+  getSections: (...args: unknown[]) => mockGetSections(...args),
+  createSection: (...args: unknown[]) => mockCreateSection(...args),
+  getStatusCode: (...args: unknown[]) => mockGetStatusCode(...args),
+}));
+
+import { GET, POST } from '@/app/api/funnel/[id]/sections/route';
 import { auth } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-
-interface MockChainable {
-  from: jest.Mock;
-  select: jest.Mock;
-  insert: jest.Mock;
-  eq: jest.Mock;
-  order: jest.Mock;
-  limit: jest.Mock;
-  single: jest.Mock;
-}
-
-function createMockSupabase() {
-  let currentTable = '';
-  const tableResults: Record<string, { data: unknown; error: unknown }> = {};
-  // Track order() call count per table to handle chained .order().order()
-  const orderCallCount: Record<string, number> = {};
-
-  const chainable: MockChainable = {
-    from: jest.fn((table: string) => {
-      currentTable = table;
-      orderCallCount[table] = 0;
-      return chainable;
-    }),
-    select: jest.fn(() => chainable),
-    insert: jest.fn(() => chainable),
-    eq: jest.fn(() => chainable),
-    order: jest.fn(() => {
-      orderCallCount[currentTable] = (orderCallCount[currentTable] || 0) + 1;
-      // The sections route calls .order() twice (.order('page_location').order('sort_order'))
-      // Return the result on the second call
-      if (currentTable === 'funnel_page_sections' && orderCallCount[currentTable] >= 2 && tableResults[currentTable]) {
-        return Promise.resolve(tableResults[currentTable]);
-      }
-      return chainable;
-    }),
-    limit: jest.fn(() => chainable),
-    single: jest.fn(() => {
-      return Promise.resolve(tableResults[currentTable] || { data: null, error: null });
-    }),
-  };
-
-  return {
-    chainable,
-    setResult: (table: string, result: { data: unknown; error: unknown }) => {
-      tableResults[table] = result;
-    },
-  };
-}
 
 describe('Sections API', () => {
   beforeEach(() => {
@@ -89,9 +57,9 @@ describe('Sections API', () => {
 
     it('should return 404 when funnel not found', async () => {
       (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
-      const mock = createMockSupabase();
-      mock.setResult('funnel_pages', { data: null, error: { message: 'not found' } });
-      (createSupabaseAdminClient as jest.Mock).mockReturnValue(mock.chainable);
+      const err = Object.assign(new Error('Funnel page not found'), { statusCode: 404 });
+      mockGetSections.mockRejectedValue(err);
+      mockGetStatusCode.mockReturnValue(404);
 
       const request = new Request('http://localhost/api/funnel/f1/sections');
       const response = await GET(request, { params: Promise.resolve({ id: 'f1' }) });
@@ -101,25 +69,19 @@ describe('Sections API', () => {
 
     it('should return sections when authenticated and funnel exists', async () => {
       (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
-      const mock = createMockSupabase();
-      mock.setResult('funnel_pages', { data: { id: 'f1' }, error: null });
-      mock.setResult('funnel_page_sections', {
-        data: [
-          {
-            id: 's1',
-            funnel_page_id: 'f1',
-            section_type: 'testimonial',
-            page_location: 'optin',
-            sort_order: 10,
-            is_visible: true,
-            config: { quote: 'Great!' },
-            created_at: '2026-01-29T00:00:00Z',
-            updated_at: '2026-01-29T00:00:00Z',
-          },
-        ],
-        error: null,
-      });
-      (createSupabaseAdminClient as jest.Mock).mockReturnValue(mock.chainable);
+      mockGetSections.mockResolvedValue([
+        {
+          id: 's1',
+          funnelPageId: 'f1',
+          sectionType: 'testimonial',
+          pageLocation: 'optin',
+          sortOrder: 10,
+          isVisible: true,
+          config: { quote: 'Great!' },
+          createdAt: '2026-01-29T00:00:00Z',
+          updatedAt: '2026-01-29T00:00:00Z',
+        },
+      ]);
 
       const request = new Request('http://localhost/api/funnel/f1/sections');
       const response = await GET(request, { params: Promise.resolve({ id: 'f1' }) });
@@ -152,8 +114,9 @@ describe('Sections API', () => {
 
     it('should return 400 for invalid section type', async () => {
       (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
-      const mock = createMockSupabase();
-      (createSupabaseAdminClient as jest.Mock).mockReturnValue(mock.chainable);
+      const err = Object.assign(new Error('Invalid section type'), { statusCode: 400 });
+      mockCreateSection.mockRejectedValue(err);
+      mockGetStatusCode.mockReturnValue(400);
 
       const request = new Request('http://localhost/api/funnel/f1/sections', {
         method: 'POST',
@@ -171,8 +134,9 @@ describe('Sections API', () => {
 
     it('should return 400 for invalid page location', async () => {
       (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
-      const mock = createMockSupabase();
-      (createSupabaseAdminClient as jest.Mock).mockReturnValue(mock.chainable);
+      const err = Object.assign(new Error('Invalid page location'), { statusCode: 400 });
+      mockCreateSection.mockRejectedValue(err);
+      mockGetStatusCode.mockReturnValue(400);
 
       const request = new Request('http://localhost/api/funnel/f1/sections', {
         method: 'POST',

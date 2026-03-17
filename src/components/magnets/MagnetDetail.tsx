@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -12,6 +12,7 @@ import {
   FileText,
   Users,
   BarChart3,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FunnelBuilder } from '@/components/funnel';
@@ -59,7 +60,9 @@ export function MagnetDetail({
   const router = useRouter();
   const pathname = usePathname();
   const tabParam = searchParams.get('tab') as Tab | null;
-  const [activeTab, setActiveTab] = useState<Tab>(tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'overview');
+  const [activeTab, setActiveTab] = useState<Tab>(
+    tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'overview'
+  );
 
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam)) {
@@ -92,9 +95,7 @@ export function MagnetDetail({
 
       {/* Header */}
       <div>
-        <div className="mb-2 text-sm font-medium text-muted-foreground">
-          {archetypeName}
-        </div>
+        <div className="mb-2 text-sm font-medium text-muted-foreground">{archetypeName}</div>
         <h1 className="text-3xl font-bold">{leadMagnet.title}</h1>
         <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
@@ -106,8 +107,8 @@ export function MagnetDetail({
               leadMagnet.status === 'published'
                 ? 'bg-green-500/10 text-green-600'
                 : leadMagnet.status === 'scheduled'
-                ? 'bg-blue-500/10 text-blue-600'
-                : 'bg-secondary text-secondary-foreground'
+                  ? 'bg-blue-500/10 text-blue-600'
+                  : 'bg-secondary text-secondary-foreground'
             }`}
           >
             {leadMagnet.status}
@@ -164,10 +165,7 @@ export function MagnetDetail({
         />
       )}
       {activeTab === 'post' && (
-        <PostTab
-          leadMagnet={leadMagnet}
-          hasPublishedFunnel={!!existingFunnel?.isPublished}
-        />
+        <PostTab leadMagnet={leadMagnet} hasPublishedFunnel={!!existingFunnel?.isPublished} />
       )}
       {activeTab === 'leads' && <LeadsTab funnelId={existingFunnel?.id || null} />}
       {activeTab === 'analytics' && <AnalyticsTab magnetId={leadMagnet.id} />}
@@ -299,8 +297,73 @@ function PostTab({
   leadMagnet: LeadMagnet;
   hasPublishedFunnel: boolean;
 }) {
+  const router = useRouter();
   const variations = leadMagnet.postVariations || [];
   const mainPost = leadMagnet.linkedinPost;
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  const pollRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const hasContent = !!(leadMagnet.polishedContent || leadMagnet.extractedContent);
+
+  const cleanup = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => cleanup, [cleanup]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const res = await fetch(`/api/lead-magnet/${leadMagnet.id}/generate-posts`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to start post generation');
+      }
+      const { jobId } = await res.json();
+
+      // Poll for completion
+      pollRef.current = setInterval(async () => {
+        try {
+          const jobRes = await fetch(`/api/jobs/${jobId}`);
+          if (!jobRes.ok) return;
+          const jobData = await jobRes.json();
+          if (jobData.status === 'completed') {
+            cleanup();
+            setGenerating(false);
+            router.refresh();
+          } else if (jobData.status === 'failed') {
+            cleanup();
+            setGenerating(false);
+            setGenError(jobData.error || 'Post generation failed');
+          }
+        } catch {
+          // Retry on network error
+        }
+      }, 2000);
+
+      // Stop polling after 2 minutes
+      timeoutRef.current = setTimeout(() => {
+        cleanup();
+        setGenerating(false);
+        setGenError('Post generation is taking longer than expected. Check back shortly.');
+      }, 120_000);
+    } catch (err) {
+      setGenerating(false);
+      setGenError(err instanceof Error ? err.message : 'Something went wrong');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -316,9 +379,7 @@ function PostTab({
       {mainPost && (
         <div className="rounded-xl border border-border bg-card p-6">
           <h3 className="font-semibold mb-3">LinkedIn Post</h3>
-          <pre className="whitespace-pre-wrap text-sm leading-relaxed">
-            {mainPost}
-          </pre>
+          <pre className="whitespace-pre-wrap text-sm leading-relaxed">{mainPost}</pre>
         </div>
       )}
 
@@ -328,18 +389,14 @@ function PostTab({
           {variations.map((variation, i: number) => (
             <div key={i} className="rounded-xl border border-border bg-card p-6">
               <div className="mb-2 flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Variation {i + 1}
-                </span>
+                <span className="text-xs font-medium text-muted-foreground">Variation {i + 1}</span>
                 {variation.hookType && (
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                     {variation.hookType}
                   </span>
                 )}
               </div>
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed">
-                {variation.post}
-              </pre>
+              <pre className="whitespace-pre-wrap text-sm leading-relaxed">{variation.post}</pre>
             </div>
           ))}
         </div>
@@ -349,9 +406,32 @@ function PostTab({
         <div className="rounded-xl border border-border bg-card p-12 text-center">
           <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
           <h3 className="mb-2 text-lg font-semibold">No posts yet</h3>
-          <p className="text-muted-foreground">
-            Complete the lead magnet wizard to generate LinkedIn posts.
-          </p>
+          {hasContent ? (
+            <>
+              <p className="mb-4 text-muted-foreground">
+                Generate LinkedIn promotion posts from your lead magnet content.
+              </p>
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {generating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {generating ? 'Generating...' : 'Generate Posts'}
+              </button>
+              {genError && (
+                <p className="mt-3 text-sm text-red-600 dark:text-red-400">{genError}</p>
+              )}
+            </>
+          ) : (
+            <p className="text-muted-foreground">
+              Generate content for your lead magnet first, then come back to create LinkedIn posts.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -361,7 +441,9 @@ function PostTab({
 // ─── Leads Tab ──────────────────────────────────────────────
 
 function LeadsTab({ funnelId }: { funnelId: string | null }) {
-  const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string; createdAt: string }>>([]);
+  const [leads, setLeads] = useState<
+    Array<{ id: string; name: string; email: string; createdAt: string }>
+  >([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -401,9 +483,7 @@ function LeadsTab({ funnelId }: { funnelId: string | null }) {
       <div className="rounded-xl border border-border bg-card p-12 text-center">
         <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
         <h3 className="mb-2 text-lg font-semibold">No leads yet</h3>
-        <p className="text-muted-foreground">
-          Share your funnel page to start capturing leads.
-        </p>
+        <p className="text-muted-foreground">Share your funnel page to start capturing leads.</p>
       </div>
     );
   }
@@ -436,12 +516,13 @@ function LeadsTab({ funnelId }: { funnelId: string | null }) {
 
 function AnalyticsTab({ magnetId }: { magnetId: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-12 text-center" data-magnet-id={magnetId}>
+    <div
+      className="rounded-xl border border-border bg-card p-12 text-center"
+      data-magnet-id={magnetId}
+    >
       <BarChart3 className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
       <h3 className="mb-2 text-lg font-semibold">Per-magnet analytics</h3>
-      <p className="text-muted-foreground">
-        Detailed analytics for this lead magnet coming soon.
-      </p>
+      <p className="text-muted-foreground">Detailed analytics for this lead magnet coming soon.</p>
     </div>
   );
 }

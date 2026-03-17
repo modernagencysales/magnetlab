@@ -32,12 +32,12 @@ export default async function AdminLearningPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Learning Observatory</h1>
-          <p className="text-sm text-muted-foreground mt-1">How the AI self-learning system is performing — edit tracking, pattern detection, and voice evolution.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            How the AI self-learning system is performing — edit tracking, pattern detection, and
+            voice evolution.
+          </p>
         </div>
-        <LearningDashboard
-          editActivity={editActivity ?? []}
-          profiles={profiles ?? []}
-        />
+        <LearningDashboard editActivity={editActivity ?? []} profiles={profiles ?? []} />
       </div>
     </PageContainer>
   );

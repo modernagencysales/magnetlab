@@ -73,7 +73,7 @@ function NewExternalResourceForm() {
         </h1>
         <p className="mt-1 text-muted-foreground">
           {createPage
-            ? 'First, tell us about your external resource. Then we\'ll set up your opt-in page.'
+            ? "First, tell us about your external resource. Then we'll set up your opt-in page."
             : 'Link to external content like YouTube videos, podcasts, tools, or any web resource.'}
         </p>
       </div>

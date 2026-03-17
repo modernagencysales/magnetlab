@@ -47,7 +47,8 @@ export function IdeaListCard({ data, onApply }: Props) {
 
       <div className="space-y-2">
         {ideas.map((idea, index) => {
-          const typeColor = TYPE_COLORS[idea.content_type || ''] || 'bg-muted text-muted-foreground';
+          const typeColor =
+            TYPE_COLORS[idea.content_type || ''] || 'bg-muted text-muted-foreground';
 
           return (
             <div key={idea.id || index} className="border border-border rounded-md p-2">
