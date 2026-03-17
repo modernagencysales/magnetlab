@@ -32,11 +32,12 @@ export const signalProfileScan = schedules.task({
 
     let totalLeads = 0;
 
-    // Step 1: Fetch active profile monitors
+    // Step 1: Fetch active profile monitors (exclude content_strategy — handled by creative strategy tasks)
     const { data: monitors, error: fetchError } = await supabase
       .from('signal_profile_monitors')
       .select(SIGNAL_PROFILE_MONITOR_COLUMNS)
       .eq('is_active', true)
+      .in('monitor_type', ['competitor', 'influencer'])
       .limit(20);
 
     if (fetchError) {
