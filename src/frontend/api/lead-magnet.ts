@@ -74,7 +74,7 @@ export async function generateLeadMagnetContent(leadMagnetId: string): Promise<{
 
 export async function updateLeadMagnetContent(
   leadMagnetId: string,
-  body: { polishedContent: unknown }
+  body: { polishedContent: unknown; title?: string }
 ): Promise<{ polishedContent: unknown }> {
   return apiClient.put<{ polishedContent: unknown }>(`/lead-magnet/${leadMagnetId}/content`, body);
 }

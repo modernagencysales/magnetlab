@@ -366,6 +366,18 @@ export function ImageBlock({ block }: { block: PolishedBlock }) {
 export function EmbedBlock({ block }: { block: PolishedBlock }) {
   if (!block.url) return null;
 
+  // Direct video file (mp4, mov, webm)
+  if (/\.(mp4|mov|webm|ogg)(\?|$)/i.test(block.url)) {
+    return (
+      <div
+        className="relative w-full overflow-hidden rounded-lg"
+        style={{ paddingBottom: '56.25%' }}
+      >
+        <video src={block.url} className="absolute inset-0 h-full w-full" controls playsInline />
+      </div>
+    );
+  }
+
   let embedUrl = block.url;
   if (block.url.includes('youtube.com/watch')) {
     const videoId = new URL(block.url).searchParams.get('v');
@@ -551,6 +563,145 @@ export function NumberedItem({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---- ResourceCard ----
+
+export function ResourceCard({
+  block,
+  isDark,
+  primaryColor,
+}: {
+  block: PolishedBlock;
+  isDark: boolean;
+  primaryColor: string;
+}) {
+  return (
+    <a
+      href={block.url || '#'}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ textDecoration: 'none', display: 'block' }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          padding: '1.25rem 1.5rem',
+          margin: '0.75rem 0',
+          borderRadius: '0.75rem',
+          border: `1px solid ${isDark ? '#27272A' : '#E4E4E7'}`,
+          background: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+          cursor: 'pointer',
+          transition: 'border-color 0.15s, background 0.15s',
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLDivElement).style.borderColor = primaryColor;
+          (e.currentTarget as HTMLDivElement).style.background = isDark
+            ? 'rgba(255,255,255,0.06)'
+            : '#fafafa';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLDivElement).style.borderColor = isDark ? '#27272A' : '#E4E4E7';
+          (e.currentTarget as HTMLDivElement).style.background = isDark
+            ? 'rgba(255,255,255,0.03)'
+            : '#ffffff';
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: '1rem',
+              fontWeight: 600,
+              color: isDark ? '#FAFAFA' : '#09090B',
+              marginBottom: block.content ? '0.25rem' : 0,
+            }}
+          >
+            {block.title}
+          </div>
+          {block.content && (
+            <div
+              style={{
+                fontSize: '0.875rem',
+                color: isDark ? '#A1A1AA' : '#71717A',
+                lineHeight: '1.5rem',
+              }}
+            >
+              {block.content}
+            </div>
+          )}
+        </div>
+        <div
+          style={{
+            flexShrink: 0,
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+            color: primaryColor,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Access Resource →
+        </div>
+      </div>
+    </a>
+  );
+}
+
+// ---- ResourceGridBlock ----
+
+export function ResourceGridBlock({
+  block,
+  isDark,
+}: {
+  block: PolishedBlock;
+  isDark: boolean;
+  primaryColor: string;
+}) {
+  const items = block.items ?? [];
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '0.75rem',
+        margin: '0.5rem 0',
+      }}
+    >
+      {items.map((item, i) => (
+        <a
+          key={i}
+          href={item.url || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ textDecoration: 'none' }}
+        >
+          <div
+            style={{
+              padding: '1rem',
+              borderRadius: '0.75rem',
+              border: `1px solid ${isDark ? '#27272A' : '#E4E4E7'}`,
+              background: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+              cursor: 'pointer',
+              fontSize: '0.9375rem',
+              fontWeight: 500,
+              color: isDark ? '#FAFAFA' : '#09090B',
+              lineHeight: '1.4',
+              minHeight: '4rem',
+              display: 'flex',
+              alignItems: 'flex-start',
+            }}
+          >
+            {item.title}
+          </div>
+        </a>
+      ))}
     </div>
   );
 }

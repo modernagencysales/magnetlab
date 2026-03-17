@@ -21,24 +21,11 @@ export const importAttioRecording = task({
   maxDuration: 120, // 2 minutes — Attio API pagination + Supabase insert
   retry: { maxAttempts: 3 },
   run: async (payload: ImportAttioRecordingPayload) => {
-    const { meetingId, callRecordingId, userId } = payload;
+    const { meetingId, callRecordingId, userId: fallbackUserId } = payload;
     const supabase = createSupabaseAdminClient();
     const externalId = `attio:${callRecordingId}`;
 
     logger.info('Importing Attio recording', { meetingId, callRecordingId });
-
-    // Dedup check (in case of retries or race conditions)
-    const { data: existing } = await supabase
-      .from('cp_call_transcripts')
-      .select('id')
-      .eq('external_id', externalId)
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (existing) {
-      logger.info('Duplicate — already imported', { transcriptId: existing.id });
-      return { duplicate: true, transcriptId: existing.id };
-    }
 
     // Fetch meeting details + full paginated transcript from Attio API
     const attio = createAttioClient();
@@ -61,6 +48,49 @@ export const importAttioRecording = task({
       return { skipped: true, reason: 'empty_assembled_transcript' };
     }
 
+    // --- Resolve owner: match meeting participant emails to MagnetLab users ---
+    const participantEmails = meeting
+      ? meeting.participants.map((p) => p.email_address).filter(Boolean)
+      : [];
+
+    let resolvedUserId = fallbackUserId;
+
+    if (participantEmails.length > 0) {
+      // Find MagnetLab users whose email matches a meeting participant
+      const { data: matchedUsers } = await supabase
+        .from('users')
+        .select('id, email')
+        .in('email', participantEmails);
+
+      if (matchedUsers && matchedUsers.length > 0) {
+        // Prefer the organizer if they're a matched user
+        const organizerEmail = meeting?.participants.find((p) => p.is_organizer)?.email_address;
+        const organizer = organizerEmail
+          ? matchedUsers.find((u) => u.email === organizerEmail)
+          : null;
+        resolvedUserId = organizer?.id ?? matchedUsers[0].id;
+
+        logger.info('Resolved transcript owner from participants', {
+          resolvedUserId,
+          resolvedEmail: organizer?.email ?? matchedUsers[0].email,
+          fallbackUserId,
+        });
+      }
+    }
+
+    // Dedup check using resolved user
+    const { data: existing } = await supabase
+      .from('cp_call_transcripts')
+      .select('id')
+      .eq('external_id', externalId)
+      .eq('user_id', resolvedUserId)
+      .maybeSingle();
+
+    if (existing) {
+      logger.info('Duplicate — already imported', { transcriptId: existing.id });
+      return { duplicate: true, transcriptId: existing.id };
+    }
+
     // Build record
     const title = meeting?.title || null;
     const callDate = meeting?.start?.datetime || null;
@@ -72,7 +102,6 @@ export const importAttioRecording = task({
     // ─── DFY User Routing ──────────────────────────────────────────────
     // Check if this recording matches a DFY client engagement.
     // If so, route the transcript to the client's magnetlab user instead of the default.
-    let resolvedUserId = userId;
     try {
       if (participants.length > 0) {
         const { data: match } = await supabase
@@ -88,7 +117,7 @@ export const importAttioRecording = task({
           resolvedUserId = match.magnetlab_user_id;
           logger.info('DFY client match — routing transcript to magnetlab user', {
             magnetlabUserId: resolvedUserId,
-            originalUserId: userId,
+            originalUserId: fallbackUserId,
           });
         }
       }
@@ -97,6 +126,25 @@ export const importAttioRecording = task({
       logger.warn('DFY user routing failed, using original userId', {
         error: err instanceof Error ? err.message : String(err),
       });
+    }
+
+    // ─── Team Resolution ──────────────────────────────────────────────
+    // Resolve team_id — check ownership first, then team_profiles membership
+    const { data: ownedTeam } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('owner_id', resolvedUserId)
+      .maybeSingle();
+
+    let teamId = ownedTeam?.id ?? null;
+
+    if (!teamId) {
+      const { data: profile } = await supabase
+        .from('team_profiles')
+        .select('team_id')
+        .eq('user_id', resolvedUserId)
+        .maybeSingle();
+      teamId = profile?.team_id ?? null;
     }
 
     // Insert
@@ -112,6 +160,7 @@ export const importAttioRecording = task({
         participants: participants.length > 0 ? participants : null,
         raw_transcript: rawTranscript,
         speaker_map: speakerMap,
+        team_id: teamId,
       })
       .select()
       .single();
@@ -123,6 +172,8 @@ export const importAttioRecording = task({
     logger.info('Transcript saved, triggering AI processing', {
       transcriptId: saved.id,
       title,
+      resolvedUserId,
+      teamId,
       durationMinutes,
       transcriptLength: rawTranscript.length,
     });
@@ -131,8 +182,9 @@ export const importAttioRecording = task({
     await tasks.trigger<typeof processTranscript>('process-transcript', {
       userId: resolvedUserId,
       transcriptId: saved.id,
+      teamId: teamId ?? undefined,
     });
 
-    return { transcriptId: saved.id, title };
+    return { transcriptId: saved.id, title, resolvedUserId };
   },
 });

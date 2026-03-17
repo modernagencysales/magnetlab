@@ -15,6 +15,11 @@ interface TeamMembership {
   role: 'owner' | 'member';
 }
 
+/**
+ * Team selection page. Lets users switch between personal and team contexts.
+ * Only auto-selects a team on first visit (no cookie set yet).
+ * When the user explicitly navigates here, always show the full selection UI.
+ */
 export default function TeamSelectPage() {
   const router = useRouter();
   const [memberships, setMemberships] = useState<TeamMembership[]>([]);
@@ -26,8 +31,13 @@ export default function TeamSelectPage() {
         const data = await getTeamMemberships();
         setMemberships(data as TeamMembership[]);
 
-        // Auto-redirect if only one team
-        if (data.length === 1) {
+        // Only auto-select when no cookie exists (first visit / fresh session).
+        // If the user already has a cookie, they're explicitly switching — show the UI.
+        const hasExistingContext = document.cookie
+          .split('; ')
+          .some((c) => c.startsWith('ml-team-context='));
+
+        if (!hasExistingContext && data.length === 1) {
           selectTeam((data[0] as TeamMembership).teamId);
         }
       } catch (err) {

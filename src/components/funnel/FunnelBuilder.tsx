@@ -167,6 +167,7 @@ export function FunnelBuilder({
     existingFunnel?.backgroundStyle || 'solid'
   );
   const [logoUrl, setLogoUrl] = useState<string | null>(existingFunnel?.logoUrl || null);
+  const [fontFamily, setFontFamily] = useState<string | null>(existingFunnel?.fontFamily || null);
 
   // Lead magnet state (for content tab updates)
   const [currentLeadMagnet, setCurrentLeadMagnet] = useState<LeadMagnet | undefined>(leadMagnet);
@@ -297,6 +298,7 @@ export function FunnelBuilder({
         theme,
         primaryColor,
         backgroundStyle,
+        fontFamily,
         logoUrl,
       };
 
@@ -643,6 +645,8 @@ export function FunnelBuilder({
                 setPrimaryColor={setPrimaryColor}
                 backgroundStyle={backgroundStyle}
                 setBackgroundStyle={setBackgroundStyle}
+                fontFamily={fontFamily}
+                setFontFamily={setFontFamily}
                 logoUrl={logoUrl}
                 setLogoUrl={setLogoUrl}
                 funnelId={funnel?.id}

@@ -35,9 +35,9 @@ export const ARCHETYPE_NAMES: Record<LeadMagnetArchetype, string> = {
   'focused-directory': 'The Focused Directory',
   'mini-training': 'The Mini Training',
   'one-story': 'The One Story',
-  'prompt': 'The Prompt',
-  'assessment': 'The Assessment',
-  'workflow': 'The Workflow',
+  prompt: 'The Prompt',
+  assessment: 'The Assessment',
+  workflow: 'The Workflow',
 };
 
 // ============================================
@@ -126,12 +126,18 @@ export function isInteractiveArchetype(archetype: LeadMagnetArchetype): boolean 
   return INTERACTIVE_ARCHETYPES.includes(archetype);
 }
 
-export function getInteractiveType(archetype: LeadMagnetArchetype): InteractiveConfig['type'] | null {
+export function getInteractiveType(
+  archetype: LeadMagnetArchetype
+): InteractiveConfig['type'] | null {
   switch (archetype) {
-    case 'single-calculator': return 'calculator';
-    case 'assessment': return 'assessment';
-    case 'prompt': return 'gpt';
-    default: return null;
+    case 'single-calculator':
+      return 'calculator';
+    case 'assessment':
+      return 'assessment';
+    case 'prompt':
+      return 'gpt';
+    default:
+      return null;
   }
 }
 
@@ -139,7 +145,7 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   'coach-consultant': 'Coach / Consultant',
   'agency-owner': 'Agency Owner',
   'course-creator': 'Course Creator',
-  'freelancer': 'Freelancer',
+  freelancer: 'Freelancer',
   'saas-tech': 'SaaS / Tech',
   'b2b-service': 'B2B Service Provider',
 };
@@ -332,7 +338,9 @@ export type PolishedBlockType =
   | 'table'
   | 'accordion'
   | 'numbered-item'
-  | 'stat-card';
+  | 'stat-card'
+  | 'resource-card'
+  | 'resource-grid';
 
 export type CalloutStyle = 'info' | 'warning' | 'success';
 
@@ -358,6 +366,8 @@ export interface PolishedBlock {
   number?: number;
   detail?: string;
   category?: string;
+  // Resource-grid block fields
+  items?: Array<{ title: string; url?: string }>;
 }
 
 export interface PolishedSection {

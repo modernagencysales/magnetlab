@@ -273,6 +273,7 @@ export const updateFunnelSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color')
     .optional(),
   backgroundStyle: z.enum(['solid', 'gradient', 'pattern']).optional(),
+  fontFamily: z.string().max(100).nullable().optional(),
   logoUrl: z.string().url().max(2000).nullable().optional(),
   qualificationFormId: z.string().uuid().nullable().optional(),
   redirectTrigger: z.enum(['none', 'immediate', 'after_qualification']).optional(),
@@ -332,6 +333,7 @@ export const polishedContentSchema = z
 
 export const updateContentBodySchema = z.object({
   polishedContent: polishedContentSchema,
+  title: z.string().min(1).optional(),
 });
 
 export type UpdateContentBodyInput = z.infer<typeof updateContentBodySchema>;

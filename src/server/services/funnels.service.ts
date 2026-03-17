@@ -307,6 +307,7 @@ export async function updateFunnel(
   if (v.theme !== undefined) updates.theme = v.theme;
   if (v.primaryColor !== undefined) updates.primary_color = v.primaryColor;
   if (v.backgroundStyle !== undefined) updates.background_style = v.backgroundStyle;
+  if (v.fontFamily !== undefined) updates.font_family = v.fontFamily;
   if (v.logoUrl !== undefined)
     updates.logo_url = v.logoUrl ? normalizeImageUrl(v.logoUrl as string) : v.logoUrl;
   if (v.qualificationFormId !== undefined) updates.qualification_form_id = v.qualificationFormId;
