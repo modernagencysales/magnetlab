@@ -5,15 +5,30 @@ import { writePost, type WritePostInput } from '@/lib/ai/content-pipeline/post-w
 import { polishPost } from '@/lib/ai/content-pipeline/post-polish';
 import { buildContentBrief } from '@/lib/ai/content-pipeline/briefing-agent';
 
+// ─── Column Constants ─────────────────────────────────────────────────────────
+
+const CP_POST_TEMPLATE_COLUMNS =
+  'id, user_id, name, category, description, structure, example_posts, use_cases, tags, usage_count, avg_engagement_score, is_active, created_at, updated_at';
+
 registerAction({
   name: 'write_post',
-  description: 'Write a LinkedIn post on a given topic. Automatically searches knowledge base for relevant context and uses the user\'s voice profile. Returns the full post content + variations.',
+  description:
+    "Write a LinkedIn post on a given topic. Automatically searches knowledge base for relevant context and uses the user's voice profile. Returns the full post content + variations.",
   parameters: {
     properties: {
       topic: { type: 'string', description: 'The topic or idea to write about' },
       content_type: {
         type: 'string',
-        enum: ['thought_leadership', 'personal_story', 'how_to', 'contrarian', 'case_study', 'listicle', 'question', 'announcement'],
+        enum: [
+          'thought_leadership',
+          'personal_story',
+          'how_to',
+          'contrarian',
+          'case_study',
+          'listicle',
+          'question',
+          'announcement',
+        ],
         description: 'Post format/type',
       },
       template_id: { type: 'string', description: 'Optional template ID to guide the structure' },
@@ -21,12 +36,15 @@ registerAction({
     },
     required: ['topic'],
   },
-  handler: async (ctx: ActionContext, params: {
-    topic: string;
-    content_type?: string;
-    template_id?: string;
-    style_id?: string;
-  }): Promise<ActionResult> => {
+  handler: async (
+    ctx: ActionContext,
+    params: {
+      topic: string;
+      content_type?: string;
+      template_id?: string;
+      style_id?: string;
+    }
+  ): Promise<ActionResult> => {
     const supabase = createSupabaseAdminClient();
 
     // Build knowledge brief for context
@@ -60,7 +78,7 @@ registerAction({
     if (params.template_id) {
       const { data: template } = await supabase
         .from('cp_post_templates')
-        .select('*')
+        .select(CP_POST_TEMPLATE_COLUMNS)
         .eq('id', params.template_id)
         .eq('user_id', ctx.userId)
         .single();
@@ -101,7 +119,8 @@ registerAction({
 
 registerAction({
   name: 'polish_post',
-  description: 'Polish/improve an existing post — removes AI patterns, strengthens the hook, tightens the writing. Returns the polished version.',
+  description:
+    'Polish/improve an existing post — removes AI patterns, strengthens the hook, tightens the writing. Returns the polished version.',
   parameters: {
     properties: {
       post_id: { type: 'string', description: 'The post ID to polish' },
@@ -134,7 +153,12 @@ registerAction({
 
     return {
       success: true,
-      data: { original: result.original, polished: result.polished, changes: result.changes, hookScore: result.hookScore },
+      data: {
+        original: result.original,
+        polished: result.polished,
+        changes: result.changes,
+        hookScore: result.hookScore,
+      },
       displayHint: 'post_preview',
     };
   },
@@ -142,7 +166,8 @@ registerAction({
 
 registerAction({
   name: 'list_posts',
-  description: 'List pipeline posts filtered by status. Returns post ID, content preview, status, and scheduled time.',
+  description:
+    'List pipeline posts filtered by status. Returns post ID, content preview, status, and scheduled time.',
   parameters: {
     properties: {
       status: {
@@ -153,7 +178,10 @@ registerAction({
       limit: { type: 'number', description: 'Max results (default 10)' },
     },
   },
-  handler: async (ctx: ActionContext, params: { status?: string; limit?: number }): Promise<ActionResult> => {
+  handler: async (
+    ctx: ActionContext,
+    params: { status?: string; limit?: number }
+  ): Promise<ActionResult> => {
     const supabase = createSupabaseAdminClient();
 
     let query = supabase
@@ -171,7 +199,7 @@ registerAction({
 
     return {
       success: true,
-      data: (posts || []).map(p => ({
+      data: (posts || []).map((p) => ({
         id: p.id,
         content_preview: (p.final_content || p.draft_content || '').slice(0, 150),
         status: p.status,
@@ -185,7 +213,8 @@ registerAction({
 
 registerAction({
   name: 'update_post_content',
-  description: 'Update the content of an existing draft post. Use this when the user asks you to edit, rewrite, or modify a specific post.',
+  description:
+    'Update the content of an existing draft post. Use this when the user asks you to edit, rewrite, or modify a specific post.',
   parameters: {
     properties: {
       post_id: { type: 'string', description: 'The post ID to update' },
@@ -193,7 +222,10 @@ registerAction({
     },
     required: ['post_id', 'content'],
   },
-  handler: async (ctx: ActionContext, params: { post_id: string; content: string }): Promise<ActionResult> => {
+  handler: async (
+    ctx: ActionContext,
+    params: { post_id: string; content: string }
+  ): Promise<ActionResult> => {
     const supabase = createSupabaseAdminClient();
 
     const { error } = await supabase

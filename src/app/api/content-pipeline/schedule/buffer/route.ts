@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getBufferStatus, approvePost, rejectPost } from '@/lib/services/autopilot';
+import { getDataScope } from '@/lib/utils/team-context';
 
 import { logError } from '@/lib/utils/logger';
 
@@ -11,7 +12,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const buffer = await getBufferStatus(session.user.id);
+    const scope = await getDataScope(session.user.id);
+    const buffer = await getBufferStatus(session.user.id, scope);
 
     return NextResponse.json({ buffer });
   } catch (error) {
@@ -31,7 +33,10 @@ export async function POST(request: NextRequest) {
     const { postId, action } = body;
 
     if (!postId || typeof postId !== 'string') {
-      return NextResponse.json({ error: 'postId is required and must be a string' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'postId is required and must be a string' },
+        { status: 400 }
+      );
     }
 
     if (action !== 'approve' && action !== 'reject') {

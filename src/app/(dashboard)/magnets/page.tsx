@@ -7,6 +7,8 @@ import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { PageContainer, PageTitle, Button, EmptyState, LoadingCard } from '@magnetlab/magnetui';
 import MagnetsListClient, { type MagnetListItem } from '@/components/magnets/MagnetsListClient';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Lead Magnets | MagnetLab',
   description: 'Your lead magnets',
@@ -111,17 +113,17 @@ async function MagnetsContent() {
           <MagnetsListClient items={items} totalCount={items.length} />
         ) : (
           <EmptyState
-          icon={<Magnet />}
-          title="No lead magnets yet"
-          description="Create your first lead magnet to start capturing leads."
-          action={
-            <Button asChild>
-              <Link href="/create">
-                <Plus className="mr-1 h-4 w-4" />
-                Create Your First Lead Magnet
-              </Link>
-            </Button>
-          }
+            icon={<Magnet />}
+            title="No lead magnets yet"
+            description="Create your first lead magnet to start capturing leads."
+            action={
+              <Button asChild>
+                <Link href="/create">
+                  <Plus className="mr-1 h-4 w-4" />
+                  Create Your First Lead Magnet
+                </Link>
+              </Button>
+            }
           />
         )}
       </div>

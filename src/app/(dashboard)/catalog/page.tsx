@@ -5,6 +5,8 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { checkTeamRole } from '@/lib/auth/rbac';
 import { CatalogView } from '@/components/catalog/CatalogView';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Catalog | MagnetLab',
   description: 'Lead magnet catalog for your team',
@@ -41,12 +43,14 @@ export default async function CatalogPage() {
   // Fetch catalog data scoped to team
   const { data: magnets } = await supabase
     .from('lead_magnets')
-    .select('id, title, archetype, pain_point, target_audience, short_description, status, created_at')
+    .select(
+      'id, title, archetype, pain_point, target_audience, short_description, status, created_at'
+    )
     .eq('team_id', activeTeamId)
     .neq('status', 'archived')
     .order('created_at', { ascending: false });
 
-  const magnetIds = (magnets || []).map(m => m.id);
+  const magnetIds = (magnets || []).map((m) => m.id);
   let funnelMap: Record<string, { slug: string; is_published: boolean }> = {};
 
   if (magnetIds.length > 0) {
@@ -57,7 +61,7 @@ export default async function CatalogPage() {
 
     if (funnels) {
       funnelMap = Object.fromEntries(
-        funnels.map(f => [f.lead_magnet_id, { slug: f.slug, is_published: f.is_published }])
+        funnels.map((f) => [f.lead_magnet_id, { slug: f.slug, is_published: f.is_published }])
       );
     }
   }
@@ -68,13 +72,14 @@ export default async function CatalogPage() {
     .eq('id', team.owner_id)
     .single();
 
-  const catalog = (magnets || []).map(m => ({
+  const catalog = (magnets || []).map((m) => ({
     ...m,
     funnelSlug: funnelMap[m.id]?.slug || null,
     funnelPublished: funnelMap[m.id]?.is_published || false,
-    publicUrl: funnelMap[m.id]?.slug && funnelMap[m.id]?.is_published && ownerUser?.username
-      ? `/p/${ownerUser.username}/${funnelMap[m.id].slug}`
-      : null,
+    publicUrl:
+      funnelMap[m.id]?.slug && funnelMap[m.id]?.is_published && ownerUser?.username
+        ? `/p/${ownerUser.username}/${funnelMap[m.id].slug}`
+        : null,
   }));
 
   return (

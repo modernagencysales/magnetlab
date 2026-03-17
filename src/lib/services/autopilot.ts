@@ -11,6 +11,8 @@ import type {
   AutoPilotConfig,
   BatchResult,
 } from '@/lib/types/content-pipeline';
+import { logError } from '@/lib/utils/logger';
+import type { DataScope } from '@/lib/utils/team-context';
 
 const PILLAR_LOOKBACK_DAYS = 14;
 const AUTO_PUBLISH_WINDOW_HOURS = 24;
@@ -40,7 +42,12 @@ export async function getPillarCounts(
   const ideaIds = posts?.map((p) => p.idea_id).filter(Boolean) || [];
 
   if (ideaIds.length === 0) {
-    return { moments_that_matter: 0, teaching_promotion: 0, human_personal: 0, collaboration_social_proof: 0 };
+    return {
+      moments_that_matter: 0,
+      teaching_promotion: 0,
+      human_personal: 0,
+      collaboration_social_proof: 0,
+    };
   }
 
   const { data: ideas } = await supabase
@@ -49,7 +56,10 @@ export async function getPillarCounts(
     .in('id', ideaIds);
 
   const counts: PillarDistribution = {
-    moments_that_matter: 0, teaching_promotion: 0, human_personal: 0, collaboration_social_proof: 0,
+    moments_that_matter: 0,
+    teaching_promotion: 0,
+    human_personal: 0,
+    collaboration_social_proof: 0,
   };
 
   for (const idea of ideas || []) {
@@ -62,7 +72,11 @@ export async function getPillarCounts(
   return counts;
 }
 
-async function getRecentPostTitles(userId: string, days: number = PILLAR_LOOKBACK_DAYS, profileId?: string): Promise<string[]> {
+async function getRecentPostTitles(
+  userId: string,
+  days: number = PILLAR_LOOKBACK_DAYS,
+  profileId?: string
+): Promise<string[]> {
   const supabase = createSupabaseAdminClient();
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
@@ -82,10 +96,7 @@ async function getRecentPostTitles(userId: string, days: number = PILLAR_LOOKBAC
   const ideaIds = posts?.map((p) => p.idea_id).filter(Boolean) || [];
   if (ideaIds.length === 0) return [];
 
-  const { data: ideas } = await supabase
-    .from('cp_content_ideas')
-    .select('title')
-    .in('id', ideaIds);
+  const { data: ideas } = await supabase.from('cp_content_ideas').select('title').in('id', ideaIds);
 
   return ideas?.map((i) => i.title) || [];
 }
@@ -105,8 +116,12 @@ function wallClockToUTC(baseDate: Date, hours: number, minutes: number, timezone
   // Find the timezone offset at this approximate time
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
-    year: 'numeric', month: 'numeric', day: 'numeric',
-    hour: 'numeric', minute: 'numeric', hour12: false,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
   }).formatToParts(naiveUTC);
 
   const tzHour = parseInt(parts.find((p) => p.type === 'hour')!.value);
@@ -129,7 +144,9 @@ export async function getNextScheduledTime(
 
   const { data: slots } = await supabase
     .from('cp_posting_slots')
-    .select('id, user_id, slot_number, time_of_day, day_of_week, timezone, is_active, created_at, updated_at')
+    .select(
+      'id, user_id, slot_number, time_of_day, day_of_week, timezone, is_active, created_at, updated_at'
+    )
     .eq('user_id', userId)
     .eq('is_active', true)
     .order('slot_number', { ascending: true });
@@ -156,8 +173,18 @@ export async function getNextScheduledTime(
 
       if (candidate > now) {
         // Check day_of_week in the slot's timezone
-        const dayName = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(candidate);
-        const dayMap: Record<string, number> = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+        const dayName = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(
+          candidate
+        );
+        const dayMap: Record<string, number> = {
+          Sunday: 0,
+          Monday: 1,
+          Tuesday: 2,
+          Wednesday: 3,
+          Thursday: 4,
+          Friday: 5,
+          Saturday: 6,
+        };
         const dayInTZ = dayMap[dayName] ?? candidate.getUTCDay();
         if (slot.day_of_week === null || slot.day_of_week === dayInTZ) {
           candidates.push(candidate);
@@ -212,7 +239,14 @@ export async function getBufferSize(userId: string): Promise<number> {
 }
 
 export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchResult> {
-  const { userId, postsPerBatch = 3, autoPublish = false, autoPublishDelayHours = AUTO_PUBLISH_WINDOW_HOURS, teamId, profileId } = config;
+  const {
+    userId,
+    postsPerBatch = 3,
+    autoPublish = false,
+    autoPublishDelayHours = AUTO_PUBLISH_WINDOW_HOURS,
+    teamId,
+    profileId,
+  } = config;
   const supabase = createSupabaseAdminClient();
   const result: BatchResult = { postsCreated: 0, postsScheduled: 0, ideasProcessed: 0, errors: [] };
 
@@ -227,7 +261,8 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
       .eq('id', profileId)
       .single();
     if (profile) {
-      voiceProfile = profile.voice_profile as import('@/lib/types/content-pipeline').TeamVoiceProfile;
+      voiceProfile =
+        profile.voice_profile as import('@/lib/types/content-pipeline').TeamVoiceProfile;
       authorName = profile.full_name;
       authorTitle = profile.title || undefined;
     }
@@ -237,7 +272,9 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
     // 1. Fetch pending ideas (filter by profile if set)
     let ideasQuery = supabase
       .from('cp_content_ideas')
-      .select('id, user_id, transcript_id, title, core_insight, full_context, why_post_worthy, post_ready, hook, key_points, target_audience, content_type, content_pillar, relevance_score, source_quote, status, composite_score, last_surfaced_at, similarity_hash, team_profile_id, created_at, updated_at')
+      .select(
+        'id, user_id, transcript_id, title, core_insight, full_context, why_post_worthy, post_ready, hook, key_points, target_audience, content_type, content_pillar, relevance_score, source_quote, status, composite_score, last_surfaced_at, similarity_hash, team_profile_id, created_at, updated_at'
+      )
       .eq('user_id', userId)
       .eq('status', 'extracted')
       .order('created_at', { ascending: false })
@@ -286,11 +323,16 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
         let knowledgeContext: string | undefined;
         if (isEmbeddingsConfigured()) {
           try {
-            const brief = await buildContentBriefForIdea(userId, idea, { teamId, profileId, voiceProfile });
+            const brief = await buildContentBriefForIdea(userId, idea, {
+              teamId,
+              profileId,
+              voiceProfile,
+            });
             if (brief.compiledContext) {
               knowledgeContext = brief.compiledContext;
             }
-          } catch {
+          } catch (err) {
+            logError('autopilot/getBufferStatus', err, { step: 'knowledge_context' });
             // Non-critical, proceed without knowledge context
           }
         }
@@ -307,27 +349,32 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
           .eq('id', idea.id);
 
         // Write post (with automatic template RAG matching)
-        const writtenPost = await writePostWithAutoTemplate({
-          idea: {
-            id: idea.id,
-            title: idea.title,
-            core_insight: idea.core_insight,
-            full_context: idea.full_context,
-            why_post_worthy: idea.why_post_worthy,
-            content_type: idea.content_type,
+        const writtenPost = await writePostWithAutoTemplate(
+          {
+            idea: {
+              id: idea.id,
+              title: idea.title,
+              core_insight: idea.core_insight,
+              full_context: idea.full_context,
+              why_post_worthy: idea.why_post_worthy,
+              content_type: idea.content_type,
+            },
+            knowledgeContext,
+            voiceProfile,
+            authorName,
+            authorTitle,
           },
-          knowledgeContext,
-          voiceProfile,
-          authorName,
-          authorTitle,
-        }, userId);
+          userId
+        );
 
         // Polish post
         const polishResult = await polishPost(writtenPost.content, { voiceProfile });
 
         // Determine scheduling (use cached scheduled times)
         const isFirstPost = i === 0;
-        const scheduledTime = isFirstPost ? await getNextScheduledTime(userId, scheduledTimesCache) : null;
+        const scheduledTime = isFirstPost
+          ? await getNextScheduledTime(userId, scheduledTimesCache)
+          : null;
         const isBuffer = !isFirstPost;
 
         // Calculate buffer position
@@ -338,28 +385,27 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
         }
 
         // Save post
-        const { error: postError } = await supabase
-          .from('cp_pipeline_posts')
-          .insert({
-            user_id: userId,
-            idea_id: idea.id,
-            draft_content: writtenPost.content,
-            final_content: polishResult.polished,
-            dm_template: writtenPost.dm_template,
-            cta_word: writtenPost.cta_word,
-            variations: writtenPost.variations,
-            status: isFirstPost ? 'reviewing' : 'approved',
-            scheduled_time: scheduledTime?.toISOString() || null,
-            hook_score: polishResult.hookScore.score,
-            polish_status: polishResult.changes.length > 0 ? 'polished' : 'pending',
-            polish_notes: polishResult.changes.length > 0 ? polishResult.changes.join('; ') : null,
-            is_buffer: isBuffer,
-            buffer_position: bufferPosition,
-            auto_publish_after: autoPublish && isFirstPost
+        const { error: postError } = await supabase.from('cp_pipeline_posts').insert({
+          user_id: userId,
+          idea_id: idea.id,
+          draft_content: writtenPost.content,
+          final_content: polishResult.polished,
+          dm_template: writtenPost.dm_template,
+          cta_word: writtenPost.cta_word,
+          variations: writtenPost.variations,
+          status: isFirstPost ? 'reviewing' : 'approved',
+          scheduled_time: scheduledTime?.toISOString() || null,
+          hook_score: polishResult.hookScore.score,
+          polish_status: polishResult.changes.length > 0 ? 'polished' : 'pending',
+          polish_notes: polishResult.changes.length > 0 ? polishResult.changes.join('; ') : null,
+          is_buffer: isBuffer,
+          buffer_position: bufferPosition,
+          auto_publish_after:
+            autoPublish && isFirstPost
               ? new Date(Date.now() + autoPublishDelayHours * 60 * 60 * 1000).toISOString()
               : null,
-            team_profile_id: profileId || null,
-          });
+          team_profile_id: profileId || null,
+        });
 
         if (postError) {
           result.errors.push(`Failed to save post for idea ${idea.id}: ${postError.message}`);
@@ -367,10 +413,7 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
         }
 
         // Update idea status
-        await supabase
-          .from('cp_content_ideas')
-          .update({ status: 'written' })
-          .eq('id', idea.id);
+        await supabase.from('cp_content_ideas').update({ status: 'written' }).eq('id', idea.id);
 
         result.postsCreated++;
         result.ideasProcessed++;
@@ -383,10 +426,7 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
         result.errors.push(`Failed to process idea ${idea.id}: ${errorMsg}`);
 
         // Reset idea status on failure
-        await supabase
-          .from('cp_content_ideas')
-          .update({ status: 'extracted' })
-          .eq('id', idea.id);
+        await supabase.from('cp_content_ideas').update({ status: 'extracted' }).eq('id', idea.id);
       }
     }
   } catch (error) {
@@ -445,16 +485,36 @@ export async function rejectPost(userId: string, postId: string): Promise<void> 
   }
 }
 
-export async function getBufferStatus(userId: string) {
+export async function getBufferStatus(userId: string, scope?: DataScope) {
   const supabase = createSupabaseAdminClient();
 
-  const { data } = await supabase
+  // cp_pipeline_posts uses team_profile_id, not team_id — can't use applyScope
+  let query = supabase
     .from('cp_pipeline_posts')
-    .select('id, user_id, idea_id, draft_content, final_content, dm_template, cta_word, variations, status, scheduled_time, linkedin_post_id, publish_provider, hook_score, polish_status, polish_notes, is_buffer, buffer_position, auto_publish_after, published_at, engagement_stats, created_at, updated_at')
-    .eq('user_id', userId)
+    .select(
+      'id, user_id, idea_id, draft_content, final_content, dm_template, cta_word, variations, status, scheduled_time, linkedin_post_id, publish_provider, hook_score, polish_status, polish_notes, is_buffer, buffer_position, auto_publish_after, published_at, engagement_stats, created_at, updated_at'
+    )
     .eq('is_buffer', true)
     .eq('status', 'approved')
     .order('buffer_position', { ascending: true });
+
+  if (scope?.type === 'team' && scope.teamId) {
+    const { data: profiles } = await supabase
+      .from('team_profiles')
+      .select('id')
+      .eq('team_id', scope.teamId)
+      .eq('status', 'active');
+    const profileIds = profiles?.map((p) => p.id) ?? [];
+    if (profileIds.length > 0) {
+      query = query.in('team_profile_id', profileIds);
+    } else {
+      query = query.eq('user_id', userId);
+    }
+  } else {
+    query = query.eq('user_id', userId);
+  }
+
+  const { data } = await query;
 
   return data || [];
 }

@@ -4,6 +4,9 @@ import { getCompanyPosts, getPostComments, getPostReactions } from '@/lib/integr
 import { processEngagers } from '@/lib/services/signal-engine';
 import type { HarvestPostComment, HarvestPostReaction } from '@/lib/types/signals';
 
+const SIGNAL_COMPANY_MONITOR_COLUMNS =
+  'id, user_id, linkedin_company_url, company_name, is_active, last_scanned_at, heyreach_campaign_id, created_at, updated_at';
+
 // ============================================
 // CRON TASK: every 12 hours (offset 30 min from keyword scan)
 // ============================================
@@ -21,7 +24,7 @@ export const signalCompanyScan = schedules.task({
     // Step 1: Fetch all active company monitors
     const { data: monitors, error: fetchError } = await supabase
       .from('signal_company_monitors')
-      .select('*')
+      .select(SIGNAL_COMPANY_MONITOR_COLUMNS)
       .eq('is_active', true);
 
     if (fetchError) {
@@ -78,9 +81,12 @@ export const signalCompanyScan = schedules.task({
 
         // Step 3d: Process each post (max 5 per company)
         const postsToProcess = posts.slice(0, 5);
-        logger.info(`Found ${posts.length} posts for company, processing ${postsToProcess.length}`, {
-          company: monitor.company_name || monitor.linkedin_company_url,
-        });
+        logger.info(
+          `Found ${posts.length} posts for company, processing ${postsToProcess.length}`,
+          {
+            company: monitor.company_name || monitor.linkedin_company_url,
+          }
+        );
 
         for (const post of postsToProcess) {
           const postUrl = post.linkedinUrl;
@@ -93,12 +99,14 @@ export const signalCompanyScan = schedules.task({
 
             // Get reactors
             const reactionsResult = await getPostReactions(postUrl);
-            const reactions: HarvestPostReaction[] = reactionsResult.error ? [] : reactionsResult.data;
+            const reactions: HarvestPostReaction[] = reactionsResult.error
+              ? []
+              : reactionsResult.data;
 
             // Map comments to engager format
             const commentEngagers = comments
-              .filter(c => c.actor?.linkedinUrl)
-              .map(c => ({
+              .filter((c) => c.actor?.linkedinUrl)
+              .map((c) => ({
                 linkedinUrl: c.actor.linkedinUrl,
                 name: c.actor.name,
                 headline: c.actor.position,
@@ -108,8 +116,8 @@ export const signalCompanyScan = schedules.task({
 
             // Map reactions to engager format
             const reactionEngagers = reactions
-              .filter(r => r.actor?.linkedinUrl)
-              .map(r => ({
+              .filter((r) => r.actor?.linkedinUrl)
+              .map((r) => ({
                 linkedinUrl: r.actor.linkedinUrl,
                 name: r.actor.name,
                 headline: r.actor.position,
@@ -175,7 +183,9 @@ export const signalCompanyScan = schedules.task({
         })
         .eq('id', monitor.id);
 
-      logger.info(`Company ${monitor.company_name || monitor.linkedin_company_url}: ${monitorLeads} leads`);
+      logger.info(
+        `Company ${monitor.company_name || monitor.linkedin_company_url}: ${monitorLeads} leads`
+      );
     }
 
     logger.info('Signal company scan complete', { leads: totalLeads });

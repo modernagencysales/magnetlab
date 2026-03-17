@@ -2,6 +2,9 @@ import { schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach/client';
 
+const SIGNAL_CONFIG_COLUMNS =
+  'id, user_id, target_countries, target_job_titles, exclude_job_titles, min_company_size, max_company_size, target_industries, default_heyreach_campaign_id, enrichment_enabled, sentiment_scoring_enabled, auto_push_enabled, created_at, updated_at';
+
 // ============================================
 // CRON TASK: every 30 minutes
 // Push qualified signal leads to HeyReach campaigns
@@ -20,7 +23,7 @@ export const signalPushHeyreach = schedules.task({
     // Step 1: Fetch configs with auto-push enabled and a campaign configured
     const { data: configs, error: configError } = await supabase
       .from('signal_configs')
-      .select('*')
+      .select(SIGNAL_CONFIG_COLUMNS)
       .eq('auto_push_enabled', true)
       .not('default_heyreach_campaign_id', 'is', null);
 
@@ -68,10 +71,8 @@ export const signalPushHeyreach = schedules.task({
         logger.info(`Found ${leads.length} qualified leads for user ${config.user_id}`);
 
         // Step 3c: Map leads to HeyReach format
-        const heyreachLeads = leads.map(lead => ({
-          profileUrl: lead.linkedin_url.endsWith('/')
-            ? lead.linkedin_url
-            : `${lead.linkedin_url}/`,
+        const heyreachLeads = leads.map((lead) => ({
+          profileUrl: lead.linkedin_url.endsWith('/') ? lead.linkedin_url : `${lead.linkedin_url}/`,
           firstName: lead.first_name || undefined,
           lastName: lead.last_name || undefined,
           customVariables: {
@@ -86,7 +87,7 @@ export const signalPushHeyreach = schedules.task({
 
         if (result.success) {
           // Step 3e: Mark leads as pushed
-          const leadIds = leads.map(l => l.id);
+          const leadIds = leads.map((l) => l.id);
           const now = new Date().toISOString();
 
           const { error: updateError } = await supabase
@@ -113,7 +114,7 @@ export const signalPushHeyreach = schedules.task({
           }
         } else {
           // Step 3f: Record error for retry
-          const leadIds = leads.map(l => l.id);
+          const leadIds = leads.map((l) => l.id);
           const errorMsg = result.error || 'Unknown HeyReach push error';
 
           const { error: updateError } = await supabase

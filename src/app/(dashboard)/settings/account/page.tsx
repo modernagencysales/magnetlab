@@ -4,6 +4,8 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/uti
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { AccountSettings } from '@/components/settings/AccountSettings';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Account Settings | MagnetLab',
 };
@@ -17,14 +19,18 @@ export default async function AccountPage() {
 
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('id, user_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at')
+    .select(
+      'id, user_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at'
+    )
     .eq('user_id', session?.user?.id)
     .single();
 
   const monthYear = new Date().toISOString().slice(0, 7);
   const { data: usage } = await supabase
     .from('usage_tracking')
-    .select('id, user_id, month_year, lead_magnets_created, posts_scheduled, created_at, updated_at')
+    .select(
+      'id, user_id, month_year, lead_magnets_created, posts_scheduled, created_at, updated_at'
+    )
     .eq('user_id', session?.user?.id)
     .eq('month_year', monthYear)
     .single();
@@ -37,9 +43,7 @@ export default async function AccountPage() {
 
   const adminClient = createSupabaseAdminClient();
   const scope = await getDataScope(session?.user?.id || '');
-  let brandKitQuery = adminClient
-    .from('brand_kits')
-    .select('business_description');
+  let brandKitQuery = adminClient.from('brand_kits').select('business_description');
   brandKitQuery = applyScope(brandKitQuery, scope);
   const { data: brandKit } = await brandKitQuery.single();
 
