@@ -62,6 +62,7 @@ interface CopilotContextValue {
   loadConversations: () => Promise<void>;
   selectConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
+  showConversationList: () => void;
   deleteConversation: (id: string) => Promise<void>;
   submitFeedback: (
     messageId: string,
@@ -197,6 +198,11 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startNewConversation = useCallback(() => {
+    setActiveConversationId('new');
+    setMessages([]);
+  }, []);
+
+  const showConversationList = useCallback(() => {
     setActiveConversationId(null);
     setMessages([]);
   }, []);
@@ -489,6 +495,7 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
     loadConversations,
     selectConversation,
     startNewConversation,
+    showConversationList,
     deleteConversation,
     submitFeedback,
     pageContext,

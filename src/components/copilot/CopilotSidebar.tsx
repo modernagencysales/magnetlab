@@ -20,6 +20,7 @@ export function CopilotSidebar() {
     loadConversations,
     selectConversation,
     startNewConversation,
+    showConversationList,
     deleteConversation,
     sendMessage,
     cancelStream,
@@ -63,7 +64,7 @@ export function CopilotSidebar() {
             title={activeConversation?.title}
             entityType={pageContext?.entityType}
             entityTitle={pageContext?.entityTitle}
-            onBack={startNewConversation}
+            onBack={showConversationList}
             onNewThread={startNewConversation}
           />
         ) : (
