@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
 
             // I1 FIX: Use streaming API for real-time text deltas
             const stream = client.messages.stream({
-              model: 'claude-sonnet-4-6',
+              model: 'claude-sonnet-4-6-20250514',
               max_tokens: 4096,
               system: systemPrompt,
               tools: tools as Parameters<typeof client.messages.create>[0]['tools'],
@@ -362,8 +362,10 @@ export async function POST(req: NextRequest) {
 
           send('done', { conversationId, iterations: iteration });
         } catch (error) {
+          const errMsg = error instanceof Error ? error.message : String(error);
           logError('copilot/chat', error, { userId, conversationId });
-          send('error', { message: error instanceof Error ? error.message : 'Stream error' });
+          send('text_delta', { text: `\n\n⚠️ Error: ${errMsg}` });
+          send('error', { message: errMsg });
         } finally {
           controller.close();
         }
