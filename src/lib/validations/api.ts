@@ -728,8 +728,16 @@ export const SaveEmailSequenceSchema = z.object({
 export type SaveEmailSequenceInput = z.infer<typeof SaveEmailSequenceSchema>;
 
 // ============================================
-// VALIDATION HELPER
+// VALIDATION HELPERS
 // ============================================
+
+/** Format a Zod error into a single human-readable string for API error responses. */
+export function formatZodError(error: z.ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return 'Validation failed';
+  const field = issue.path.join('.');
+  return field ? `${field}: ${issue.message}` : issue.message;
+}
 
 export type ValidationResult<T> =
   | { success: true; data: T }

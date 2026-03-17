@@ -21,8 +21,12 @@ jest.mock('@/lib/auth', () => ({
 }));
 
 jest.mock('@/lib/utils/team-context', () => ({
-  getDataScope: jest.fn((userId: string) => Promise.resolve({ type: 'user', userId })),
+  getScopeForResource: jest.fn((userId: string) => Promise.resolve({ type: 'user', userId })),
   applyScope: jest.fn(),
+}));
+
+jest.mock('@/server/repositories/funnels.repo', () => ({
+  getFunnelTeamId: jest.fn(() => Promise.resolve(null)),
 }));
 
 // ─── Service mock ─────────────────────────────────────────────────────────────

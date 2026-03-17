@@ -12,10 +12,11 @@ import { VALID_PERIODS, type Period } from '@/server/services/analytics.service'
 import * as analyticsService from '@/server/services/analytics.service';
 
 export async function GET(request: Request) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) return ApiErrors.unauthorized();
+  const session = await auth();
+  if (!session?.user?.id) return ApiErrors.unauthorized();
+  const userId = session.user.id;
 
+  try {
     const url = new URL(request.url);
     const period = (url.searchParams.get('period') ?? 'last_30_days') as Period;
     if (!(VALID_PERIODS as readonly string[]).includes(period)) {
@@ -24,11 +25,11 @@ export async function GET(request: Request) {
       );
     }
 
-    const scope = await getDataScope(session.user.id);
+    const scope = await getDataScope(userId);
     const result = await analyticsService.getPerformanceInsights(scope, period);
     return NextResponse.json(result);
   } catch (error) {
-    logApiError('analytics/performance-insights', error, { userId: (await auth())?.user?.id });
+    logApiError('analytics/performance-insights', error, { userId });
     return ApiErrors.internalError('Failed to fetch performance insights');
   }
 }

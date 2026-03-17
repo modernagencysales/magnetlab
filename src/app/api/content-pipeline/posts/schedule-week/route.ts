@@ -11,8 +11,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { getDataScope } from '@/lib/utils/team-context';
 import { logError } from '@/lib/utils/logger';
-import { ScheduleWeekSchema } from '@/lib/validations/api';
+import { ScheduleWeekSchema, formatZodError } from '@/lib/validations/api';
 import * as postsService from '@/server/services/posts.service';
 
 export async function POST(request: NextRequest) {
@@ -25,16 +26,13 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.json();
     const parsed = ScheduleWeekSchema.safeParse(rawBody);
     if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0];
-      const field = firstIssue?.path.join('.') ?? '';
-      const message = firstIssue?.message ?? 'Invalid request body';
-      const error = field ? `${field}: ${message}` : message;
-      return NextResponse.json({ error }, { status: 400 });
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
     }
 
     const { posts, week_start } = parsed.data;
+    const scope = await getDataScope(session.user.id);
 
-    const result = await postsService.scheduleWeek(session.user.id, posts, week_start);
+    const result = await postsService.scheduleWeek(scope, posts, week_start);
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

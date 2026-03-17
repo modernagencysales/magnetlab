@@ -17,6 +17,10 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   createSupabaseAdminClient: jest.fn(),
 }));
 
+jest.mock('@/lib/utils/team-context', () => ({
+  getDataScope: jest.fn().mockResolvedValue({ type: 'personal', userId: 'user-1' }),
+}));
+
 jest.mock('@/lib/utils/logger', () => ({
   logError: jest.fn(),
   logWarn: jest.fn(),

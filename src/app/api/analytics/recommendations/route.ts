@@ -11,15 +11,16 @@ import { getDataScope } from '@/lib/utils/team-context';
 import * as analyticsService from '@/server/services/analytics.service';
 
 export async function GET(_request: Request) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) return ApiErrors.unauthorized();
+  const session = await auth();
+  if (!session?.user?.id) return ApiErrors.unauthorized();
+  const userId = session.user.id;
 
-    const scope = await getDataScope(session.user.id);
+  try {
+    const scope = await getDataScope(userId);
     const result = await analyticsService.getRecommendations(scope);
     return NextResponse.json(result);
   } catch (error) {
-    logApiError('analytics/recommendations', error, { userId: (await auth())?.user?.id });
+    logApiError('analytics/recommendations', error, { userId });
     return ApiErrors.internalError('Failed to fetch recommendations');
   }
 }

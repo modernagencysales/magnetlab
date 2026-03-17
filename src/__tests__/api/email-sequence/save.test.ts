@@ -18,7 +18,12 @@ jest.mock('@/server/services/email-sequence.service', () => ({
 
 // Mock team context
 jest.mock('@/lib/utils/team-context', () => ({
-  getDataScope: jest.fn(),
+  getScopeForResource: jest.fn(),
+}));
+
+// Mock email-sequence repo
+jest.mock('@/server/repositories/email-sequence.repo', () => ({
+  getLeadMagnetTeamId: jest.fn(),
 }));
 
 // Mock errors
@@ -46,7 +51,8 @@ jest.mock('@/lib/api/errors', () => ({
 import { PUT } from '@/app/api/email-sequence/[leadMagnetId]/route';
 import { auth } from '@/lib/auth';
 import * as emailSequenceService from '@/server/services/email-sequence.service';
-import { getDataScope } from '@/lib/utils/team-context';
+import { getScopeForResource } from '@/lib/utils/team-context';
+import { getLeadMagnetTeamId } from '@/server/repositories/email-sequence.repo';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -84,7 +90,8 @@ describe('PUT /api/email-sequence/[leadMagnetId]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (auth as jest.Mock).mockResolvedValue({ user: { id: mockUserId } });
-    (getDataScope as jest.Mock).mockResolvedValue(mockScope);
+    (getLeadMagnetTeamId as jest.Mock).mockResolvedValue(null);
+    (getScopeForResource as jest.Mock).mockResolvedValue(mockScope);
     (emailSequenceService.update as jest.Mock).mockResolvedValue({
       success: true,
       emailSequence: mockEmailSequence,

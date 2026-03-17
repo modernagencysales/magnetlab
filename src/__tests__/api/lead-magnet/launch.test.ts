@@ -326,9 +326,16 @@ describe('POST /api/lead-magnet/launch', () => {
 
       expect(response.status).toBe(201);
       expect(body.email_sequence_id).toBe('seq-1');
-      expect(mockEmailGenerate).toHaveBeenCalledWith('lm-1', false, 'user-1');
+      expect(mockEmailGenerate).toHaveBeenCalledWith(
+        'lm-1',
+        false,
+        expect.objectContaining({ userId: 'user-1' })
+      );
       expect(mockEmailUpdate).toHaveBeenCalled();
-      expect(mockEmailActivate).toHaveBeenCalledWith('user-1', 'lm-1');
+      expect(mockEmailActivate).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user-1' }),
+        'lm-1'
+      );
     });
 
     it('succeeds with null email_sequence_id if email creation fails (non-fatal)', async () => {

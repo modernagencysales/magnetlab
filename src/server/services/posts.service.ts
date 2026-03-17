@@ -79,6 +79,22 @@ const VALID_POST_STATUSES: PostStatus[] = [
   'publish_failed',
 ];
 
+// ─── Internal helpers ─────────────────────────────────────────────────────
+
+/** Resolve the first active team_profile_id for a team (for agent post creation). */
+async function resolveFirstTeamProfileId(teamId: string): Promise<string | null> {
+  const { createSupabaseAdminClient } = await import('@/lib/utils/supabase-server');
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('team_profiles')
+    .select('id')
+    .eq('team_id', teamId)
+    .eq('status', 'active')
+    .limit(1)
+    .single();
+  return data?.id ?? null;
+}
+
 // ─── Read operations ───────────────────────────────────────────────────────
 
 export async function getPosts(
@@ -125,10 +141,17 @@ export async function getPostEngagement(
 // ─── Write operations ──────────────────────────────────────────────────────
 
 export async function createAgentPost(
-  userId: string,
+  scope: DataScope,
   input: AgentPostCreateInput
 ): Promise<PipelinePost> {
-  return postsRepo.createAgentPost(userId, input);
+  // Resolve team_profile_id when in team scope (posts use profile-based scoping)
+  if (scope.type === 'team' && scope.teamId && !input.team_profile_id) {
+    const profileId = await resolveFirstTeamProfileId(scope.teamId);
+    if (profileId) {
+      input = { ...input, team_profile_id: profileId };
+    }
+  }
+  return postsRepo.createAgentPost(scope.userId, input);
 }
 
 /**
@@ -152,10 +175,18 @@ function resolveWeekStart(weekStart?: string): Date {
  * the user's active posting slots for the given week.
  */
 export async function scheduleWeek(
-  userId: string,
+  scope: DataScope,
   posts: AgentPostCreateInput[],
   weekStart?: string
 ): Promise<ScheduleWeekResult> {
+  const userId = scope.userId;
+
+  // Resolve team_profile_id once for all posts in the batch
+  let teamProfileId: string | null = null;
+  if (scope.type === 'team' && scope.teamId) {
+    teamProfileId = await resolveFirstTeamProfileId(scope.teamId);
+  }
+
   // ─── 1. Load posting slots ─────────────────────────────────────────────
   const { data: slots, error: slotsError } = await cpSlotsRepo.listSlots(userId);
   if (slotsError) {
@@ -219,7 +250,11 @@ export async function scheduleWeek(
     const { datetime, dayName } = slotDatetimes[i];
     const scheduledFor = datetime.toISOString();
 
-    const created = await postsRepo.createAgentPost(userId, postInput);
+    const inputWithProfile =
+      teamProfileId && !postInput.team_profile_id
+        ? { ...postInput, team_profile_id: teamProfileId }
+        : postInput;
+    const created = await postsRepo.createAgentPost(userId, inputWithProfile);
 
     await postsRepo.updatePost(userId, created.id, {
       status: 'scheduled' as PostStatus,

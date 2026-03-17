@@ -175,14 +175,14 @@ export async function launchLeadMagnet(
         replyTrigger: '',
       }));
 
-      const genResult = await emailSequenceService.generate(leadMagnet.id, false, scope.userId);
+      const genResult = await emailSequenceService.generate(leadMagnet.id, false, scope);
       if (genResult.success && genResult.emailSequence) {
         // Overwrite with the user-provided emails
         const updateResult = await emailSequenceService.update(scope, leadMagnet.id, { emails });
         if (updateResult.success && updateResult.emailSequence) {
           emailSequenceId = updateResult.emailSequence.id;
           // Activate
-          await emailSequenceService.activate(scope.userId, leadMagnet.id);
+          await emailSequenceService.activate(scope, leadMagnet.id);
         }
       }
     } catch (seqErr) {
