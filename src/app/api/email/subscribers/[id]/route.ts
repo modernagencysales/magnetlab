@@ -20,7 +20,10 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     if (!isValidUUID(id)) return ApiErrors.validationError('Invalid subscriber ID format');
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const result = await emailService.unsubscribeSubscriberById(scope.teamId, id);
     if (!result.success) {

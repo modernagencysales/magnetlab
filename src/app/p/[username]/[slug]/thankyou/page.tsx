@@ -70,7 +70,8 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
   // Find published funnel page (control only — variants have is_variant=true)
   const { data: funnel, error: funnelError } = await supabase
     .from('funnel_pages')
-    .select(`
+    .select(
+      `
       id,
       lead_magnet_id,
       thankyou_headline,
@@ -96,7 +97,8 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       homepage_label,
       send_resource_email,
       thankyou_layout
-    `)
+    `
+    )
     .eq('user_id', user.id)
     .eq('slug', slug)
     .eq('is_variant', false)
@@ -141,7 +143,9 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
     // Get all variants including control
     const { data: variants } = await supabase
       .from('funnel_pages')
-      .select('id, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message, is_variant, qualification_form_id, thankyou_layout')
+      .select(
+        'id, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message, is_variant, qualification_form_id, thankyou_layout'
+      )
       .or(`id.eq.${funnel.id},experiment_id.eq.${activeExperiment.id}`)
       .eq('is_published', true);
 
@@ -176,13 +180,14 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
     .eq('id', funnel.lead_magnet_id)
     .single();
 
-  // Fetch lead email for redirect URL params
+  // Fetch lead email for redirect URL params (scoped to this funnel page)
   let leadEmail: string | null = null;
   if (leadId) {
     const { data: lead } = await supabase
       .from('funnel_leads')
       .select('email')
       .eq('id', leadId)
+      .eq('funnel_page_id', activeFunnel.id)
       .single();
     leadEmail = lead?.email || null;
   }
@@ -226,13 +231,15 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
   // Fetch page sections for thankyou (uses control funnel — variants share sections)
   const { data: sectionRows } = await supabase
     .from('funnel_page_sections')
-    .select('id, funnel_page_id, section_type, page_location, sort_order, is_visible, config, created_at, updated_at')
+    .select(
+      'id, funnel_page_id, section_type, page_location, sort_order, is_visible, config, created_at, updated_at'
+    )
     .eq('funnel_page_id', funnel.id)
     .eq('page_location', 'thankyou')
     .eq('is_visible', true)
     .order('sort_order', { ascending: true });
 
-  const sections = (sectionRows as FunnelPageSectionRow[] || []).map(funnelPageSectionFromRow);
+  const sections = ((sectionRows as FunnelPageSectionRow[]) || []).map(funnelPageSectionFromRow);
 
   // Fetch user's active pixel integrations (pixel IDs only, no tokens)
   const { data: pixelIntegrations } = await supabase
@@ -242,7 +249,10 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
     .in('service', ['meta_pixel', 'linkedin_insight'])
     .eq('is_active', true);
 
-  const pixelConfig: { meta?: { pixelId: string; enabledEvents: string[] }; linkedin?: { partnerId: string; enabledEvents: string[] } } = {};
+  const pixelConfig: {
+    meta?: { pixelId: string; enabledEvents: string[] };
+    linkedin?: { partnerId: string; enabledEvents: string[] };
+  } = {};
   for (const pi of pixelIntegrations || []) {
     const meta = pi.metadata as Record<string, unknown> | null;
     if (pi.service === 'meta_pixel' && meta?.pixel_id) {
@@ -272,7 +282,11 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
         id: q.id,
         questionText: q.question_text,
         questionOrder: q.question_order,
-        answerType: (q.answer_type || 'yes_no') as 'yes_no' | 'text' | 'textarea' | 'multiple_choice',
+        answerType: (q.answer_type || 'yes_no') as
+          | 'yes_no'
+          | 'text'
+          | 'textarea'
+          | 'multiple_choice',
         options: q.options || null,
         placeholder: q.placeholder || null,
         isRequired: q.is_required ?? true,
@@ -289,14 +303,19 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       fontFamily={funnel.font_family}
       fontUrl={funnel.font_url}
       hideBranding={whitelabel?.hideBranding || false}
-      redirectTrigger={(funnel.redirect_trigger as 'none' | 'immediate' | 'after_qualification') || 'none'}
+      redirectTrigger={
+        (funnel.redirect_trigger as 'none' | 'immediate' | 'after_qualification') || 'none'
+      }
       redirectUrl={funnel.redirect_url}
       redirectFailUrl={funnel.redirect_fail_url}
       email={leadEmail}
       homepageUrl={funnel.homepage_url || brandWebsiteUrl}
       homepageLabel={funnel.homepage_label}
       showResourceOnPage={showResourceOnPage}
-      layout={(activeFunnel.thankyou_layout as 'survey_first' | 'video_first' | 'side_by_side') || 'survey_first'}
+      layout={
+        (activeFunnel.thankyou_layout as 'survey_first' | 'video_first' | 'side_by_side') ||
+        'survey_first'
+      }
     />
   );
 }

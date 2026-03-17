@@ -91,7 +91,7 @@ function createMockSupabase() {
       tableResults[table] = result;
     },
     reset: () => {
-      Object.keys(tableResults).forEach(k => delete tableResults[k]);
+      Object.keys(tableResults).forEach((k) => delete tableResults[k]);
     },
   };
 }
@@ -213,7 +213,7 @@ describe('POST /api/email/generate-daily', () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error).toContain('No team found');
+    expect(data.error).toContain('Email features require a team');
   });
 
   // ----------------------------------------
@@ -355,9 +355,7 @@ describe('POST /api/email/generate-daily', () => {
 
     // Verify that eq was called on the team_profiles chain with the profileId
     const fromCalls = mock.client.from.mock.calls;
-    const profileCallIndex = fromCalls.findIndex(
-      (call: string[]) => call[0] === 'team_profiles'
-    );
+    const profileCallIndex = fromCalls.findIndex((call: string[]) => call[0] === 'team_profiles');
     expect(profileCallIndex).toBeGreaterThanOrEqual(0);
 
     const chain = mock.client.from.mock.results[profileCallIndex].value;
@@ -386,9 +384,7 @@ describe('POST /api/email/generate-daily', () => {
   // ----------------------------------------
 
   it('returns 500 when AI email generation fails', async () => {
-    (writeNewsletterEmail as jest.Mock).mockRejectedValue(
-      new Error('AI API rate limited')
-    );
+    (writeNewsletterEmail as jest.Mock).mockRejectedValue(new Error('AI API rate limited'));
 
     const response = await POST(makeRequest());
 

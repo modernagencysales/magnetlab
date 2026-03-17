@@ -64,7 +64,14 @@ export const rebuildLeadMagnetContent = task({
     }
 
     // Step 3: Generate full ExtractedContent via AI
-    const extractedContent = await generateFullContent(lm.title, concept, knowledgeContext);
+    const { data: user } = await supabase.from('users').select('name').eq('id', userId).single();
+    const authorName = user?.name || 'the author';
+    const extractedContent = await generateFullContent(
+      lm.title,
+      concept,
+      knowledgeContext,
+      authorName
+    );
 
     logger.info('Content generated', {
       sections: extractedContent.structure.length,
@@ -121,4 +128,3 @@ export const rebuildLeadMagnetContent = task({
     };
   },
 });
-

@@ -227,6 +227,7 @@ export function BroadcastEditor({ broadcastId }: BroadcastEditorProps) {
         subject,
         body,
         audience_filter: audienceFilter,
+        status: 'draft',
       });
       const data = await broadcastsApi.getBroadcast(broadcastId);
       setBroadcast(data.broadcast as EmailBroadcast);

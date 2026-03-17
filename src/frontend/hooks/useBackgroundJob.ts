@@ -92,14 +92,15 @@ export function useBackgroundJob<TResult = unknown>(
 
   const startPolling = useCallback(
     (id: string) => {
+      // Clear any existing intervals without resetting isPolling
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
       // Reset state
       setStatus('pending');
       setResult(null);
       setError(null);
       setIsPolling(true);
-
-      // Clear any existing intervals
-      stopPolling();
 
       // Start polling
       intervalRef.current = setInterval(() => {

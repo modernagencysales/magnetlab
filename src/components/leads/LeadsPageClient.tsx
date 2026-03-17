@@ -89,6 +89,8 @@ export function LeadsPageClient({
 
   // Skip the initial fetch when server pre-fetched the first page
   const skipInitialFetch = useRef(initialLeads.length > 0 || initialTotal > 0);
+  const searchRef = useRef(search);
+  searchRef.current = search;
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -100,8 +102,8 @@ export function LeadsPageClient({
         offset: page * limit,
         funnelId: selectedFunnel !== 'all' ? selectedFunnel : undefined,
         qualified:
-          qualifiedFilter === 'all' ? undefined : qualifiedFilter === 'qualified' ? true : false,
-        search: search || undefined,
+          qualifiedFilter === 'all' ? undefined : qualifiedFilter === 'true' ? true : false,
+        search: searchRef.current || undefined,
       });
       setLeads(data.leads as Lead[]);
       setTotal(data.total);
@@ -110,7 +112,7 @@ export function LeadsPageClient({
     } finally {
       setLoading(false);
     }
-  }, [page, selectedFunnel, qualifiedFilter, search]);
+  }, [page, selectedFunnel, qualifiedFilter]);
 
   const fetchFunnels = async () => {
     try {
@@ -158,7 +160,7 @@ export function LeadsPageClient({
       const { blob, filename } = await leadsApi.exportLeads({
         funnelId: selectedFunnel !== 'all' ? selectedFunnel : undefined,
         qualified:
-          qualifiedFilter === 'all' ? undefined : qualifiedFilter === 'qualified' ? true : false,
+          qualifiedFilter === 'all' ? undefined : qualifiedFilter === 'true' ? true : false,
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -189,109 +191,109 @@ export function LeadsPageClient({
           title="Leads"
           description={`${total} total leads captured`}
           actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            disabled={exporting || leads.length === 0}
-          >
-            {exporting ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : (
-              <Download className="h-4 w-4 mr-1" />
-            )}
-            Export CSV
-          </Button>
-        }
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={exporting || leads.length === 0}
+            >
+              {exporting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Download className="h-4 w-4 mr-1" />
+              )}
+              Export CSV
+            </Button>
+          }
         />
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Qualified"
-          value={qualifiedCount}
-          icon={<CheckCircle className="text-emerald-500" />}
-        />
-        <StatCard
-          label="Not Qualified"
-          value={unqualifiedCount}
-          icon={<XCircle className="text-destructive" />}
-        />
-        <StatCard
-          label="Pending"
-          value={pendingCount}
-          icon={<Clock className="text-amber-500" />}
-        />
+          <StatCard
+            label="Qualified"
+            value={qualifiedCount}
+            icon={<CheckCircle className="text-emerald-500" />}
+          />
+          <StatCard
+            label="Not Qualified"
+            value={unqualifiedCount}
+            icon={<XCircle className="text-destructive" />}
+          />
+          <StatCard
+            label="Pending"
+            value={pendingCount}
+            icon={<Clock className="text-amber-500" />}
+          />
         </div>
 
         {/* Search & Filters */}
         <div className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <SearchInput
-            placeholder="Search by email or name..."
-            value={search}
-            onValueChange={setSearch}
-            className="min-w-0 flex-1 sm:max-w-xs"
-          />
-          <Button
-            variant={
-              showFilters || selectedFunnel !== 'all' || qualifiedFilter !== 'all'
-                ? 'default'
-                : 'outline'
-            }
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="mr-1 h-4 w-4" />
-            Filters
-            <ChevronDown
-              className={`ml-1 h-3.5 w-3.5 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+              placeholder="Search by email or name..."
+              value={search}
+              onValueChange={setSearch}
+              className="min-w-0 flex-1 sm:max-w-xs"
             />
-          </Button>
+            <Button
+              variant={
+                showFilters || selectedFunnel !== 'all' || qualifiedFilter !== 'all'
+                  ? 'default'
+                  : 'outline'
+              }
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="mr-1 h-4 w-4" />
+              Filters
+              <ChevronDown
+                className={`ml-1 h-3.5 w-3.5 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+              />
+            </Button>
           </div>
 
-        {showFilters && (
-          <Card>
-            <CardContent className="flex gap-4 p-4">
-              <div className="flex-1">
-                <label className="text-xs font-medium text-muted-foreground">Funnel</label>
-                <select
-                  value={selectedFunnel}
-                  onChange={(e) => {
-                    setSelectedFunnel(e.target.value);
-                    setPage(0);
-                  }}
-                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                >
-                  <option value="all">All Funnels</option>
-                  {funnels.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.optinHeadline || f.slug}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-medium text-muted-foreground">Qualification</label>
-                <select
-                  value={qualifiedFilter}
-                  onChange={(e) => {
-                    setQualifiedFilter(e.target.value);
-                    setPage(0);
-                  }}
-                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                >
-                  <option value="all">All Leads</option>
-                  <option value="true">Qualified Only</option>
-                  <option value="false">Not Qualified</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+          {showFilters && (
+            <Card>
+              <CardContent className="flex gap-4 p-4">
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-muted-foreground">Funnel</label>
+                  <select
+                    value={selectedFunnel}
+                    onChange={(e) => {
+                      setSelectedFunnel(e.target.value);
+                      setPage(0);
+                    }}
+                    className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                  >
+                    <option value="all">All Funnels</option>
+                    {funnels.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.optinHeadline || f.slug}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-muted-foreground">Qualification</label>
+                  <select
+                    value={qualifiedFilter}
+                    onChange={(e) => {
+                      setQualifiedFilter(e.target.value);
+                      setPage(0);
+                    }}
+                    className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                  >
+                    <option value="all">All Leads</option>
+                    <option value="true">Qualified Only</option>
+                    <option value="false">Not Qualified</option>
+                  </select>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-          {error && (
+        {error && (
           <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
             <p className="text-sm text-destructive">{error}</p>
           </div>
@@ -302,102 +304,104 @@ export function LeadsPageClient({
           <LoadingCard count={3} />
         ) : leads.length === 0 ? (
           <EmptyState
-          icon={<Mail />}
-          title="No leads yet"
-          description="Leads will appear here once people sign up through your funnel pages."
+            icon={<Mail />}
+            title="No leads yet"
+            description="Leads will appear here once people sign up through your funnel pages."
           />
         ) : (
           <>
             <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Funnel</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leads.map((lead) => (
-                  <TableRow
-                    key={lead.id}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedLead(lead)}
-                  >
-                    <TableCell>
-                      <div>
-                        <p className="text-sm font-medium">{lead.email}</p>
-                        {lead.name && <p className="text-xs text-muted-foreground">{lead.name}</p>}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="text-sm truncate max-w-[180px]">
-                          {lead.leadMagnetTitle || 'Unknown'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">/{lead.funnelSlug}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {lead.isQualified === true && (
-                        <Badge variant="green">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Qualified
-                        </Badge>
-                      )}
-                      {lead.isQualified === false && (
-                        <Badge variant="red">
-                          <XCircle className="h-3 w-3 mr-1" />
-                          Not Qualified
-                        </Badge>
-                      )}
-                      {lead.isQualified === null && (
-                        <Badge variant="orange">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Pending
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {lead.utmSource || <span className="text-muted-foreground">Direct</span>}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(lead.createdAt).toLocaleDateString()}
-                    </TableCell>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Funnel</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Date</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {leads.map((lead) => (
+                    <TableRow
+                      key={lead.id}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedLead(lead)}
+                    >
+                      <TableCell>
+                        <div>
+                          <p className="text-sm font-medium">{lead.email}</p>
+                          {lead.name && (
+                            <p className="text-xs text-muted-foreground">{lead.name}</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-sm truncate max-w-[180px]">
+                            {lead.leadMagnetTitle || 'Unknown'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">/{lead.funnelSlug}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {lead.isQualified === true && (
+                          <Badge variant="green">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Qualified
+                          </Badge>
+                        )}
+                        {lead.isQualified === false && (
+                          <Badge variant="red">
+                            <XCircle className="h-3 w-3 mr-1" />
+                            Not Qualified
+                          </Badge>
+                        )}
+                        {lead.isQualified === null && (
+                          <Badge variant="orange">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pending
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {lead.utmSource || <span className="text-muted-foreground">Direct</span>}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(lead.createdAt).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </Card>
 
             {/* Pagination */}
             {total > limit && (
               <div className="flex items-center justify-between pt-4">
-              <p className="text-xs text-muted-foreground">
-                Showing {page * limit + 1} to {Math.min((page + 1) * limit, total)} of {total}
-              </p>
-              <div className="flex gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={(page + 1) * limit >= total}
-                >
-                  Next
-                </Button>
-              </div>
+                <p className="text-xs text-muted-foreground">
+                  Showing {page * limit + 1} to {Math.min((page + 1) * limit, total)} of {total}
+                </p>
+                <div className="flex gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={(page + 1) * limit >= total}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             )}
           </>

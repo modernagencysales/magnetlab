@@ -117,11 +117,11 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
       setSaving(true);
       setSaved(false);
       try {
-        await brandKitApi.updateBrandKit(updates);
+        await brandKitApi.patchBrandKit(updates);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
-      } catch {
-        // Network error — saved stays false
+      } catch (err) {
+        console.error('Failed to save branding:', err);
       } finally {
         setSaving(false);
       }
@@ -530,10 +530,10 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
             <div>
               <Label>Font Family</Label>
               <Select
-                value={fontUrl ? '__custom__' : fontFamily}
+                value={fontUrl ? 'custom' : fontFamily || 'system-default'}
                 onValueChange={(value) => {
-                  if (value === '__custom__') return;
-                  handleFontFamilyChange(value);
+                  if (value === 'custom') return;
+                  handleFontFamilyChange(value === 'system-default' ? '' : value);
                 }}
                 disabled={!!fontUrl}
               >
@@ -541,13 +541,13 @@ export function BrandingSettings({ initialData }: BrandingSettingsProps) {
                   <SelectValue placeholder="System Default" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">System Default</SelectItem>
+                  <SelectItem value="system-default">System Default</SelectItem>
                   {GOOGLE_FONTS.map((f) => (
                     <SelectItem key={f} value={f}>
                       {f}
                     </SelectItem>
                   ))}
-                  {fontUrl && <SelectItem value="__custom__">Custom Font</SelectItem>}
+                  {fontUrl && <SelectItem value="custom">Custom Font</SelectItem>}
                 </SelectContent>
               </Select>
             </div>

@@ -301,7 +301,9 @@ describe('Email Subscribers API', () => {
 
       expect(response.status).toBe(400);
       expect(json.code).toBe('VALIDATION_ERROR');
-      expect(json.error).toBe('No team found for this user');
+      expect(json.error).toBe(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
     });
   });
 
@@ -537,7 +539,9 @@ describe('Email Subscribers API', () => {
 
       expect(response.status).toBe(400);
       expect(json.code).toBe('VALIDATION_ERROR');
-      expect(json.error).toBe('No team found for this user');
+      expect(json.error).toBe(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
     });
   });
 });

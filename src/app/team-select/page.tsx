@@ -43,11 +43,13 @@ export default function TeamSelectPage() {
 
   const selectTeam = (teamId: string) => {
     document.cookie = `ml-team-context=${teamId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+    router.refresh();
     router.push('/');
   };
 
   const selectPersonal = () => {
     document.cookie = `ml-team-context=personal; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+    router.refresh();
     router.push('/');
   };
 
@@ -71,50 +73,50 @@ export default function TeamSelectPage() {
         </div>
 
         <div className="space-y-4">
-        {/* Personal account option */}
-        <button
-          onClick={selectPersonal}
-          className="flex w-full items-center gap-4 rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
-        >
-          <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-lg text-primary-foreground shrink-0">
-            <Magnet size={18} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm">Personal Account</p>
-            <p className="text-xs text-muted-foreground">Your own dashboard</p>
-          </div>
-          <ArrowRight size={16} className="text-muted-foreground shrink-0" />
-        </button>
-
-        {memberships.length > 0 && (
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-background px-3 text-xs text-muted-foreground">Teams</span>
-            </div>
-          </div>
-        )}
-
-        {memberships.map((m) => (
+          {/* Personal account option */}
           <button
-            key={m.teamId}
-            onClick={() => selectTeam(m.teamId)}
+            onClick={selectPersonal}
             className="flex w-full items-center gap-4 rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
           >
-            <div className="flex items-center justify-center w-10 h-10 bg-violet-500 rounded-lg text-white shrink-0">
-              <UsersRound size={18} />
+            <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-lg text-primary-foreground shrink-0">
+              <Magnet size={18} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{m.teamName}</p>
-              <p className="text-xs text-muted-foreground">
-                {m.role === 'owner' ? 'Owner' : 'Member'}
-              </p>
+              <p className="font-medium text-sm">Personal Account</p>
+              <p className="text-xs text-muted-foreground">Your own dashboard</p>
             </div>
             <ArrowRight size={16} className="text-muted-foreground shrink-0" />
           </button>
-        ))}
+
+          {memberships.length > 0 && (
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-background px-3 text-xs text-muted-foreground">Teams</span>
+              </div>
+            </div>
+          )}
+
+          {memberships.map((m) => (
+            <button
+              key={m.teamId}
+              onClick={() => selectTeam(m.teamId)}
+              className="flex w-full items-center gap-4 rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
+            >
+              <div className="flex items-center justify-center w-10 h-10 bg-violet-500 rounded-lg text-white shrink-0">
+                <UsersRound size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{m.teamName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {m.role === 'owner' ? 'Owner' : 'Member'}
+                </p>
+              </div>
+              <ArrowRight size={16} className="text-muted-foreground shrink-0" />
+            </button>
+          ))}
         </div>
       </div>
     </div>
