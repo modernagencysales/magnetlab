@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
 
             // I1 FIX: Use streaming API for real-time text deltas
             const stream = client.messages.stream({
-              model: 'claude-sonnet-4-20250514',
+              model: 'claude-sonnet-4-6',
               max_tokens: 4096,
               system: systemPrompt,
               tools: tools as Parameters<typeof client.messages.create>[0]['tools'],
