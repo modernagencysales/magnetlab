@@ -19,28 +19,8 @@ export async function handleLeadMagnetTools(
     case 'magnetlab_get_lead_magnet':
       return client.getLeadMagnet(args.id as string);
 
-    case 'magnetlab_create_lead_magnet': {
-      // Brain enrichment: search + synthesize + merge
-      let finalConcept = (args.concept as Record<string, unknown>) || {};
-      let brainMeta: { brain_entries_used?: number; position_used?: boolean } = {};
-
-      if (args.use_brain) {
-        const brainResult = await enrichFromBrain(
-          client,
-          args.title as string,
-          args.brain_query as string | undefined,
-          args.knowledge_entry_ids as string[] | undefined
-        );
-
-        // Merge: manual concept fields take priority over brain-derived
-        finalConcept = mergeConcepts(brainResult.concept, finalConcept);
-        brainMeta = {
-          brain_entries_used: brainResult.brain_entries_used,
-          position_used: brainResult.position_used,
-        };
-      }
-
-      const leadMagnet = await client.createLeadMagnet({
+    case 'magnetlab_create_lead_magnet':
+      return client.createLeadMagnet({
         title: args.title as string,
         archetype: args.archetype as Archetype,
         concept: args.concept as Record<string, unknown> | undefined,
