@@ -12,7 +12,7 @@ import * as publicRepo from '@/server/repositories/public.repo';
 import * as integrationsRepo from '@/server/repositories/integrations.repo';
 import * as leadMagnetsRepo from '@/server/repositories/lead-magnets.repo';
 import * as emailRepo from '@/server/repositories/email.repo';
-import { getDataScope } from '@/lib/utils/team-context';
+import * as teamRepo from '@/server/repositories/team.repo';
 
 const RESEND_EVENT_TYPE_MAP: Record<string, string> = {
   'email.sent': 'sent',
@@ -302,8 +302,8 @@ export async function handleDfy(payload: {
     try {
       const ctx = payload.businessContext || {};
       const archetype = (payload.archetype || 'focused-toolkit') as string;
-      const scope = await getDataScope(payload.userId);
-      const magnet = await leadMagnetsRepo.createLeadMagnet(payload.userId, scope.teamId || null, {
+      const teamId = await teamRepo.getTeamIdByOwnerProfileUserId(payload.userId);
+      const magnet = await leadMagnetsRepo.createLeadMagnet(payload.userId, teamId, {
         title: `DFY Lead Magnet — ${(ctx as { company?: string }).company || 'Client'}`,
         archetype,
         status: 'draft',
