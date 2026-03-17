@@ -352,6 +352,16 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (!res.ok || !res.body) {
+          let errText = `Request failed (${res.status})`;
+          try {
+            const errBody = await res.json();
+            errText = errBody.error || errText;
+          } catch {
+            /* not JSON */
+          }
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantMsgId ? { ...m, content: `⚠️ ${errText}` } : m))
+          );
           setIsStreaming(false);
           return;
         }
@@ -452,6 +462,11 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           // User cancelled -- expected behavior
+        } else {
+          const errMsg = err instanceof Error ? err.message : 'Unknown error';
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantMsgId ? { ...m, content: `⚠️ ${errMsg}` } : m))
+          );
         }
       } finally {
         setIsStreaming(false);
