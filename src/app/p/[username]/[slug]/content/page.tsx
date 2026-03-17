@@ -86,7 +86,7 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
   // Find user by username
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('id')
+    .select('id, name, avatar_url')
     .eq('username', username)
     .single();
 
@@ -125,7 +125,7 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
   // Get lead magnet with content
   const { data: leadMagnet, error: lmError } = await supabase
     .from('lead_magnets')
-    .select('id, title, extracted_content, polished_content, concept, thumbnail_url, interactive_config, team_id')
+    .select('id, title, extracted_content, polished_content, concept, thumbnail_url, interactive_config, team_id, archetype')
     .eq('id', funnel.lead_magnet_id)
     .single();
 
@@ -230,6 +230,9 @@ export default async function PublicContentPage({ params, searchParams }: PagePr
       vslUrl={funnel.vsl_url}
       calendlyUrl={funnel.calendly_url}
       isOwner={canEdit}
+      archetype={leadMagnet.archetype as string | null}
+      authorName={user.name || null}
+      authorAvatarUrl={user.avatar_url || null}
       interactiveConfig={leadMagnet.interactive_config as InteractiveConfig | null}
       leadMagnetId={leadMagnet.id}
       funnelPageId={funnel.id}

@@ -8,6 +8,7 @@ import { TableOfContents } from './TableOfContents';
 import { PolishedContentRenderer } from './PolishedContentRenderer';
 import { InlineContentEditor } from './inline-editor';
 import { ExtractedContentRenderer } from './ExtractedContentRenderer';
+import { PromptVaultRenderer } from './PromptVaultRenderer';
 import { ContentFooter } from './ContentFooter';
 import { VideoEmbed } from '@/components/funnel/public/VideoEmbed';
 import { BookCallDrawer } from './BookCallDrawer';
@@ -46,6 +47,9 @@ interface ContentPageClientProps {
   leadId?: string | null;
   isQualified?: boolean | null;
   hasQuestions?: boolean;
+  archetype?: string | null;
+  authorName?: string | null;
+  authorAvatarUrl?: string | null;
   interactiveConfig?: InteractiveConfig | null;
   sections?: FunnelPageSection[];
   hideBranding?: boolean;
@@ -70,6 +74,9 @@ export function ContentPageClient({
   leadId,
   isQualified = null,
   hasQuestions = false,
+  archetype,
+  authorName,
+  authorAvatarUrl,
   interactiveConfig,
   sections = [],
   hideBranding,
@@ -95,6 +102,9 @@ export function ContentPageClient({
 
   // The content to display (edited or original)
   const displayContent = isEditing ? editContent : polishedContent;
+
+  // Vault mode: focused-toolkit with polished content renders its own hero/search
+  const isVaultMode = archetype === 'focused-toolkit' && !!displayContent && !isEditing;
 
   // Build TOC sections
   const tocSections = displayContent
@@ -187,16 +197,18 @@ export function ContentPageClient({
           padding: '2rem 1.5rem',
         }}
       >
-        {/* Hero */}
-        <div style={{ maxWidth: '700px' }}>
-          <ContentHero
-            title={title}
-            heroSummary={heroSummary}
-            readingTimeMinutes={readingTime}
-            wordCount={wordCount}
-            isDark={isDark}
-          />
-        </div>
+        {/* Hero (skipped in vault mode — vault renders its own) */}
+        {!isVaultMode && (
+          <div style={{ maxWidth: '700px' }}>
+            <ContentHero
+              title={title}
+              heroSummary={heroSummary}
+              readingTimeMinutes={readingTime}
+              wordCount={wordCount}
+              isDark={isDark}
+            />
+          </div>
+        )}
 
         {/* Video */}
         {vslUrl && (
@@ -225,6 +237,14 @@ export function ContentPageClient({
                 primaryColor={primaryColor}
                 onChange={setEditContent}
               />
+            ) : displayContent && archetype === 'focused-toolkit' ? (
+              <PromptVaultRenderer
+                content={displayContent}
+                isDark={isDark}
+                primaryColor={primaryColor}
+                authorName={authorName}
+                authorAvatarUrl={authorAvatarUrl}
+              />
             ) : displayContent ? (
               <PolishedContentRenderer
                 content={displayContent}
@@ -236,8 +256,8 @@ export function ContentPageClient({
             ) : null}
           </div>
 
-          {/* TOC sidebar */}
-          {!isEditing && tocSections.length > 1 && (
+          {/* TOC sidebar (hidden in vault mode) */}
+          {!isEditing && !isVaultMode && tocSections.length > 1 && (
             <TableOfContents sections={tocSections} isDark={isDark} primaryColor={primaryColor} />
           )}
         </div>
