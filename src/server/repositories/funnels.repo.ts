@@ -739,6 +739,7 @@ export async function deleteFunnelIntegration(
 
 export async function createLeadMagnet(row: {
   user_id: string;
+  team_id?: string | null;
   title: string;
   external_url: string;
   archetype: string;

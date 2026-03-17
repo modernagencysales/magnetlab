@@ -41,7 +41,10 @@ export function IClosedWidgetSettings({ integration }: IClosedWidgetSettingsProp
       setResult({ success: true, message: 'iClosed Widget connected!' });
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
-      setResult({ success: false, message: error instanceof Error ? error.message : 'Failed to save' });
+      setResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to save',
+      });
     } finally {
       setSaving(false);
     }
@@ -61,11 +64,19 @@ export function IClosedWidgetSettings({ integration }: IClosedWidgetSettingsProp
   };
 
   return (
-    <div className="rounded-lg border p-4">
+    <div className="rounded-lg border border-border p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
-            <svg className="h-5 w-5 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="h-5 w-5 text-purple-500"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <rect x="2" y="3" width="20" height="14" rx="2" />
               <path d="M8 21h8" />
               <path d="M12 17v4" />
@@ -87,7 +98,8 @@ export function IClosedWidgetSettings({ integration }: IClosedWidgetSettingsProp
       {integration?.is_active ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Widget ID: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metadata?.widget_id}</code>
+            Widget ID:{' '}
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metadata?.widget_id}</code>
           </p>
           {integration.last_verified_at && (
             <p className="text-xs text-muted-foreground">
@@ -97,7 +109,7 @@ export function IClosedWidgetSettings({ integration }: IClosedWidgetSettingsProp
           <button
             onClick={handleDisconnect}
             disabled={disconnecting}
-            className="text-sm text-red-500 hover:text-red-600 transition-colors font-medium"
+            className="text-sm font-medium text-destructive transition-colors hover:opacity-80"
           >
             {disconnecting ? (
               <span className="flex items-center gap-2">
@@ -134,8 +146,14 @@ export function IClosedWidgetSettings({ integration }: IClosedWidgetSettingsProp
           </button>
 
           {result && (
-            <p className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-red-500'}`}>
-              {result.success ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+            <p
+              className={`flex items-center gap-2 text-sm ${result.success ? 'text-green-600' : 'text-destructive'}`}
+            >
+              {result.success ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
               {result.message}
             </p>
           )}

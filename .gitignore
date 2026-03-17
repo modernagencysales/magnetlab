@@ -2,6 +2,7 @@
 node_modules
 .pnp
 .pnp.js
+.swc
 
 # Testing
 coverage
@@ -56,3 +57,5 @@ test-results/
 
 # Local data dumps (use scripts/fixtures/ for committed sample data)
 data/
+
+*.log

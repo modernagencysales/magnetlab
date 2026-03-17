@@ -1,12 +1,13 @@
 name: Deploy
 
+# Deployment standards:
+# - main → dev environment (preview)
+# - release/* → production environment
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main]
-  release:
-    types: [published]
+    branches: [main, 'release/**']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,15 +18,15 @@ env:
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
 jobs:
-  deploy-staging:
-    name: Deploy to Staging
+  deploy-dev:
+    name: Deploy to Dev
     runs-on: ubuntu-latest
     if: >
       github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure') &&
       github.event.workflow_run.head_branch == 'main'
     environment:
-      name: staging
+      name: dev
       url: ${{ steps.deploy.outputs.url }}
 
     steps:
@@ -41,8 +42,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: "10"
 
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest
@@ -53,7 +52,7 @@ jobs:
       - name: Build Project Artifacts
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Deploy to Staging
+      - name: Deploy to Dev
         id: deploy
         run: |
           url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
@@ -62,7 +61,10 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
+    if: >
+      github.event_name == 'workflow_run' &&
+      (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure') &&
+      startsWith(github.event.workflow_run.head_branch, 'release/')
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
@@ -70,6 +72,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -78,8 +82,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: "10"
 
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest

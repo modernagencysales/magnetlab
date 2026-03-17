@@ -12,6 +12,17 @@ import {
   ArrowRight,
   X,
 } from 'lucide-react';
+import {
+  Button,
+  Input,
+  Textarea,
+  Label,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@magnetlab/magnetui';
 import type {
   BusinessContext,
   ExtractionResult,
@@ -177,14 +188,14 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
               adjusting.
             </p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={resetToIdle}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             title="Clear this extraction and paste new content"
           >
             Start over
-          </button>
+          </Button>
         </div>
 
         {/* Suggestions */}
@@ -259,21 +270,22 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
                           </p>
                         </div>
                         <div className="flex gap-1.5 flex-shrink-0">
-                          <button
-                            type="button"
+                          <Button
+                            size="sm"
                             onClick={() => applySuggestion(s, originalIndex)}
-                            className="px-2.5 py-1 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors flex items-center gap-1"
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
                           >
                             Apply <ArrowRight className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => dismissSuggestion(originalIndex)}
-                            className="p-1 text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+                            className="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300"
                             title="Dismiss"
                           >
                             <X className="h-3.5 w-3.5" />
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -345,14 +357,10 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
 
         {/* Action Buttons */}
         <div className="flex gap-3 pt-4 border-t">
-          <button
-            type="button"
-            onClick={handleUseContext}
-            className="flex-1 px-4 py-3 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-          >
+          <Button onClick={handleUseContext} className="flex-1">
             <Check className="h-4 w-4" />
             Use This Context
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -370,10 +378,10 @@ export function SmartImportTab({ onExtracted }: SmartImportTabProps) {
 
       {/* Textarea */}
       <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-2">
+        <Label className="block text-xs font-medium text-muted-foreground mb-2">
           Paste Your Content
-        </label>
-        <textarea
+        </Label>
+        <Textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder={`Paste your content here...
@@ -385,7 +393,7 @@ Examples of what works well:
 • Course descriptions
 • Client testimonials`}
           rows={10}
-          className="w-full px-4 py-3 bg-muted/50 dark:bg-muted/20 border border-border rounded-lg text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors resize-none"
+          className="resize-none"
         />
         <p className="text-xs text-muted-foreground mt-1">
           {content.length} characters {content.length < 50 && content.length > 0 && '(minimum 50)'}
@@ -400,15 +408,14 @@ Examples of what works well:
       )}
 
       {/* Extract Button */}
-      <button
-        type="button"
+      <Button
         onClick={handleExtract}
         disabled={!content.trim() || content.trim().length < 50}
-        className="w-full px-4 py-3 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        className="w-full"
       >
         <Sparkles className="h-4 w-4" />
         Extract Business Context
-      </button>
+      </Button>
     </div>
   );
 }
@@ -464,14 +471,15 @@ function ExtractedField({
       <div className="bg-muted/50 rounded-lg p-3 border">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">{label}</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setIsEditing(true)}
-            className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"
+            className="text-xs text-primary hover:text-primary/80"
           >
             <Edit2 className="h-3 w-3" />
             Add
-          </button>
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground mt-1 italic">Not found in content</p>
       </div>
@@ -486,54 +494,46 @@ function ExtractedField({
           <ConfidenceBadge confidence={confidence} />
         </div>
         {!isEditing && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setIsEditing(true)}
-            className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"
+            className="text-xs text-primary hover:text-primary/80"
           >
             <Edit2 className="h-3 w-3" />
             Edit
-          </button>
+          </Button>
         )}
       </div>
 
       {isEditing ? (
         <div className="space-y-2">
           {type === 'select' && options ? (
-            <select
-              value={value || ''}
-              onChange={(e) => onChange(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg bg-background text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="">Select...</option>
-              {options.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <Select value={value || ''} onValueChange={onChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : type === 'textarea' ? (
-            <textarea
+            <Textarea
               value={value || ''}
               onChange={(e) => onChange(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border rounded-lg bg-background text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+              className="resize-none"
             />
           ) : (
-            <input
-              type="text"
-              value={value || ''}
-              onChange={(e) => onChange(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg bg-background text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
+            <Input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} />
           )}
-          <button
-            type="button"
-            onClick={() => setIsEditing(false)}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
+          <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
             Done
-          </button>
+          </Button>
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
@@ -608,10 +608,11 @@ function ExtractedArrayField({
           )}
         </div>
         {hasMore && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onToggle}
-            className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"
+            className="text-xs text-primary hover:text-primary/80"
           >
             {expanded ? (
               <>
@@ -624,7 +625,7 @@ function ExtractedArrayField({
                 Show all
               </>
             )}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -636,41 +637,44 @@ function ExtractedArrayField({
             <li key={index} className="flex items-start gap-2 group">
               {editingIndex === index ? (
                 <div className="flex-1 flex gap-2">
-                  <input
+                  <Input
                     type="text"
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                    className="flex-1 px-2 py-1 border rounded bg-background text-foreground text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="flex-1"
                     autoFocus
                   />
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={saveEdit}
-                    className="text-xs text-primary hover:text-primary/80"
+                    className="text-xs text-primary"
                   >
                     Save
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <>
                   <span className="text-primary">•</span>
                   <span className="text-sm text-muted-foreground flex-1">{item}</span>
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => startEdit(index)}
-                      className="text-xs text-muted-foreground hover:text-foreground"
+                      className="text-xs h-auto py-0 px-1"
                     >
                       Edit
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => removeItem(index)}
-                      className="text-xs text-destructive hover:text-destructive/80"
+                      className="text-xs text-destructive hover:text-destructive/80 h-auto py-0 px-1"
                     >
                       Remove
-                    </button>
+                    </Button>
                   </div>
                 </>
               )}
@@ -681,22 +685,17 @@ function ExtractedArrayField({
 
       {/* Add new item */}
       <div className="flex gap-2">
-        <input
+        <Input
           type="text"
           value={newItem}
           onChange={(e) => setNewItem(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addItem()}
           placeholder={`Add ${label.toLowerCase()}...`}
-          className="flex-1 px-2 py-1 border rounded bg-background text-foreground text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+          className="flex-1"
         />
-        <button
-          type="button"
-          onClick={addItem}
-          disabled={!newItem.trim()}
-          className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <Button variant="outline" size="sm" onClick={addItem} disabled={!newItem.trim()}>
           Add
-        </button>
+        </Button>
       </div>
     </div>
   );

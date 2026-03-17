@@ -17,7 +17,12 @@ const eslintConfig = [
       ".next/**",
       "out/**",
       "build/**",
+      "**/dist/**",
+      "packages/**",
       "public/**",
+      "coverage/**",
+      "playwright-report/**",
+      "test-results/**",
       "next-env.d.ts",
       "scripts/**",
       "e2e/**",
@@ -56,6 +61,24 @@ const eslintConfig = [
               group: ["*/server/*", "@/server/*"],
               message:
                 "Client files must not import from src/server/. Use @/frontend/api/* instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // Enforce magnetui design system: all UI primitives come from @magnetlab/magnetui
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/components/ui/*"],
+              message:
+                "Import from '@magnetlab/magnetui' instead of '@/components/ui/*'.",
             },
           ],
         },

@@ -48,8 +48,8 @@ const SectionBridge: React.FC<SectionBridgeProps> = ({
 
   const variantStyles: Record<InternalVariant, string> = {
     default: '',
-    accent: 'border-y border-zinc-200 dark:border-zinc-800',
-    gradient: 'border-t border-zinc-200 dark:border-zinc-800',
+    accent: 'border-y border-border',
+    gradient: 'border-t border-border',
   };
 
   const variantInline: React.CSSProperties =

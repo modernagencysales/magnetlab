@@ -6,8 +6,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Plus, X, ArrowRight, Loader2, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button, Input } from '@magnetlab/magnetui';
 import type { RestylePlan } from '@/lib/types/funnel';
 import * as funnelApi from '@/frontend/api/funnel';
 
@@ -128,7 +127,9 @@ export function RestylePanel({ funnelId, onApplied }: RestylePanelProps) {
             <Input
               type="url"
               value={url}
-              onChange={(e) => handleUrlChange(i, e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                handleUrlChange(i, e.target.value)
+              }
               placeholder="https://example.com (inspiration URL)"
               className="flex-1"
             />

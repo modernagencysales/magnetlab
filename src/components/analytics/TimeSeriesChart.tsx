@@ -7,7 +7,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from '@/components/ui/chart';
+} from '@magnetlab/magnetui/charts';
 
 interface TimeSeriesChartProps {
   data: Array<{ date: string; value: number }>;
@@ -56,10 +56,7 @@ export function TimeSeriesChart({
 
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
-      <AreaChart
-        data={chartData}
-        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-      >
+      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id={`fill-${label}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.3} />
@@ -74,20 +71,14 @@ export function TimeSeriesChart({
           tickMargin={8}
           interval={tickInterval}
         />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
-          allowDecimals={false}
-        />
+        <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
         <ChartTooltip
           content={
             <ChartTooltipContent
               labelFormatter={(_value, payload) => {
                 if (payload && payload.length > 0) {
                   const item = payload[0];
-                  const dateStr =
-                    item?.payload?.date ?? '';
+                  const dateStr = item?.payload?.date ?? '';
                   return formatDateLabel(dateStr);
                 }
                 return '';

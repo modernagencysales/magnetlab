@@ -3,6 +3,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Globe, ExternalLink, Edit, Plus, Loader2, Upload, Trash2 } from 'lucide-react';
+import {
+  PageContainer,
+  PageTitle,
+  Button,
+  EmptyState,
+  Card,
+  CardContent,
+  Badge,
+  Skeleton,
+} from '@magnetlab/magnetui';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@magnetlab/magnetui';
 import PagesListClient from '@/components/pages/PagesListClient';
 import type { PageListItem } from '@/components/pages/PagesListClient';
 import * as funnelApi from '@/frontend/api/funnel';
@@ -182,255 +193,237 @@ export default function PagesPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <PageContainer maxWidth="xl">
+        <div className="space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-24 rounded-lg" />
+            ))}
+          </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
-  const tabs: { id: TabType; label: string; count: number }[] = [
-    { id: 'pages', label: 'Funnel Pages', count: pages.length },
-    { id: 'libraries', label: 'Libraries', count: libraries.length },
-    { id: 'resources', label: 'External Resources', count: resources.length },
-  ];
+  const tabActions: Record<TabType, React.ReactNode> = {
+    pages: (
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/pages/import">
+            <Upload className="mr-1 h-4 w-4" />
+            Import
+          </Link>
+        </Button>
+        <Button size="sm" asChild>
+          <Link href="/pages/new">
+            <Plus className="mr-1 h-4 w-4" />
+            Create Page
+          </Link>
+        </Button>
+      </div>
+    ),
+    libraries: (
+      <Button size="sm" asChild>
+        <Link href="/assets/libraries/new">
+          <Plus className="h-4 w-4 mr-1" />
+          New Library
+        </Link>
+      </Button>
+    ),
+    resources: (
+      <Button size="sm" asChild>
+        <Link href="/assets/external/new">
+          <Plus className="h-4 w-4 mr-1" />
+          Add Resource
+        </Link>
+      </Button>
+    ),
+  };
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Pages & Assets</h1>
-          <p className="text-muted-foreground">
-            Manage your funnel pages, libraries, and external resources
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {activeTab === 'pages' && (
-            <>
-              <Link
-                href="/pages/import"
-                className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-secondary transition-colors"
-              >
-                <Upload className="h-4 w-4" />
-                Import
-              </Link>
-              <Link
-                href="/pages/new"
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                <Plus className="h-4 w-4" />
-                Create Page
-              </Link>
-            </>
-          )}
-          {activeTab === 'libraries' && (
-            <Link
-              href="/assets/libraries/new"
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4" />
-              New Library
-            </Link>
-          )}
-          {activeTab === 'resources' && (
-            <Link
-              href="/assets/external/new"
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4" />
-              Add Resource
-            </Link>
-          )}
-        </div>
-      </div>
+    <PageContainer maxWidth="xl">
+      <div className="space-y-6">
+        <PageTitle
+          title="Pages & Assets"
+          description="Manage your funnel pages, libraries, and external resources"
+          actions={tabActions[activeTab]}
+        />
 
-      {!user?.username && (
-        <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            <strong>Set a username</strong> to enable public page URLs.{' '}
-            <Link href="/settings" className="underline hover:no-underline">
-              Go to Settings
-            </Link>
-          </p>
-        </div>
-      )}
+        {!user?.username && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              <strong>Set a username</strong> to enable public page URLs.{' '}
+              <Link href="/settings" className="underline hover:no-underline">
+                Go to Settings
+              </Link>
+            </p>
+          </div>
+        )}
 
-      {/* Tabs */}
-      <div className="mb-6 flex border-b">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab.label}
-            {tab.count > 0 && (
-              <span className="ml-1.5 text-xs text-muted-foreground">({tab.count})</span>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
+          <TabsList variant="pill" className="mb-6">
+            <TabsTrigger value="pages" variant="pill">
+              Funnel Pages
+              {pages.length > 0 && (
+                <Badge variant="count" className="ml-1.5">
+                  {pages.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="libraries" variant="pill">
+              Libraries
+              {libraries.length > 0 && (
+                <Badge variant="count" className="ml-1.5">
+                  {libraries.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="resources" variant="pill">
+              External Resources
+              {resources.length > 0 && (
+                <Badge variant="count" className="ml-1.5">
+                  {resources.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pages" className="mt-0">
+            {pages.length === 0 ? (
+              <EmptyState
+                icon={<Globe />}
+                title="No pages yet"
+                description="Create a capture page to start collecting leads."
+                action={
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/pages/import">
+                        <Upload className="mr-1 h-4 w-4" />
+                        Import
+                      </Link>
+                    </Button>
+                    <Button size="sm" asChild>
+                      <Link href="/pages/new">
+                        <Plus className="mr-1 h-4 w-4" />
+                        Create Page
+                      </Link>
+                    </Button>
+                  </div>
+                }
+              />
+            ) : (
+              <PagesListClient items={pageListItems} />
             )}
-          </button>
-        ))}
-      </div>
+          </TabsContent>
 
-      {/* Funnel Pages Tab */}
-      {activeTab === 'pages' && (
-        <>
-          {pages.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-12 text-center">
-              <Globe className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium">No pages yet</h3>
-              <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-                Create a capture page to start collecting leads.
-              </p>
-              <div className="mt-6 flex items-center justify-center gap-3">
-                <Link
-                  href="/pages/import"
-                  className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-secondary transition-colors"
-                >
-                  <Upload className="h-4 w-4" />
-                  Import
-                </Link>
-                <Link
-                  href="/pages/new"
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Page
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <PagesListClient items={pageListItems} />
-          )}
-        </>
-      )}
-
-      {/* Libraries Tab */}
-      {activeTab === 'libraries' && (
-        <>
-          {libraries.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-12 text-center">
-              <span className="mx-auto block text-5xl mb-4">📚</span>
-              <h3 className="text-lg font-medium">No libraries yet</h3>
-              <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-                Libraries let you group multiple lead magnets and external resources into a single
-                shareable page.
-              </p>
-              <Link
-                href="/assets/libraries/new"
-                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                <Plus className="h-4 w-4" />
-                Create Library
-              </Link>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {libraries.map((lib) => (
-                <div
-                  key={lib.id}
-                  className="flex items-center justify-between rounded-lg border bg-card p-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-xl">
-                      {lib.icon}
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{lib.name}</h3>
-                      <p className="text-sm text-muted-foreground">/{lib.slug}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/assets/libraries/${lib.id}`}
-                      className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    >
-                      <Edit className="h-4 w-4" />
-                      Manage
+          <TabsContent value="libraries" className="mt-0">
+            {libraries.length === 0 ? (
+              <EmptyState
+                icon={<span className="text-2xl">📚</span>}
+                title="No libraries yet"
+                description="Libraries let you group multiple lead magnets and external resources into a single shareable page."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/assets/libraries/new">
+                      <Plus className="mr-1 h-4 w-4" />
+                      Create Library
                     </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="grid gap-4">
+                {libraries.map((lib) => (
+                  <Card key={lib.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-lg">
+                          {lib.icon}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{lib.name}</p>
+                          <p className="text-xs text-muted-foreground">/{lib.slug}</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/assets/libraries/${lib.id}`}>
+                          <Edit className="mr-1 h-3.5 w-3.5" />
+                          Manage
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
-      {/* External Resources Tab */}
-      {activeTab === 'resources' && (
-        <>
-          {resources.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-12 text-center">
-              <span className="mx-auto block text-5xl mb-4">🔗</span>
-              <h3 className="text-lg font-medium">No external resources yet</h3>
-              <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-                Add links to external content like YouTube videos, tools, or guides. Track clicks
-                when used in libraries.
-              </p>
-              <Link
-                href="/assets/external/new"
-                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                <Plus className="h-4 w-4" />
-                Add Resource
-              </Link>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {resources.map((resource) => (
-                <div
-                  key={resource.id}
-                  className="flex items-center justify-between rounded-lg border bg-card p-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-xl">
-                      {resource.icon}
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{resource.title}</h3>
-                      <p className="text-sm text-muted-foreground truncate max-w-xs">
-                        {resource.url}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {resource.clickCount > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {resource.clickCount} clicks
-                      </span>
-                    )}
-                    <a
-                      href={resource.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                    <button
-                      onClick={() => handleDeleteResource(resource.id)}
-                      disabled={deletingResource === resource.id}
-                      className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 disabled:opacity-50"
-                    >
-                      {deletingResource === resource.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </div>
+          <TabsContent value="resources" className="mt-0">
+            {resources.length === 0 ? (
+              <EmptyState
+                icon={<span className="text-2xl">🔗</span>}
+                title="No external resources yet"
+                description="Add links to external content like YouTube videos, tools, or guides. Track clicks when used in libraries."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/assets/external/new">
+                      <Plus className="mr-1 h-4 w-4" />
+                      Add Resource
+                    </Link>
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="grid gap-4">
+                {resources.map((resource) => (
+                  <Card key={resource.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-lg">
+                          {resource.icon}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{resource.title}</p>
+                          <p className="text-xs text-muted-foreground truncate max-w-xs">
+                            {resource.url}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {resource.clickCount > 0 && (
+                          <span className="mr-2 text-xs text-muted-foreground">
+                            {resource.clickCount} clicks
+                          </span>
+                        )}
+                        <Button variant="ghost" size="icon-sm" asChild>
+                          <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleDeleteResource(resource.id)}
+                          disabled={deletingResource === resource.id}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          {deletingResource === resource.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </PageContainer>
   );
 }

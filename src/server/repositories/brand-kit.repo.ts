@@ -12,18 +12,16 @@ const BRAND_KIT_COLUMNS =
 
 export async function getBrandKit(scope: DataScope): Promise<Record<string, unknown> | null> {
   const supabase = createSupabaseAdminClient();
-  const query = applyScope(
-    supabase.from('brand_kits').select(BRAND_KIT_COLUMNS),
-    scope,
-  );
+  const query = applyScope(supabase.from('brand_kits').select(BRAND_KIT_COLUMNS), scope);
   const { data, error } = await query.single();
-  if (error && error.code !== 'PGRST116') throw new Error(`brand-kit.getBrandKit: ${error.message}`);
+  if (error && error.code !== 'PGRST116')
+    throw new Error(`brand-kit.getBrandKit: ${error.message}`);
   return (data ?? null) as Record<string, unknown> | null;
 }
 
 export async function upsertBrandKit(
   scope: DataScope,
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   const supabase = createSupabaseAdminClient();
   const onConflict = scope.type === 'team' && scope.teamId ? 'team_id' : 'user_id';
@@ -36,15 +34,24 @@ export async function upsertBrandKit(
   return data as Record<string, unknown>;
 }
 
+/** Partial update — only touches fields in the payload. */
+export async function updateBrandKit(
+  scope: DataScope,
+  updates: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const supabase = createSupabaseAdminClient();
+  const query = applyScope(supabase.from('brand_kits').update(updates), scope);
+  const { data, error } = await query.select().single();
+  if (error) throw new Error(`brand-kit.updateBrandKit: ${error.message}`);
+  return data as Record<string, unknown>;
+}
+
 /** Update saved_ideation_result by user_id (for external ideate). */
 export async function updateSavedIdeationByUserId(
   userId: string,
-  payload: { saved_ideation_result: unknown; ideation_generated_at: string },
+  payload: { saved_ideation_result: unknown; ideation_generated_at: string }
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase
-    .from('brand_kits')
-    .update(payload)
-    .eq('user_id', userId);
+  const { error } = await supabase.from('brand_kits').update(payload).eq('user_id', userId);
   if (error) throw new Error(`brand-kit.updateSavedIdeationByUserId: ${error.message}`);
 }

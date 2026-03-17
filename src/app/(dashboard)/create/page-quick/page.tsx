@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Globe, Loader2 } from 'lucide-react';
+import { PageContainer, Button } from '@magnetlab/magnetui';
 import * as landingPageApi from '@/frontend/api/landing-page';
 
 export default function QuickCreatePage() {
@@ -33,68 +34,73 @@ export default function QuickCreatePage() {
   }
 
   return (
-    <div className="container mx-auto flex max-w-lg flex-col items-center px-4 py-16">
-      <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-        <Globe className="h-6 w-6 text-primary" />
+    <PageContainer maxWidth="lg">
+      <div className="mx-auto flex max-w-lg flex-col items-center">
+        <div className="space-y-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+              <Globe className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="mt-6 text-2xl font-bold">Create a Landing Page</h1>
+            <p className="mt-1 text-muted-foreground">
+              Enter a title and we&apos;ll generate your opt-in page copy with AI.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="w-full space-y-6">
+            <div>
+              <label htmlFor="title" className="mb-2 block text-sm font-medium">
+                What&apos;s your landing page about?
+              </label>
+              <input
+                id="title"
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. SaaS Growth Playbook"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="description" className="mb-2 block text-sm font-medium">
+                Describe what you&apos;re offering{' '}
+                <span className="text-muted-foreground">
+                  (optional — helps AI write better copy)
+                </span>
+              </label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. A step-by-step guide to scaling B2B SaaS from $0 to $10K MRR using cold outbound and content marketing"
+                rows={3}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={loading}
+              />
+            </div>
+
+            {error && (
+              <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={loading || !title.trim()}>
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  Creating your page...
+                </>
+              ) : (
+                'Create Landing Page'
+              )}
+            </Button>
+          </form>
+        </div>
       </div>
-
-      <h1 className="mb-2 text-2xl font-bold">Create a Landing Page</h1>
-      <p className="mb-8 text-center text-muted-foreground">
-        Enter a title and we&apos;ll generate your opt-in page copy with AI.
-      </p>
-
-      <form onSubmit={handleSubmit} className="w-full space-y-4">
-        <div>
-          <label htmlFor="title" className="mb-1.5 block text-sm font-medium">
-            What&apos;s your landing page about?
-          </label>
-          <input
-            id="title"
-            type="text"
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. SaaS Growth Playbook"
-            className="w-full rounded-lg border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            disabled={loading}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="description" className="mb-1.5 block text-sm font-medium">
-            Describe what you&apos;re offering{' '}
-            <span className="text-muted-foreground">(optional — helps AI write better copy)</span>
-          </label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="e.g. A step-by-step guide to scaling B2B SaaS from $0 to $10K MRR using cold outbound and content marketing"
-            rows={3}
-            className="w-full rounded-lg border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            disabled={loading}
-          />
-        </div>
-
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading || !title.trim()}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Creating your page...
-            </>
-          ) : (
-            'Create Landing Page'
-          )}
-        </button>
-      </form>
-    </div>
+    </PageContainer>
   );
 }

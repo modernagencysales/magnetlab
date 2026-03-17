@@ -56,7 +56,9 @@ export async function POST(request: Request) {
 
     const scope = await requireTeamScope(session.user.id);
     if (!scope?.teamId) {
-      return ApiErrors.validationError('No team found for this user');
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
     }
 
     const teamId = scope.teamId;
@@ -94,7 +96,12 @@ export async function POST(request: Request) {
 
     // Locate columns by header name (flexible matching)
     const emailIdx = findColumnIndex(headers, ['email', 'email_address', 'e-mail']);
-    const firstNameIdx = findColumnIndex(headers, ['first_name', 'firstname', 'first name', 'fname']);
+    const firstNameIdx = findColumnIndex(headers, [
+      'first_name',
+      'firstname',
+      'first name',
+      'fname',
+    ]);
     const lastNameIdx = findColumnIndex(headers, ['last_name', 'lastname', 'last name', 'lname']);
 
     if (emailIdx === -1) {

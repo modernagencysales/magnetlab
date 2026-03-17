@@ -1044,7 +1044,7 @@ export async function deleteFunnelIntegration(
   funnelPageId: string,
   provider: string
 ): Promise<void> {
-  if (!isEmailMarketingProvider(provider)) {
+  if (!isValidFunnelProvider(provider)) {
     throw Object.assign(new Error(`Invalid provider: ${provider}`), { statusCode: 400 });
   }
   return funnelsRepo.deleteFunnelIntegration(userId, funnelPageId, provider);
@@ -1062,7 +1062,8 @@ interface BulkResult {
 
 export async function bulkCreateFunnels(
   userId: string,
-  pages: BulkPageItemInput[]
+  pages: BulkPageItemInput[],
+  teamId?: string | null
 ): Promise<{ created: number; failed: number; results: BulkResult[] }> {
   const profile = await funnelsRepo.getUserProfileForBulk(userId);
   if (!profile) throw new Error('Failed to load user profile');
@@ -1093,6 +1094,7 @@ export async function bulkCreateFunnels(
 
       const lm = await funnelsRepo.createLeadMagnet({
         user_id: userId,
+        team_id: teamId || null,
         title: page.title,
         external_url: page.leadMagnetUrl,
         archetype: 'resource-list',
@@ -1111,6 +1113,7 @@ export async function bulkCreateFunnels(
           .insert({
             lead_magnet_id: lm.id,
             user_id: userId,
+            team_id: teamId || null,
             slug,
             optin_headline: page.optinHeadline,
             optin_subline: page.optinSubline || null,

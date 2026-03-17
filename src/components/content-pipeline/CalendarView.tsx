@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import {
   format,
   startOfMonth,
@@ -61,7 +62,10 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
   const monthEnd = currentMonth ? endOfMonth(currentMonth) : null;
   const calendarStart = monthStart ? startOfWeek(monthStart) : null;
   const calendarEnd = monthEnd ? endOfWeek(monthEnd) : null;
-  const days = calendarStart && calendarEnd ? eachDayOfInterval({ start: calendarStart, end: calendarEnd }) : [];
+  const days =
+    calendarStart && calendarEnd
+      ? eachDayOfInterval({ start: calendarStart, end: calendarEnd })
+      : [];
 
   const getPostsForDay = (day: Date) =>
     posts.filter((p) => p.scheduled_time && isSameDay(new Date(p.scheduled_time), day));
@@ -84,35 +88,41 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Month Navigation */}
-      <div className="mb-4 flex items-center justify-between">
-        <button
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-          className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
         >
           <ChevronLeft className="h-5 w-5" />
-        </button>
+        </Button>
         <h3 className="text-base font-semibold">{format(currentMonth, 'MMMM yyyy')}</h3>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => { setCurrentMonth(new Date()); setToday(new Date()); }}
-            className="rounded-lg border border-border px-3 py-1 text-xs font-medium hover:bg-muted transition-colors"
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setCurrentMonth(new Date());
+              setToday(new Date());
+            }}
           >
             Today
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-            className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
           >
             <ChevronRight className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Empty state hint */}
       {!loading && posts.length === 0 && onCreatePost && (
-        <div className="mb-4 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 text-center">
+        <div className="rounded-lg border border-dashed border-border bg-primary/5 p-4 text-center">
           <p className="text-sm text-muted-foreground">Click any date to create a post</p>
         </div>
       )}
@@ -124,7 +134,7 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
       ) : (
         <>
           {/* Day Headers */}
-          <div className="mb-1 grid grid-cols-7 gap-px">
+          <div className="mb-2 grid grid-cols-7 gap-px">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
               <div key={day} className="py-1 text-center text-xs font-medium text-muted-foreground">
                 {day}
@@ -133,7 +143,7 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-px rounded-lg border overflow-hidden">
+          <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-border">
             {days.map((day) => {
               const dayPosts = getPostsForDay(day);
               const isToday = today ? isSameDay(day, today) : false;
@@ -152,11 +162,13 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
                   )}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={cn(
-                      'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs',
-                      isToday && 'bg-primary text-primary-foreground font-medium',
-                      !isCurrentMonth && 'text-muted-foreground/50'
-                    )}>
+                    <span
+                      className={cn(
+                        'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs',
+                        isToday && 'bg-primary text-primary-foreground font-medium',
+                        !isCurrentMonth && 'text-muted-foreground/50'
+                      )}
+                    >
                       {format(day, 'd')}
                     </span>
                     {isEmpty && isCurrentMonth && onCreatePost && (
@@ -170,14 +182,18 @@ export function CalendarView({ onCreatePost }: CalendarViewProps) {
                           key={post.id}
                           className={cn(
                             'h-1.5 w-1.5 rounded-full',
-                            post.status === 'published' ? 'bg-green-500' :
-                            post.status === 'scheduled' ? 'bg-blue-500' :
-                            'bg-amber-500'
+                            post.status === 'published'
+                              ? 'bg-green-500'
+                              : post.status === 'scheduled'
+                                ? 'bg-blue-500'
+                                : 'bg-amber-500'
                           )}
                         />
                       ))}
                       {dayPosts.length > 3 && (
-                        <span className="text-[9px] text-muted-foreground">+{dayPosts.length - 3}</span>
+                        <span className="text-[9px] text-muted-foreground">
+                          +{dayPosts.length - 3}
+                        </span>
                       )}
                     </div>
                   )}

@@ -19,7 +19,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id: flowId, stepId } = await params;
-    if (!isValidUUID(flowId) || !isValidUUID(stepId)) return ApiErrors.validationError('Invalid ID format');
+    if (!isValidUUID(flowId) || !isValidUUID(stepId))
+      return ApiErrors.validationError('Invalid ID format');
 
     const body = await request.json();
     const parsed = updateStepSchema.safeParse(body);
@@ -31,7 +32,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const updates = parsed.data;
     if (Object.keys(updates).length === 0) return ApiErrors.validationError('No fields to update');
@@ -39,7 +43,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const result = await emailService.updateFlowStep(scope.teamId, flowId, stepId, updates);
     if (!result.success) {
       if (result.error === 'not_found') return ApiErrors.notFound('Step');
-      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
+      if (result.error === 'validation')
+        return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to update step');
     }
     return NextResponse.json({ step: result.step });
@@ -55,15 +60,20 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const { id: flowId, stepId } = await params;
-    if (!isValidUUID(flowId) || !isValidUUID(stepId)) return ApiErrors.validationError('Invalid ID format');
+    if (!isValidUUID(flowId) || !isValidUUID(stepId))
+      return ApiErrors.validationError('Invalid ID format');
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const result = await emailService.deleteFlowStep(scope.teamId, flowId, stepId);
     if (!result.success) {
       if (result.error === 'not_found') return ApiErrors.notFound('Step');
-      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
+      if (result.error === 'validation')
+        return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to delete step');
     }
     return new NextResponse(null, { status: 204 });

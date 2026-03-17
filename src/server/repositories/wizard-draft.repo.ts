@@ -23,7 +23,7 @@ export async function listDrafts(scope: DataScope): Promise<DraftRow[]> {
       .select('id, wizard_state, current_step, draft_title, updated_at')
       .or('expires_at.is.null,expires_at.gt.now()')
       .not('wizard_state', 'eq', '{}'),
-    scope,
+    scope
   );
   const { data, error } = await query.order('updated_at', { ascending: false });
   if (error) throw new Error(`wizard-draft.listDrafts: ${error.message}`);
@@ -39,18 +39,23 @@ export async function updateDraft(
     draft_title: string;
     extraction_answers?: Record<string, unknown>;
     selected_concept_index?: number | null;
-  },
+    team_id?: string | null;
+  }
 ): Promise<void> {
   const supabase = createSupabaseAdminClient();
+  const updatePayload: Record<string, unknown> = {
+    wizard_state: payload.wizard_state,
+    current_step: payload.current_step,
+    draft_title: payload.draft_title,
+    extraction_answers: payload.extraction_answers ?? {},
+    selected_concept_index: payload.selected_concept_index,
+  };
+  if (payload.team_id !== undefined) {
+    updatePayload.team_id = payload.team_id;
+  }
   const { error } = await supabase
     .from('extraction_sessions')
-    .update({
-      wizard_state: payload.wizard_state,
-      current_step: payload.current_step,
-      draft_title: payload.draft_title,
-      extraction_answers: payload.extraction_answers ?? {},
-      selected_concept_index: payload.selected_concept_index,
-    })
+    .update(updatePayload)
     .eq('id', draftId)
     .eq('user_id', userId);
   if (error) throw new Error(`wizard-draft.updateDraft: ${error.message}`);
@@ -65,7 +70,7 @@ export async function createDraft(
     draft_title: string;
     extraction_answers?: Record<string, unknown>;
     selected_concept_index?: number | null;
-  },
+  }
 ): Promise<{ id: string }> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase

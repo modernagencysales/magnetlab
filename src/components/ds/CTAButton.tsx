@@ -33,12 +33,12 @@ const CTAButton: React.FC<CTAButtonProps> = ({
   const [isHovered, setIsHovered] = useState(false);
 
   const baseStyles =
-    'inline-flex flex-col items-center justify-center gap-0 font-medium rounded-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-950';
+    'inline-flex flex-col items-center justify-center gap-0 font-medium rounded-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-background';
 
   const sizeStyles = size === 'large' ? 'px-8 py-4 text-lg' : 'px-6 py-3 text-base';
 
   const secondaryStyles =
-    'bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-300 hover:border-zinc-400 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 dark:border-zinc-700 dark:hover:border-zinc-600';
+    'bg-muted hover:bg-muted/80 text-foreground border border-border hover:border-border';
 
   const IconComponent = icon === 'calendar' ? Calendar : icon === 'arrow' ? ArrowRight : null;
 

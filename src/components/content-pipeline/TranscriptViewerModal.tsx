@@ -12,6 +12,7 @@ import {
   FileText,
   RotateCcw,
 } from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
 import { cn, formatDate } from '@/lib/utils';
 import { SpeakerMapEditor, type SpeakerMap } from './SpeakerMapEditor';
 import * as transcriptsApi from '@/frontend/api/content-pipeline/transcripts';
@@ -181,12 +182,9 @@ export function TranscriptViewerModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
         <div className="rounded-lg bg-card p-8">
           <p className="text-muted-foreground">Transcript not found</p>
-          <button
-            onClick={onClose}
-            className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-          >
+          <Button className="mt-4" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -375,12 +373,9 @@ export function TranscriptViewerModal({
             </div>
 
             {/* Close button */}
-            <button
-              onClick={onClose}
-              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-            >
+            <Button variant="ghost" size="icon-sm" onClick={onClose}>
               <X className="h-5 w-5" />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -423,11 +418,7 @@ export function TranscriptViewerModal({
         <div className="flex-shrink-0 border-t p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {processingStatus === 'completed' && (
-                <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-700 dark:bg-green-950 dark:text-green-400">
-                  Processed
-                </span>
-              )}
+              {processingStatus === 'completed' && <Badge variant="green">Processed</Badge>}
               {processingStatus === 'processing' && (
                 <span className="flex items-center gap-1 text-yellow-600">
                   <Loader2 className="h-3 w-3 animate-spin" /> Processing...
@@ -438,10 +429,11 @@ export function TranscriptViewerModal({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleReprocess}
                 disabled={reprocessing || processingStatus === 'processing'}
-                className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50 transition-colors"
               >
                 {reprocessing ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -449,13 +441,10 @@ export function TranscriptViewerModal({
                   <RotateCcw className="h-3.5 w-3.5" />
                 )}
                 Re-process
-              </button>
-              <button
-                onClick={onClose}
-                className="rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
+              </Button>
+              <Button size="sm" onClick={onClose}>
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>

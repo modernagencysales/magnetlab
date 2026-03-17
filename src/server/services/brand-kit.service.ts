@@ -20,7 +20,7 @@ export async function getBrandKit(scope: DataScope) {
 export function buildBrandKitPayload(
   userId: string,
   scope: DataScope,
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     user_id: userId,
@@ -43,9 +43,12 @@ export function buildBrandKitPayload(
   if (body.defaultTestimonial !== undefined) payload.default_testimonial = body.defaultTestimonial;
   if (body.defaultSteps !== undefined) payload.default_steps = body.defaultSteps;
   if (body.defaultTheme !== undefined) payload.default_theme = body.defaultTheme;
-  if (body.defaultPrimaryColor !== undefined) payload.default_primary_color = body.defaultPrimaryColor;
-  if (body.defaultBackgroundStyle !== undefined) payload.default_background_style = body.defaultBackgroundStyle;
-  if (body.logoUrl !== undefined) payload.logo_url = body.logoUrl ? normalizeImageUrl(body.logoUrl as string) : body.logoUrl;
+  if (body.defaultPrimaryColor !== undefined)
+    payload.default_primary_color = body.defaultPrimaryColor;
+  if (body.defaultBackgroundStyle !== undefined)
+    payload.default_background_style = body.defaultBackgroundStyle;
+  if (body.logoUrl !== undefined)
+    payload.logo_url = body.logoUrl ? normalizeImageUrl(body.logoUrl as string) : body.logoUrl;
   if (body.fontFamily !== undefined) payload.font_family = body.fontFamily;
   if (body.fontUrl !== undefined) payload.font_url = body.fontUrl;
   if (body.websiteUrl !== undefined) {
@@ -61,9 +64,40 @@ export function buildBrandKitPayload(
 
 export async function upsertBrandKit(
   scope: DataScope,
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   return brandKitRepo.upsertBrandKit(scope, payload);
+}
+
+/** Partial update — only updates fields present in the payload. Safe for BrandingSettings. */
+export async function partialUpdateBrandKit(
+  scope: DataScope,
+  body: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const updates: Record<string, unknown> = {};
+  if (body.fontFamily !== undefined) updates.font_family = body.fontFamily;
+  if (body.fontUrl !== undefined) updates.font_url = body.fontUrl;
+  if (body.logoUrl !== undefined)
+    updates.logo_url = body.logoUrl ? normalizeImageUrl(body.logoUrl as string) : body.logoUrl;
+  if (body.defaultTheme !== undefined) updates.default_theme = body.defaultTheme;
+  if (body.defaultPrimaryColor !== undefined)
+    updates.default_primary_color = body.defaultPrimaryColor;
+  if (body.defaultBackgroundStyle !== undefined)
+    updates.default_background_style = body.defaultBackgroundStyle;
+  if (body.defaultTestimonial !== undefined) updates.default_testimonial = body.defaultTestimonial;
+  if (body.defaultSteps !== undefined) updates.default_steps = body.defaultSteps;
+  if (body.logos !== undefined) updates.logos = body.logos;
+  if (body.websiteUrl !== undefined) {
+    try {
+      const u = new URL(body.websiteUrl as string);
+      updates.website_url = ['http:', 'https:'].includes(u.protocol) ? body.websiteUrl : null;
+    } catch {
+      updates.website_url = null;
+    }
+  }
+  if (Object.keys(updates).length === 0) throw new Error('No fields to update');
+  updates.updated_at = new Date().toISOString();
+  return brandKitRepo.updateBrandKit(scope, updates);
 }
 
 export async function uploadFile(
@@ -71,7 +105,7 @@ export async function uploadFile(
   type: 'logo' | 'font',
   path: string,
   buffer: Buffer,
-  contentType: string,
+  contentType: string
 ): Promise<string> {
   return storageRepo.uploadToPublicAssets(path, buffer, contentType);
 }

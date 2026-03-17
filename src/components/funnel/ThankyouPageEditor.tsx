@@ -1,6 +1,17 @@
 'use client';
 
 import { Video, Calendar, MessageCircle, ExternalLink, Home, Mail, LayoutGrid } from 'lucide-react';
+import {
+  Input,
+  Textarea,
+  Label,
+  Switch,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@magnetlab/magnetui';
 import type { ThankyouLayout } from '@/lib/types/funnel';
 
 interface ThankyouPageEditorProps {
@@ -65,8 +76,16 @@ export function ThankyouPageEditor({
   setLayout,
 }: ThankyouPageEditorProps) {
   const layoutOptions: { value: ThankyouLayout; label: string; description: string }[] = [
-    { value: 'survey_first', label: 'Survey First', description: 'Survey above fold, video after completion' },
-    { value: 'video_first', label: 'Video First', description: 'Video plays immediately, survey below' },
+    {
+      value: 'survey_first',
+      label: 'Survey First',
+      description: 'Survey above fold, video after completion',
+    },
+    {
+      value: 'video_first',
+      label: 'Video First',
+      description: 'Video plays immediately, survey below',
+    },
     { value: 'side_by_side', label: 'Side by Side', description: 'Video + survey in two columns' },
   ];
 
@@ -116,21 +135,7 @@ export function ThankyouPageEditor({
               Skipped when an email sequence is active
             </p>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={sendResourceEmail}
-            onClick={() => setSendResourceEmail(!sendResourceEmail)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              sendResourceEmail ? 'bg-emerald-500' : 'bg-muted'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-                sendResourceEmail ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          </button>
+          <Switch checked={sendResourceEmail} onCheckedChange={setSendResourceEmail} />
         </div>
 
         {!sendResourceEmail && (
@@ -143,7 +148,16 @@ export function ThankyouPageEditor({
       {/* Bootcamp Auto-Enrollment */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 text-violet-400"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
           <h3 className="text-sm font-medium text-white">Bootcamp Auto-Enrollment</h3>
@@ -175,30 +189,33 @@ export function ThankyouPageEditor({
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5">
-            After opt-in, send leads to...
-          </label>
-          <select
+          <Label className="block text-sm font-medium mb-1.5">After opt-in, send leads to...</Label>
+          <Select
             value={redirectTrigger}
-            onChange={(e) => setRedirectTrigger(e.target.value as 'none' | 'immediate' | 'after_qualification')}
-            className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+            onValueChange={(value) =>
+              setRedirectTrigger(value as 'none' | 'immediate' | 'after_qualification')
+            }
           >
-            <option value="none">Our thank-you page (default)</option>
-            <option value="immediate">External URL immediately</option>
-            <option value="after_qualification">External URL after qualification</option>
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Our thank-you page (default)</SelectItem>
+              <SelectItem value="immediate">External URL immediately</SelectItem>
+              <SelectItem value="after_qualification">External URL after qualification</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {redirectTrigger !== 'none' && (
           <div>
-            <label className="block text-sm font-medium mb-1.5">
+            <Label className="block text-sm font-medium mb-1.5">
               {redirectTrigger === 'immediate' ? 'Redirect URL' : 'Qualified Lead Redirect URL'}
-            </label>
-            <input
+            </Label>
+            <Input
               type="url"
               value={redirectUrl}
               onChange={(e) => setRedirectUrl(e.target.value)}
-              className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               placeholder="https://example.com/thank-you"
             />
             <p className="mt-1 text-xs text-muted-foreground">
@@ -209,15 +226,14 @@ export function ThankyouPageEditor({
 
         {redirectTrigger === 'after_qualification' && (
           <div>
-            <label className="block text-sm font-medium mb-1.5">
+            <Label className="block text-sm font-medium mb-1.5">
               Unqualified Lead Redirect URL
               <span className="ml-1 text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <input
+            </Label>
+            <Input
               type="url"
               value={redirectFailUrl}
               onChange={(e) => setRedirectFailUrl(e.target.value)}
-              className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               placeholder="https://example.com/not-a-fit"
             />
             <p className="mt-1 text-xs text-muted-foreground">
@@ -236,28 +252,25 @@ export function ThankyouPageEditor({
             </h3>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">
-                Headline
-              </label>
-              <input
+              <Label className="block text-sm font-medium mb-1.5">Headline</Label>
+              <Input
                 type="text"
                 value={headline}
                 onChange={(e) => setHeadline(e.target.value)}
-                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 placeholder="Thanks! Check your email."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">
+              <Label className="block text-sm font-medium mb-1.5">
                 Subline
                 <span className="ml-1 text-muted-foreground font-normal">(optional)</span>
-              </label>
-              <textarea
+              </Label>
+              <Textarea
                 value={subline}
                 onChange={(e) => setSubline(e.target.value)}
                 rows={2}
-                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+                className="resize-none"
                 placeholder="Your free resource is on its way. While you wait..."
               />
             </div>
@@ -273,14 +286,11 @@ export function ThankyouPageEditor({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">
-                Video URL
-              </label>
-              <input
+              <Label className="block text-sm font-medium mb-1.5">Video URL</Label>
+              <Input
                 type="url"
                 value={vslUrl}
                 onChange={(e) => setVslUrl(e.target.value)}
-                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 placeholder="https://www.youtube.com/watch?v=..."
               />
               <p className="mt-1 text-xs text-muted-foreground">
@@ -299,14 +309,11 @@ export function ThankyouPageEditor({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">
-                Booking URL
-              </label>
-              <input
+              <Label className="block text-sm font-medium mb-1.5">Booking URL</Label>
+              <Input
                 type="url"
                 value={calendlyUrl}
                 onChange={(e) => setCalendlyUrl(e.target.value)}
-                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 placeholder="https://cal.com/your-name/30min"
               />
               <p className="mt-1 text-xs text-muted-foreground">
@@ -325,14 +332,14 @@ export function ThankyouPageEditor({
             </div>
 
             <div className="rounded-lg border bg-green-50 dark:bg-green-900/20 p-4">
-              <label className="block text-sm font-medium mb-1.5 text-green-800 dark:text-green-200">
+              <Label className="block text-sm font-medium mb-1.5 text-green-800 dark:text-green-200">
                 Qualified Lead Message
-              </label>
-              <textarea
+              </Label>
+              <Textarea
                 value={passMessage}
                 onChange={(e) => setPassMessage(e.target.value)}
                 rows={2}
-                className="w-full rounded-lg border border-green-200 dark:border-green-800 bg-white dark:bg-green-900/40 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"
+                className="resize-none border-green-200 dark:border-green-800 bg-white dark:bg-green-900/40 focus:ring-green-500 focus:border-green-500"
                 placeholder="Great! You're a perfect fit. Book a call below."
               />
               <p className="mt-1 text-xs text-green-700 dark:text-green-300">
@@ -341,14 +348,14 @@ export function ThankyouPageEditor({
             </div>
 
             <div className="rounded-lg border bg-amber-50 dark:bg-amber-900/20 p-4">
-              <label className="block text-sm font-medium mb-1.5 text-amber-800 dark:text-amber-200">
+              <Label className="block text-sm font-medium mb-1.5 text-amber-800 dark:text-amber-200">
                 Non-Qualified Lead Message
-              </label>
-              <textarea
+              </Label>
+              <Textarea
                 value={failMessage}
                 onChange={(e) => setFailMessage(e.target.value)}
                 rows={2}
-                className="w-full rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-amber-900/40 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors resize-none"
+                className="resize-none border-amber-200 dark:border-amber-800 bg-white dark:bg-amber-900/40 focus:ring-amber-500 focus:border-amber-500"
                 placeholder="Thanks for your interest! This might not be the right fit right now."
               />
               <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
@@ -367,14 +374,11 @@ export function ThankyouPageEditor({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">
-                URL
-              </label>
-              <input
+              <Label className="block text-sm font-medium mb-1.5">URL</Label>
+              <Input
                 type="url"
                 value={homepageUrl}
                 onChange={(e) => setHomepageUrl(e.target.value)}
-                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 placeholder="https://yourwebsite.com"
               />
               <p className="mt-1 text-xs text-muted-foreground">
@@ -383,15 +387,14 @@ export function ThankyouPageEditor({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">
+              <Label className="block text-sm font-medium mb-1.5">
                 Link Text
                 <span className="ml-1 text-muted-foreground font-normal">(optional)</span>
-              </label>
-              <input
+              </Label>
+              <Input
                 type="text"
                 value={homepageLabel}
                 onChange={(e) => setHomepageLabel(e.target.value)}
-                className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 placeholder="Visit our website"
               />
             </div>
@@ -402,7 +405,8 @@ export function ThankyouPageEditor({
       {redirectTrigger === 'immediate' && (
         <div className="rounded-lg border border-dashed p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            With immediate redirect, leads skip the thank-you page entirely and go straight to your external URL.
+            With immediate redirect, leads skip the thank-you page entirely and go straight to your
+            external URL.
           </p>
         </div>
       )}

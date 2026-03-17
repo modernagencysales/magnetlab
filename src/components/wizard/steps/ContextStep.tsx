@@ -12,6 +12,18 @@ import {
   X,
   Check,
 } from 'lucide-react';
+import {
+  Button,
+  Input,
+  Textarea,
+  Label,
+  Badge,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@magnetlab/magnetui';
 import type {
   BusinessContext,
   BusinessType,
@@ -296,52 +308,52 @@ export function ContextStep({
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Business Type */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
-              What type of business are you?
-            </label>
-            <select
+            <Label className="text-xs">What type of business are you?</Label>
+            <Select
               value={formData.businessType}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, businessType: e.target.value as BusinessType }))
+              onValueChange={(v) =>
+                setFormData((prev) => ({ ...prev, businessType: v as BusinessType }))
               }
-              className="mt-2 w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none cursor-pointer focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
             >
-              {Object.entries(BUSINESS_TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="mt-2 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(BUSINESS_TYPE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Business Description */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
-              Describe what you do and who you serve
-            </label>
-            <textarea
+            <Label className="text-xs">Describe what you do and who you serve</Label>
+            <Textarea
               value={formData.businessDescription}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, businessDescription: e.target.value }))
               }
               placeholder="I help [specific audience] achieve [specific outcome] through [your method/approach]..."
               rows={3}
-              className="mt-2 w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+              className="mt-2 resize-none"
               required
             />
           </div>
 
           {/* Credibility Markers */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
+            <Label className="text-xs">
               Credibility markers (specific results you&apos;ve achieved)
-            </label>
+            </Label>
             <p className="text-xs text-muted-foreground mt-0.5">
               Numbers work best: &quot;$2.3M in client revenue&quot;, &quot;1,200+ students&quot;,
               &quot;15 years experience&quot;
             </p>
             <div className="mt-2 flex gap-2">
-              <input
+              <Input
                 type="text"
                 value={currentInput.credibility}
                 onChange={(e) =>
@@ -354,15 +366,16 @@ export function ContextStep({
                   }
                 }}
                 placeholder="Add a credibility marker..."
-                className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="flex-1"
               />
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => addToArray('credibilityMarkers', 'credibility')}
-                className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80 transition-colors"
               >
                 Add
-              </button>
+              </Button>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {(formData.credibilityMarkers || []).map((item, index) => (
@@ -385,11 +398,9 @@ export function ContextStep({
 
           {/* Urgent Pains */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
-              What are the 3 most urgent pains your audience faces?
-            </label>
+            <Label className="text-xs">What are the 3 most urgent pains your audience faces?</Label>
             <div className="mt-2 flex gap-2">
-              <input
+              <Input
                 type="text"
                 value={currentInput.pain}
                 onChange={(e) => setCurrentInput((prev) => ({ ...prev, pain: e.target.value }))}
@@ -400,15 +411,16 @@ export function ContextStep({
                   }
                 }}
                 placeholder="Add a pain point..."
-                className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="flex-1"
               />
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => addToArray('urgentPains', 'pain')}
-                className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80 transition-colors"
               >
                 Add
-              </button>
+              </Button>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {(formData.urgentPains || []).map((item, index) => (
@@ -431,11 +443,11 @@ export function ContextStep({
 
           {/* Results */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
+            <Label className="text-xs">
               What results have you achieved for yourself or clients?
-            </label>
+            </Label>
             <div className="mt-2 flex gap-2">
-              <input
+              <Input
                 type="text"
                 value={currentInput.result}
                 onChange={(e) => setCurrentInput((prev) => ({ ...prev, result: e.target.value }))}
@@ -446,15 +458,16 @@ export function ContextStep({
                   }
                 }}
                 placeholder="Add a result..."
-                className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="flex-1"
               />
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => addToArray('results', 'result')}
-                className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80 transition-colors"
               >
                 Add
-              </button>
+              </Button>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {(formData.results || []).map((item, index) => (
@@ -477,15 +490,15 @@ export function ContextStep({
 
           {/* Success Example */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
+            <Label className="text-xs">
               Do you have a success example we could break down? (optional)
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               value={formData.successExample}
               onChange={(e) => setFormData((prev) => ({ ...prev, successExample: e.target.value }))}
               placeholder="A campaign, post, email, or process that worked really well..."
               rows={2}
-              className="mt-2 w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+              className="mt-2 resize-none"
             />
           </div>
 
@@ -521,14 +534,11 @@ export function ContextStep({
               </>
             )}
 
-            <button
+            <Button
               type="submit"
+              variant={hasSavedIdeas ? 'outline' : 'default'}
+              className="w-full"
               disabled={loading || !formData.businessDescription}
-              className={`flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50 ${
-                hasSavedIdeas
-                  ? 'border border-border bg-background hover:bg-muted/50'
-                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
-              }`}
             >
               {loading ? (
                 <>
@@ -541,7 +551,7 @@ export function ContextStep({
                   Generate {hasSavedIdeas ? 'New' : '10 AI'} Ideas
                 </>
               )}
-            </button>
+            </Button>
             <p className="text-xs text-muted-foreground text-center">
               {hasSavedIdeas
                 ? 'Create fresh concepts from your context'
@@ -594,7 +604,8 @@ export function ContextStep({
                   </span>
                 </div>
 
-                <button
+                <Button
+                  variant="outline"
                   type="button"
                   disabled={loading || !formData.businessDescription}
                   onClick={() => {
@@ -612,10 +623,10 @@ export function ContextStep({
                       successExample: formData.successExample,
                     });
                   }}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-medium hover:bg-muted/50 disabled:opacity-50 transition-colors"
+                  className="w-full"
                 >
                   <Lightbulb className="h-4 w-4" />I Have My Own Idea
-                </button>
+                </Button>
                 <p className="text-xs text-muted-foreground text-center">
                   Skip to entering your concept
                 </p>
@@ -641,20 +652,15 @@ export function ContextStep({
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                className="p-2 rounded-lg hover:bg-muted transition-colors"
-                aria-label="Close"
-              >
+              <Button variant="ghost" size="icon-sm" onClick={handleCloseModal} aria-label="Close">
                 <X className="h-5 w-5" />
-              </button>
+              </Button>
             </div>
 
             <div className="p-4 space-y-4">
               {!transcriptInsights ? (
                 <>
-                  <textarea
+                  <Textarea
                     value={modalText}
                     onChange={(e) => setModalText(e.target.value)}
                     placeholder="Paste your sales call, coaching session, or customer interview transcript here...
@@ -665,14 +671,14 @@ We'll extract:
 • Desired transformation outcomes
 • Customer language patterns"
                     rows={10}
-                    className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+                    className="resize-none"
                   />
                   {modalError && <p className="text-sm text-destructive">{modalError}</p>}
-                  <button
+                  <Button
                     type="button"
+                    className="w-full"
                     onClick={handleAnalyzeTranscript}
                     disabled={modalLoading || !modalText.trim()}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 text-white px-6 py-3 text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
                   >
                     {modalLoading ? (
                       <>
@@ -685,7 +691,7 @@ We'll extract:
                         Analyze Transcript
                       </>
                     )}
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <>
@@ -745,11 +751,11 @@ We'll extract:
                     </div>
                   </div>
 
-                  <button
+                  <Button
                     type="button"
+                    className="w-full"
                     onClick={handleGenerateFromTranscript}
                     disabled={loading}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
                   >
                     {loading ? (
                       <>
@@ -762,18 +768,19 @@ We'll extract:
                         Generate Ideas from These Insights
                       </>
                     )}
-                  </button>
+                  </Button>
 
-                  <button
+                  <Button
+                    variant="outline"
                     type="button"
+                    className="w-full"
                     onClick={() => {
                       setTranscriptInsights(null);
                       setModalText('');
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-6 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
                   >
                     Start Over
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -797,20 +804,15 @@ We'll extract:
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                className="p-2 rounded-lg hover:bg-muted transition-colors"
-                aria-label="Close"
-              >
+              <Button variant="ghost" size="icon-sm" onClick={handleCloseModal} aria-label="Close">
                 <X className="h-5 w-5" />
-              </button>
+              </Button>
             </div>
 
             <div className="p-4 space-y-4">
               {!competitorAnalysis ? (
                 <>
-                  <textarea
+                  <Textarea
                     value={modalText}
                     onChange={(e) => setModalText(e.target.value)}
                     placeholder="Paste a competitor's post, lead magnet description, or promotional content here...
@@ -821,14 +823,14 @@ We'll analyze:
 • Why it's effective
 • How to adapt it for your business"
                     rows={10}
-                    className="w-full rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+                    className="resize-none"
                   />
                   {modalError && <p className="text-sm text-destructive">{modalError}</p>}
-                  <button
+                  <Button
                     type="button"
+                    className="w-full"
                     onClick={handleAnalyzeCompetitor}
                     disabled={modalLoading || !modalText.trim()}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-500 text-white px-6 py-3 text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors"
                   >
                     {modalLoading ? (
                       <>
@@ -841,7 +843,7 @@ We'll analyze:
                         Analyze Content
                       </>
                     )}
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <>
@@ -894,11 +896,11 @@ We'll analyze:
                     </div>
                   </div>
 
-                  <button
+                  <Button
                     type="button"
+                    className="w-full"
                     onClick={handleGenerateFromInspiration}
                     disabled={loading}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
                   >
                     {loading ? (
                       <>
@@ -911,18 +913,19 @@ We'll analyze:
                         Generate Adapted Ideas
                       </>
                     )}
-                  </button>
+                  </Button>
 
-                  <button
+                  <Button
+                    variant="outline"
                     type="button"
+                    className="w-full"
                     onClick={() => {
                       setCompetitorAnalysis(null);
                       setModalText('');
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-6 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
                   >
                     Start Over
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -961,11 +964,7 @@ function TabButton({ active, onClick, icon, label, description, badge }: TabButt
       <div className="text-left">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{label}</span>
-          {badge && (
-            <span className="px-1.5 py-0.5 text-xs bg-green-500/10 text-green-600 rounded">
-              {badge}
-            </span>
-          )}
+          {badge && <Badge variant="green">{badge}</Badge>}
         </div>
         <span className="text-xs text-muted-foreground">{description}</span>
       </div>

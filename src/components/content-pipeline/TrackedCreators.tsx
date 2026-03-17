@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Users, Plus, Trash2, ExternalLink, Loader2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { Input, Badge, Button } from '@magnetlab/magnetui';
 import * as creatorsApi from '@/frontend/api/content-pipeline/creators';
 
 interface Creator {
@@ -63,7 +62,7 @@ export function TrackedCreators() {
       <div className="flex items-center gap-2">
         <Users className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold uppercase text-muted-foreground">Tracked Creators</h3>
-        <Badge variant="secondary" className="text-xs">
+        <Badge variant="gray" className="text-xs">
           {creators.length} creator{creators.length !== 1 ? 's' : ''}
         </Badge>
       </div>
@@ -82,14 +81,10 @@ export function TrackedCreators() {
           onChange={(e) => setNewName(e.target.value)}
           className="w-40"
         />
-        <button
-          onClick={addCreator}
-          disabled={adding || !newUrl.trim()}
-          className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-        >
+        <Button size="sm" onClick={addCreator} disabled={adding || !newUrl.trim()}>
           {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
           Track
-        </button>
+        </Button>
       </div>
 
       {loading ? (
@@ -100,13 +95,17 @@ export function TrackedCreators() {
         <div className="rounded-lg border border-dashed p-8 text-center">
           <Users className="mx-auto h-8 w-8 text-muted-foreground/50" />
           <p className="mt-2 text-sm text-muted-foreground">
-            No creators tracked yet. Add LinkedIn profile URLs above to start discovering winning templates.
+            No creators tracked yet. Add LinkedIn profile URLs above to start discovering winning
+            templates.
           </p>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {creators.map((c) => (
-            <div key={c.id} className="rounded-lg border bg-card p-4 transition-colors hover:border-primary/30">
+            <div
+              key={c.id}
+              className="rounded-lg border bg-card p-4 transition-colors hover:border-primary/30"
+            >
               <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
@@ -126,20 +125,20 @@ export function TrackedCreators() {
                     <p className="mt-0.5 text-xs text-muted-foreground truncate">{c.headline}</p>
                   )}
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => removeCreator(c.id)}
-                  className="ml-2 flex-shrink-0 rounded-lg p-1 text-muted-foreground hover:text-red-500 transition-colors"
+                  className="ml-2 flex-shrink-0 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
               <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>Avg: {Math.round(c.avg_engagement)} engagement</span>
                 <span>{c.post_count} posts</span>
                 {c.last_scraped_at && (
-                  <span>
-                    Last scraped: {new Date(c.last_scraped_at).toLocaleDateString()}
-                  </span>
+                  <span>Last scraped: {new Date(c.last_scraped_at).toLocaleDateString()}</span>
                 )}
               </div>
             </div>

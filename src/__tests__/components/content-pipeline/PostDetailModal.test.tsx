@@ -7,25 +7,11 @@ import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import type { PipelinePost } from '@/lib/types/content-pipeline';
 
-// Mock TipTap editor (won't work in jsdom)
-jest.mock('@/components/content/inline-editor/TipTapTextBlock', () => ({
-  TipTapTextBlock: ({ content, onChange }: { content: string; onChange: (c: string) => void }) => (
-    <textarea data-testid="tiptap-mock" value={content} onChange={e => onChange(e.target.value)} />
+// Mock PostPreview (uses LinkedInPreview) - component displays content via PostPreview
+jest.mock('@/components/content-pipeline/PostPreview', () => ({
+  PostPreview: ({ content }: { content: string }) => (
+    <div data-testid="linkedin-preview">{content}</div>
   ),
-}));
-
-// Mock UI components that are purely presentational
-jest.mock('@/components/content-pipeline/LinkedInPreview', () => ({
-  LinkedInPreview: ({ content }: { content: string }) => <div data-testid="linkedin-preview">{content}</div>,
-}));
-jest.mock('@/components/content-pipeline/DeviceToggle', () => ({
-  DeviceToggle: () => <div data-testid="device-toggle" />,
-}));
-jest.mock('@/components/content-pipeline/HookOnlyToggle', () => ({
-  HookOnlyToggle: ({ enabled }: { enabled: boolean }) => <button data-testid="hook-only-toggle">{enabled ? 'On' : 'Off'}</button>,
-}));
-jest.mock('@/components/content-pipeline/HookScorePanel', () => ({
-  HookScorePanel: () => <div data-testid="hook-score-panel">Hook Analysis</div>,
 }));
 
 // Mock StatusBadge
@@ -44,14 +30,24 @@ jest.mock('lucide-react', () => ({
   Loader2: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-loader" {...props} />,
   Copy: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-copy" {...props} />,
   Check: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-check" {...props} />,
-  Sparkles: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-sparkles" {...props} />,
-  Calendar: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-calendar" {...props} />,
+  Sparkles: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-sparkles" {...props} />
+  ),
+  Calendar: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-calendar" {...props} />
+  ),
   Send: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-send" {...props} />,
-  Linkedin: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-linkedin" {...props} />,
+  Linkedin: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-linkedin" {...props} />
+  ),
   Users: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-users" {...props} />,
   Zap: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-zap" {...props} />,
-  MessageSquare: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-message-square" {...props} />,
-  FileText: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-file-text" {...props} />,
+  MessageSquare: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-message-square" {...props} />
+  ),
+  FileText: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-file-text" {...props} />
+  ),
 }));
 
 // Mock fetch globally for profile data
@@ -60,18 +56,23 @@ global.fetch = jest.fn().mockImplementation((url: string) => {
     return Promise.resolve({
       ok: true,
       json: async () => ({
-        profiles: [{
-          id: 'p1',
-          full_name: 'Tim Smith',
-          title: 'CEO',
-          avatar_url: null,
-          is_default: true,
-        }],
+        profiles: [
+          {
+            id: 'p1',
+            full_name: 'Tim Smith',
+            title: 'CEO',
+            avatar_url: null,
+            is_default: true,
+          },
+        ],
       }),
     });
   }
   if (url.includes('/engagement')) {
-    return Promise.resolve({ ok: true, json: async () => ({ stats: null, config: { scrape_engagement: false } }) });
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({ stats: null, config: { scrape_engagement: false } }),
+    });
   }
   if (url.includes('/automations')) {
     return Promise.resolve({ ok: true, json: async () => ({ automations: [] }) });
@@ -133,18 +134,23 @@ describe('PostDetailModal', () => {
         return Promise.resolve({
           ok: true,
           json: async () => ({
-            profiles: [{
-              id: 'p1',
-              full_name: 'Tim Smith',
-              title: 'CEO',
-              avatar_url: null,
-              is_default: true,
-            }],
+            profiles: [
+              {
+                id: 'p1',
+                full_name: 'Tim Smith',
+                title: 'CEO',
+                avatar_url: null,
+                is_default: true,
+              },
+            ],
           }),
         });
       }
       if (url.includes('/engagement')) {
-        return Promise.resolve({ ok: true, json: async () => ({ stats: null, config: { scrape_engagement: false } }) });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ stats: null, config: { scrape_engagement: false } }),
+        });
       }
       if (url.includes('/automations')) {
         return Promise.resolve({ ok: true, json: async () => ({ automations: [] }) });
@@ -153,35 +159,22 @@ describe('PostDetailModal', () => {
     });
   });
 
-  it('renders the editor (TipTap mock textarea)', async () => {
-    render(<PostDetailModal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByTestId('tiptap-mock')).toBeInTheDocument();
-    });
-    expect(screen.getByTestId('tiptap-mock')).toHaveValue('Test post content for the editor.');
-  });
-
-  it('renders the LinkedIn preview', async () => {
+  it('renders the post content in preview', async () => {
     render(<PostDetailModal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByTestId('linkedin-preview')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('linkedin-preview')).toHaveTextContent('Test post content for the editor.');
+    expect(screen.getByTestId('linkedin-preview')).toHaveTextContent(
+      'Test post content for the editor.'
+    );
   });
 
-  it('renders Hook Only toggle', async () => {
+  it('renders Hook Score', async () => {
     render(<PostDetailModal {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByTestId('hook-only-toggle')).toBeInTheDocument();
+      expect(screen.getByText('Hook Score:')).toBeInTheDocument();
     });
-  });
-
-  it('renders Hook Score Panel', async () => {
-    render(<PostDetailModal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByTestId('hook-score-panel')).toBeInTheDocument();
-    });
-    expect(screen.getByTestId('hook-score-panel')).toHaveTextContent('Hook Analysis');
+    expect(screen.getByText('7/10')).toBeInTheDocument();
   });
 
   it('renders action buttons (Polish, Copy, Schedule)', async () => {
@@ -200,13 +193,6 @@ describe('PostDetailModal', () => {
     });
   });
 
-  it('renders Device Toggle', async () => {
-    render(<PostDetailModal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByTestId('device-toggle')).toBeInTheDocument();
-    });
-  });
-
   it('shows the post status badge', async () => {
     render(<PostDetailModal {...defaultProps} />);
     await waitFor(() => {
@@ -222,7 +208,7 @@ describe('PostDetailModal', () => {
     };
     render(<PostDetailModal {...defaultProps} post={publishedPost} />);
     await waitFor(() => {
-      expect(screen.getByTestId('tiptap-mock')).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
     expect(screen.queryByText('Publish to LinkedIn')).not.toBeInTheDocument();
   });

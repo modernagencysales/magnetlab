@@ -4,6 +4,9 @@ import { searchPosts, getPostComments, getPostReactions } from '@/lib/integratio
 import { processEngagers } from '@/lib/services/signal-engine';
 import type { HarvestPostComment, HarvestPostReaction } from '@/lib/types/signals';
 
+const SIGNAL_KEYWORD_MONITOR_COLUMNS =
+  'id, user_id, keyword, is_active, last_scanned_at, posts_found, leads_found, created_at';
+
 // ============================================
 // CRON TASK: every 12 hours
 // ============================================
@@ -22,7 +25,7 @@ export const signalKeywordScan = schedules.task({
     // Step 1: Fetch all active keyword monitors
     const { data: monitors, error: fetchError } = await supabase
       .from('signal_keyword_monitors')
-      .select('*')
+      .select(SIGNAL_KEYWORD_MONITOR_COLUMNS)
       .eq('is_active', true);
 
     if (fetchError) {
@@ -81,7 +84,9 @@ export const signalKeywordScan = schedules.task({
 
           // Step 4c: Process each post (max 10 per keyword)
           const posts = searchResult.data.slice(0, 10);
-          logger.info(`Found ${searchResult.data.length} posts for keyword "${monitor.keyword}", processing ${posts.length}`);
+          logger.info(
+            `Found ${searchResult.data.length} posts for keyword "${monitor.keyword}", processing ${posts.length}`
+          );
 
           for (const post of posts) {
             const postUrl = post.linkedinUrl;
@@ -90,16 +95,20 @@ export const signalKeywordScan = schedules.task({
             try {
               // Get commenters
               const commentsResult = await getPostComments(postUrl);
-              const comments: HarvestPostComment[] = commentsResult.error ? [] : commentsResult.data;
+              const comments: HarvestPostComment[] = commentsResult.error
+                ? []
+                : commentsResult.data;
 
               // Get reactors
               const reactionsResult = await getPostReactions(postUrl);
-              const reactions: HarvestPostReaction[] = reactionsResult.error ? [] : reactionsResult.data;
+              const reactions: HarvestPostReaction[] = reactionsResult.error
+                ? []
+                : reactionsResult.data;
 
               // Map comments to engager format
               const commentEngagers = comments
-                .filter(c => c.actor?.linkedinUrl)
-                .map(c => ({
+                .filter((c) => c.actor?.linkedinUrl)
+                .map((c) => ({
                   linkedinUrl: c.actor.linkedinUrl,
                   name: c.actor.name,
                   headline: c.actor.position,
@@ -109,8 +118,8 @@ export const signalKeywordScan = schedules.task({
 
               // Map reactions to engager format
               const reactionEngagers = reactions
-                .filter(r => r.actor?.linkedinUrl)
-                .map(r => ({
+                .filter((r) => r.actor?.linkedinUrl)
+                .map((r) => ({
                   linkedinUrl: r.actor.linkedinUrl,
                   name: r.actor.name,
                   headline: r.actor.position,

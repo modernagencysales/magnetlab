@@ -60,7 +60,9 @@ export function MagnetDetail({
   const router = useRouter();
   const pathname = usePathname();
   const tabParam = searchParams.get('tab') as Tab | null;
-  const [activeTab, setActiveTab] = useState<Tab>(tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'overview');
+  const [activeTab, setActiveTab] = useState<Tab>(
+    tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'overview'
+  );
 
   useEffect(() => {
     if (tabParam && TABS.some((t) => t.id === tabParam)) {
@@ -81,21 +83,19 @@ export function MagnetDetail({
   }
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="space-y-6">
       {/* Back link */}
       <Link
         href="/magnets"
-        className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className="h-4 w-4 mr-1" />
         Back to Lead Magnets
       </Link>
 
       {/* Header */}
-      <div className="mb-6">
-        <div className="mb-2 text-sm font-medium text-muted-foreground">
-          {archetypeName}
-        </div>
+      <div>
+        <div className="mb-2 text-sm font-medium text-muted-foreground">{archetypeName}</div>
         <h1 className="text-3xl font-bold">{leadMagnet.title}</h1>
         <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
@@ -107,8 +107,8 @@ export function MagnetDetail({
               leadMagnet.status === 'published'
                 ? 'bg-green-500/10 text-green-600'
                 : leadMagnet.status === 'scheduled'
-                ? 'bg-blue-500/10 text-blue-600'
-                : 'bg-secondary text-secondary-foreground'
+                  ? 'bg-blue-500/10 text-blue-600'
+                  : 'bg-secondary text-secondary-foreground'
             }`}
           >
             {leadMagnet.status}
@@ -128,7 +128,7 @@ export function MagnetDetail({
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-2 overflow-x-auto border-b">
+      <div className="flex gap-2 overflow-x-auto border-b border-border">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -165,10 +165,7 @@ export function MagnetDetail({
         />
       )}
       {activeTab === 'post' && (
-        <PostTab
-          leadMagnet={leadMagnet}
-          hasPublishedFunnel={!!existingFunnel?.isPublished}
-        />
+        <PostTab leadMagnet={leadMagnet} hasPublishedFunnel={!!existingFunnel?.isPublished} />
       )}
       {activeTab === 'leads' && <LeadsTab funnelId={existingFunnel?.id || null} />}
       {activeTab === 'analytics' && <AnalyticsTab magnetId={leadMagnet.id} />}
@@ -192,7 +189,7 @@ function OverviewTab({
   return (
     <div className="space-y-6">
       {/* Funnel Card */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
             <Globe className="h-5 w-5 text-violet-500" />
@@ -230,7 +227,7 @@ function OverviewTab({
                   href={`/p/${username}/${existingFunnel.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-secondary"
+                  className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-secondary"
                 >
                   <ExternalLink className="h-4 w-4" />
                   View
@@ -250,7 +247,7 @@ function OverviewTab({
 
       {/* Concept */}
       {leadMagnet.concept && (
-        <div className="rounded-xl border bg-card p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
             Lead Magnet Concept
@@ -280,7 +277,7 @@ function OverviewTab({
 
       {/* DM Template */}
       {leadMagnet.dmTemplate && (
-        <div className="rounded-xl border bg-card p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <h3 className="font-semibold mb-3">DM Template</h3>
           <pre className="whitespace-pre-wrap text-sm text-muted-foreground bg-secondary/50 rounded-lg p-4">
             {leadMagnet.dmTemplate}
@@ -371,7 +368,7 @@ function PostTab({
   return (
     <div className="space-y-6">
       {/* Screenshot Gallery */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <ScreenshotGallery
           screenshotUrls={leadMagnet.screenshotUrls || []}
           leadMagnetId={leadMagnet.id}
@@ -380,11 +377,9 @@ function PostTab({
       </div>
 
       {mainPost && (
-        <div className="rounded-xl border bg-card p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <h3 className="font-semibold mb-3">LinkedIn Post</h3>
-          <pre className="whitespace-pre-wrap text-sm leading-relaxed">
-            {mainPost}
-          </pre>
+          <pre className="whitespace-pre-wrap text-sm leading-relaxed">{mainPost}</pre>
         </div>
       )}
 
@@ -392,27 +387,23 @@ function PostTab({
         <div className="space-y-4">
           <h3 className="font-semibold">Post Variations</h3>
           {variations.map((variation, i: number) => (
-            <div key={i} className="rounded-xl border bg-card p-6">
+            <div key={i} className="rounded-xl border border-border bg-card p-6">
               <div className="mb-2 flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Variation {i + 1}
-                </span>
+                <span className="text-xs font-medium text-muted-foreground">Variation {i + 1}</span>
                 {variation.hookType && (
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                     {variation.hookType}
                   </span>
                 )}
               </div>
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed">
-                {variation.post}
-              </pre>
+              <pre className="whitespace-pre-wrap text-sm leading-relaxed">{variation.post}</pre>
             </div>
           ))}
         </div>
       )}
 
       {!mainPost && variations.length === 0 && (
-        <div className="rounded-xl border bg-card p-12 text-center">
+        <div className="rounded-xl border border-border bg-card p-12 text-center">
           <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
           <h3 className="mb-2 text-lg font-semibold">No posts yet</h3>
           {hasContent ? (
@@ -450,7 +441,9 @@ function PostTab({
 // ─── Leads Tab ──────────────────────────────────────────────
 
 function LeadsTab({ funnelId }: { funnelId: string | null }) {
-  const [leads, setLeads] = useState<Array<{ id: string; name: string; email: string; createdAt: string }>>([]);
+  const [leads, setLeads] = useState<
+    Array<{ id: string; name: string; email: string; createdAt: string }>
+  >([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -467,7 +460,7 @@ function LeadsTab({ funnelId }: { funnelId: string | null }) {
 
   if (!funnelId) {
     return (
-      <div className="rounded-xl border bg-card p-12 text-center">
+      <div className="rounded-xl border border-border bg-card p-12 text-center">
         <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
         <h3 className="mb-2 text-lg font-semibold">No funnel page yet</h3>
         <p className="text-muted-foreground">
@@ -487,18 +480,16 @@ function LeadsTab({ funnelId }: { funnelId: string | null }) {
 
   if (leads.length === 0) {
     return (
-      <div className="rounded-xl border bg-card p-12 text-center">
+      <div className="rounded-xl border border-border bg-card p-12 text-center">
         <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
         <h3 className="mb-2 text-lg font-semibold">No leads yet</h3>
-        <p className="text-muted-foreground">
-          Share your funnel page to start capturing leads.
-        </p>
+        <p className="text-muted-foreground">Share your funnel page to start capturing leads.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-secondary/50">
@@ -525,12 +516,13 @@ function LeadsTab({ funnelId }: { funnelId: string | null }) {
 
 function AnalyticsTab({ magnetId }: { magnetId: string }) {
   return (
-    <div className="rounded-xl border bg-card p-12 text-center" data-magnet-id={magnetId}>
+    <div
+      className="rounded-xl border border-border bg-card p-12 text-center"
+      data-magnet-id={magnetId}
+    >
       <BarChart3 className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
       <h3 className="mb-2 text-lg font-semibold">Per-magnet analytics</h3>
-      <p className="text-muted-foreground">
-        Detailed analytics for this lead magnet coming soon.
-      </p>
+      <p className="text-muted-foreground">Detailed analytics for this lead magnet coming soon.</p>
     </div>
   );
 }

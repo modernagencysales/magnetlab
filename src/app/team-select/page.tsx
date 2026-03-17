@@ -43,12 +43,14 @@ export default function TeamSelectPage() {
 
   const selectTeam = (teamId: string) => {
     document.cookie = `ml-team-context=${teamId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+    router.refresh();
     router.push('/');
     router.refresh();
   };
 
   const selectPersonal = () => {
     document.cookie = `ml-team-context=personal; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+    router.refresh();
     router.push('/');
     router.refresh();
   };
@@ -62,60 +64,62 @@ export default function TeamSelectPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-lg px-4 py-16">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-xl mb-4">
-          <Users className="h-6 w-6 text-primary" />
+    <div className="mx-auto max-w-lg px-4 py-16">
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
+            <Users className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="mt-6 text-2xl font-semibold">Switch Team</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Choose which team to work in</p>
         </div>
-        <h1 className="text-2xl font-semibold mb-2">Switch Team</h1>
-        <p className="text-sm text-muted-foreground">Choose which team to work in</p>
-      </div>
 
-      <div className="space-y-3">
-        {/* Personal account option */}
-        <button
-          onClick={selectPersonal}
-          className="flex items-center gap-4 w-full rounded-lg border p-4 hover:border-primary/30 hover:bg-muted/50 transition-colors text-left"
-        >
-          <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-lg text-primary-foreground shrink-0">
-            <Magnet size={18} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm">Personal Account</p>
-            <p className="text-xs text-muted-foreground">Your own dashboard</p>
-          </div>
-          <ArrowRight size={16} className="text-muted-foreground shrink-0" />
-        </button>
-
-        {memberships.length > 0 && (
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-background px-3 text-xs text-muted-foreground">Teams</span>
-            </div>
-          </div>
-        )}
-
-        {memberships.map((m) => (
+        <div className="space-y-4">
+          {/* Personal account option */}
           <button
-            key={m.teamId}
-            onClick={() => selectTeam(m.teamId)}
-            className="flex items-center gap-4 w-full rounded-lg border p-4 hover:border-primary/30 hover:bg-muted/50 transition-colors text-left"
+            onClick={selectPersonal}
+            className="flex w-full items-center gap-4 rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
           >
-            <div className="flex items-center justify-center w-10 h-10 bg-violet-500 rounded-lg text-white shrink-0">
-              <UsersRound size={18} />
+            <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-lg text-primary-foreground shrink-0">
+              <Magnet size={18} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{m.teamName}</p>
-              <p className="text-xs text-muted-foreground">
-                {m.role === 'owner' ? 'Owner' : 'Member'}
-              </p>
+              <p className="font-medium text-sm">Personal Account</p>
+              <p className="text-xs text-muted-foreground">Your own dashboard</p>
             </div>
             <ArrowRight size={16} className="text-muted-foreground shrink-0" />
           </button>
-        ))}
+
+          {memberships.length > 0 && (
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-background px-3 text-xs text-muted-foreground">Teams</span>
+              </div>
+            </div>
+          )}
+
+          {memberships.map((m) => (
+            <button
+              key={m.teamId}
+              onClick={() => selectTeam(m.teamId)}
+              className="flex w-full items-center gap-4 rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
+            >
+              <div className="flex items-center justify-center w-10 h-10 bg-violet-500 rounded-lg text-white shrink-0">
+                <UsersRound size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{m.teamName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {m.role === 'owner' ? 'Owner' : 'Member'}
+                </p>
+              </div>
+              <ArrowRight size={16} className="text-muted-foreground shrink-0" />
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

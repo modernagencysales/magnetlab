@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   FileText,
@@ -273,11 +273,15 @@ export function useFunnelBuilder({
     }
   };
 
+  // Keep a ref so auto-save always calls the latest handleSave (fresh form values)
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
   // Auto-save when switching tabs (if funnel exists)
   useEffect(() => {
     if (!funnel) return;
     const timer = setTimeout(() => {
-      handleSave();
+      handleSaveRef.current();
     }, 1000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps

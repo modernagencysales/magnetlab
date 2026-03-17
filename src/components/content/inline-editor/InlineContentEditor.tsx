@@ -33,12 +33,7 @@ import {
 // Constants
 // ---------------------------------------------------------------------------
 
-const TEXT_BLOCK_TYPES = new Set<PolishedBlockType>([
-  'paragraph',
-  'callout',
-  'list',
-  'quote',
-]);
+const TEXT_BLOCK_TYPES = new Set<PolishedBlockType>(['paragraph', 'callout', 'list', 'quote']);
 
 const STRUCTURED_BLOCK_TYPES = new Set<PolishedBlockType>([
   'code',
@@ -121,10 +116,7 @@ function deriveColors(isDark: boolean): ThemeColors {
 // Default block factory
 // ---------------------------------------------------------------------------
 
-function createBlock(
-  type: PolishedBlockType,
-  style?: CalloutStyle,
-): PolishedBlock {
+function createBlock(type: PolishedBlockType, style?: CalloutStyle): PolishedBlock {
   const base: PolishedBlock = { type, content: '' };
   switch (type) {
     case 'callout':
@@ -223,7 +215,7 @@ export function InlineContentEditor({
     (updater: (draft: PolishedContent) => PolishedContent) => {
       onChange(updater(content));
     },
-    [content, onChange],
+    [content, onChange]
   );
 
   // ---- Hero summary ----
@@ -231,7 +223,7 @@ export function InlineContentEditor({
     (heroSummary: string) => {
       replaceContent((c) => ({ ...c, heroSummary }));
     },
-    [replaceContent],
+    [replaceContent]
   );
 
   // ---- Section-level mutations ----
@@ -239,12 +231,10 @@ export function InlineContentEditor({
     (sectionIdx: number, updates: Partial<PolishedSection>) => {
       replaceContent((c) => ({
         ...c,
-        sections: c.sections.map((s, i) =>
-          i === sectionIdx ? { ...s, ...updates } : s,
-        ),
+        sections: c.sections.map((s, i) => (i === sectionIdx ? { ...s, ...updates } : s)),
       }));
     },
-    [replaceContent],
+    [replaceContent]
   );
 
   const addSection = useCallback(
@@ -255,7 +245,7 @@ export function InlineContentEditor({
         return { ...c, sections: next };
       });
     },
-    [replaceContent],
+    [replaceContent]
   );
 
   const deleteSection = useCallback(
@@ -265,7 +255,7 @@ export function InlineContentEditor({
         return { ...c, sections: c.sections.filter((_, i) => i !== sectionIdx) };
       });
     },
-    [replaceContent],
+    [replaceContent]
   );
 
   const moveSection = useCallback(
@@ -278,7 +268,7 @@ export function InlineContentEditor({
         return { ...c, sections: next };
       });
     },
-    [replaceContent],
+    [replaceContent]
   );
 
   // ---- Block-level mutations ----
@@ -290,24 +280,17 @@ export function InlineContentEditor({
           si === sectionIdx
             ? {
                 ...s,
-                blocks: s.blocks.map((b, bi) =>
-                  bi === blockIdx ? { ...b, ...updates } : b,
-                ),
+                blocks: s.blocks.map((b, bi) => (bi === blockIdx ? { ...b, ...updates } : b)),
               }
-            : s,
+            : s
         ),
       }));
     },
-    [replaceContent],
+    [replaceContent]
   );
 
   const addBlock = useCallback(
-    (
-      sectionIdx: number,
-      afterBlockIdx: number,
-      type: PolishedBlockType,
-      style?: CalloutStyle,
-    ) => {
+    (sectionIdx: number, afterBlockIdx: number, type: PolishedBlockType, style?: CalloutStyle) => {
       replaceContent((c) => ({
         ...c,
         sections: c.sections.map((s, si) => {
@@ -318,7 +301,7 @@ export function InlineContentEditor({
         }),
       }));
     },
-    [replaceContent],
+    [replaceContent]
   );
 
   const deleteBlock = useCallback(
@@ -332,7 +315,7 @@ export function InlineContentEditor({
         }),
       }));
     },
-    [replaceContent],
+    [replaceContent]
   );
 
   const moveBlock = useCallback(
@@ -349,7 +332,7 @@ export function InlineContentEditor({
         }),
       }));
     },
-    [replaceContent],
+    [replaceContent]
   );
 
   // =========================================================================
@@ -366,7 +349,7 @@ export function InlineContentEditor({
       }
       updateBlock(sectionIdx, blockIdx, { content: newContent });
     },
-    [updateBlock],
+    [updateBlock]
   );
 
   const handleSlashSelect = useCallback(
@@ -395,7 +378,7 @@ export function InlineContentEditor({
 
       setSlashMenu(null);
     },
-    [slashMenu, updateBlock, replaceContent],
+    [slashMenu, updateBlock, replaceContent]
   );
 
   const handleSlashClose = useCallback(() => {
@@ -434,9 +417,7 @@ export function InlineContentEditor({
               >
                 <TipTapTextBlock
                   content={block.content}
-                  onChange={(val) =>
-                    handleBlockContentChange(sectionIdx, blockIdx, val)
-                  }
+                  onChange={(val) => handleBlockContentChange(sectionIdx, blockIdx, val)}
                   placeholder="Callout text..."
                 />
               </div>
@@ -456,9 +437,7 @@ export function InlineContentEditor({
               >
                 <TipTapTextBlock
                   content={block.content}
-                  onChange={(val) =>
-                    handleBlockContentChange(sectionIdx, blockIdx, val)
-                  }
+                  onChange={(val) => handleBlockContentChange(sectionIdx, blockIdx, val)}
                   placeholder="Quote..."
                   style={{ color: colors.muted }}
                 />
@@ -473,9 +452,7 @@ export function InlineContentEditor({
               <div style={{ margin: '0.5rem 0' }}>
                 <TipTapTextBlock
                   content={block.content}
-                  onChange={(val) =>
-                    handleBlockContentChange(sectionIdx, blockIdx, val)
-                  }
+                  onChange={(val) => handleBlockContentChange(sectionIdx, blockIdx, val)}
                   placeholder={
                     block.type === 'list'
                       ? 'List items (one per line)...'
@@ -500,18 +477,17 @@ export function InlineContentEditor({
           >
             {inner}
             {/* Slash command menu anchored below this block */}
-            {slashMenu?.sectionIdx === sectionIdx &&
-              slashMenu?.blockIdx === blockIdx && (
-                <div ref={slashAnchorRef} className="relative">
-                  <div className="absolute left-0 top-0 z-50">
-                    <SlashCommandMenu
-                      isOpen
-                      onSelect={handleSlashSelect}
-                      onClose={handleSlashClose}
-                    />
-                  </div>
+            {slashMenu?.sectionIdx === sectionIdx && slashMenu?.blockIdx === blockIdx && (
+              <div ref={slashAnchorRef} className="relative">
+                <div className="absolute left-0 top-0 z-50">
+                  <SlashCommandMenu
+                    isOpen
+                    onSelect={handleSlashSelect}
+                    onClose={handleSlashClose}
+                  />
                 </div>
-              )}
+              </div>
+            )}
           </BlockHoverControls>
         );
       }
@@ -549,9 +525,7 @@ export function InlineContentEditor({
           >
             <StructuredBlockOverlay
               block={block}
-              onChange={(updates) =>
-                updateBlock(sectionIdx, blockIdx, updates)
-              }
+              onChange={(updates) => updateBlock(sectionIdx, blockIdx, updates)}
               isDark={isDark}
               primaryColor={primaryColor}
             >
@@ -577,7 +551,7 @@ export function InlineContentEditor({
       moveBlock,
       deleteBlock,
       updateBlock,
-    ],
+    ]
   );
 
   // Read-only published renderer for structured blocks
@@ -604,18 +578,12 @@ export function InlineContentEditor({
             />
           );
         case 'stat-card':
-          return (
-            <StatCard
-              block={block}
-              isDark={isDark}
-              primaryColor={primaryColor}
-            />
-          );
+          return <StatCard block={block} isDark={isDark} primaryColor={primaryColor} />;
         default:
           return null;
       }
     },
-    [isDark, primaryColor, colors],
+    [isDark, primaryColor, colors]
   );
 
   // =========================================================================
@@ -639,27 +607,21 @@ export function InlineContentEditor({
       {content.sections.map((section, sectionIdx) => (
         <React.Fragment key={section.id}>
           {/* Add section divider BEFORE each section (except first) */}
-          {sectionIdx > 0 && (
-            <AddSectionDivider
-              onAdd={() => addSection(sectionIdx - 1)}
-            />
-          )}
+          {sectionIdx > 0 && <AddSectionDivider onAdd={() => addSection(sectionIdx - 1)} />}
 
           <section className="relative mb-10">
             {/* Section header controls (move/delete) */}
             <div
               className="relative"
               onMouseEnter={(e) => {
-                const controls = e.currentTarget.querySelector<HTMLElement>(
-                  '[data-section-controls]',
-                );
+                const controls =
+                  e.currentTarget.querySelector<HTMLElement>('[data-section-controls]');
                 if (controls) controls.style.opacity = '1';
                 if (controls) controls.style.pointerEvents = 'auto';
               }}
               onMouseLeave={(e) => {
-                const controls = e.currentTarget.querySelector<HTMLElement>(
-                  '[data-section-controls]',
-                );
+                const controls =
+                  e.currentTarget.querySelector<HTMLElement>('[data-section-controls]');
                 if (controls) controls.style.opacity = '0';
                 if (controls) controls.style.pointerEvents = 'none';
               }}
@@ -690,7 +652,7 @@ export function InlineContentEditor({
                 <button
                   type="button"
                   onClick={() => deleteSection(sectionIdx)}
-                  className="flex h-5 w-5 items-center justify-center rounded text-red-500 hover:bg-red-500/10"
+                  className="flex h-5 w-5 items-center justify-center rounded text-destructive hover:bg-destructive/10"
                   aria-label="Delete section"
                 >
                   <Trash2 size={12} />
@@ -722,9 +684,7 @@ export function InlineContentEditor({
             <div className="mb-4">
               <TipTapTextBlock
                 content={section.introduction}
-                onChange={(val) =>
-                  updateSection(sectionIdx, { introduction: val })
-                }
+                onChange={(val) => updateSection(sectionIdx, { introduction: val })}
                 placeholder="Section introduction..."
                 style={{ color: colors.body }}
               />
@@ -741,13 +701,7 @@ export function InlineContentEditor({
             <div className="mt-2 flex items-center gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  addBlock(
-                    sectionIdx,
-                    section.blocks.length - 1,
-                    'paragraph',
-                  )
-                }
+                onClick={() => addBlock(sectionIdx, section.blocks.length - 1, 'paragraph')}
                 className="flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
               >
                 <Plus size={14} />
@@ -756,7 +710,10 @@ export function InlineContentEditor({
             </div>
 
             {/* Key takeaway */}
-            <div className="mt-4 rounded-md border border-dashed p-3" style={{ borderColor: colors.border }}>
+            <div
+              className="mt-4 rounded-md border border-dashed p-3"
+              style={{ borderColor: colors.border }}
+            >
               <span
                 className="mb-1 block text-xs font-semibold uppercase tracking-wide"
                 style={{ color: colors.muted }}
@@ -765,9 +722,7 @@ export function InlineContentEditor({
               </span>
               <TipTapTextBlock
                 content={section.keyTakeaway}
-                onChange={(val) =>
-                  updateSection(sectionIdx, { keyTakeaway: val })
-                }
+                onChange={(val) => updateSection(sectionIdx, { keyTakeaway: val })}
                 placeholder="Key takeaway for this section..."
                 style={{ color: colors.body }}
               />
@@ -777,9 +732,7 @@ export function InlineContentEditor({
       ))}
 
       {/* Add section at the very end */}
-      <AddSectionDivider
-        onAdd={() => addSection(content.sections.length - 1)}
-      />
+      <AddSectionDivider onAdd={() => addSection(content.sections.length - 1)} />
     </div>
   );
 }

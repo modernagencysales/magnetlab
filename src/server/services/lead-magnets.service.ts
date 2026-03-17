@@ -6,6 +6,7 @@
  */
 
 import * as leadMagnetsRepo from '@/server/repositories/lead-magnets.repo';
+import * as userRepo from '@/server/repositories/user.repo';
 import { checkResourceLimit } from '@/lib/auth/plan-limits';
 import { getPostHogServerClient } from '@/lib/posthog';
 import {
@@ -282,7 +283,14 @@ export async function generateAndPolishContent(scope: DataScope, id: string) {
     }
   } catch {}
 
-  const extractedContent = await generateFullContent(leadMagnet.title, concept, knowledgeContext);
+  const user = await userRepo.findUserByIdForExternal(leadMagnet.user_id);
+  const authorName = user?.name || 'the author';
+  const extractedContent = await generateFullContent(
+    leadMagnet.title,
+    concept,
+    knowledgeContext,
+    authorName
+  );
 
   await leadMagnetsRepo.updateLeadMagnetNoReturn(scope, id, {
     extracted_content: extractedContent,
@@ -394,7 +402,7 @@ export async function generateScreenshots(scope: DataScope, userId: string, id: 
     );
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://magnetlab.ai';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://magnetlab.app';
   const pageUrl = `${appUrl}/p/${username}/${funnelPage.slug}/content`;
   const sectionCount = hasPolished ? polishedContent!.sections.length : 0;
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { X, Loader2, Archive, Sparkles } from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
 import { StatusBadge } from './StatusBadge';
 import { PillarBadge } from './PillarBadge';
 import type { ContentIdea } from '@/lib/types/content-pipeline';
@@ -14,15 +15,27 @@ interface IdeaDetailModalProps {
   archiving: boolean;
 }
 
-export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing, archiving }: IdeaDetailModalProps) {
+export function IdeaDetailModal({
+  idea,
+  onClose,
+  onWritePost,
+  onArchive,
+  writing,
+  archiving,
+}: IdeaDetailModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Idea Details">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Idea Details"
+    >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Idea Details</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="space-y-4">
@@ -30,11 +43,7 @@ export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing
           <div className="flex items-center gap-2 flex-wrap">
             <StatusBadge status={idea.status} />
             <PillarBadge pillar={idea.content_pillar} />
-            {idea.content_type && (
-              <span className="rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground">
-                {idea.content_type}
-              </span>
-            )}
+            {idea.content_type && <Badge variant="gray">{idea.content_type}</Badge>}
           </div>
 
           {/* Title */}
@@ -43,7 +52,9 @@ export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing
           {/* Core Insight */}
           {idea.core_insight && (
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">Core Insight</p>
+              <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">
+                Core Insight
+              </p>
               <p className="text-sm leading-relaxed">{idea.core_insight}</p>
             </div>
           )}
@@ -51,7 +62,9 @@ export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing
           {/* Full Context */}
           {idea.full_context && (
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">Full Context</p>
+              <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">
+                Full Context
+              </p>
               <p className="text-sm leading-relaxed text-muted-foreground">{idea.full_context}</p>
             </div>
           )}
@@ -59,8 +72,12 @@ export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing
           {/* Why Post Worthy */}
           {idea.why_post_worthy && (
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">Why Post-Worthy</p>
-              <p className="text-sm leading-relaxed text-muted-foreground">{idea.why_post_worthy}</p>
+              <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">
+                Why Post-Worthy
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {idea.why_post_worthy}
+              </p>
             </div>
           )}
 
@@ -82,7 +99,9 @@ export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing
           {/* Source Quote */}
           {idea.source_quote && (
             <div className="border-l-2 border-primary pl-3">
-              <p className="text-sm italic text-muted-foreground">&ldquo;{idea.source_quote}&rdquo;</p>
+              <p className="text-sm italic text-muted-foreground">
+                &ldquo;{idea.source_quote}&rdquo;
+              </p>
             </div>
           )}
 
@@ -99,26 +118,26 @@ export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing
             {idea.composite_score !== null && idea.composite_score !== undefined && (
               <span>Score: {idea.composite_score.toFixed(1)}</span>
             )}
-            {idea.target_audience && (
-              <span>Audience: {idea.target_audience}</span>
-            )}
+            {idea.target_audience && <span>Audience: {idea.target_audience}</span>}
           </div>
         </div>
 
         {/* Actions */}
         <div className="mt-6 space-y-3">
           {(idea.status === 'extracted' || idea.status === 'selected') && (
-            <button
-              onClick={() => onWritePost(idea.id)}
-              disabled={writing}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              {writing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            <Button className="w-full" onClick={() => onWritePost(idea.id)} disabled={writing}>
+              {writing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
               {writing ? 'Writing...' : 'Write Post from This Idea'}
               {!writing && (
-                <kbd className="ml-1 rounded border border-primary-foreground/30 px-1.5 py-0.5 text-[10px] font-mono opacity-70">W</kbd>
+                <kbd className="ml-1 rounded border border-primary-foreground/30 px-1.5 py-0.5 text-[10px] font-mono opacity-70">
+                  W
+                </kbd>
               )}
-            </button>
+            </Button>
           )}
           {idea.status === 'writing' && (
             <div className="flex w-full items-center justify-center gap-2 rounded-lg bg-yellow-100 dark:bg-yellow-950/50 px-4 py-2.5 text-sm font-medium text-yellow-700 dark:text-yellow-300">
@@ -127,20 +146,19 @@ export function IdeaDetailModal({ idea, onClose, onWritePost, onArchive, writing
             </div>
           )}
           <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="flex-1 rounded-lg border border-border py-2 text-sm font-medium hover:bg-muted transition-colors"
-            >
+            <Button variant="outline" className="flex-1" onClick={onClose}>
               Close
-            </button>
+            </Button>
             {idea.status !== 'archived' && (
-              <button
-                onClick={() => onArchive(idea.id)}
-                disabled={archiving}
-                className="flex items-center justify-center gap-2 rounded-lg border border-border py-2 px-4 text-sm font-medium hover:bg-muted disabled:opacity-50 transition-colors"
-              >
-                {archiving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Archive className="h-4 w-4" /> Archive</>}
-              </button>
+              <Button variant="outline" onClick={() => onArchive(idea.id)} disabled={archiving}>
+                {archiving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Archive className="h-4 w-4" /> Archive
+                  </>
+                )}
+              </Button>
             )}
           </div>
         </div>

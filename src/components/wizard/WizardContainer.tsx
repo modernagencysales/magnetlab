@@ -1,6 +1,8 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
+import { PageContainer, Button } from '@magnetlab/magnetui';
 import { ContextStep } from './steps/ContextStep';
 import { IdeationStep } from './steps/IdeationStep';
 import { CustomIdeaStep } from './steps/CustomIdeaStep';
@@ -67,11 +69,11 @@ export function WizardContainer() {
     return (
       <div className="min-h-screen bg-background">
         <WizardProgress currentStep={1} />
-        <div className="container mx-auto max-w-4xl px-4 py-8">
+        <PageContainer maxWidth="lg">
           <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        </div>
+        </PageContainer>
       </div>
     );
   }
@@ -80,14 +82,14 @@ export function WizardContainer() {
     return (
       <div className="min-h-screen bg-background">
         <WizardProgress currentStep={1} />
-        <div className="container mx-auto max-w-4xl px-4 py-8">
+        <PageContainer maxWidth="lg">
           <DraftPicker
             drafts={drafts}
             onSelect={handleDraftSelect}
             onDelete={handleDraftDelete}
             onStartNew={handleStartNew}
           />
-        </div>
+        </PageContainer>
       </div>
     );
   }
@@ -96,9 +98,9 @@ export function WizardContainer() {
     return (
       <div className="min-h-screen bg-background">
         <WizardProgress currentStep={1} />
-        <div className="container mx-auto max-w-4xl px-4 py-8">
+        <PageContainer maxWidth="lg">
           <GeneratingScreen />
-        </div>
+        </PageContainer>
       </div>
     );
   }
@@ -107,9 +109,9 @@ export function WizardContainer() {
     return (
       <div className="min-h-screen bg-background">
         <WizardProgress currentStep={3} />
-        <div className="container mx-auto max-w-4xl px-4 py-8">
+        <PageContainer maxWidth="lg">
           <GeneratingScreen message="Extracting your content..." />
-        </div>
+        </PageContainer>
       </div>
     );
   }
@@ -118,9 +120,9 @@ export function WizardContainer() {
     return (
       <div className="min-h-screen bg-background">
         <WizardProgress currentStep={4} />
-        <div className="container mx-auto max-w-4xl px-4 py-8">
+        <PageContainer maxWidth="lg">
           <GeneratingScreen message="Writing your LinkedIn posts..." />
-        </div>
+        </PageContainer>
       </div>
     );
   }
@@ -131,7 +133,7 @@ export function WizardContainer() {
 
       {autoSaveEnabled && (isSaving || lastSavedAt) && (
         <div className="border-b bg-card">
-          <div className="container mx-auto max-w-4xl px-4 py-1.5">
+          <div className="mx-auto max-w-4xl px-4 py-1.5">
             <p className="text-xs text-muted-foreground">
               {isSaving
                 ? 'Saving draft...'
@@ -143,17 +145,18 @@ export function WizardContainer() {
         </div>
       )}
 
-      <div className="container mx-auto max-w-4xl px-4 py-8">
+      <PageContainer maxWidth="lg">
         {error && (
-          <div className="mb-6 flex items-center justify-between rounded-lg bg-destructive/10 p-4 text-destructive">
+          <div className="mb-6 flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-destructive">
             <span>{error}</span>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setError(null)}
-              className="ml-4 text-sm font-medium underline hover:no-underline"
+              className="text-destructive hover:text-destructive"
             >
               Dismiss
-            </button>
+            </Button>
           </div>
         )}
 
@@ -251,7 +254,7 @@ export function WizardContainer() {
               )}
           </motion.div>
         </AnimatePresence>
-      </div>
+      </PageContainer>
     </div>
   );
 }

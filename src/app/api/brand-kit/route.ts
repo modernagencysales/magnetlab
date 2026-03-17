@@ -1,5 +1,5 @@
 // API Route: Brand Kit CRUD
-// GET /api/brand-kit — get; POST /api/brand-kit — create/update
+// GET /api/brand-kit — get; POST /api/brand-kit — full upsert; PATCH /api/brand-kit — partial update
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
@@ -34,5 +34,20 @@ export async function POST(request: Request) {
   } catch (error) {
     logApiError('brand-kit/save', error, { userId: (await auth())?.user?.id });
     return ApiErrors.databaseError('Failed to save brand kit');
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return ApiErrors.unauthorized();
+
+    const body = await request.json();
+    const scope = await getDataScope(session.user.id);
+    const data = await brandKitService.partialUpdateBrandKit(scope, body);
+    return NextResponse.json(data);
+  } catch (error) {
+    logApiError('brand-kit/patch', error, { userId: (await auth())?.user?.id });
+    return ApiErrors.databaseError('Failed to update brand kit');
   }
 }

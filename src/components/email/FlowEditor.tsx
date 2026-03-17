@@ -12,6 +12,7 @@ import {
   PlayCircle,
   PauseCircle,
 } from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
 import { FlowStepCard } from './FlowStepCard';
 import type { EmailFlowWithSteps, EmailFlowStep } from '@/lib/types/email-system';
 import * as flowsApi from '@/frontend/api/email/flows';
@@ -26,10 +27,10 @@ interface LeadMagnetOption {
   title: string;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400',
-  active: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  paused: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+const STATUS_VARIANTS: Record<string, 'gray' | 'green' | 'orange'> = {
+  draft: 'gray',
+  active: 'green',
+  paused: 'orange',
 };
 
 const GENERATING_MESSAGES = [
@@ -284,16 +285,13 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
   if (!flow) {
     return (
       <div className="space-y-4">
-        <button
-          onClick={() => router.push('/email/flows')}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={() => router.push('/email/flows')}>
+          <ArrowLeft className="h-4 w-4 mr-1.5" />
           Back to Flows
-        </button>
-        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <AlertCircle className="h-5 w-5 text-red-500" />
-          <p className="text-sm text-red-800 dark:text-red-200">{error || 'Flow not found.'}</p>
+        </Button>
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-destructive">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">{error || 'Flow not found.'}</p>
         </div>
       </div>
     );
@@ -304,13 +302,15 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Back button */}
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-1 text-muted-foreground hover:text-foreground"
         onClick={() => router.push('/email/flows')}
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Flows
-      </button>
+      </Button>
 
       {/* Header: name, description, status */}
       <div className="space-y-2">
@@ -379,19 +379,17 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
             )}
           </div>
 
-          <span
-            className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[flow.status] || STATUS_STYLES.draft}`}
-          >
+          <Badge variant={STATUS_VARIANTS[flow.status] || 'gray'}>
             {flow.status.charAt(0).toUpperCase() + flow.status.slice(1)}
-          </span>
+          </Badge>
         </div>
       </div>
 
       {/* Messages */}
       {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-destructive">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="text-sm">{error}</p>
         </div>
       )}
 
@@ -454,10 +452,10 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
       {/* Status controls */}
       <div className="flex items-center gap-3 flex-wrap">
         {flow.status === 'draft' && (
-          <button
+          <Button
             onClick={handleActivate}
             disabled={updatingStatus || flow.steps.length === 0}
-            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-green-600 hover:bg-green-700 text-white"
             title={flow.steps.length === 0 ? 'Add at least one step before activating' : undefined}
           >
             {updatingStatus ? (
@@ -466,14 +464,15 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
               <PlayCircle className="h-4 w-4" />
             )}
             Activate
-          </button>
+          </Button>
         )}
 
         {flow.status === 'active' && (
-          <button
+          <Button
+            variant="outline"
             onClick={handlePause}
             disabled={updatingStatus}
-            className="flex items-center gap-2 rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-2 text-sm font-medium text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 disabled:opacity-50 transition-colors"
+            className="border-yellow-300 text-yellow-700 hover:bg-yellow-50 dark:border-yellow-700 dark:text-yellow-300 dark:hover:bg-yellow-900/30"
           >
             {updatingStatus ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -481,15 +480,15 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
               <PauseCircle className="h-4 w-4" />
             )}
             Pause
-          </button>
+          </Button>
         )}
 
         {flow.status === 'paused' && (
           <>
-            <button
+            <Button
               onClick={handleActivate}
               disabled={updatingStatus || flow.steps.length === 0}
-              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
               {updatingStatus ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -497,22 +496,24 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
                 <PlayCircle className="h-4 w-4" />
               )}
               Activate
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               onClick={handleBackToDraft}
               disabled={updatingStatus}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+              className="underline underline-offset-2"
             >
               Back to Draft
-            </button>
+            </Button>
           </>
         )}
 
         {isEditable && (
-          <button
+          <Button
+            variant="outline"
             onClick={handleGenerate}
             disabled={generating}
-            className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 ml-auto"
+            className="ml-auto"
           >
             {generating ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -520,7 +521,7 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
               <Sparkles className="h-4 w-4" />
             )}
             {flow.steps.length > 0 ? 'Regenerate with AI' : 'Generate with AI'}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -544,18 +545,14 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
                 No steps yet. Add a step manually or generate with AI.
               </p>
               {isEditable && (
-                <button
-                  onClick={handleAddStep}
-                  disabled={addingStep}
-                  className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
-                >
+                <Button variant="outline" onClick={handleAddStep} disabled={addingStep}>
                   {addingStep ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Plus className="h-4 w-4" />
                   )}
                   Add Step
-                </button>
+                </Button>
               )}
             </div>
           ) : (
@@ -575,10 +572,11 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
               ))}
 
               {isEditable && (
-                <button
+                <Button
+                  variant="outline"
                   onClick={handleAddStep}
                   disabled={addingStep}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors disabled:opacity-50"
+                  className="w-full border-2 border-dashed text-muted-foreground hover:text-foreground hover:border-primary/50"
                 >
                   {addingStep ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -586,7 +584,7 @@ export function FlowEditor({ flowId }: FlowEditorProps) {
                     <Plus className="h-4 w-4" />
                   )}
                   Add Step
-                </button>
+                </Button>
               )}
             </>
           )}

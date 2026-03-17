@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { PageContainer } from '@magnetlab/magnetui';
 import { BackLink, FormError, IconPicker, LIBRARY_ICONS } from '@/components/assets';
 import * as librariesApi from '@/frontend/api/libraries';
 
@@ -39,68 +40,69 @@ export default function NewLibraryPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4">
-      <BackLink />
+    <PageContainer maxWidth="lg">
+      <div className="mx-auto max-w-2xl space-y-6">
+        <BackLink />
+        <h1 className="text-2xl font-bold">Create New Library</h1>
 
-      <h1 className="text-2xl font-bold mb-6">Create New Library</h1>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="name" className="mb-2 block text-sm font-medium">
+              Library Name *
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Marketing Resources"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={isSubmitting}
+            />
+          </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-2">
-            Library Name *
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., Marketing Resources"
-            className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+          <div>
+            <label htmlFor="description" className="mb-2 block text-sm font-medium">
+              Description
+            </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="A brief description of this library..."
+              rows={3}
+              className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <IconPicker
+            value={icon}
+            onChange={setIcon}
+            options={LIBRARY_ICONS}
             disabled={isSubmitting}
           />
-        </div>
 
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium mb-2">
-            Description
-          </label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="A brief description of this library..."
-            rows={3}
-            className="w-full px-3 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-            disabled={isSubmitting}
-          />
-        </div>
+          <FormError message={error} />
 
-        <IconPicker
-          value={icon}
-          onChange={setIcon}
-          options={LIBRARY_ICONS}
-          disabled={isSubmitting}
-        />
-
-        <FormError message={error} />
-
-        <div className="flex gap-3">
-          <Link
-            href="/pages"
-            className="px-4 py-2 border rounded-lg hover:bg-muted transition-colors"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={isSubmitting || !name.trim()}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-            Create Library
-          </button>
-        </div>
-      </form>
-    </div>
+          <div className="flex gap-3">
+            <Link
+              href="/pages"
+              className="rounded-lg border border-border px-4 py-2 transition-colors hover:bg-muted"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={isSubmitting || !name.trim()}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting && <Loader2 size={16} className="animate-spin mr-1" />}
+              Create Library
+            </button>
+          </div>
+        </form>
+      </div>
+    </PageContainer>
   );
 }

@@ -6,6 +6,8 @@ import * as leadsService from '@/server/services/leads.service';
 import * as funnelsService from '@/server/services/funnels.service';
 import { LeadsPageClient } from '@/components/leads/LeadsPageClient';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Leads | MagnetLab',
   description: 'Manage your captured leads',

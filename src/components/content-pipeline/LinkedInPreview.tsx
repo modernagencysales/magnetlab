@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import Image from 'next/image';
 import { ThumbsUp, MessageCircle, Repeat2, Send, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -124,11 +125,13 @@ export function LinkedInPreview({
       <div className="flex items-start gap-2 p-3 pb-0">
         {/* Avatar */}
         {authorAvatarUrl ? (
-          <img
+          <Image
             src={authorAvatarUrl}
             alt={authorName}
+            width={48}
+            height={48}
             className="rounded-full object-cover flex-shrink-0"
-            style={{ width: 48, height: 48 }}
+            unoptimized
           />
         ) : (
           <div
@@ -154,16 +157,10 @@ export function LinkedInPreview({
           >
             {authorName}
           </span>
-          <span
-            className="leading-tight truncate"
-            style={{ color: '#00000099', fontSize: 12 }}
-          >
+          <span className="leading-tight truncate" style={{ color: '#00000099', fontSize: 12 }}>
             {authorHeadline}
           </span>
-          <span
-            className="flex items-center gap-1"
-            style={{ color: '#00000099', fontSize: 12 }}
-          >
+          <span className="flex items-center gap-1" style={{ color: '#00000099', fontSize: 12 }}>
             Just now &middot; <Globe className="inline" style={{ width: 12, height: 12 }} />
           </span>
         </div>
@@ -231,12 +228,15 @@ export function LinkedInPreview({
 
       {/* Optional image */}
       {imageUrl && (
-        <div className="mt-1">
-          <img
+        <div className="mt-1 relative w-full" style={{ maxHeight: 400 }}>
+          <Image
             src={imageUrl}
             alt="Post image"
+            width={540}
+            height={400}
             className="w-full object-cover"
             style={{ maxHeight: 400 }}
+            unoptimized
           />
         </div>
       )}
@@ -269,7 +269,7 @@ function ActionButton({ icon, label }: { icon: React.ReactNode; label: string })
     <button
       type="button"
       className={cn(
-        'flex items-center gap-1 px-3 py-2 rounded hover:bg-gray-100 transition-colors',
+        'flex items-center gap-1 px-3 py-2 rounded hover:bg-muted transition-colors',
         'text-xs font-semibold'
       )}
       style={{ color: '#00000099' }}

@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (!isUnipileConfigured()) {
-    const errorUrl = new URL('/settings', process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+    const errorUrl = new URL(
+      '/settings',
+      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    );
     errorUrl.searchParams.set('linkedin', 'error');
     errorUrl.searchParams.set('reason', 'not_configured');
     return NextResponse.redirect(errorUrl.toString());
@@ -19,23 +22,24 @@ export async function GET(request: NextRequest) {
 
   try {
     const client = getUnipileClient();
-    const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl =
+      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     // Encode team_profile_id into the userId callback metadata if provided
     const teamProfileId = request.nextUrl.searchParams.get('team_profile_id');
-    const callbackUserId = teamProfileId
-      ? `${session.user.id}:${teamProfileId}`
-      : session.user.id;
+    const callbackUserId = teamProfileId ? `${session.user.id}:${teamProfileId}` : session.user.id;
 
     const result = await client.requestHostedAuthLink({
       userId: callbackUserId,
       successRedirectUrl: `${appUrl}/settings?linkedin=connected`,
       failureRedirectUrl: `${appUrl}/settings?linkedin=error&reason=auth_failed`,
-      notifyUrl: `${appUrl}/api/webhooks/unipile`,
+      notifyUrl: `${appUrl}/api/webhooks/unipile?secret=${process.env.UNIPILE_WEBHOOK_SECRET || ''}`,
     });
 
     if (result.error || !result.data?.url) {
-      logError('api/linkedin', new Error(String(result.error)), { step: 'unipile_hosted_auth_link_error' });
+      logError('api/linkedin', new Error(String(result.error)), {
+        step: 'unipile_hosted_auth_link_error',
+      });
       const errorUrl = new URL('/settings', appUrl);
       errorUrl.searchParams.set('linkedin', 'error');
       errorUrl.searchParams.set('reason', 'link_failed');
@@ -45,7 +49,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(result.data.url);
   } catch (error) {
     logError('api/linkedin', error, { step: 'linkedin_connect_error' });
-    const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl =
+      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const errorUrl = new URL('/settings', appUrl);
     errorUrl.searchParams.set('linkedin', 'error');
     errorUrl.searchParams.set('reason', 'link_failed');

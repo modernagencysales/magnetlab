@@ -1,3 +1,4 @@
+import { SectionContainer } from '@magnetlab/magnetui';
 import { BroadcastList } from '@/components/email/BroadcastList';
 
 export const metadata = {
@@ -7,14 +8,11 @@ export const metadata = {
 
 export default function EmailBroadcastsPage() {
   return (
-    <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold">Broadcasts</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Send one-time emails to all or a filtered segment of your subscribers.
-        </p>
-      </div>
+    <SectionContainer
+      title="Broadcasts"
+      description="Send one-time emails to all or a filtered segment of your subscribers."
+    >
       <BroadcastList />
-    </div>
+    </SectionContainer>
   );
 }

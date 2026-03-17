@@ -15,7 +15,11 @@ function sanitizeCSS(val: string): string {
 function isValidStorageUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return parsed.hostname.endsWith('.supabase.co');
+    if (!parsed.hostname.endsWith('.supabase.co')) return false;
+    // Only allow simple storage paths — no query params or fragments that could escape CSS context
+    if (parsed.search || parsed.hash) return false;
+    if (!/^\/storage\/v1\/object\//.test(parsed.pathname)) return false;
+    return true;
   } catch {
     return false;
   }

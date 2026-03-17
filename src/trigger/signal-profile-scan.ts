@@ -4,6 +4,9 @@ import { getProfilePosts, getPostComments, getPostReactions } from '@/lib/integr
 import { processEngagers } from '@/lib/services/signal-engine';
 import type { HarvestPostComment, HarvestPostReaction } from '@/lib/types/signals';
 
+const SIGNAL_PROFILE_MONITOR_COLUMNS =
+  'id, user_id, linkedin_profile_url, name, headline, is_active, last_scraped_at, heyreach_campaign_id, monitor_type, created_at, updated_at';
+
 // ============================================
 // HELPER: should we scrape this profile now?
 // ============================================
@@ -32,7 +35,7 @@ export const signalProfileScan = schedules.task({
     // Step 1: Fetch active profile monitors
     const { data: monitors, error: fetchError } = await supabase
       .from('signal_profile_monitors')
-      .select('*')
+      .select(SIGNAL_PROFILE_MONITOR_COLUMNS)
       .eq('is_active', true)
       .limit(20);
 
@@ -47,7 +50,7 @@ export const signalProfileScan = schedules.task({
     }
 
     // Step 2: Filter to profiles due for scraping (60 min interval)
-    const dueMonitors = monitors.filter(m => shouldScrapeProfile(m.last_scraped_at));
+    const dueMonitors = monitors.filter((m) => shouldScrapeProfile(m.last_scraped_at));
 
     logger.info(`Profile monitors: ${dueMonitors.length} due of ${monitors.length} active`);
 
@@ -136,12 +139,14 @@ export const signalProfileScan = schedules.task({
 
             // Get reactions for this post
             const reactionsResult = await getPostReactions(postUrl);
-            const reactions: HarvestPostReaction[] = reactionsResult.error ? [] : reactionsResult.data;
+            const reactions: HarvestPostReaction[] = reactionsResult.error
+              ? []
+              : reactionsResult.data;
 
             // Map comments to engager format
             const commentEngagers = comments
-              .filter(c => c.actor?.linkedinUrl)
-              .map(c => ({
+              .filter((c) => c.actor?.linkedinUrl)
+              .map((c) => ({
                 linkedinUrl: c.actor.linkedinUrl,
                 name: c.actor.name,
                 headline: c.actor.position,
@@ -151,8 +156,8 @@ export const signalProfileScan = schedules.task({
 
             // Map reactions to engager format
             const reactionEngagers = reactions
-              .filter(r => r.actor?.linkedinUrl)
-              .map(r => ({
+              .filter((r) => r.actor?.linkedinUrl)
+              .map((r) => ({
                 linkedinUrl: r.actor.linkedinUrl,
                 name: r.actor.name,
                 headline: r.actor.position,

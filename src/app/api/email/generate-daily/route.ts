@@ -13,7 +13,10 @@ export async function POST(request: Request) {
     if (!session?.user?.id) return ApiErrors.unauthorized();
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     let requestTopic: string | undefined;
     let requestProfileId: string | undefined;

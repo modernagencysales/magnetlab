@@ -24,7 +24,9 @@ export default function TeamBroadcasting() {
         </Link>{' '}
         &mdash; their tone, signature phrases, storytelling style, and perspective.
       </p>
-      <p className="text-sm mb-4">The result: the same core idea, but each version sounds like it was written by that person.</p>
+      <p className="text-sm mb-4">
+        The result: the same core idea, but each version sounds like it was written by that person.
+      </p>
 
       <h2 className="text-xl font-semibold mt-8 mb-4">Start a Broadcast</h2>
       <ol className="list-decimal list-inside space-y-3 text-sm">
@@ -45,9 +47,7 @@ export default function TeamBroadcasting() {
       </ol>
 
       <h2 className="text-xl font-semibold mt-8 mb-4">Configure the Broadcast</h2>
-      <p className="text-sm mb-4">
-        The modal has three sections:
-      </p>
+      <p className="text-sm mb-4">The modal has three sections:</p>
 
       <h3 className="text-base font-semibold mt-6 mb-3">Source Post Preview</h3>
       <p className="text-sm mb-4">
@@ -58,8 +58,8 @@ export default function TeamBroadcasting() {
       <h3 className="text-base font-semibold mt-6 mb-3">Team Member Selection</h3>
       <p className="text-sm mb-4">
         A list of all team members with checkboxes. By default, all connected profiles are
-        pre-selected (except the source author, who is marked as &ldquo;Source&rdquo; and
-        can&apos;t be selected).
+        pre-selected (except the source author, who is marked as &ldquo;Source&rdquo; and can&apos;t
+        be selected).
       </p>
       <ul className="list-disc list-inside space-y-2 text-sm">
         <li>Each member shows their name, title, and LinkedIn connection status</li>
@@ -68,8 +68,8 @@ export default function TeamBroadcasting() {
           their posts auto-published
         </li>
         <li>
-          <strong className="text-zinc-500 dark:text-zinc-400">Not connected</strong> members will
-          get variations created, but posts must be published manually
+          <strong className="text-muted-foreground">Not connected</strong> members will get
+          variations created, but posts must be published manually
         </li>
         <li>Click a member to toggle them on or off</li>
       </ul>
@@ -94,22 +94,16 @@ export default function TeamBroadcasting() {
 
       <h2 className="text-xl font-semibold mt-8 mb-4">After Clicking Broadcast</h2>
       <ol className="list-decimal list-inside space-y-3 text-sm">
+        <li>The system triggers a background task that generates each variation</li>
+        <li>AI reads each team member&apos;s voice profile and rewrites the post in their style</li>
         <li>
-          The system triggers a background task that generates each variation
-        </li>
-        <li>
-          AI reads each team member&apos;s voice profile and rewrites the post in their style
-        </li>
-        <li>
-          Each variation is created with status <strong>&ldquo;reviewing&rdquo;</strong> &mdash; they
-          won&apos;t publish automatically until approved
+          Each variation is created with status <strong>&ldquo;reviewing&rdquo;</strong> &mdash;
+          they won&apos;t publish automatically until approved
         </li>
         <li>
           Variations are linked together by a broadcast group ID so you can track them as a set
         </li>
-        <li>
-          Scheduled times are auto-staggered across the number of days you selected
-        </li>
+        <li>Scheduled times are auto-staggered across the number of days you selected</li>
         <li>
           The Command Center grid refreshes to show the new variations in their assigned slots
         </li>
@@ -123,9 +117,7 @@ export default function TeamBroadcasting() {
       <ol className="list-decimal list-inside space-y-3 text-sm">
         <li>Click the variation in the grid to open the Post Detail Modal</li>
         <li>Read through the content &mdash; make sure it sounds like that person</li>
-        <li>
-          Edit if needed &mdash; the AI does a good job but may need tweaks
-        </li>
+        <li>Edit if needed &mdash; the AI does a good job but may need tweaks</li>
         <li>
           Use <strong>Polish</strong> for minor refinements without changing the voice
         </li>
@@ -141,18 +133,23 @@ export default function TeamBroadcasting() {
       <ul className="list-disc list-inside space-y-2 text-sm">
         <li>
           A severity indicator:{' '}
-          <span className="inline-block h-2 w-2 rounded-full bg-red-500" /> high,{' '}
+          <span className="inline-block h-2 w-2 rounded-full bg-destructive" /> high,{' '}
           <span className="inline-block h-2 w-2 rounded-full bg-orange-500" /> medium,{' '}
           <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" /> low
         </li>
-        <li>A description of what overlaps (e.g., &ldquo;Both posts discuss cold email outreach strategies&rdquo;)</li>
-        <li>A suggestion for how to fix it (e.g., &ldquo;Move one post to a different day&rdquo;)</li>
+        <li>
+          A description of what overlaps (e.g., &ldquo;Both posts discuss cold email outreach
+          strategies&rdquo;)
+        </li>
+        <li>
+          A suggestion for how to fix it (e.g., &ldquo;Move one post to a different day&rdquo;)
+        </li>
       </ul>
       <div className="rounded-lg border bg-muted/30 p-4 my-4">
         <p className="text-sm">
           <strong>Tip:</strong> Collision detection is designed to catch same-day topic overlap, not
-          same-week overlap. Two posts about the same topic on different days is fine &mdash; that&apos;s
-          what the stagger setting is for.
+          same-week overlap. Two posts about the same topic on different days is fine &mdash;
+          that&apos;s what the stagger setting is for.
         </p>
       </div>
 
@@ -160,8 +157,8 @@ export default function TeamBroadcasting() {
       <div className="rounded-lg border bg-muted/30 p-4 my-4">
         <ul className="list-disc list-inside space-y-2 text-sm">
           <li>
-            Set a stagger of 2-3 days for a natural feel &mdash; your audience follows multiple
-            team members
+            Set a stagger of 2-3 days for a natural feel &mdash; your audience follows multiple team
+            members
           </li>
           <li>
             Make sure each team member has a{' '}

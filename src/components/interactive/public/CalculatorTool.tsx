@@ -37,7 +37,7 @@ function getInterpretation(value: number, interpretations: ResultInterpretation[
 const INTERPRETATION_COLORS: Record<ResultInterpretation['color'], { bg: string; text: string; border: string }> = {
   green: { bg: 'bg-green-500/10', text: 'text-green-600', border: 'border-green-500/30' },
   yellow: { bg: 'bg-yellow-500/10', text: 'text-yellow-600', border: 'border-yellow-500/30' },
-  red: { bg: 'bg-red-500/10', text: 'text-red-600', border: 'border-red-500/30' },
+  red: { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-destructive/30' },
 };
 
 function isUnitPrefix(unit: string): boolean {

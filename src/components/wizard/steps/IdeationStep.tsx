@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Check, Star, Zap, Trophy, Sparkles } from 'lucide-react';
+import { Button, Badge } from '@magnetlab/magnetui';
 import type { IdeationResult, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 import { ARCHETYPE_NAMES, isInteractiveArchetype } from '@/lib/types/lead-magnet';
 import { cn } from '@/lib/utils';
@@ -14,10 +15,7 @@ interface IdeationStepProps {
   onBack: () => void;
 }
 
-function getRecommendationBadge(
-  index: number,
-  recommendations: IdeationResult['recommendations']
-) {
+function getRecommendationBadge(index: number, recommendations: IdeationResult['recommendations']) {
   if (index === recommendations.shipThisWeek.conceptIndex) {
     return { label: 'Ship This Week', icon: Zap, color: 'bg-green-500' };
   }
@@ -69,10 +67,10 @@ function ConceptCard({
       )}
 
       {isInteractiveArchetype(concept.archetype) && (
-        <div className="absolute -top-2 left-4 flex items-center gap-1 rounded-full bg-blue-500 px-2 py-0.5 text-xs font-medium text-white">
+        <Badge variant="blue" className="absolute -top-2 left-4 gap-1">
           <Sparkles className="h-3 w-3" />
           Interactive
-        </div>
+        </Badge>
       )}
 
       <div className="mb-2 text-xs font-medium text-muted-foreground">
@@ -93,31 +91,16 @@ function ConceptCard({
           {[1, 2, 3, 4, 5].map((i) => (
             <div
               key={i}
-              className={cn(
-                'h-2 w-2 rounded-full',
-                i <= viralScore ? 'bg-primary' : 'bg-muted'
-              )}
+              className={cn('h-2 w-2 rounded-full', i <= viralScore ? 'bg-primary' : 'bg-muted')}
             />
           ))}
         </div>
       </div>
 
       <div className="flex flex-wrap gap-1">
-        {concept.viralCheck.highValue && (
-          <span className="rounded bg-green-500/10 px-2 py-0.5 text-xs text-green-600">
-            $50+ Value
-          </span>
-        )}
-        {concept.viralCheck.urgentPain && (
-          <span className="rounded bg-red-500/10 px-2 py-0.5 text-xs text-red-600">
-            Urgent Pain
-          </span>
-        )}
-        {concept.viralCheck.actionableUnder1h && (
-          <span className="rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600">
-            Quick Win
-          </span>
-        )}
+        {concept.viralCheck.highValue && <Badge variant="green">$50+ Value</Badge>}
+        {concept.viralCheck.urgentPain && <Badge variant="red">Urgent Pain</Badge>}
+        {concept.viralCheck.actionableUnder1h && <Badge variant="blue">Quick Win</Badge>}
       </div>
 
       {isSelected && (
@@ -153,13 +136,10 @@ export function IdeationStep({ result, onSelect, onBack }: IdeationStepProps) {
             We generated 10 concepts based on your expertise. Pick the one that excites you most.
           </p>
         </div>
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
+        <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </Button>
       </div>
 
       {/* Swipe File Inspiration */}
@@ -184,12 +164,9 @@ export function IdeationStep({ result, onSelect, onBack }: IdeationStepProps) {
           animate={{ opacity: 1, y: 0 }}
           className="sticky bottom-4"
         >
-          <button
-            onClick={handleContinue}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground shadow-lg"
-          >
+          <Button onClick={handleContinue} className="w-full py-4 text-lg font-semibold shadow-lg">
             Continue with &quot;{result.concepts[selectedIndex].title}&quot;
-          </button>
+          </Button>
         </motion.div>
       )}
     </div>

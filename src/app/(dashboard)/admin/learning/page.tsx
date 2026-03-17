@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth';
 import { isSuperAdmin } from '@/lib/auth/super-admin';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { PageContainer } from '@magnetlab/magnetui';
 import { LearningDashboard } from '@/components/admin/LearningDashboard';
 import { redirect } from 'next/navigation';
 
@@ -27,17 +28,17 @@ export default async function AdminLearningPage() {
     .eq('status', 'active');
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-1">
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Learning Observatory</h1>
+    <PageContainer maxWidth="xl">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Learning Observatory</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            How the AI self-learning system is performing — edit tracking, pattern detection, and
+            voice evolution.
+          </p>
         </div>
-        <p className="text-sm text-zinc-500">How the AI self-learning system is performing — edit tracking, pattern detection, and voice evolution.</p>
+        <LearningDashboard editActivity={editActivity ?? []} profiles={profiles ?? []} />
       </div>
-      <LearningDashboard
-        editActivity={editActivity ?? []}
-        profiles={profiles ?? []}
-      />
-    </div>
+    </PageContainer>
   );
 }

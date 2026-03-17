@@ -23,7 +23,10 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     if (!isValidUUID(id)) return ApiErrors.validationError('Invalid flow ID');
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const result = await emailService.getFlowWithSteps(scope.teamId, id);
     if (!result.success) return ApiErrors.notFound('Flow');
@@ -52,7 +55,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const updates = parsed.data;
     if (Object.keys(updates).length === 0) return ApiErrors.validationError('No fields to update');
@@ -60,7 +66,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const result = await emailService.updateFlow(scope.teamId, id, session.user.id, updates);
     if (!result.success) {
       if (result.error === 'not_found') return ApiErrors.notFound('Flow');
-      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
+      if (result.error === 'validation')
+        return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to update flow');
     }
     return NextResponse.json({ flow: result.flow });
@@ -79,12 +86,16 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     if (!isValidUUID(id)) return ApiErrors.validationError('Invalid flow ID');
 
     const scope = await requireTeamScope(session.user.id);
-    if (!scope?.teamId) return ApiErrors.validationError('No team found for this user');
+    if (!scope?.teamId)
+      return ApiErrors.validationError(
+        'Email features require a team. Create or join a team in Settings to use email.'
+      );
 
     const result = await emailService.deleteFlow(scope.teamId, id);
     if (!result.success) {
       if (result.error === 'not_found') return ApiErrors.notFound('Flow');
-      if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'Validation failed');
+      if (result.error === 'validation')
+        return ApiErrors.validationError(result.message ?? 'Validation failed');
       return ApiErrors.databaseError('Failed to delete flow');
     }
     return new NextResponse(null, { status: 204 });

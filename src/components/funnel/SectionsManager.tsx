@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, Eye, EyeOff, GripVertical, ChevronDown } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import type {
   FunnelPageSection,
   SectionType,
@@ -315,18 +316,21 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
                   className={`h-3 w-3 text-muted-foreground transition-transform ${expandedId === section.id ? 'rotate-180' : ''}`}
                 />
               </button>
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => handleToggleVisibility(section)}
                 disabled={savingId === section.id}
-                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                 title={section.isVisible ? 'Hide' : 'Show'}
               >
                 {section.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => handleDelete(section.id)}
                 disabled={deletingId === section.id}
-                className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
+                className="text-muted-foreground hover:text-destructive"
                 title="Delete"
               >
                 {deletingId === section.id ? (
@@ -334,7 +338,7 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
                 ) : (
                   <Trash2 className="h-4 w-4" />
                 )}
-              </button>
+              </Button>
             </div>
 
             {/* Expanded config editor */}
@@ -366,25 +370,23 @@ export function SectionsManager({ funnelId, sections, onSectionsChange }: Sectio
             </option>
           ))}
         </select>
-        <button
-          onClick={handleAdd}
-          disabled={!addingType || adding}
-          className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
+        <Button onClick={handleAdd} disabled={!addingType || adding}>
           {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Add
-        </button>
+        </Button>
       </div>
 
       {/* Reset to template */}
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={handleResetToTemplate}
         disabled={resetting}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className="text-xs text-muted-foreground hover:text-foreground"
       >
         {resetting ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
         Reset to template defaults
-      </button>
+      </Button>
     </div>
   );
 }
@@ -486,14 +488,10 @@ function SectionConfigEditor({
         </span>
       </div>
 
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="flex items-center gap-1 rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-      >
+      <Button onClick={handleSave} disabled={saving}>
         {saving && <Loader2 className="h-3 w-3 animate-spin" />}
         Save Config
-      </button>
+      </Button>
     </div>
   );
 }

@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Loader2, Sparkles, ExternalLink, CheckCircle2, Clock, FileText, PenLine } from 'lucide-react';
+import {
+  Loader2,
+  Sparkles,
+  ExternalLink,
+  CheckCircle2,
+  Clock,
+  FileText,
+  PenLine,
+} from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import type { LeadMagnet, PolishedContent, ExtractedContent } from '@/lib/types/lead-magnet';
 import { useBackgroundJob } from '@/frontend/hooks/useBackgroundJob';
 
@@ -9,7 +18,11 @@ interface ContentPageTabProps {
   leadMagnet: LeadMagnet;
   username: string | null;
   slug: string | null;
-  onPolished: (polishedContent: PolishedContent, polishedAt: string, extractedContent?: ExtractedContent) => void;
+  onPolished: (
+    polishedContent: PolishedContent,
+    polishedAt: string,
+    extractedContent?: ExtractedContent
+  ) => void;
   onEditContent?: () => void;
 }
 
@@ -25,23 +38,34 @@ function createBlankContent(title: string): PolishedContent {
     polishedAt: new Date().toISOString(),
     title,
     heroSummary: '',
-    sections: [{
-      id: `section-${Date.now()}`,
-      sectionName: 'Introduction',
-      introduction: '',
-      keyTakeaway: '',
-      blocks: [{ type: 'paragraph', content: '' }],
-    }],
+    sections: [
+      {
+        id: `section-${Date.now()}`,
+        sectionName: 'Introduction',
+        introduction: '',
+        keyTakeaway: '',
+        blocks: [{ type: 'paragraph', content: '' }],
+      },
+    ],
     metadata: { wordCount: 0, readingTimeMinutes: 0 },
   };
 }
 
-export function ContentPageTab({ leadMagnet, username, slug, onPolished, onEditContent }: ContentPageTabProps) {
+export function ContentPageTab({
+  leadMagnet,
+  username,
+  slug,
+  onPolished,
+  onEditContent,
+}: ContentPageTabProps) {
   const [error, setError] = useState<string | null>(null);
 
-  const onComplete = useCallback((result: ContentJobResult) => {
-    onPolished(result.polishedContent, result.polishedAt, result.extractedContent);
-  }, [onPolished]);
+  const onComplete = useCallback(
+    (result: ContentJobResult) => {
+      onPolished(result.polishedContent, result.polishedAt, result.extractedContent);
+    },
+    [onPolished]
+  );
 
   const onError = useCallback((errorMsg: string) => {
     setError(errorMsg);
@@ -154,8 +178,8 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished, onEditC
         </p>
 
         {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+            {error}
           </div>
         )}
 
@@ -219,9 +243,17 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished, onEditC
       </p>
 
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
         </div>
+      )}
+
+      {/* Primary action: Open content page (when polished) */}
+      {contentUrl && (
+        <Button className="w-full" onClick={() => window.open(contentUrl, '_blank')}>
+          <ExternalLink className="h-4 w-4 mr-2" />
+          Open Content Page
+        </Button>
       )}
 
       {/* Polish status */}
@@ -247,22 +279,20 @@ export function ContentPageTab({ leadMagnet, username, slug, onPolished, onEditC
               <Clock className="h-3.5 w-3.5" />
               {polished.metadata.readingTimeMinutes} min read
             </span>
-            <span>
-              {polished.metadata.wordCount.toLocaleString()} words
-            </span>
+            <span>{polished.metadata.wordCount.toLocaleString()} words</span>
           </div>
         </div>
       )}
 
       {/* Edit Content → open inline full-page editor (primary action) */}
       {polished && onEditContent && (
-        <button
+        <Button
           onClick={onEditContent}
-          className="flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-4 py-3 text-sm font-medium text-white hover:bg-violet-600 transition-colors w-full"
+          className="w-full bg-violet-500 hover:bg-violet-600 text-white"
         >
-          <PenLine className="h-4 w-4" />
+          <PenLine className="h-4 w-4 mr-2" />
           Edit Content
-        </button>
+        </Button>
       )}
 
       {/* Secondary actions row */}

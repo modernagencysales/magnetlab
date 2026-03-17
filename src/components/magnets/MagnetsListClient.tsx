@@ -89,9 +89,9 @@ export default function MagnetsListClient({
   const draftCount = items.filter((i) => !i.isLive).length;
 
   return (
-    <div>
+    <div className="space-y-4">
       {/* Toolbar */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Search */}
         <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -107,11 +107,11 @@ export default function MagnetsListClient({
         <div className="flex items-center gap-3">
           {/* Status filter pills */}
           <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-0.5">
-            {([
+            {[
               { value: 'all' as StatusFilter, label: 'All', count: totalCount },
               { value: 'live' as StatusFilter, label: 'Live', count: liveCount },
               { value: 'draft' as StatusFilter, label: 'Draft', count: draftCount },
-            ]).map((pill) => (
+            ].map((pill) => (
               <button
                 key={pill.value}
                 onClick={() => setStatusFilter(pill.value)}
@@ -148,17 +148,17 @@ export default function MagnetsListClient({
 
       {/* Results count */}
       {search || statusFilter !== 'all' ? (
-        <p className="mb-3 text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {filtered.length} result{filtered.length !== 1 ? 's' : ''}
         </p>
       ) : null}
 
       {/* Desktop table */}
       <div className="hidden md:block">
-        <div className="rounded-xl border bg-card">
+        <div className="overflow-hidden rounded-lg border bg-card">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-xs font-medium text-muted-foreground">
+              <tr className="border-b border-border bg-muted/30 text-left text-xs font-medium text-muted-foreground">
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Status</th>
@@ -171,7 +171,10 @@ export default function MagnetsListClient({
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} className="group border-b last:border-0 transition-colors hover:bg-muted/50">
+                <tr
+                  key={item.id}
+                  className="group border-b border-border last:border-0 transition-colors hover:bg-muted/50"
+                >
                   <td className="px-4 py-3">
                     <Link
                       href={`/magnets/${item.id}`}
@@ -182,7 +185,8 @@ export default function MagnetsListClient({
                   </td>
                   <td className="px-4 py-3">
                     <span className="rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-                      {ARCHETYPE_NAMES[item.archetype as keyof typeof ARCHETYPE_NAMES] || item.archetype}
+                      {ARCHETYPE_NAMES[item.archetype as keyof typeof ARCHETYPE_NAMES] ||
+                        item.archetype}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -191,7 +195,7 @@ export default function MagnetsListClient({
                         'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
                         item.isLive
                           ? 'bg-emerald-500/10 text-emerald-600'
-                          : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                          : 'bg-muted text-muted-foreground'
                       )}
                     >
                       {item.isLive && <Globe className="h-3 w-3" />}
@@ -226,8 +230,8 @@ export default function MagnetsListClient({
                           item.conversionRate >= 20
                             ? 'bg-emerald-500/10 text-emerald-600'
                             : item.conversionRate >= 10
-                            ? 'bg-yellow-500/10 text-yellow-600'
-                            : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                              ? 'bg-yellow-500/10 text-yellow-600'
+                              : 'bg-muted text-muted-foreground'
                         )}
                       >
                         {item.conversionRate.toFixed(1)}%
@@ -249,7 +253,9 @@ export default function MagnetsListClient({
                         e.stopPropagation();
                         startNewConversation();
                         open();
-                        sendMessage(`Generate LinkedIn posts for my lead magnet "${item.title}" (ID: ${item.id})`);
+                        sendMessage(
+                          `Generate LinkedIn posts for my lead magnet "${item.title}" (ID: ${item.id})`
+                        );
                       }}
                       className="rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
                     >
@@ -270,16 +276,13 @@ export default function MagnetsListClient({
       </div>
 
       {/* Mobile compact cards */}
-      <div className="flex flex-col gap-2 md:hidden">
+      <div className="flex flex-col gap-3 md:hidden">
         {filtered.map((item) => (
           <div
             key={item.id}
-            className="rounded-lg border bg-card px-4 py-3 transition-colors hover:border-primary"
+            className="rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/50"
           >
-            <Link
-              href={`/magnets/${item.id}`}
-              className="flex items-center justify-between"
-            >
+            <Link href={`/magnets/${item.id}`} className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{item.title}</p>
                 <div className="mt-1 flex items-center gap-2">
@@ -315,8 +318,8 @@ export default function MagnetsListClient({
                     item.conversionRate >= 20
                       ? 'bg-emerald-500/10 text-emerald-600'
                       : item.conversionRate >= 10
-                      ? 'bg-yellow-500/10 text-yellow-600'
-                      : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                        ? 'bg-yellow-500/10 text-yellow-600'
+                        : 'bg-muted text-muted-foreground'
                   )}
                 >
                   {item.conversionRate.toFixed(1)}%
@@ -328,7 +331,9 @@ export default function MagnetsListClient({
                 onClick={() => {
                   startNewConversation();
                   open();
-                  sendMessage(`Generate LinkedIn posts for my lead magnet "${item.title}" (ID: ${item.id})`);
+                  sendMessage(
+                    `Generate LinkedIn posts for my lead magnet "${item.title}" (ID: ${item.id})`
+                  );
                 }}
                 className="rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
               >

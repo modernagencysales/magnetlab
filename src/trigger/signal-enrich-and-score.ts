@@ -11,6 +11,9 @@ import { updateSignalCounts } from '@/lib/services/signal-engine';
 import { batchClassifySentiment } from '@/lib/ai/signal-sentiment';
 import type { SignalConfig } from '@/lib/types/signals';
 
+const SIGNAL_CONFIG_COLUMNS =
+  'id, user_id, target_countries, target_job_titles, exclude_job_titles, min_company_size, max_company_size, target_industries, default_heyreach_campaign_id, enrichment_enabled, sentiment_scoring_enabled, auto_push_enabled, created_at, updated_at';
+
 export const signalEnrichAndScore = schedules.task({
   id: 'signal-enrich-and-score',
   cron: '15 */2 * * *', // every 2 hours, offset 15 min
@@ -44,7 +47,7 @@ export const signalEnrichAndScore = schedules.task({
       const userIds = [...new Set(newLeads.map((l) => l.user_id))];
       const { data: configs } = await supabase
         .from('signal_configs')
-        .select('*')
+        .select(SIGNAL_CONFIG_COLUMNS)
         .in('user_id', userIds);
 
       const configMap = new Map<string, SignalConfig>();
@@ -85,8 +88,7 @@ export const signalEnrichAndScore = schedules.task({
                 extractCompany(profile.headline || '') ||
                 profile.currentPosition?.[0]?.companyName ||
                 null;
-              const country =
-                profile.location?.parsed?.countryCode || null;
+              const country = profile.location?.parsed?.countryCode || null;
 
               // Build update payload
               const updatePayload: Record<string, unknown> = {
@@ -116,10 +118,7 @@ export const signalEnrichAndScore = schedules.task({
                 }
               }
 
-              await supabase
-                .from('signal_leads')
-                .update(updatePayload)
-                .eq('id', lead.id);
+              await supabase.from('signal_leads').update(updatePayload).eq('id', lead.id);
 
               enrichedCount++;
 
@@ -175,7 +174,7 @@ export const signalEnrichAndScore = schedules.task({
 
     const sentimentUserIds = (sentimentEnabledUsers || []).map((u) => u.user_id);
 
-    const unscoredQuery = supabase
+    let unscoredQuery = supabase
       .from('signal_events')
       .select('id, comment_text')
       .is('sentiment', null)
@@ -184,7 +183,7 @@ export const signalEnrichAndScore = schedules.task({
 
     // If we have explicit configs, only score those users' events
     if (sentimentUserIds.length > 0) {
-      unscoredQuery.in('user_id', sentimentUserIds);
+      unscoredQuery = unscoredQuery.in('user_id', sentimentUserIds);
     }
 
     const { data: unscoredEvents, error: eventsError } = await unscoredQuery;
@@ -258,7 +257,10 @@ export const signalEnrichAndScore = schedules.task({
     // DONE
     // ==========================================
 
-    logger.info('Signal enrich-and-score complete', { enriched: enrichedCount, qualified: qualifiedCount });
+    logger.info('Signal enrich-and-score complete', {
+      enriched: enrichedCount,
+      qualified: qualifiedCount,
+    });
 
     return { enriched: enrichedCount, qualified: qualifiedCount };
   },

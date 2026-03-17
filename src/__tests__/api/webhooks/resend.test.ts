@@ -40,7 +40,10 @@ function createMockSupabase() {
     const resolve = () => Promise.resolve(leadLookupResult);
 
     const chain: Record<string, unknown> = {
-      then: (onFulfilled?: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) => {
+      then: (
+        onFulfilled?: (value: unknown) => unknown,
+        onRejected?: (reason: unknown) => unknown
+      ) => {
         return resolve().then(onFulfilled, onRejected);
       },
     };
@@ -56,7 +59,10 @@ function createMockSupabase() {
     const resolve = () => Promise.resolve({ data: null, error: null });
 
     const chain: Record<string, unknown> = {
-      then: (onFulfilled?: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) => {
+      then: (
+        onFulfilled?: (value: unknown) => unknown,
+        onRejected?: (reason: unknown) => unknown
+      ) => {
         return resolve().then(onFulfilled, onRejected);
       },
     };
@@ -90,7 +96,10 @@ function createMockSupabase() {
   };
 }
 
-function makeRequest(body: Record<string, unknown>, options?: { omitSvixHeaders?: boolean }): NextRequest {
+function makeRequest(
+  body: Record<string, unknown>,
+  options?: { omitSvixHeaders?: boolean }
+): NextRequest {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (!options?.omitSvixHeaders) {
     headers['svix-id'] = 'msg_test123';
@@ -348,17 +357,8 @@ describe('POST /api/webhooks/resend', () => {
     expect(mock.insertedRows).toHaveLength(0);
   });
 
-  it('should skip verification when RESEND_WEBHOOK_SECRET is not set', async () => {
+  it('should reject requests when RESEND_WEBHOOK_SECRET is not set (fail-closed)', async () => {
     delete process.env.RESEND_WEBHOOK_SECRET;
-
-    mock.setLeadResult({
-      data: {
-        id: 'lead-no-secret',
-        user_id: 'user-1',
-        lead_magnet_id: 'lm-1',
-      },
-      error: null,
-    });
 
     const response = await POST(
       makeRequest(
@@ -374,18 +374,11 @@ describe('POST /api/webhooks/resend', () => {
       )
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(500);
     const body = await response.json();
-    expect(body.received).toBe(true);
+    expect(body.error).toBe('Webhook secret not configured');
 
-    // Verify should not have been called
-    expect(mockVerify).not.toHaveBeenCalled();
-
-    // But the event should still be processed
-    expect(mock.insertedRows).toHaveLength(1);
-    expect(mock.insertedRows[0]).toMatchObject({
-      email_id: 'resend-email-no-secret',
-      event_type: 'delivered',
-    });
+    // No events should be processed
+    expect(mock.insertedRows).toHaveLength(0);
   });
 });

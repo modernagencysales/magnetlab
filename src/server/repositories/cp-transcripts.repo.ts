@@ -8,6 +8,9 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 const LIST_COLUMNS =
   'id, source, title, call_date, duration_minutes, transcript_type, ideas_extracted_at, knowledge_extracted_at, team_id, speaker_profile_id, speaker_map, created_at';
 
+export const CP_CALL_TRANSCRIPT_COLUMNS =
+  'id, user_id, source, external_id, title, call_date, duration_minutes, participants, raw_transcript, summary, extracted_topics, transcript_type, ideas_extracted_at, knowledge_extracted_at, team_id, speaker_profile_id, speaker_map, created_at';
+
 export async function insertTranscript(params: {
   user_id: string;
   source: string;
@@ -124,7 +127,7 @@ export async function getTranscriptById(id: string, userId: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('cp_call_transcripts')
-    .select('*')
+    .select(CP_CALL_TRANSCRIPT_COLUMNS)
     .eq('id', id)
     .eq('user_id', userId)
     .single();
@@ -244,6 +247,10 @@ export async function getTeamIdByOwnerId(ownerId: string): Promise<string | null
 
 export async function getTeamIdBySpeakerProfileId(profileId: string): Promise<string | null> {
   const supabase = createSupabaseAdminClient();
-  const { data } = await supabase.from('team_profiles').select('team_id').eq('id', profileId).single();
+  const { data } = await supabase
+    .from('team_profiles')
+    .select('team_id')
+    .eq('id', profileId)
+    .single();
   return data?.team_id ?? null;
 }

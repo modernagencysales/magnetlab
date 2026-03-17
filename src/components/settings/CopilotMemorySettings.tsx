@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Brain, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Brain, Plus, Trash2 } from 'lucide-react';
+import { Button, Badge, Input, EmptyState, Skeleton } from '@magnetlab/magnetui';
 
 interface Memory {
   id: string;
@@ -13,12 +14,12 @@ interface Memory {
   created_at: string;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  tone: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  structure: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-  vocabulary: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-  content: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
-  general: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-300',
+const CATEGORY_VARIANTS: Record<string, 'blue' | 'purple' | 'orange' | 'green' | 'gray'> = {
+  tone: 'blue',
+  structure: 'purple',
+  vocabulary: 'orange',
+  content: 'green',
+  general: 'gray',
 };
 
 export function CopilotMemorySettings() {
@@ -35,11 +36,15 @@ export function CopilotMemorySettings() {
         const data = await res.json();
         setMemories(data.memories || []);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadMemories(); }, [loadMemories]);
+  useEffect(() => {
+    loadMemories();
+  }, [loadMemories]);
 
   const addMemory = async () => {
     if (!newRule.trim()) return;
@@ -63,53 +68,58 @@ export function CopilotMemorySettings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !active }),
     });
-    setMemories(prev => prev.map(m => m.id === id ? { ...m, active: !active } : m));
+    setMemories((prev) => prev.map((m) => (m.id === id ? { ...m, active: !active } : m)));
   };
 
   const deleteMemory = async (id: string) => {
     await fetch(`/api/copilot/memories/${id}`, { method: 'DELETE' });
-    setMemories(prev => prev.filter(m => m.id !== id));
+    setMemories((prev) => prev.filter((m) => m.id !== id));
   };
 
   if (loading) {
-    return <div className="text-sm text-zinc-500">Loading preferences...</div>;
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Brain className="w-5 h-5 text-violet-600" />
+          <Brain className="w-5 h-5 text-primary" />
           <h2 className="text-lg font-semibold">Learned Preferences</h2>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-1 text-sm text-violet-600 hover:text-violet-700"
-        >
-          <Plus className="w-4 h-4" />
+        <Button variant="ghost" size="sm" onClick={() => setShowAddForm(!showAddForm)}>
+          <Plus className="w-4 h-4 mr-1" />
           Add Preference
-        </button>
+        </Button>
       </div>
 
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        These preferences are automatically learned from your conversations with the co-pilot. You can also add them manually. Active preferences are included in every co-pilot prompt.
+      <p className="text-sm text-muted-foreground">
+        These preferences are automatically learned from your conversations with the co-pilot. You
+        can also add them manually. Active preferences are included in every co-pilot prompt.
       </p>
 
       {showAddForm && (
-        <div className="flex items-center gap-2 p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
-          <input
-            type="text"
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-3">
+          <Input
             value={newRule}
             onChange={(e) => setNewRule(e.target.value)}
             placeholder="e.g., Never use bullet points in posts"
-            className="flex-1 text-sm px-3 py-1.5 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-violet-500"
             maxLength={200}
-            onKeyDown={(e) => { if (e.key === 'Enter') addMemory(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') addMemory();
+            }}
+            className="flex-1"
           />
           <select
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
-            className="text-sm px-2 py-1.5 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800"
+            className="text-sm px-2 py-1.5 rounded border border-input bg-background"
           >
             <option value="general">General</option>
             <option value="tone">Tone</option>
@@ -117,56 +127,61 @@ export function CopilotMemorySettings() {
             <option value="vocabulary">Vocabulary</option>
             <option value="content">Content</option>
           </select>
-          <button
-            onClick={addMemory}
-            className="px-3 py-1.5 text-sm bg-violet-600 text-white rounded hover:bg-violet-700"
-          >
+          <Button size="sm" onClick={addMemory}>
             Save
-          </button>
+          </Button>
         </div>
       )}
 
       {memories.length === 0 ? (
-        <div className="text-center py-8 text-sm text-zinc-500 dark:text-zinc-400">
-          No learned preferences yet. The co-pilot will learn your preferences as you interact with it, or you can add them manually above.
-        </div>
+        <EmptyState
+          icon={<Brain />}
+          title="No learned preferences yet"
+          description="The co-pilot will learn your preferences as you interact with it, or you can add them manually above."
+        />
       ) : (
         <div className="space-y-2">
-          {memories.map(m => (
+          {memories.map((m) => (
             <div
               key={m.id}
-              className={`flex items-center justify-between p-3 rounded-lg border ${
-                m.active
-                  ? 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800'
-                  : 'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 opacity-60'
+              className={`flex items-center justify-between rounded-lg border border-border p-3 ${
+                m.active ? 'bg-card' : 'bg-muted/50 opacity-60'
               }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${CATEGORY_COLORS[m.category] || CATEGORY_COLORS.general}`}>
-                    {m.category}
-                  </span>
-                  <span className="text-xs text-zinc-400">
+                  <Badge variant={CATEGORY_VARIANTS[m.category] || 'gray'}>{m.category}</Badge>
+                  <span className="text-xs text-muted-foreground">
                     {m.source === 'manual' ? 'manual' : 'auto-learned'}
                   </span>
                 </div>
-                <p className="text-sm text-zinc-900 dark:text-zinc-100 truncate">{m.rule}</p>
+                <p className="text-sm truncate">{m.rule}</p>
               </div>
               <div className="flex items-center gap-1 ml-2 shrink-0">
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => toggleMemory(m.id, m.active)}
-                  className="p-1 text-zinc-400 hover:text-zinc-600"
                   aria-label={m.active ? 'Deactivate' : 'Activate'}
+                  className={m.active ? 'text-primary' : 'text-muted-foreground'}
                 >
-                  {m.active ? <ToggleRight className="w-4 h-4 text-violet-600" /> : <ToggleLeft className="w-4 h-4" />}
-                </button>
-                <button
+                  <div
+                    className={`w-8 h-4 rounded-full relative transition-colors ${m.active ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                  >
+                    <div
+                      className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${m.active ? 'left-4' : 'left-0.5'}`}
+                    />
+                  </div>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => deleteMemory(m.id)}
-                  className="p-1 text-zinc-400 hover:text-red-500"
                   aria-label="Delete"
+                  className="text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
             </div>
           ))}

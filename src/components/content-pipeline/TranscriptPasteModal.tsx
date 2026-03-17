@@ -2,6 +2,17 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { X, Loader2, Check, Upload, FileText, Clipboard } from 'lucide-react';
+import {
+  Button,
+  Input,
+  Textarea,
+  Label,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@magnetlab/magnetui';
 import { cn } from '@/lib/utils';
 import type { TeamProfile } from '@/lib/types/content-pipeline';
 import * as transcriptsApi from '@/frontend/api/content-pipeline/transcripts';
@@ -126,13 +137,9 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
       <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Add Transcript</h2>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 hover:bg-secondary"
-            aria-label="Close"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         {success ? (
@@ -174,12 +181,11 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
             <div className="space-y-4">
               {/* Title — shared */}
               <div>
-                <label className="mb-1 block text-sm font-medium">Title (optional)</label>
-                <input
+                <Label className="mb-1">Title (optional)</Label>
+                <Input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="e.g., Client Discovery Call"
                 />
               </div>
@@ -187,20 +193,24 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
               {/* Speaker selector — only shown when team has multiple profiles */}
               {teamProfiles.length > 1 && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Speaker</label>
-                  <select
-                    value={speakerProfileId}
-                    onChange={(e) => setSpeakerProfileId(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  <Label className="mb-1">Speaker</Label>
+                  <Select
+                    value={speakerProfileId || 'auto'}
+                    onValueChange={(v) => setSpeakerProfileId(v === 'auto' ? '' : v)}
                   >
-                    <option value="">Auto-detect / Default</option>
-                    {teamProfiles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.full_name}
-                        {p.title ? ` (${p.title})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Auto-detect / Default" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto-detect / Default</SelectItem>
+                      {teamProfiles.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.full_name}
+                          {p.title ? ` (${p.title})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Select who was speaking. Ideas will be assigned to this person.
                   </p>
@@ -210,11 +220,11 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
               {mode === 'paste' ? (
                 /* Paste mode */
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Transcript *</label>
-                  <textarea
+                  <Label className="mb-1">Transcript *</Label>
+                  <Textarea
                     value={transcript}
                     onChange={(e) => setTranscript(e.target.value)}
-                    className="h-48 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="h-48 resize-none"
                     placeholder="Paste your call transcript here (min 100 characters)..."
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -257,7 +267,7 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
                             e.stopPropagation();
                             setFile(null);
                           }}
-                          className="mt-2 text-xs text-red-500 hover:underline"
+                          className="mt-2 text-xs text-destructive hover:underline"
                         >
                           Remove
                         </button>
@@ -290,25 +300,18 @@ export function TranscriptPasteModal({ onClose, onSuccess }: TranscriptPasteModa
             </div>
 
             {error && (
-              <div className="mt-3 rounded-lg border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+              <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
                 {error}
               </div>
             )}
 
             <div className="mt-6 flex gap-3">
-              <button
-                onClick={onClose}
-                className="flex-1 rounded-lg border border-border py-2 text-sm font-medium hover:bg-muted transition-colors"
-              >
+              <Button variant="outline" className="flex-1" onClick={onClose}>
                 Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || !canSubmit}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
+              </Button>
+              <Button className="flex-1" onClick={handleSubmit} disabled={submitting || !canSubmit}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save & Process'}
-              </button>
+              </Button>
             </div>
           </>
         )}

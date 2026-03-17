@@ -1,7 +1,20 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { ArrowLeft, Check, Loader2, Sparkles, Copy, ChevronDown, ChevronUp, Pencil, Plus, X, GripVertical } from 'lucide-react';
+import {
+  ArrowLeft,
+  Check,
+  Loader2,
+  Sparkles,
+  Copy,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Plus,
+  X,
+  GripVertical,
+} from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import type { ExtractedContent } from '@/lib/types/lead-magnet';
 
 interface ContentStepProps {
@@ -19,7 +32,9 @@ function normalizeItem(item: string | Record<string, unknown>): string {
   if (typeof item === 'string') return item;
   if (item && typeof item === 'object') {
     // Get all string values from the object
-    const values = Object.values(item).filter((v): v is string => typeof v === 'string' && v.length > 0);
+    const values = Object.values(item).filter(
+      (v): v is string => typeof v === 'string' && v.length > 0
+    );
     if (values.length >= 2) {
       // Two values: format as "first: second" (e.g., "mistake: explanation")
       return `${values[0]}: ${values[1]}`;
@@ -33,7 +48,13 @@ function normalizeItem(item: string | Record<string, unknown>): string {
   return String(item);
 }
 
-export function ContentStep({ content, onApprove, onBack, loading, onContentChange }: ContentStepProps) {
+export function ContentStep({
+  content,
+  onApprove,
+  onBack,
+  loading,
+  onContentChange,
+}: ContentStepProps) {
   const [showFullContent, setShowFullContent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -73,7 +94,9 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
         i === sectionIndex ? { ...s, contents: [...s.contents, ''] } : s
       );
       updateContent({ structure: newStructure });
-      setEditingField(`structure-${sectionIndex}-${content.structure[sectionIndex].contents.length}`);
+      setEditingField(
+        `structure-${sectionIndex}-${content.structure[sectionIndex].contents.length}`
+      );
     },
     [content.structure, updateContent]
   );
@@ -81,9 +104,7 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
   const removeSectionItem = useCallback(
     (sectionIndex: number, itemIndex: number) => {
       const newStructure = content.structure.map((s, i) =>
-        i === sectionIndex
-          ? { ...s, contents: s.contents.filter((_, j) => j !== itemIndex) }
-          : s
+        i === sectionIndex ? { ...s, contents: s.contents.filter((_, j) => j !== itemIndex) } : s
       );
       updateContent({ structure: newStructure });
     },
@@ -162,26 +183,21 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
         <div>
           <h1 className="text-3xl font-bold">Your Lead Magnet</h1>
           <p className="mt-2 text-muted-foreground">
-            Here&apos;s the structured content we created from your expertise.
-            Review and approve to generate your LinkedIn post.
+            Here&apos;s the structured content we created from your expertise. Review and approve to
+            generate your LinkedIn post.
           </p>
         </div>
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
+        <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </Button>
       </div>
 
       <div className="space-y-6 rounded-xl border bg-card p-6">
         {/* Title */}
         <div>
           <h2 className="text-2xl font-bold">{content.title}</h2>
-          <div className="mt-1 text-sm text-muted-foreground">
-            Format: {content.format}
-          </div>
+          <div className="mt-1 text-sm text-muted-foreground">Format: {content.format}</div>
         </div>
 
         {/* Key Insight */}
@@ -195,14 +211,22 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium text-muted-foreground">Framework / Steps</div>
             {onContentChange && (
-              <button
-                type="button"
-                onClick={() => setEditingField(editingField?.startsWith('structure') || editingField?.startsWith('section') ? null : 'structure')}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setEditingField(
+                    editingField?.startsWith('structure') || editingField?.startsWith('section')
+                      ? null
+                      : 'structure'
+                  )
+                }
               >
                 <Pencil className="h-3 w-3" />
-                {editingField?.startsWith('structure') || editingField?.startsWith('section') ? 'Done' : 'Edit'}
-              </button>
+                {editingField?.startsWith('structure') || editingField?.startsWith('section')
+                  ? 'Done'
+                  : 'Edit'}
+              </Button>
             )}
           </div>
           {content.structure.map((section, index) => (
@@ -220,14 +244,15 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
                       autoFocus={editingField === `section-name-${index}`}
                     />
                     {content.structure.length > 1 && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => removeSection(index)}
-                        className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                         title="Remove section"
                       >
                         <X className="h-3.5 w-3.5" />
-                      </button>
+                      </Button>
                     )}
                   </div>
                   <ul className="space-y-1.5 pl-6">
@@ -242,25 +267,27 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
                           className="flex-1 rounded border-0 bg-secondary/50 px-2 py-1 text-sm outline-none focus:bg-secondary focus:ring-1 focus:ring-primary/30"
                           autoFocus={editingField === `structure-${index}-${itemIndex}`}
                         />
-                        <button
-                          type="button"
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => removeSectionItem(index, itemIndex)}
-                          className="mt-1 rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          className="mt-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                           title="Remove item"
                         >
                           <X className="h-3 w-3" />
-                        </button>
+                        </Button>
                       </li>
                     ))}
                   </ul>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => addSectionItem(index)}
-                    className="ml-6 flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    className="ml-6"
                   >
                     <Plus className="h-3 w-3" />
                     Add item
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div>
@@ -278,14 +305,14 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
             </div>
           ))}
           {(editingField?.startsWith('structure') || editingField?.startsWith('section')) && (
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={addSection}
-              className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground"
+              className="flex w-full items-center justify-center gap-1 border-dashed h-auto py-2"
             >
               <Plus className="h-3 w-3" />
               Add section
-            </button>
+            </Button>
           )}
         </div>
 
@@ -302,14 +329,14 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
           <div className="mb-1 flex items-center justify-between">
             <div className="text-sm font-medium text-green-600">Proof & Results</div>
             {onContentChange && (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setEditingField(editingField === 'proof' ? null : 'proof')}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-green-500/10 hover:text-foreground"
               >
                 <Pencil className="h-3 w-3" />
                 {editingField === 'proof' ? 'Done' : 'Edit'}
-              </button>
+              </Button>
             )}
           </div>
           {editingField === 'proof' ? (
@@ -334,7 +361,7 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
               {content.commonMistakes.map((mistake, index) => (
                 <span
                   key={index}
-                  className="rounded-full bg-destructive/10 px-3 py-1 text-sm text-destructive dark:text-red-400"
+                  className="rounded-full bg-destructive/10 px-3 py-1 text-sm text-destructive"
                 >
                   {normalizeItem(mistake)}
                 </span>
@@ -366,10 +393,7 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
         {showFullContent && (
           <div className="border-t">
             <div className="flex justify-end border-b p-2">
-              <button
-                onClick={copyToClipboard}
-                className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-secondary/80"
-              >
+              <Button variant="outline" size="sm" onClick={copyToClipboard}>
                 {copied ? (
                   <>
                     <Check className="h-4 w-4 text-green-500" />
@@ -381,7 +405,7 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
                     Copy All
                   </>
                 )}
-              </button>
+              </Button>
             </div>
             <div className="max-h-[300px] overflow-y-auto p-4">
               <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
@@ -392,11 +416,7 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
         )}
       </div>
 
-      <button
-        onClick={onApprove}
-        disabled={loading}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-4 text-lg font-semibold text-primary-foreground disabled:opacity-50"
-      >
+      <Button onClick={onApprove} disabled={loading} className="w-full py-4 text-lg font-semibold">
         {loading ? (
           <>
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -408,7 +428,7 @@ export function ContentStep({ content, onApprove, onBack, loading, onContentChan
             Approve & Generate LinkedIn Post
           </>
         )}
-      </button>
+      </Button>
     </div>
   );
 }

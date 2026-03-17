@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Trash2, ExternalLink, ChevronDown, ChevronUp, Wand2 } from 'lucide-react';
+import { Button, Input } from '@magnetlab/magnetui';
 import { toast } from 'sonner';
 import { StyleMixer } from './StyleMixer';
 import type { WritingStyle, StyleProfile } from '@/lib/types/content-pipeline';
@@ -9,8 +10,8 @@ import * as stylesApi from '@/frontend/api/content-pipeline/styles';
 
 const TONE_COLORS: Record<StyleProfile['tone'], string> = {
   conversational: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  professional: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-  provocative: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  professional: 'bg-muted text-foreground',
+  provocative: 'bg-destructive/10 text-destructive',
   educational: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   inspirational: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
 };
@@ -43,14 +44,21 @@ export function StylesSection() {
     if (!url.trim()) return;
     setExtracting(true);
     try {
-      const data = await stylesApi.extractStylesFromUrl(url.trim(), authorName.trim() || undefined) as {
-        style?: { name?: string }; posts_analyzed?: number; error?: string;
+      const data = (await stylesApi.extractStylesFromUrl(
+        url.trim(),
+        authorName.trim() || undefined
+      )) as {
+        style?: { name?: string };
+        posts_analyzed?: number;
+        error?: string;
       };
       if (data.error) {
         toast.error(data.error || 'Extraction failed');
         return;
       }
-      toast.success(`Style "${data.style?.name ?? 'Unknown'}" extracted from ${data.posts_analyzed ?? 0} posts`);
+      toast.success(
+        `Style "${data.style?.name ?? 'Unknown'}" extracted from ${data.posts_analyzed ?? 0} posts`
+      );
       setUrl('');
       setAuthorName('');
       await fetchStyles();
@@ -85,30 +93,26 @@ export function StylesSection() {
           Extract a writing style from any LinkedIn profile URL.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <input
+          <Input
             type="text"
             placeholder="LinkedIn URL or /in/slug"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             disabled={extracting}
-            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            className="flex-1"
           />
-          <input
+          <Input
             type="text"
             placeholder="Author name (optional)"
             value={authorName}
             onChange={(e) => setAuthorName(e.target.value)}
             disabled={extracting}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 sm:w-48"
+            className="sm:w-48"
           />
-          <button
-            onClick={handleExtract}
-            disabled={extracting || !url.trim()}
-            className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
+          <Button onClick={handleExtract} disabled={extracting || !url.trim()}>
             {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {extracting ? 'Extracting...' : 'Extract'}
-          </button>
+          </Button>
         </div>
         {extracting && (
           <p className="mt-2 text-xs text-muted-foreground animate-pulse">
@@ -124,7 +128,9 @@ export function StylesSection() {
         </div>
       ) : styles.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-sm text-muted-foreground">No writing styles yet. Extract one from a LinkedIn profile above.</p>
+          <p className="text-sm text-muted-foreground">
+            No writing styles yet. Extract one from a LinkedIn profile above.
+          </p>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
@@ -160,26 +166,30 @@ export function StylesSection() {
                     )}
                   </div>
                   <div className="ml-2 flex items-center gap-1">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => setMixerStyleId(style.id)}
-                      className="rounded-lg p-1 text-muted-foreground hover:text-primary transition-colors"
                       title="Apply traits..."
                     >
                       <Wand2 className="h-3.5 w-3.5" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => handleDelete(style.id)}
-                      className="rounded-lg p-1 text-muted-foreground hover:text-red-500 transition-colors"
                       title="Delete style"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
                   </div>
                 </div>
 
                 {/* Badges */}
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TONE_COLORS[profile.tone] || 'bg-secondary'}`}>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${TONE_COLORS[profile.tone] || 'bg-secondary'}`}
+                  >
                     {profile.tone}
                   </span>
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">
@@ -205,7 +215,9 @@ export function StylesSection() {
 
                 {/* Description */}
                 {style.description && (
-                  <p className="mb-2 text-xs text-muted-foreground line-clamp-2">{style.description}</p>
+                  <p className="mb-2 text-xs text-muted-foreground line-clamp-2">
+                    {style.description}
+                  </p>
                 )}
 
                 {/* Hook patterns preview */}
@@ -229,7 +241,11 @@ export function StylesSection() {
                   onClick={() => setExpandedId(isExpanded ? null : style.id)}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  {isExpanded ? (
+                    <ChevronUp className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
                   {isExpanded ? 'Less' : 'Details'}
                 </button>
 
@@ -241,7 +257,9 @@ export function StylesSection() {
                         <p className="text-xs font-medium">Hook patterns</p>
                         <ul className="mt-1 space-y-0.5">
                           {profile.hook_patterns.map((p, i) => (
-                            <li key={i} className="text-xs text-muted-foreground">- {p}</li>
+                            <li key={i} className="text-xs text-muted-foreground">
+                              - {p}
+                            </li>
                           ))}
                         </ul>
                       </div>
@@ -251,7 +269,9 @@ export function StylesSection() {
                         <p className="text-xs font-medium">CTA patterns</p>
                         <ul className="mt-1 space-y-0.5">
                           {profile.cta_patterns.map((p, i) => (
-                            <li key={i} className="text-xs text-muted-foreground">- {p}</li>
+                            <li key={i} className="text-xs text-muted-foreground">
+                              - {p}
+                            </li>
                           ))}
                         </ul>
                       </div>
@@ -261,7 +281,9 @@ export function StylesSection() {
                         <p className="text-xs font-medium">Signature phrases</p>
                         <ul className="mt-1 space-y-0.5">
                           {profile.signature_phrases.map((p, i) => (
-                            <li key={i} className="text-xs text-muted-foreground">&ldquo;{p}&rdquo;</li>
+                            <li key={i} className="text-xs text-muted-foreground">
+                              &ldquo;{p}&rdquo;
+                            </li>
                           ))}
                         </ul>
                       </div>
@@ -271,7 +293,9 @@ export function StylesSection() {
                         <p className="text-xs font-medium">Avoids</p>
                         <ul className="mt-1 space-y-0.5">
                           {profile.banned_phrases.map((p, i) => (
-                            <li key={i} className="text-xs text-muted-foreground line-through">{p}</li>
+                            <li key={i} className="text-xs text-muted-foreground line-through">
+                              {p}
+                            </li>
                           ))}
                         </ul>
                       </div>
@@ -289,9 +313,9 @@ export function StylesSection() {
       )}
 
       {/* Style Mixer modal */}
-      {mixerStyleId && styles.find(s => s.id === mixerStyleId) && (
+      {mixerStyleId && styles.find((s) => s.id === mixerStyleId) && (
         <StyleMixer
-          sourceStyle={styles.find(s => s.id === mixerStyleId)!}
+          sourceStyle={styles.find((s) => s.id === mixerStyleId)!}
           onClose={() => setMixerStyleId(null)}
         />
       )}

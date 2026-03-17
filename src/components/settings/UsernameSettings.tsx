@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Loader2, AlertCircle } from 'lucide-react';
+import { Button, Input, Label } from '@magnetlab/magnetui';
 import * as userApi from '@/frontend/api/user';
 
 interface UsernameSettingsProps {
@@ -52,19 +53,17 @@ export function UsernameSettings({ currentUsername }: UsernameSettingsProps) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5">
-            Username
-          </label>
-          <div className="flex items-center gap-2">
+          <Label>Username</Label>
+          <div className="flex items-center gap-2 mt-1">
             <span className="text-sm text-muted-foreground">magnetlab.app/p/</span>
-            <input
+            <Input
               type="text"
               value={username}
               onChange={(e) => handleUsernameChange(e.target.value)}
               placeholder="your-username"
               minLength={3}
               maxLength={30}
-              className="flex-1 rounded-lg border border-border bg-muted/50 dark:bg-muted/20 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              className="flex-1"
             />
           </div>
           <p className="mt-1.5 text-xs text-muted-foreground">
@@ -73,24 +72,20 @@ export function UsernameSettings({ currentUsername }: UsernameSettingsProps) {
         </div>
 
         {error && (
-          <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <p className="text-sm">{error}</p>
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={saving || !username.trim() || username.length < 3}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
+        <Button type="submit" disabled={saving || !username.trim() || username.length < 3}>
           {saving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : saved ? (
             <Check className="h-4 w-4" />
           ) : null}
           {saved ? 'Saved!' : 'Save Username'}
-        </button>
+        </Button>
       </form>
     </div>
   );

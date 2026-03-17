@@ -1,8 +1,21 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { X, Loader2, Check, AlertCircle, Sparkles, Copy, Calendar, Maximize2, PenLine, ChevronDown, Linkedin } from 'lucide-react';
+import {
+  X,
+  Loader2,
+  Check,
+  AlertCircle,
+  Sparkles,
+  Copy,
+  Calendar,
+  Maximize2,
+  PenLine,
+  ChevronDown,
+  Linkedin,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button, Badge, Textarea } from '@magnetlab/magnetui';
 import { PillarBadge } from './PillarBadge';
 import { StatusBadge } from './StatusBadge';
 import type { ContentIdea, PipelinePost, ReviewData } from '@/lib/types/content-pipeline';
@@ -33,7 +46,14 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   contrarian: 'Contrarian',
 };
 
-export function DetailPane({ item, onClose, onWritePost, onContentUpdate, onOpenModal, onRefresh }: DetailPaneProps) {
+export function DetailPane({
+  item,
+  onClose,
+  onWritePost,
+  onContentUpdate,
+  onOpenModal,
+  onRefresh,
+}: DetailPaneProps) {
   if (item.type === 'idea') {
     return <IdeaDetail idea={item.data} onClose={onClose} onWritePost={onWritePost} />;
   }
@@ -75,9 +95,9 @@ function IdeaDetail({
           <StatusBadge status={idea.status} />
           <PillarBadge pillar={idea.content_pillar} />
         </div>
-        <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary transition-colors" aria-label="Close">
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       {/* Content */}
@@ -85,9 +105,9 @@ function IdeaDetail({
         <h3 className="text-base font-semibold leading-snug">{idea.title}</h3>
 
         {idea.content_type && (
-          <span className="inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+          <Badge variant="gray">
             {CONTENT_TYPE_LABELS[idea.content_type] || idea.content_type}
-          </span>
+          </Badge>
         )}
 
         {idea.core_insight && (
@@ -99,8 +119,12 @@ function IdeaDetail({
 
         {idea.why_post_worthy && (
           <div className="rounded-lg bg-violet-50 p-3 dark:bg-violet-950/30">
-            <p className="mb-1 text-xs font-medium uppercase text-violet-600 dark:text-violet-400">Why Post-Worthy</p>
-            <p className="text-sm italic leading-relaxed text-violet-700 dark:text-violet-300">{idea.why_post_worthy}</p>
+            <p className="mb-1 text-xs font-medium uppercase text-violet-600 dark:text-violet-400">
+              Why Post-Worthy
+            </p>
+            <p className="text-sm italic leading-relaxed text-violet-700 dark:text-violet-300">
+              {idea.why_post_worthy}
+            </p>
           </div>
         )}
 
@@ -113,21 +137,27 @@ function IdeaDetail({
 
         {idea.source_quote && (
           <div className="border-l-2 border-muted pl-3">
-            <p className="text-sm italic text-muted-foreground">&ldquo;{idea.source_quote}&rdquo;</p>
+            <p className="text-sm italic text-muted-foreground">
+              &ldquo;{idea.source_quote}&rdquo;
+            </p>
           </div>
         )}
       </div>
 
       {/* Footer */}
       <div className="border-t px-4 py-3">
-        <button
+        <Button
           onClick={handleWrite}
           disabled={writing}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+          className="w-full bg-green-600 hover:bg-green-700 text-white"
         >
-          {writing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
+          {writing ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+          ) : (
+            <PenLine className="h-4 w-4 mr-1.5" />
+          )}
           Write Post
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -166,26 +196,29 @@ function PostDetail({
     setSaveState('idle');
   }, [post.id, post.draft_content, post.final_content]);
 
-  const doSave = useCallback(async (text: string) => {
-    setSaveState('saving');
-    try {
-      const response = await fetch(`/api/content-pipeline/posts/${post.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draft_content: text, final_content: null }),
-      });
-      if (response.ok) {
-        setSaveState('saved');
-        onContentUpdate(post.id, text);
-        if (savedTimeout.current) clearTimeout(savedTimeout.current);
-        savedTimeout.current = setTimeout(() => setSaveState('idle'), 2000);
-      } else {
+  const doSave = useCallback(
+    async (text: string) => {
+      setSaveState('saving');
+      try {
+        const response = await fetch(`/api/content-pipeline/posts/${post.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draft_content: text, final_content: null }),
+        });
+        if (response.ok) {
+          setSaveState('saved');
+          onContentUpdate(post.id, text);
+          if (savedTimeout.current) clearTimeout(savedTimeout.current);
+          savedTimeout.current = setTimeout(() => setSaveState('idle'), 2000);
+        } else {
+          setSaveState('error');
+        }
+      } catch {
         setSaveState('error');
       }
-    } catch {
-      setSaveState('error');
-    }
-  }, [post.id, onContentUpdate]);
+    },
+    [post.id, onContentUpdate]
+  );
 
   const handleChange = (value: string) => {
     setEditContent(value);
@@ -253,8 +286,8 @@ function PostDetail({
     }
   };
 
-  const canPublish = editContent.trim().length > 0 &&
-    ['draft', 'reviewing', 'approved'].includes(post.status);
+  const canPublish =
+    editContent.trim().length > 0 && ['draft', 'reviewing', 'approved'].includes(post.status);
 
   return (
     <div className="flex h-full flex-col border-l bg-background">
@@ -263,84 +296,94 @@ function PostDetail({
         <div className="flex items-center gap-2">
           <StatusBadge status={post.status} />
           {post.hook_score !== null && post.hook_score !== undefined && (
-            <span className={cn(
-              'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-              post.hook_score >= 8 ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
-              post.hook_score >= 5 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
-              'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-            )}>
+            <Badge
+              variant={post.hook_score >= 8 ? 'green' : post.hook_score >= 5 ? 'orange' : 'red'}
+            >
               Hook {post.hook_score}/10
-            </span>
+            </Badge>
           )}
-          {post.review_data && (() => {
-            const rd = post.review_data as ReviewData;
-            const badgeStyle =
-              rd.category === 'excellent' ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' :
-              rd.category === 'good_with_edits' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300' :
-              'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300';
-            const label =
-              rd.category === 'excellent' ? 'Excellent' :
-              rd.category === 'good_with_edits' ? 'Needs Edits' : 'Rewrite';
-            return (
-              <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-semibold', badgeStyle)}>
-                {label} {rd.score}/10
-              </span>
-            );
-          })()}
+          {post.review_data &&
+            (() => {
+              const rd = post.review_data as ReviewData;
+              const label =
+                rd.category === 'excellent'
+                  ? 'Excellent'
+                  : rd.category === 'good_with_edits'
+                    ? 'Needs Edits'
+                    : 'Rewrite';
+              return (
+                <Badge
+                  variant={
+                    rd.category === 'excellent'
+                      ? 'green'
+                      : rd.category === 'good_with_edits'
+                        ? 'orange'
+                        : 'red'
+                  }
+                >
+                  {label} {rd.score}/10
+                </Badge>
+              );
+            })()}
           {/* Save indicator */}
           <SaveIndicator state={saveState} />
         </div>
-        <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary transition-colors" aria-label="Close">
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       {/* Editable textarea — fills available space */}
       <div className="flex-1 p-4">
-        <textarea
+        <Textarea
           value={editContent}
           onChange={(e) => handleChange(e.target.value)}
           onBlur={handleBlur}
-          className="h-full w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary"
+          className="h-full resize-none leading-relaxed"
           placeholder="Write your post content..."
         />
       </div>
 
       {/* Review notes accordion */}
-      {post.review_data && (() => {
-        const rd = post.review_data as ReviewData;
-        const hasNotes = rd.notes && rd.notes.length > 0;
-        const hasFlags = rd.flags && rd.flags.length > 0;
-        if (!hasNotes && !hasFlags) return null;
-        return (
-          <div className="border-t px-4 py-2 space-y-1">
-            {hasNotes && (
-              <details>
-                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                  {rd.notes.length} edit suggestion{rd.notes.length !== 1 ? 's' : ''}
-                </summary>
-                <ul className="mt-1 space-y-1 pl-4">
-                  {rd.notes.map((note: string, i: number) => (
-                    <li key={i} className="text-xs text-muted-foreground">&bull; {note}</li>
-                  ))}
-                </ul>
-              </details>
-            )}
-            {hasFlags && (
-              <details>
-                <summary className="cursor-pointer text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300">
-                  {rd.flags.length} consistency flag{rd.flags.length !== 1 ? 's' : ''}
-                </summary>
-                <ul className="mt-1 space-y-1 pl-4">
-                  {rd.flags.map((flag: string, i: number) => (
-                    <li key={i} className="text-xs text-orange-600 dark:text-orange-400">&bull; {flag}</li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </div>
-        );
-      })()}
+      {post.review_data &&
+        (() => {
+          const rd = post.review_data as ReviewData;
+          const hasNotes = rd.notes && rd.notes.length > 0;
+          const hasFlags = rd.flags && rd.flags.length > 0;
+          if (!hasNotes && !hasFlags) return null;
+          return (
+            <div className="border-t px-4 py-2 space-y-1">
+              {hasNotes && (
+                <details>
+                  <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                    {rd.notes.length} edit suggestion{rd.notes.length !== 1 ? 's' : ''}
+                  </summary>
+                  <ul className="mt-1 space-y-1 pl-4">
+                    {rd.notes.map((note: string, i: number) => (
+                      <li key={i} className="text-xs text-muted-foreground">
+                        &bull; {note}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {hasFlags && (
+                <details>
+                  <summary className="cursor-pointer text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300">
+                    {rd.flags.length} consistency flag{rd.flags.length !== 1 ? 's' : ''}
+                  </summary>
+                  <ul className="mt-1 space-y-1 pl-4">
+                    {rd.flags.map((flag: string, i: number) => (
+                      <li key={i} className="text-xs text-orange-600 dark:text-orange-400">
+                        &bull; {flag}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          );
+        })()}
 
       {/* Idea context accordion */}
       {idea && (
@@ -351,53 +394,55 @@ function PostDetail({
           </summary>
           <div className="mt-2 space-y-2 pb-2">
             <p className="text-xs font-medium">{idea.title}</p>
-            {idea.core_insight && <p className="text-xs text-muted-foreground">{idea.core_insight}</p>}
+            {idea.core_insight && (
+              <p className="text-xs text-muted-foreground">{idea.core_insight}</p>
+            )}
           </div>
         </details>
       )}
 
       {/* Action buttons */}
       <div className="flex items-center gap-2 border-t px-4 py-3">
-        <button
-          onClick={handlePolish}
-          disabled={polishing}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
-        >
-          {polishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+        <Button variant="outline" size="sm" onClick={handlePolish} disabled={polishing}>
+          {polishing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+          ) : (
+            <Sparkles className="h-3.5 w-3.5 mr-1" />
+          )}
           Polish
-        </button>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-        >
-          {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleCopy}>
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-green-500 mr-1" />
+          ) : (
+            <Copy className="h-3.5 w-3.5 mr-1" />
+          )}
           {copied ? 'Copied' : 'Copy'}
-        </button>
-        <button
-          onClick={handleSchedule}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-        >
-          <Calendar className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleSchedule}>
+          <Calendar className="h-3.5 w-3.5 mr-1" />
           Schedule
-        </button>
+        </Button>
         {canPublish && (
-          <button
+          <Button
+            size="sm"
             onClick={handlePublish}
             disabled={publishing}
-            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Linkedin className="h-3.5 w-3.5" />}
+            {publishing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+            ) : (
+              <Linkedin className="h-3.5 w-3.5 mr-1" />
+            )}
             Publish
-          </button>
+          </Button>
         )}
         <div className="flex-1" />
-        <button
-          onClick={() => onOpenModal(post)}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-        >
-          <Maximize2 className="h-3.5 w-3.5" />
-          Expand
-        </button>
+        <Button variant="outline" size="sm" onClick={() => onOpenModal(post)}>
+          <Maximize2 className="h-3.5 w-3.5 mr-1" />
+          Full Editor
+        </Button>
       </div>
       {/* Publish Error */}
       {publishError && (
@@ -423,12 +468,14 @@ export function SaveIndicator({ state }: { state: SaveState }) {
   if (state === 'idle') return null;
 
   return (
-    <span className={cn(
-      'flex items-center gap-1 text-[10px] font-medium',
-      state === 'saving' && 'text-muted-foreground',
-      state === 'saved' && 'text-green-600 dark:text-green-400',
-      state === 'error' && 'text-red-600 dark:text-red-400',
-    )}>
+    <span
+      className={cn(
+        'flex items-center gap-1 text-[10px] font-medium',
+        state === 'saving' && 'text-muted-foreground',
+        state === 'saved' && 'text-green-600 dark:text-green-400',
+        state === 'error' && 'text-destructive'
+      )}
+    >
       {state === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}
       {state === 'saved' && <Check className="h-3 w-3" />}
       {state === 'error' && <AlertCircle className="h-3 w-3" />}

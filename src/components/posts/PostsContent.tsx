@@ -4,8 +4,12 @@ import { useState, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Lightbulb, LayoutGrid, Sparkles, Loader2, BookOpen, Calendar, Zap } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ProfileSwitcher, useProfileSelection } from '@/components/content-pipeline/ProfileSwitcher';
+import { PageContainer, PageTitle, Button, StatusDot } from '@magnetlab/magnetui';
+
+import {
+  ProfileSwitcher,
+  useProfileSelection,
+} from '@/components/content-pipeline/ProfileSwitcher';
 import type { ContentIdea, PipelinePost } from '@/lib/types/content-pipeline';
 
 const IdeasTab = dynamic(
@@ -13,15 +17,18 @@ const IdeasTab = dynamic(
   { ssr: false }
 );
 const AutopilotTab = dynamic(
-  () => import('@/components/content-pipeline/AutopilotTab').then((m) => ({ default: m.AutopilotTab })),
+  () =>
+    import('@/components/content-pipeline/AutopilotTab').then((m) => ({ default: m.AutopilotTab })),
   { ssr: false }
 );
 const PipelineView = dynamic(
-  () => import('@/components/content-pipeline/PipelineView').then((m) => ({ default: m.PipelineView })),
+  () =>
+    import('@/components/content-pipeline/PipelineView').then((m) => ({ default: m.PipelineView })),
   { ssr: false }
 );
 const CalendarView = dynamic(
-  () => import('@/components/content-pipeline/CalendarView').then((m) => ({ default: m.CalendarView })),
+  () =>
+    import('@/components/content-pipeline/CalendarView').then((m) => ({ default: m.CalendarView })),
   { ssr: false }
 );
 const LibraryTab = dynamic(
@@ -29,7 +36,10 @@ const LibraryTab = dynamic(
   { ssr: false }
 );
 const QuickWriteModal = dynamic(
-  () => import('@/components/content-pipeline/QuickWriteModal').then((m) => ({ default: m.QuickWriteModal })),
+  () =>
+    import('@/components/content-pipeline/QuickWriteModal').then((m) => ({
+      default: m.QuickWriteModal,
+    })),
   { ssr: false }
 );
 
@@ -57,11 +67,7 @@ interface PostsContentProps {
   initialPosts: PipelinePost[];
 }
 
-export function PostsContent({
-  initialBufferLow,
-  initialIdeas,
-  initialPosts,
-}: PostsContentProps) {
+export function PostsContent({ initialBufferLow, initialIdeas, initialPosts }: PostsContentProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -134,122 +140,108 @@ export function PostsContent({
   }
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
-      {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold">Posts</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your content ideas, drafts, and publishing schedule
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative" ref={generateRef}>
-            <button
-              onClick={() => setShowGeneratePopover((v) => !v)}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Zap className="h-4 w-4" />
-              Generate Posts
-            </button>
-            {showGeneratePopover && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-border bg-popover p-4 shadow-lg">
-                <label className="mb-2 block text-sm font-medium">
-                  Posts per batch
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={batchSize}
-                  onChange={(e) =>
-                    setBatchSize(Math.min(10, Math.max(1, Number(e.target.value) || 1)))
-                  }
-                  className="mb-3 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                />
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                  {generating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Zap className="h-4 w-4" />
-                  )}
-                  {generating ? 'Generating…' : 'Generate'}
-                </button>
+    <PageContainer maxWidth="xl">
+      <div className="space-y-6">
+        <PageTitle
+          title="Posts"
+          description="Manage your content ideas, drafts, and publishing schedule"
+          actions={
+            <div className="flex items-center gap-3">
+              <div className="relative" ref={generateRef}>
+                <Button onClick={() => setShowGeneratePopover((v) => !v)}>
+                  <Zap className="h-4 w-4 mr-1.5" />
+                  Generate Posts
+                </Button>
+                {showGeneratePopover && (
+                  <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-border bg-popover p-4 shadow-lg">
+                    <label className="mb-2 block text-sm font-medium">Posts per batch</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={batchSize}
+                      onChange={(e) =>
+                        setBatchSize(Math.min(10, Math.max(1, Number(e.target.value) || 1)))
+                      }
+                      className="mb-3 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                    />
+                    <Button onClick={handleGenerate} disabled={generating} className="w-full">
+                      {generating ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                      ) : (
+                        <Zap className="h-4 w-4 mr-1.5" />
+                      )}
+                      {generating ? 'Generating...' : 'Generate'}
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <ProfileSwitcher
-            selectedProfileId={selectedProfileId}
-            onProfileChange={onProfileChange}
-          />
+              <ProfileSwitcher
+                selectedProfileId={selectedProfileId}
+                onProfileChange={onProfileChange}
+              />
+            </div>
+          }
+        />
+
+        {/* Tabs */}
+        <div className="flex gap-2 overflow-x-auto">
+          {TABS.map((tab) => (
+            <Button
+              key={tab.id}
+              variant={activeTab === tab.id ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleTabChange(tab.id)}
+            >
+              <tab.icon className="mr-1.5 h-3.5 w-3.5" />
+              {tab.label}
+              {tab.id === 'autopilot' && bufferLow && (
+                <StatusDot status="warning" size="sm" pulse className="ml-1.5" />
+              )}
+            </Button>
+          ))}
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="mb-6 flex gap-2 overflow-x-auto">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => handleTabChange(tab.id)}
-            className={cn(
-              'flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-              activeTab === tab.id
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary hover:bg-secondary/80'
-            )}
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-            {tab.id === 'autopilot' && bufferLow && (
-              <span className="ml-1 h-2 w-2 rounded-full bg-yellow-500" />
-            )}
-          </button>
-        ))}
-      </div>
+        {/* Tab Content */}
+        <Suspense fallback={<TabLoader />}>
+          {activeTab === 'pipeline' && (
+            <PipelineView
+              key={refreshKey}
+              profileId={selectedProfileId}
+              onRefresh={() => {
+                router.refresh();
+                setRefreshKey((k) => k + 1);
+              }}
+              initialIdeas={initialIdeas}
+              initialPosts={initialPosts}
+            />
+          )}
+          {activeTab === 'calendar' && <CalendarView />}
+          {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
+          {activeTab === 'library' && <LibraryTab />}
+          {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}
+        </Suspense>
 
-      {/* Tab Content */}
-      <Suspense fallback={<TabLoader />}>
-        {activeTab === 'pipeline' && (
-          <PipelineView
-            key={refreshKey}
-            profileId={selectedProfileId}
-            onRefresh={() => {
-              router.refresh();
+        {/* Quick Write FAB */}
+        <button
+          onClick={() => setShowQuickWrite(true)}
+          className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
+          title="Quick Write"
+        >
+          <Sparkles className="h-5 w-5" />
+        </button>
+        {showQuickWrite && (
+          <QuickWriteModal
+            onClose={() => setShowQuickWrite(false)}
+            onPostCreated={() => {
+              // Switch to pipeline tab and refresh it
+              handleTabChange('pipeline');
               setRefreshKey((k) => k + 1);
             }}
-            initialIdeas={initialIdeas}
-            initialPosts={initialPosts}
+            profileId={selectedProfileId}
           />
         )}
-        {activeTab === 'calendar' && <CalendarView />}
-        {activeTab === 'ideas' && <IdeasTab profileId={selectedProfileId} />}
-        {activeTab === 'library' && <LibraryTab />}
-        {activeTab === 'autopilot' && <AutopilotTab profileId={selectedProfileId} />}
-      </Suspense>
-
-      {/* Quick Write FAB */}
-      <button
-        onClick={() => setShowQuickWrite(true)}
-        className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
-        title="Quick Write"
-      >
-        <Sparkles className="h-5 w-5" />
-      </button>
-      {showQuickWrite && (
-        <QuickWriteModal
-          onClose={() => setShowQuickWrite(false)}
-          onPostCreated={() => {
-            // Switch to pipeline tab and refresh it
-            handleTabChange('pipeline');
-            setRefreshKey((k) => k + 1);
-          }}
-          profileId={selectedProfileId}
-        />
-      )}
-    </div>
+      </div>
+    </PageContainer>
   );
 }

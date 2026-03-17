@@ -1,6 +1,9 @@
 import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 
-const anthropic = createAnthropicClient('style-extractor');
+// CHANGED: Lazy init so module can load during build (ANTHROPIC_API_KEY not set at build time)
+function getAnthropicClient() {
+  return createAnthropicClient('style-extractor');
+}
 
 export interface StyleProfile {
   tone: 'conversational' | 'professional' | 'provocative' | 'educational' | 'inspirational';
@@ -38,9 +41,7 @@ export interface StyleExtractionInput {
  * Analyze a collection of posts and extract the author's writing style
  * using Claude Opus 4.5 for deep analysis
  */
-export async function extractWritingStyle(
-  input: StyleExtractionInput
-): Promise<ExtractedStyle> {
+export async function extractWritingStyle(input: StyleExtractionInput): Promise<ExtractedStyle> {
   if (input.posts.length === 0) {
     throw new Error('No posts provided for style analysis');
   }
@@ -114,7 +115,7 @@ Return your analysis as JSON:
 
 Return ONLY valid JSON, no other text.`;
 
-  const response = await anthropic.messages.create({
+  const response = await getAnthropicClient().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 4000,
     messages: [{ role: 'user', content: prompt }],

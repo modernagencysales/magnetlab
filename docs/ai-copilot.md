@@ -1,4 +1,4 @@
-<!-- Extracted from CLAUDE.md — see main file for architecture overview -->
+# AI Co-pilot
 
 ## AI Co-pilot (Phase 2a+2b+2c+2d -- Feb-Mar 2026)
 
@@ -26,7 +26,7 @@ User message → CopilotProvider (SSE fetch) → POST /api/copilot/chat
   → Memory extraction (fire-and-forget on correction signals + negative feedback)
 ```
 
-### Shared Action Layer
+## Actions (22 across 8 modules)
 
 Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 25 registered actions across 8 modules:
 
@@ -41,7 +41,11 @@ Pure async functions in `src/lib/actions/` callable by both co-pilot and MCP. 25
 | `funnels.ts` | `list_funnels`, `get_funnel`, `publish_funnel` (confirmation) |
 | `email.ts` | `list_email_sequences`, `get_subscriber_count`, `generate_newsletter_email` |
 
-### Confirmation Dialog System
+## API Routes
+
+`/api/copilot/chat` (POST, SSE) | `conversations` (GET/POST) | `conversations/[id]` (GET/DELETE) | `conversations/[id]/feedback` | `confirm-action` | `memories` (CRUD)
+
+### Confirmation Flow
 
 Actions with `requiresConfirmation: true` (schedule_post, publish_funnel, save_lead_magnet):
 1. Chat route sends `confirmation_required` SSE event but does NOT execute the action
@@ -50,6 +54,10 @@ Actions with `requiresConfirmation: true` (schedule_post, publish_funnel, save_l
 4. If approved: API executes the action via `executeAction()`, updates stale DB row with real result, returns result to Provider
 5. Provider updates local messages, auto-sends "Confirmed." to resume conversation
 6. If denied: saves denial message, Provider sends "The user declined the action."
+
+## Memory System
+
+Auto-extracts preferences from corrections + negative feedback → `copilot_memories` → injected into system prompt. Categories: `tone`, `structure`, `vocabulary`, `content`, `general`.
 
 ### Rich Result Cards
 
@@ -128,7 +136,7 @@ Conversations optionally bind to entities via `entity_type`/`entity_id`. When th
 - `src/lib/ai/content-pipeline/prompt-defaults.ts` — 3 copilot prompt slugs
 - `src/app/(dashboard)/layout.tsx` — CopilotShell integration
 
-### Copilot-Driven Lead Magnet Creation (Phase 2d — Mar 2026)
+### Copilot-Driven Lead Magnet Creation (Phase 2d -- Mar 2026)
 
 Conversational lead magnet creation through the copilot, decoupling ideation, creation, and distribution. The copilot drives a 4-step creation flow with Brain-aware adaptive questions.
 
@@ -195,17 +203,17 @@ Manual entry → Settings UI → POST /api/copilot/memories
 
 **Memory Categories:** `tone`, `structure`, `vocabulary`, `content`, `general`
 
-**Correction Signal Detection:** 5 patterns — negation ("don't use"), preference ("I prefer"), tone complaint ("too formal"), comparative ("more like"), voice complaint ("sounds too")
+**Correction Signal Detection:** 5 patterns -- negation ("don't use"), preference ("I prefer"), tone complaint ("too formal"), comparative ("more like"), voice complaint ("sounds too")
 
-**Settings UI:** `/settings/copilot` — list with category badges, source labels, toggle active/inactive, add new, delete. Nav item under "AI Co-pilot" group in SettingsNav.
+**Settings UI:** `/settings/copilot` -- list with category badges, source labels, toggle active/inactive, add new, delete. Nav item under "AI Co-pilot" group in SettingsNav.
 
 **Edit Tracking:** `EditRecordInput.source` optional field (`'manual' | 'copilot'`) tags co-pilot-generated content so `evolve-writing-style` can learn from AI-generated edits.
 
 ### Tests (271 passing)
 
-- `src/__tests__/lib/actions/` — executor (5), knowledge (3), content (4), supporting (25), lead-magnets (12), funnels (13), email (17)
-- `src/__tests__/api/copilot/` — chat (6), conversations (23), confirm-action (7), memories (19), lead-magnet-creation (33)
-- `src/__tests__/lib/ai/copilot/` — system-prompt (7), memory-extractor (10)
-- `src/__tests__/components/copilot/` — CopilotMessage (13), ConversationInput (10), ConfirmationDialog (8), ConversationHeader (12), PostPreviewCard (10), KnowledgeResultCard (12), IdeaListCard (12), FeedbackWidget (9)
-- `src/__tests__/components/settings/` — CopilotMemorySettings (6)
-- `src/__tests__/lib/services/` — edit-capture (31)
+- `src/__tests__/lib/actions/` -- executor (5), knowledge (3), content (4), supporting (25), lead-magnets (12), funnels (13), email (17)
+- `src/__tests__/api/copilot/` -- chat (6), conversations (23), confirm-action (7), memories (19), lead-magnet-creation (33)
+- `src/__tests__/lib/ai/copilot/` -- system-prompt (7), memory-extractor (10)
+- `src/__tests__/components/copilot/` -- CopilotMessage (13), ConversationInput (10), ConfirmationDialog (8), ConversationHeader (12), PostPreviewCard (10), KnowledgeResultCard (12), IdeaListCard (12), FeedbackWidget (9)
+- `src/__tests__/components/settings/` -- CopilotMemorySettings (6)
+- `src/__tests__/lib/services/` -- edit-capture (31)

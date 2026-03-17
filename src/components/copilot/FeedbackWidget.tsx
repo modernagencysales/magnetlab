@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ThumbsUp, ThumbsDown, Send, X } from 'lucide-react';
+import { Button, Input } from '@magnetlab/magnetui';
 
 interface FeedbackWidgetProps {
   onFeedback: (rating: 'positive' | 'negative', note?: string) => void;
@@ -36,55 +37,65 @@ export function FeedbackWidget({ onFeedback, existingFeedback }: FeedbackWidgetP
   return (
     <div className="flex flex-col items-start gap-1 mt-1">
       <div className="flex items-center gap-1">
-        <button
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={handlePositive}
-          className={`p-1 rounded transition-colors ${
+          className={
             existingFeedback?.rating === 'positive'
               ? 'text-emerald-500'
-              : 'text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400'
-          }`}
+              : 'text-muted-foreground hover:text-foreground'
+          }
           aria-label="Good response"
         >
           <ThumbsUp className="w-3 h-3" />
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={handleNegative}
-          className={`p-1 rounded transition-colors ${
+          className={
             existingFeedback?.rating === 'negative'
-              ? 'text-red-500'
-              : 'text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400'
-          }`}
+              ? 'text-destructive'
+              : 'text-muted-foreground hover:text-foreground'
+          }
           aria-label="Bad response"
         >
           <ThumbsDown className="w-3 h-3" />
-        </button>
+        </Button>
       </div>
 
       {showNoteInput && !existingFeedback && (
         <div className="flex items-center gap-1 w-full max-w-[85%]">
-          <input
+          <Input
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="What could be better?"
-            className="flex-1 text-xs px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-violet-500"
+            className="flex-1 text-xs h-7"
             maxLength={200}
-            onKeyDown={(e) => { if (e.key === 'Enter') submitNegative(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitNegative();
+            }}
           />
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={submitNegative}
-            className="p-1 text-violet-600 hover:text-violet-700"
+            className="text-violet-600 hover:text-violet-700"
             aria-label="Submit feedback"
           >
             <Send className="w-3 h-3" />
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={skipNote}
-            className="p-1 text-zinc-400 hover:text-zinc-500"
+            className="text-muted-foreground hover:text-foreground"
             aria-label="Skip note"
           >
             <X className="w-3 h-3" />
-          </button>
+          </Button>
         </div>
       )}
     </div>

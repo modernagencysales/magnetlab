@@ -1,6 +1,7 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
+import { Button } from '@magnetlab/magnetui';
 import { truncate } from '@/lib/utils';
 import { PillarBadge } from './PillarBadge';
 import type { ContentPillar } from '@/lib/types/content-pipeline';
@@ -22,7 +23,15 @@ interface BufferQueueCardProps {
   rejecting: boolean;
 }
 
-export function BufferQueueCard({ post, pillar, position, onApprove, onReject, approving, rejecting }: BufferQueueCardProps) {
+export function BufferQueueCard({
+  post,
+  pillar,
+  position,
+  onApprove,
+  onReject,
+  approving,
+  rejecting,
+}: BufferQueueCardProps) {
   const content = post.final_content || post.draft_content || '';
 
   return (
@@ -37,9 +46,7 @@ export function BufferQueueCard({ post, pillar, position, onApprove, onReject, a
         <p className="text-sm line-clamp-2">{truncate(content, 100)}</p>
         <div className="mt-2 flex items-center gap-2 flex-wrap">
           {post.hook_score !== null && post.hook_score !== undefined && (
-            <span className="text-xs text-muted-foreground">
-              Hook: {post.hook_score}/10
-            </span>
+            <span className="text-xs text-muted-foreground">Hook: {post.hook_score}/10</span>
           )}
           <PillarBadge pillar={pillar} />
         </div>
@@ -47,20 +54,22 @@ export function BufferQueueCard({ post, pillar, position, onApprove, onReject, a
 
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
-        <button
+        <Button
+          size="sm"
           onClick={() => onApprove(post.id)}
           disabled={approving || rejecting}
-          className="flex items-center gap-1.5 rounded-lg bg-green-600 dark:bg-green-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 transition-colors"
+          className="bg-green-600 hover:bg-green-700 text-white"
         >
           {approving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approve'}
-        </button>
-        <button
+        </Button>
+        <Button
+          size="sm"
+          variant="destructive"
           onClick={() => onReject(post.id)}
           disabled={approving || rejecting}
-          className="flex items-center gap-1.5 rounded-lg bg-red-600 dark:bg-red-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 transition-colors"
         >
           {rejecting ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Reject'}
-        </button>
+        </Button>
       </div>
     </div>
   );

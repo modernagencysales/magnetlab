@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
+import { Button, Input, Textarea, Label } from '@magnetlab/magnetui';
 import * as businessContextApi from '@/frontend/api/content-pipeline/business-context';
 
 interface BusinessContextModalProps {
@@ -22,7 +23,8 @@ export function BusinessContextModal({ onClose }: BusinessContextModalProps) {
   });
 
   useEffect(() => {
-    businessContextApi.getBusinessContext()
+    businessContextApi
+      .getBusinessContext()
       .then((data) => {
         if (data.context && typeof data.context === 'object' && 'company_name' in data.context) {
           const ctx = data.context as Record<string, unknown>;
@@ -74,13 +76,18 @@ export function BusinessContextModal({ onClose }: BusinessContextModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Business Context">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Business Context"
+    >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Business Context</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-secondary" aria-label="Close">
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <p className="mb-4 text-sm text-muted-foreground">
@@ -89,91 +96,79 @@ export function BusinessContextModal({ onClose }: BusinessContextModalProps) {
 
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium">Company Name</label>
-            <input
+            <Label className="mb-1">Company Name</Label>
+            <Input
               type="text"
               value={form.company_name}
               onChange={(e) => updateField('company_name', e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium">Industry</label>
-            <input
+            <Label className="mb-1">Industry</Label>
+            <Input
               type="text"
               value={form.industry}
               onChange={(e) => updateField('industry', e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium">Company Description</label>
-            <textarea
+            <Label className="mb-1">Company Description</Label>
+            <Textarea
               value={form.company_description}
               onChange={(e) => updateField('company_description', e.target.value)}
               rows={2}
-              className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium">ICP Job Title</label>
-              <input
+              <Label className="mb-1">ICP Job Title</Label>
+              <Input
                 type="text"
                 value={form.icp_title}
                 onChange={(e) => updateField('icp_title', e.target.value)}
                 placeholder="e.g., Marketing Director"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium">ICP Industry</label>
-              <input
+              <Label className="mb-1">ICP Industry</Label>
+              <Input
                 type="text"
                 value={form.icp_industry}
                 onChange={(e) => updateField('icp_industry', e.target.value)}
                 placeholder="e.g., SaaS, E-commerce"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium">ICP Pain Points (one per line)</label>
-            <textarea
+            <Label className="mb-1">ICP Pain Points (one per line)</Label>
+            <Textarea
               value={form.icp_pain_points}
               onChange={(e) => updateField('icp_pain_points', e.target.value)}
               rows={3}
               placeholder="Can't generate enough leads&#10;Spending too much on ads&#10;Low conversion rates"
-              className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="resize-none"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium">Target Audience</label>
-            <input
+            <Label className="mb-1">Target Audience</Label>
+            <Input
               type="text"
               value={form.target_audience}
               onChange={(e) => updateField('target_audience', e.target.value)}
               placeholder="e.g., B2B agency owners with 5-50 employees"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
         </div>
 
         <div className="mt-6 flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
-          >
+          <Button variant="outline" className="flex-1" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
+          </Button>
+          <Button className="flex-1" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save
-          </button>
+          </Button>
         </div>
       </div>
     </div>

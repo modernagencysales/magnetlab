@@ -13,6 +13,14 @@ import type {
 } from '@/lib/types/content-pipeline';
 import type { UnipilePost, UnipilePostStats } from '@/lib/types/integrations';
 
+// ─── Column Constants ─────────────────────────────────────────────────────────
+
+const TEAM_PROFILE_COLUMNS =
+  'id, team_id, user_id, email, full_name, title, linkedin_url, bio, expertise_areas, voice_profile, avatar_url, role, status, is_default, invited_at, accepted_at, created_at, updated_at';
+
+const TEAM_PROFILE_INTEGRATION_COLUMNS =
+  'id, team_profile_id, service, is_active, metadata, connected_by, created_at, updated_at';
+
 // ============================================
 // TEAM MEMBERSHIP VERIFICATION
 // ============================================
@@ -79,8 +87,7 @@ export async function getTeamProfileUnipileAccountId(
     .single();
 
   if (!teamError && teamIntegration?.is_active) {
-    const accountId = (teamIntegration.metadata as Record<string, unknown>)
-      ?.unipile_account_id;
+    const accountId = (teamIntegration.metadata as Record<string, unknown>)?.unipile_account_id;
     if (typeof accountId === 'string') {
       return accountId;
     }
@@ -102,8 +109,7 @@ export async function getTeamProfileUnipileAccountId(
     return null;
   }
 
-  const accountId = (userIntegration.metadata as Record<string, unknown>)
-    ?.unipile_account_id;
+  const accountId = (userIntegration.metadata as Record<string, unknown>)?.unipile_account_id;
   return typeof accountId === 'string' ? accountId : null;
 }
 
@@ -178,7 +184,7 @@ export async function getTeamProfilesWithConnections(
   // 1. Fetch all active team profiles
   const { data: profiles, error: profilesError } = await supabase
     .from('team_profiles')
-    .select('*')
+    .select(TEAM_PROFILE_COLUMNS)
     .eq('team_id', teamId)
     .eq('status', 'active');
 
@@ -200,8 +206,7 @@ export async function getTeamProfilesWithConnections(
   if (teamIntegrations) {
     for (const ti of teamIntegrations) {
       if (ti.is_active) {
-        const accountId = (ti.metadata as Record<string, unknown>)
-          ?.unipile_account_id;
+        const accountId = (ti.metadata as Record<string, unknown>)?.unipile_account_id;
         if (typeof accountId === 'string') {
           teamIntegrationMap.set(ti.team_profile_id, accountId);
         }
@@ -225,8 +230,7 @@ export async function getTeamProfilesWithConnections(
     if (userIntegrations) {
       for (const ui of userIntegrations) {
         if (ui.is_active) {
-          const accountId = (ui.metadata as Record<string, unknown>)
-            ?.unipile_account_id;
+          const accountId = (ui.metadata as Record<string, unknown>)?.unipile_account_id;
           if (typeof accountId === 'string') {
             userIntegrationMap.set(ui.user_id, accountId);
           }
@@ -280,7 +284,7 @@ export async function connectTeamProfileLinkedIn(
         onConflict: 'team_profile_id,service',
       }
     )
-    .select('*')
+    .select(TEAM_PROFILE_INTEGRATION_COLUMNS)
     .single();
 
   if (error) {

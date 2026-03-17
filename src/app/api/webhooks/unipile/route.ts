@@ -6,9 +6,23 @@ import { logError, logWarn, logInfo, logDebug } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
+    const secret = request.nextUrl.searchParams.get('secret');
+    const expectedSecret = process.env.UNIPILE_WEBHOOK_SECRET;
+    if (expectedSecret && secret && secret !== expectedSecret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (expectedSecret && !secret) {
+      logWarn(
+        'webhooks/unipile',
+        'Request missing secret — legacy notifyUrl. User should reconnect LinkedIn to update webhook URL.'
+      );
+    }
+
     const body = await request.json();
 
-    logDebug('webhooks/unipile', 'Webhook received', { body: JSON.stringify(body).substring(0, 500) });
+    logDebug('webhooks/unipile', 'Webhook received', {
+      body: JSON.stringify(body).substring(0, 500),
+    });
 
     // ==========================================
     // Account connection callback
@@ -66,9 +80,10 @@ export async function POST(request: NextRequest) {
           commentText: comment.text,
           commenterName: comment.author.name || 'Unknown',
           commenterProviderId: comment.author.provider_id,
-          commenterLinkedinUrl: comment.author.linkedin_url || comment.author.public_identifier
-            ? `https://www.linkedin.com/in/${comment.author.public_identifier}/`
-            : undefined,
+          commenterLinkedinUrl:
+            comment.author.linkedin_url || comment.author.public_identifier
+              ? `https://www.linkedin.com/in/${comment.author.public_identifier}/`
+              : undefined,
           commentedAt: comment.created_at || body.created_at || new Date().toISOString(),
         });
         logInfo('webhooks/unipile', 'Comment processing triggered', { postSocialId });
