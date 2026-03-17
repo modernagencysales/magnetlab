@@ -7,6 +7,9 @@ import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach/client';
 import { logError } from '@/lib/utils/logger';
 import type { LinkedInAutomation, AutomationEventType } from '@/lib/types/content-pipeline';
 
+const LINKEDIN_AUTOMATION_COLUMNS =
+  'id, user_id, name, post_id, post_social_id, keywords, dm_template, auto_connect, auto_like, comment_reply_template, enable_follow_up, follow_up_template, follow_up_delay_minutes, status, unipile_account_id, heyreach_campaign_id, resource_url, plusvibe_campaign_id, opt_in_url, leads_captured, created_at, updated_at';
+
 interface CommentEvent {
   postSocialId: string;
   commentText: string;
@@ -29,12 +32,14 @@ export async function findAutomationsForPost(postSocialId: string): Promise<Link
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('linkedin_automations')
-    .select('*')
+    .select(LINKEDIN_AUTOMATION_COLUMNS)
     .eq('post_social_id', postSocialId)
     .eq('status', 'running');
 
   if (error) {
-    logError('services/linkedin-automation', new Error('Failed to find automations'), { detail: error.message });
+    logError('services/linkedin-automation', new Error('Failed to find automations'), {
+      detail: error.message,
+    });
     return [];
   }
 
@@ -48,7 +53,7 @@ export async function findAutomationsForPost(postSocialId: string): Promise<Link
 export function matchesKeywords(commentText: string, keywords: string[]): boolean {
   if (!keywords || keywords.length === 0) return false;
   const lower = commentText.toLowerCase();
-  return keywords.some(kw => {
+  return keywords.some((kw) => {
     const kwLower = kw.toLowerCase().trim();
     if (!kwLower) return false;
     // Match whole word or phrase
@@ -79,8 +84,8 @@ export async function processComment(
   await logEvent(automation.id, 'keyword_matched', comment);
 
   // Determine which account to use for Unipile actions (like/reply)
-  const accountId = automation.unipile_account_id
-    || await getUserPostingAccountId(automation.user_id);
+  const accountId =
+    automation.unipile_account_id || (await getUserPostingAccountId(automation.user_id));
 
   // 1. Auto-like the comment (via Unipile — low risk)
   if (automation.auto_like && automation.post_social_id && accountId) {
@@ -104,19 +109,23 @@ export async function processComment(
         customVars.resource_url = automation.resource_url;
       }
 
-      const result = await pushLeadsToHeyReach(
-        automation.heyreach_campaign_id,
-        [{
+      const result = await pushLeadsToHeyReach(automation.heyreach_campaign_id, [
+        {
           profileUrl: comment.commenterLinkedinUrl,
           firstName: comment.commenterName.split(' ')[0] || undefined,
           lastName: comment.commenterName.split(' ').slice(1).join(' ') || undefined,
           customVariables: Object.keys(customVars).length > 0 ? customVars : undefined,
-        }]
-      );
+        },
+      ]);
 
       if (!result.success) throw new Error(result.error || 'HeyReach push failed');
       actions.push('heyreach_enrolled');
-      await logEvent(automation.id, 'dm_sent', comment, `HeyReach campaign ${automation.heyreach_campaign_id}`);
+      await logEvent(
+        automation.id,
+        'dm_sent',
+        comment,
+        `HeyReach campaign ${automation.heyreach_campaign_id}`
+      );
 
       // Increment leads_captured
       await supabase
@@ -147,8 +156,12 @@ export async function processComment(
       });
 
       actions.push('plusvibe_enrichment_triggered');
-      await logEvent(automation.id, 'plusvibe_enrichment_triggered', comment,
-        `Campaign: ${automation.plusvibe_campaign_id}`);
+      await logEvent(
+        automation.id,
+        'plusvibe_enrichment_triggered',
+        comment,
+        `Campaign: ${automation.plusvibe_campaign_id}`
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       errors.push(`plusvibe_enrich: ${msg}`);

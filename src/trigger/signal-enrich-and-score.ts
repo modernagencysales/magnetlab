@@ -11,6 +11,9 @@ import { updateSignalCounts } from '@/lib/services/signal-engine';
 import { batchClassifySentiment } from '@/lib/ai/signal-sentiment';
 import type { SignalConfig } from '@/lib/types/signals';
 
+const SIGNAL_CONFIG_COLUMNS =
+  'id, user_id, target_countries, target_job_titles, exclude_job_titles, min_company_size, max_company_size, target_industries, default_heyreach_campaign_id, enrichment_enabled, sentiment_scoring_enabled, auto_push_enabled, created_at, updated_at';
+
 export const signalEnrichAndScore = schedules.task({
   id: 'signal-enrich-and-score',
   cron: '15 */2 * * *', // every 2 hours, offset 15 min
@@ -44,7 +47,7 @@ export const signalEnrichAndScore = schedules.task({
       const userIds = [...new Set(newLeads.map((l) => l.user_id))];
       const { data: configs } = await supabase
         .from('signal_configs')
-        .select('*')
+        .select(SIGNAL_CONFIG_COLUMNS)
         .in('user_id', userIds);
 
       const configMap = new Map<string, SignalConfig>();

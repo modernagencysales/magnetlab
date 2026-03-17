@@ -28,6 +28,8 @@ import {
 } from '@magnetlab/magnetui';
 import { DashboardWelcomeClient } from '@/components/dashboard/DashboardWelcomeClient';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Home | MagnetLab',
   description: 'Your MagnetLab dashboard',

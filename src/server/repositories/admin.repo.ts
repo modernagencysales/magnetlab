@@ -5,6 +5,14 @@
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+// ─── Column Constants ─────────────────────────────────────────────────────────
+
+export const AI_PROMPT_TEMPLATE_COLUMNS =
+  'id, slug, name, category, description, system_prompt, user_prompt, model, temperature, max_tokens, variables, is_active, created_at, updated_at';
+
+export const AI_PROMPT_VERSION_COLUMNS =
+  'id, prompt_id, version, system_prompt, user_prompt, model, temperature, max_tokens, change_note, changed_by, created_at';
+
 export async function listPrompts(): Promise<Record<string, unknown>[]> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -20,7 +28,7 @@ export async function getPromptBySlug(slug: string): Promise<Record<string, unkn
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('ai_prompt_templates')
-    .select('*')
+    .select(AI_PROMPT_TEMPLATE_COLUMNS)
     .eq('slug', slug)
     .single();
   if (error || !data) return null;
@@ -31,7 +39,7 @@ export async function getPromptVersions(promptId: string): Promise<Record<string
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('ai_prompt_versions')
-    .select('*')
+    .select(AI_PROMPT_VERSION_COLUMNS)
     .eq('prompt_id', promptId)
     .order('version', { ascending: false });
   if (error) throw new Error(`admin.getPromptVersions: ${error.message}`);
@@ -42,7 +50,7 @@ export async function getVersionById(versionId: string): Promise<Record<string, 
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('ai_prompt_versions')
-    .select('*')
+    .select(AI_PROMPT_VERSION_COLUMNS)
     .eq('id', versionId)
     .single();
   if (error || !data) return null;
@@ -77,7 +85,7 @@ export async function getActivePromptBySlug(slug: string): Promise<Record<string
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('ai_prompt_templates')
-    .select('*')
+    .select(AI_PROMPT_TEMPLATE_COLUMNS)
     .eq('slug', slug)
     .eq('is_active', true)
     .single();

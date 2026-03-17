@@ -4,6 +4,8 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/uti
 import { getDataScope, applyScope } from '@/lib/utils/team-context';
 import { BrandingPage } from '@/components/settings/BrandingPage';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Branding | MagnetLab Settings',
 };

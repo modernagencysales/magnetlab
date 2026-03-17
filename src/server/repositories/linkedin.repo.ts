@@ -5,6 +5,14 @@
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+// ─── Column Constants ─────────────────────────────────────────────────────────
+
+export const LINKEDIN_AUTOMATION_COLUMNS =
+  'id, user_id, name, post_id, post_social_id, keywords, dm_template, auto_connect, auto_like, comment_reply_template, enable_follow_up, follow_up_template, follow_up_delay_minutes, status, unipile_account_id, heyreach_campaign_id, resource_url, plusvibe_campaign_id, opt_in_url, leads_captured, created_at, updated_at';
+
+export const LINKEDIN_AUTOMATION_EVENT_COLUMNS =
+  'id, automation_id, event_type, commenter_name, commenter_provider_id, commenter_linkedin_url, comment_text, action_details, error, created_at';
+
 export async function getSubscriptionPlan(userId: string): Promise<{ plan: string } | null> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
@@ -63,7 +71,7 @@ export async function listLinkedInAutomations(userId: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('linkedin_automations')
-    .select('*')
+    .select(LINKEDIN_AUTOMATION_COLUMNS)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   return { data: data ?? [], error };
@@ -117,7 +125,7 @@ export async function getLinkedInAutomation(id: string, userId: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('linkedin_automations')
-    .select('*')
+    .select(LINKEDIN_AUTOMATION_COLUMNS)
     .eq('id', id)
     .eq('user_id', userId)
     .single();
@@ -128,7 +136,7 @@ export async function getLinkedInAutomationEvents(automationId: string, limit: n
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('linkedin_automation_events')
-    .select('*')
+    .select(LINKEDIN_AUTOMATION_EVENT_COLUMNS)
     .eq('automation_id', automationId)
     .order('created_at', { ascending: false })
     .limit(limit);

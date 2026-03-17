@@ -5,13 +5,24 @@
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
+// ─── Column Constants ─────────────────────────────────────────────────────────
+
+export const SIGNAL_KEYWORD_MONITOR_COLUMNS =
+  'id, user_id, keyword, is_active, last_scanned_at, posts_found, leads_found, created_at';
+
+export const SIGNAL_COMPANY_MONITOR_COLUMNS =
+  'id, user_id, linkedin_company_url, company_name, is_active, last_scanned_at, heyreach_campaign_id, created_at, updated_at';
+
+export const SIGNAL_CONFIG_COLUMNS =
+  'id, user_id, target_countries, target_job_titles, exclude_job_titles, min_company_size, max_company_size, target_industries, default_heyreach_campaign_id, enrichment_enabled, sentiment_scoring_enabled, auto_push_enabled, created_at, updated_at';
+
 // ─── Keywords ─────────────────────────────────────────────────────────────
 
 export async function listKeywordMonitors(userId: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('signal_keyword_monitors')
-    .select('*')
+    .select(SIGNAL_KEYWORD_MONITOR_COLUMNS)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   return { data, error };
@@ -68,7 +79,7 @@ export async function listCompanyMonitors(userId: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('signal_company_monitors')
-    .select('*')
+    .select(SIGNAL_COMPANY_MONITOR_COLUMNS)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   return { data, error };
@@ -139,10 +150,13 @@ export async function listSignalLeads(
   range: { offset: number; limit: number }
 ) {
   const supabase = createSupabaseAdminClient();
+  const SIGNAL_LEAD_COLUMNS =
+    'id, user_id, linkedin_url, first_name, last_name, headline, job_title, company, country, profile_data, email, icp_match, icp_score, signal_count, compound_score, sentiment_score, content_velocity_score, status, heyreach_campaign_id, heyreach_pushed_at, heyreach_error, enriched_at, created_at, updated_at';
+
   let query = supabase
     .from('signal_leads')
     .select(
-      '*, signal_events(id, signal_type, comment_text, sentiment, keyword_matched, detected_at)',
+      `${SIGNAL_LEAD_COLUMNS}, signal_events(id, signal_type, comment_text, sentiment, keyword_matched, detected_at)`,
       { count: 'exact' }
     )
     .eq('user_id', userId)
@@ -217,7 +231,7 @@ export async function getSignalConfig(userId: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('signal_configs')
-    .select('*')
+    .select(SIGNAL_CONFIG_COLUMNS)
     .eq('user_id', userId)
     .single();
   return { data, error };

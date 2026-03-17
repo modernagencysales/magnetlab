@@ -89,7 +89,9 @@ export async function createLeadMagnetExternal(userId: string, body: Record<stri
       return { success: false as const, error: 'usage_limit' as const };
     }
 
-    const data = await leadMagnetsRepo.createLeadMagnet(userId, null, {
+    const teamId = await teamRepo.getTeamIdByOwnerProfileUserId(userId);
+
+    const data = await leadMagnetsRepo.createLeadMagnet(userId, teamId, {
       title: body.title as string,
       archetype: body.archetype as string,
       concept: body.concept,

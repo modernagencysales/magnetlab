@@ -7,6 +7,8 @@ import * as postsService from '@/server/services/posts.service';
 import * as ideasService from '@/server/services/ideas.service';
 import { PostsContent } from '@/components/posts/PostsContent';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Posts | MagnetLab',
   description: 'Manage your LinkedIn posts and content pipeline',
@@ -18,7 +20,7 @@ export default async function PostsPage() {
 
   const scope = await getDataScope(session.user.id);
   const [buffer, initialPosts, initialIdeas] = await Promise.all([
-    getBufferStatus(session.user.id),
+    getBufferStatus(session.user.id, scope),
     postsService.getPosts(scope, { limit: 200 }),
     ideasService.getIdeas(scope, { status: 'extracted', limit: 200 }),
   ]);

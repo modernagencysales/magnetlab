@@ -1,22 +1,37 @@
 import { schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { generateEmbedding, cosineSimilarity } from '@/lib/ai/embeddings';
-import { fetchAllSopFiles, fetchSidebars, commitChanges } from '@/lib/ai/playbook-sync/github-client';
+import {
+  fetchAllSopFiles,
+  fetchSidebars,
+  commitChanges,
+} from '@/lib/ai/playbook-sync/github-client';
 import type { FileChange } from '@/lib/ai/playbook-sync/github-client';
 import { syncSopEmbeddings } from '@/lib/ai/playbook-sync/sop-embeddings';
 import type { CachedSop } from '@/lib/ai/playbook-sync/sop-embeddings';
 import { classifyKnowledgeForSop } from '@/lib/ai/playbook-sync/classifier';
 import type { ClassificationResult } from '@/lib/ai/playbook-sync/classifier';
-import { generateSopEdit, formatReferenceEntries, formatFaqEntries } from '@/lib/ai/playbook-sync/edit-generator';
+import {
+  generateSopEdit,
+  formatReferenceEntries,
+  formatFaqEntries,
+} from '@/lib/ai/playbook-sync/edit-generator';
 import type { GeneratedEdit } from '@/lib/ai/playbook-sync/edit-generator';
 import { clusterOrphans, generateNewSop } from '@/lib/ai/playbook-sync/sop-creator';
 import type { KnowledgeEntry } from '@/lib/types/content-pipeline';
 
 // ---------------------------------------------------------------------------
+// Column Constants
+// ---------------------------------------------------------------------------
+
+const CP_KNOWLEDGE_ENTRY_COLUMNS =
+  'id, user_id, transcript_id, category, speaker, content, context, tags, transcript_type, created_at, updated_at, team_id, source_profile_id, speaker_company, knowledge_type, topics, quality_score, specificity, actionability, superseded_by, source_date';
+
+// ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const SIMILARITY_THRESHOLD = 0.60;
+const SIMILARITY_THRESHOLD = 0.6;
 const MAX_ENRICHMENTS_PER_FILE = 4;
 
 // Only sync knowledge from the playbook owner's account
@@ -115,11 +130,7 @@ function applyEdit(sopContent: string, edit: GeneratedEdit): string {
  * Insert a new SOP entry into the correct module category in sidebars.js.
  * Expects sidebars.js to contain arrays of items grouped by module folder name.
  */
-function addToSidebars(
-  sidebarsContent: string,
-  moduleName: string,
-  sopId: string
-): string {
+function addToSidebars(sidebarsContent: string, moduleName: string, sopId: string): string {
   // Look for the module section in sidebars.js
   // Pattern: items: [ ... ] inside a block that mentions the module name
   const modulePattern = new RegExp(
@@ -140,20 +151,14 @@ function addToSidebars(
 
   // Fallback: look for a simpler pattern where items are listed directly
   // Try to find the module name and append after its last entry
-  const simplePattern = new RegExp(
-    `('sops/${moduleName}/[^']*',?)([^\\]]*?)\\]`,
-    's'
-  );
+  const simplePattern = new RegExp(`('sops/${moduleName}/[^']*',?)([^\\]]*?)\\]`, 's');
   const simpleMatch = sidebarsContent.match(simplePattern);
   if (simpleMatch) {
     const insertAfter = simpleMatch[0];
     const lastBracket = insertAfter.lastIndexOf(']');
     const beforeBracket = insertAfter.slice(0, lastBracket);
     const newEntry = `\n          'sops/${moduleName}/${sopId}',`;
-    return sidebarsContent.replace(
-      insertAfter,
-      beforeBracket + newEntry + '\n        ]'
-    );
+    return sidebarsContent.replace(insertAfter, beforeBracket + newEntry + '\n        ]');
   }
 
   // If no module section found, log a warning and return unchanged
@@ -223,7 +228,7 @@ export const playbookSync = schedules.task({
 
       const { data: newEntries } = await supabase
         .from('cp_knowledge_entries')
-        .select('*')
+        .select(CP_KNOWLEDGE_ENTRY_COLUMNS)
         .eq('user_id', PLAYBOOK_OWNER_USER_ID)
         .gt('created_at', windowStart)
         .order('created_at', { ascending: true });
@@ -242,7 +247,7 @@ export const playbookSync = schedules.task({
       if (orphanEntryIds.length > 0) {
         const { data: fetchedOrphans } = await supabase
           .from('cp_knowledge_entries')
-          .select('*')
+          .select(CP_KNOWLEDGE_ENTRY_COLUMNS)
           .eq('user_id', PLAYBOOK_OWNER_USER_ID)
           .in('id', orphanEntryIds);
         orphanEntries = (fetchedOrphans as KnowledgeEntry[]) || [];
@@ -337,22 +342,21 @@ export const playbookSync = schedules.task({
 
             let classification: ClassificationResult;
             try {
-              classification = await classifyKnowledgeForSop(
-                entry,
-                bestSop.content,
-                bestSop.title
-              );
+              classification = await classifyKnowledgeForSop(entry, bestSop.content, bestSop.title);
             } catch (classifyError) {
               logger.error('Classification failed, defaulting to tangential', {
                 entryId: entry.id,
-                error: classifyError instanceof Error ? classifyError.message : String(classifyError),
+                error:
+                  classifyError instanceof Error ? classifyError.message : String(classifyError),
               });
               classification = {
                 action: 'tangential',
                 reasoning: 'Classification failed',
                 target_section: null,
               };
-              errors.push(`classify:${entry.id}: ${classifyError instanceof Error ? classifyError.message : String(classifyError)}`);
+              errors.push(
+                `classify:${entry.id}: ${classifyError instanceof Error ? classifyError.message : String(classifyError)}`
+              );
             }
 
             // Log the match
@@ -397,7 +401,9 @@ export const playbookSync = schedules.task({
             entryId: entry.id,
             error: entryError instanceof Error ? entryError.message : String(entryError),
           });
-          errors.push(`entry:${entry.id}: ${entryError instanceof Error ? entryError.message : String(entryError)}`);
+          errors.push(
+            `entry:${entry.id}: ${entryError instanceof Error ? entryError.message : String(entryError)}`
+          );
         }
       }
 
@@ -459,9 +465,7 @@ export const playbookSync = schedules.task({
           for (const section of group.targetSections) {
             sectionCounts.set(section, (sectionCounts.get(section) || 0) + 1);
           }
-          const primarySection = [...sectionCounts.entries()].sort(
-            (a, b) => b[1] - a[1]
-          )[0][0];
+          const primarySection = [...sectionCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 
           logger.info('Generating edit', {
             sop: sopPath,
@@ -489,7 +493,9 @@ export const playbookSync = schedules.task({
             sopPath,
             error: editError instanceof Error ? editError.message : String(editError),
           });
-          errors.push(`edit:${sopPath}: ${editError instanceof Error ? editError.message : String(editError)}`);
+          errors.push(
+            `edit:${sopPath}: ${editError instanceof Error ? editError.message : String(editError)}`
+          );
         }
       }
 
@@ -527,7 +533,7 @@ export const playbookSync = schedules.task({
               for (let j = i + 1; j < clusters.length; j++) {
                 if (merged.has(j)) continue;
                 const sim = cosineSimilarity(clusterEmbeddings[i], clusterEmbeddings[j]);
-                if (sim > 0.80) {
+                if (sim > 0.8) {
                   logger.info('Merging overlapping clusters', {
                     cluster1: current.suggestedTitle,
                     cluster2: clusters[j].suggestedTitle,
@@ -558,20 +564,18 @@ export const playbookSync = schedules.task({
             let sidebarsChanged = false;
 
             // Determine next SOP number per module
-            const existingSopIds = cachedSops.map((s) => {
-              const idMatch = s.content.match(/^id:\s*(.+)/m);
-              return idMatch?.[1]?.trim() || '';
-            }).filter(Boolean);
+            const existingSopIds = cachedSops
+              .map((s) => {
+                const idMatch = s.content.match(/^id:\s*(.+)/m);
+                return idMatch?.[1]?.trim() || '';
+              })
+              .filter(Boolean);
 
             let sopCounter = 100; // Start high to avoid collisions
 
             for (const cluster of clusters) {
               try {
-                const newSop = await generateNewSop(
-                  cluster,
-                  existingSopIds,
-                  sopCounter++
-                );
+                const newSop = await generateNewSop(cluster, existingSopIds, sopCounter++);
 
                 fileChanges.push({
                   path: newSop.filePath,
@@ -611,7 +615,9 @@ export const playbookSync = schedules.task({
                   title: cluster.suggestedTitle,
                   error: sopError instanceof Error ? sopError.message : String(sopError),
                 });
-                errors.push(`new-sop:${cluster.suggestedTitle}: ${sopError instanceof Error ? sopError.message : String(sopError)}`);
+                errors.push(
+                  `new-sop:${cluster.suggestedTitle}: ${sopError instanceof Error ? sopError.message : String(sopError)}`
+                );
               }
             }
 
@@ -627,22 +633,18 @@ export const playbookSync = schedules.task({
           logger.error('Orphan clustering failed', {
             error: clusterError instanceof Error ? clusterError.message : String(clusterError),
           });
-          errors.push(`cluster: ${clusterError instanceof Error ? clusterError.message : String(clusterError)}`);
+          errors.push(
+            `cluster: ${clusterError instanceof Error ? clusterError.message : String(clusterError)}`
+          );
         }
       }
 
       // -------------------------------------------------------------------
       // Step 6b: Route product_intel → reference doc, question → FAQ
       // -------------------------------------------------------------------
-      const remainingOrphans = orphanedEntries.filter(
-        (e) => !consumedOrphanIds.has(e.id)
-      );
-      const productIntelOrphans = remainingOrphans.filter(
-        (e) => e.category === 'product_intel'
-      );
-      const questionOrphans = remainingOrphans.filter(
-        (e) => e.category === 'question'
-      );
+      const remainingOrphans = orphanedEntries.filter((e) => !consumedOrphanIds.has(e.id));
+      const productIntelOrphans = remainingOrphans.filter((e) => e.category === 'product_intel');
+      const questionOrphans = remainingOrphans.filter((e) => e.category === 'question');
 
       // Build a lookup for existing repo files
       const repoFileByPath = new Map<string, string>();
@@ -701,7 +703,9 @@ export const playbookSync = schedules.task({
           logger.error('Failed to generate reference doc', {
             error: refError instanceof Error ? refError.message : String(refError),
           });
-          errors.push(`reference: ${refError instanceof Error ? refError.message : String(refError)}`);
+          errors.push(
+            `reference: ${refError instanceof Error ? refError.message : String(refError)}`
+          );
         }
       }
 
@@ -763,7 +767,8 @@ export const playbookSync = schedules.task({
       logger.info('Step 6b complete', {
         productIntelRouted: productIntelOrphans.length,
         questionsRouted: questionOrphans.length,
-        remainingOrphans: remainingOrphans.length - productIntelOrphans.length - questionOrphans.length,
+        remainingOrphans:
+          remainingOrphans.length - productIntelOrphans.length - questionOrphans.length,
       });
 
       // -------------------------------------------------------------------
@@ -816,7 +821,9 @@ export const playbookSync = schedules.task({
               logger.error('Commit failed on retry', {
                 error: commitError instanceof Error ? commitError.message : String(commitError),
               });
-              errors.push(`commit: ${commitError instanceof Error ? commitError.message : String(commitError)}`);
+              errors.push(
+                `commit: ${commitError instanceof Error ? commitError.message : String(commitError)}`
+              );
             }
           }
         }
@@ -869,7 +876,10 @@ export const playbookSync = schedules.task({
           sops_enriched: sopsEnriched,
           sops_created: sopsCreated,
           commit_sha: commitSha,
-          commit_message: fileChanges.length > 0 ? `${entriesEnriched} enrichments, ${sopsCreated.length} new SOPs` : null,
+          commit_message:
+            fileChanges.length > 0
+              ? `${entriesEnriched} enrichments, ${sopsCreated.length} new SOPs`
+              : null,
           error_log: errors.length > 0 ? errors.join('\n') : null,
         })
         .eq('id', runId);

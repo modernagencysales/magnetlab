@@ -15,6 +15,8 @@ import {
 } from '@/lib/types/funnel';
 import type { LeadMagnet } from '@/lib/types/lead-magnet';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Lead Magnet | MagnetLab',
   description: 'View your lead magnet details',
@@ -38,7 +40,9 @@ export default async function MagnetDetailPage({ params }: PageProps) {
   // This avoids 404s when the team-context cookie is stale or not set.
   const { data: leadMagnetData, error } = await adminClient
     .from('lead_magnets')
-    .select('id, user_id, team_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, screenshot_urls, status, published_at, created_at, updated_at')
+    .select(
+      'id, user_id, team_id, title, archetype, concept, extracted_content, generated_content, linkedin_post, post_variations, dm_template, cta_word, thumbnail_url, scheduled_time, polished_content, polished_at, screenshot_urls, status, published_at, created_at, updated_at'
+    )
     .eq('id', id)
     .single();
 
@@ -80,15 +84,13 @@ export default async function MagnetDetailPage({ params }: PageProps) {
   const [funnelResult, userResult, emailProvidersResult] = await Promise.all([
     adminClient
       .from('funnel_pages')
-      .select('id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, homepage_url, homepage_label')
+      .select(
+        'id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, homepage_url, homepage_label'
+      )
       .eq('lead_magnet_id', id)
       .eq('is_variant', false)
       .maybeSingle(),
-    adminClient
-      .from('users')
-      .select('username')
-      .eq('id', usernameUserId)
-      .single(),
+    adminClient.from('users').select('username').eq('id', usernameUserId).single(),
     adminClient
       .from('user_integrations')
       .select('service')
@@ -101,7 +103,9 @@ export default async function MagnetDetailPage({ params }: PageProps) {
   const { data: userData } = userResult;
   const { data: emailProvidersData } = emailProvidersResult;
 
-  const connectedEmailProviders = (emailProvidersData || []).map((r: { service: string }) => r.service);
+  const connectedEmailProviders = (emailProvidersData || []).map(
+    (r: { service: string }) => r.service
+  );
 
   // Transform to camelCase
   const leadMagnet: LeadMagnet = {
@@ -127,9 +131,7 @@ export default async function MagnetDetailPage({ params }: PageProps) {
     updatedAt: leadMagnetData.updated_at,
   };
 
-  const existingFunnel = funnelData
-    ? funnelPageFromRow(funnelData as FunnelPageRow)
-    : null;
+  const existingFunnel = funnelData ? funnelPageFromRow(funnelData as FunnelPageRow) : null;
 
   // Fetch questions if funnel exists
   let existingQuestions: ReturnType<typeof qualificationQuestionFromRow>[] = [];
@@ -138,14 +140,18 @@ export default async function MagnetDetailPage({ params }: PageProps) {
     if (existingFunnel.qualificationFormId) {
       const { data } = await adminClient
         .from('qualification_questions')
-        .select('id, funnel_page_id, form_id, question_text, question_order, answer_type, qualifying_answer, options, placeholder, is_qualifying, is_required, created_at')
+        .select(
+          'id, funnel_page_id, form_id, question_text, question_order, answer_type, qualifying_answer, options, placeholder, is_qualifying, is_required, created_at'
+        )
         .eq('form_id', existingFunnel.qualificationFormId)
         .order('question_order', { ascending: true });
       questionsData = data;
     } else {
       const { data } = await adminClient
         .from('qualification_questions')
-        .select('id, funnel_page_id, form_id, question_text, question_order, answer_type, qualifying_answer, options, placeholder, is_qualifying, is_required, created_at')
+        .select(
+          'id, funnel_page_id, form_id, question_text, question_order, answer_type, qualifying_answer, options, placeholder, is_qualifying, is_required, created_at'
+        )
         .eq('funnel_page_id', existingFunnel.id)
         .order('question_order', { ascending: true });
       questionsData = data;
@@ -159,19 +165,20 @@ export default async function MagnetDetailPage({ params }: PageProps) {
   }
 
   const username = userData?.username || null;
-  const archetypeName = ARCHETYPE_NAMES[leadMagnet.archetype as keyof typeof ARCHETYPE_NAMES] || leadMagnet.archetype;
+  const archetypeName =
+    ARCHETYPE_NAMES[leadMagnet.archetype as keyof typeof ARCHETYPE_NAMES] || leadMagnet.archetype;
 
   return (
     <PageContainer maxWidth="xl">
       <Suspense>
         <MagnetDetail
-        leadMagnet={leadMagnet}
-        existingFunnel={existingFunnel}
-        existingQuestions={existingQuestions}
-        username={username}
-        archetypeName={archetypeName}
-        connectedEmailProviders={connectedEmailProviders}
-      />
+          leadMagnet={leadMagnet}
+          existingFunnel={existingFunnel}
+          existingQuestions={existingQuestions}
+          username={username}
+          archetypeName={archetypeName}
+          connectedEmailProviders={connectedEmailProviders}
+        />
       </Suspense>
     </PageContainer>
   );
