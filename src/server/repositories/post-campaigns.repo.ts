@@ -13,6 +13,21 @@ import type {
   UpdatePostCampaignInput,
 } from '@/lib/types/post-campaigns';
 
+// ─── Update Whitelist ──────────────────────────────────────────────────────
+
+const ALLOWED_UPDATE_FIELDS = [
+  'name',
+  'post_url',
+  'dm_template',
+  'connect_message_template',
+  'auto_accept_connections',
+  'auto_like_comments',
+  'auto_connect_non_requesters',
+  'daily_dm_limit',
+  'daily_connection_limit',
+  'status',
+] as const;
+
 // ─── Campaigns ─────────────────────────────────────────────────────────────
 
 export async function listCampaigns(userId: string, status?: PostCampaignStatus) {
@@ -75,9 +90,19 @@ export async function updateCampaign(
   updates: UpdatePostCampaignInput & { status?: PostCampaignStatus }
 ) {
   const supabase = createSupabaseAdminClient();
+
+  // Filter through ALLOWED_UPDATE_FIELDS whitelist
+  const filtered: Record<string, unknown> = {};
+  for (const key of ALLOWED_UPDATE_FIELDS) {
+    if (key in updates) {
+      filtered[key] = (updates as Record<string, unknown>)[key];
+    }
+  }
+  filtered.updated_at = new Date().toISOString();
+
   const { data, error } = await supabase
     .from('post_campaigns')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(filtered)
     .eq('id', id)
     .eq('user_id', userId)
     .select(POST_CAMPAIGN_COLUMNS)
@@ -220,6 +245,18 @@ export async function isLinkedInUrlInAnyCampaign(linkedinUrl: string): Promise<b
   return (count ?? 0) > 0;
 }
 
+/** Batch check: return the subset of URLs that already exist in any post campaign. */
+export async function findLinkedInUrlsInAnyCampaign(urls: string[]): Promise<string[]> {
+  if (urls.length === 0) return [];
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('post_campaign_leads')
+    .select('linkedin_url')
+    .in('linkedin_url', urls);
+  if (error || !data) return [];
+  return [...new Set(data.map((row) => row.linkedin_url))];
+}
+
 // ─── Stats ──────────────────────────────────────────────────────────────────
 
 export async function getCampaignStats(campaignId: string): Promise<Record<string, number>> {
@@ -280,7 +317,7 @@ export async function incrementDailyLimit(
 ) {
   const supabase = createSupabaseAdminClient();
   const today = new Date().toISOString().split('T')[0];
-  const { error } = await supabase.rpc('increment_linkedin_daily_limit', {
+  const { error } = await supabase.rpc('increment_daily_limit', {
     p_account_id: accountId,
     p_date: today,
     p_field: field,

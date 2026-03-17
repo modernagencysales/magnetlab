@@ -204,6 +204,56 @@ export async function listCampaignLeads(
   return { success: true, data: data ?? [] };
 }
 
+// ─── Test DM Preview ────────────────────────────────────────────────────
+
+export async function sendTestDm(
+  userId: string,
+  campaignId: string
+): Promise<ServiceResult<{ rendered_dm: string; note: string }>> {
+  const { data: campaign, error } = await repo.getCampaign(userId, campaignId);
+  if (error || !campaign) {
+    return { success: false, error: 'not_found', message: 'Campaign not found' };
+  }
+
+  let funnelUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.magnetlab.app'}/p/your-username/your-lead-magnet`;
+
+  if (campaign.funnel_page_id) {
+    try {
+      const { createSupabaseAdminClient } = await import('@/lib/utils/supabase-server');
+      const supabase = createSupabaseAdminClient();
+      const { data: funnelPage } = await supabase
+        .from('funnel_pages')
+        .select('slug, user_id')
+        .eq('id', campaign.funnel_page_id)
+        .single();
+
+      if (funnelPage?.slug) {
+        const { data: user } = await supabase
+          .from('users')
+          .select('username')
+          .eq('id', funnelPage.user_id)
+          .single();
+
+        if (user?.username) {
+          funnelUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.magnetlab.app'}/p/${user.username}/${funnelPage.slug}`;
+        }
+      }
+    } catch (err) {
+      logError('post-campaigns/sendTestDm', err, { campaignId });
+    }
+  }
+
+  const rendered_dm = renderDmTemplate(campaign.dm_template, {
+    name: 'Test User',
+    funnel_url: funnelUrl,
+  });
+
+  return {
+    success: true,
+    data: { rendered_dm, note: 'Preview only. No DM was sent.' },
+  };
+}
+
 // ─── Daily Limits ────────────────────────────────────────────────────────────
 
 /**
@@ -238,4 +288,14 @@ export function randomDelay(minMs: number, maxMs: number): number {
 /** Resolve after ms milliseconds. */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ─── Error Helper ───────────────────────────────────────────────────────────
+
+/** Extract statusCode from a service error, defaulting to 500. */
+export function getStatusCode(err: unknown): number {
+  if (err && typeof err === 'object' && 'statusCode' in err) {
+    return (err as { statusCode: number }).statusCode;
+  }
+  return 500;
 }

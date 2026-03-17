@@ -1,7 +1,7 @@
 import { schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { pushLeadsToHeyReach } from '@/lib/integrations/heyreach/client';
-import { isLinkedInUrlInAnyCampaign } from '@/server/repositories/post-campaigns.repo';
+import { findLinkedInUrlsInAnyCampaign } from '@/server/repositories/post-campaigns.repo';
 
 const SIGNAL_CONFIG_COLUMNS =
   'id, user_id, target_countries, target_job_titles, exclude_job_titles, min_company_size, max_company_size, target_industries, default_heyreach_campaign_id, enrichment_enabled, sentiment_scoring_enabled, auto_push_enabled, created_at, updated_at';
@@ -72,17 +72,17 @@ export const signalPushHeyreach = schedules.task({
         logger.info(`Found ${leads.length} qualified leads for user ${config.user_id}`);
 
         // Step 3b: Filter out leads already tracked in post campaigns (avoid double-outreach)
-        const filteredLeads = [];
-        for (const lead of leads) {
-          const inCampaign = await isLinkedInUrlInAnyCampaign(lead.linkedin_url);
-          if (inCampaign) {
+        const allUrls = leads.map((l) => l.linkedin_url);
+        const existingUrls = new Set(await findLinkedInUrlsInAnyCampaign(allUrls));
+        const filteredLeads = leads.filter((lead) => {
+          if (existingUrls.has(lead.linkedin_url)) {
             logger.info('Skipping lead — already in post campaign', {
               linkedin_url: lead.linkedin_url,
             });
-          } else {
-            filteredLeads.push(lead);
+            return false;
           }
-        }
+          return true;
+        });
 
         if (filteredLeads.length === 0) {
           logger.info('All qualified leads already in post campaigns', { userId: config.user_id });

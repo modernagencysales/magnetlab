@@ -7,61 +7,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { logError } from '@/lib/utils/logger';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import * as repo from '@/server/repositories/post-campaigns.repo';
-import { renderDmTemplate } from '@/server/services/post-campaigns.service';
+import { sendTestDm, getStatusCode } from '@/server/services/post-campaigns.service';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(_request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const { data: campaign, error } = await repo.getCampaign(session.user.id, id);
-
-    if (error || !campaign) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const result = await sendTestDm(session.user.id, id);
+    if (!result.success) {
+      const status = result.error === 'not_found' ? 404 : 500;
+      return NextResponse.json({ error: result.message ?? 'Internal server error' }, { status });
     }
-
-    // Build funnel URL from funnel_page_id if present, otherwise use a fallback.
-    let funnelUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.magnetlab.app'}/p/your-username/your-lead-magnet`;
-
-    if (campaign.funnel_page_id) {
-      const supabase = createSupabaseAdminClient();
-      const { data: funnelPage } = await supabase
-        .from('funnel_pages')
-        .select('slug, user_id')
-        .eq('id', campaign.funnel_page_id)
-        .single();
-
-      if (funnelPage?.slug) {
-        const { data: user } = await supabase
-          .from('users')
-          .select('username')
-          .eq('id', funnelPage.user_id)
-          .single();
-
-        if (user?.username) {
-          funnelUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.magnetlab.app'}/p/${user.username}/${funnelPage.slug}`;
-        }
-      }
-    }
-
-    const rendered_dm = renderDmTemplate(campaign.dm_template, {
-      name: 'Test User',
-      funnel_url: funnelUrl,
-    });
-
-    return NextResponse.json({
-      rendered_dm,
-      note: 'Preview only. No DM was sent.',
-    });
+    return NextResponse.json(result.data);
   } catch (error) {
     logError('api/post-campaigns/[id]/test-dm', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: getStatusCode(error) });
   }
 }
