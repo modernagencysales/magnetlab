@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
           entity_type: body.pageContext?.entityType || null,
           entity_id: body.pageContext?.entityId || null,
           title: body.message.slice(0, 100),
-          model: 'claude-sonnet-4-6-20250514',
+          model: 'claude-sonnet-4-6',
         })
         .select('id')
         .single();
@@ -222,7 +222,7 @@ export async function POST(req: NextRequest) {
 
             // I1 FIX: Use streaming API for real-time text deltas
             const stream = client.messages.stream({
-              model: 'claude-sonnet-4-6-20250514',
+              model: 'claude-sonnet-4-6',
               max_tokens: 4096,
               system: systemPrompt,
               tools: tools as Parameters<typeof client.messages.create>[0]['tools'],
