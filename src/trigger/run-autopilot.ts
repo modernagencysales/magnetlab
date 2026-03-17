@@ -1,5 +1,7 @@
 import { task, logger } from '@trigger.dev/sdk/v3';
 import { runNightlyBatch } from '@/lib/services/autopilot';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { fireDfyCallback } from '@/server/services/dfy-callback';
 
 interface RunAutopilotPayload {
   userId: string;
@@ -8,16 +10,41 @@ interface RunAutopilotPayload {
   autoPublish?: boolean;
   teamId?: string;
   profileId?: string;
+  engagementId?: string;
 }
 
 export const runAutopilot = task({
   id: 'run-autopilot',
-  maxDuration: 300,
-  retry: { maxAttempts: 2 },
+  maxDuration: 600, // 10 min — increased from 5 min for larger batches
+  retry: {
+    maxAttempts: 5,
+    factor: 2,
+    minTimeoutInMs: 30_000,
+    maxTimeoutInMs: 480_000,
+  },
   run: async (payload: RunAutopilotPayload) => {
-    const { userId, postsPerBatch = 3, bufferTarget = 5, autoPublish = false, teamId, profileId } = payload;
+    const {
+      userId,
+      postsPerBatch = 3,
+      bufferTarget = 5,
+      autoPublish = false,
+      teamId,
+      profileId,
+    } = payload;
 
     logger.info('Running autopilot', { userId, postsPerBatch, bufferTarget, profileId });
+
+    // Check if content ideas exist — transcript may not have been processed yet
+    const supabase = createSupabaseAdminClient();
+    const { count } = await supabase
+      .from('cp_content_ideas')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'extracted');
+
+    if (!count || count === 0) {
+      throw new Error('No content ideas available — transcript may not have been processed yet');
+    }
 
     const result = await runNightlyBatch({
       userId,
@@ -60,6 +87,22 @@ export const runAutopilot = task({
           });
         }
       }
+    }
+
+    // Fire DFY callback if this was triggered by an engagement
+    if (payload.engagementId) {
+      fireDfyCallback({
+        engagement_id: payload.engagementId,
+        automation_type: 'content_calendar',
+        status: 'completed',
+        result: {
+          posts_created: result.postsCreated,
+          posts_scheduled: result.postsScheduled,
+          ideas_processed: result.ideasProcessed,
+        },
+      }).catch(() => {
+        // Fire-and-forget — already logged inside fireDfyCallback
+      });
     }
 
     return result;

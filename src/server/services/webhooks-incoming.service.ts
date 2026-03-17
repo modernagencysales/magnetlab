@@ -290,13 +290,21 @@ export async function handleGtmCallback(payload: {
   return { success: false, error: `Unknown event type: ${payload.event}` };
 }
 
-/** Handle DFY webhook: create_lead_magnet or trigger_autopilot. */
+/** Handle DFY webhook: create_lead_magnet, trigger_autopilot, or run_dfy_content_pipeline. */
 export async function handleDfy(payload: {
   action: string;
   userId: string;
   archetype?: string;
   businessContext?: Record<string, unknown>;
   engagementId?: string;
+  postsPerBatch?: number;
+  bufferTarget?: number;
+  transcriptText?: string;
+  blueprintProspectId?: string;
+  clientName?: string;
+  clientEmail?: string;
+  clientLinkedinUrl?: string;
+  clientCompany?: string;
 }) {
   if (payload.action === 'create_lead_magnet') {
     try {
@@ -331,6 +339,7 @@ export async function handleDfy(payload: {
         autoPublishFunnel: false,
         autoSchedulePost: false,
         leadMagnetId: magnet.id,
+        engagementId: payload.engagementId,
       });
       return { success: true, leadMagnetId: magnet.id, runId: handle.id };
     } catch (err) {
@@ -344,9 +353,23 @@ export async function handleDfy(payload: {
   if (payload.action === 'trigger_autopilot') {
     const handle = await tasks.trigger('run-autopilot', {
       userId: payload.userId,
-      postsPerBatch: 3,
-      bufferTarget: 5,
+      postsPerBatch: payload.postsPerBatch ?? 3,
+      bufferTarget: payload.bufferTarget ?? 5,
       autoPublish: false,
+      engagementId: payload.engagementId,
+    });
+    return { success: true, runId: handle.id };
+  }
+  if (payload.action === 'run_dfy_content_pipeline') {
+    const handle = await tasks.trigger('dfy-content-pipeline', {
+      userId: payload.userId,
+      engagementId: payload.engagementId,
+      transcriptText: payload.transcriptText,
+      blueprintProspectId: payload.blueprintProspectId,
+      clientName: payload.clientName,
+      clientEmail: payload.clientEmail,
+      clientLinkedinUrl: payload.clientLinkedinUrl,
+      clientCompany: payload.clientCompany,
     });
     return { success: true, runId: handle.id };
   }

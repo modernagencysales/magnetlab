@@ -25,6 +25,10 @@ export const toolSchemas = {
     archetype: z.enum(archetypeValues, {
       message: `archetype must be one of: ${ARCHETYPES.join(', ')}`,
     }),
+    external_url: z.string().url('external_url must be a valid URL').optional(),
+  }),
+  magnetlab_update_lead_magnet: z.object({
+    id: z.string().min(1, 'id is required'),
   }),
   magnetlab_delete_lead_magnet: z.object({
     id: z.string().min(1, 'id is required'),
@@ -294,7 +298,7 @@ export const toolSchemas = {
   magnetlab_create_question: z.object({
     form_id: z.string().min(1, 'form_id is required'),
     question_text: z.string().min(1, 'question_text is required'),
-    question_type: z.enum(['text', 'single_choice', 'multi_choice']),
+    answer_type: z.enum(['yes_no', 'text', 'textarea', 'multiple_choice']),
   }),
 } as const;
 

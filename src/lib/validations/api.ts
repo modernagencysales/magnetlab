@@ -213,6 +213,7 @@ export const createLeadMagnetSchema = z.object({
   concept: conceptSchema.nullable().optional(),
   extractedContent: extractedContentSchema.nullable().optional(),
   interactiveConfig: interactiveConfigSchema.nullable().optional(),
+  externalUrl: z.string().url().nullable().optional(),
   linkedinPost: z.string().nullable().optional(),
   postVariations: z
     .array(
@@ -595,6 +596,40 @@ export const bulkCreatePagesSchema = z.object({
 });
 
 export type BulkCreatePagesInput = z.infer<typeof bulkCreatePagesSchema>;
+
+// ============================================
+// POST CAMPAIGN SCHEMAS
+// ============================================
+
+export const CreatePostCampaignSchema = z.object({
+  name: z.string().min(1).max(200),
+  post_url: z.string().url(),
+  keywords: z.array(z.string().min(1)).min(1),
+  unipile_account_id: z.string().min(1),
+  sender_name: z.string().optional(),
+  dm_template: z.string().min(1),
+  connect_message_template: z.string().optional(),
+  funnel_page_id: z.string().uuid().optional(),
+  auto_accept_connections: z.boolean().optional(),
+  auto_like_comments: z.boolean().optional(),
+  auto_connect_non_requesters: z.boolean().optional(),
+});
+
+export const UpdatePostCampaignSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  post_url: z.string().url().optional(),
+  dm_template: z.string().min(1).optional(),
+  connect_message_template: z.string().optional(),
+  auto_accept_connections: z.boolean().optional(),
+  auto_like_comments: z.boolean().optional(),
+  auto_connect_non_requesters: z.boolean().optional(),
+  daily_dm_limit: z.number().int().min(1).max(50).optional(),
+  daily_connection_limit: z.number().int().min(1).max(50).optional(),
+  status: z.enum(['draft', 'active', 'paused', 'completed']).optional(),
+});
+
+export type CreatePostCampaignInput = z.infer<typeof CreatePostCampaignSchema>;
+export type UpdatePostCampaignInput = z.infer<typeof UpdatePostCampaignSchema>;
 
 // ============================================
 // VALIDATION HELPER
