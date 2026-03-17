@@ -1,7 +1,22 @@
 'use client';
 
 import type { PolishedContent } from '@/lib/types/lead-magnet';
-import { Callout, RichParagraph, BulletList, BlockQuote, SectionDivider, CodeBlock, TableBlock, AccordionBlock, ImageBlock, EmbedBlock, NumberedItem, StatCard } from './ContentBlocks';
+import {
+  Callout,
+  RichParagraph,
+  BulletList,
+  BlockQuote,
+  SectionDivider,
+  CodeBlock,
+  TableBlock,
+  AccordionBlock,
+  ImageBlock,
+  EmbedBlock,
+  NumberedItem,
+  StatCard,
+  ResourceCard,
+  ResourceGridBlock,
+} from './ContentBlocks';
 
 interface PolishedContentRendererProps {
   content: PolishedContent;
@@ -20,7 +35,13 @@ export function PolishedContentRenderer({
   const borderColor = isDark ? '#27272A' : '#E4E4E7';
   const cardBg = isDark ? '#18181B' : '#FFFFFF';
 
-  const colors = { text: textColor, body: bodyColor, muted: mutedColor, border: borderColor, card: cardBg };
+  const colors = {
+    text: textColor,
+    body: bodyColor,
+    muted: mutedColor,
+    border: borderColor,
+    card: cardBg,
+  };
 
   return (
     <div>
@@ -65,13 +86,7 @@ export function PolishedContentRenderer({
           {section.blocks.map((block, blockIdx) => {
             switch (block.type) {
               case 'paragraph':
-                return (
-                  <RichParagraph
-                    key={blockIdx}
-                    content={block.content}
-                    colors={colors}
-                  />
-                );
+                return <RichParagraph key={blockIdx} content={block.content} colors={colors} />;
               case 'callout':
                 return (
                   <Callout
@@ -82,13 +97,7 @@ export function PolishedContentRenderer({
                   />
                 );
               case 'list':
-                return (
-                  <BulletList
-                    key={blockIdx}
-                    content={block.content}
-                    colors={colors}
-                  />
-                );
+                return <BulletList key={blockIdx} content={block.content} colors={colors} />;
               case 'quote':
                 return (
                   <BlockQuote
@@ -123,6 +132,24 @@ export function PolishedContentRenderer({
               case 'stat-card':
                 return (
                   <StatCard
+                    key={blockIdx}
+                    block={block}
+                    isDark={isDark}
+                    primaryColor={primaryColor}
+                  />
+                );
+              case 'resource-card':
+                return (
+                  <ResourceCard
+                    key={blockIdx}
+                    block={block}
+                    isDark={isDark}
+                    primaryColor={primaryColor}
+                  />
+                );
+              case 'resource-grid':
+                return (
+                  <ResourceGridBlock
                     key={blockIdx}
                     block={block}
                     isDark={isDark}
