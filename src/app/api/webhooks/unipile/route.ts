@@ -7,8 +7,15 @@ import { logError, logWarn, logInfo, logDebug } from '@/lib/utils/logger';
 export async function POST(request: NextRequest) {
   try {
     const secret = request.nextUrl.searchParams.get('secret');
-    if (!secret || secret !== process.env.UNIPILE_WEBHOOK_SECRET) {
+    const expectedSecret = process.env.UNIPILE_WEBHOOK_SECRET;
+    if (expectedSecret && secret && secret !== expectedSecret) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (expectedSecret && !secret) {
+      logWarn(
+        'webhooks/unipile',
+        'Request missing secret — legacy notifyUrl. User should reconnect LinkedIn to update webhook URL.'
+      );
     }
 
     const body = await request.json();
