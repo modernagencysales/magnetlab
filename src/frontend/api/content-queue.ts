@@ -8,6 +8,23 @@ import { apiClient } from './client';
 
 // ─── Response Types ────────────────────────────────────────────────────────
 
+export interface QueueFunnel {
+  id: string;
+  slug: string;
+  is_published: boolean;
+  reviewed_at: string | null;
+}
+
+export interface QueueLeadMagnet {
+  id: string;
+  title: string;
+  archetype: string;
+  status: string;
+  reviewed_at: string | null;
+  created_at: string;
+  funnels: QueueFunnel[];
+}
+
 export interface QueueTeamWritingStyle {
   name: string;
   description: string | null;
@@ -44,6 +61,11 @@ export interface QueueTeam {
   posts: QueuePost[];
   edited_count: number;
   total_count: number;
+  lead_magnets: QueueLeadMagnet[];
+  lm_reviewed_count: number;
+  lm_total_count: number;
+  funnel_reviewed_count: number;
+  funnel_total_count: number;
 }
 
 export interface QueueListResult {
@@ -52,6 +74,8 @@ export interface QueueListResult {
     total_teams: number;
     total_posts: number;
     remaining: number;
+    total_lead_magnets: number;
+    total_funnels: number;
   };
 }
 
@@ -84,6 +108,22 @@ export async function deleteQueuePost(postId: string): Promise<void> {
   return apiClient.delete<void>(`/content-queue/posts/${postId}`);
 }
 
-export async function submitBatch(teamId: string): Promise<SubmitResult> {
-  return apiClient.post<SubmitResult>('/content-queue/submit', { team_id: teamId });
+export async function submitBatch(
+  teamId: string,
+  submitType: 'posts' | 'assets' = 'posts'
+): Promise<SubmitResult> {
+  return apiClient.post<SubmitResult>('/content-queue/submit', {
+    team_id: teamId,
+    submit_type: submitType,
+  });
+}
+
+// ─── Review API Functions ──────────────────────────────────────────────────
+
+export async function reviewLeadMagnet(lmId: string, reviewed: boolean): Promise<void> {
+  return apiClient.patch<void>(`/content-queue/lead-magnets/${lmId}/review`, { reviewed });
+}
+
+export async function reviewFunnel(funnelId: string, reviewed: boolean): Promise<void> {
+  return apiClient.patch<void>(`/content-queue/funnels/${funnelId}/review`, { reviewed });
 }
