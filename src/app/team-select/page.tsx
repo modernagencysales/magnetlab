@@ -13,6 +13,7 @@ interface TeamMembership {
   teamName: string;
   ownerId: string;
   role: 'owner' | 'member';
+  via: 'direct' | 'team_link';
 }
 
 /**
@@ -34,6 +35,7 @@ export default function TeamSelectPage() {
           id: string;
           name: string;
           role: 'owner' | 'member';
+          via?: 'direct' | 'team_link';
         }>;
         const normalized: TeamMembership[] = entries.map((e) => ({
           id: e.id,
@@ -41,6 +43,7 @@ export default function TeamSelectPage() {
           teamName: e.name,
           ownerId: '',
           role: e.role,
+          via: e.via ?? 'direct',
         }));
         setMemberships(normalized);
 
@@ -134,7 +137,14 @@ export default function TeamSelectPage() {
                 <UsersRound size={18} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{m.teamName}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-sm truncate">{m.teamName}</p>
+                  {m.via === 'team_link' && (
+                    <span className="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">
+                      Linked
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {m.role === 'owner' ? 'Owner' : 'Member'}
                 </p>

@@ -67,6 +67,8 @@ interface TeamContext {
   teamId: string;
   teamName: string;
   isOwner: boolean;
+  via: 'direct' | 'team_link';
+  agencyTeamName?: string;
 }
 
 interface AppSidebarProps {
@@ -243,6 +245,13 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
             <p className="truncate text-xs font-medium text-primary">
               Working in: {teamContext.teamName}
             </p>
+            {teamContext.via === 'team_link' && (
+              <p className="mt-0.5 truncate text-[10px] text-primary/60">
+                {teamContext.agencyTeamName
+                  ? `via ${teamContext.agencyTeamName}`
+                  : 'via linked agency'}
+              </p>
+            )}
             <Link
               href="/team-select"
               onClick={handleNavigate}

@@ -19,11 +19,12 @@ export async function listTeams(userId: string) {
   const entries = await teamRepo.getUserTeams(userId);
   const owned = entries.filter((e) => e.role === 'owner');
   const member = entries.filter((e) => e.role === 'member');
-  // Flat `teams` array for MCP tools — each entry has id, name, role
+  // Flat `teams` array for MCP tools — each entry has id, name, role, via
   const teams = entries.map((e) => ({
     id: e.team.id,
     name: e.team.name,
     role: e.role,
+    via: e.via,
   }));
   return { owned, member, teams };
 }
