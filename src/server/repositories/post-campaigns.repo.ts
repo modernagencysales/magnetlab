@@ -236,6 +236,25 @@ export async function findLeadsByStatus(
   return { data, error };
 }
 
+export async function findLeadsByStatuses(
+  campaignId: string,
+  statuses: PostCampaignLeadStatus[],
+  limit?: number
+) {
+  const supabase = createSupabaseAdminClient();
+  let query = supabase
+    .from('post_campaign_leads')
+    .select(POST_CAMPAIGN_LEAD_COLUMNS)
+    .eq('campaign_id', campaignId)
+    .in('status', statuses)
+    .order('detected_at', { ascending: true });
+
+  if (limit != null) query = query.limit(limit);
+
+  const { data, error } = await query;
+  return { data, error };
+}
+
 export async function isLinkedInUrlInAnyCampaign(linkedinUrl: string): Promise<boolean> {
   const supabase = createSupabaseAdminClient();
   const { count } = await supabase
