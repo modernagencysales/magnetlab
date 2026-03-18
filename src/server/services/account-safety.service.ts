@@ -232,6 +232,73 @@ export async function checkDailyLimit(
   };
 }
 
+// ─── All Accounts ────────────────────────────────────────────────────────────
+
+/** Get all account safety settings rows for a user. */
+export async function getAllAccountSettings(userId: string): Promise<AccountSafetySettings[]> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from('account_safety_settings')
+    .select(ACCOUNT_SAFETY_COLUMNS)
+    .eq('user_id', userId);
+
+  if (error) {
+    logError('account-safety/getAllSettings', error, { userId });
+  }
+
+  return (data ?? []) as AccountSafetySettings[];
+}
+
+// ─── Update Settings ─────────────────────────────────────────────────────────
+
+const SETTINGS_FIELD_MAP: Record<string, string> = {
+  maxDmsPerDay: 'max_dms_per_day',
+  maxConnectionRequestsPerDay: 'max_connection_requests_per_day',
+  maxConnectionAcceptsPerDay: 'max_connection_accepts_per_day',
+  maxCommentsPerDay: 'max_comments_per_day',
+  maxLikesPerDay: 'max_likes_per_day',
+  minActionDelayMs: 'min_action_delay_ms',
+  maxActionDelayMs: 'max_action_delay_ms',
+  operatingHoursStart: 'operating_hours_start',
+  operatingHoursEnd: 'operating_hours_end',
+  timezone: 'timezone',
+};
+
+/** Upsert account safety settings for a user/account pair. */
+export async function updateAccountSettings(
+  userId: string,
+  accountId: string,
+  input: Record<string, unknown>
+): Promise<AccountSafetySettings> {
+  const supabase = createSupabaseAdminClient();
+
+  // Map camelCase input fields to snake_case DB columns
+  const dbFields: Record<string, unknown> = {
+    user_id: userId,
+    unipile_account_id: accountId,
+    updated_at: new Date().toISOString(),
+  };
+  for (const [key, dbKey] of Object.entries(SETTINGS_FIELD_MAP)) {
+    if (key in input) {
+      dbFields[dbKey] = input[key];
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('account_safety_settings')
+    .upsert(dbFields, { onConflict: 'user_id,unipile_account_id' })
+    .select(ACCOUNT_SAFETY_COLUMNS)
+    .single();
+
+  if (error) {
+    logError('account-safety/updateSettings', error, { userId, accountId });
+    throw Object.assign(new Error('Failed to update account safety settings'), { statusCode: 500 });
+  }
+
+  return data as AccountSafetySettings;
+}
+
 // ─── Randomized Delays ──────────────────────────────────────────────────────
 
 /** Return a random delay in milliseconds based on account settings. */
@@ -244,4 +311,11 @@ export function randomDelay(settings: AccountSafetySettings): number {
 /** Resolve after ms milliseconds. */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ─── Run Jitter ──────────────────────────────────────────────────────────────
+
+/** Return true ~10% of the time to add natural unpredictability to scheduled runs. */
+export function shouldSkipRun(): boolean {
+  return Math.random() < 0.1;
 }

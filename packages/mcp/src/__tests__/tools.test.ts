@@ -1,9 +1,9 @@
-/** Tool registration tests for MCP v2. Verifies 50 tools, naming, schemas, and no old tools. */
+/** Tool registration tests for MCP v2. Verifies 43 tools, naming, schemas, and no old tools. */
 
 import { describe, it, expect } from 'vitest';
 import { tools, toolsByName } from '../tools/index.js';
 
-// ─── All 40 expected tool names ────────────────────────────────────────────────
+// ─── All 43 expected tool names ────────────────────────────────────────────────
 
 const EXPECTED_TOOL_NAMES = [
   // Lead Magnets (5)
@@ -53,22 +53,13 @@ const EXPECTED_TOOL_NAMES = [
   'magnetlab_get_recommendations',
   // Account (1)
   'magnetlab_list_teams',
-  // Content Queue (3)
+  // Content Queue (6)
   'magnetlab_list_content_queue',
   'magnetlab_update_queue_post',
   'magnetlab_submit_queue_batch',
-  // Post Campaigns (8)
-  'magnetlab_list_post_campaigns',
-  'magnetlab_create_post_campaign',
-  'magnetlab_auto_setup_post_campaign',
-  'magnetlab_get_post_campaign',
-  'magnetlab_update_post_campaign',
-  'magnetlab_activate_post_campaign',
-  'magnetlab_pause_post_campaign',
-  'magnetlab_delete_post_campaign',
-  // Account Safety (2)
-  'magnetlab_get_account_safety_settings',
-  'magnetlab_update_account_safety_settings',
+  'magnetlab_review_lead_magnet',
+  'magnetlab_review_funnel',
+  'magnetlab_submit_asset_review',
 ] as const;
 
 // ─── Old tools that must NOT exist ────────────────────────────────────────────
@@ -94,8 +85,8 @@ const REMOVED_TOOLS = [
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('Tool Registration', () => {
-  it('exports exactly 50 tools', () => {
-    expect(tools).toHaveLength(50);
+  it('exports exactly 43 tools', () => {
+    expect(tools).toHaveLength(43);
   });
 
   it('all tools have unique names', () => {
@@ -126,8 +117,8 @@ describe('Tool Registration', () => {
     }
   });
 
-  it('toolsByName map has 50 entries', () => {
-    expect(toolsByName.size).toBe(50);
+  it('toolsByName map has 43 entries', () => {
+    expect(toolsByName.size).toBe(43);
   });
 
   it('toolsByName contains all tools and references correct objects', () => {
@@ -155,8 +146,8 @@ describe('Expected Tool Names', () => {
     }
   });
 
-  it('expected list has exactly 50 entries', () => {
-    expect(EXPECTED_TOOL_NAMES).toHaveLength(50);
+  it('expected list has exactly 43 entries', () => {
+    expect(EXPECTED_TOOL_NAMES).toHaveLength(43);
   });
 });
 
@@ -307,37 +298,16 @@ describe('Tool Group Sizes', () => {
     expect(accountTools).toHaveLength(1);
   });
 
-  it('has 3 content queue tools', () => {
+  it('has 6 content queue tools', () => {
     const queueTools = toolNames.filter(
       (n) =>
         n === 'magnetlab_list_content_queue' ||
         n === 'magnetlab_update_queue_post' ||
-        n === 'magnetlab_submit_queue_batch'
+        n === 'magnetlab_submit_queue_batch' ||
+        n === 'magnetlab_review_lead_magnet' ||
+        n === 'magnetlab_review_funnel' ||
+        n === 'magnetlab_submit_asset_review'
     );
-    expect(queueTools).toHaveLength(3);
-  });
-
-  it('has 8 post campaign tools', () => {
-    const campaignTools = toolNames.filter(
-      (n) =>
-        n === 'magnetlab_list_post_campaigns' ||
-        n === 'magnetlab_create_post_campaign' ||
-        n === 'magnetlab_auto_setup_post_campaign' ||
-        n === 'magnetlab_get_post_campaign' ||
-        n === 'magnetlab_update_post_campaign' ||
-        n === 'magnetlab_activate_post_campaign' ||
-        n === 'magnetlab_pause_post_campaign' ||
-        n === 'magnetlab_delete_post_campaign'
-    );
-    expect(campaignTools).toHaveLength(8);
-  });
-
-  it('has 2 account safety tools', () => {
-    const safetyTools = toolNames.filter(
-      (n) =>
-        n === 'magnetlab_get_account_safety_settings' ||
-        n === 'magnetlab_update_account_safety_settings'
-    );
-    expect(safetyTools).toHaveLength(2);
+    expect(queueTools).toHaveLength(6);
   });
 });

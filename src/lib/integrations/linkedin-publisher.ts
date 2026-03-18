@@ -41,8 +41,9 @@ export async function getUserLinkedInPublisher(userId: string): Promise<LinkedIn
       return {
         provider: 'unipile',
 
-        async publishNow(content: string, imageFile?: ImageFile): Promise<PublishResult> {
-          const result = await client.createPost(accountId, content, imageFile);
+        async publishNow(content: string, _imageFile?: ImageFile): Promise<PublishResult> {
+          // Note: imageFile support requires Unipile multipart upload — not yet implemented
+          const result = await client.createPost(accountId, content);
           if (result.error) {
             throw new Error(`Unipile publish failed: ${result.error}`);
           }

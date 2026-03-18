@@ -62,6 +62,7 @@ const LEAD_STATUS_VARIANTS: Record<PostCampaignLeadStatus, BadgeVariant> = {
   dm_sent: 'green',
   dm_failed: 'red',
   skipped: 'gray',
+  expired: 'gray',
 };
 
 const LEAD_STATUS_LABELS: Record<PostCampaignLeadStatus, string> = {
@@ -72,6 +73,7 @@ const LEAD_STATUS_LABELS: Record<PostCampaignLeadStatus, string> = {
   dm_sent: 'DM Sent',
   dm_failed: 'DM Failed',
   skipped: 'Skipped',
+  expired: 'Expired',
 };
 
 // ─── Types ──────────────────────────────────────────────
@@ -85,7 +87,7 @@ interface CampaignDetailProps {
 export function CampaignDetail({ campaignId }: CampaignDetailProps) {
   const [campaign, setCampaign] = useState<PostCampaign | null>(null);
   const [leads, setLeads] = useState<PostCampaignLead[]>([]);
-  const [stats, setStats] = useState({ detected: 0, connection_pending: 0, connection_accepted: 0, dm_sent: 0 });
+  const [stats, setStats] = useState<Record<string, number>>({ detected: 0, connection_pending: 0, connection_accepted: 0, dm_sent: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);

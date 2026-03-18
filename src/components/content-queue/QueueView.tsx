@@ -27,7 +27,13 @@ interface QueueViewProps {
 
 // ─── Component ─────────────────────────────────────────────────────────────
 
-export function QueueView({ teams, summary, onEdit, onSubmitPosts, onSubmitAssets }: QueueViewProps) {
+export function QueueView({
+  teams,
+  summary,
+  onEdit,
+  onSubmitPosts,
+  onSubmitAssets,
+}: QueueViewProps) {
   if (teams.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2">
@@ -52,12 +58,14 @@ export function QueueView({ teams, summary, onEdit, onSubmitPosts, onSubmitAsset
           {summary.remaining} remaining
           {totalLMs > 0 && (
             <>
-              {' '}&middot; {totalLMs} lead magnet{totalLMs !== 1 ? 's' : ''}
+              {' '}
+              &middot; {totalLMs} lead magnet{totalLMs !== 1 ? 's' : ''}
             </>
           )}
           {totalFunnels > 0 && (
             <>
-              {' '}&middot; {totalFunnels} funnel{totalFunnels !== 1 ? 's' : ''}
+              {' '}
+              &middot; {totalFunnels} funnel{totalFunnels !== 1 ? 's' : ''}
             </>
           )}
         </p>
@@ -73,7 +81,6 @@ export function QueueView({ teams, summary, onEdit, onSubmitPosts, onSubmitAsset
             profileCompany={team.profile_company}
             editedCount={team.edited_count}
             totalCount={team.total_count}
-            leadMagnets={team.lead_magnets ?? []}
             lmReviewedCount={team.lm_reviewed_count ?? 0}
             lmTotalCount={team.lm_total_count ?? 0}
             funnelReviewedCount={team.funnel_reviewed_count ?? 0}

@@ -84,7 +84,11 @@ export async function PATCH(
       }
     }
 
-    const settings = await safetyService.updateAccountSettings(session.user.id, accountId, input);
+    const settings = await safetyService.updateAccountSettings(
+      session.user.id,
+      accountId,
+      input as Record<string, unknown>
+    );
 
     return NextResponse.json({ settings });
   } catch (error) {

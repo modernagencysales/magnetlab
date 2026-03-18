@@ -25,7 +25,8 @@ import {
 import { setCircuitBreaker, incrementDailyLimit } from '@/server/repositories/account-safety.repo';
 import { sleep } from '@/server/services/post-campaigns.service';
 import { LINKEDIN_SAFETY } from '@/lib/types/post-campaigns';
-import type { PostCampaign, PostCampaignLead, AccountSafetySettings } from '@/lib/types/post-campaigns';
+import type { PostCampaign, PostCampaignLead } from '@/lib/types/post-campaigns';
+import type { AccountSafetySettings } from '@/server/services/account-safety.service';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -272,7 +273,7 @@ async function processAccountInvitations(
 
         // Randomized delay between accepts — uses per-account safety settings
         if (actionsRemaining.count > 0) {
-          await randomDelay(settings);
+          await sleep(randomDelay(settings));
         }
       }
     } catch (err) {
@@ -290,10 +291,14 @@ async function processAccountInvitations(
         break; // Stop all actions for this account
       }
 
-      logError('poll-connection-requests/accept', err instanceof Error ? err : new Error(errorMsg), {
-        invitationId: invitation.id,
-        leadId: lead.id,
-      });
+      logError(
+        'poll-connection-requests/accept',
+        err instanceof Error ? err : new Error(errorMsg),
+        {
+          invitationId: invitation.id,
+          leadId: lead.id,
+        }
+      );
     }
   }
 
@@ -315,9 +320,7 @@ export const pollConnectionRequests = schedules.task({
     }
 
     // Step 1: Apply random jitter before starting (0 to POLL_JITTER_MINUTES * 60s)
-    const jitterMs = Math.floor(
-      Math.random() * LINKEDIN_SAFETY.POLL_JITTER_MINUTES * 60_000
-    );
+    const jitterMs = Math.floor(Math.random() * LINKEDIN_SAFETY.POLL_JITTER_MINUTES * 60_000);
     logger.info('poll-connection-requests: applying jitter', { jitterMs });
     await sleep(jitterMs);
 
@@ -358,7 +361,7 @@ export const pollConnectionRequests = schedules.task({
       if (!isWithinOperatingHours(settings)) {
         logger.info('poll-connection-requests: outside operating hours, skipping', {
           accountId: group.accountId,
-          hours: `${settings.operatingHoursStart}-${settings.operatingHoursEnd}`,
+          hours: `${settings.operating_hours_start}-${settings.operating_hours_end}`,
           timezone: settings.timezone,
         });
         continue;
@@ -368,7 +371,7 @@ export const pollConnectionRequests = schedules.task({
       if (isCircuitBreakerActive(settings)) {
         logger.info('poll-connection-requests: circuit breaker active, skipping', {
           accountId: group.accountId,
-          breakerUntil: settings.circuitBreakerUntil,
+          breakerUntil: settings.circuit_breaker_until,
         });
         continue;
       }

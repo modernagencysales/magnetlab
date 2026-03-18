@@ -1,4 +1,12 @@
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 /** Tool definition aggregator. Exports flat array of all 50 MCP tools + name lookup map. */
+=======
+/** Tool definition aggregator. Exports flat array of all 43 MCP tools + name lookup map. */
+>>>>>>> Stashed changes
+=======
+/** Tool definition aggregator. Exports flat array of all 43 MCP tools + name lookup map. */
+>>>>>>> Stashed changes
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { leadMagnetTools } from './lead-magnets.js';

@@ -1,4 +1,4 @@
-/** Handler routing tests for MCP v2. Verifies all 50 tools route correctly through handleToolCall. */
+/** Handler routing tests for MCP v2. Verifies all 43 tools route correctly through handleToolCall. */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MagnetLabClient } from '../client.js';
@@ -34,7 +34,7 @@ async function callTool(client: MagnetLabClient, name: string, args: Record<stri
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe('Handler Routing — All 50 Tools', () => {
+describe('Handler Routing — All 43 Tools', () => {
   let client: MagnetLabClient;
 
   beforeEach(() => {
@@ -885,6 +885,47 @@ describe('Handler Routing — All 50 Tools', () => {
     it('handlers pass undefined team_id when team_id not in args', async () => {
       await callTool(client, 'magnetlab_list_posts', { status: 'draft' });
       expect(client.listPosts).toHaveBeenCalledWith(expect.objectContaining({ teamId: undefined }));
+    });
+  });
+
+  // ── Asset Review (3) ──────────────────────────────────────────────────────
+
+  describe('Asset Review', () => {
+    it('magnetlab_review_lead_magnet passes id and reviewed flag', async () => {
+      await callTool(client, 'magnetlab_review_lead_magnet', {
+        lead_magnet_id: 'lm-uuid',
+        reviewed: true,
+      });
+      expect(client.reviewLeadMagnet).toHaveBeenCalledWith('lm-uuid', true);
+    });
+
+    it('magnetlab_review_lead_magnet passes reviewed: false', async () => {
+      await callTool(client, 'magnetlab_review_lead_magnet', {
+        lead_magnet_id: 'lm-uuid',
+        reviewed: false,
+      });
+      expect(client.reviewLeadMagnet).toHaveBeenCalledWith('lm-uuid', false);
+    });
+
+    it('magnetlab_review_funnel passes id and reviewed flag', async () => {
+      await callTool(client, 'magnetlab_review_funnel', {
+        funnel_id: 'f-uuid',
+        reviewed: true,
+      });
+      expect(client.reviewFunnel).toHaveBeenCalledWith('f-uuid', true);
+    });
+
+    it('magnetlab_review_funnel passes reviewed: false', async () => {
+      await callTool(client, 'magnetlab_review_funnel', {
+        funnel_id: 'f-uuid',
+        reviewed: false,
+      });
+      expect(client.reviewFunnel).toHaveBeenCalledWith('f-uuid', false);
+    });
+
+    it('magnetlab_submit_asset_review passes team_id', async () => {
+      await callTool(client, 'magnetlab_submit_asset_review', { team_id: 'team-1' });
+      expect(client.submitAssetReview).toHaveBeenCalledWith('team-1');
     });
   });
 

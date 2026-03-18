@@ -217,8 +217,12 @@ export function ContentQueuePage() {
         onBack={handleBack}
         onReviewLeadMagnet={handleReviewLeadMagnet}
         onReviewFunnel={handleReviewFunnel}
-        onSubmitPosts={() => handleSubmitPosts(editingTeamId!)}
-        onSubmitAssets={() => handleSubmitAssets(editingTeamId!)}
+        onSubmitPosts={async () => {
+          await handleSubmitPosts(editingTeamId!);
+        }}
+        onSubmitAssets={async () => {
+          await handleSubmitAssets(editingTeamId!);
+        }}
       />
     );
   }

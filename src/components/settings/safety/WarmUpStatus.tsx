@@ -23,7 +23,7 @@ interface WarmUpStatusProps {
 
 function getWarmUpPhase(connectedAt: string | null): {
   label: string;
-  variant: 'default' | 'secondary' | 'outline';
+  variant: 'default' | 'gray' | 'outline';
 } {
   if (!connectedAt) {
     return { label: 'Unknown', variant: 'outline' };
@@ -36,10 +36,10 @@ function getWarmUpPhase(connectedAt: string | null): {
   );
 
   if (daysSinceConnected < 7) {
-    return { label: 'Week 1 (50% limits)', variant: 'secondary' };
+    return { label: 'Week 1 (50% limits)', variant: 'gray' };
   }
   if (daysSinceConnected < 14) {
-    return { label: 'Week 2 (75% limits)', variant: 'secondary' };
+    return { label: 'Week 2 (75% limits)', variant: 'gray' };
   }
   return { label: 'Fully ramped', variant: 'default' };
 }
@@ -76,7 +76,7 @@ export function WarmUpStatus({ connectedAt, circuitBreaker }: WarmUpStatusProps)
         <p className="text-xs text-muted-foreground mb-1.5">Circuit Breaker</p>
         {breakerActive ? (
           <>
-            <Badge variant="destructive">
+            <Badge variant="red">
               Active until {circuitBreaker?.active_until ? formatDate(circuitBreaker.active_until) : 'unknown'}
             </Badge>
             <p className="text-[10px] text-muted-foreground mt-1.5">

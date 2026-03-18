@@ -31,7 +31,8 @@ import {
 } from '@magnetlab/magnetui';
 import { logError } from '@/lib/utils/logger';
 import * as campaignsApi from '@/frontend/api/post-campaigns';
-import type { PostCampaign, PostCampaignStatus } from '@/lib/types/post-campaigns';
+import type { PostCampaignSummary } from '@/frontend/api/post-campaigns';
+import type { PostCampaignStatus } from '@/lib/types/post-campaigns';
 
 // ─── Status badge config ────────────────────────────────
 
@@ -61,7 +62,7 @@ function truncateUrl(url: string, maxLength = 40): string {
 // ─── Main component ─────────────────────────────────────
 
 export function CampaignList() {
-  const [campaigns, setCampaigns] = useState<PostCampaign[]>([]);
+  const [campaigns, setCampaigns] = useState<PostCampaignSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -75,7 +76,7 @@ export function CampaignList() {
   const limit = 25;
 
   // Delete confirmation
-  const [deleteTarget, setDeleteTarget] = useState<PostCampaign | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PostCampaignSummary | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Action loading
@@ -113,7 +114,7 @@ export function CampaignList() {
 
   // ── Actions ─────────────────────────────────────────
 
-  const handleToggleStatus = async (campaign: PostCampaign) => {
+  const handleToggleStatus = async (campaign: PostCampaignSummary) => {
     setActionLoadingId(campaign.id);
     try {
       if (campaign.status === 'active') {
@@ -292,7 +293,7 @@ export function CampaignList() {
 // ─── Row sub-component ──────────────────────────────────
 
 interface CampaignRowProps {
-  campaign: PostCampaign;
+  campaign: PostCampaignSummary;
   actionLoading: boolean;
   onToggleStatus: () => void;
   onDelete: () => void;

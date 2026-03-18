@@ -4,6 +4,15 @@
  */
 
 import { apiClient } from './client';
+import type {
+  PostCampaign,
+  PostCampaignLead,
+  PostCampaignStatus,
+  CreatePostCampaignInput,
+} from '@/lib/types/post-campaigns';
+
+// Re-export for consumers that import from this module
+export type { PostCampaignLead } from '@/lib/types/post-campaigns';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -11,11 +20,18 @@ export interface PostCampaignSummary {
   id: string;
   name: string;
   postUrl: string;
-  status: string;
+  post_url: string;
+  status: PostCampaignStatus;
   leadsDetected: number;
   connectionsAccepted: number;
   dmsSent: number;
   createdAt: string;
+  /** Inline stats for list view */
+  stats?: {
+    detected: number;
+    connection_accepted: number;
+    dm_sent: number;
+  };
 }
 
 export interface PostCampaignDetail extends PostCampaignSummary {
@@ -33,37 +49,20 @@ export interface PostCampaignDetail extends PostCampaignSummary {
   autoConnectNonRequesters: boolean;
 }
 
-export interface PostCampaignLead {
+export interface FunnelOption {
   id: string;
   name: string | null;
-  linkedinUrl: string;
-  status: string;
-  matchType: string;
-  commentText: string | null;
-  location: string | null;
-  detectedAt: string;
-  repliedAt: string | null;
-  connectionAcceptedAt: string | null;
-  dmSentAt: string | null;
-  error: string | null;
+  slug: string;
 }
 
-export interface CreateCampaignInput {
-  name: string;
-  postUrl: string;
-  keywords: string[];
-  unipileAccountId: string;
-  dmTemplate: string;
-  funnelPageId?: string;
-  replyTemplate?: string;
-  posterAccountId?: string;
-  targetLocations?: string[];
-  leadExpiryDays?: number;
-  autoAcceptConnections?: boolean;
-  autoConnectNonRequesters?: boolean;
+export interface SenderAccount {
+  id: string;
+  name: string | null;
+  email: string | null;
 }
 
 export interface AutoSetupResult {
+  // camelCase (original API response)
   keyword: string;
   funnelPageId: string | null;
   funnelName: string | null;
@@ -74,19 +73,47 @@ export interface AutoSetupResult {
   dmTemplate: string;
   confidence: 'high' | 'medium' | 'low';
   needsUserInput: string[];
+  // snake_case aliases (used by UI components)
+  keywords: string[];
+  sender_account_id: string | null;
+  sender_account_name: string | null;
+  dm_template: string;
+  connect_message_template: string;
+  funnel_page_id: string | null;
+  funnel_name: string | null;
+}
+
+export interface ListCampaignsParams {
+  status?: string;
+  page?: number;
+  limit?: number;
 }
 
 // ─── Reads ──────────────────────────────────────────────────────────────────
 
 export async function listCampaigns(
-  status?: string
-): Promise<{ campaigns: PostCampaignSummary[] }> {
-  const params = status ? `?status=${status}` : '';
-  return apiClient.get<{ campaigns: PostCampaignSummary[] }>(`/post-campaigns${params}`);
+  params?: ListCampaignsParams | string
+): Promise<{ campaigns: PostCampaignSummary[]; total: number }> {
+  let qs = '';
+  if (typeof params === 'string') {
+    qs = params ? `?status=${params}` : '';
+  } else if (params) {
+    const parts: string[] = [];
+    if (params.status) parts.push(`status=${params.status}`);
+    if (params.page !== undefined) parts.push(`page=${params.page}`);
+    if (params.limit !== undefined) parts.push(`limit=${params.limit}`);
+    if (parts.length) qs = `?${parts.join('&')}`;
+  }
+  const res = await apiClient.get<{ campaigns: PostCampaignSummary[]; total?: number }>(
+    `/post-campaigns${qs}`
+  );
+  return { campaigns: res.campaigns, total: res.total ?? res.campaigns.length };
 }
 
-export async function getCampaign(id: string): Promise<PostCampaignDetail> {
-  return apiClient.get<PostCampaignDetail>(`/post-campaigns/${id}`);
+export async function getCampaign(
+  id: string
+): Promise<{ campaign: PostCampaign; leads: PostCampaignLead[]; stats: Record<string, number> }> {
+  return apiClient.get(`/post-campaigns/${id}`);
 }
 
 export async function getCampaignLeads(
@@ -97,15 +124,25 @@ export async function getCampaignLeads(
   return apiClient.get<{ leads: PostCampaignLead[] }>(`/post-campaigns/${id}/leads${params}`);
 }
 
+export async function listFunnelOptions(): Promise<{ funnels: FunnelOption[] }> {
+  return apiClient.get<{ funnels: FunnelOption[] }>('/post-campaigns/funnel-options');
+}
+
+export async function listSenderAccounts(): Promise<{ accounts: SenderAccount[] }> {
+  return apiClient.get<{ accounts: SenderAccount[] }>('/post-campaigns/sender-accounts');
+}
+
 // ─── Writes ─────────────────────────────────────────────────────────────────
 
-export async function createCampaign(input: CreateCampaignInput): Promise<PostCampaignDetail> {
-  return apiClient.post<PostCampaignDetail>('/post-campaigns', input);
+export async function createCampaign(
+  input: CreatePostCampaignInput
+): Promise<{ campaign: PostCampaign }> {
+  return apiClient.post<{ campaign: PostCampaign }>('/post-campaigns', input);
 }
 
 export async function updateCampaign(
   id: string,
-  input: Partial<CreateCampaignInput>
+  input: Partial<CreatePostCampaignInput>
 ): Promise<PostCampaignDetail> {
   return apiClient.patch<PostCampaignDetail>(`/post-campaigns/${id}`, input);
 }
@@ -122,6 +159,48 @@ export async function deleteCampaign(id: string): Promise<{ success: boolean }> 
   return apiClient.delete<{ success: boolean }>(`/post-campaigns/${id}`);
 }
 
+/** Auto-setup from a post URL. Returns a normalized AutoSetupResult with both camelCase and snake_case fields. */
+export async function autoSetup(postUrl: string): Promise<{ result: AutoSetupResult }> {
+  const raw = await apiClient.post<{
+    keyword?: string;
+    keywords?: string[];
+    funnelPageId?: string | null;
+    funnelName?: string | null;
+    deliveryAccountId?: string;
+    deliveryAccountName?: string;
+    posterAccountId?: string;
+    replyTemplate?: string;
+    dmTemplate?: string;
+    dm_template?: string;
+    confidence?: 'high' | 'medium' | 'low';
+    needsUserInput?: string[];
+  }>('/post-campaigns/auto-setup', { post_url: postUrl });
+
+  const result: AutoSetupResult = {
+    keyword: raw.keyword ?? raw.keywords?.[0] ?? '',
+    funnelPageId: raw.funnelPageId ?? null,
+    funnelName: raw.funnelName ?? null,
+    deliveryAccountId: raw.deliveryAccountId ?? '',
+    deliveryAccountName: raw.deliveryAccountName ?? '',
+    posterAccountId: raw.posterAccountId ?? '',
+    replyTemplate: raw.replyTemplate ?? '',
+    dmTemplate: raw.dmTemplate ?? raw.dm_template ?? '',
+    confidence: raw.confidence ?? 'low',
+    needsUserInput: raw.needsUserInput ?? [],
+    // snake_case
+    keywords: raw.keywords ?? (raw.keyword ? [raw.keyword] : []),
+    sender_account_id: raw.deliveryAccountId ?? null,
+    sender_account_name: raw.deliveryAccountName ?? null,
+    dm_template: raw.dmTemplate ?? raw.dm_template ?? '',
+    connect_message_template: '',
+    funnel_page_id: raw.funnelPageId ?? null,
+    funnel_name: raw.funnelName ?? null,
+  };
+  return { result };
+}
+
+/** @deprecated Use autoSetup(postUrl) */
 export async function autoSetupCampaign(postId: string): Promise<AutoSetupResult> {
-  return apiClient.post<AutoSetupResult>('/post-campaigns/auto-setup', { post_id: postId });
+  const { result } = await autoSetup(postId);
+  return result;
 }

@@ -8,8 +8,6 @@
  */
 
 import { Edit3, CheckCircle2 } from 'lucide-react';
-import type { QueueLeadMagnet } from '@/frontend/api/content-queue';
-
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 interface ClientCardProps {
@@ -18,7 +16,6 @@ interface ClientCardProps {
   profileCompany: string;
   editedCount: number;
   totalCount: number;
-  leadMagnets: QueueLeadMagnet[];
   lmReviewedCount: number;
   lmTotalCount: number;
   funnelReviewedCount: number;
@@ -48,7 +45,6 @@ export function ClientCard({
   profileCompany,
   editedCount,
   totalCount,
-  leadMagnets,
   lmReviewedCount,
   lmTotalCount,
   funnelReviewedCount,
@@ -98,9 +94,7 @@ export function ClientCard({
               />
             </div>
             {allPostsEdited && (
-              <span className="shrink-0 text-xs font-medium text-emerald-400">
-                ✓ Posts ready
-              </span>
+              <span className="shrink-0 text-xs font-medium text-emerald-400">✓ Posts ready</span>
             )}
           </div>
 
@@ -108,8 +102,8 @@ export function ClientCard({
           {hasAssets && (
             <div className="flex items-center gap-3">
               <span className="min-w-[140px] text-xs text-zinc-400">
-                {lmTotalCount} lead magnet{lmTotalCount !== 1 ? 's' : ''} &middot;{' '}
-                {lmReviewedCount} reviewed
+                {lmTotalCount} lead magnet{lmTotalCount !== 1 ? 's' : ''} &middot; {lmReviewedCount}{' '}
+                reviewed
               </span>
               <div className="h-1.5 flex-1 rounded-full bg-zinc-700">
                 <div

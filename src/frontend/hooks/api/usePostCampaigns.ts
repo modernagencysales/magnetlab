@@ -8,11 +8,8 @@
 import { useCallback } from 'react';
 import useSWR from 'swr';
 import { listCampaigns, getCampaign, getCampaignLeads } from '@/frontend/api/post-campaigns';
-import type {
-  PostCampaignSummary,
-  PostCampaignDetail,
-  PostCampaignLead,
-} from '@/frontend/api/post-campaigns';
+import type { PostCampaignSummary, PostCampaignLead } from '@/frontend/api/post-campaigns';
+import type { PostCampaign } from '@/lib/types/post-campaigns';
 
 // ─── useCampaigns ───────────────────────────────────────────────────────────
 
@@ -48,7 +45,9 @@ export function useCampaigns(status?: string): UseCampaignsResult {
 // ─── useCampaign ────────────────────────────────────────────────────────────
 
 export interface UseCampaignResult {
-  campaign: PostCampaignDetail | undefined;
+  campaign: PostCampaign | undefined;
+  leads: PostCampaignLead[];
+  stats: Record<string, number>;
   isLoading: boolean;
   error: Error | null;
   mutate: () => Promise<void>;
@@ -69,7 +68,9 @@ export function useCampaign(id: string | null): UseCampaignResult {
   }, [swrMutate]);
 
   return {
-    campaign: data,
+    campaign: data?.campaign,
+    leads: data?.leads ?? [],
+    stats: data?.stats ?? {},
     isLoading,
     error: error instanceof Error ? error : error ? new Error(String(error)) : null,
     mutate,

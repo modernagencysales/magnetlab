@@ -1,4 +1,4 @@
-/** Content queue tools (3). List queue, update queue post, submit batch for client review. */
+/** Content queue tools (6). List queue, update queue post, review lead magnet, review funnel, submit batch, submit asset review. */
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
@@ -42,6 +42,44 @@ export const contentQueueTools: Tool[] = [
       type: 'object',
       properties: {
         team_id: { type: 'string', description: 'Team ID whose posts to submit for review' },
+      },
+      required: ['team_id'],
+    },
+  },
+  {
+    name: 'magnetlab_review_lead_magnet',
+    description:
+      'Marks a lead magnet as reviewed (or un-reviewed) by the DFY editor. Use reviewed: true to approve, reviewed: false to revert.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lead_magnet_id: { type: 'string', description: 'Lead magnet UUID to mark as reviewed' },
+        reviewed: { type: 'boolean', description: 'True to mark reviewed, false to revert' },
+      },
+      required: ['lead_magnet_id', 'reviewed'],
+    },
+  },
+  {
+    name: 'magnetlab_review_funnel',
+    description:
+      'Marks a funnel as reviewed (or un-reviewed) by the DFY editor. Use reviewed: true to approve, reviewed: false to revert.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        funnel_id: { type: 'string', description: 'Funnel UUID to mark as reviewed' },
+        reviewed: { type: 'boolean', description: 'True to mark reviewed, false to revert' },
+      },
+      required: ['funnel_id', 'reviewed'],
+    },
+  },
+  {
+    name: 'magnetlab_submit_asset_review',
+    description:
+      'Submits all reviewed lead magnets and funnels for a team to the client for final review. Fires a DFY callback notifying the client that their assets are ready.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team_id: { type: 'string', description: 'Team ID whose reviewed assets to submit' },
       },
       required: ['team_id'],
     },

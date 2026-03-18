@@ -14,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
   Button,
-  Badge,
   Separator,
   toast,
 } from '@magnetlab/magnetui';

@@ -1,4 +1,4 @@
-/** MCP tool argument validation. Named Zod schema for every tool — no passthrough. */
+/** MCP tool argument validation. Named Zod schema for every tool — no passthrough. Each group count noted inline. */
 
 import { z } from 'zod';
 import {
@@ -38,7 +38,7 @@ const uuidField = z.string().min(1);
 const paginationLimit = z.number().min(1).max(100).default(50).optional();
 const paginationOffset = z.number().min(0).default(0).optional();
 
-// ─── Tool Schemas (37 tools) ─────────────────────────────────────────────────
+// ─── Tool Schemas (43 tools) ─────────────────────────────────────────────────
 
 export const toolSchemas: Record<string, z.ZodType> = {
   // ── Lead Magnets (5) ──────────────────────────────────────────────────────
@@ -363,7 +363,7 @@ export const toolSchemas: Record<string, z.ZodType> = {
 
   magnetlab_list_teams: z.object({}),
 
-  // ── Content Queue (3) ─────────────────────────────────────────────────────
+  // ── Content Queue (6) ─────────────────────────────────────────────────────
 
   magnetlab_list_content_queue: z.object({}),
 
@@ -378,6 +378,8 @@ export const toolSchemas: Record<string, z.ZodType> = {
     team_id: z.string().min(1, 'team_id is required'),
   }),
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
   // ── Post Campaigns (8) ─────────────────────────────────────────────────
 
   magnetlab_list_post_campaigns: z.object({
@@ -457,6 +459,25 @@ export const toolSchemas: Record<string, z.ZodType> = {
       .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be in HH:MM format')
       .optional(),
     timezone: z.string().optional(),
+=======
+=======
+>>>>>>> Stashed changes
+  magnetlab_review_lead_magnet: z.object({
+    lead_magnet_id: uuidField,
+    reviewed: z.boolean(),
+  }),
+
+  magnetlab_review_funnel: z.object({
+    funnel_id: uuidField,
+    reviewed: z.boolean(),
+  }),
+
+  magnetlab_submit_asset_review: z.object({
+    team_id: z.string().min(1, 'team_id is required'),
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
   }),
 };
 
