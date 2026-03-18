@@ -60,6 +60,8 @@ export interface LinkedInDailyLimit {
   dms_sent: number;
   connections_accepted: number;
   connection_requests_sent: number;
+  comments_sent: number;
+  likes_sent: number;
 }
 
 // ─── Input Types ─────────────────────────────────────────────────────────
@@ -106,6 +108,7 @@ export const POST_CAMPAIGN_LEAD_COLUMNS =
 
 // ─── Safety Constants ────────────────────────────────────────────────────
 
+/** @deprecated Use SAFETY_DEFAULTS + getEffectiveLimits() from account-safety.service instead */
 export const LINKEDIN_SAFETY = {
   MAX_DMS_PER_DAY: 80,
   MAX_ACCEPTS_PER_DAY: 100,
@@ -117,3 +120,55 @@ export const LINKEDIN_SAFETY = {
   MAX_ACTIONS_PER_RUN: 3,
   POLL_JITTER_MINUTES: 5,
 } as const;
+
+// ─── Account Safety ──────────────────────────────────────────────────────────
+
+export interface AccountSafetySettings {
+  id: string;
+  userId: string;
+  unipileAccountId: string;
+  operatingHoursStart: string; // HH:MM
+  operatingHoursEnd: string;
+  timezone: string;
+  maxDmsPerDay: number;
+  maxConnectionRequestsPerDay: number;
+  maxConnectionAcceptsPerDay: number;
+  maxCommentsPerDay: number;
+  maxLikesPerDay: number;
+  minActionDelayMs: number;
+  maxActionDelayMs: number;
+  accountConnectedAt: string | null;
+  circuitBreakerUntil: string | null;
+}
+
+export interface SafetyLimitsInput {
+  maxDmsPerDay?: number;
+  maxConnectionRequestsPerDay?: number;
+  maxConnectionAcceptsPerDay?: number;
+  maxCommentsPerDay?: number;
+  maxLikesPerDay?: number;
+  minActionDelayMs?: number;
+  maxActionDelayMs?: number;
+  operatingHoursStart?: string;
+  operatingHoursEnd?: string;
+  timezone?: string;
+}
+
+/** Default limits — replaces old LINKEDIN_SAFETY constants with more conservative values */
+export const SAFETY_DEFAULTS = {
+  maxDmsPerDay: 50,
+  maxConnectionRequestsPerDay: 10,
+  maxConnectionAcceptsPerDay: 80,
+  maxCommentsPerDay: 30,
+  maxLikesPerDay: 60,
+  minActionDelayMs: 45_000,
+  maxActionDelayMs: 210_000,
+  operatingHoursStart: '08:00',
+  operatingHoursEnd: '19:00',
+  timezone: 'America/New_York',
+} as const;
+
+export type ActionType = 'dm' | 'connection_request' | 'connection_accept' | 'comment' | 'like';
+
+/** High-risk actions get warm-up ramp applied */
+export const HIGH_RISK_ACTIONS: ActionType[] = ['dm', 'connection_request'];
