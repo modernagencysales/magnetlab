@@ -44,13 +44,9 @@ const convInsertChain = createChainableMock({ data: { id: 'conv-1' }, error: nul
 // History select chain (returns empty array)
 const historyChain = createChainableMock({ data: [], error: null });
 
-// Team member chain (returns null - no team)
-const teamChain = createChainableMock({ data: null, error: null });
-
 const mockFrom = jest.fn((table: string) => {
   if (table === 'copilot_conversations') return convInsertChain;
   if (table === 'copilot_messages') return historyChain;
-  if (table === 'team_members') return teamChain;
   return defaultChain;
 });
 
@@ -96,20 +92,25 @@ jest.mock('@/lib/ai/copilot/memory-extractor', () => ({
   extractMemories: jest.fn().mockResolvedValue([]),
 }));
 
+// Mock team context
+jest.mock('@/lib/utils/team-context', () => ({
+  getDataScope: jest.fn().mockResolvedValue({ type: 'user', userId: 'user-1' }),
+  applyScope: jest.fn((query) => query),
+}));
+
 describe('POST /api/copilot/chat', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
 
     // Re-wire default chain returns after clearAllMocks
-    for (const chain of [defaultChain, convInsertChain, historyChain, teamChain]) {
+    for (const chain of [defaultChain, convInsertChain, historyChain]) {
       for (const method of ['from', 'select', 'insert', 'update', 'eq', 'order', 'limit']) {
         (chain as Record<string, jest.Mock>)[method].mockReturnValue(chain);
       }
     }
     convInsertChain.single.mockResolvedValue({ data: { id: 'conv-1' }, error: null });
     historyChain.single.mockResolvedValue({ data: [], error: null });
-    teamChain.single.mockResolvedValue({ data: null, error: null });
     defaultChain.single.mockResolvedValue({ data: null, error: null });
   });
 
