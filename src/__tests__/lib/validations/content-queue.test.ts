@@ -22,13 +22,6 @@ describe('ContentQueueUpdateSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('accepts image_urls array', () => {
-    const result = ContentQueueUpdateSchema.safeParse({
-      image_urls: ['https://example.com/image.png'],
-    });
-    expect(result.success).toBe(true);
-  });
-
   it('rejects empty object', () => {
     const result = ContentQueueUpdateSchema.safeParse({});
     expect(result.success).toBe(false);

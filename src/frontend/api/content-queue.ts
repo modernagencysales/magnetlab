@@ -23,7 +23,6 @@ export interface QueuePost {
   idea_content_type: string | null;
   edited_at: string | null;
   created_at: string;
-  image_urls: string[] | null;
 }
 
 export interface QueueTeam {
@@ -58,7 +57,6 @@ export interface SubmitResult {
 export interface UpdateQueuePostBody {
   draft_content?: string;
   mark_edited?: boolean;
-  image_urls?: string[] | null;
 }
 
 // ─── API Functions ─────────────────────────────────────────────────────────

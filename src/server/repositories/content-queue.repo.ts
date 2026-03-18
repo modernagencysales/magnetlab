@@ -9,10 +9,10 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 // ─── Column Constants ─────────────────────────────────────────────────────
 
 const QUEUE_POST_COLUMNS =
-  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status, image_urls';
+  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status';
 
 const QUEUE_POST_WITH_IDEA_COLUMNS =
-  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status, image_urls, cp_content_ideas(title, content_type)';
+  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status, cp_content_ideas(title, content_type)';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -24,7 +24,6 @@ export interface QueuePost {
   created_at: string;
   team_profile_id: string | null;
   status: string;
-  image_urls: string[] | null;
   cp_content_ideas: { title: string | null; content_type: string | null } | null;
 }
 

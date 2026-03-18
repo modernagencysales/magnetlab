@@ -34,7 +34,6 @@ export interface QueueTeam {
     idea_content_type: string | null;
     edited_at: string | null;
     created_at: string;
-    image_urls: string[] | null;
   }>;
   edited_count: number;
   total_count: number;
@@ -163,7 +162,6 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
       idea_content_type: idea?.content_type ?? null,
       edited_at: post.edited_at,
       created_at: post.created_at,
-      image_urls: post.image_urls,
     });
     team.total_count++;
     if (post.edited_at) team.edited_count++;
@@ -218,10 +216,9 @@ export async function updateQueuePost(
   }
 
   // Update content if provided
-  if (input.draft_content !== undefined || input.image_urls !== undefined) {
+  if (input.draft_content !== undefined) {
     const updates: Record<string, unknown> = {};
     if (input.draft_content !== undefined) updates.draft_content = input.draft_content;
-    if (input.image_urls !== undefined) updates.image_urls = input.image_urls;
 
     const { error } = await supabase.from('cp_pipeline_posts').update(updates).eq('id', postId);
 
