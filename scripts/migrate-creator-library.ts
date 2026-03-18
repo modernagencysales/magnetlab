@@ -5,7 +5,7 @@
  *
  * Usage:
  *   npx tsx scripts/migrate-creator-library.ts --phase=scrape
- *   npx tsx scripts/migrate-creator-library.ts --phase=transform  (not yet implemented)
+ *   npx tsx scripts/migrate-creator-library.ts --phase=transform
  *   npx tsx scripts/migrate-creator-library.ts --phase=import     (not yet implemented)
  *
  * Never imports from src/ — this is a standalone migration script.
@@ -15,6 +15,7 @@ import fs from 'fs';
 import path from 'path';
 import { chromium } from 'playwright';
 import TurndownService from 'turndown';
+import Anthropic from '@anthropic-ai/sdk';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -551,10 +552,286 @@ async function runScrape(): Promise<void> {
   console.log(`${'─'.repeat(60)}\n`);
 }
 
-// ─── Transform Phase (stub) ───────────────────────────────────────────────────
+// ─── Transform Types ─────────────────────────────────────────────────────────
+
+interface TransformedSection {
+  title: string;
+  body: string;
+  component_name: string;
+  how_it_connects: string;
+  key_insight: string;
+}
+
+interface TransformedContent {
+  headline: string;
+  subheadline: string | null;
+  problem_statement: string;
+  proof_points: string[];
+  call_to_action: string;
+  sections: TransformedSection[];
+}
+
+interface TransformedResource {
+  creatorId: string;
+  title: string;
+  emoji: string;
+  isFeatured: boolean;
+  sortOrder: number;
+  content: TransformedContent;
+}
+
+// ─── Transform Constants ─────────────────────────────────────────────────────
+
+const SCRAPED_FILE = path.join(__dirname, 'data', 'creator-scraped.json');
+const TRANSFORMED_FILE = path.join(__dirname, 'data', 'creator-transformed.json');
+const TRANSFORM_MODEL = 'claude-sonnet-4-6';
+
+// ─── Transform Helpers ───────────────────────────────────────────────────────
+
+function buildTransformPrompt(resource: ScrapedResource): string {
+  const sectionsText = resource.sections
+    .map((s) => `### ${s.heading}\n${s.bodyMarkdown}`)
+    .join('\n\n');
+
+  return `You are converting a scraped resource into a structured lead magnet format.
+
+RESOURCE TITLE: ${resource.title}
+
+INTRO CONTENT (before first section):
+${resource.introMarkdown}
+
+SECTIONS:
+${sectionsText}
+
+Generate a JSON object with these fields:
+- headline: A compelling headline that names the pain or outcome (not the product name). 10+ characters.
+- subheadline: Optional one-line supporting text. null if not needed.
+- problem_statement: 2-3 sentences making the reader feel understood. 20+ characters. Extract from the intro content.
+- proof_points: Array of quantified proof strings if any exist in the content. Empty array if none.
+- call_to_action: A clear next step for the reader. 5+ characters.
+- sections: Array matching the source sections. For EACH section:
+  - title: EXACTLY "${resource.sections.map((s) => s.heading).join('", "')}" (copy verbatim, do not modify)
+  - body: EXACTLY as provided below (copy the markdown verbatim, do not modify at all)
+  - component_name: A memorable 2-4 word name for this system component (not "Step 1" or "Section 1")
+  - how_it_connects: One sentence (10+ chars) explaining what this component feeds into or receives from other components in the system
+  - key_insight: One sentence about the design decision or principle that makes this component effective
+
+CRITICAL RULES:
+- Do NOT rewrite, edit, summarize, or modify the title or body fields — copy them EXACTLY character-for-character
+- Each body field must be at least 50 characters
+- Return valid JSON only`;
+}
+
+interface ValidationFailure {
+  field: string;
+  message: string;
+}
+
+function validateTransformed(
+  resource: TransformedResource,
+  originalSections: ScrapedSection[]
+): ValidationFailure[] {
+  const failures: ValidationFailure[] = [];
+
+  if (!resource.content.headline || resource.content.headline.length < 10) {
+    failures.push({
+      field: 'headline',
+      message: `Too short (${resource.content.headline?.length ?? 0} chars, need >= 10)`,
+    });
+  }
+
+  if (!resource.content.problem_statement || resource.content.problem_statement.length < 20) {
+    failures.push({
+      field: 'problem_statement',
+      message: `Too short (${resource.content.problem_statement?.length ?? 0} chars, need >= 20)`,
+    });
+  }
+
+  if (!resource.content.call_to_action || resource.content.call_to_action.length < 5) {
+    failures.push({
+      field: 'call_to_action',
+      message: `Too short (${resource.content.call_to_action?.length ?? 0} chars, need >= 5)`,
+    });
+  }
+
+  if (!resource.content.sections || resource.content.sections.length < 3) {
+    failures.push({
+      field: 'sections',
+      message: `Too few sections (${resource.content.sections?.length ?? 0}, need >= 3)`,
+    });
+  }
+
+  if (resource.content.sections) {
+    for (let i = 0; i < resource.content.sections.length; i++) {
+      const section = resource.content.sections[i];
+
+      if (!section.body || section.body.length < 50) {
+        failures.push({
+          field: `sections[${i}].body`,
+          message: `Too short (${section.body?.length ?? 0} chars, need >= 50)`,
+        });
+      }
+
+      if (!section.component_name || section.component_name.length < 2) {
+        failures.push({
+          field: `sections[${i}].component_name`,
+          message: `Too short (${section.component_name?.length ?? 0} chars, need >= 2)`,
+        });
+      }
+
+      if (!section.how_it_connects || section.how_it_connects.length < 10) {
+        failures.push({
+          field: `sections[${i}].how_it_connects`,
+          message: `Too short (${section.how_it_connects?.length ?? 0} chars, need >= 10)`,
+        });
+      }
+    }
+  }
+
+  return failures;
+}
+
+async function transformResource(
+  client: Anthropic,
+  scraped: ScrapedResource
+): Promise<TransformedContent> {
+  const prompt = buildTransformPrompt(scraped);
+
+  const response = await client.messages.create({
+    model: TRANSFORM_MODEL,
+    max_tokens: 8192,
+    system:
+      'You are a JSON-only assistant. Always respond with a single valid JSON object and nothing else — no markdown fences, no commentary, no text before or after the JSON.',
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  // Extract text from the response
+  const textBlock = response.content.find((block) => block.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') {
+    throw new Error('No text block in Claude response');
+  }
+
+  // Strip any markdown code fences if the model wraps the JSON
+  let jsonText = textBlock.text.trim();
+  if (jsonText.startsWith('```')) {
+    jsonText = jsonText
+      .replace(/^```(?:json)?\n?/, '')
+      .replace(/\n?```$/, '')
+      .trim();
+  }
+
+  const parsed = JSON.parse(jsonText) as TransformedContent;
+
+  // Belt and suspenders: overwrite title/body with originals to guarantee fidelity
+  if (parsed.sections) {
+    for (let i = 0; i < parsed.sections.length; i++) {
+      if (i < scraped.sections.length) {
+        parsed.sections[i].title = scraped.sections[i].heading;
+        parsed.sections[i].body = scraped.sections[i].bodyMarkdown;
+      }
+    }
+  }
+
+  // Ensure proof_points is always an array
+  if (!Array.isArray(parsed.proof_points)) {
+    parsed.proof_points = [];
+  }
+
+  return parsed;
+}
+
+// ─── Transform Phase ─────────────────────────────────────────────────────────
 
 async function runTransform(): Promise<void> {
-  console.log('Transform phase: Not implemented yet');
+  // Load scraped data
+  if (!fs.existsSync(SCRAPED_FILE)) {
+    console.error(`Scraped data not found at ${SCRAPED_FILE}. Run --phase=scrape first.`);
+    process.exit(1);
+  }
+
+  const scrapedData: ScrapedResource[] = JSON.parse(fs.readFileSync(SCRAPED_FILE, 'utf-8'));
+  console.log(`\nTransforming ${scrapedData.length} scraped resources with Claude AI...\n`);
+
+  // Initialize Anthropic client
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error('ANTHROPIC_API_KEY environment variable is not set.');
+    process.exit(1);
+  }
+  const client = new Anthropic({ apiKey });
+
+  const results: TransformedResource[] = [];
+  const errors: Array<{ title: string; error: string }> = [];
+  const validationWarnings: Array<{ title: string; failures: ValidationFailure[] }> = [];
+
+  for (let i = 0; i < scrapedData.length; i++) {
+    const scraped = scrapedData[i];
+    console.log(`Transforming [${i + 1}/${scrapedData.length}]: ${scraped.title}...`);
+
+    let content: TransformedContent | null = null;
+    let lastError: string = '';
+
+    // Try up to 2 times (initial + 1 retry)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        content = await transformResource(client, scraped);
+        break;
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+        if (attempt === 0) {
+          console.log(`  Retry after error: ${lastError}`);
+        }
+      }
+    }
+
+    if (!content) {
+      console.error(`  SKIPPED — failed after retry: ${lastError}`);
+      errors.push({ title: scraped.title, error: lastError });
+      continue;
+    }
+
+    const transformed: TransformedResource = {
+      creatorId: scraped.creatorId,
+      title: scraped.title,
+      emoji: scraped.emoji,
+      isFeatured: scraped.isFeatured,
+      sortOrder: scraped.sortOrder,
+      content,
+    };
+
+    // Validate
+    const failures = validateTransformed(transformed, scraped.sections);
+    if (failures.length > 0) {
+      console.log(`  WARNINGS (${failures.length}):`);
+      failures.forEach((f) => console.log(`    - ${f.field}: ${f.message}`));
+      validationWarnings.push({ title: scraped.title, failures });
+    } else {
+      console.log(`  OK — ${content.sections.length} sections transformed`);
+    }
+
+    results.push(transformed);
+  }
+
+  // Write output
+  fs.mkdirSync(path.dirname(TRANSFORMED_FILE), { recursive: true });
+  fs.writeFileSync(TRANSFORMED_FILE, JSON.stringify(results, null, 2), 'utf-8');
+
+  // Summary
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log(`Transformed: ${results.length}/${scrapedData.length}`);
+  if (errors.length > 0) {
+    console.log(`Errors (${errors.length}):`);
+    errors.forEach((e) => console.log(`  - ${e.title}: ${e.error}`));
+  }
+  if (validationWarnings.length > 0) {
+    console.log(`Validation warnings (${validationWarnings.length} resources):`);
+    validationWarnings.forEach((w) => {
+      console.log(`  - ${w.title}:`);
+      w.failures.forEach((f) => console.log(`      ${f.field}: ${f.message}`));
+    });
+  }
+  console.log(`Output: ${TRANSFORMED_FILE}`);
+  console.log(`${'─'.repeat(60)}\n`);
 }
 
 // ─── Import Phase (stub) ──────────────────────────────────────────────────────
