@@ -24,12 +24,64 @@ describe('CreatePostCampaignSchema', () => {
       ...validInput,
       sender_name: 'Tim',
       connect_message_template: 'Hey, lets connect!',
+      reply_template: 'Hey {{name}}! Accept my connection request.',
+      poster_account_id: 'poster_acc_456',
+      target_locations: ['New York', 'San Francisco'],
+      lead_expiry_days: 14,
       funnel_page_id: '550e8400-e29b-41d4-a716-446655440000',
       auto_accept_connections: true,
       auto_like_comments: false,
       auto_connect_non_requesters: true,
     });
     expect(result.success).toBe(true);
+  });
+
+  it('should accept valid target_locations array', () => {
+    const result = CreatePostCampaignSchema.safeParse({
+      ...validInput,
+      target_locations: ['US', 'UK', 'Canada'],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject target_locations with empty strings', () => {
+    const result = CreatePostCampaignSchema.safeParse({
+      ...validInput,
+      target_locations: [''],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept valid lead_expiry_days', () => {
+    const result = CreatePostCampaignSchema.safeParse({
+      ...validInput,
+      lead_expiry_days: 30,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject lead_expiry_days below 1', () => {
+    const result = CreatePostCampaignSchema.safeParse({
+      ...validInput,
+      lead_expiry_days: 0,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject lead_expiry_days above 90', () => {
+    const result = CreatePostCampaignSchema.safeParse({
+      ...validInput,
+      lead_expiry_days: 91,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject empty poster_account_id', () => {
+    const result = CreatePostCampaignSchema.safeParse({
+      ...validInput,
+      poster_account_id: '',
+    });
+    expect(result.success).toBe(false);
   });
 
   it('should reject empty name', () => {
@@ -103,18 +155,34 @@ describe('UpdatePostCampaignSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept all valid fields', () => {
+  it('should accept all valid fields including new ones', () => {
     const result = UpdatePostCampaignSchema.safeParse({
       name: 'Updated Campaign',
       post_url: 'https://linkedin.com/posts/new-123',
       dm_template: 'New template',
       connect_message_template: 'New connect msg',
+      reply_template: 'Hey {{name}}! Sending you a connection request.',
+      poster_account_id: 'poster_acc_789',
+      target_locations: ['London', 'Berlin'],
+      lead_expiry_days: 21,
       auto_accept_connections: false,
       auto_like_comments: true,
       auto_connect_non_requesters: false,
       daily_dm_limit: 25,
       daily_connection_limit: 10,
       status: 'paused',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject lead_expiry_days above 90 on update', () => {
+    const result = UpdatePostCampaignSchema.safeParse({ lead_expiry_days: 100 });
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept target_locations update', () => {
+    const result = UpdatePostCampaignSchema.safeParse({
+      target_locations: ['US West Coast', 'US East Coast'],
     });
     expect(result.success).toBe(true);
   });

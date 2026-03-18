@@ -1,59 +1,69 @@
-/** Tier 2 comment intent classification. Uses Claude Haiku to determine if a comment
- *  expresses interest in a lead magnet when no keyword match is found.
- *  Never imports HTTP or DB directly. */
+/**
+ * Intent Classifier — Tier 2 Comment Matching
+ * Uses Claude Haiku to determine if a comment expresses interest in receiving a resource.
+ * Only runs when Tier 1 (keyword substring match) fails.
+ * Cost: ~$0.003/call. At 100 non-keyword comments/day = $0.30/day.
+ */
 
-import { createAnthropicClient } from '@/lib/ai/anthropic-client';
+import Anthropic from '@anthropic-ai/sdk';
+import { logError } from '@/lib/utils/logger';
 
-// ─── Constants ──────────────────────────────────────────────────────────
-
-const INTENT_CLASSIFIER_MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 10;
-
-// ─── Types ──────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface IntentClassificationResult {
   isInterested: boolean;
-  confidence: number;
+  confidence: 'high' | 'medium' | 'low';
+  reasoning?: string;
 }
 
-// ─── Classification ─────────────────────────────────────────────────────
+// ─── Classifier ─────────────────────────────────────────────────────────────
 
 /**
- * Classify whether a LinkedIn comment expresses interest in a lead magnet resource.
- *
- * Uses the post CTA text as context to understand what "interested" means.
- * Returns { isInterested: false, confidence: 0.2 } on any error — fail-safe.
+ * Classify whether a LinkedIn comment expresses interest in receiving the offered resource.
+ * Returns isInterested: true for comments like "Interested!", "Yes please!", emojis, etc.
+ * Defaults to isInterested: false on any error (fail-safe).
  */
 export async function classifyCommentIntent(
-  postCtaText: string,
+  ctaText: string,
   commentText: string
 ): Promise<IntentClassificationResult> {
-  if (!commentText || commentText.trim().length === 0) {
-    return { isInterested: false, confidence: 0.2 };
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return { isInterested: false, confidence: 'low', reasoning: 'No API key configured' };
   }
 
   try {
-    const client = createAnthropicClient('intent-classifier');
+    const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
-      model: INTENT_CLASSIFIER_MODEL,
-      max_tokens: MAX_TOKENS,
+      model: 'claude-haiku-4-20250414',
+      max_tokens: 100,
       messages: [
         {
           role: 'user',
-          content: `Given this LinkedIn post CTA: "${postCtaText}"\nIs this comment expressing interest in receiving the resource?\nComment: "${commentText}"\nAnswer YES or NO.`,
+          content: `Given this LinkedIn post CTA: "${ctaText}"
+
+Is this comment expressing interest in receiving the resource?
+Comment: "${commentText}"
+
+Respond with exactly one word: YES or NO.`,
         },
       ],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
-    const answer = text.trim().toUpperCase();
+    const text =
+      response.content[0]?.type === 'text' ? response.content[0].text.trim().toUpperCase() : '';
 
-    return {
-      isInterested: answer.startsWith('YES'),
-      confidence: answer.startsWith('YES') ? 0.8 : 0.2,
-    };
-  } catch {
-    return { isInterested: false, confidence: 0.2 };
+    if (text.startsWith('YES')) {
+      return { isInterested: true, confidence: 'high' };
+    }
+    return { isInterested: false, confidence: 'high' };
+  } catch (err) {
+    logError('intent-classifier/classify', err instanceof Error ? err : new Error(String(err)), {
+      ctaText: ctaText.slice(0, 100),
+      commentText: commentText.slice(0, 100),
+    });
+    // Fail-safe: default to not interested on error
+    return { isInterested: false, confidence: 'low', reasoning: 'Classification error' };
   }
 }

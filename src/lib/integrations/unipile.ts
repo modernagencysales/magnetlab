@@ -86,23 +86,7 @@ export class UnipileClient extends BaseApiClient {
   // POSTS
   // ============================================
 
-  async createPost(
-    accountId: string,
-    text: string,
-    imageFile?: { buffer: Buffer; filename: string; mimeType: string }
-  ): Promise<ApiResponse<UnipilePost>> {
-    if (imageFile) {
-      const formData = new FormData();
-      formData.append('account_id', accountId);
-      formData.append('text', text);
-      const bytes = new Uint8Array(imageFile.buffer);
-      formData.append(
-        'attachments',
-        new Blob([bytes], { type: imageFile.mimeType }),
-        imageFile.filename
-      );
-      return this.postMultipart<UnipilePost>('/posts', formData);
-    }
+  async createPost(accountId: string, text: string): Promise<ApiResponse<UnipilePost>> {
     return this.post<UnipilePost>('/posts', {
       account_id: accountId,
       text,
@@ -130,12 +114,13 @@ export class UnipileClient extends BaseApiClient {
       id: string;
     }>
   > {
-    return this.post(`/posts/${postSocialId}/comments`, {
+    const body: Record<string, unknown> = {
       account_id: accountId,
       text,
-      ...(options?.commentId && { comment_id: options.commentId }),
-      ...(options?.mentions && { mentions: options.mentions }),
-    });
+    };
+    if (options?.commentId) body.comment_id = options.commentId;
+    if (options?.mentions && options.mentions.length > 0) body.mentions = options.mentions;
+    return this.post(`/posts/${postSocialId}/comments`, body);
   }
 
   async addReaction(
@@ -204,11 +189,11 @@ export class UnipileClient extends BaseApiClient {
     recipientProviderId: string,
     text: string
   ): Promise<ApiResponse<UnipileChatResponse>> {
-    const formData = new FormData();
-    formData.append('account_id', accountId);
-    formData.append('attendees_ids', recipientProviderId);
-    formData.append('text', text);
-    return this.postMultipart<UnipileChatResponse>('/chats', formData);
+    return this.post<UnipileChatResponse>('/chats', {
+      account_id: accountId,
+      attendees_ids: [recipientProviderId],
+      text,
+    });
   }
 
   async sendConnectionRequest(

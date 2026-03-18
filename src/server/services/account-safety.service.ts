@@ -1,271 +1,247 @@
 /**
- * Account Safety Service.
- * Business logic for per-account safety settings: operating hours, daily limits,
- * warm-up ramp, circuit breaker, randomized delays.
- * Never imports route-layer modules (NextRequest, NextResponse, cookies).
+ * Account Safety Service
+ * Configurable per-account LinkedIn safety limits, operating hours, warm-up, and circuit breaker.
+ * Never imports route-layer modules. Reads from account_safety_settings table.
  */
 
-import * as safetyRepo from '@/server/repositories/account-safety.repo';
-import { SAFETY_DEFAULTS, HIGH_RISK_ACTIONS } from '@/lib/types/post-campaigns';
-import type {
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { logError } from '@/lib/utils/logger';
+import { LINKEDIN_SAFETY } from '@/lib/types/post-campaigns';
+import { getDailyLimit } from '@/server/repositories/post-campaigns.repo';
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+export interface AccountSafetySettings {
+  id: string;
+  user_id: string;
+  unipile_account_id: string;
+  operating_hours_start: string;
+  operating_hours_end: string;
+  timezone: string;
+  max_dms_per_day: number;
+  max_connection_requests_per_day: number;
+  max_connection_accepts_per_day: number;
+  max_comments_per_day: number;
+  max_likes_per_day: number;
+  min_action_delay_ms: number;
+  max_action_delay_ms: number;
+  account_connected_at: string | null;
+  circuit_breaker_until: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DailyLimitAction =
+  | 'dm'
+  | 'connection_request'
+  | 'connection_accept'
+  | 'comment'
+  | 'like';
+
+const ACCOUNT_SAFETY_COLUMNS =
+  'id, user_id, unipile_account_id, operating_hours_start, operating_hours_end, timezone, max_dms_per_day, max_connection_requests_per_day, max_connection_accepts_per_day, max_comments_per_day, max_likes_per_day, min_action_delay_ms, max_action_delay_ms, account_connected_at, circuit_breaker_until, created_at, updated_at';
+
+// ─── Default Settings ───────────────────────────────────────────────────────
+
+const DEFAULT_SETTINGS: Omit<
   AccountSafetySettings,
-  SafetyLimitsInput,
-  ActionType,
-} from '@/lib/types/post-campaigns';
+  'id' | 'user_id' | 'unipile_account_id' | 'created_at' | 'updated_at'
+> = {
+  operating_hours_start: '08:00',
+  operating_hours_end: '19:00',
+  timezone: 'America/New_York',
+  max_dms_per_day: LINKEDIN_SAFETY.MAX_DMS_PER_DAY,
+  max_connection_requests_per_day: LINKEDIN_SAFETY.MAX_CONNECT_REQUESTS_PER_DAY,
+  max_connection_accepts_per_day: LINKEDIN_SAFETY.MAX_ACCEPTS_PER_DAY,
+  max_comments_per_day: 30,
+  max_likes_per_day: 60,
+  min_action_delay_ms: LINKEDIN_SAFETY.MIN_DELAY_BETWEEN_DMS_MS,
+  max_action_delay_ms: LINKEDIN_SAFETY.MAX_DELAY_BETWEEN_DMS_MS,
+  account_connected_at: null,
+  circuit_breaker_until: null,
+};
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Settings Access ────────────────────────────────────────────────────────
 
-export interface DailyLimitCheck {
-  allowed: boolean;
-  used: number;
-  limit: number;
-}
-
-// ─── Row → Domain Transform ──────────────────────────────────────────────────
-
-function toSettings(row: safetyRepo.SafetySettingsRow): AccountSafetySettings {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    unipileAccountId: row.unipile_account_id,
-    operatingHoursStart: row.operating_hours_start,
-    operatingHoursEnd: row.operating_hours_end,
-    timezone: row.timezone,
-    maxDmsPerDay: row.max_dms_per_day,
-    maxConnectionRequestsPerDay: row.max_connection_requests_per_day,
-    maxConnectionAcceptsPerDay: row.max_connection_accepts_per_day,
-    maxCommentsPerDay: row.max_comments_per_day,
-    maxLikesPerDay: row.max_likes_per_day,
-    minActionDelayMs: row.min_action_delay_ms,
-    maxActionDelayMs: row.max_action_delay_ms,
-    accountConnectedAt: row.account_connected_at,
-    circuitBreakerUntil: row.circuit_breaker_until,
-  };
-}
-
-function buildDefaults(userId: string, accountId: string): AccountSafetySettings {
-  return {
-    id: '',
-    userId,
-    unipileAccountId: accountId,
-    operatingHoursStart: SAFETY_DEFAULTS.operatingHoursStart,
-    operatingHoursEnd: SAFETY_DEFAULTS.operatingHoursEnd,
-    timezone: SAFETY_DEFAULTS.timezone,
-    maxDmsPerDay: SAFETY_DEFAULTS.maxDmsPerDay,
-    maxConnectionRequestsPerDay: SAFETY_DEFAULTS.maxConnectionRequestsPerDay,
-    maxConnectionAcceptsPerDay: SAFETY_DEFAULTS.maxConnectionAcceptsPerDay,
-    maxCommentsPerDay: SAFETY_DEFAULTS.maxCommentsPerDay,
-    maxLikesPerDay: SAFETY_DEFAULTS.maxLikesPerDay,
-    minActionDelayMs: SAFETY_DEFAULTS.minActionDelayMs,
-    maxActionDelayMs: SAFETY_DEFAULTS.maxActionDelayMs,
-    accountConnectedAt: null,
-    circuitBreakerUntil: null,
-  };
-}
-
-// ─── Reads ───────────────────────────────────────────────────────────────────
-
+/**
+ * Get account safety settings. Returns defaults if no row exists.
+ * Creates a synthetic settings object with defaults for unconfigured accounts.
+ */
 export async function getAccountSettings(
   userId: string,
   accountId: string
 ): Promise<AccountSafetySettings> {
-  const row = await safetyRepo.findByAccountId(userId, accountId);
-  if (!row) return buildDefaults(userId, accountId);
-  return toSettings(row);
-}
+  const supabase = createSupabaseAdminClient();
 
-export async function getAllAccountSettings(userId: string): Promise<AccountSafetySettings[]> {
-  const rows = await safetyRepo.findAllByUser(userId);
-  return rows.map(toSettings);
-}
+  const { data, error } = await supabase
+    .from('account_safety_settings')
+    .select(ACCOUNT_SAFETY_COLUMNS)
+    .eq('user_id', userId)
+    .eq('unipile_account_id', accountId)
+    .maybeSingle();
 
-// ─── Writes ──────────────────────────────────────────────────────────────────
-
-export async function updateAccountSettings(
-  userId: string,
-  accountId: string,
-  input: SafetyLimitsInput
-): Promise<AccountSafetySettings> {
-  const dbInput: safetyRepo.SafetyUpsertInput = {};
-
-  if (input.operatingHoursStart !== undefined)
-    dbInput.operating_hours_start = input.operatingHoursStart;
-  if (input.operatingHoursEnd !== undefined) dbInput.operating_hours_end = input.operatingHoursEnd;
-  if (input.timezone !== undefined) dbInput.timezone = input.timezone;
-  if (input.maxDmsPerDay !== undefined) dbInput.max_dms_per_day = input.maxDmsPerDay;
-  if (input.maxConnectionRequestsPerDay !== undefined)
-    dbInput.max_connection_requests_per_day = input.maxConnectionRequestsPerDay;
-  if (input.maxConnectionAcceptsPerDay !== undefined)
-    dbInput.max_connection_accepts_per_day = input.maxConnectionAcceptsPerDay;
-  if (input.maxCommentsPerDay !== undefined) dbInput.max_comments_per_day = input.maxCommentsPerDay;
-  if (input.maxLikesPerDay !== undefined) dbInput.max_likes_per_day = input.maxLikesPerDay;
-  if (input.minActionDelayMs !== undefined) dbInput.min_action_delay_ms = input.minActionDelayMs;
-  if (input.maxActionDelayMs !== undefined) dbInput.max_action_delay_ms = input.maxActionDelayMs;
-
-  const row = await safetyRepo.upsert(userId, accountId, dbInput);
-  return toSettings(row);
-}
-
-// ─── Effective Limit (warm-up ramp) ──────────────────────────────────────────
-
-/**
- * Returns the effective daily limit for a given action type, applying warm-up
- * ramp for HIGH_RISK_ACTIONS:
- * - Week 1 (0-6 days since connected): 50% of configured limit
- * - Week 2 (7-13 days): 75% of configured limit
- * - Week 3+ (14+ days) or no connected date: 100% of configured limit
- *
- * Non-high-risk actions always return 100% of configured limit.
- */
-export function getEffectiveLimit(settings: AccountSafetySettings, actionType: ActionType): number {
-  const configuredLimit = getConfiguredLimit(settings, actionType);
-
-  if (!HIGH_RISK_ACTIONS.includes(actionType)) {
-    return configuredLimit;
+  if (error) {
+    logError('account-safety/getSettings', error, { userId, accountId });
   }
 
-  if (!settings.accountConnectedAt) {
-    return configuredLimit;
-  }
+  if (data) return data as AccountSafetySettings;
 
-  const connectedAt = new Date(settings.accountConnectedAt);
-  const now = new Date();
-  const daysSinceConnected = Math.floor(
-    (now.getTime() - connectedAt.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  if (daysSinceConnected < 7) {
-    return Math.floor(configuredLimit * 0.5);
-  }
-  if (daysSinceConnected < 14) {
-    return Math.floor(configuredLimit * 0.75);
-  }
-  return configuredLimit;
-}
-
-function getConfiguredLimit(settings: AccountSafetySettings, actionType: ActionType): number {
-  switch (actionType) {
-    case 'dm':
-      return settings.maxDmsPerDay;
-    case 'connection_request':
-      return settings.maxConnectionRequestsPerDay;
-    case 'connection_accept':
-      return settings.maxConnectionAcceptsPerDay;
-    case 'comment':
-      return settings.maxCommentsPerDay;
-    case 'like':
-      return settings.maxLikesPerDay;
-  }
-}
-
-// ─── Operating Hours ─────────────────────────────────────────────────────────
-
-/**
- * Returns true if the current time is within the account's operating hours
- * in the account's configured timezone.
- */
-export function isWithinOperatingHours(settings: AccountSafetySettings, now?: Date): boolean {
-  const currentTime = now ?? new Date();
-
-  // Format current time in the account's timezone as HH:MM
-  const timeStr = currentTime.toLocaleTimeString('en-US', {
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: settings.timezone,
-  });
-
-  const [startH, startM] = settings.operatingHoursStart.split(':').map(Number);
-  const [endH, endM] = settings.operatingHoursEnd.split(':').map(Number);
-  const [nowH, nowM] = timeStr.split(':').map(Number);
-
-  const startMinutes = startH * 60 + startM;
-  const endMinutes = endH * 60 + endM;
-  const nowMinutes = nowH * 60 + nowM;
-
-  return nowMinutes >= startMinutes && nowMinutes < endMinutes;
-}
-
-// ─── Circuit Breaker ─────────────────────────────────────────────────────────
-
-/**
- * Returns true if the circuit breaker is active (timestamp is in the future).
- */
-export function isCircuitBreakerActive(settings: AccountSafetySettings, now?: Date): boolean {
-  if (!settings.circuitBreakerUntil) return false;
-  const breakerUntil = new Date(settings.circuitBreakerUntil);
-  const currentTime = now ?? new Date();
-  return breakerUntil.getTime() > currentTime.getTime();
-}
-
-// ─── Daily Limit Check ──────────────────────────────────────────────────────
-
-/**
- * Check if the account can perform one more action of the given type today.
- */
-export async function checkDailyLimit(
-  accountId: string,
-  actionType: ActionType,
-  settings: AccountSafetySettings
-): Promise<DailyLimitCheck> {
-  const limit = getEffectiveLimit(settings, actionType);
-
-  // Get today's date in the account's timezone
-  const now = new Date();
-  const localDate = now.toLocaleDateString('en-CA', { timeZone: settings.timezone });
-
-  const dailyLimits = await safetyRepo.getDailyLimits(accountId, localDate);
-  const used = dailyLimits ? getUsedCount(dailyLimits, actionType) : 0;
-
+  // Return defaults for unconfigured accounts
   return {
-    allowed: used < limit,
-    used,
-    limit,
+    id: '',
+    user_id: userId,
+    unipile_account_id: accountId,
+    ...DEFAULT_SETTINGS,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 }
 
-function getUsedCount(limits: safetyRepo.DailyLimitsRow, actionType: ActionType): number {
-  switch (actionType) {
-    case 'dm':
-      return limits.dms_sent;
-    case 'connection_request':
-      return limits.connection_requests_sent;
-    case 'connection_accept':
-      return limits.connections_accepted;
-    case 'comment':
-      return limits.comments_sent;
-    case 'like':
-      return limits.likes_sent;
+// ─── Operating Hours ────────────────────────────────────────────────────────
+
+/**
+ * Check if current time is within the account's operating hours.
+ * Uses the configured timezone for accurate local time comparison.
+ */
+export function isWithinOperatingHours(settings: AccountSafetySettings): boolean {
+  try {
+    const now = new Date();
+    const localTime = now.toLocaleTimeString('en-GB', {
+      timeZone: settings.timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+
+    return localTime >= settings.operating_hours_start && localTime < settings.operating_hours_end;
+  } catch {
+    // If timezone is invalid, default to allowing actions
+    return true;
   }
 }
 
-// ─── Randomized Delay ────────────────────────────────────────────────────────
+// ─── Circuit Breaker ────────────────────────────────────────────────────────
 
-/**
- * Returns a promise that resolves after a random delay between
- * settings.minActionDelayMs and settings.maxActionDelayMs.
- */
-export function randomDelay(settings: AccountSafetySettings): Promise<void> {
-  const min = settings.minActionDelayMs;
-  const max = settings.maxActionDelayMs;
-  const delayMs = Math.floor(Math.random() * (max - min + 1)) + min;
-  return new Promise((resolve) => setTimeout(resolve, delayMs));
+/** Check if the circuit breaker is currently active for this account. */
+export function isCircuitBreakerActive(settings: AccountSafetySettings): boolean {
+  if (!settings.circuit_breaker_until) return false;
+  return new Date(settings.circuit_breaker_until) > new Date();
 }
 
+/** Activate the circuit breaker for 24 hours. */
+export async function activateCircuitBreaker(
+  userId: string,
+  accountId: string,
+  reason: string
+): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  const { error } = await supabase.from('account_safety_settings').upsert(
+    {
+      user_id: userId,
+      unipile_account_id: accountId,
+      circuit_breaker_until: until,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id,unipile_account_id' }
+  );
+
+  if (error) {
+    logError('account-safety/activateCircuitBreaker', error, { userId, accountId, reason });
+  }
+}
+
+// ─── Warm-Up Calculation ────────────────────────────────────────────────────
+
 /**
- * Returns the delay duration without sleeping (for testing or external scheduling).
+ * Get the effective limit for an action, applying warm-up ramp for high-risk actions.
+ * Week 1: 50%, Week 2: 75%, Week 3+: 100%.
  */
-export function getRandomDelayMs(settings: AccountSafetySettings): number {
-  const min = settings.minActionDelayMs;
-  const max = settings.maxActionDelayMs;
+export function getEffectiveLimit(
+  baseLimit: number,
+  connectedAt: string | null,
+  isHighRisk: boolean
+): number {
+  if (!isHighRisk || !connectedAt) return baseLimit;
+
+  const weeksConnected = Math.floor(
+    (Date.now() - new Date(connectedAt).getTime()) / (7 * 24 * 60 * 60 * 1000)
+  );
+
+  if (weeksConnected < 1) return Math.floor(baseLimit * 0.5);
+  if (weeksConnected < 2) return Math.floor(baseLimit * 0.75);
+  return baseLimit;
+}
+
+// ─── Daily Limit Checks ─────────────────────────────────────────────────────
+
+/** Map from action type to daily limit field and settings field. */
+const ACTION_MAP: Record<
+  DailyLimitAction,
+  {
+    dbField:
+      | 'dms_sent'
+      | 'connections_accepted'
+      | 'connection_requests_sent'
+      | 'comments_sent'
+      | 'likes_sent';
+    settingsField: keyof AccountSafetySettings;
+    isHighRisk: boolean;
+  }
+> = {
+  dm: { dbField: 'dms_sent', settingsField: 'max_dms_per_day', isHighRisk: true },
+  connection_request: {
+    dbField: 'connection_requests_sent',
+    settingsField: 'max_connection_requests_per_day',
+    isHighRisk: true,
+  },
+  connection_accept: {
+    dbField: 'connections_accepted',
+    settingsField: 'max_connection_accepts_per_day',
+    isHighRisk: false,
+  },
+  comment: { dbField: 'comments_sent', settingsField: 'max_comments_per_day', isHighRisk: false },
+  like: { dbField: 'likes_sent', settingsField: 'max_likes_per_day', isHighRisk: false },
+};
+
+/**
+ * Check if a daily limit action is allowed for the given account.
+ * Uses account safety settings with warm-up ramp applied.
+ */
+export async function checkDailyLimit(
+  accountId: string,
+  action: DailyLimitAction,
+  settings: AccountSafetySettings
+): Promise<{ allowed: boolean; current: number; limit: number }> {
+  const mapping = ACTION_MAP[action];
+  const baseLimit = settings[mapping.settingsField] as number;
+  const effectiveLimit = getEffectiveLimit(
+    baseLimit,
+    settings.account_connected_at,
+    mapping.isHighRisk
+  );
+
+  const { data } = await getDailyLimit(settings.user_id, accountId);
+  const current = data ? ((data as Record<string, number>)[mapping.dbField] ?? 0) : 0;
+
+  return {
+    allowed: current < effectiveLimit,
+    current,
+    limit: effectiveLimit,
+  };
+}
+
+// ─── Randomized Delays ──────────────────────────────────────────────────────
+
+/** Return a random delay in milliseconds based on account settings. */
+export function randomDelay(settings: AccountSafetySettings): number {
+  const min = settings.min_action_delay_ms;
+  const max = settings.max_action_delay_ms;
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// ─── Skip Run Jitter ─────────────────────────────────────────────────────────
-
-/**
- * 10% chance returns true — used to add natural randomness to polling patterns.
- */
-export function shouldSkipRun(): boolean {
-  return Math.random() < 0.1;
+/** Resolve after ms milliseconds. */
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
