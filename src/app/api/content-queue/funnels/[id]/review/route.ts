@@ -1,40 +1,38 @@
 /**
- * Content Queue — Submit Batch Route.
- * POST /api/content-queue/submit — submit a team's edited posts for client review.
+ * Content Queue — Funnel Review Route.
+ * PATCH /api/content-queue/funnels/[id]/review
+ * Marks a funnel page as reviewed (or un-reviewed) in the content queue.
  * Never contains business logic; delegates to contentQueueService.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { logError } from '@/lib/utils/logger';
-import { ContentQueueSubmitSchemaV2 } from '@/lib/validations/content-queue';
+import { ReviewAssetSchema } from '@/lib/validations/content-queue';
 import { formatZodError } from '@/lib/validations/api';
 import * as contentQueueService from '@/server/services/content-queue.service';
 
-// ─── POST handler ──────────────────────────────────────────────────────────
+// ─── PATCH handler ─────────────────────────────────────────────────────────
 
-export async function POST(request: NextRequest) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const rawBody = await request.json();
-    const parsed = ContentQueueSubmitSchemaV2.safeParse(rawBody);
+    const parsed = ReviewAssetSchema.safeParse(rawBody);
     if (!parsed.success) {
       return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
     }
 
-    const result = await contentQueueService.submitBatch(
-      session.user.id,
-      parsed.data.team_id,
-      parsed.data.submit_type
-    );
-    return NextResponse.json(result);
+    await contentQueueService.reviewFunnel(session.user.id, id, parsed.data.reviewed);
+    return NextResponse.json({ success: true });
   } catch (error) {
     const status = contentQueueService.getStatusCode(error);
-    logError('content-queue/submit', error, { step: 'queue_submit_error' });
+    logError('content-queue/review-funnel', error, { step: 'review_funnel_error' });
     return NextResponse.json(
       { error: status < 500 ? (error as Error).message : 'Internal server error' },
       { status }
