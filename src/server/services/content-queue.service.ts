@@ -82,7 +82,7 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
   }
 
   const profileIds = profiles.map((p) => p.id);
-  const posts = await queueRepo.findDraftPostsByProfileIds(profileIds);
+  const posts = await queueRepo.findQueuePostsByProfileIds(profileIds);
 
   // Fetch writing styles for these team_profile_ids (cp_writing_styles links via team_profile_id)
   // Take at most one style per profile — ordered by created_at desc so we get the most recent.

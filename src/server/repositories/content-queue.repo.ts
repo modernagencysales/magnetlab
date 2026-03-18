@@ -31,10 +31,10 @@ export interface QueuePost {
 // ─── Reads ────────────────────────────────────────────────────────────────
 
 /**
- * Fetch all draft posts across multiple team profile IDs.
+ * Fetch all queue-eligible posts (draft + reviewing) across multiple team profile IDs.
  * Used by the content queue to aggregate posts across teams.
  */
-export async function findDraftPostsByProfileIds(profileIds: string[]): Promise<QueuePost[]> {
+export async function findQueuePostsByProfileIds(profileIds: string[]): Promise<QueuePost[]> {
   if (profileIds.length === 0) return [];
 
   const supabase = createSupabaseAdminClient();
@@ -42,10 +42,10 @@ export async function findDraftPostsByProfileIds(profileIds: string[]): Promise<
     .from('cp_pipeline_posts')
     .select(QUEUE_POST_WITH_IDEA_COLUMNS)
     .in('team_profile_id', profileIds)
-    .eq('status', 'draft')
+    .in('status', ['draft', 'reviewing'])
     .order('created_at', { ascending: true });
 
-  if (error) throw new Error(`content-queue.findDraftPostsByProfileIds: ${error.message}`);
+  if (error) throw new Error(`content-queue.findQueuePostsByProfileIds: ${error.message}`);
   return (data ?? []) as QueuePost[];
 }
 
@@ -100,7 +100,7 @@ export async function resetEditedForProfiles(profileIds: string[]): Promise<numb
     .from('cp_pipeline_posts')
     .update({ edited_at: null })
     .in('team_profile_id', profileIds)
-    .eq('status', 'draft')
+    .in('status', ['draft', 'reviewing'])
     .not('edited_at', 'is', null)
     .select('id');
 
@@ -122,7 +122,7 @@ export async function checkAllPostsEdited(
     .from('cp_pipeline_posts')
     .select('id, edited_at')
     .in('team_profile_id', profileIds)
-    .eq('status', 'draft');
+    .in('status', ['draft', 'reviewing']);
 
   if (error) throw new Error(`content-queue.checkAllPostsEdited: ${error.message}`);
 
