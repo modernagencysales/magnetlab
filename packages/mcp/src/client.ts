@@ -349,10 +349,7 @@ export class MagnetLabClient {
     if (params?.isBuffer !== undefined) searchParams.set('is_buffer', String(params.isBuffer));
     if (params?.limit) searchParams.set('limit', String(params.limit));
     const qs = searchParams.toString();
-    const url = this.appendTeamId(
-      `/content-pipeline/posts${qs ? `?${qs}` : ''}`,
-      params?.teamId
-    );
+    const url = this.appendTeamId(`/content-pipeline/posts${qs ? `?${qs}` : ''}`, params?.teamId);
     return this.request<{ posts: unknown[] }>('GET', url);
   }
 
@@ -361,12 +358,15 @@ export class MagnetLabClient {
     return this.request<{ post: unknown }>('GET', url);
   }
 
-  /** Create a new post directly (agent-authored). */
+  /** Create a new post directly (agent-authored). Supports lead magnet post automation flags. */
   async createPost(params: {
     body: string;
     title?: string;
     pillar?: ContentPillar;
     content_type?: ContentType;
+    image_url?: string;
+    is_lead_magnet_post?: boolean;
+    auto_activate?: boolean;
     teamId?: string;
   }) {
     const { teamId, ...body } = params;
@@ -521,6 +521,55 @@ export class MagnetLabClient {
       'POST',
       `/content-queue/submit`,
       { team_id: teamId }
+    );
+  }
+
+  // ─── Post Campaigns ─────────────────────────────────────────────────────
+
+  async listPostCampaigns(status?: string) {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    return this.request<{ campaigns: unknown[] }>('GET', `/post-campaigns${qs}`);
+  }
+
+  async createPostCampaign(config: Record<string, unknown>) {
+    return this.request<{ campaign: unknown }>('POST', `/post-campaigns`, config);
+  }
+
+  async autoSetupPostCampaign(postId: string) {
+    return this.aiRequest<unknown>('POST', `/post-campaigns/auto-setup`, { post_id: postId });
+  }
+
+  async getPostCampaign(id: string) {
+    return this.request<{ campaign: unknown; stats: unknown }>('GET', `/post-campaigns/${id}`);
+  }
+
+  async updatePostCampaign(id: string, config: Record<string, unknown>) {
+    return this.request<{ campaign: unknown }>('PATCH', `/post-campaigns/${id}`, config);
+  }
+
+  async activatePostCampaign(id: string) {
+    return this.request<{ campaign: unknown }>('POST', `/post-campaigns/${id}/activate`, {});
+  }
+
+  async pausePostCampaign(id: string) {
+    return this.request<{ campaign: unknown }>('POST', `/post-campaigns/${id}/pause`, {});
+  }
+
+  async deletePostCampaign(id: string) {
+    return this.request<{ success: boolean }>('DELETE', `/post-campaigns/${id}`);
+  }
+
+  // ─── Account Safety ───────────────────────────────────────────────────────
+
+  async getAccountSafetySettings(accountId: string) {
+    return this.request<{ settings: unknown }>('GET', `/account-safety-settings/${accountId}`);
+  }
+
+  async updateAccountSafetySettings(accountId: string, settings: Record<string, unknown>) {
+    return this.request<{ settings: unknown }>(
+      'PATCH',
+      `/account-safety-settings/${accountId}`,
+      settings
     );
   }
 

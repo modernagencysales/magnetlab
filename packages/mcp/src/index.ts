@@ -22,7 +22,7 @@ async function startServer(apiKey: string, baseUrl: string | undefined) {
     { capabilities: { tools: {} } }
   );
 
-  // Register all 37 tools directly — no indirection
+  // Register all 50 tools directly — no indirection
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -48,7 +48,7 @@ function resolveOptions(options: { apiKey?: string; baseUrl?: string }) {
 const program = new Command()
   .name('magnetlab-mcp')
   .version(VERSION)
-  .description('MagnetLab MCP server — 37 direct tools for agent-native lead magnet creation')
+  .description('MagnetLab MCP server — 50 direct tools for agent-native lead magnet creation')
   .option('--api-key <key>', 'MagnetLab API key')
   .option('--base-url <url>', 'API base URL')
   .action(async (opts) => {

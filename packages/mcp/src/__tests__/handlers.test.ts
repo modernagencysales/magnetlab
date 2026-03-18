@@ -1,4 +1,4 @@
-/** Handler routing tests for MCP v2. Verifies all 37 tools route correctly through handleToolCall. */
+/** Handler routing tests for MCP v2. Verifies all 50 tools route correctly through handleToolCall. */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MagnetLabClient } from '../client.js';
@@ -34,7 +34,7 @@ async function callTool(client: MagnetLabClient, name: string, args: Record<stri
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe('Handler Routing — All 37 Tools', () => {
+describe('Handler Routing — All 50 Tools', () => {
   let client: MagnetLabClient;
 
   beforeEach(() => {
@@ -884,9 +884,7 @@ describe('Handler Routing — All 37 Tools', () => {
 
     it('handlers pass undefined team_id when team_id not in args', async () => {
       await callTool(client, 'magnetlab_list_posts', { status: 'draft' });
-      expect(client.listPosts).toHaveBeenCalledWith(
-        expect.objectContaining({ teamId: undefined })
-      );
+      expect(client.listPosts).toHaveBeenCalledWith(expect.objectContaining({ teamId: undefined }));
     });
   });
 
