@@ -1,9 +1,9 @@
-/** Tool registration tests for MCP v2. Verifies 37 tools, naming, schemas, and no old tools. */
+/** Tool registration tests for MCP v2. Verifies 40 tools, naming, schemas, and no old tools. */
 
 import { describe, it, expect } from 'vitest';
 import { tools, toolsByName } from '../tools/index.js';
 
-// ─── All 37 expected tool names ────────────────────────────────────────────────
+// ─── All 40 expected tool names ────────────────────────────────────────────────
 
 const EXPECTED_TOOL_NAMES = [
   // Lead Magnets (5)
@@ -53,6 +53,10 @@ const EXPECTED_TOOL_NAMES = [
   'magnetlab_get_recommendations',
   // Account (1)
   'magnetlab_list_teams',
+  // Content Queue (3)
+  'magnetlab_list_content_queue',
+  'magnetlab_update_queue_post',
+  'magnetlab_submit_queue_batch',
 ] as const;
 
 // ─── Old tools that must NOT exist ────────────────────────────────────────────
@@ -78,8 +82,8 @@ const REMOVED_TOOLS = [
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('Tool Registration', () => {
-  it('exports exactly 37 tools', () => {
-    expect(tools).toHaveLength(37);
+  it('exports exactly 40 tools', () => {
+    expect(tools).toHaveLength(40);
   });
 
   it('all tools have unique names', () => {
@@ -110,8 +114,8 @@ describe('Tool Registration', () => {
     }
   });
 
-  it('toolsByName map has 37 entries', () => {
-    expect(toolsByName.size).toBe(37);
+  it('toolsByName map has 40 entries', () => {
+    expect(toolsByName.size).toBe(40);
   });
 
   it('toolsByName contains all tools and references correct objects', () => {
@@ -139,8 +143,8 @@ describe('Expected Tool Names', () => {
     }
   });
 
-  it('expected list has exactly 37 entries', () => {
-    expect(EXPECTED_TOOL_NAMES).toHaveLength(37);
+  it('expected list has exactly 40 entries', () => {
+    expect(EXPECTED_TOOL_NAMES).toHaveLength(40);
   });
 });
 
@@ -289,5 +293,15 @@ describe('Tool Group Sizes', () => {
   it('has 1 account tool', () => {
     const accountTools = toolNames.filter((n) => n === 'magnetlab_list_teams');
     expect(accountTools).toHaveLength(1);
+  });
+
+  it('has 3 content queue tools', () => {
+    const queueTools = toolNames.filter(
+      (n) =>
+        n === 'magnetlab_list_content_queue' ||
+        n === 'magnetlab_update_queue_post' ||
+        n === 'magnetlab_submit_queue_batch'
+    );
+    expect(queueTools).toHaveLength(3);
   });
 });

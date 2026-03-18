@@ -357,6 +357,21 @@ export const toolSchemas: Record<string, z.ZodType> = {
   // ── Account (1) ───────────────────────────────────────────────────────────
 
   magnetlab_list_teams: z.object({}),
+
+  // ── Content Queue (3) ─────────────────────────────────────────────────────
+
+  magnetlab_list_content_queue: z.object({}),
+
+  magnetlab_update_queue_post: z.object({
+    post_id: uuidField,
+    draft_content: z.string().optional(),
+    mark_edited: z.boolean().optional(),
+    image_urls: z.array(z.string().url()).optional(),
+  }),
+
+  magnetlab_submit_queue_batch: z.object({
+    team_id: z.string().min(1, 'team_id is required'),
+  }),
 };
 
 // ─── Validation Function ──────────────────────────────────────────────────────

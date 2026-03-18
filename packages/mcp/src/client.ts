@@ -423,6 +423,31 @@ export class MagnetLabClient {
     return this.request<unknown>('GET', `/analytics/recommendations`);
   }
 
+  // ─── Content Queue ────────────────────────────────────────────────────────
+
+  async listContentQueue() {
+    return this.request<{ teams: unknown[] }>('GET', `/content-queue`);
+  }
+
+  async updateQueuePost(
+    postId: string,
+    params: {
+      draft_content?: string;
+      mark_edited?: boolean;
+      image_urls?: string[];
+    }
+  ) {
+    return this.request<{ success: boolean }>('PATCH', `/content-queue/posts/${postId}`, params);
+  }
+
+  async submitQueueBatch(teamId: string) {
+    return this.request<{ success: boolean; dfy_callback_sent: boolean }>(
+      'POST',
+      `/content-queue/submit`,
+      { team_id: teamId }
+    );
+  }
+
   // ─── Teams ────────────────────────────────────────────────────────────────
 
   async listTeams() {

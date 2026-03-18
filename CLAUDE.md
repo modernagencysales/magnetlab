@@ -71,6 +71,7 @@ All client-side API calls and shared client state live under `src/frontend/`: `a
 | `/(dashboard)/settings` | Settings hub (redirects to /settings/account) |
 | `/(dashboard)/swipe-file` | Community post inspiration |
 | `/(dashboard)/signals` | LinkedIn Signal Engine leads |
+| `/(dashboard)/content-queue` | Cross-team content editing queue |
 
 ### Settings Routes
 
@@ -92,7 +93,7 @@ All client-side API calls and shared client state live under `src/frontend/`: `a
 
 ### API Routes (57 handlers)
 
-Groups: `lead-magnet/` (CRUD, content, polish, ideation), `funnel/` (pages, sections, publish, themes), `stripe/` (checkout, webhooks, portal), `leads/` (management, export), `brand-kit/` (extraction), `thumbnail/` (generation), `email-sequence/` (CRUD, trigger), `swipe-file/` (browse, save), `webhooks/` (user-configured), `integrations/` (connect/disconnect), `public/` (lead capture, page data, content delivery), `linkedin/` (post helpers), `landing-page/` (quick create), `user/` (profile), `external/` (third-party callbacks), `content-pipeline/` (knowledge, ideas, posts, schedule, broadcast), `copilot/` (AI assistant), `signals/` (config, keywords, companies, leads), `ab-experiments/` (A/B testing), `admin/` (prompts, learning).
+Groups: `lead-magnet/` (CRUD, content, polish, ideation), `funnel/` (pages, sections, publish, themes), `stripe/` (checkout, webhooks, portal), `leads/` (management, export), `brand-kit/` (extraction), `thumbnail/` (generation), `email-sequence/` (CRUD, trigger), `swipe-file/` (browse, save), `webhooks/` (user-configured), `integrations/` (connect/disconnect), `public/` (lead capture, page data, content delivery), `linkedin/` (post helpers), `landing-page/` (quick create), `user/` (profile), `external/` (third-party callbacks), `content-pipeline/` (knowledge, ideas, posts, schedule, broadcast), `content-queue/` (DFY editing queue, post updates, batch submit), `copilot/` (AI assistant), `signals/` (config, keywords, companies, leads), `ab-experiments/` (A/B testing), `admin/` (prompts, learning).
 
 ## Database
 
@@ -241,6 +242,7 @@ Detailed docs for each feature live in `docs/`. Consult these when working on a 
 | AI Standards Learning Loop | [docs/standards-learning-loop.md](docs/standards-learning-loop.md) |
 | Docs Index | [docs/README.md](docs/README.md) |
 | MCP v2 Agent-Native Spec | [docs/superpowers/specs/2026-03-13-mcp-v2-agent-native-rearchitecture.md](docs/superpowers/specs/2026-03-13-mcp-v2-agent-native-rearchitecture.md) |
+| Content Queue | [docs/superpowers/specs/2026-03-17-dfy-content-queue-design.md](docs/superpowers/specs/2026-03-17-dfy-content-queue-design.md) |
 
 ## MCP Server (v2 — Agent-Native)
 

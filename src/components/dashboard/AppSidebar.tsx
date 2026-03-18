@@ -25,6 +25,7 @@ import {
   HelpCircle,
   Shield,
   Radio,
+  ListChecks,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -89,6 +90,7 @@ const mainNav: NavItem[] = [
   { href: '/pages', label: 'Pages', icon: Globe },
   { href: '/knowledge', label: 'Knowledge', icon: Brain },
   { href: '/posts', label: 'Posts', icon: PenTool },
+  { href: '/content-queue', label: 'Content Queue', icon: ListChecks },
   { href: '/automations', label: 'Automations', icon: Bot },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/signals', label: 'Signals', icon: Radio },
