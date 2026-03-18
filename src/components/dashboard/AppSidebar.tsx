@@ -26,6 +26,7 @@ import {
   Shield,
   Radio,
   ListChecks,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -96,6 +97,7 @@ const mainNav: NavItem[] = [
   { href: '/automations', label: 'Automations', icon: Bot },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/signals', label: 'Signals', icon: Radio },
+  { href: '/post-campaigns', label: 'Post Campaigns', icon: Megaphone },
   { href: '/email/flows', label: 'Email', icon: Mail, activePrefix: '/email' },
   { href: '/team', label: 'Team', icon: UsersRound },
 ];
