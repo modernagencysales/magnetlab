@@ -46,7 +46,7 @@ describe('applyScope', () => {
         type: 'team',
         userId: 'user-1',
         teamId: 'team-1',
-        ownerId: 'owner-1',
+        billingUserId: 'owner-1',
       };
 
       applyScope(chain, scope);

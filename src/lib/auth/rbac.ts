@@ -1,52 +1,24 @@
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+/**
+ * RBAC (Role-Based Access Control).
+ * Backward-compatible wrapper around hasTeamAccess from team.repo.
+ * checkTeamRole is kept for existing callers that haven't migrated yet.
+ * New code should use hasTeamAccess() directly.
+ */
+
+import { hasTeamAccess } from '@/server/repositories/team.repo';
 
 export type TeamRole = 'owner' | 'member' | null;
 
 /**
  * Check a user's role in a specific team.
+ * Delegates to hasTeamAccess() which handles direct membership AND agency team links.
  * Returns 'owner' if the user owns the team, 'member' if they are an active
- * member, or null if they have no access.
+ * member (direct or via team link), or null if they have no access.
  */
 export async function checkTeamRole(userId: string, teamId: string): Promise<TeamRole> {
-  const supabase = createSupabaseAdminClient();
-
-  // Check if user is team owner
-  const { data: team } = await supabase
-    .from('teams')
-    .select('owner_id')
-    .eq('id', teamId)
-    .single();
-
-  if (!team) return null;
-  if (team.owner_id === userId) return 'owner';
-
-  // Check team_members table (V1 — has owner_id, not team_id/role)
-  const { data: member } = await supabase
-    .from('team_members')
-    .select('id, status')
-    .eq('owner_id', team.owner_id)
-    .eq('member_id', userId)
-    .eq('status', 'active')
-    .single();
-
-  if (member) {
-    return 'member';
-  }
-
-  // Check team_profiles table (V2)
-  const { data: profile } = await supabase
-    .from('team_profiles')
-    .select('role, status')
-    .eq('team_id', teamId)
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .single();
-
-  if (profile) {
-    return profile.role === 'owner' ? 'owner' : 'member';
-  }
-
-  return null;
+  const result = await hasTeamAccess(userId, teamId);
+  if (!result.access) return null;
+  return result.role;
 }
 
 /**

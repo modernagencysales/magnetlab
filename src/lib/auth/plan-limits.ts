@@ -1,4 +1,9 @@
-// Plan limits configuration and enforcement for billing tiers
+/**
+ * Plan Limits.
+ * Configuration and enforcement for billing tiers.
+ * Uses billingUserId from DataScope (resolved via billing_team_id chain).
+ * Never imported by 'use client' files.
+ */
 
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import type { DataScope } from '@/lib/utils/team-context';
@@ -36,6 +41,17 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   },
 };
 
+// ─── Billing helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Get the billing team ID for limit checks.
+ * If the team delegates billing to another team, returns that team's ID.
+ * Otherwise returns the team's own ID.
+ */
+export function getBillingTeamId(team: { id: string; billing_team_id: string | null }): string {
+  return team.billing_team_id ?? team.id;
+}
+
 export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
@@ -48,9 +64,11 @@ export async function getUserPlanLimits(userId: string): Promise<PlanLimits> {
   return PLAN_LIMITS[data?.plan || 'free'];
 }
 
+// ─── Resource limit check ────────────────────────────────────────────────────
+
 /**
  * Check resource limits. Accepts either a DataScope (team-aware) or a plain userId (legacy).
- * In team mode, checks the team owner's plan and counts resources within the team scope.
+ * In team mode, checks the billing user's plan and counts resources within the team scope.
  */
 export async function checkResourceLimit(
   scopeOrUserId: DataScope | string,
@@ -60,8 +78,8 @@ export async function checkResourceLimit(
     ? { type: 'user', userId: scopeOrUserId }
     : scopeOrUserId;
 
-  // Check the owner's plan (not the logged-in member's)
-  const billingUserId = scope.ownerId || scope.userId;
+  // Check the billing user's plan (not the logged-in member's)
+  const billingUserId = scope.billingUserId || scope.userId;
   const limits = await getUserPlanLimits(billingUserId);
 
   const supabase = createSupabaseAdminClient();
