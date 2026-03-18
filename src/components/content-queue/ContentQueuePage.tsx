@@ -7,7 +7,8 @@
  * Never imports from server layer.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useContentQueue } from '@/frontend/hooks/api/useContentQueue';
 import { updateQueuePost, submitBatch } from '@/frontend/api/content-queue';
 import { QueueView } from './QueueView';
@@ -23,6 +24,16 @@ export function ContentQueuePage() {
     ? (teams.find((t) => t.team_id === editingTeamId) ?? null)
     : null;
 
+  // ─── Debounce ref ──────────────────────────────────────────────────
+
+  const contentChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (contentChangeTimeoutRef.current) clearTimeout(contentChangeTimeoutRef.current);
+    };
+  }, []);
+
   // ─── Handlers ──────────────────────────────────────────────────────
 
   const handleEdit = useCallback((teamId: string) => {
@@ -37,6 +48,7 @@ export function ContentQueuePage() {
     async (teamId: string) => {
       const result = await submitBatch(teamId);
       if (result.success) {
+        toast.success('Batch submitted for review');
         await refetch();
       }
       return result;
@@ -46,8 +58,7 @@ export function ContentQueuePage() {
 
   const handleMarkEdited = useCallback(
     async (postId: string) => {
-      await updateQueuePost(postId, { mark_edited: true });
-      // Optimistic update
+      // Optimistic update FIRST
       if (editingTeamId) {
         mutateTeam(editingTeamId, (team) => ({
           ...team,
@@ -57,12 +68,36 @@ export function ContentQueuePage() {
           ),
         }));
       }
+
+      try {
+        await updateQueuePost(postId, { mark_edited: true });
+      } catch (err) {
+        // Rollback optimistic update
+        if (editingTeamId) {
+          mutateTeam(editingTeamId, (team) => ({
+            ...team,
+            edited_count: team.edited_count - 1,
+            posts: team.posts.map((p) => (p.id === postId ? { ...p, edited_at: null } : p)),
+          }));
+        }
+        toast.error('Failed to mark post as edited. Please try again.');
+        throw err;
+      }
     },
     [editingTeamId, mutateTeam]
   );
 
-  const handleContentChange = useCallback(async (postId: string, content: string) => {
-    await updateQueuePost(postId, { draft_content: content });
+  const handleContentChange = useCallback((postId: string, content: string) => {
+    if (contentChangeTimeoutRef.current) {
+      clearTimeout(contentChangeTimeoutRef.current);
+    }
+    contentChangeTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateQueuePost(postId, { draft_content: content });
+      } catch {
+        toast.error('Failed to save content. Please try again.');
+      }
+    }, 500);
   }, []);
 
   // ─── Loading / Error states ────────────────────────────────────────

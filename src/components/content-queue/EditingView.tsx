@@ -20,7 +20,7 @@ interface EditingViewProps {
   writingStyle: QueueTeamWritingStyle | null;
   onBack: () => void;
   onMarkEdited: (postId: string) => Promise<void>;
-  onContentChange: (postId: string, content: string) => Promise<void>;
+  onContentChange: (postId: string, content: string) => void;
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@
 import {
   ContentQueueUpdateSchema,
   ContentQueueSubmitSchema,
+  ResetEditedPostsSchema,
 } from '@/lib/validations/content-queue';
 
 describe('ContentQueueUpdateSchema', () => {
@@ -60,6 +61,23 @@ describe('ContentQueueSubmitSchema', () => {
 
   it('rejects empty team_id', () => {
     const result = ContentQueueSubmitSchema.safeParse({ team_id: '' });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('ResetEditedPostsSchema', () => {
+  it('accepts valid userId', () => {
+    const result = ResetEditedPostsSchema.safeParse({ userId: 'user-123' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects missing userId', () => {
+    const result = ResetEditedPostsSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty userId', () => {
+    const result = ResetEditedPostsSchema.safeParse({ userId: '' });
     expect(result.success).toBe(false);
   });
 });
