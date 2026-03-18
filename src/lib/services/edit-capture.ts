@@ -21,7 +21,9 @@ export interface EditRecordInput {
   editedText: string;
   editTags?: string[];
   ceoNote?: string;
-  source?: 'manual' | 'copilot';
+  source?: 'manual' | 'copilot' | 'content_queue';
+  /** Skip the 5% significance threshold. Use for professional editor edits where every change is signal. */
+  captureAll?: boolean;
 }
 
 export interface EditRecord {
@@ -93,7 +95,14 @@ export function computeEditDiff(original: string, edited: string): EditDiff {
  * Builds a DB-ready edit record, or returns null if the edit is insignificant.
  */
 export function buildEditRecord(input: EditRecordInput): EditRecord | null {
-  if (!isSignificantEdit(input.originalText, input.editedText)) return null;
+  // When captureAll is true (professional editor edits), skip significance threshold
+  // but still skip if text is byte-identical after whitespace normalization
+  if (!input.captureAll && !isSignificantEdit(input.originalText, input.editedText)) return null;
+  if (input.captureAll) {
+    const normOrig = input.originalText.replace(/\s+/g, ' ').trim();
+    const normEdit = input.editedText.replace(/\s+/g, ' ').trim();
+    if (normOrig === normEdit) return null;
+  }
 
   const editDiff = computeEditDiff(input.originalText, input.editedText);
 
@@ -163,19 +172,22 @@ export async function captureAndClassifyEdit(
     editedText: input.editedText,
     contentType: input.contentType,
     fieldName: input.fieldName,
-  }).then(result => {
-    if (result.patterns.length > 0) {
-      supabase
-        .from('cp_edit_history')
-        .update({ auto_classified_changes: result })
-        .eq('id', data.id)
-        .then(({ error: updateError }: { error: { message: string } | null }) => {
-          if (updateError) console.error('[edit-capture] Classification save failed:', updateError);
-        });
-    }
-  }).catch((err: unknown) => {
-    console.error('[edit-capture] Classification failed:', err);
-  });
+  })
+    .then((result) => {
+      if (result.patterns.length > 0) {
+        supabase
+          .from('cp_edit_history')
+          .update({ auto_classified_changes: result })
+          .eq('id', data.id)
+          .then(({ error: updateError }: { error: { message: string } | null }) => {
+            if (updateError)
+              console.error('[edit-capture] Classification save failed:', updateError);
+          });
+      }
+    })
+    .catch((err: unknown) => {
+      console.error('[edit-capture] Classification failed:', err);
+    });
 
   return data.id;
 }
