@@ -8,6 +8,12 @@
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import type { Team, TeamMember, TeamLink, TeamProfile } from '@/lib/types/content-pipeline';
 
+// ─── Update field whitelists ────────────────────────────────────────────────
+
+const ALLOWED_TEAM_UPDATE_FIELDS = ['name', 'description', 'industry', 'target_audience', 'shared_goal', 'billing_team_id'] as const;
+
+const ALLOWED_PROFILE_UPDATE_FIELDS = ['full_name', 'email', 'title', 'linkedin_url', 'bio', 'expertise_areas', 'voice_profile', 'avatar_url', 'is_default', 'status'] as const;
+
 // ─── Column select constants ────────────────────────────────────────────────
 
 const TEAM_SELECT =
@@ -441,10 +447,14 @@ export async function updateTeam(
   teamId: string,
   updates: Record<string, unknown>
 ): Promise<Team> {
+  const filtered: Record<string, unknown> = {};
+  for (const key of ALLOWED_TEAM_UPDATE_FIELDS) {
+    if (key in updates) filtered[key] = updates[key];
+  }
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('teams')
-    .update(updates)
+    .update(filtered)
     .eq('id', teamId)
     .select(TEAM_SELECT)
     .single();
@@ -554,10 +564,14 @@ export async function updateTeamProfile(
   profileId: string,
   updates: Record<string, unknown>
 ): Promise<TeamProfile> {
+  const filtered: Record<string, unknown> = {};
+  for (const key of ALLOWED_PROFILE_UPDATE_FIELDS) {
+    if (key in updates) filtered[key] = updates[key];
+  }
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('team_profiles')
-    .update(updates)
+    .update(filtered)
     .eq('id', profileId)
     .select(TEAM_PROFILE_SELECT)
     .single();

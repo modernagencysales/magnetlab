@@ -380,6 +380,14 @@ describe('listTeamLinks', () => {
 
     expect(result).toEqual([LINK_1]);
   });
+
+  it('throws on query error', async () => {
+    setupMockClient([
+      { data: null, error: { message: 'query failed' } },
+    ]);
+
+    await expect(listTeamLinks('team-1')).rejects.toThrow('query failed');
+  });
 });
 
 // ─── getTeamProfiles ────────────────────────────────────────────────────────
