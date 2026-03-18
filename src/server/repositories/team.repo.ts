@@ -234,6 +234,17 @@ export async function createTeamLink(
   return data as TeamLink;
 }
 
+/** Get a team link by ID. Returns null if not found. */
+export async function getTeamLinkById(linkId: string): Promise<TeamLink | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from('team_links')
+    .select(TEAM_LINK_SELECT)
+    .eq('id', linkId)
+    .maybeSingle();
+  return (data as TeamLink) ?? null;
+}
+
 /** Delete a team link by ID. */
 export async function deleteTeamLink(linkId: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
@@ -536,14 +547,14 @@ export async function getProfileByIdWithTeam(
 
 export async function getProfileByIdForDelete(
   profileId: string
-): Promise<{ id: string; team_id: string; teams?: { owner_id: string } } | null> {
+): Promise<{ id: string; team_id: string; user_id: string | null; teams?: { owner_id: string } } | null> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('team_profiles')
-    .select('id, team_id, teams(owner_id)')
+    .select('id, team_id, user_id, teams(owner_id)')
     .eq('id', profileId)
     .single();
-  return data as { id: string; team_id: string; teams?: { owner_id: string } } | null;
+  return data as { id: string; team_id: string; user_id: string | null; teams?: { owner_id: string } } | null;
 }
 
 export async function createTeamProfile(

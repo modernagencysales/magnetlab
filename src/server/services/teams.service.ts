@@ -1,23 +1,29 @@
 /**
- * Teams Service (teams + team_profiles)
+ * Teams Service (teams + team_profiles + team_links)
  * List memberships, create/update team, list/create/update/delete profiles.
+ * CRUD for agency-to-client team links.
+ * Uses getUserTeams() + hasTeamAccess() from team.repo — no getMergedMemberships().
  */
 
 import { checkTeamRole, hasMinimumRole } from '@/lib/auth/rbac';
 import { logTeamActivity } from '@/lib/utils/activity-log';
-import { getMergedMemberships } from '@/lib/utils/team-membership';
-import { getTeamOwnerFromProfile } from '@/lib/utils/team-membership';
 import * as teamRepo from '@/server/repositories/team.repo';
 
+/** Extract owner_id from a Supabase team_profiles row that joins teams. */
+function getTeamOwnerFromProfile(profile: { teams?: unknown }): string | null {
+  const teams = profile.teams as { owner_id?: string } | null;
+  return teams?.owner_id ?? null;
+}
+
 export async function listTeams(userId: string) {
-  const memberships = await getMergedMemberships(userId);
-  const owned = memberships.filter((m) => m.role === 'owner');
-  const member = memberships.filter((m) => m.role === 'member');
+  const entries = await teamRepo.getUserTeams(userId);
+  const owned = entries.filter((e) => e.role === 'owner');
+  const member = entries.filter((e) => e.role === 'member');
   // Flat `teams` array for MCP tools — each entry has id, name, role
-  const teams = memberships.map((m) => ({
-    id: m.teamId,
-    name: m.teamName,
-    role: m.role,
+  const teams = entries.map((e) => ({
+    id: e.team.id,
+    name: e.team.name,
+    role: e.role,
   }));
   return { owned, member, teams };
 }
@@ -42,6 +48,8 @@ export async function createTeam(
     shared_goal: payload.shared_goal?.trim() || null,
   });
   const teamId = team.id as string;
+  // Register owner in team_members (access table) and create owner identity profile
+  await teamRepo.addMember(teamId, userId, 'owner');
   await teamRepo.addOwnerProfile(teamId, userId, userEmail, userName || 'Owner');
   return { team };
 }
@@ -123,10 +131,8 @@ export async function createProfile(
     bio: payload.bio?.trim() || null,
     expertise_areas: payload.expertise_areas || [],
     voice_profile: payload.voice_profile || {},
-    role: 'member',
+    // role, invited_at, accepted_at moved to team_members — not on team_profiles in V3
     status: linkedUserId ? 'active' : 'pending',
-    invited_at: new Date().toISOString(),
-    accepted_at: linkedUserId ? new Date().toISOString() : null,
   });
 
   logTeamActivity({
@@ -189,13 +195,73 @@ export async function updateProfile(
   return { profile: updated };
 }
 
+// ─── Team Links ──────────────────────────────────────────────────────────────
+
+export async function listTeamLinks(userId: string) {
+  const ownedTeam = await teamRepo.getOwnerTeamByUserId(userId);
+  if (!ownedTeam) return { links: [] };
+  const links = await teamRepo.listTeamLinks(ownedTeam.id);
+  return { links };
+}
+
+export async function createTeamLink(
+  userId: string,
+  agencyTeamId: string,
+  clientTeamId: string
+) {
+  if (agencyTeamId === clientTeamId) {
+    throw Object.assign(new Error('Agency and client teams must be different'), { statusCode: 400 });
+  }
+
+  const access = await teamRepo.hasTeamAccess(userId, agencyTeamId);
+  if (!access.access || access.role !== 'owner' || access.via !== 'direct') {
+    throw Object.assign(new Error('Must be agency team owner to create a link'), { statusCode: 403 });
+  }
+
+  const agencyTeam = await teamRepo.getTeamById(agencyTeamId);
+  if (!agencyTeam) throw Object.assign(new Error('Agency team not found'), { statusCode: 404 });
+
+  const clientTeam = await teamRepo.getTeamById(clientTeamId);
+  if (!clientTeam) throw Object.assign(new Error('Client team not found'), { statusCode: 404 });
+
+  const link = await teamRepo.createTeamLink(agencyTeamId, clientTeamId);
+  return { link };
+}
+
+export async function deleteTeamLink(userId: string, linkId: string) {
+  const link = await teamRepo.getTeamLinkById(linkId);
+  if (!link) throw Object.assign(new Error('Team link not found'), { statusCode: 404 });
+
+  const agencyAccess = await teamRepo.hasTeamAccess(userId, link.agency_team_id);
+  const clientAccess = await teamRepo.hasTeamAccess(userId, link.client_team_id);
+
+  const isAgencyOwner =
+    agencyAccess.access && agencyAccess.role === 'owner' && agencyAccess.via === 'direct';
+  const isClientOwner =
+    clientAccess.access && clientAccess.role === 'owner' && clientAccess.via === 'direct';
+
+  if (!isAgencyOwner && !isClientOwner) {
+    throw Object.assign(new Error('Must be owner of either team to remove a link'), {
+      statusCode: 403,
+    });
+  }
+
+  await teamRepo.deleteTeamLink(linkId);
+  return { success: true };
+}
+
+// ─── Profiles ────────────────────────────────────────────────────────────────
+
 export async function deleteProfile(userId: string, profileId: string) {
   const profile = await teamRepo.getProfileByIdForDelete(profileId);
   if (!profile) return { error: 'NOT_FOUND' as const };
 
   const role = await checkTeamRole(userId, profile.team_id);
   if (!hasMinimumRole(role, 'owner')) return { error: 'FORBIDDEN' as const };
-  if (profile.role === 'owner')
+
+  // role was dropped from team_profiles in V3 — protect owner profiles via teams.owner_id
+  const teamOwnerId = getTeamOwnerFromProfile(profile);
+  if (teamOwnerId && profile.user_id === teamOwnerId)
     return { error: 'VALIDATION' as const, message: 'Cannot remove the team owner profile' };
 
   await teamRepo.setTeamProfileRemoved(profileId);
