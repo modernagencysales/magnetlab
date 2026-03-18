@@ -87,10 +87,10 @@ describe('GET /api/teams', () => {
       expect(body.teams).toHaveLength(2);
 
       const ownerTeam = body.teams.find((t: { id: string }) => t.id === 'team-uuid-1');
-      expect(ownerTeam).toEqual({ id: 'team-uuid-1', name: 'Acme Agency', role: 'owner' });
+      expect(ownerTeam).toEqual({ id: 'team-uuid-1', name: 'Acme Agency', role: 'owner', via: 'direct' });
 
       const memberTeam = body.teams.find((t: { id: string }) => t.id === 'team-uuid-2');
-      expect(memberTeam).toEqual({ id: 'team-uuid-2', name: 'Partner Co', role: 'member' });
+      expect(memberTeam).toEqual({ id: 'team-uuid-2', name: 'Partner Co', role: 'member', via: 'direct' });
     });
 
     it('returns backward-compat owned and member arrays', async () => {
