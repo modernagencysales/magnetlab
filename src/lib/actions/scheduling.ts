@@ -1,6 +1,13 @@
+/**
+ * Scheduling copilot actions.
+ * All data access goes through repos — no raw Supabase queries.
+ */
+
 import { registerAction } from './registry';
 import type { ActionContext, ActionResult } from './types';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { findPosts, updatePost } from '@/server/repositories/posts.repo';
+import { listSlots } from '@/server/repositories/cp-schedule-slots.repo';
+import { getActiveProfiles, getSlots } from '@/server/repositories/cp-team-schedule.repo';
 
 registerAction({
   name: 'schedule_post',
@@ -14,18 +21,15 @@ registerAction({
   },
   requiresConfirmation: true,
   handler: async (ctx: ActionContext, params: { post_id: string; scheduled_time: string }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
-
-    const { error } = await supabase
-      .from('cp_pipeline_posts')
-      .update({
+    try {
+      await updatePost(ctx.scope.userId, params.post_id, {
         scheduled_time: params.scheduled_time,
         status: 'scheduled',
-      })
-      .eq('id', params.post_id)
-      .eq('user_id', ctx.userId);
-
-    if (error) return { success: false, error: error.message };
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Schedule failed';
+      return { success: false, error: message };
+    }
 
     return {
       success: true,
@@ -42,31 +46,31 @@ registerAction({
     properties: {},
   },
   handler: async (ctx: ActionContext): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
+    const { scope } = ctx;
 
-    // Count buffer posts
-    const { data: bufferPosts, error: bufferError } = await supabase
-      .from('cp_pipeline_posts')
-      .select('id')
-      .eq('user_id', ctx.userId)
-      .eq('is_buffer', true);
+    // Count buffer posts via repo (handles team scope correctly)
+    const bufferPosts = await findPosts(scope, { isBuffer: true });
 
-    if (bufferError) return { success: false, error: bufferError.message };
+    // Fetch posting slots — team scope uses profile-level slots; user scope uses user-level slots
+    let slots: Array<{ id: string; day_of_week?: number | null; time_of_day?: string; is_active?: boolean | null }> = [];
 
-    // Get posting slots
-    const { data: slots, error: slotsError } = await supabase
-      .from('cp_posting_slots')
-      .select('id, day_of_week, time_utc, is_active')
-      .eq('user_id', ctx.userId)
-      .order('day_of_week', { ascending: true });
-
-    if (slotsError) return { success: false, error: slotsError.message };
+    if (scope.type === 'team' && scope.teamId) {
+      const { data: profiles } = await getActiveProfiles(scope.teamId);
+      const profileIds = (profiles ?? []).map((p) => p.id);
+      if (profileIds.length > 0) {
+        const { data: teamSlots } = await getSlots(profileIds);
+        slots = teamSlots ?? [];
+      }
+    } else {
+      const { data: userSlots } = await listSlots(scope.userId);
+      slots = userSlots ?? [];
+    }
 
     return {
       success: true,
       data: {
-        buffer_count: (bufferPosts || []).length,
-        slots: slots || [],
+        buffer_count: bufferPosts.length,
+        slots,
       },
       displayHint: 'text',
     };

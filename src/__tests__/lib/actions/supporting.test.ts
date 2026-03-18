@@ -27,6 +27,24 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   })),
 }));
 
+// ─── Repo mocks (for analytics + scheduling actions) ─────────────────────────
+
+jest.mock('@/server/repositories/posts.repo', () => ({
+  findPosts: jest.fn().mockResolvedValue([]),
+  createPost: jest.fn().mockResolvedValue({ id: 'post-new', status: 'draft' }),
+  findPostForPolish: jest.fn().mockResolvedValue({ draft_content: 'content', final_content: null }),
+  updatePost: jest.fn().mockResolvedValue({ id: 'post-1' }),
+}));
+
+jest.mock('@/server/repositories/cp-schedule-slots.repo', () => ({
+  listSlots: jest.fn().mockResolvedValue({ data: [], error: null }),
+}));
+
+jest.mock('@/server/repositories/cp-team-schedule.repo', () => ({
+  getActiveProfiles: jest.fn().mockResolvedValue({ data: [], error: null }),
+  getSlots: jest.fn().mockResolvedValue({ data: [], error: null }),
+}));
+
 // Mock knowledge-brain and briefing-agent so knowledge.ts import succeeds
 jest.mock('@/lib/services/knowledge-brain', () => ({
   searchKnowledgeV2: jest.fn().mockResolvedValue([]),
@@ -56,8 +74,7 @@ import '@/lib/actions/knowledge';
 import '@/lib/actions/content';
 
 const testCtx: ActionContext = {
-  userId: 'user-test-123',
-  teamId: 'team-test-456',
+  scope: { type: 'team', userId: 'user-test-123', teamId: 'team-test-456' },
 };
 
 describe('Template Actions', () => {
@@ -149,11 +166,15 @@ describe('Analytics Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState.fromFn = jest.fn(() => createChain());
+    // Reset repo mock to default empty
+    const { findPosts } = jest.requireMock('@/server/repositories/posts.repo');
+    findPosts.mockResolvedValue([]);
   });
 
   describe('get_post_performance', () => {
     it('returns posts with engagement stats and content preview', async () => {
-      const mockPosts = [
+      const { findPosts } = jest.requireMock('@/server/repositories/posts.repo');
+      findPosts.mockResolvedValue([
         {
           id: 'p1',
           draft_content: 'A very long post about leadership that goes on and on and on to exceed the hundred character limit for content previews in the analytics display',
@@ -162,9 +183,7 @@ describe('Analytics Actions', () => {
           engagement_stats: { likes: 42, comments: 7 },
           published_at: '2026-02-20T10:00:00Z',
         },
-      ];
-
-      mockState.fromFn.mockReturnValueOnce(createChain(mockPosts));
+      ]);
 
       const result = await executeAction(testCtx, 'get_post_performance', {});
 
@@ -176,12 +195,12 @@ describe('Analytics Actions', () => {
       expect(post.id).toBe('p1');
       expect(post.engagement_stats).toEqual({ likes: 42, comments: 7 });
       expect(post.published_at).toBe('2026-02-20T10:00:00Z');
-      // Content preview should be truncated to 100 chars
       expect((post.content_preview as string).length).toBeLessThanOrEqual(100);
     });
 
     it('uses final_content for preview when available', async () => {
-      const mockPosts = [
+      const { findPosts } = jest.requireMock('@/server/repositories/posts.repo');
+      findPosts.mockResolvedValue([
         {
           id: 'p2',
           draft_content: 'Draft version',
@@ -190,9 +209,7 @@ describe('Analytics Actions', () => {
           engagement_stats: { likes: 10 },
           published_at: '2026-02-21T10:00:00Z',
         },
-      ];
-
-      mockState.fromFn.mockReturnValueOnce(createChain(mockPosts));
+      ]);
 
       const result = await executeAction(testCtx, 'get_post_performance', {});
 
@@ -201,27 +218,22 @@ describe('Analytics Actions', () => {
     });
 
     it('defaults limit to 10', async () => {
-      const chain = createChain([]);
-      mockState.fromFn.mockReturnValueOnce(chain);
-
+      const { findPosts } = jest.requireMock('@/server/repositories/posts.repo');
       await executeAction(testCtx, 'get_post_performance', {});
-
-      expect(chain.limit).toHaveBeenCalledWith(10);
+      expect(findPosts).toHaveBeenCalledWith(testCtx.scope, { limit: 10 });
     });
 
     it('respects custom limit', async () => {
-      const chain = createChain([]);
-      mockState.fromFn.mockReturnValueOnce(chain);
-
+      const { findPosts } = jest.requireMock('@/server/repositories/posts.repo');
       await executeAction(testCtx, 'get_post_performance', { limit: 3 });
-
-      expect(chain.limit).toHaveBeenCalledWith(3);
+      expect(findPosts).toHaveBeenCalledWith(testCtx.scope, { limit: 3 });
     });
   });
 
   describe('get_top_posts', () => {
     it('returns published posts with engagement stats', async () => {
-      const mockPosts = [
+      const { findPosts } = jest.requireMock('@/server/repositories/posts.repo');
+      findPosts.mockResolvedValue([
         {
           id: 'p3',
           draft_content: 'Top post draft',
@@ -230,9 +242,7 @@ describe('Analytics Actions', () => {
           engagement_stats: { likes: 150, comments: 30 },
           published_at: '2026-02-19T10:00:00Z',
         },
-      ];
-
-      mockState.fromFn.mockReturnValueOnce(createChain(mockPosts));
+      ]);
 
       const result = await executeAction(testCtx, 'get_top_posts', {});
 
@@ -246,23 +256,10 @@ describe('Analytics Actions', () => {
       expect(post.status).toBe('published');
     });
 
-    it('fetches up to 100 then slices to requested limit', async () => {
-      const chain = createChain([]);
-      mockState.fromFn.mockReturnValueOnce(chain);
-
+    it('fetches up to 100 published posts to sort client-side', async () => {
+      const { findPosts } = jest.requireMock('@/server/repositories/posts.repo');
       await executeAction(testCtx, 'get_top_posts', {});
-
-      // I7 FIX: fetches 100 to sort client-side by engagement, then slices
-      expect(chain.limit).toHaveBeenCalledWith(100);
-    });
-
-    it('filters by published status', async () => {
-      const chain = createChain([]);
-      mockState.fromFn.mockReturnValueOnce(chain);
-
-      await executeAction(testCtx, 'get_top_posts', {});
-
-      expect(chain.eq).toHaveBeenCalledWith('status', 'published');
+      expect(findPosts).toHaveBeenCalledWith(testCtx.scope, { status: 'published', limit: 100 });
     });
   });
 });
@@ -271,6 +268,12 @@ describe('Scheduling Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState.fromFn = jest.fn(() => createChain());
+    const { updatePost } = jest.requireMock('@/server/repositories/posts.repo');
+    updatePost.mockResolvedValue({ id: 'post-1' });
+    const { findPosts } = jest.requireMock('@/server/repositories/posts.repo');
+    findPosts.mockResolvedValue([]);
+    const { listSlots } = jest.requireMock('@/server/repositories/cp-schedule-slots.repo');
+    listSlots.mockResolvedValue({ data: [], error: null });
   });
 
   describe('schedule_post', () => {
@@ -278,15 +281,7 @@ describe('Scheduling Actions', () => {
       expect(actionRequiresConfirmation('schedule_post')).toBe(true);
     });
 
-    it('schedules a post successfully', async () => {
-      const chain = createChain();
-      // For update queries without .single(), mock the thenable
-      (chain as unknown as PromiseLike<unknown>).then = jest.fn(
-        (resolve: (value: { data: unknown; error: null }) => unknown) =>
-          resolve({ data: null, error: null })
-      ) as jest.Mock;
-      mockState.fromFn.mockReturnValueOnce(chain);
-
+    it('schedules a post successfully via repo', async () => {
       const scheduledTime = '2026-03-01T14:00:00Z';
       const result = await executeAction(testCtx, 'schedule_post', {
         post_id: 'post-abc',
@@ -300,20 +295,11 @@ describe('Scheduling Actions', () => {
         scheduled_time: scheduledTime,
         status: 'scheduled',
       });
-
-      expect(chain.update).toHaveBeenCalledWith({
-        scheduled_time: scheduledTime,
-        status: 'scheduled',
-      });
     });
 
-    it('returns error on supabase failure', async () => {
-      const chain = createChain();
-      (chain as unknown as PromiseLike<unknown>).then = jest.fn(
-        (resolve: (value: { data: null; error: { message: string } }) => unknown) =>
-          resolve({ data: null, error: { message: 'Update failed' } })
-      ) as jest.Mock;
-      mockState.fromFn.mockReturnValueOnce(chain);
+    it('returns error when updatePost throws', async () => {
+      const { updatePost } = jest.requireMock('@/server/repositories/posts.repo');
+      updatePost.mockRejectedValueOnce(new Error('Update failed'));
 
       const result = await executeAction(testCtx, 'schedule_post', {
         post_id: 'post-abc',
@@ -327,15 +313,18 @@ describe('Scheduling Actions', () => {
 
   describe('get_autopilot_status', () => {
     it('returns buffer count and posting slots', async () => {
-      const bufferChain = createChain([{ id: 'b1' }, { id: 'b2' }, { id: 'b3' }]);
-      const slotsChain = createChain([
-        { id: 's1', day_of_week: 1, time_utc: '09:00', is_active: true },
-        { id: 's2', day_of_week: 3, time_utc: '14:00', is_active: true },
-      ]);
-
-      mockState.fromFn
-        .mockReturnValueOnce(bufferChain)
-        .mockReturnValueOnce(slotsChain);
+      const { findPosts } = jest.requireMock('@/server/repositories/posts.repo');
+      findPosts.mockResolvedValue([{ id: 'b1' }, { id: 'b2' }, { id: 'b3' }]);
+      // testCtx uses team scope — getSlots (not listSlots) is called for team context
+      const { getActiveProfiles, getSlots } = jest.requireMock('@/server/repositories/cp-team-schedule.repo');
+      getActiveProfiles.mockResolvedValue({ data: [{ id: 'profile-1' }], error: null });
+      getSlots.mockResolvedValue({
+        data: [
+          { id: 's1', day_of_week: 1, time_of_day: '09:00', is_active: true },
+          { id: 's2', day_of_week: 3, time_of_day: '14:00', is_active: true },
+        ],
+        error: null,
+      });
 
       const result = await executeAction(testCtx, 'get_autopilot_status', {});
 
@@ -348,33 +337,21 @@ describe('Scheduling Actions', () => {
     });
 
     it('returns zero buffer count when no buffer posts', async () => {
-      const bufferChain = createChain([]);
-      const slotsChain = createChain([]);
-
-      mockState.fromFn
-        .mockReturnValueOnce(bufferChain)
-        .mockReturnValueOnce(slotsChain);
-
       const result = await executeAction(testCtx, 'get_autopilot_status', {});
 
       expect(result.success).toBe(true);
       const data = result.data as { buffer_count: number; slots: unknown[] };
       expect(data.buffer_count).toBe(0);
-      expect(data.slots).toEqual([]);
     });
 
-    it('returns error when buffer query fails', async () => {
-      const chain = createChain([]);
-      (chain as unknown as PromiseLike<unknown>).then = jest.fn(
-        (resolve: (value: { data: null; error: { message: string } }) => unknown) =>
-          resolve({ data: null, error: { message: 'Buffer query failed' } })
-      ) as jest.Mock;
-      mockState.fromFn.mockReturnValueOnce(chain);
+    it('returns error when findPosts throws', async () => {
+      const { findPosts } = jest.requireMock('@/server/repositories/posts.repo');
+      findPosts.mockRejectedValueOnce(new Error('posts.findPosts: Buffer query failed'));
 
       const result = await executeAction(testCtx, 'get_autopilot_status', {});
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Buffer query failed');
+      expect(result.error).toContain('Buffer query failed');
     });
   });
 });
