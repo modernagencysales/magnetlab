@@ -263,7 +263,7 @@ export function CampaignForm({
               rows={3}
             />
             <p className="text-xs text-muted-foreground">
-              Sent when connecting with people who aren't already connected
+              Sent when connecting with people who aren&apos;t already connected
             </p>
           </div>
         </CardContent>
@@ -306,9 +306,7 @@ export function CampaignForm({
               onChange={(tags) => updateField('target_locations', tags)}
               placeholder="Type a location and press Enter..."
             />
-            <p className="text-xs text-muted-foreground">
-              Leave empty to target all locations
-            </p>
+            <p className="text-xs text-muted-foreground">Leave empty to target all locations</p>
           </div>
         </CardContent>
       </Card>
@@ -349,7 +347,7 @@ export function CampaignForm({
             <div>
               <Label>Auto-connect non-requesters</Label>
               <p className="text-xs text-muted-foreground">
-                Send connection requests to leads who haven't connected yet
+                Send connection requests to leads who haven&apos;t connected yet
               </p>
             </div>
             <Switch

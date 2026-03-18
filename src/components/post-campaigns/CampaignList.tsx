@@ -164,9 +164,7 @@ export function CampaignList() {
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
             className={
-              showFilters || hasActiveFilter
-                ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                : ''
+              showFilters || hasActiveFilter ? 'bg-primary/10 text-primary hover:bg-primary/20' : ''
             }
           >
             <Filter className="mr-1.5 h-4 w-4" />
@@ -226,7 +224,7 @@ export function CampaignList() {
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Detected</TableHead>
                   <TableHead className="text-right">Connected</TableHead>
-                  <TableHead className="text-right">DM'd</TableHead>
+                  <TableHead className="text-right">DM&apos;d</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -300,7 +298,8 @@ interface CampaignRowProps {
 }
 
 function CampaignRow({ campaign, actionLoading, onToggleStatus, onDelete }: CampaignRowProps) {
-  const canToggle = campaign.status === 'active' || campaign.status === 'paused' || campaign.status === 'draft';
+  const canToggle =
+    campaign.status === 'active' || campaign.status === 'paused' || campaign.status === 'draft';
 
   return (
     <TableRow className="cursor-pointer transition-colors hover:bg-muted/50">
@@ -325,19 +324,15 @@ function CampaignRow({ campaign, actionLoading, onToggleStatus, onDelete }: Camp
         </a>
       </TableCell>
       <TableCell>
-        <Badge variant={STATUS_VARIANTS[campaign.status]}>
-          {STATUS_LABELS[campaign.status]}
-        </Badge>
+        <Badge variant={STATUS_VARIANTS[campaign.status]}>{STATUS_LABELS[campaign.status]}</Badge>
       </TableCell>
+      <TableCell className="text-right tabular-nums">{campaign.stats?.detected ?? 0}</TableCell>
       <TableCell className="text-right tabular-nums">
-        {campaign.stats?.detected ?? 0}
+        {campaign.stats?.connection_accepted ??
+          (campaign.stats as Record<string, number>)?.connected ??
+          0}
       </TableCell>
-      <TableCell className="text-right tabular-nums">
-        {campaign.stats?.connection_accepted ?? (campaign.stats as Record<string, number>)?.connected ?? 0}
-      </TableCell>
-      <TableCell className="text-right tabular-nums">
-        {campaign.stats?.dm_sent ?? 0}
-      </TableCell>
+      <TableCell className="text-right tabular-nums">{campaign.stats?.dm_sent ?? 0}</TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
           {canToggle && (
