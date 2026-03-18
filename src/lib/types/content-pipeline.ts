@@ -122,7 +122,7 @@ export interface Team {
   industry: string | null;
   target_audience: string | null;
   shared_goal: string | null;
-  billing_team_id?: string | null;
+  billing_team_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -185,7 +185,7 @@ export interface TeamProfile {
   expertise_areas: string[];
   voice_profile: TeamVoiceProfile;
   avatar_url: string | null;
-  status: 'active' | 'pending' | 'removed';
+  status: 'active' | 'removed';
   is_default: boolean;
   created_at: string;
   updated_at: string;
@@ -547,7 +547,7 @@ export interface PostTemplate {
   usage_count: number;
   avg_engagement_score: number | null;
   is_active: boolean;
-  team_id?: string | null;
+  team_id: string | null;
   created_at: string;
   updated_at: string;
 }
