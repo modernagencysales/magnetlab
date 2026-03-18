@@ -3,6 +3,7 @@
  *
  * Tests for GET /api/teams — list teams the current user belongs to.
  * Returns { owned, member, teams } where `teams` is a flat array for MCP use.
+ * Uses getUserTeams() from team.repo (V3 — no getMergedMemberships).
  */
 
 import { GET } from '@/app/api/teams/route';
@@ -14,32 +15,45 @@ jest.mock('@/lib/auth', () => ({
   auth: () => mockAuth(),
 }));
 
-const mockGetMergedMemberships = jest.fn();
-jest.mock('@/lib/utils/team-membership', () => ({
-  getMergedMemberships: (...args: unknown[]) => mockGetMergedMemberships(...args),
-  getTeamOwnerFromProfile: jest.fn(),
+const mockGetUserTeams = jest.fn();
+jest.mock('@/server/repositories/team.repo', () => ({
+  getUserTeams: (...args: unknown[]) => mockGetUserTeams(...args),
 }));
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-const OWNER_MEMBERSHIP = {
-  id: 'team-uuid-1',
-  teamId: 'team-uuid-1',
-  teamName: 'Acme Agency',
-  ownerId: 'user-123',
+const OWNER_ENTRY = {
+  team: {
+    id: 'team-uuid-1',
+    name: 'Acme Agency',
+    owner_id: 'user-123',
+    description: null,
+    industry: null,
+    target_audience: null,
+    shared_goal: null,
+    billing_team_id: null,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  },
   role: 'owner' as const,
-  owner_id: 'user-123',
-  status: 'active',
+  via: 'direct' as const,
 };
 
-const MEMBER_MEMBERSHIP = {
-  id: 'profile-uuid-2',
-  teamId: 'team-uuid-2',
-  teamName: 'Partner Co',
-  ownerId: 'other-user',
+const MEMBER_ENTRY = {
+  team: {
+    id: 'team-uuid-2',
+    name: 'Partner Co',
+    owner_id: 'other-user',
+    description: null,
+    industry: null,
+    target_audience: null,
+    shared_goal: null,
+    billing_team_id: null,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  },
   role: 'member' as const,
-  owner_id: 'other-user',
-  status: 'active',
+  via: 'direct' as const,
 };
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -64,7 +78,7 @@ describe('GET /api/teams', () => {
   describe('happy path', () => {
     it('returns flat teams array with id, name, role for MCP use', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      mockGetMergedMemberships.mockResolvedValueOnce([OWNER_MEMBERSHIP, MEMBER_MEMBERSHIP]);
+      mockGetUserTeams.mockResolvedValueOnce([OWNER_ENTRY, MEMBER_ENTRY]);
 
       const response = await GET();
       const body = await response.json();
@@ -81,7 +95,7 @@ describe('GET /api/teams', () => {
 
     it('returns backward-compat owned and member arrays', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      mockGetMergedMemberships.mockResolvedValueOnce([OWNER_MEMBERSHIP, MEMBER_MEMBERSHIP]);
+      mockGetUserTeams.mockResolvedValueOnce([OWNER_ENTRY, MEMBER_ENTRY]);
 
       const response = await GET();
       const body = await response.json();
@@ -95,7 +109,7 @@ describe('GET /api/teams', () => {
 
     it('returns empty teams array when user has no teams', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      mockGetMergedMemberships.mockResolvedValueOnce([]);
+      mockGetUserTeams.mockResolvedValueOnce([]);
 
       const response = await GET();
       const body = await response.json();
@@ -108,7 +122,7 @@ describe('GET /api/teams', () => {
 
     it('each team entry includes the team id usable as team_id param', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      mockGetMergedMemberships.mockResolvedValueOnce([OWNER_MEMBERSHIP]);
+      mockGetUserTeams.mockResolvedValueOnce([OWNER_ENTRY]);
 
       const response = await GET();
       const body = await response.json();
@@ -119,20 +133,20 @@ describe('GET /api/teams', () => {
       expect(body.teams[0].id.length).toBeGreaterThan(0);
     });
 
-    it('passes userId to getMergedMemberships', async () => {
+    it('passes userId to getUserTeams', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-abc' } });
-      mockGetMergedMemberships.mockResolvedValueOnce([]);
+      mockGetUserTeams.mockResolvedValueOnce([]);
 
       await GET();
 
-      expect(mockGetMergedMemberships).toHaveBeenCalledWith('user-abc');
+      expect(mockGetUserTeams).toHaveBeenCalledWith('user-abc');
     });
   });
 
   describe('error handling', () => {
-    it('returns 500 when getMergedMemberships throws', async () => {
+    it('returns 500 when getUserTeams throws', async () => {
       mockAuth.mockResolvedValueOnce({ user: { id: 'user-123' } });
-      mockGetMergedMemberships.mockRejectedValueOnce(new Error('DB connection failed'));
+      mockGetUserTeams.mockRejectedValueOnce(new Error('DB connection failed'));
 
       const response = await GET();
 
