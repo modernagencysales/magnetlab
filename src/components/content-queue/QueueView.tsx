@@ -17,14 +17,23 @@ interface QueueViewProps {
     total_teams: number;
     total_posts: number;
     remaining: number;
+    total_lead_magnets?: number;
+    total_funnels?: number;
   };
   onEdit: (teamId: string) => void;
-  onSubmit: (teamId: string) => void;
+  onSubmitPosts: (teamId: string) => void;
+  onSubmitAssets: (teamId: string) => void;
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────
 
-export function QueueView({ teams, summary, onEdit, onSubmit }: QueueViewProps) {
+export function QueueView({
+  teams,
+  summary,
+  onEdit,
+  onSubmitPosts,
+  onSubmitAssets,
+}: QueueViewProps) {
   if (teams.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2">
@@ -36,6 +45,9 @@ export function QueueView({ teams, summary, onEdit, onSubmit }: QueueViewProps) 
     );
   }
 
+  const totalLMs = summary.total_lead_magnets ?? 0;
+  const totalFunnels = summary.total_funnels ?? 0;
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       {/* Header */}
@@ -44,6 +56,18 @@ export function QueueView({ teams, summary, onEdit, onSubmit }: QueueViewProps) 
         <p className="mt-1 text-sm text-zinc-400">
           {summary.total_teams} clients &middot; {summary.total_posts} posts &middot;{' '}
           {summary.remaining} remaining
+          {totalLMs > 0 && (
+            <>
+              {' '}
+              &middot; {totalLMs} lead magnet{totalLMs !== 1 ? 's' : ''}
+            </>
+          )}
+          {totalFunnels > 0 && (
+            <>
+              {' '}
+              &middot; {totalFunnels} funnel{totalFunnels !== 1 ? 's' : ''}
+            </>
+          )}
         </p>
       </div>
 
@@ -57,8 +81,13 @@ export function QueueView({ teams, summary, onEdit, onSubmit }: QueueViewProps) 
             profileCompany={team.profile_company}
             editedCount={team.edited_count}
             totalCount={team.total_count}
+            lmReviewedCount={team.lm_reviewed_count ?? 0}
+            lmTotalCount={team.lm_total_count ?? 0}
+            funnelReviewedCount={team.funnel_reviewed_count ?? 0}
+            funnelTotalCount={team.funnel_total_count ?? 0}
             onEdit={onEdit}
-            onSubmit={onSubmit}
+            onSubmitPosts={onSubmitPosts}
+            onSubmitAssets={onSubmitAssets}
           />
         ))}
       </div>

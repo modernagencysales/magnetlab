@@ -1,4 +1,4 @@
-/** MCP tool argument validation. Named Zod schema for every tool — no passthrough. */
+/** MCP tool argument validation. Named Zod schema for every tool — no passthrough. Each group count noted inline. */
 
 import { z } from 'zod';
 import {
@@ -13,6 +13,7 @@ import {
   KNOWLEDGE_TYPES,
   LEAD_MAGNET_STATUS_V2,
   PIPELINE_POST_STATUS,
+  POST_CAMPAIGN_STATUS,
 } from './constants.js';
 
 // ─── Enum Helpers ─────────────────────────────────────────────────────────────
@@ -28,6 +29,7 @@ const knowledgeCategoryValues = [...KNOWLEDGE_CATEGORIES] as [string, ...string[
 const knowledgeTypeValues = [...KNOWLEDGE_TYPES] as [string, ...string[]];
 const contentPillarValues = [...CONTENT_PILLARS] as [string, ...string[]];
 const contentTypeValues = [...CONTENT_TYPES] as [string, ...string[]];
+const postCampaignStatusValues = [...POST_CAMPAIGN_STATUS] as [string, ...string[]];
 
 // ─── Shared Field Schemas ─────────────────────────────────────────────────────
 
@@ -36,7 +38,7 @@ const uuidField = z.string().min(1);
 const paginationLimit = z.number().min(1).max(100).default(50).optional();
 const paginationOffset = z.number().min(0).default(0).optional();
 
-// ─── Tool Schemas (37 tools) ─────────────────────────────────────────────────
+// ─── Tool Schemas (43 tools) ─────────────────────────────────────────────────
 
 export const toolSchemas: Record<string, z.ZodType> = {
   // ── Lead Magnets (5) ──────────────────────────────────────────────────────
@@ -204,6 +206,9 @@ export const toolSchemas: Record<string, z.ZodType> = {
     title: z.string().optional(),
     pillar: z.enum(contentPillarValues).optional(),
     content_type: z.enum(contentTypeValues).optional(),
+    image_url: z.string().url().optional(),
+    is_lead_magnet_post: z.boolean().optional(),
+    auto_activate: z.boolean().optional(),
     team_id: teamIdField,
   }),
 
@@ -358,7 +363,7 @@ export const toolSchemas: Record<string, z.ZodType> = {
 
   magnetlab_list_teams: z.object({}),
 
-  // ── Content Queue (3) ─────────────────────────────────────────────────────
+  // ── Content Queue (6) ─────────────────────────────────────────────────────
 
   magnetlab_list_content_queue: z.object({}),
 
@@ -366,10 +371,106 @@ export const toolSchemas: Record<string, z.ZodType> = {
     post_id: uuidField,
     draft_content: z.string().optional(),
     mark_edited: z.boolean().optional(),
-    image_urls: z.array(z.string().url()).optional(),
   }),
 
   magnetlab_submit_queue_batch: z.object({
+    team_id: z.string().min(1, 'team_id is required'),
+  }),
+
+  // ── Post Campaigns (8) ─────────────────────────────────────────────────
+
+  magnetlab_list_post_campaigns: z.object({
+    status: z.enum(postCampaignStatusValues).optional(),
+  }),
+
+  magnetlab_create_post_campaign: z.object({
+    name: z.string().min(1, 'name is required'),
+    post_url: z.string().url('post_url must be a valid URL'),
+    keywords: z.array(z.string().min(1)).min(1, 'at least one keyword is required'),
+    unipile_account_id: z.string().min(1, 'unipile_account_id is required'),
+    dm_template: z.string().min(1, 'dm_template is required'),
+    funnel_page_id: z.string().optional(),
+    reply_template: z.string().optional(),
+    poster_account_id: z.string().optional(),
+    target_locations: z.array(z.string()).optional(),
+    auto_accept_connections: z.boolean().optional(),
+    auto_like_comments: z.boolean().optional(),
+    auto_connect_non_requesters: z.boolean().optional(),
+  }),
+
+  magnetlab_auto_setup_post_campaign: z.object({
+    post_id: uuidField,
+  }),
+
+  magnetlab_get_post_campaign: z.object({
+    campaign_id: uuidField,
+  }),
+
+  magnetlab_update_post_campaign: z.object({
+    campaign_id: uuidField,
+    name: z.string().min(1).optional(),
+    post_url: z.string().url().optional(),
+    keywords: z.array(z.string().min(1)).optional(),
+    dm_template: z.string().min(1).optional(),
+    funnel_page_id: z.string().nullable().optional(),
+    reply_template: z.string().optional(),
+    target_locations: z.array(z.string()).optional(),
+    auto_accept_connections: z.boolean().optional(),
+    auto_like_comments: z.boolean().optional(),
+    auto_connect_non_requesters: z.boolean().optional(),
+  }),
+
+  magnetlab_activate_post_campaign: z.object({
+    campaign_id: uuidField,
+  }),
+
+  magnetlab_pause_post_campaign: z.object({
+    campaign_id: uuidField,
+  }),
+
+  magnetlab_delete_post_campaign: z.object({
+    campaign_id: uuidField,
+  }),
+
+  // ── Account Safety (2) ─────────────────────────────────────────────────
+
+  magnetlab_get_account_safety_settings: z.object({
+    unipile_account_id: z.string().min(1, 'unipile_account_id is required'),
+  }),
+
+  magnetlab_update_account_safety_settings: z.object({
+    unipile_account_id: z.string().min(1, 'unipile_account_id is required'),
+    max_dms_per_day: z.number().int().min(0).optional(),
+    max_connection_requests_per_day: z.number().int().min(0).optional(),
+    max_connection_accepts_per_day: z.number().int().min(0).optional(),
+    max_comments_per_day: z.number().int().min(0).optional(),
+    max_likes_per_day: z.number().int().min(0).optional(),
+    min_action_delay_ms: z.number().int().min(0).optional(),
+    max_action_delay_ms: z.number().int().min(0).optional(),
+    operating_hours_start: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be in HH:MM format')
+      .optional(),
+    operating_hours_end: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be in HH:MM format')
+      .optional(),
+    timezone: z.string().optional(),
+  }),
+
+  // ── Asset Review (3) ────────────────────────────────────────────────────
+
+  magnetlab_review_lead_magnet: z.object({
+    lead_magnet_id: uuidField,
+    reviewed: z.boolean(),
+  }),
+
+  magnetlab_review_funnel: z.object({
+    funnel_id: uuidField,
+    reviewed: z.boolean(),
+  }),
+
+  magnetlab_submit_asset_review: z.object({
     team_id: z.string().min(1, 'team_id is required'),
   }),
 };

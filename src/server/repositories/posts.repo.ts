@@ -11,10 +11,10 @@ import type { PipelinePost, PostStatus, PolishStatus } from '@/lib/types/content
 // ─── Select column sets ────────────────────────────────────────────────────
 
 const POST_LIST_COLUMNS =
-  'id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, team_profile_id, source, agent_metadata, created_at, updated_at';
+  'id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, team_profile_id, image_storage_path, source, agent_metadata, created_at, updated_at';
 
 const POST_SINGLE_COLUMNS =
-  'id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, enable_automation, automation_config, scrape_engagement, heyreach_campaign_id, last_engagement_scrape_at, engagement_scrape_count, source, agent_metadata, created_at, updated_at';
+  'id, user_id, idea_id, template_id, style_id, draft_content, final_content, dm_template, cta_word, variations, status, hook_score, polish_status, polish_notes, scheduled_time, auto_publish_after, is_buffer, buffer_position, linkedin_post_id, publish_provider, lead_magnet_id, published_at, engagement_stats, review_data, enable_automation, automation_config, scrape_engagement, heyreach_campaign_id, last_engagement_scrape_at, engagement_scrape_count, image_storage_path, source, agent_metadata, created_at, updated_at';
 
 // ─── Filter types ──────────────────────────────────────────────────────────
 
@@ -36,6 +36,7 @@ export interface PostUpdateInput {
   buffer_position?: number | null;
   scrape_engagement?: boolean;
   heyreach_campaign_id?: string | null;
+  image_storage_path?: string | null;
 }
 
 export interface PostPublishUpdate {
@@ -239,11 +240,14 @@ export async function findPostForPublish(
   final_content: string | null;
   status: PostStatus;
   lead_magnet_id: string | null;
+  image_storage_path: string | null;
 } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('cp_pipeline_posts')
-    .select('id, user_id, draft_content, final_content, scheduled_time, status, lead_magnet_id')
+    .select(
+      'id, user_id, draft_content, final_content, scheduled_time, status, lead_magnet_id, image_storage_path'
+    )
     .eq('id', id)
     .eq('user_id', userId)
     .single();

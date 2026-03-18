@@ -243,10 +243,11 @@ Detailed docs for each feature live in `docs/`. Consult these when working on a 
 | Docs Index | [docs/README.md](docs/README.md) |
 | MCP v2 Agent-Native Spec | [docs/superpowers/specs/2026-03-13-mcp-v2-agent-native-rearchitecture.md](docs/superpowers/specs/2026-03-13-mcp-v2-agent-native-rearchitecture.md) |
 | Content Queue | [docs/superpowers/specs/2026-03-17-dfy-content-queue-design.md](docs/superpowers/specs/2026-03-17-dfy-content-queue-design.md) |
+| Unified Asset Review Queue | [docs/superpowers/specs/2026-03-18-unified-asset-review-queue-design.md](docs/superpowers/specs/2026-03-18-unified-asset-review-queue-design.md) |
 
 ## MCP Server (v2 — Agent-Native)
 
-The MCP server (`packages/mcp/`) provides 37 direct tools for AI agents. No execute gateway, no category browsers — every tool is registered with full parameter schemas.
+The MCP server (`packages/mcp/`) provides 43 direct tools for AI agents. No execute gateway, no category browsers — every tool is registered with full parameter schemas.
 
 **Philosophy:** Backend handles CRUD + rendering + embeddings. Agent handles all creative content work. Content is a single `content` JSONB field validated against archetype-specific Zod schemas at publish time.
 
@@ -256,7 +257,7 @@ The MCP server (`packages/mcp/`) provides 37 direct tools for AI agents. No exec
 - **Compound actions**: `launch_lead_magnet` (create + funnel + publish atomic), `schedule_content_week` (batch post creation).
 - **Team scoping**: Every tool accepts optional `team_id`. No implicit session state.
 
-**Tool categories (37 tools):**
+**Tool categories (43 tools):**
 | Category | Tools | Count |
 |----------|-------|-------|
 | Lead Magnets | list, get, create, update, delete | 5 |
@@ -269,6 +270,7 @@ The MCP server (`packages/mcp/`) provides 37 direct tools for AI agents. No exec
 | Compound | launch_lead_magnet, schedule_content_week | 2 |
 | Feedback | performance_insights, recommendations | 2 |
 | Account | list_teams | 1 |
+| Content Queue | list_content_queue, update_queue_post, submit_queue_batch, review_lead_magnet, review_funnel, submit_asset_review | 6 |
 
 **New API routes (v2):**
 - PATCH `/lead-magnet/[id]` — deep-merge content update

@@ -104,16 +104,23 @@ export class UnipileClient extends BaseApiClient {
   async addComment(
     postSocialId: string,
     accountId: string,
-    text: string
+    text: string,
+    options?: {
+      commentId?: string;
+      mentions?: Array<{ name: string; profile_id: string }>;
+    }
   ): Promise<
     ApiResponse<{
       id: string;
     }>
   > {
-    return this.post(`/posts/${postSocialId}/comments`, {
+    const body: Record<string, unknown> = {
       account_id: accountId,
       text,
-    });
+    };
+    if (options?.commentId) body.comment_id = options.commentId;
+    if (options?.mentions && options.mentions.length > 0) body.mentions = options.mentions;
+    return this.post(`/posts/${postSocialId}/comments`, body);
   }
 
   async addReaction(

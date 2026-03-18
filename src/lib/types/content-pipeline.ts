@@ -469,6 +469,7 @@ export interface PipelinePost {
   last_engagement_scrape_at: string | null;
   engagement_scrape_count: number;
   image_urls: string[];
+  image_storage_path: string | null;
   carousel_data: CarouselData | null;
   image_generation_status: ImageGenerationStatus | null;
   broadcast_group_id?: string | null;

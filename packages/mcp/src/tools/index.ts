@@ -1,4 +1,4 @@
-/** Tool definition aggregator. Exports flat array of all 40 MCP tools + name lookup map. */
+/** Tool definition aggregator. Exports flat array of all 43 MCP tools + name lookup map. */
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { leadMagnetTools } from './lead-magnets.js';

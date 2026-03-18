@@ -1,6 +1,7 @@
 /**
  * Content Queue Repository.
  * Cross-team post queries for the content editing queue.
+ * Includes lead magnet + funnel queries for the unified asset review queue.
  * Never imported by 'use client' files.
  */
 
@@ -123,6 +124,196 @@ export async function resetEditedForProfiles(profileIds: string[]): Promise<numb
 
   if (error) throw new Error(`content-queue.resetEditedForProfiles: ${error.message}`);
   return data?.length ?? 0;
+}
+
+// ─── Lead Magnet Column Constants ─────────────────────────────────────────
+
+const LM_COLUMNS = 'id, title, archetype, status, reviewed_at, created_at, team_id';
+
+// ─── Lead Magnet Types ────────────────────────────────────────────────────
+
+export interface QueueLeadMagnet {
+  id: string;
+  title: string;
+  archetype: string;
+  status: string;
+  reviewed_at: string | null;
+  created_at: string;
+  team_id: string;
+}
+
+export interface QueueFunnel {
+  id: string;
+  slug: string;
+  is_published: boolean;
+  reviewed_at: string | null;
+  lead_magnet_id: string;
+}
+
+// ─── Lead Magnet Reads ────────────────────────────────────────────────────
+
+/**
+ * Fetch all lead magnets for the given team IDs.
+ * Returns non-archived lead magnets for the content queue.
+ */
+export async function findLeadMagnetsByTeamIds(teamIds: string[]): Promise<QueueLeadMagnet[]> {
+  if (teamIds.length === 0) return [];
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('lead_magnets')
+    .select(LM_COLUMNS)
+    .in('team_id', teamIds)
+    .in('status', ['draft', 'published'])
+    .order('created_at', { ascending: true });
+
+  if (error) throw new Error(`content-queue.findLeadMagnetsByTeamIds: ${error.message}`);
+  return (data ?? []) as QueueLeadMagnet[];
+}
+
+/**
+ * Fetch funnel pages for the given lead magnet IDs.
+ * Only fetches funnels with target_type = 'lead_magnet' (not library or external).
+ */
+export async function findFunnelsByLeadMagnetIds(lmIds: string[]): Promise<QueueFunnel[]> {
+  if (lmIds.length === 0) return [];
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('funnel_pages')
+    .select('id, slug, is_published, reviewed_at, lead_magnet_id')
+    .in('lead_magnet_id', lmIds)
+    .eq('target_type', 'lead_magnet');
+
+  if (error) throw new Error(`content-queue.findFunnelsByLeadMagnetIds: ${error.message}`);
+  return (data ?? []) as QueueFunnel[];
+}
+
+// ─── Lead Magnet / Funnel Writes ──────────────────────────────────────────
+
+/**
+ * Set reviewed_at on a lead magnet.
+ */
+export async function markLeadMagnetReviewed(lmId: string, reviewed: boolean): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from('lead_magnets')
+    .update({ reviewed_at: reviewed ? new Date().toISOString() : null })
+    .eq('id', lmId);
+
+  if (error) throw new Error(`content-queue.markLeadMagnetReviewed: ${error.message}`);
+}
+
+/**
+ * Set reviewed_at on a funnel page.
+ */
+export async function markFunnelReviewed(funnelId: string, reviewed: boolean): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from('funnel_pages')
+    .update({ reviewed_at: reviewed ? new Date().toISOString() : null })
+    .eq('id', funnelId);
+
+  if (error) throw new Error(`content-queue.markFunnelReviewed: ${error.message}`);
+}
+
+/**
+ * Reset reviewed_at for all lead magnets + funnels belonging to given team IDs.
+ * Used when client requests revisions on assets.
+ */
+export async function resetReviewedForTeams(teamIds: string[]): Promise<number> {
+  if (teamIds.length === 0) return 0;
+
+  const supabase = createSupabaseAdminClient();
+  let count = 0;
+
+  const { data: lmData, error: lmErr } = await supabase
+    .from('lead_magnets')
+    .update({ reviewed_at: null })
+    .in('team_id', teamIds)
+    .not('reviewed_at', 'is', null)
+    .select('id');
+
+  if (lmErr) throw new Error(`content-queue.resetReviewedForTeams (lm): ${lmErr.message}`);
+  count += lmData?.length ?? 0;
+
+  // Get LM IDs to reset their funnels
+  const { data: lms } = await supabase.from('lead_magnets').select('id').in('team_id', teamIds);
+
+  const lmIds = (lms ?? []).map((lm) => lm.id);
+  if (lmIds.length > 0) {
+    const { data: funnelData, error: funnelErr } = await supabase
+      .from('funnel_pages')
+      .update({ reviewed_at: null })
+      .in('lead_magnet_id', lmIds)
+      .eq('target_type', 'lead_magnet')
+      .not('reviewed_at', 'is', null)
+      .select('id');
+
+    if (funnelErr)
+      throw new Error(`content-queue.resetReviewedForTeams (funnel): ${funnelErr.message}`);
+    count += funnelData?.length ?? 0;
+  }
+
+  return count;
+}
+
+/**
+ * Find a lead magnet by ID, verifying it belongs to one of the given team IDs.
+ */
+export async function findLeadMagnetByIdForTeams(
+  lmId: string,
+  teamIds: string[]
+): Promise<QueueLeadMagnet | null> {
+  if (teamIds.length === 0) return null;
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('lead_magnets')
+    .select(LM_COLUMNS)
+    .eq('id', lmId)
+    .in('team_id', teamIds)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`content-queue.findLeadMagnetByIdForTeams: ${error.message}`);
+  }
+  return (data as QueueLeadMagnet) ?? null;
+}
+
+/**
+ * Find a funnel by ID, verifying its lead magnet belongs to one of the given team IDs.
+ */
+export async function findFunnelByIdForTeams(
+  funnelId: string,
+  teamIds: string[]
+): Promise<QueueFunnel | null> {
+  if (teamIds.length === 0) return null;
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('funnel_pages')
+    .select('id, slug, is_published, reviewed_at, lead_magnet_id, lead_magnets!inner(team_id)')
+    .eq('id', funnelId)
+    .eq('target_type', 'lead_magnet')
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`content-queue.findFunnelByIdForTeams: ${error.message}`);
+  }
+  if (!data) return null;
+
+  // Verify team access via the joined lead_magnets.team_id
+  const lmTeamId = (data.lead_magnets as unknown as { team_id: string })?.team_id;
+  if (!teamIds.includes(lmTeamId)) return null;
+
+  return {
+    id: data.id,
+    slug: data.slug,
+    is_published: data.is_published,
+    reviewed_at: data.reviewed_at,
+    lead_magnet_id: data.lead_magnet_id,
+  } as QueueFunnel;
 }
 
 /**

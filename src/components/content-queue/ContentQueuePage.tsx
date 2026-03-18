@@ -3,22 +3,34 @@
 /**
  * ContentQueuePage.
  * Top-level client component for the content queue feature.
- * Manages state between QueueView and EditingView.
+ * Manages state between QueueView, AssetPicker, and EditingView.
  * Never imports from server layer.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useContentQueue } from '@/frontend/hooks/api/useContentQueue';
-import { updateQueuePost, deleteQueuePost, submitBatch } from '@/frontend/api/content-queue';
+import {
+  updateQueuePost,
+  deleteQueuePost,
+  submitBatch,
+  reviewLeadMagnet,
+  reviewFunnel,
+} from '@/frontend/api/content-queue';
 import { QueueView } from './QueueView';
 import { EditingView } from './EditingView';
+import { AssetPicker } from './AssetPicker';
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+type EditingMode = null | 'picker' | 'posts';
 
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export function ContentQueuePage() {
   const { data, teams, isLoading, error, refetch, mutateTeam } = useContentQueue();
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [editingMode, setEditingMode] = useState<EditingMode>(null);
 
   const editingTeam = editingTeamId
     ? (teams.find((t) => t.team_id === editingTeamId) ?? null)
@@ -47,27 +59,82 @@ export function ContentQueuePage() {
     };
   }, []);
 
-  // ─── Handlers ──────────────────────────────────────────────────────
+  // ─── Navigation Handlers ────────────────────────────────────────────
 
   const handleEdit = useCallback((teamId: string) => {
     setEditingTeamId(teamId);
+    setEditingMode('picker');
   }, []);
 
+  // Go back to queue from picker or back to picker from posts editor
   const handleBack = useCallback(() => {
-    setEditingTeamId(null);
+    if (editingMode === 'posts') {
+      // Posts editor → back to picker
+      setEditingMode('picker');
+    } else {
+      // Picker → back to queue
+      setEditingTeamId(null);
+      setEditingMode(null);
+    }
+  }, [editingMode]);
+
+  const handleEditPosts = useCallback(() => {
+    setEditingMode('posts');
   }, []);
 
-  const handleSubmit = useCallback(
+  // ─── Submit Handlers ────────────────────────────────────────────────
+
+  const handleSubmitPosts = useCallback(
     async (teamId: string) => {
-      const result = await submitBatch(teamId);
+      const result = await submitBatch(teamId, 'posts');
       if (result.success) {
-        toast.success('Batch submitted for review');
+        toast.success('Posts submitted for review');
         await refetch();
       }
       return result;
     },
     [refetch]
   );
+
+  const handleSubmitAssets = useCallback(
+    async (teamId: string) => {
+      const result = await submitBatch(teamId, 'assets');
+      if (result.success) {
+        toast.success('Assets submitted for review');
+        await refetch();
+      }
+      return result;
+    },
+    [refetch]
+  );
+
+  // ─── Review Handlers ────────────────────────────────────────────────
+
+  const handleReviewLeadMagnet = useCallback(
+    async (lmId: string, reviewed: boolean) => {
+      try {
+        await reviewLeadMagnet(lmId, reviewed);
+        await refetch();
+      } catch {
+        toast.error('Failed to update lead magnet review status. Please try again.');
+      }
+    },
+    [refetch]
+  );
+
+  const handleReviewFunnel = useCallback(
+    async (funnelId: string, reviewed: boolean) => {
+      try {
+        await reviewFunnel(funnelId, reviewed);
+        await refetch();
+      } catch {
+        toast.error('Failed to update funnel review status. Please try again.');
+      }
+    },
+    [refetch]
+  );
+
+  // ─── Post Edit Handlers ─────────────────────────────────────────────
 
   const handleMarkEdited = useCallback(
     async (postId: string) => {
@@ -130,7 +197,7 @@ export function ContentQueuePage() {
     }, 500);
   }, []);
 
-  // ─── Loading / Error states ────────────────────────────────────────
+  // ─── Loading / Error states ─────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -148,9 +215,29 @@ export function ContentQueuePage() {
     );
   }
 
-  // ─── Editing mode ──────────────────────────────────────────────────
+  // ─── Asset Picker mode ──────────────────────────────────────────────
 
-  if (editingTeam) {
+  if (editingTeam && editingMode === 'picker') {
+    return (
+      <AssetPicker
+        team={editingTeam}
+        onEditPosts={handleEditPosts}
+        onBack={handleBack}
+        onReviewLeadMagnet={handleReviewLeadMagnet}
+        onReviewFunnel={handleReviewFunnel}
+        onSubmitPosts={async () => {
+          await handleSubmitPosts(editingTeamId!);
+        }}
+        onSubmitAssets={async () => {
+          await handleSubmitAssets(editingTeamId!);
+        }}
+      />
+    );
+  }
+
+  // ─── Post editing mode ──────────────────────────────────────────────
+
+  if (editingTeam && editingMode === 'posts') {
     return (
       <EditingView
         team={editingTeam}
@@ -163,14 +250,23 @@ export function ContentQueuePage() {
     );
   }
 
-  // ─── Queue mode ────────────────────────────────────────────────────
+  // ─── Queue mode ─────────────────────────────────────────────────────
 
   return (
     <QueueView
       teams={teams}
-      summary={data?.summary ?? { total_teams: 0, total_posts: 0, remaining: 0 }}
+      summary={
+        data?.summary ?? {
+          total_teams: 0,
+          total_posts: 0,
+          remaining: 0,
+          total_lead_magnets: 0,
+          total_funnels: 0,
+        }
+      }
       onEdit={handleEdit}
-      onSubmit={handleSubmit}
+      onSubmitPosts={handleSubmitPosts}
+      onSubmitAssets={handleSubmitAssets}
     />
   );
 }

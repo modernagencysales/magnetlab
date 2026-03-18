@@ -26,6 +26,9 @@ export async function handlePostTools(
         title: args.title as string | undefined,
         pillar: args.pillar as ContentPillar | undefined,
         content_type: args.content_type as ContentType | undefined,
+        image_url: args.image_url as string | undefined,
+        is_lead_magnet_post: args.is_lead_magnet_post as boolean | undefined,
+        auto_activate: args.auto_activate as boolean | undefined,
         teamId: args.team_id as string | undefined,
       });
 

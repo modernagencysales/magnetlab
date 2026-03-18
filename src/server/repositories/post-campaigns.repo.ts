@@ -9,6 +9,7 @@ import { POST_CAMPAIGN_COLUMNS, POST_CAMPAIGN_LEAD_COLUMNS } from '@/lib/types/p
 import type {
   PostCampaignStatus,
   PostCampaignLeadStatus,
+  PostCampaignLeadMatchType,
   CreatePostCampaignInput,
   UpdatePostCampaignInput,
 } from '@/lib/types/post-campaigns';
@@ -20,6 +21,10 @@ const ALLOWED_UPDATE_FIELDS = [
   'post_url',
   'dm_template',
   'connect_message_template',
+  'reply_template',
+  'poster_account_id',
+  'target_locations',
+  'lead_expiry_days',
   'auto_accept_connections',
   'auto_like_comments',
   'auto_connect_non_requesters',
@@ -73,6 +78,10 @@ export async function createCampaign(
       sender_name: data.sender_name ?? null,
       dm_template: data.dm_template,
       connect_message_template: data.connect_message_template ?? null,
+      reply_template: data.reply_template ?? null,
+      poster_account_id: data.poster_account_id ?? null,
+      target_locations: data.target_locations ?? [],
+      lead_expiry_days: data.lead_expiry_days ?? 7,
       funnel_page_id: data.funnel_page_id ?? null,
       auto_accept_connections: data.auto_accept_connections ?? false,
       auto_like_comments: data.auto_like_comments ?? false,
@@ -165,6 +174,9 @@ export async function insertCampaignLead(data: {
   unipile_provider_id?: string | null;
   name?: string | null;
   comment_text?: string | null;
+  comment_social_id?: string | null;
+  match_type?: PostCampaignLeadMatchType;
+  location?: string | null;
   status: PostCampaignLeadStatus;
 }) {
   const supabase = createSupabaseAdminClient();
@@ -179,6 +191,9 @@ export async function insertCampaignLead(data: {
       unipile_provider_id: data.unipile_provider_id ?? null,
       name: data.name ?? null,
       comment_text: data.comment_text ?? null,
+      comment_social_id: data.comment_social_id ?? null,
+      match_type: data.match_type ?? 'keyword',
+      location: data.location ?? null,
       status: data.status,
     })
     .select(POST_CAMPAIGN_LEAD_COLUMNS)
@@ -191,8 +206,14 @@ export async function updateCampaignLead(
   updates: {
     status?: PostCampaignLeadStatus;
     unipile_provider_id?: string | null;
+    match_type?: PostCampaignLeadMatchType;
+    location?: string | null;
+    liked_at?: string | null;
+    replied_at?: string | null;
+    connection_requested_at?: string | null;
     connection_accepted_at?: string | null;
     dm_sent_at?: string | null;
+    expired_at?: string | null;
     error?: string | null;
   }
 ) {
@@ -228,6 +249,25 @@ export async function findLeadsByStatus(
     .select(POST_CAMPAIGN_LEAD_COLUMNS)
     .eq('campaign_id', campaignId)
     .eq('status', status)
+    .order('detected_at', { ascending: true });
+
+  if (limit != null) query = query.limit(limit);
+
+  const { data, error } = await query;
+  return { data, error };
+}
+
+export async function findLeadsByStatuses(
+  campaignId: string,
+  statuses: PostCampaignLeadStatus[],
+  limit?: number
+) {
+  const supabase = createSupabaseAdminClient();
+  let query = supabase
+    .from('post_campaign_leads')
+    .select(POST_CAMPAIGN_LEAD_COLUMNS)
+    .eq('campaign_id', campaignId)
+    .in('status', statuses)
     .order('detected_at', { ascending: true });
 
   if (limit != null) query = query.limit(limit);
@@ -280,11 +320,12 @@ export async function getDailyLimit(userId: string, accountId: string) {
   const supabase = createSupabaseAdminClient();
   const today = new Date().toISOString().split('T')[0];
 
+  const DAILY_LIMIT_COLUMNS =
+    'id, user_id, unipile_account_id, date, dms_sent, connections_accepted, connection_requests_sent, comments_sent, likes_sent';
+
   const { data: existing, error: fetchError } = await supabase
     .from('linkedin_daily_limits')
-    .select(
-      'id, user_id, unipile_account_id, date, dms_sent, connections_accepted, connection_requests_sent'
-    )
+    .select(DAILY_LIMIT_COLUMNS)
     .eq('user_id', userId)
     .eq('unipile_account_id', accountId)
     .eq('date', today)
@@ -302,10 +343,10 @@ export async function getDailyLimit(userId: string, accountId: string) {
       dms_sent: 0,
       connections_accepted: 0,
       connection_requests_sent: 0,
+      comments_sent: 0,
+      likes_sent: 0,
     })
-    .select(
-      'id, user_id, unipile_account_id, date, dms_sent, connections_accepted, connection_requests_sent'
-    )
+    .select(DAILY_LIMIT_COLUMNS)
     .single();
 
   return { data: created, error: insertError };
@@ -313,7 +354,12 @@ export async function getDailyLimit(userId: string, accountId: string) {
 
 export async function incrementDailyLimit(
   accountId: string,
-  field: 'dms_sent' | 'connections_accepted' | 'connection_requests_sent'
+  field:
+    | 'dms_sent'
+    | 'connections_accepted'
+    | 'connection_requests_sent'
+    | 'comments_sent'
+    | 'likes_sent'
 ) {
   const supabase = createSupabaseAdminClient();
   const today = new Date().toISOString().split('T')[0];

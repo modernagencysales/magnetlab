@@ -4,8 +4,8 @@ import { toolSchemas, validateToolArgs } from '../validation.js';
 describe('Validation Schemas', () => {
   const schemaNames = Object.keys(toolSchemas);
 
-  it('has exactly 40 schemas', () => {
-    expect(schemaNames.length).toBe(40);
+  it('has exactly 43 schemas', () => {
+    expect(schemaNames.length).toBe(43);
   });
 
   it('every schema name starts with magnetlab_', () => {
@@ -668,6 +668,89 @@ describe('Validation Schemas', () => {
     it('accepts empty args', () => {
       const result = validateToolArgs('magnetlab_list_teams', {});
       expect(result).toBeDefined();
+    });
+  });
+
+  // ── Asset Review schemas (3) ───────────────────────────────────────────────
+
+  describe('magnetlab_review_lead_magnet', () => {
+    it('accepts valid id and reviewed: true', () => {
+      const result = validateToolArgs('magnetlab_review_lead_magnet', {
+        lead_magnet_id: 'lm-uuid',
+        reviewed: true,
+      });
+      expect(result).toMatchObject({ lead_magnet_id: 'lm-uuid', reviewed: true });
+    });
+
+    it('accepts reviewed: false', () => {
+      const result = validateToolArgs('magnetlab_review_lead_magnet', {
+        lead_magnet_id: 'lm-uuid',
+        reviewed: false,
+      });
+      expect(result).toMatchObject({ reviewed: false });
+    });
+
+    it('rejects missing lead_magnet_id', () => {
+      expect(() => validateToolArgs('magnetlab_review_lead_magnet', { reviewed: true })).toThrow();
+    });
+
+    it('rejects empty lead_magnet_id', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_review_lead_magnet', { lead_magnet_id: '', reviewed: true })
+      ).toThrow();
+    });
+
+    it('rejects missing reviewed', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_review_lead_magnet', { lead_magnet_id: 'lm-uuid' })
+      ).toThrow();
+    });
+  });
+
+  describe('magnetlab_review_funnel', () => {
+    it('accepts valid funnel_id and reviewed: true', () => {
+      const result = validateToolArgs('magnetlab_review_funnel', {
+        funnel_id: 'f-uuid',
+        reviewed: true,
+      });
+      expect(result).toMatchObject({ funnel_id: 'f-uuid', reviewed: true });
+    });
+
+    it('accepts reviewed: false', () => {
+      const result = validateToolArgs('magnetlab_review_funnel', {
+        funnel_id: 'f-uuid',
+        reviewed: false,
+      });
+      expect(result).toMatchObject({ reviewed: false });
+    });
+
+    it('rejects missing funnel_id', () => {
+      expect(() => validateToolArgs('magnetlab_review_funnel', { reviewed: true })).toThrow();
+    });
+
+    it('rejects empty funnel_id', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_review_funnel', { funnel_id: '', reviewed: true })
+      ).toThrow();
+    });
+
+    it('rejects missing reviewed', () => {
+      expect(() => validateToolArgs('magnetlab_review_funnel', { funnel_id: 'f-uuid' })).toThrow();
+    });
+  });
+
+  describe('magnetlab_submit_asset_review', () => {
+    it('accepts valid team_id', () => {
+      const result = validateToolArgs('magnetlab_submit_asset_review', { team_id: 'team-1' });
+      expect(result).toMatchObject({ team_id: 'team-1' });
+    });
+
+    it('rejects missing team_id', () => {
+      expect(() => validateToolArgs('magnetlab_submit_asset_review', {})).toThrow();
+    });
+
+    it('rejects empty team_id', () => {
+      expect(() => validateToolArgs('magnetlab_submit_asset_review', { team_id: '' })).toThrow();
     });
   });
 

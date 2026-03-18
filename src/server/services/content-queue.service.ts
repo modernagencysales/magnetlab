@@ -28,6 +28,21 @@ export interface QueuePostReviewData {
   reviewed_at: string;
 }
 
+export interface QueueTeamLeadMagnet {
+  id: string;
+  title: string;
+  archetype: string;
+  status: string;
+  reviewed_at: string | null;
+  created_at: string;
+  funnels: Array<{
+    id: string;
+    slug: string;
+    is_published: boolean;
+    reviewed_at: string | null;
+  }>;
+}
+
 export interface QueueTeam {
   team_id: string;
   team_name: string;
@@ -47,6 +62,11 @@ export interface QueueTeam {
   }>;
   edited_count: number;
   total_count: number;
+  lead_magnets: QueueTeamLeadMagnet[];
+  lm_reviewed_count: number;
+  lm_total_count: number;
+  funnel_reviewed_count: number;
+  funnel_total_count: number;
 }
 
 export interface QueueListResult {
@@ -55,6 +75,8 @@ export interface QueueListResult {
     total_teams: number;
     total_posts: number;
     remaining: number;
+    total_lead_magnets: number;
+    total_funnels: number;
   };
 }
 
@@ -62,6 +84,62 @@ export interface SubmitResult {
   success: boolean;
   dfy_callback_sent: boolean;
   error?: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+/**
+ * Build a QueueTeam entry with lead magnet + funnel counts.
+ * Extracted to avoid duplication between the posts loop and the LM-only teams loop.
+ */
+function buildTeamEntry(
+  teamId: string,
+  teamName: string,
+  profile: { id: string; full_name: string | null; title: string | null },
+  style: QueueTeamWritingStyle | null,
+  lmsByTeamId: Map<string, queueRepo.QueueLeadMagnet[]>,
+  funnelsByLmId: Map<string, queueRepo.QueueFunnel[]>,
+  ownerId: string
+): QueueTeam {
+  const teamLMs = lmsByTeamId.get(teamId) ?? [];
+  const lmEntries: QueueTeamLeadMagnet[] = teamLMs.map((lm) => {
+    const lmFunnels = funnelsByLmId.get(lm.id) ?? [];
+    return {
+      id: lm.id,
+      title: lm.title,
+      archetype: lm.archetype,
+      status: lm.status,
+      reviewed_at: lm.reviewed_at,
+      created_at: lm.created_at,
+      funnels: lmFunnels.map((f) => ({
+        id: f.id,
+        slug: f.slug,
+        is_published: f.is_published,
+        reviewed_at: f.reviewed_at,
+      })),
+    };
+  });
+
+  const lmReviewedCount = lmEntries.filter((lm) => lm.reviewed_at !== null).length;
+  const allFunnels = lmEntries.flatMap((lm) => lm.funnels);
+  const funnelReviewedCount = allFunnels.filter((f) => f.reviewed_at !== null).length;
+
+  return {
+    team_id: teamId,
+    team_name: teamName,
+    profile_name: profile.full_name ?? '',
+    profile_company: profile.title ?? '',
+    owner_id: ownerId,
+    writing_style: style,
+    posts: [],
+    edited_count: 0,
+    total_count: 0,
+    lead_magnets: lmEntries,
+    lm_reviewed_count: lmReviewedCount,
+    lm_total_count: lmEntries.length,
+    funnel_reviewed_count: funnelReviewedCount,
+    funnel_total_count: allFunnels.length,
+  };
 }
 
 // ─── Reads ────────────────────────────────────────────────────────────────
@@ -73,7 +151,16 @@ export interface SubmitResult {
 export async function getQueue(userId: string): Promise<QueueListResult> {
   const userTeams = await teamRepo.getUserTeams(userId);
   if (userTeams.length === 0) {
-    return { teams: [], summary: { total_teams: 0, total_posts: 0, remaining: 0 } };
+    return {
+      teams: [],
+      summary: {
+        total_teams: 0,
+        total_posts: 0,
+        remaining: 0,
+        total_lead_magnets: 0,
+        total_funnels: 0,
+      },
+    };
   }
 
   const teamIds = userTeams.map((e) => e.team.id);
@@ -87,11 +174,41 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
     .eq('status', 'active');
 
   if (!profiles?.length) {
-    return { teams: [], summary: { total_teams: 0, total_posts: 0, remaining: 0 } };
+    return {
+      teams: [],
+      summary: {
+        total_teams: 0,
+        total_posts: 0,
+        remaining: 0,
+        total_lead_magnets: 0,
+        total_funnels: 0,
+      },
+    };
   }
 
   const profileIds = profiles.map((p) => p.id);
   const posts = await queueRepo.findQueuePostsByProfileIds(profileIds);
+
+  // Fetch lead magnets and funnels for all teams in the queue
+  const leadMagnets = await queueRepo.findLeadMagnetsByTeamIds(teamIds);
+  const lmIds = leadMagnets.map((lm) => lm.id);
+  const funnels = await queueRepo.findFunnelsByLeadMagnetIds(lmIds);
+
+  // Build funnel lookup: lead_magnet_id → funnels[]
+  const funnelsByLmId = new Map<string, typeof funnels>();
+  for (const f of funnels) {
+    const existing = funnelsByLmId.get(f.lead_magnet_id) ?? [];
+    existing.push(f);
+    funnelsByLmId.set(f.lead_magnet_id, existing);
+  }
+
+  // Build lead magnets lookup: team_id → lead magnets[]
+  const lmsByTeamId = new Map<string, typeof leadMagnets>();
+  for (const lm of leadMagnets) {
+    const existing = lmsByTeamId.get(lm.team_id) ?? [];
+    existing.push(lm);
+    lmsByTeamId.set(lm.team_id, existing);
+  }
 
   // Fetch writing styles for these team_profile_ids (cp_writing_styles links via team_profile_id)
   // Take at most one style per profile — ordered by created_at desc so we get the most recent.
@@ -149,17 +266,15 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
       const style = post.team_profile_id
         ? (styleByProfile.get(post.team_profile_id) ?? null)
         : null;
-      team = {
-        team_id: profile.team_id,
-        team_name: entry.team.name,
-        profile_name: profile.full_name ?? '',
-        profile_company: profile.title ?? '',
-        owner_id: entry.team.owner_id,
-        writing_style: style,
-        posts: [],
-        edited_count: 0,
-        total_count: 0,
-      };
+      team = buildTeamEntry(
+        profile.team_id,
+        entry.team.name,
+        profile,
+        style,
+        lmsByTeamId,
+        funnelsByLmId,
+        entry.team.owner_id
+      );
       teamPostsMap.set(profile.team_id, team);
     }
 
@@ -178,6 +293,31 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
     if (post.edited_at) team.edited_count++;
   }
 
+  // Teams with lead magnets but no posts must still appear in the queue.
+  // Iterate over lmsByTeamId and add any team not already in the map.
+  for (const [lmTeamId, teamLMs] of lmsByTeamId) {
+    if (teamPostsMap.has(lmTeamId)) continue;
+    if (teamLMs.length === 0) continue;
+
+    const entry = teamEntryByTeamId.get(lmTeamId);
+    if (!entry) continue;
+
+    // Find the primary profile for this team (first active profile)
+    const teamProfile = profiles.find((p) => p.team_id === lmTeamId);
+    if (!teamProfile) continue;
+
+    const team = buildTeamEntry(
+      lmTeamId,
+      entry.team.name,
+      teamProfile,
+      null,
+      lmsByTeamId,
+      funnelsByLmId,
+      entry.team.owner_id
+    );
+    teamPostsMap.set(lmTeamId, team);
+  }
+
   // Sort: teams with most unedited posts first
   const teams = Array.from(teamPostsMap.values()).sort(
     (a, b) => b.total_count - b.edited_count - (a.total_count - a.edited_count)
@@ -185,6 +325,8 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
 
   const totalPosts = teams.reduce((sum, t) => sum + t.total_count, 0);
   const totalEdited = teams.reduce((sum, t) => sum + t.edited_count, 0);
+  const totalLeadMagnets = teams.reduce((sum, t) => sum + t.lm_total_count, 0);
+  const totalFunnels = teams.reduce((sum, t) => sum + t.funnel_total_count, 0);
 
   return {
     teams,
@@ -192,6 +334,8 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
       total_teams: teams.length,
       total_posts: totalPosts,
       remaining: totalPosts - totalEdited,
+      total_lead_magnets: totalLeadMagnets,
+      total_funnels: totalFunnels,
     },
   };
 }
@@ -295,32 +439,76 @@ export async function deleteQueuePost(userId: string, postId: string): Promise<v
 
 /**
  * Submit a team's batch for review.
- * Validates all posts are edited, fires DFY callback if engagement exists.
+ * submitType='posts' (default): validates all posts are edited, fires DFY callback.
+ * submitType='assets': validates all lead magnets + funnels are reviewed, fires DFY callback.
  */
-export async function submitBatch(userId: string, teamId: string): Promise<SubmitResult> {
+export async function submitBatch(
+  userId: string,
+  teamId: string,
+  submitType: 'posts' | 'assets' = 'posts'
+): Promise<SubmitResult> {
   // Verify user has team membership
   const access = await teamRepo.hasTeamAccess(userId, teamId);
   if (!access.access) {
     throw Object.assign(new Error('Not a member of this team'), { statusCode: 403 });
   }
 
-  // Get team's profile IDs
   const supabase = createSupabaseAdminClient();
-  const { data: profiles } = await supabase
-    .from('team_profiles')
-    .select('id')
-    .in('team_id', [teamId])
-    .eq('status', 'active');
+  let automationType: string;
+  let resultPayload: Record<string, unknown>;
 
-  const profileIds = (profiles ?? []).map((p) => p.id);
+  if (submitType === 'assets') {
+    // Validate all lead magnets and their funnels are reviewed
+    const lms = await queueRepo.findLeadMagnetsByTeamIds([teamId]);
+    const unreviewedLMs = lms.filter((lm) => lm.reviewed_at === null);
+    if (unreviewedLMs.length > 0) {
+      throw Object.assign(
+        new Error(
+          `${unreviewedLMs.length} of ${lms.length} lead magnets have not been reviewed yet`
+        ),
+        { statusCode: 400 }
+      );
+    }
 
-  // Check all posts are edited
-  const { allEdited, uneditedCount, totalCount } = await queueRepo.checkAllPostsEdited(profileIds);
-  if (!allEdited) {
-    throw Object.assign(
-      new Error(`${uneditedCount} of ${totalCount} posts have not been edited yet`),
-      { statusCode: 400 }
-    );
+    const lmIds = lms.map((lm) => lm.id);
+    let funnelCount = 0;
+    if (lmIds.length > 0) {
+      const funnels = await queueRepo.findFunnelsByLeadMagnetIds(lmIds);
+      funnelCount = funnels.length;
+      const unreviewedFunnels = funnels.filter((f) => f.reviewed_at === null);
+      if (unreviewedFunnels.length > 0) {
+        throw Object.assign(
+          new Error(
+            `${unreviewedFunnels.length} of ${funnels.length} funnels have not been reviewed yet`
+          ),
+          { statusCode: 400 }
+        );
+      }
+    }
+
+    automationType = 'asset_review';
+    resultPayload = { lead_magnets_reviewed: lms.length, funnels_reviewed: funnelCount };
+  } else {
+    // Default: posts flow
+    const { data: profiles } = await supabase
+      .from('team_profiles')
+      .select('id')
+      .in('team_id', [teamId])
+      .eq('status', 'active');
+
+    const profileIds = (profiles ?? []).map((p) => p.id);
+
+    const { allEdited, uneditedCount, totalCount } =
+      await queueRepo.checkAllPostsEdited(profileIds);
+    if (!allEdited) {
+      throw Object.assign(
+        new Error(`${uneditedCount} of ${totalCount} posts have not been edited yet`),
+        { statusCode: 400 }
+      );
+    }
+
+    automationType = 'content_editing';
+    resultPayload = { posts_edited: totalCount };
   }
 
   // Look up DFY engagement by team owner's user_id (magnetlab_user_id)
@@ -343,16 +531,21 @@ export async function submitBatch(userId: string, teamId: string): Promise<Submi
         },
         body: JSON.stringify({
           magnetlab_user_id: ownerId,
-          automation_type: 'content_editing',
+          automation_type: automationType,
           status: 'completed',
-          result: { posts_edited: totalCount },
+          result: resultPayload,
         }),
         signal: AbortSignal.timeout(10000),
       });
 
       if (response.ok) {
         dfyCallbackSent = true;
-        logInfo('content-queue', 'DFY callback sent successfully', { teamId, ownerId, totalCount });
+        logInfo('content-queue', 'DFY callback sent successfully', {
+          teamId,
+          ownerId,
+          submitType,
+          result: resultPayload,
+        });
       } else {
         const body = await response.text().catch(() => '');
         logError('content-queue', new Error(`DFY callback failed: ${response.status}`), {
@@ -395,6 +588,64 @@ export async function resetEditedPosts(userId: string): Promise<{ reset_count: n
   const count = await queueRepo.resetEditedForProfiles(profileIds);
 
   logInfo('content-queue', 'Reset edited posts for revision flow', { userId, resetCount: count });
+  return { reset_count: count };
+}
+
+/**
+ * Mark a lead magnet as reviewed. Validates team membership.
+ */
+export async function reviewLeadMagnet(
+  userId: string,
+  lmId: string,
+  reviewed: boolean
+): Promise<void> {
+  const userTeams = await teamRepo.getUserTeams(userId);
+  const teamIds = userTeams.map((e) => e.team.id);
+
+  const lm = await queueRepo.findLeadMagnetByIdForTeams(lmId, teamIds);
+  if (!lm) {
+    throw Object.assign(new Error('Lead magnet not found or not accessible'), { statusCode: 403 });
+  }
+
+  await queueRepo.markLeadMagnetReviewed(lmId, reviewed);
+}
+
+/**
+ * Mark a funnel as reviewed. Validates team membership.
+ */
+export async function reviewFunnel(
+  userId: string,
+  funnelId: string,
+  reviewed: boolean
+): Promise<void> {
+  const userTeams = await teamRepo.getUserTeams(userId);
+  const teamIds = userTeams.map((e) => e.team.id);
+
+  const funnel = await queueRepo.findFunnelByIdForTeams(funnelId, teamIds);
+  if (!funnel) {
+    throw Object.assign(new Error('Funnel not found or not accessible'), { statusCode: 403 });
+  }
+
+  await queueRepo.markFunnelReviewed(funnelId, reviewed);
+}
+
+/**
+ * Reset reviewed_at for all lead magnets + funnels belonging to a user's teams.
+ * Called by external API when client requests asset revisions.
+ */
+export async function resetReviewedAssets(userId: string): Promise<{ reset_count: number }> {
+  const supabase = createSupabaseAdminClient();
+  const { data: teams } = await supabase.from('teams').select('id').eq('owner_id', userId);
+
+  if (!teams?.length) return { reset_count: 0 };
+
+  const teamIds = teams.map((t) => t.id);
+  const count = await queueRepo.resetReviewedForTeams(teamIds);
+
+  logInfo('content-queue', 'Reset reviewed assets for revision flow', {
+    userId,
+    resetCount: count,
+  });
   return { reset_count: count };
 }
 

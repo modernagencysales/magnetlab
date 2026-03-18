@@ -1,8 +1,9 @@
 /**
  * Poll Connection Requests Task
  * Scheduled every 20 minutes with random jitter. Polls Unipile for pending connection
- * requests and accepts those from detected campaign leads.
- * Never runs parallel LinkedIn actions. Obeys LINKEDIN_SAFETY limits at all times.
+ * requests and accepts those from detected or connection_pending campaign leads.
+ * Never runs parallel LinkedIn actions. Uses account-safety service for operating hours,
+ * circuit breaker, daily limits, and randomized delays.
  */
 
 import { schedules, logger } from '@trigger.dev/sdk/v3';
@@ -10,13 +11,22 @@ import { getUnipileClient } from '@/lib/integrations/unipile';
 import { logError } from '@/lib/utils/logger';
 import {
   listActiveCampaigns,
-  findLeadsByStatus,
+  findLeadsByStatuses,
   updateCampaignLead,
-  incrementDailyLimit,
 } from '@/server/repositories/post-campaigns.repo';
-import { checkDailyLimit, randomDelay, sleep } from '@/server/services/post-campaigns.service';
+import {
+  getAccountSettings,
+  isWithinOperatingHours,
+  isCircuitBreakerActive,
+  shouldSkipRun,
+  randomDelay,
+  checkDailyLimit,
+} from '@/server/services/account-safety.service';
+import { setCircuitBreaker, incrementDailyLimit } from '@/server/repositories/account-safety.repo';
+import { sleep } from '@/server/services/post-campaigns.service';
 import { LINKEDIN_SAFETY } from '@/lib/types/post-campaigns';
 import type { PostCampaign, PostCampaignLead } from '@/lib/types/post-campaigns';
+import type { AccountSafetySettings } from '@/server/services/account-safety.service';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -46,7 +56,7 @@ function groupByAccount(campaigns: PostCampaign[]): CampaignGroup[] {
 }
 
 /**
- * Check if an invitation sender matches a detected campaign lead.
+ * Check if an invitation sender matches a campaign lead (detected or connection_pending).
  * Tries matching on provider_id (cached) or public_identifier against linkedin_username.
  */
 function matchInvitationToLead(
@@ -76,17 +86,38 @@ function matchInvitationToLead(
   return null;
 }
 
+/** Get today's date string in the account's timezone (YYYY-MM-DD). */
+function getLocalDate(settings: AccountSafetySettings): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: settings.timezone });
+}
+
+/** Check if an error message indicates a rate limit or account restriction. */
+function isRateLimitOrRestriction(errorMsg: string): boolean {
+  const lower = errorMsg.toLowerCase();
+  return (
+    lower.includes('429') ||
+    lower.includes('restricted') ||
+    lower.includes('temporarily') ||
+    lower.includes('challenge')
+  );
+}
+
 // ─── Core Accept Logic (per account) ─────────────────────────────────────────
 
 async function processAccountInvitations(
   group: CampaignGroup,
-  actionsRemaining: { count: number }
+  actionsRemaining: { count: number },
+  settings: AccountSafetySettings
 ): Promise<number> {
   const client = getUnipileClient();
   let accepted = 0;
 
   // Check daily accept limit for this account before fetching invitations
-  const canAccept = await checkDailyLimit(group.userId, group.accountId, 'connections_accepted');
+  const { allowed: canAccept } = await checkDailyLimit(
+    group.accountId,
+    'connection_accept',
+    settings
+  );
   if (!canAccept) {
     logger.info('poll-connection-requests: daily accept limit reached for account', {
       accountId: group.accountId,
@@ -98,10 +129,22 @@ async function processAccountInvitations(
   // Fetch pending invitations for this account
   const invitationsResult = await client.listReceivedInvitations(group.accountId);
   if (invitationsResult.error || !invitationsResult.data) {
-    logger.error('poll-connection-requests: failed to list invitations', {
-      accountId: group.accountId,
-      error: invitationsResult.error,
-    });
+    const errorMsg = String(invitationsResult.error ?? '');
+    // Check if this is a rate limit / restriction that should trigger circuit breaker
+    if (isRateLimitOrRestriction(errorMsg)) {
+      const breakerUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await setCircuitBreaker(group.userId, group.accountId, breakerUntil);
+      logger.error('poll-connection-requests: circuit breaker activated on list invitations', {
+        accountId: group.accountId,
+        error: errorMsg,
+        breakerUntil: breakerUntil.toISOString(),
+      });
+    } else {
+      logger.error('poll-connection-requests: failed to list invitations', {
+        accountId: group.accountId,
+        error: invitationsResult.error,
+      });
+    }
     return 0;
   }
 
@@ -118,16 +161,19 @@ async function processAccountInvitations(
     count: invitations.length,
   });
 
-  // Gather all detected leads across all campaigns for this account
-  const allDetectedLeads: Array<{ lead: PostCampaignLead; campaign: PostCampaign }> = [];
+  // Gather all detected + connection_pending leads across all campaigns for this account
+  const allMatchableLeads: Array<{ lead: PostCampaignLead; campaign: PostCampaign }> = [];
 
   for (const campaign of group.campaigns) {
     if (!campaign.auto_accept_connections) continue;
 
-    const { data: leads, error: leadsError } = await findLeadsByStatus(campaign.id, 'detected');
+    const { data: leads, error: leadsError } = await findLeadsByStatuses(campaign.id, [
+      'detected',
+      'connection_pending',
+    ]);
 
     if (leadsError) {
-      logger.error('poll-connection-requests: failed to fetch detected leads', {
+      logger.error('poll-connection-requests: failed to fetch matchable leads', {
         campaignId: campaign.id,
         error: leadsError.message,
       });
@@ -135,12 +181,12 @@ async function processAccountInvitations(
     }
 
     for (const lead of leads ?? []) {
-      allDetectedLeads.push({ lead, campaign });
+      allMatchableLeads.push({ lead, campaign });
     }
   }
 
-  if (allDetectedLeads.length === 0) {
-    logger.info('poll-connection-requests: no detected leads waiting for acceptance', {
+  if (allMatchableLeads.length === 0) {
+    logger.info('poll-connection-requests: no leads waiting for acceptance', {
       accountId: group.accountId,
     });
     return 0;
@@ -156,25 +202,25 @@ async function processAccountInvitations(
         | string
         | undefined) ?? null;
 
-    // Try to match this invitation sender to a detected campaign lead
+    // Try to match this invitation sender to a detected/connection_pending campaign lead
     const match = matchInvitationToLead(
       senderProviderId,
       senderPublicIdentifier,
-      allDetectedLeads.map((e) => e.lead)
+      allMatchableLeads.map((e) => e.lead)
     );
 
     if (!match) continue;
 
-    const matchEntry = allDetectedLeads.find((e) => e.lead.id === match.id);
+    const matchEntry = allMatchableLeads.find((e) => e.lead.id === match.id);
     if (!matchEntry) continue;
 
     const { lead, campaign } = matchEntry;
 
-    // Re-check limit before each accept
-    const stillCanAccept = await checkDailyLimit(
-      group.userId,
+    // Re-check daily limit before each accept
+    const { allowed: stillCanAccept } = await checkDailyLimit(
       group.accountId,
-      'connections_accepted'
+      'connection_accept',
+      settings
     );
     if (!stillCanAccept) {
       logger.info('poll-connection-requests: daily accept limit reached mid-run', {
@@ -187,12 +233,25 @@ async function processAccountInvitations(
       const acceptResult = await client.handleInvitation(invitation.id, 'accept');
 
       if (acceptResult.error) {
+        const errorMsg = String(acceptResult.error);
+        // Check for rate limit / restriction errors
+        if (isRateLimitOrRestriction(errorMsg)) {
+          const breakerUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+          await setCircuitBreaker(group.userId, group.accountId, breakerUntil);
+          logger.error('poll-connection-requests: circuit breaker activated for 24h', {
+            accountId: group.accountId,
+            error: errorMsg,
+            breakerUntil: breakerUntil.toISOString(),
+          });
+          break; // Stop all actions for this account
+        }
+
         logger.warn('poll-connection-requests: failed to accept invitation', {
           invitationId: invitation.id,
           leadId: lead.id,
           error: acceptResult.error,
         });
-        // Don't update lead status — leave as 'detected' for retry
+        // Don't update lead status — leave for retry
       } else {
         await updateCampaignLead(lead.id, {
           status: 'connection_accepted',
@@ -201,7 +260,8 @@ async function processAccountInvitations(
           unipile_provider_id: lead.unipile_provider_id ?? senderProviderId ?? null,
           error: null,
         });
-        await incrementDailyLimit(group.accountId, 'connections_accepted');
+        const localDate = getLocalDate(settings);
+        await incrementDailyLimit(group.accountId, localDate, 'connection_accept');
         accepted++;
         actionsRemaining.count--;
 
@@ -211,21 +271,34 @@ async function processAccountInvitations(
           invitationId: invitation.id,
         });
 
-        // Randomized delay between accepts — safety measure, always runs
+        // Randomized delay between accepts — uses per-account safety settings
         if (actionsRemaining.count > 0) {
-          const delay = randomDelay(
-            LINKEDIN_SAFETY.MIN_DELAY_BETWEEN_ACCEPTS_MS,
-            LINKEDIN_SAFETY.MAX_DELAY_BETWEEN_ACCEPTS_MS
-          );
-          await sleep(delay);
+          await sleep(randomDelay(settings));
         }
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      logError('poll-connection-requests/accept', err instanceof Error ? err : new Error(msg), {
-        invitationId: invitation.id,
-        leadId: lead.id,
-      });
+      const errorMsg = err instanceof Error ? err.message : String(err);
+
+      // Check for rate limit / restriction errors from thrown exceptions
+      if (isRateLimitOrRestriction(errorMsg)) {
+        const breakerUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await setCircuitBreaker(group.userId, group.accountId, breakerUntil);
+        logger.error('poll-connection-requests: circuit breaker activated for 24h', {
+          accountId: group.accountId,
+          error: errorMsg,
+          breakerUntil: breakerUntil.toISOString(),
+        });
+        break; // Stop all actions for this account
+      }
+
+      logError(
+        'poll-connection-requests/accept',
+        err instanceof Error ? err : new Error(errorMsg),
+        {
+          invitationId: invitation.id,
+          leadId: lead.id,
+        }
+      );
     }
   }
 
@@ -238,9 +311,16 @@ export const pollConnectionRequests = schedules.task({
   id: 'poll-connection-requests',
   cron: '*/20 * * * *',
   maxDuration: 180,
+  queue: { concurrencyLimit: 1 },
   run: async () => {
+    // Step 0: Random skip — 10% chance to add natural unpredictability
+    if (shouldSkipRun()) {
+      logger.info('poll-connection-requests: randomly skipping this run (10% jitter)');
+      return { skipped: true, accepted: 0 };
+    }
+
     // Step 1: Apply random jitter before starting (0 to POLL_JITTER_MINUTES * 60s)
-    const jitterMs = randomDelay(0, LINKEDIN_SAFETY.POLL_JITTER_MINUTES * 60_000);
+    const jitterMs = Math.floor(Math.random() * LINKEDIN_SAFETY.POLL_JITTER_MINUTES * 60_000);
     logger.info('poll-connection-requests: applying jitter', { jitterMs });
     await sleep(jitterMs);
 
@@ -274,8 +354,30 @@ export const pollConnectionRequests = schedules.task({
     for (const group of accountGroups) {
       if (actionsRemaining.count <= 0) break;
 
+      // Load per-account safety settings (returns defaults if none configured)
+      const settings = await getAccountSettings(group.userId, group.accountId);
+
+      // Skip accounts outside operating hours
+      if (!isWithinOperatingHours(settings)) {
+        logger.info('poll-connection-requests: outside operating hours, skipping', {
+          accountId: group.accountId,
+          hours: `${settings.operating_hours_start}-${settings.operating_hours_end}`,
+          timezone: settings.timezone,
+        });
+        continue;
+      }
+
+      // Skip accounts with active circuit breaker
+      if (isCircuitBreakerActive(settings)) {
+        logger.info('poll-connection-requests: circuit breaker active, skipping', {
+          accountId: group.accountId,
+          breakerUntil: settings.circuit_breaker_until,
+        });
+        continue;
+      }
+
       try {
-        const accepted = await processAccountInvitations(group, actionsRemaining);
+        const accepted = await processAccountInvitations(group, actionsRemaining, settings);
         totalAccepted += accepted;
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error';

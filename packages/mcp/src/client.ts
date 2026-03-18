@@ -1,4 +1,4 @@
-/** MagnetLab API client. Provides typed methods for 35 MCP tools. Never imported by handlers directly — only via MagnetLabClient instance. */
+/** MagnetLab API client. Provides typed methods for 40 MCP tools. Never imported by handlers directly — only via MagnetLabClient instance. */
 
 import type {
   Archetype,
@@ -349,10 +349,7 @@ export class MagnetLabClient {
     if (params?.isBuffer !== undefined) searchParams.set('is_buffer', String(params.isBuffer));
     if (params?.limit) searchParams.set('limit', String(params.limit));
     const qs = searchParams.toString();
-    const url = this.appendTeamId(
-      `/content-pipeline/posts${qs ? `?${qs}` : ''}`,
-      params?.teamId
-    );
+    const url = this.appendTeamId(`/content-pipeline/posts${qs ? `?${qs}` : ''}`, params?.teamId);
     return this.request<{ posts: unknown[] }>('GET', url);
   }
 
@@ -510,7 +507,6 @@ export class MagnetLabClient {
     params: {
       draft_content?: string;
       mark_edited?: boolean;
-      image_urls?: string[];
     }
   ) {
     return this.request<{ success: boolean }>('PATCH', `/content-queue/posts/${postId}`, params);
@@ -521,6 +517,30 @@ export class MagnetLabClient {
       'POST',
       `/content-queue/submit`,
       { team_id: teamId }
+    );
+  }
+
+  async reviewLeadMagnet(lmId: string, reviewed: boolean) {
+    return this.request<{ success: boolean }>(
+      'PATCH',
+      `/content-queue/lead-magnets/${lmId}/review`,
+      { reviewed }
+    );
+  }
+
+  async reviewFunnel(funnelId: string, reviewed: boolean) {
+    return this.request<{ success: boolean }>(
+      'PATCH',
+      `/content-queue/funnels/${funnelId}/review`,
+      { reviewed }
+    );
+  }
+
+  async submitAssetReview(teamId: string) {
+    return this.request<{ success: boolean; dfy_callback_sent: boolean }>(
+      'POST',
+      `/content-queue/submit`,
+      { team_id: teamId, submit_type: 'assets' }
     );
   }
 
