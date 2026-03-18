@@ -14,7 +14,7 @@ import {
   findPostForPolish,
   updatePost,
 } from '@/server/repositories/posts.repo';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getDefaultProfile, getTeamIdByOwnerProfileUserId } from '@/server/repositories/team.repo';
 
 // ─── Actions ──────────────────────────────────────────────────────────────
 
@@ -58,14 +58,13 @@ registerAction({
     // Build knowledge brief for context
     const brief = await buildContentBrief(userId, params.topic, { teamId });
 
-    // Get voice profile via admin client (team_profiles not in posts repo)
-    const supabase = createSupabaseAdminClient();
-    const { data: profile } = await supabase
-      .from('team_profiles')
-      .select('voice_profile, full_name, title')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
+    // Get voice profile via team.repo — use team's default profile in team mode,
+    // or find via the user's owned team in personal mode.
+    const resolvedTeamIdForProfile =
+      teamId ?? (await getTeamIdByOwnerProfileUserId(userId));
+    const profile = resolvedTeamIdForProfile
+      ? await getDefaultProfile(resolvedTeamIdForProfile)
+      : null;
 
     const input: WritePostInput = {
       idea: {

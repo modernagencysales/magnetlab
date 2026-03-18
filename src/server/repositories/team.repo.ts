@@ -14,6 +14,9 @@ const ALLOWED_TEAM_UPDATE_FIELDS = ['name', 'description', 'industry', 'target_a
 
 const ALLOWED_PROFILE_UPDATE_FIELDS = ['full_name', 'email', 'title', 'linkedin_url', 'bio', 'expertise_areas', 'voice_profile', 'avatar_url', 'is_default', 'status'] as const;
 
+// Superset used for inserts — includes team_id and user_id which are set at creation time.
+const ALLOWED_PROFILE_CREATE_FIELDS = [...ALLOWED_PROFILE_UPDATE_FIELDS, 'team_id', 'user_id'] as const;
+
 // ─── Column select constants ────────────────────────────────────────────────
 
 const TEAM_SELECT =
@@ -561,10 +564,14 @@ export async function createTeamProfile(
   teamId: string,
   payload: Record<string, unknown>
 ): Promise<TeamProfile> {
+  const filtered: Record<string, unknown> = { team_id: teamId };
+  for (const key of ALLOWED_PROFILE_CREATE_FIELDS) {
+    if (key in payload) filtered[key] = payload[key];
+  }
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('team_profiles')
-    .insert({ team_id: teamId, ...payload })
+    .insert(filtered)
     .select(TEAM_PROFILE_SELECT)
     .single();
   if (error) throw new Error(`team.createTeamProfile: ${error.message}`);

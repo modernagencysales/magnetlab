@@ -13,6 +13,19 @@ const TEMPLATE_SELECT =
 
 export type TemplateScope = 'global' | 'mine' | null;
 
+const ALLOWED_TEMPLATE_UPDATE_FIELDS = [
+  'name',
+  'category',
+  'description',
+  'structure',
+  'example_posts',
+  'use_cases',
+  'tags',
+  'embedding',
+  'is_active',
+  'team_id',
+] as const;
+
 // ─── List / Read ────────────────────────────────────────────────────────────
 
 export async function listTemplates(scope: DataScope, filter: TemplateScope) {
@@ -94,10 +107,14 @@ export async function updateTemplate(
   scope: DataScope,
   updates: Record<string, unknown>
 ) {
+  const filtered: Record<string, unknown> = {};
+  for (const key of ALLOWED_TEMPLATE_UPDATE_FIELDS) {
+    if (key in updates) filtered[key] = updates[key];
+  }
   const supabase = createSupabaseAdminClient();
   let query = supabase
     .from('cp_post_templates')
-    .update(updates)
+    .update(filtered)
     .eq('id', id);
   query = applyScope(query, scope);
   const { data, error } = await query.select(TEMPLATE_SELECT).single();

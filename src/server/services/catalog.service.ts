@@ -21,7 +21,7 @@ export interface CatalogItem {
 }
 
 export async function getCatalog(userId: string, scope: DataScope) {
-  const ownerId = scope.ownerId ?? userId;
+  const ownerId = scope.billingUserId ?? userId;
   const magnets = await catalogRepo.findCatalogMagnets(scope);
   const magnetIds = magnets.map((m) => m.id);
   const [funnelRows, ownerUser] = await Promise.all([

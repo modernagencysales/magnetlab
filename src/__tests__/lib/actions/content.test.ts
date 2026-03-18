@@ -21,22 +21,12 @@ jest.mock('@/server/repositories/posts.repo', () => ({
   updatePost: jest.fn().mockResolvedValue({ id: 'post-1' }),
 }));
 
-// team_profiles query (voice profile) — still uses admin client directly in write_post
-jest.mock('@/lib/utils/supabase-server', () => ({
-  createSupabaseAdminClient: jest.fn(() => ({
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue({
-        data: { id: 'post-1', draft_content: 'Test content', status: 'draft', voice_profile: null, full_name: 'Tim', title: 'CEO' },
-        error: null,
-      }),
-    })),
-  })),
+// Voice profile lookup — now goes through team.repo
+jest.mock('@/server/repositories/team.repo', () => ({
+  getDefaultProfile: jest.fn().mockResolvedValue({
+    id: 'profile-1', full_name: 'Tim', title: 'CEO', voice_profile: null,
+  }),
+  getTeamIdByOwnerProfileUserId: jest.fn().mockResolvedValue('team-personal'),
 }));
 
 jest.mock('@/lib/ai/content-pipeline/post-writer', () => ({
