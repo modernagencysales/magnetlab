@@ -3,7 +3,7 @@ export { extractKnowledgeFromTranscript, batchExtractKnowledge } from './knowled
 export type { ExtractedKnowledgeEntry, KnowledgeExtractionResult } from './knowledge-extractor';
 export { extractIdeasFromTranscript, batchExtractIdeas } from './content-extractor';
 export type { ExtractedIdea, ExtractionResult } from './content-extractor';
-export { writePost, writePostFreeform, writePostWithTemplate, bulkWritePosts, rewriteSection } from './post-writer';
+export { writePost, bulkWritePosts, rewriteSection } from './post-writer';
 export type { IdeaContext, WritePostInput, WrittenPost } from './post-writer';
 export { polishPost, detectAIPatterns, scoreHook, formatPost } from './post-polish';
 export type { HookScore, PolishResult, PolishOptions } from './post-polish';

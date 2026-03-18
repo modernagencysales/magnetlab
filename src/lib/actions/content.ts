@@ -16,11 +16,6 @@ import {
 } from '@/server/repositories/posts.repo';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
-// ─── Column Constants ──────────────────────────────────────────────────────
-
-const CP_POST_TEMPLATE_COLUMNS =
-  'id, user_id, name, category, description, structure, example_posts, use_cases, tags, usage_count, avg_engagement_score, is_active, created_at, updated_at';
-
 // ─── Actions ──────────────────────────────────────────────────────────────
 
 registerAction({
@@ -88,20 +83,9 @@ registerAction({
       authorTitle: profile?.title || undefined,
     };
 
-    // Load template if specified — scoped to user
-    if (params.template_id) {
-      const { data: template } = await supabase
-        .from('cp_post_templates')
-        .select(CP_POST_TEMPLATE_COLUMNS)
-        .eq('id', params.template_id)
-        .eq('user_id', userId)
-        .single();
-      if (template) {
-        input.template = template;
-      }
-    }
-
-    const result = await writePost(input);
+    // writePost handles template matching internally via RAG — team-scoped
+    const resolvedTeamId = teamId ?? userId;
+    const result = await writePost(input, resolvedTeamId, userId);
 
     // Persist to pipeline via repo
     const post = await createPost(userId, {

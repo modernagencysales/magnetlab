@@ -1,6 +1,6 @@
 import { task, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { writePostWithAutoTemplate } from '@/lib/ai/content-pipeline/post-writer';
+import { writePost } from '@/lib/ai/content-pipeline/post-writer';
 import { buildContentBriefForIdea } from '@/lib/ai/content-pipeline/briefing-agent';
 import { polishPost } from '@/lib/ai/content-pipeline/post-polish';
 import { isEmbeddingsConfigured } from '@/lib/ai/embeddings';
@@ -89,7 +89,7 @@ export const writePostFromIdea = task({
     const resolvedTeamId = teamId ?? userId;
     const resolvedTemplateProfileId = resolvedProfileId ?? userId;
 
-    const writtenPost = await writePostWithAutoTemplate(
+    const writtenPost = await writePost(
       {
         idea: {
           id: idea.id,

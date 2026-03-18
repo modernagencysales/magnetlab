@@ -1,7 +1,7 @@
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getTopIdeas, type ScoringContext } from '@/lib/ai/content-pipeline/idea-scorer';
 import { polishPost } from '@/lib/ai/content-pipeline/post-polish';
-import { writePostWithAutoTemplate } from '@/lib/ai/content-pipeline/post-writer';
+import { writePost } from '@/lib/ai/content-pipeline/post-writer';
 import { buildContentBriefForIdea } from '@/lib/ai/content-pipeline/briefing-agent';
 import { isEmbeddingsConfigured } from '@/lib/ai/embeddings';
 import type {
@@ -351,7 +351,7 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
         // Write post (with automatic template RAG matching)
         const resolvedTeamId = teamId ?? userId;
         const resolvedProfileId = profileId ?? userId;
-        const writtenPost = await writePostWithAutoTemplate(
+        const writtenPost = await writePost(
           {
             idea: {
               id: idea.id,
