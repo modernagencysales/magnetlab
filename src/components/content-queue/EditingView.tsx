@@ -108,8 +108,9 @@ export function EditingView({
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Use capture phase so Cmd+Enter is intercepted before ProseMirror inserts a line break
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [currentIndex, currentPost, posts.length, onBack, onMarkEdited, findNextUnedited]);
 
   // ─── Handlers ────────────────────────────────────────────────────
