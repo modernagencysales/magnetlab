@@ -24,9 +24,22 @@ export function ContentQueuePage() {
     ? (teams.find((t) => t.team_id === editingTeamId) ?? null)
     : null;
 
-  // ─── Debounce ref ──────────────────────────────────────────────────
+  // ─── Refs ────────────────────────────────────────────────────────────
 
   const contentChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Stash AI-generated original content per post — captured once when first loaded
+  const originalContentRef = useRef<Map<string, string>>(new Map());
+
+  // Populate original content snapshot when entering editing mode
+  useEffect(() => {
+    if (editingTeam) {
+      for (const post of editingTeam.posts) {
+        if (post.draft_content && !originalContentRef.current.has(post.id)) {
+          originalContentRef.current.set(post.id, post.draft_content);
+        }
+      }
+    }
+  }, [editingTeam]);
 
   useEffect(() => {
     return () => {
@@ -70,7 +83,11 @@ export function ContentQueuePage() {
       }
 
       try {
-        await updateQueuePost(postId, { mark_edited: true });
+        const originalContent = originalContentRef.current.get(postId);
+        await updateQueuePost(postId, {
+          mark_edited: true,
+          ...(originalContent ? { original_content: originalContent } : {}),
+        });
       } catch (err) {
         // Rollback optimistic update
         if (editingTeamId) {

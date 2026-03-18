@@ -12,6 +12,8 @@ export const ContentQueueUpdateSchema = z
   .object({
     draft_content: z.string().min(1, 'draft_content cannot be empty').optional(),
     mark_edited: z.boolean().optional(),
+    /** AI-generated original text, sent with mark_edited for one clean diff (style learning) */
+    original_content: z.string().optional(),
   })
   .refine((data) => data.draft_content !== undefined || data.mark_edited !== undefined, {
     message: 'At least one field must be provided',

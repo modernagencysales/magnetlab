@@ -67,6 +67,8 @@ export interface SubmitResult {
 export interface UpdateQueuePostBody {
   draft_content?: string;
   mark_edited?: boolean;
+  /** AI-generated original text — sent with mark_edited for style learning diff */
+  original_content?: string;
 }
 
 // ─── API Functions ─────────────────────────────────────────────────────────

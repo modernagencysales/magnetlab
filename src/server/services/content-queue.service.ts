@@ -228,23 +228,25 @@ export async function updateQueuePost(
     throw Object.assign(new Error('Post not found or not accessible'), { statusCode: 403 });
   }
 
-  // Update content if provided
+  // Update content if provided (debounced saves — no edit capture here)
   if (input.draft_content !== undefined) {
-    // Read pre-update snapshot for edit capture (style learning)
-    const originalContent = post.draft_content;
-
     const updates: Record<string, unknown> = {};
     if (input.draft_content !== undefined) updates.draft_content = input.draft_content;
 
     const { error } = await supabase.from('cp_pipeline_posts').update(updates).eq('id', postId);
-
     if (error) throw new Error(`content-queue.updateQueuePost: ${error.message}`);
+  }
+
+  // Mark edited — capture ONE diff: AI original → human final
+  // original_content is the AI-generated text stashed by the frontend when the post was first loaded
+  if (input.mark_edited) {
+    await queueRepo.markPostEdited(postId);
 
     // Capture edit for style learning — fire-and-forget, never blocks response
-    // captureAll: true — professional editor edits, every change is signal (no 5% threshold)
-    // source: 'content_queue' — distinguishes DFY editor edits from self-edits
-    // profileId: post's team_profile_id — learns the CLIENT's voice, not the operator's
-    if (originalContent && input.draft_content) {
+    // One diff per post: AI-generated → human-edited (not incremental saves)
+    // editedText: use the just-saved content if provided, otherwise read current DB state
+    const editedText = input.draft_content ?? post.draft_content;
+    if (input.original_content && editedText) {
       try {
         const profileEntry = (profiles ?? []).find((p) => p.id === post.team_profile_id);
         const resolvedTeamId = profileEntry?.team_id ?? '';
@@ -256,8 +258,8 @@ export async function updateQueuePost(
             contentType: 'post',
             contentId: postId,
             fieldName: 'draft_content',
-            originalText: originalContent,
-            editedText: input.draft_content,
+            originalText: input.original_content,
+            editedText,
             captureAll: true,
             source: 'content_queue',
           }).catch((err) => logError('content-queue/edit-capture', err, { postId }));
@@ -266,11 +268,6 @@ export async function updateQueuePost(
         // Edit capture must never affect the save flow
       }
     }
-  }
-
-  // Mark edited if requested
-  if (input.mark_edited) {
-    await queueRepo.markPostEdited(postId);
   }
 }
 
