@@ -36,6 +36,18 @@ describe('normalizePostUrl', () => {
     expect(normalizePostUrl('urn:li:activity:7123456789')).toBe('urn:li:activity:7123456789');
   });
 
+  it('passes through urn:li:ugcPost URN', () => {
+    expect(normalizePostUrl('urn:li:ugcPost:7332661864792854528')).toBe(
+      'urn:li:ugcPost:7332661864792854528'
+    );
+  });
+
+  it('normalizes posts URL without -activity- prefix', () => {
+    expect(
+      normalizePostUrl('https://www.linkedin.com/posts/username-text-7332661864792854528-xxxx')
+    ).toBe('urn:li:activity:7332661864792854528');
+  });
+
   it('returns null for non-LinkedIn URLs', () => {
     expect(normalizePostUrl('https://example.com/post/123')).toBeNull();
   });
