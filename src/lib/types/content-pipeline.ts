@@ -400,6 +400,7 @@ export interface ContentIdea {
   composite_score: number | null;
   last_surfaced_at: string | null;
   similarity_hash: string | null;
+  team_id?: string | null;
   team_profile_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -747,11 +748,22 @@ export interface AutoPilotConfig {
   profileId?: string;
 }
 
+export interface ProfileBatchResult {
+  profileId: string;
+  profileName: string;
+  postsCreated: number;
+  postsScheduled: number;
+  ideasUsed: string[];
+  errors: string[];
+}
+
 export interface BatchResult {
   postsCreated: number;
   postsScheduled: number;
   ideasProcessed: number;
   errors: string[];
+  /** Per-profile breakdown (only populated in team mode). */
+  profileResults?: ProfileBatchResult[];
 }
 
 // ============================================
