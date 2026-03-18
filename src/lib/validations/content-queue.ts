@@ -36,3 +36,20 @@ export const ResetEditedPostsSchema = z.object({
 });
 
 export type ResetEditedPostsInput = z.infer<typeof ResetEditedPostsSchema>;
+
+// ─── Review Asset Schema ──────────────────────────────────────────────────
+
+export const ReviewAssetSchema = z.object({
+  reviewed: z.boolean(),
+});
+
+export type ReviewAssetInput = z.infer<typeof ReviewAssetSchema>;
+
+// ─── Extended Submit Schema ───────────────────────────────────────────────
+
+export const ContentQueueSubmitSchemaV2 = z.object({
+  team_id: z.string().min(1, 'team_id is required'),
+  submit_type: z.enum(['posts', 'assets']).default('posts'),
+});
+
+export type ContentQueueSubmitInputV2 = z.infer<typeof ContentQueueSubmitSchemaV2>;
