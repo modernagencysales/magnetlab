@@ -24,6 +24,7 @@ import {
   Webhook,
   BookOpen,
   Brain,
+  Shield,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/index';
@@ -59,6 +60,12 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Analytics', href: '/settings/integrations#analytics', icon: BarChart3 },
       { label: 'Conductor', href: '/settings/integrations#conductor', icon: Radio },
       { label: 'Tracking Pixels', href: '/settings/integrations#pixels', icon: Target },
+    ],
+  },
+  {
+    title: 'Safety',
+    items: [
+      { label: 'Account Safety', href: '/settings/safety', icon: Shield },
     ],
   },
   {
