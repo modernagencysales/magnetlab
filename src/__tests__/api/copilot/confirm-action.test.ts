@@ -24,6 +24,11 @@ jest.mock('@/lib/utils/logger', () => ({
   logDebug: jest.fn(),
 }));
 
+// Mock getDataScope — returns personal scope by default
+jest.mock('@/lib/utils/team-context', () => ({
+  getDataScope: jest.fn().mockResolvedValue({ type: 'user', userId: 'user-1' }),
+}));
+
 /**
  * Creates a chainable Supabase mock that routes different tables to different results.
  */
@@ -101,8 +106,6 @@ describe('POST /api/copilot/confirm-action', () => {
     mockSupabase.setResult('copilot_conversations', { data: { id: 'conv-1' }, error: null });
     // Default: message insert/select/update works
     mockSupabase.setResult('copilot_messages', { data: { id: 'msg-1' }, error: null });
-    // Default: no team
-    mockSupabase.setResult('team_members', { data: null, error: null });
     // Default: action execution returns success
     mockExecuteAction.mockResolvedValue({ success: true, data: { id: 'f1', status: 'published' } });
   });
@@ -192,9 +195,9 @@ describe('POST /api/copilot/confirm-action', () => {
     expect(body.executed).toBe(true);
     expect(body.result).toEqual({ success: true, data: { id: 'f1', status: 'published' } });
 
-    // Verify executeAction was called with correct context
+    // Verify executeAction was called with correct context (scope shape)
     expect(mockExecuteAction).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'user-1' }),
+      expect.objectContaining({ scope: expect.objectContaining({ userId: 'user-1' }) }),
       'publish_funnel',
       { id: 'f1' },
     );

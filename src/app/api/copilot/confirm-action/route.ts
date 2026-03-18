@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { executeAction } from '@/lib/actions';
 import type { ActionContext } from '@/lib/actions';
+import { getDataScope } from '@/lib/utils/team-context';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -36,16 +37,8 @@ export async function POST(req: NextRequest) {
 
   if (approved && toolName && toolArgs) {
     // Execute the confirmed action
-    const actionCtx: ActionContext = { userId: session.user.id };
-
-    // Get team ID if available
-    const { data: teamMember } = await supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', session.user.id)
-      .limit(1)
-      .single();
-    if (teamMember?.team_id) actionCtx.teamId = teamMember.team_id;
+    const scope = await getDataScope(session.user.id);
+    const actionCtx: ActionContext = { scope };
 
     const result = await executeAction(actionCtx, toolName, toolArgs);
 

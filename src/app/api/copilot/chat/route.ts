@@ -7,6 +7,7 @@ import { executeAction, actionRequiresConfirmation, getToolDefinitions } from '@
 import type { ActionContext } from '@/lib/actions';
 import { logError } from '@/lib/utils/logger';
 import { detectCorrectionSignal, extractMemories } from '@/lib/ai/copilot/memory-extractor';
+import { getDataScope } from '@/lib/utils/team-context';
 
 const MAX_ITERATIONS = 15;
 
@@ -199,18 +200,8 @@ export async function POST(req: NextRequest) {
 
         try {
           const client = createAnthropicClient('copilot', { timeout: 240_000 });
-          const actionCtx: ActionContext = { userId };
-
-          // Get team ID if user has one
-          const { data: teamMember } = await supabase
-            .from('team_members')
-            .select('team_id')
-            .eq('user_id', userId)
-            .limit(1)
-            .single();
-          if (teamMember?.team_id) {
-            actionCtx.teamId = teamMember.team_id;
-          }
+          const scope = await getDataScope(userId);
+          const actionCtx: ActionContext = { scope };
 
           send('conversation_id', { conversationId });
 
