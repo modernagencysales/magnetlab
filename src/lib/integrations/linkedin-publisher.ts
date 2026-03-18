@@ -1,12 +1,19 @@
-// LinkedIn Publisher Abstraction
-// Unified interface for publishing LinkedIn posts via Unipile.
+/**
+ * LinkedIn Publisher Abstraction.
+ * Unified interface for publishing LinkedIn posts via Unipile.
+ * Supports optional image attachments from Supabase Storage.
+ */
 
-import {
-  getUnipileClient,
-  getUserPostingAccountId,
-  isUnipileConfigured,
-} from './unipile';
+import { getUnipileClient, getUserPostingAccountId, isUnipileConfigured } from './unipile';
 import type { EngagementStats } from '@/lib/types/content-pipeline';
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+export interface ImageFile {
+  buffer: Buffer;
+  filename: string;
+  mimeType: string;
+}
 
 export interface PublishResult {
   postId: string;
@@ -14,19 +21,19 @@ export interface PublishResult {
 }
 
 export interface LinkedInPublisher {
-  publishNow(content: string): Promise<PublishResult>;
+  publishNow(content: string, imageFile?: ImageFile): Promise<PublishResult>;
   getPostStats(postId: string): Promise<EngagementStats | null>;
   provider: 'unipile';
 }
+
+// ─── Factory ────────────────────────────────────────────────────────────────
 
 /**
  * Get a LinkedIn publisher for the given user.
  * Uses Unipile (user has integration + env vars configured).
  * Returns null if not available.
  */
-export async function getUserLinkedInPublisher(
-  userId: string
-): Promise<LinkedInPublisher | null> {
+export async function getUserLinkedInPublisher(userId: string): Promise<LinkedInPublisher | null> {
   if (isUnipileConfigured()) {
     const accountId = await getUserPostingAccountId(userId);
     if (accountId) {
@@ -34,8 +41,8 @@ export async function getUserLinkedInPublisher(
       return {
         provider: 'unipile',
 
-        async publishNow(content: string): Promise<PublishResult> {
-          const result = await client.createPost(accountId, content);
+        async publishNow(content: string, imageFile?: ImageFile): Promise<PublishResult> {
+          const result = await client.createPost(accountId, content, imageFile);
           if (result.error) {
             throw new Error(`Unipile publish failed: ${result.error}`);
           }

@@ -8,6 +8,7 @@ import * as postsRepo from '@/server/repositories/posts.repo';
 import * as cpSlotsRepo from '@/server/repositories/cp-schedule-slots.repo';
 import { polishPost as aiPolishPost } from '@/lib/ai/content-pipeline/post-polish';
 import { getUserLinkedInPublisher } from '@/lib/integrations/linkedin-publisher';
+import type { ImageFile } from '@/lib/integrations/linkedin-publisher';
 import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 import { requireTeamScope } from '@/lib/utils/team-context';
 import { logError } from '@/lib/utils/logger';
@@ -67,6 +68,7 @@ const ALLOWED_UPDATE_FIELDS: (keyof PostUpdateInput)[] = [
   'buffer_position',
   'scrape_engagement',
   'heyreach_campaign_id',
+  'image_storage_path',
 ];
 
 const VALID_POST_STATUSES: PostStatus[] = [
@@ -420,7 +422,32 @@ export async function publishPost(userId: string, postId: string): Promise<Publi
     );
   }
 
-  const result = await publisher.publishNow(content);
+  // Fetch image from Supabase Storage if the post has one attached
+  let imageFile: ImageFile | undefined;
+  if (post.image_storage_path) {
+    try {
+      const { createSupabaseAdminClient } = await import('@/lib/utils/supabase-server');
+      const supabase = createSupabaseAdminClient();
+      const { data, error } = await supabase.storage
+        .from('post-images')
+        .download(post.image_storage_path);
+      if (data && !error) {
+        const buffer = Buffer.from(await data.arrayBuffer());
+        const filename = post.image_storage_path.split('/').pop() || 'image.png';
+        const mimeType = data.type || 'image/png';
+        imageFile = { buffer, filename, mimeType };
+      }
+    } catch (err) {
+      // Image fetch failure should not block publishing — log and continue without image
+      logError('cp/posts/publish', err, {
+        step: 'image_fetch_error',
+        postId,
+        path: post.image_storage_path,
+      });
+    }
+  }
+
+  const result = await publisher.publishNow(content, imageFile);
   const publishedAt = new Date().toISOString();
 
   await postsRepo.updatePost(userId, postId, {
