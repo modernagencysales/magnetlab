@@ -1,13 +1,14 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
 import { writePostFreeform } from './post-writer';
-import { findBestTemplate, buildTemplateGuidance } from './template-matcher';
+import { matchAndRerankTemplates, buildTemplateGuidance } from './template-matcher';
 import { polishPost } from './post-polish';
 import type { WrittenPost, IdeaContext } from './post-writer';
 import type { PolishResult } from './post-polish';
 
 interface QuickWriteOptions {
-  userId?: string;
+  teamId?: string;
+  profileId?: string;
   templateStructure?: string;
   styleInstructions?: string;
   targetAudience?: string;
@@ -63,13 +64,13 @@ export async function quickWrite(
   // Step 1: Expand raw thought into a structured idea
   const syntheticIdea = await expandToIdea(rawThought);
 
-  // Step 2: Find matching template via RAG (if userId provided)
+  // Step 2: Find matching templates via shortlist+rerank (if team context provided)
   let templateGuidance = '';
-  if (options.userId) {
+  if (options.teamId && options.profileId) {
     const topicText = [syntheticIdea.title, syntheticIdea.core_insight, syntheticIdea.content_type].filter(Boolean).join('\n');
-    const match = await findBestTemplate(topicText, options.userId);
-    if (match) {
-      templateGuidance = buildTemplateGuidance(match);
+    const ranked = await matchAndRerankTemplates(topicText, options.teamId, options.profileId, 3);
+    if (ranked.length > 0) {
+      templateGuidance = buildTemplateGuidance(ranked);
     }
   }
 

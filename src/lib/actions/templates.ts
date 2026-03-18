@@ -22,7 +22,7 @@ registerAction({
     },
   },
   handler: async (ctx: ActionContext, params: { limit?: number }): Promise<ActionResult> => {
-    const { data, error } = await listTemplates(ctx.scope.userId, null);
+    const { data, error } = await listTemplates(ctx.scope, null);
 
     if (error) return { success: false, error: error.message };
 

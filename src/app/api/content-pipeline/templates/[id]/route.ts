@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { getDataScope } from '@/lib/utils/team-context';
 import { ApiErrors, logApiError } from '@/lib/api/errors';
 import * as cpTemplatesService from '@/server/services/cp-templates.service';
 
@@ -11,8 +12,9 @@ export async function GET(
     const session = await auth();
     if (!session?.user?.id) return ApiErrors.unauthorized();
 
+    const scope = await getDataScope(session.user.id);
     const { id } = await params;
-    const result = await cpTemplatesService.getById(session.user.id, id);
+    const result = await cpTemplatesService.getById(scope, id);
     if (!result.success) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     return NextResponse.json({ template: result.template });
   } catch (error) {
@@ -29,9 +31,10 @@ export async function PATCH(
     const session = await auth();
     if (!session?.user?.id) return ApiErrors.unauthorized();
 
+    const scope = await getDataScope(session.user.id);
     const { id } = await params;
     const body = await request.json();
-    const result = await cpTemplatesService.update(session.user.id, id, body);
+    const result = await cpTemplatesService.update(scope, id, body);
     if (!result.success) {
       if (result.error === 'validation') return ApiErrors.validationError(result.message ?? 'No valid fields to update');
       return ApiErrors.databaseError('Failed to update template');
@@ -51,8 +54,9 @@ export async function DELETE(
     const session = await auth();
     if (!session?.user?.id) return ApiErrors.unauthorized();
 
+    const scope = await getDataScope(session.user.id);
     const { id } = await params;
-    const result = await cpTemplatesService.deleteTemplate(session.user.id, id);
+    const result = await cpTemplatesService.deleteTemplate(scope, id);
     if (!result.success) return ApiErrors.databaseError('Failed to delete template');
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -85,20 +85,28 @@ export const writePostFromIdea = task({
 
     // Write the post (with automatic template RAG matching)
     logger.info('Writing post');
-    const writtenPost = await writePostWithAutoTemplate({
-      idea: {
-        id: idea.id,
-        title: idea.title,
-        core_insight: idea.core_insight,
-        full_context: idea.full_context,
-        why_post_worthy: idea.why_post_worthy,
-        content_type: idea.content_type,
+    // Resolve teamId for template matching — prefer payload, fall back to userId
+    const resolvedTeamId = teamId ?? userId;
+    const resolvedTemplateProfileId = resolvedProfileId ?? userId;
+
+    const writtenPost = await writePostWithAutoTemplate(
+      {
+        idea: {
+          id: idea.id,
+          title: idea.title,
+          core_insight: idea.core_insight,
+          full_context: idea.full_context,
+          why_post_worthy: idea.why_post_worthy,
+          content_type: idea.content_type,
+        },
+        knowledgeContext,
+        voiceProfile,
+        authorName,
+        authorTitle,
       },
-      knowledgeContext,
-      voiceProfile,
-      authorName,
-      authorTitle,
-    }, userId);
+      resolvedTeamId,
+      resolvedTemplateProfileId
+    );
 
     // Polish the post
     logger.info('Polishing post');

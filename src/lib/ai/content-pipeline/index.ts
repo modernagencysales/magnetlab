@@ -18,8 +18,8 @@ export { analyzePerformancePatterns, getTopPerformingAttributes, generatePerform
 export type { PerformancePattern, TopAttribute, PerformanceInsight, PatternAnalysisResult } from './performance-analyzer';
 export { searchTopPerformingPosts, searchTopLeadMagnets, searchCreatorContent, searchHashtagContent, analyzeInspiration, batchAnalyzeInspiration, extractTrends } from './inspiration-researcher';
 export type { InspirationContent, InspirationAnalysis, TrendSummary } from './inspiration-researcher';
-export { matchTemplates, findBestTemplate, buildTemplateGuidance } from './template-matcher';
-export type { MatchedTemplate, MatchTemplateOptions } from './template-matcher';
+export { matchAndRerankTemplates, rerankTemplates, buildTemplateGuidance } from './template-matcher';
+export type { RankedTemplate } from './template-matcher';
 export { classifyEditPatterns } from './edit-classifier';
 export type { ClassifyInput, EditPattern, ClassifyResult } from './edit-classifier';
 export { detectContentCollisions } from './collision-detector';

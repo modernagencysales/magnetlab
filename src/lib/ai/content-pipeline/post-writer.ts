@@ -1,5 +1,5 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
-import { findBestTemplate, buildTemplateGuidance } from './template-matcher';
+import { matchAndRerankTemplates, buildTemplateGuidance } from './template-matcher';
 import { buildVoicePromptSection } from './voice-prompt-builder';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
 import type { PostTemplate, StyleProfile, PostVariation, TeamVoiceProfile } from '@/lib/types/content-pipeline';
@@ -214,7 +214,8 @@ export async function writePost(input: WritePostInput): Promise<WrittenPost> {
 
 export async function writePostWithAutoTemplate(
   input: WritePostInput,
-  userId: string
+  teamId: string,
+  profileId: string
 ): Promise<WrittenPost & { matchedTemplateId?: string }> {
   // If template already provided, use it directly
   if (input.template) {
@@ -232,11 +233,11 @@ export async function writePostWithAutoTemplate(
     .filter(Boolean)
     .join('\n');
 
-  const match = await findBestTemplate(topicText, userId);
+  const ranked = await matchAndRerankTemplates(topicText, teamId, profileId, 3);
 
-  if (match) {
-    // Inject template guidance into the freeform prompt via knowledgeContext
-    const templateGuidance = buildTemplateGuidance(match);
+  if (ranked.length > 0) {
+    // Inject template guidance menu into the freeform prompt via knowledgeContext
+    const templateGuidance = buildTemplateGuidance(ranked);
     const enhancedInput: WritePostInput = {
       ...input,
       knowledgeContext: input.knowledgeContext
@@ -245,10 +246,10 @@ export async function writePostWithAutoTemplate(
     };
     const result = await writePostFreeform(enhancedInput);
 
-    // Increment usage count (fire-and-forget)
-    incrementTemplateUsage(match.id).catch(() => {});
+    // Increment usage count for the top-ranked template (fire-and-forget)
+    incrementTemplateUsage(ranked[0].id).catch(() => {});
 
-    return { ...result, matchedTemplateId: match.id };
+    return { ...result, matchedTemplateId: ranked[0].id };
   }
 
   // No match — proceed freeform

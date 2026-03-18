@@ -349,6 +349,8 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
           .eq('id', idea.id);
 
         // Write post (with automatic template RAG matching)
+        const resolvedTeamId = teamId ?? userId;
+        const resolvedProfileId = profileId ?? userId;
         const writtenPost = await writePostWithAutoTemplate(
           {
             idea: {
@@ -364,7 +366,8 @@ export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchRes
             authorName,
             authorTitle,
           },
-          userId
+          resolvedTeamId,
+          resolvedProfileId
         );
 
         // Polish post
