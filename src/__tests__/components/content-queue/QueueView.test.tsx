@@ -34,6 +34,7 @@ const mockTeams: QueueTeam[] = [
         edited_at: null,
         created_at: '2026-03-17',
         image_urls: null,
+        review_data: null,
       },
       {
         id: 'p2',
@@ -44,6 +45,7 @@ const mockTeams: QueueTeam[] = [
         edited_at: '2026-03-17T10:00:00Z',
         created_at: '2026-03-17',
         image_urls: null,
+        review_data: null,
       },
     ],
     edited_count: 1,

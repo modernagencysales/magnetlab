@@ -7,8 +7,9 @@
  * Never fetches data; receives everything via props.
  */
 
+import { useState } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Globe } from 'lucide-react';
+import { Eye, EyeOff, Globe, X } from 'lucide-react';
 import { TipTapTextBlock } from '@/components/content/inline-editor/TipTapTextBlock';
 import { FeedPreview } from './FeedPreview';
 import type { QueuePost } from '@/frontend/api/content-queue';
@@ -49,7 +50,9 @@ export function PostEditor({
   imageUrls,
 }: PostEditorProps) {
   const initials = getInitials(authorName || 'U');
-  const firstImage = imageUrls?.[0] ?? null;
+  // imageUrlOverride lets the operator paste a URL for visual reference (not persisted)
+  const [imageUrlOverride, setImageUrlOverride] = useState<string>('');
+  const firstImage = imageUrlOverride || imageUrls?.[0] || null;
 
   // Feed preview mode
   if (isPreviewMode) {
@@ -125,6 +128,29 @@ export function PostEditor({
             placeholder="Write your post content..."
             className="min-h-[200px] text-sm text-zinc-100 [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:outline-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-zinc-500"
           />
+        </div>
+
+        {/* Image URL input */}
+        <div className="border-t border-zinc-700/50 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="url"
+              value={imageUrlOverride}
+              onChange={(e) => setImageUrlOverride(e.target.value)}
+              placeholder="Paste image URL for preview..."
+              className="flex-1 rounded border border-zinc-700 bg-zinc-900/50 px-2 py-1 text-xs text-zinc-300 placeholder-zinc-600 outline-none focus:border-zinc-500"
+            />
+            {imageUrlOverride && (
+              <button
+                type="button"
+                onClick={() => setImageUrlOverride('')}
+                className="shrink-0 rounded p-1 text-zinc-500 hover:text-zinc-300"
+                title="Remove image URL"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Image display */}

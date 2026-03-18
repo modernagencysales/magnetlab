@@ -9,12 +9,20 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 // ─── Column Constants ─────────────────────────────────────────────────────
 
 const QUEUE_POST_COLUMNS =
-  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status';
+  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status, review_data, image_urls';
 
 const QUEUE_POST_WITH_IDEA_COLUMNS =
-  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status, cp_content_ideas(title, content_type)';
+  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status, review_data, image_urls, cp_content_ideas(title, content_type)';
 
 // ─── Types ────────────────────────────────────────────────────────────────
+
+export interface QueuePostReviewData {
+  score: number;
+  category: 'excellent' | 'good_with_edits' | 'needs_rewrite' | 'delete';
+  notes: string[];
+  flags: string[];
+  reviewed_at: string;
+}
 
 export interface QueuePost {
   id: string;
@@ -24,6 +32,8 @@ export interface QueuePost {
   created_at: string;
   team_profile_id: string | null;
   status: string;
+  review_data: QueuePostReviewData | null;
+  image_urls: string[] | null;
   cp_content_ideas: { title: string | null; content_type: string | null } | null;
 }
 
@@ -73,6 +83,15 @@ export async function findPostByIdForProfiles(
 }
 
 // ─── Writes ───────────────────────────────────────────────────────────────
+
+/**
+ * Delete a post from the pipeline. Hard delete — used by queue operators.
+ */
+export async function deletePost(postId: string): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.from('cp_pipeline_posts').delete().eq('id', postId);
+  if (error) throw new Error(`content-queue.deletePost: ${error.message}`);
+}
 
 /**
  * Set edited_at on a post (mark as edited by operator).

@@ -2,7 +2,7 @@
 
 /**
  * ContextPanel.
- * Right column of the editing view — writing style, content brief, and all posts overview.
+ * Right column of the editing view — writing style, content brief, AI review notes, and post stats.
  * Collapsible accordion sections. Never fetches data; receives everything via props.
  */
 
@@ -12,10 +12,22 @@ import type { QueueTeamWritingStyle, QueuePost } from '@/frontend/api/content-qu
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function estimatedReadTimeSecs(wordCount: number): number {
+  // Average reading speed: ~238 wpm (LinkedIn posts are typically quick reads)
+  return Math.ceil((wordCount / 238) * 60);
+}
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+
 interface ContextPanelProps {
   writingStyle: QueueTeamWritingStyle | null;
   currentPost: QueuePost | null;
-  allPosts: QueuePost[];
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -57,7 +69,6 @@ function AccordionSection({
 export function ContextPanel({
   writingStyle,
   currentPost,
-  allPosts,
   isCollapsed,
   onToggleCollapse,
 }: ContextPanelProps) {
@@ -150,23 +161,85 @@ export function ContextPanel({
           </AccordionSection>
         )}
 
-        {/* All Posts Overview — collapsible */}
-        <AccordionSection title={`All Posts (${allPosts.length})`}>
-          <div className="flex flex-col gap-1">
-            {allPosts.map((post, i) => (
-              <div key={post.id} className="flex items-center gap-2 text-[11px]">
-                <div
-                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                    post.edited_at ? 'bg-emerald-400' : 'bg-zinc-500'
-                  }`}
-                />
-                <span className="truncate text-zinc-400">
-                  {i + 1}. {post.draft_content?.split('\n')[0]?.slice(0, 30) || '(empty)'}
-                </span>
+        {/* AI Review Notes — collapsible */}
+        {currentPost && (
+          <AccordionSection title="AI Review" defaultOpen={!!currentPost.review_data}>
+            {currentPost.review_data ? (
+              <div className="flex flex-col gap-2">
+                {/* Score badge */}
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                      currentPost.review_data.score >= 8
+                        ? 'bg-emerald-900/40 text-emerald-400'
+                        : currentPost.review_data.score >= 6
+                          ? 'bg-amber-900/40 text-amber-400'
+                          : 'bg-red-900/40 text-red-400'
+                    }`}
+                  >
+                    {currentPost.review_data.score}/10
+                  </span>
+                  <span className="text-[10px] capitalize text-zinc-500">
+                    {currentPost.review_data.category.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                {/* Notes */}
+                {currentPost.review_data.notes.length > 0 && (
+                  <ul className="flex flex-col gap-1">
+                    {currentPost.review_data.notes.map((note, i) => (
+                      <li key={i} className="text-[11px] leading-tight text-zinc-400">
+                        &bull; {note}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {/* Flags */}
+                {currentPost.review_data.flags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {currentPost.review_data.flags.map((flag, i) => (
+                      <span
+                        key={i}
+                        className="rounded bg-red-900/20 px-1.5 py-0.5 text-[10px] text-red-400"
+                      >
+                        {flag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        </AccordionSection>
+            ) : (
+              <p className="text-[11px] text-zinc-500">No AI review available</p>
+            )}
+          </AccordionSection>
+        )}
+
+        {/* Post Stats — collapsible */}
+        {currentPost && (
+          <AccordionSection title="Post Stats">
+            {(() => {
+              const text = currentPost.draft_content ?? '';
+              const words = countWords(text);
+              const secs = estimatedReadTimeSecs(words);
+              const readTime = secs < 60 ? `${secs}s read` : `${Math.ceil(secs / 60)}m read`;
+              return (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase text-zinc-500">Words</span>
+                    <span className="text-xs text-zinc-300">{words}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase text-zinc-500">Read time</span>
+                    <span className="text-xs text-zinc-300">{readTime}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase text-zinc-500">Characters</span>
+                    <span className="text-xs text-zinc-300">{text.length}</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </AccordionSection>
+        )}
       </div>
     </div>
   );

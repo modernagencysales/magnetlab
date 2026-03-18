@@ -1,6 +1,7 @@
 /**
- * Content Queue — Post Update Route.
+ * Content Queue — Post Update/Delete Route.
  * PATCH /api/content-queue/posts/[id] — update a post in the content queue.
+ * DELETE /api/content-queue/posts/[id] — delete a post from the queue.
  * Never contains business logic; delegates to contentQueueService.
  */
 
@@ -32,6 +33,31 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   } catch (error) {
     const status = contentQueueService.getStatusCode(error);
     logError('content-queue/update', error, { step: 'queue_update_error' });
+    return NextResponse.json(
+      { error: status < 500 ? (error as Error).message : 'Internal server error' },
+      { status }
+    );
+  }
+}
+
+// ─── DELETE handler ────────────────────────────────────────────────────────
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    await contentQueueService.deleteQueuePost(session.user.id, id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const status = contentQueueService.getStatusCode(error);
+    logError('content-queue/delete', error, { step: 'queue_delete_error' });
     return NextResponse.json(
       { error: status < 500 ? (error as Error).message : 'Internal server error' },
       { status }

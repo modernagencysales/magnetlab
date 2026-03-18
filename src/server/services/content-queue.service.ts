@@ -19,6 +19,14 @@ export interface QueueTeamWritingStyle {
   writing_rules: string[] | null;
 }
 
+export interface QueuePostReviewData {
+  score: number;
+  category: 'excellent' | 'good_with_edits' | 'needs_rewrite' | 'delete';
+  notes: string[];
+  flags: string[];
+  reviewed_at: string;
+}
+
 export interface QueueTeam {
   team_id: string;
   team_name: string;
@@ -34,6 +42,8 @@ export interface QueueTeam {
     idea_content_type: string | null;
     edited_at: string | null;
     created_at: string;
+    review_data: QueuePostReviewData | null;
+    image_urls: string[] | null;
   }>;
   edited_count: number;
   total_count: number;
@@ -162,6 +172,8 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
       idea_content_type: idea?.content_type ?? null,
       edited_at: post.edited_at,
       created_at: post.created_at,
+      review_data: (post.review_data as QueuePostReviewData | null) ?? null,
+      image_urls: post.image_urls ?? null,
     });
     team.total_count++;
     if (post.edited_at) team.edited_count++;
@@ -229,6 +241,30 @@ export async function updateQueuePost(
   if (input.mark_edited) {
     await queueRepo.markPostEdited(postId);
   }
+}
+
+/**
+ * Delete a post from the queue. Validates the user has access to the post's team.
+ */
+export async function deleteQueuePost(userId: string, postId: string): Promise<void> {
+  const userTeams = await teamRepo.getUserTeams(userId);
+  const teamIds = userTeams.map((e) => e.team.id);
+
+  const supabase = createSupabaseAdminClient();
+  const { data: profiles } = await supabase
+    .from('team_profiles')
+    .select('id')
+    .in('team_id', teamIds)
+    .eq('status', 'active');
+
+  const profileIds = (profiles ?? []).map((p) => p.id);
+
+  const post = await queueRepo.findPostByIdForProfiles(postId, profileIds);
+  if (!post) {
+    throw Object.assign(new Error('Post not found or not accessible'), { statusCode: 403 });
+  }
+
+  await queueRepo.deletePost(postId);
 }
 
 /**

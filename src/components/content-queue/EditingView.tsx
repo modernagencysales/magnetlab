@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Trash2 } from 'lucide-react';
 import type { QueueTeam, QueueTeamWritingStyle } from '@/frontend/api/content-queue';
 import { PostList } from './PostList';
 import { PostEditor } from './PostEditor';
@@ -20,6 +21,7 @@ interface EditingViewProps {
   writingStyle: QueueTeamWritingStyle | null;
   onBack: () => void;
   onMarkEdited: (postId: string) => Promise<void>;
+  onDeletePost: (postId: string) => Promise<void>;
   onContentChange: (postId: string, content: string) => void;
 }
 
@@ -30,6 +32,7 @@ export function EditingView({
   writingStyle,
   onBack,
   onMarkEdited,
+  onDeletePost,
   onContentChange,
 }: EditingViewProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -89,6 +92,23 @@ export function EditingView({
         return;
       }
 
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        if (currentPost && window.confirm('Delete this post?')) {
+          const nextIdx =
+            posts.length > 1
+              ? currentIndex >= posts.length - 1
+                ? currentIndex - 1
+                : currentIndex
+              : -1;
+          onDeletePost(currentPost.id).then(() => {
+            if (nextIdx < 0) onBack();
+            else setCurrentIndex(nextIdx);
+          });
+        }
+        return;
+      }
+
       if (e.key === 'p') {
         e.preventDefault();
         setIsPreviewMode((prev) => !prev);
@@ -111,7 +131,16 @@ export function EditingView({
     // Use capture phase so Cmd+Enter is intercepted before ProseMirror inserts a line break
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [currentIndex, currentPost, posts.length, onBack, onMarkEdited, findNextUnedited]);
+  }, [
+    currentIndex,
+    currentPost,
+    posts,
+    posts.length,
+    onBack,
+    onMarkEdited,
+    onDeletePost,
+    findNextUnedited,
+  ]);
 
   // ─── Handlers ────────────────────────────────────────────────────
 
@@ -123,6 +152,17 @@ export function EditingView({
     },
     [currentPost, onContentChange]
   );
+
+  const handleDelete = useCallback(() => {
+    if (!currentPost) return;
+    if (!window.confirm('Delete this post?')) return;
+    const nextIdx =
+      posts.length > 1 ? (currentIndex >= posts.length - 1 ? currentIndex - 1 : currentIndex) : -1;
+    onDeletePost(currentPost.id).then(() => {
+      if (nextIdx < 0) onBack();
+      else setCurrentIndex(nextIdx);
+    });
+  }, [currentPost, currentIndex, posts.length, onDeletePost, onBack]);
 
   const handleTogglePreview = useCallback(() => {
     setIsPreviewMode((prev) => !prev);
@@ -166,6 +206,14 @@ export function EditingView({
               Cmd+Enter
             </kbd>
             <span className="text-[10px] text-zinc-600">mark edited</span>
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="ml-1 rounded p-1 text-zinc-500 transition-colors hover:bg-red-900/30 hover:text-red-400"
+              title="Delete post (Backspace)"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
 
@@ -176,7 +224,7 @@ export function EditingView({
           isPreviewMode={isPreviewMode}
           onTogglePreview={handleTogglePreview}
           onContentChange={handleContentChange}
-          imageUrls={null}
+          imageUrls={currentPost.image_urls ?? null}
         />
       </div>
 
@@ -184,7 +232,6 @@ export function EditingView({
       <ContextPanel
         writingStyle={writingStyle}
         currentPost={currentPost}
-        allPosts={posts}
         isCollapsed={isContextCollapsed}
         onToggleCollapse={handleToggleContext}
       />

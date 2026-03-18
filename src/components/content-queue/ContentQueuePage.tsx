@@ -10,7 +10,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useContentQueue } from '@/frontend/hooks/api/useContentQueue';
-import { updateQueuePost, submitBatch } from '@/frontend/api/content-queue';
+import { updateQueuePost, deleteQueuePost, submitBatch } from '@/frontend/api/content-queue';
 import { QueueView } from './QueueView';
 import { EditingView } from './EditingView';
 
@@ -87,6 +87,19 @@ export function ContentQueuePage() {
     [editingTeamId, mutateTeam]
   );
 
+  const handleDeletePost = useCallback(
+    async (postId: string) => {
+      try {
+        await deleteQueuePost(postId);
+        await refetch();
+      } catch {
+        toast.error('Failed to delete post. Please try again.');
+        throw new Error('Delete failed');
+      }
+    },
+    [refetch]
+  );
+
   const handleContentChange = useCallback((postId: string, content: string) => {
     if (contentChangeTimeoutRef.current) {
       clearTimeout(contentChangeTimeoutRef.current);
@@ -127,6 +140,7 @@ export function ContentQueuePage() {
         writingStyle={editingTeam.writing_style}
         onBack={handleBack}
         onMarkEdited={handleMarkEdited}
+        onDeletePost={handleDeletePost}
         onContentChange={handleContentChange}
       />
     );

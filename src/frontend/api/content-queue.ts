@@ -15,6 +15,14 @@ export interface QueueTeamWritingStyle {
   writing_rules: string[] | null;
 }
 
+export interface QueuePostReviewData {
+  score: number;
+  category: 'excellent' | 'good_with_edits' | 'needs_rewrite' | 'delete';
+  notes: string[];
+  flags: string[];
+  reviewed_at: string;
+}
+
 export interface QueuePost {
   id: string;
   draft_content: string | null;
@@ -23,6 +31,8 @@ export interface QueuePost {
   idea_content_type: string | null;
   edited_at: string | null;
   created_at: string;
+  review_data: QueuePostReviewData | null;
+  image_urls: string[] | null;
 }
 
 export interface QueueTeam {
@@ -67,6 +77,10 @@ export async function getQueue(): Promise<QueueListResult> {
 
 export async function updateQueuePost(postId: string, body: UpdateQueuePostBody): Promise<void> {
   return apiClient.patch<void>(`/content-queue/posts/${postId}`, body);
+}
+
+export async function deleteQueuePost(postId: string): Promise<void> {
+  return apiClient.delete<void>(`/content-queue/posts/${postId}`);
 }
 
 export async function submitBatch(teamId: string): Promise<SubmitResult> {
