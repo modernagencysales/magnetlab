@@ -12,9 +12,11 @@ The DFY pipeline's content track reaches `editing` stage when AI-generated posts
 
 A new magnetlab dashboard page that lets an operator edit content across all teams they belong to — DFY clients, agency clients, or their own team — in one fast, focused interface. The feature is team-membership-driven, not DFY-specific. The DFY pipeline integration is a side effect that fires when applicable, not a gating condition.
 
-## Design Principle
+## Design Principles
 
-The content queue shows draft posts across all teams the user belongs to. It doesn't care *why* the user has access — DFY operator, agency owner, team reviewer. The page works the same for all. DFY callback on batch submit fires only when an active DFY engagement exists for that team's owner.
+**Team-membership-driven, not role-driven.** The content queue shows draft posts across all teams the user belongs to. It doesn't care *why* the user has access — DFY operator, agency owner, team reviewer. The page works the same for all. DFY callback on batch submit fires only when an active DFY engagement exists for that team's owner.
+
+**Agent-ready by default.** Every API endpoint in the content queue must be callable by both a human editor (via the UI) and an AI agent (via MCP or direct API). No endpoint should require browser-specific context (cookies, CSRF) for its core operation — session auth for the UI, API key auth for agents. This means an AI proofreading agent can use the same `GET /api/content-queue` → `PATCH /api/content-queue/posts/[id]` → `POST /api/content-queue/submit` flow as a human editor. The content queue endpoints should be added to the MCP tool registry as part of this feature.
 
 ## Dependency
 
