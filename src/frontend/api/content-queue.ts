@@ -32,7 +32,6 @@ export interface QueuePost {
   edited_at: string | null;
   created_at: string;
   review_data: QueuePostReviewData | null;
-  image_urls: string[] | null;
 }
 
 export interface QueueTeam {

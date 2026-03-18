@@ -44,7 +44,6 @@ export interface QueueTeam {
     edited_at: string | null;
     created_at: string;
     review_data: QueuePostReviewData | null;
-    image_urls: string[] | null;
   }>;
   edited_count: number;
   total_count: number;
@@ -174,7 +173,6 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
       edited_at: post.edited_at,
       created_at: post.created_at,
       review_data: (post.review_data as QueuePostReviewData | null) ?? null,
-      image_urls: post.image_urls ?? null,
     });
     team.total_count++;
     if (post.edited_at) team.edited_count++;

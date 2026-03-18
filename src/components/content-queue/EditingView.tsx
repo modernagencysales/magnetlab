@@ -224,7 +224,7 @@ export function EditingView({
           isPreviewMode={isPreviewMode}
           onTogglePreview={handleTogglePreview}
           onContentChange={handleContentChange}
-          imageUrls={currentPost.image_urls ?? null}
+          imageUrls={null}
         />
       </div>
 
