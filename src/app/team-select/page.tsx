@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Users, Loader2, Magnet, ArrowRight, UsersRound } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
-import { getTeamMemberships } from '@/frontend/api/team';
+import { listTeams } from '@/frontend/api/teams';
 
 interface TeamMembership {
   id: string;
@@ -28,8 +28,21 @@ export default function TeamSelectPage() {
   useEffect(() => {
     const fetchMemberships = async () => {
       try {
-        const data = await getTeamMemberships();
-        setMemberships(data as TeamMembership[]);
+        const data = await listTeams();
+        // Normalize V2 UserTeamEntry list to local TeamMembership shape
+        const entries = ((data as { teams?: unknown[] }).teams ?? []) as Array<{
+          id: string;
+          name: string;
+          role: 'owner' | 'member';
+        }>;
+        const normalized: TeamMembership[] = entries.map((e) => ({
+          id: e.id,
+          teamId: e.id,
+          teamName: e.name,
+          ownerId: '',
+          role: e.role,
+        }));
+        setMemberships(normalized);
 
         // Only auto-select when no cookie exists (first visit / fresh session).
         // If the user already has a cookie, they're explicitly switching — show the UI.
@@ -37,8 +50,8 @@ export default function TeamSelectPage() {
           .split('; ')
           .some((c) => c.startsWith('ml-team-context='));
 
-        if (!hasExistingContext && data.length === 1) {
-          selectTeam((data[0] as TeamMembership).teamId);
+        if (!hasExistingContext && normalized.length === 1) {
+          selectTeam(normalized[0].teamId);
         }
       } catch (err) {
         logError('dashboard/team-select', err, { step: 'failed_to_fetch_memberships' });

@@ -37,7 +37,6 @@ import {
 } from '@magnetlab/magnetui';
 
 import { logError } from '@/lib/utils/logger';
-import { getTeamMemberships, getTeam } from '@/frontend/api/team';
 import * as teamsApi from '@/frontend/api/teams';
 
 interface TeamMembership {
@@ -94,11 +93,29 @@ export default function TeamPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileForm, setProfileForm] = useState<ProfileFormData>(emptyForm);
 
+  const [teamCache, setTeamCache] = useState<Record<string, Team>>({});
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getTeamMemberships();
-      setMemberships(data as TeamMembership[]);
+      const data = await teamsApi.listTeams();
+      // Normalize V2 UserTeamEntry arrays to local TeamMembership shape
+      const allEntries = [
+        ...((data as { owned?: unknown[] }).owned ?? []),
+        ...((data as { member?: unknown[] }).member ?? []),
+      ] as Array<{ team: Team; role: 'owner' | 'member' }>;
+      const normalized: TeamMembership[] = allEntries.map((e) => ({
+        id: e.team.id,
+        teamId: e.team.id,
+        teamName: e.team.name,
+        ownerId: e.team.owner_id,
+        role: e.role,
+      }));
+      setMemberships(normalized);
+      // Cache full team data for manage view (avoids separate getTeam call)
+      const cache: Record<string, Team> = {};
+      for (const e of allEntries) cache[e.team.id] = e.team;
+      setTeamCache(cache);
     } catch (err) {
       logError('dashboard/team', err, { step: 'failed_to_fetch_team_data' });
     } finally {
@@ -143,16 +160,13 @@ export default function TeamPage() {
     setError(null);
     setSuccess(null);
     try {
-      const [teamData, profilesList] = await Promise.all([
-        getTeam(teamId),
-        teamsApi.listProfiles(),
-      ]);
-      const team = teamData as { team?: Team };
-      if (team.team) {
-        setManagingTeam(team.team);
-        setTeamName(team.team.name);
-        setTeamIndustry(team.team.industry || '');
-        setTeamGoal(team.team.shared_goal || '');
+      const team = teamCache[teamId] ?? null;
+      const profilesList = await teamsApi.listProfiles();
+      if (team) {
+        setManagingTeam(team);
+        setTeamName(team.name);
+        setTeamIndustry(team.industry || '');
+        setTeamGoal(team.shared_goal || '');
       }
       const teamProfiles = (profilesList || []).filter(
         (p: unknown) => (p as TeamProfile).team_id === teamId
