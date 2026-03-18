@@ -15,7 +15,11 @@ import {
   findLeadMagnetById,
   createLeadMagnet,
 } from '@/server/repositories/lead-magnets.repo';
-import { analyzeContextGaps, generateContent, generatePosts } from '@/lib/ai/copilot/lead-magnet-creation';
+import {
+  analyzeContextGaps,
+  generateContent,
+  generatePosts,
+} from '@/lib/ai/copilot/lead-magnet-creation';
 import type { ActionContext, ActionResult } from './types';
 import type { LeadMagnetArchetype, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 
@@ -39,7 +43,7 @@ registerAction({
     ctx: ActionContext,
     params: { status?: string; limit?: number }
   ): Promise<ActionResult> => {
-    const { data, count } = await findLeadMagnets(ctx.scope, {
+    const { data } = await findLeadMagnets(ctx.scope, {
       status: params.status || null,
       limit: params.limit || 10,
       offset: 0,
@@ -186,8 +190,7 @@ registerAction({
       },
       answers: {
         type: 'object',
-        description:
-          'Object mapping question IDs to user answers (e.g. { "q1": "answer text" })',
+        description: 'Object mapping question IDs to user answers (e.g. { "q1": "answer text" })',
       },
     },
     required: ['archetype', 'answers'],
@@ -272,17 +275,13 @@ registerAction({
     }
   ): Promise<ActionResult> => {
     try {
-      const data = await createLeadMagnet(
-        ctx.scope.userId,
-        ctx.scope.teamId ?? null,
-        {
-          title: params.title,
-          archetype: params.archetype,
-          status: 'draft',
-          content_blocks: params.content_blocks,
-          extraction_data: params.extraction_data || null,
-        }
-      );
+      const data = await createLeadMagnet(ctx.scope.userId, ctx.scope.teamId ?? null, {
+        title: params.title,
+        archetype: params.archetype,
+        status: 'draft',
+        content_blocks: params.content_blocks,
+        extraction_data: params.extraction_data || null,
+      });
 
       return {
         success: true,

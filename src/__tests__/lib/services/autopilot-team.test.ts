@@ -79,9 +79,7 @@ describe('autopilot team generation', () => {
       const idea2 = makeIdea({ id: 'idea-2', title: 'Content marketing' });
       const ranked = [makeRankedIdea(idea1, 0.9), makeRankedIdea(idea2, 0.7)];
       const profile = makeProfileContext({ profileId: 'profile-1' });
-      const usedMap = new Map<string, Set<string>>([
-        ['profile-1', new Set(['idea-1'])],
-      ]);
+      const usedMap = new Map<string, Set<string>>([['profile-1', new Set(['idea-1'])]]);
 
       const result = pickIdeaForProfile(ranked, profile, usedMap);
 
@@ -93,12 +91,10 @@ describe('autopilot team generation', () => {
       const idea1 = makeIdea({ id: 'idea-1', title: 'Sales automation' });
       const ranked = [makeRankedIdea(idea1, 0.9)];
 
-      const profile1 = makeProfileContext({ profileId: 'profile-1' });
+      const _profile1 = makeProfileContext({ profileId: 'profile-1' });
       const profile2 = makeProfileContext({ profileId: 'profile-2', fullName: 'Bob Jones' });
 
-      const usedMap = new Map<string, Set<string>>([
-        ['profile-1', new Set(['idea-1'])],
-      ]);
+      const usedMap = new Map<string, Set<string>>([['profile-1', new Set(['idea-1'])]]);
 
       // Profile 2 should still get idea-1 since it hasn't used it
       const result = pickIdeaForProfile(ranked, profile2, usedMap);
@@ -147,9 +143,7 @@ describe('autopilot team generation', () => {
       const ranked = [makeRankedIdea(idea1, 0.9), makeRankedIdea(idea2, 0.7)];
 
       const profile = makeProfileContext({ profileId: 'profile-1' });
-      const usedMap = new Map<string, Set<string>>([
-        ['profile-1', new Set(['idea-1', 'idea-2'])],
-      ]);
+      const usedMap = new Map<string, Set<string>>([['profile-1', new Set(['idea-1', 'idea-2'])]]);
 
       const result = pickIdeaForProfile(ranked, profile, usedMap);
 
@@ -273,15 +267,36 @@ describe('autopilot team generation', () => {
 
     it('expertise-based profiles pick different ideas from the same pool', () => {
       const ideas = [
-        makeIdea({ id: 'idea-sales', title: 'Sales automation for agencies', core_insight: 'Sales pipeline' }),
-        makeIdea({ id: 'idea-content', title: 'Content marketing strategies', core_insight: 'Content distribution' }),
-        makeIdea({ id: 'idea-tech', title: 'API integration patterns', core_insight: 'Technical architecture' }),
+        makeIdea({
+          id: 'idea-sales',
+          title: 'Sales automation for agencies',
+          core_insight: 'Sales pipeline',
+        }),
+        makeIdea({
+          id: 'idea-content',
+          title: 'Content marketing strategies',
+          core_insight: 'Content distribution',
+        }),
+        makeIdea({
+          id: 'idea-tech',
+          title: 'API integration patterns',
+          core_insight: 'Technical architecture',
+        }),
       ];
       const rankedIdeas = ideas.map((i, idx) => makeRankedIdea(i, 0.9 - idx * 0.1));
 
-      const salesProfile = makeProfileContext({ profileId: 'p-sales', expertiseAreas: ['sales', 'pipeline'] });
-      const contentProfile = makeProfileContext({ profileId: 'p-content', expertiseAreas: ['content', 'marketing'] });
-      const techProfile = makeProfileContext({ profileId: 'p-tech', expertiseAreas: ['api', 'technical'] });
+      const salesProfile = makeProfileContext({
+        profileId: 'p-sales',
+        expertiseAreas: ['sales', 'pipeline'],
+      });
+      const contentProfile = makeProfileContext({
+        profileId: 'p-content',
+        expertiseAreas: ['content', 'marketing'],
+      });
+      const techProfile = makeProfileContext({
+        profileId: 'p-tech',
+        expertiseAreas: ['api', 'technical'],
+      });
 
       const usedMap = new Map<string, Set<string>>();
 

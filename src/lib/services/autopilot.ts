@@ -19,7 +19,6 @@ import type {
   AutoPilotConfig,
   BatchResult,
   ProfileBatchResult,
-  TeamProfile,
   TeamVoiceProfile,
 } from '@/lib/types/content-pipeline';
 import { logError } from '@/lib/utils/logger';
@@ -315,11 +314,7 @@ export function pickIdeaForProfile(
     for (const ranked of rankedIdeas) {
       if (profileUsed.has(ranked.idea.id)) continue;
 
-      const ideaText = [
-        ranked.idea.title,
-        ranked.idea.core_insight,
-        ranked.idea.content_type,
-      ]
+      const ideaText = [ranked.idea.title, ranked.idea.core_insight, ranked.idea.content_type]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -485,7 +480,10 @@ async function runTeamBatch(config: AutoPilotConfig): Promise<BatchResult> {
                 knowledgeContext = brief.compiledContext;
               }
             } catch (err) {
-              logError('autopilot/team-batch', err, { step: 'knowledge_context', profileId: profileCtx.profileId });
+              logError('autopilot/team-batch', err, {
+                step: 'knowledge_context',
+                profileId: profileCtx.profileId,
+              });
             }
           }
 
@@ -566,7 +564,9 @@ async function runTeamBatch(config: AutoPilotConfig): Promise<BatchResult> {
           });
 
           if (postError) {
-            profileResult.errors.push(`Failed to save post for idea ${idea.id}: ${postError.message}`);
+            profileResult.errors.push(
+              `Failed to save post for idea ${idea.id}: ${postError.message}`
+            );
             continue;
           }
 
@@ -579,7 +579,9 @@ async function runTeamBatch(config: AutoPilotConfig): Promise<BatchResult> {
           }
         } catch (ideaError) {
           const errorMsg = ideaError instanceof Error ? ideaError.message : String(ideaError);
-          profileResult.errors.push(`Failed to process idea ${idea.id} for profile ${profileCtx.fullName}: ${errorMsg}`);
+          profileResult.errors.push(
+            `Failed to process idea ${idea.id} for profile ${profileCtx.fullName}: ${errorMsg}`
+          );
         }
       }
 
