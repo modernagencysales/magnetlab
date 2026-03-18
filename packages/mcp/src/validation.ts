@@ -378,9 +378,6 @@ export const toolSchemas: Record<string, z.ZodType> = {
     team_id: z.string().min(1, 'team_id is required'),
   }),
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
   // ── Post Campaigns (8) ─────────────────────────────────────────────────
 
   magnetlab_list_post_campaigns: z.object({
@@ -460,11 +457,10 @@ export const toolSchemas: Record<string, z.ZodType> = {
       .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be in HH:MM format')
       .optional(),
     timezone: z.string().optional(),
-=======
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+  }),
+
+  // ── Asset Review (3) ────────────────────────────────────────────────────
+
   magnetlab_review_lead_magnet: z.object({
     lead_magnet_id: uuidField,
     reviewed: z.boolean(),
@@ -477,13 +473,6 @@ export const toolSchemas: Record<string, z.ZodType> = {
 
   magnetlab_submit_asset_review: z.object({
     team_id: z.string().min(1, 'team_id is required'),
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
   }),
 };
 
