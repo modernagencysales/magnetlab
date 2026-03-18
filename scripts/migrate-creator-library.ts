@@ -6,7 +6,7 @@
  * Usage:
  *   npx tsx scripts/migrate-creator-library.ts --phase=scrape
  *   npx tsx scripts/migrate-creator-library.ts --phase=transform
- *   npx tsx scripts/migrate-creator-library.ts --phase=import     (not yet implemented)
+ *   MAGNETLAB_API_KEY=xxx npx tsx scripts/migrate-creator-library.ts --phase=import
  *
  * Never imports from src/ — this is a standalone migration script.
  */
@@ -834,10 +834,202 @@ async function runTransform(): Promise<void> {
   console.log(`${'─'.repeat(60)}\n`);
 }
 
-// ─── Import Phase (stub) ──────────────────────────────────────────────────────
+// ─── Import Phase ─────────────────────────────────────────────────────────────
+
+const IMPORT_TRANSFORMED_FILE = path.join(__dirname, 'data', 'creator-transformed.json');
+
+interface ImportResult {
+  title: string;
+  leadMagnetId: string;
+}
 
 async function runImport(): Promise<void> {
-  console.log('Import phase: Not implemented yet');
+  // ── Validate prerequisites ──────────────────────────────────────────────────
+
+  if (!fs.existsSync(IMPORT_TRANSFORMED_FILE)) {
+    console.error(
+      `Transformed data not found at ${IMPORT_TRANSFORMED_FILE}. Run --phase=transform first.`
+    );
+    process.exit(1);
+  }
+
+  const apiKey = process.env.MAGNETLAB_API_KEY;
+  if (!apiKey) {
+    console.error('MAGNETLAB_API_KEY environment variable is not set.');
+    process.exit(1);
+  }
+
+  const baseUrl = process.env.MAGNETLAB_BASE_URL || 'https://www.magnetlab.app/api';
+
+  // ── Load data + initialize client ───────────────────────────────────────────
+
+  const { MagnetLabClient } = await import('../packages/mcp/src/client.js');
+  const client = new MagnetLabClient(apiKey, { baseUrl });
+
+  const resources: TransformedResource[] = JSON.parse(
+    fs.readFileSync(IMPORT_TRANSFORMED_FILE, 'utf-8')
+  );
+  console.log(`\nImporting ${resources.length} resources into MagnetLab...\n`);
+  console.log(`API: ${baseUrl}\n`);
+
+  // ── Fetch existing lead magnets for idempotency ─────────────────────────────
+
+  console.log('Fetching existing lead magnets for dedup check...');
+  let existingTitles: Set<string>;
+  try {
+    const existing = await client.listLeadMagnets({ limit: 500 });
+    existingTitles = new Set(
+      (existing.leadMagnets as Array<{ title?: string }>)
+        .map((lm) => lm.title)
+        .filter((t): t is string => !!t)
+    );
+    console.log(`  Found ${existingTitles.size} existing lead magnets\n`);
+  } catch (err) {
+    console.error(
+      '  Failed to fetch existing lead magnets:',
+      err instanceof Error ? err.message : String(err)
+    );
+    console.error('  Proceeding without dedup — duplicates may be created.\n');
+    existingTitles = new Set();
+  }
+
+  // ── Step 1: Create library ──────────────────────────────────────────────────
+
+  console.log('Step 1: Creating library...');
+  let libraryId: string;
+  try {
+    const libraryResult = await client.createLibrary({
+      name: 'Gemini 3: Agency Sales System',
+      description: '(5M Dollar Swipefile)',
+      icon: '✨',
+      autoFeatureDays: 0,
+    });
+    libraryId = (libraryResult.library as { id: string }).id;
+    console.log(`  Library created: ${libraryId}\n`);
+  } catch (err) {
+    console.error(
+      '  FATAL: Failed to create library:',
+      err instanceof Error ? err.message : String(err)
+    );
+    process.exit(1);
+  }
+
+  // ── Step 2: Import each resource ────────────────────────────────────────────
+
+  const created: ImportResult[] = [];
+  const skipped: string[] = [];
+  const failed: Array<{ title: string; error: string }> = [];
+
+  for (let i = 0; i < resources.length; i++) {
+    const resource = resources[i];
+    const label = `[${i + 1}/${resources.length}]`;
+
+    // Idempotency check
+    if (existingTitles.has(resource.title)) {
+      console.log(`${label} SKIP (exists): ${resource.title}`);
+      skipped.push(resource.title);
+      continue;
+    }
+
+    console.log(`${label} Importing: ${resource.title}`);
+
+    try {
+      // 2a. Create lead magnet
+      const createResult = await client.createLeadMagnet({
+        title: resource.title,
+        archetype: 'single-system' as const,
+        concept: { creatorIoId: resource.creatorId },
+      });
+      const leadMagnetId = (createResult as { leadMagnet: { id: string } }).leadMagnet.id;
+      console.log(`  Created LM: ${leadMagnetId}`);
+
+      // 2b. Update content
+      await client.updateLeadMagnetContent(leadMagnetId, resource.content, 1);
+      console.log(`  Content updated`);
+
+      // 2c. Add to library
+      await client.addLibraryItem(libraryId, {
+        assetType: 'lead_magnet',
+        leadMagnetId,
+        iconOverride: resource.emoji,
+        sortOrder: resource.sortOrder,
+        isFeatured: resource.isFeatured,
+      });
+      console.log(
+        `  Added to library (order: ${resource.sortOrder}, featured: ${resource.isFeatured})`
+      );
+
+      created.push({ title: resource.title, leadMagnetId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`  ERROR: ${message}`);
+      failed.push({ title: resource.title, error: message });
+    }
+  }
+
+  // ── Step 3: Create funnel ───────────────────────────────────────────────────
+
+  let funnelId: string | null = null;
+  if (created.length > 0) {
+    console.log('\nStep 3: Creating funnel...');
+    try {
+      const funnelResult = await client.createFunnel({
+        slug: 'gemini-3-agency-sales-system',
+        targetType: 'library' as const,
+        libraryId,
+      });
+      funnelId = (funnelResult.funnel as { id: string }).id;
+      console.log(`  Funnel created: ${funnelId}`);
+    } catch (err) {
+      console.error('  ERROR creating funnel:', err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  // ── Step 4: Publish funnel ──────────────────────────────────────────────────
+
+  if (funnelId) {
+    console.log('\nStep 4: Publishing funnel...');
+    try {
+      const publishResult = await client.publishFunnel(funnelId);
+      console.log(`  Funnel published: ${publishResult.publicUrl ?? '(no URL returned)'}`);
+    } catch (err) {
+      console.error('  ERROR publishing funnel:', err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  // ── Step 5: Publish all lead magnets ────────────────────────────────────────
+
+  if (created.length > 0) {
+    console.log(`\nStep 5: Publishing ${created.length} lead magnets...`);
+    let publishedCount = 0;
+    for (const item of created) {
+      try {
+        await client.request('PUT', `/lead-magnet/${item.leadMagnetId}`, { status: 'published' });
+        publishedCount++;
+      } catch (err) {
+        console.error(
+          `  ERROR publishing "${item.title}":`,
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    }
+    console.log(`  Published: ${publishedCount}/${created.length}`);
+  }
+
+  // ── Summary ─────────────────────────────────────────────────────────────────
+
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log(`Import complete`);
+  console.log(`  Library: ${libraryId}`);
+  if (funnelId) console.log(`  Funnel: ${funnelId}`);
+  console.log(`  Created: ${created.length}`);
+  console.log(`  Skipped: ${skipped.length}`);
+  console.log(`  Failed: ${failed.length}`);
+  if (failed.length > 0) {
+    console.log(`\nFailures:`);
+    failed.forEach((f) => console.log(`  - ${f.title}: ${f.error}`));
+  }
+  console.log(`${'─'.repeat(60)}\n`);
 }
 
 // ─── Entry Point ──────────────────────────────────────────────────────────────
