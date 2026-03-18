@@ -2,99 +2,89 @@
  * @jest-environment node
  */
 
-// Mock supabase before importing the module under test
-interface MockChain {
-  eq: jest.Mock;
-  single: jest.Mock;
-}
-
-const mockSingle = jest.fn();
-const mockEq: jest.Mock = jest.fn();
-const mockSelect = jest.fn();
-const mockFrom = jest.fn();
-
-// Wire up chain returns
-function setupChain(): void {
-  mockFrom.mockReturnValue({ select: mockSelect });
-  mockSelect.mockReturnValue({ eq: mockEq, single: mockSingle });
-  mockEq.mockReturnValue({ eq: mockEq, single: mockSingle } as MockChain);
-}
-setupChain();
-
-jest.mock('@/lib/utils/supabase-server', () => ({
-  createSupabaseAdminClient: jest.fn(() => ({
-    from: mockFrom,
-  })),
-}));
+jest.mock('@/server/repositories/team.repo');
 
 import { checkTeamRole, hasMinimumRole, TeamRole } from '@/lib/auth/rbac';
+import { hasTeamAccess as mockHasTeamAccess } from '@/server/repositories/team.repo';
+
+const mockHasTeamAccessFn = mockHasTeamAccess as jest.MockedFunction<typeof mockHasTeamAccess>;
 
 describe('RBAC utilities', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    setupChain();
   });
 
   describe('checkTeamRole', () => {
     it('returns "owner" for team owner', async () => {
-      // First call: teams table lookup
-      mockSingle.mockResolvedValueOnce({ data: { owner_id: 'user-1' }, error: null });
+      mockHasTeamAccessFn.mockResolvedValueOnce({
+        access: true,
+        role: 'owner',
+        via: 'direct',
+      });
 
       const role = await checkTeamRole('user-1', 'team-1');
       expect(role).toBe('owner');
-      expect(mockFrom).toHaveBeenCalledWith('teams');
+      expect(mockHasTeamAccessFn).toHaveBeenCalledWith('user-1', 'team-1');
     });
 
     it('returns "member" for active team member via team_members', async () => {
-      // First call: teams table lookup (user is not owner)
-      mockSingle.mockResolvedValueOnce({ data: { owner_id: 'other-user' }, error: null });
-      // Second call: team_members lookup
-      mockSingle.mockResolvedValueOnce({ data: { role: 'member', status: 'active' }, error: null });
+      mockHasTeamAccessFn.mockResolvedValueOnce({
+        access: true,
+        role: 'member',
+        via: 'direct',
+      });
 
       const role = await checkTeamRole('user-1', 'team-1');
       expect(role).toBe('member');
+      expect(mockHasTeamAccessFn).toHaveBeenCalledWith('user-1', 'team-1');
     });
 
     it('returns "member" for active team member via team_profiles', async () => {
-      // First call: teams table (not owner)
-      mockSingle.mockResolvedValueOnce({ data: { owner_id: 'other-user' }, error: null });
-      // Second call: team_members (no match)
-      mockSingle.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
-      // Third call: team_profiles
-      mockSingle.mockResolvedValueOnce({ data: { role: 'member', status: 'active' }, error: null });
+      mockHasTeamAccessFn.mockResolvedValueOnce({
+        access: true,
+        role: 'member',
+        via: 'direct',
+      });
 
       const role = await checkTeamRole('user-1', 'team-1');
       expect(role).toBe('member');
+      expect(mockHasTeamAccessFn).toHaveBeenCalledWith('user-1', 'team-1');
     });
 
     it('returns null for non-member', async () => {
-      // First call: teams table (team exists, not owner)
-      mockSingle.mockResolvedValueOnce({ data: { owner_id: 'other-user' }, error: null });
-      // Second call: team_members (no match)
-      mockSingle.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
-      // Third call: team_profiles (no match)
-      mockSingle.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
+      mockHasTeamAccessFn.mockResolvedValueOnce({
+        access: false,
+        role: 'member',
+        via: 'direct',
+      });
 
       const role = await checkTeamRole('user-1', 'team-1');
       expect(role).toBeNull();
+      expect(mockHasTeamAccessFn).toHaveBeenCalledWith('user-1', 'team-1');
     });
 
     it('returns null when team does not exist', async () => {
-      mockSingle.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
+      mockHasTeamAccessFn.mockResolvedValueOnce({
+        access: false,
+        role: 'member',
+        via: 'direct',
+      });
 
       const role = await checkTeamRole('user-1', 'nonexistent-team');
       expect(role).toBeNull();
+      expect(mockHasTeamAccessFn).toHaveBeenCalledWith('user-1', 'nonexistent-team');
     });
 
     it('returns "member" for member with owner role in team_members (V1 ignores role column)', async () => {
-      // teams table: user is not the direct owner
-      mockSingle.mockResolvedValueOnce({ data: { owner_id: 'other-user' }, error: null });
-      // team_members V1: only checks existence + active status, does not use role column
-      mockSingle.mockResolvedValueOnce({ data: { id: 'tm-1', status: 'active' }, error: null });
+      mockHasTeamAccessFn.mockResolvedValueOnce({
+        access: true,
+        role: 'member',
+        via: 'direct',
+      });
 
       const role = await checkTeamRole('user-1', 'team-1');
-      // V1 team_members always returns 'member' — owner promotion only via teams.owner_id or team_profiles V2
       expect(role).toBe('member');
+      expect(mockHasTeamAccessFn).toHaveBeenCalledWith('user-1', 'team-1');
     });
   });
 
