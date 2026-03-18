@@ -1,10 +1,25 @@
+/**
+ * Funnel Actions.
+ * Copilot actions for listing, viewing, and publishing funnel pages.
+ * Uses repos with DataScope — never raw Supabase queries.
+ * Never imports NextRequest, NextResponse, or cookies.
+ */
+
 import { registerAction } from './registry';
 import type { ActionContext, ActionResult } from './types';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import {
+  findAllFunnels,
+  findFunnelById,
+  assertFunnelAccess,
+  updateFunnel,
+} from '@/server/repositories/funnels.repo';
+
+// ─── List Funnels ──────────────────────────────────────────────
 
 registerAction({
   name: 'list_funnels',
-  description: 'List funnel pages for the current user (excludes A/B test variants). Returns slug, title, status, and timestamps. Optionally filter by status.',
+  description:
+    'List funnel pages for the current user (excludes A/B test variants). Returns slug, title, status, and timestamps. Optionally filter by status.',
   parameters: {
     properties: {
       status: {
@@ -14,36 +29,38 @@ registerAction({
       limit: { type: 'number', description: 'Max results (default 10)' },
     },
   },
-  handler: async (ctx: ActionContext, params: { status?: string; limit?: number }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
+  handler: async (
+    ctx: ActionContext,
+    params: { status?: string; limit?: number }
+  ): Promise<ActionResult> => {
+    const all = await findAllFunnels(ctx.scope);
 
-    let query = supabase
-      .from('funnel_pages')
-      .select('id, slug, title, status, created_at, updated_at')
-      .eq('user_id', ctx.userId)
-      .eq('is_variant', false)
-      .order('updated_at', { ascending: false })
-      .limit(params.limit || 10);
-
+    let filtered = all;
     if (params.status) {
-      query = query.eq('status', params.status);
+      // findAllFunnels returns is_published (boolean) — map status string
+      if (params.status === 'published') {
+        filtered = all.filter((f: Record<string, unknown>) => f.is_published === true);
+      } else if (params.status === 'draft') {
+        filtered = all.filter((f: Record<string, unknown>) => f.is_published === false);
+      }
     }
 
-    const { data, error } = await query;
-
-    if (error) return { success: false, error: error.message };
+    const limited = filtered.slice(0, params.limit || 10);
 
     return {
       success: true,
-      data: data || [],
+      data: limited,
       displayHint: 'text',
     };
   },
 });
 
+// ─── Get Funnel ────────────────────────────────────────────────
+
 registerAction({
   name: 'get_funnel',
-  description: 'Get full details of a specific funnel page by ID, including theme and sections configuration.',
+  description:
+    'Get full details of a specific funnel page by ID, including theme and sections configuration.',
   parameters: {
     properties: {
       id: { type: 'string', description: 'The funnel page ID' },
@@ -51,30 +68,26 @@ registerAction({
     required: ['id'],
   },
   handler: async (ctx: ActionContext, params: { id: string }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
+    const funnel = await findFunnelById(ctx.scope, params.id);
 
-    const { data, error } = await supabase
-      .from('funnel_pages')
-      .select('id, slug, title, status, theme, sections')
-      .eq('id', params.id)
-      .eq('user_id', ctx.userId)
-      .single();
-
-    if (error || !data) {
+    if (!funnel) {
       return { success: false, error: 'Funnel not found' };
     }
 
     return {
       success: true,
-      data,
+      data: funnel,
       displayHint: 'text',
     };
   },
 });
 
+// ─── Publish Funnel ────────────────────────────────────────────
+
 registerAction({
   name: 'publish_funnel',
-  description: 'Publish a funnel page by setting its status to "published". The funnel will become publicly accessible at its slug URL.',
+  description:
+    'Publish a funnel page by setting its status to "published". The funnel will become publicly accessible at its slug URL.',
   parameters: {
     properties: {
       id: { type: 'string', description: 'The funnel page ID to publish' },
@@ -83,27 +96,24 @@ registerAction({
   },
   requiresConfirmation: true,
   handler: async (ctx: ActionContext, params: { id: string }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
+    // Verify the funnel exists and belongs to the scope before updating
+    const existingId = await assertFunnelAccess(ctx.scope, params.id);
 
-    // Verify the funnel exists and belongs to the user before updating
-    const { data: existing } = await supabase
-      .from('funnel_pages')
-      .select('id')
-      .eq('id', params.id)
-      .eq('user_id', ctx.userId)
-      .single();
-
-    if (!existing) {
+    if (!existingId) {
       return { success: false, error: 'Funnel not found' };
     }
 
-    const { error } = await supabase
-      .from('funnel_pages')
-      .update({ status: 'published' })
-      .eq('id', params.id)
-      .eq('user_id', ctx.userId);
-
-    if (error) return { success: false, error: error.message };
+    try {
+      await updateFunnel(ctx.scope, params.id, {
+        is_published: true,
+        published_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to publish funnel',
+      };
+    }
 
     return {
       success: true,
