@@ -422,6 +422,40 @@ describe('MagnetLabClient', () => {
     });
   });
 
+  // ── Content Queue ─────────────────────────────────────────────────────────
+
+  describe('Content Queue', () => {
+    it('listContentQueue uses GET', async () => {
+      await client.listContentQueue();
+      expect(lastCall().method).toBe('GET');
+      expect(lastCall().url).toContain('/content-queue');
+    });
+
+    it('updateQueuePost uses PATCH with post id in path', async () => {
+      await client.updateQueuePost('post-abc', {
+        draft_content: 'Updated text',
+        mark_edited: true,
+      });
+      expect(lastCall().method).toBe('PATCH');
+      expect(lastCall().url).toContain('/content-queue/posts/post-abc');
+      expect(lastCall().body).toMatchObject({ draft_content: 'Updated text', mark_edited: true });
+    });
+
+    it('updateQueuePost sends only provided fields', async () => {
+      await client.updateQueuePost('post-xyz', { image_urls: ['https://example.com/img.png'] });
+      expect(lastCall().method).toBe('PATCH');
+      expect(lastCall().url).toContain('/content-queue/posts/post-xyz');
+      expect(lastCall().body).toMatchObject({ image_urls: ['https://example.com/img.png'] });
+    });
+
+    it('submitQueueBatch uses POST with team_id in body', async () => {
+      await client.submitQueueBatch('team-123');
+      expect(lastCall().method).toBe('POST');
+      expect(lastCall().url).toContain('/content-queue/submit');
+      expect(lastCall().body).toMatchObject({ team_id: 'team-123' });
+    });
+  });
+
   // ── Error handling ────────────────────────────────────────────────────────
 
   describe('Error handling', () => {

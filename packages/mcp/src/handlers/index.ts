@@ -1,4 +1,4 @@
-/** Handler dispatcher. Routes all 37 tool calls to domain handlers via flat lookup map. Never contains business logic. */
+/** Handler dispatcher. Routes all 40 tool calls to domain handlers via flat lookup map. Never contains business logic. */
 
 import type { MagnetLabClient } from '../client.js';
 import { validateToolArgs } from '../validation.js';
@@ -12,6 +12,7 @@ import { handleSchemaTools } from './schema.js';
 import { handleCompoundTools } from './compound.js';
 import { handleFeedbackTools } from './feedback.js';
 import { handleAccountTools } from './account.js';
+import { handleContentQueueTools } from './content-queue.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,11 @@ const handlerMap: Record<string, Handler> = {
 
   // Account (1)
   magnetlab_list_teams: handleAccountTools,
+
+  // Content Queue (3)
+  magnetlab_list_content_queue: handleContentQueueTools,
+  magnetlab_update_queue_post: handleContentQueueTools,
+  magnetlab_submit_queue_batch: handleContentQueueTools,
 };
 
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
@@ -121,3 +127,4 @@ export { handleSchemaTools } from './schema.js';
 export { handleCompoundTools } from './compound.js';
 export { handleFeedbackTools } from './feedback.js';
 export { handleAccountTools } from './account.js';
+export { handleContentQueueTools } from './content-queue.js';
