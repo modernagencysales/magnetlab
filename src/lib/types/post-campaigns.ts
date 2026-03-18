@@ -11,7 +11,10 @@ export type PostCampaignLeadStatus =
   | 'dm_queued'
   | 'dm_sent'
   | 'dm_failed'
-  | 'skipped';
+  | 'skipped'
+  | 'expired';
+
+export type PostCampaignLeadMatchType = 'keyword' | 'intent';
 
 // ─── Database Row Types ──────────────────────────────────────────────────
 
@@ -26,6 +29,10 @@ export interface PostCampaign {
   sender_name: string | null;
   dm_template: string;
   connect_message_template: string | null;
+  reply_template: string | null;
+  poster_account_id: string | null;
+  target_locations: string[];
+  lead_expiry_days: number;
   funnel_page_id: string | null;
   auto_accept_connections: boolean;
   auto_like_comments: boolean;
@@ -45,10 +52,17 @@ export interface PostCampaignLead {
   unipile_provider_id: string | null;
   name: string | null;
   comment_text: string | null;
+  comment_social_id: string | null;
+  match_type: PostCampaignLeadMatchType;
+  location: string | null;
   status: PostCampaignLeadStatus;
   detected_at: string;
+  liked_at: string | null;
+  replied_at: string | null;
+  connection_requested_at: string | null;
   connection_accepted_at: string | null;
   dm_sent_at: string | null;
+  expired_at: string | null;
   error: string | null;
 }
 
@@ -60,6 +74,8 @@ export interface LinkedInDailyLimit {
   dms_sent: number;
   connections_accepted: number;
   connection_requests_sent: number;
+  comments_sent: number;
+  likes_sent: number;
 }
 
 // ─── Input Types ─────────────────────────────────────────────────────────
@@ -72,6 +88,10 @@ export interface CreatePostCampaignInput {
   sender_name?: string;
   dm_template: string;
   connect_message_template?: string;
+  reply_template?: string;
+  poster_account_id?: string;
+  target_locations?: string[];
+  lead_expiry_days?: number;
   funnel_page_id?: string;
   auto_accept_connections?: boolean;
   auto_like_comments?: boolean;
@@ -83,6 +103,10 @@ export interface UpdatePostCampaignInput {
   keywords?: string[];
   dm_template?: string;
   connect_message_template?: string;
+  reply_template?: string;
+  poster_account_id?: string;
+  target_locations?: string[];
+  lead_expiry_days?: number;
   funnel_page_id?: string | null;
   auto_accept_connections?: boolean;
   auto_like_comments?: boolean;
@@ -99,10 +123,10 @@ export interface DmTemplateVars {
 // ─── Column Constants ────────────────────────────────────────────────────
 
 export const POST_CAMPAIGN_COLUMNS =
-  'id, user_id, team_id, name, post_url, keywords, unipile_account_id, sender_name, dm_template, connect_message_template, funnel_page_id, auto_accept_connections, auto_like_comments, auto_connect_non_requesters, status, created_at, updated_at' as const;
+  'id, user_id, team_id, name, post_url, keywords, unipile_account_id, sender_name, dm_template, connect_message_template, reply_template, poster_account_id, target_locations, lead_expiry_days, funnel_page_id, auto_accept_connections, auto_like_comments, auto_connect_non_requesters, status, created_at, updated_at' as const;
 
 export const POST_CAMPAIGN_LEAD_COLUMNS =
-  'id, user_id, campaign_id, signal_lead_id, linkedin_url, linkedin_username, unipile_provider_id, name, comment_text, status, detected_at, connection_accepted_at, dm_sent_at, error' as const;
+  'id, user_id, campaign_id, signal_lead_id, linkedin_url, linkedin_username, unipile_provider_id, name, comment_text, comment_social_id, match_type, location, status, detected_at, liked_at, replied_at, connection_requested_at, connection_accepted_at, dm_sent_at, expired_at, error' as const;
 
 // ─── Safety Constants ────────────────────────────────────────────────────
 
