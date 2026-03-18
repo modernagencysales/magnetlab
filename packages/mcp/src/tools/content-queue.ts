@@ -15,7 +15,7 @@ export const contentQueueTools: Tool[] = [
   {
     name: 'magnetlab_update_queue_post',
     description:
-      'Updates a post in the content queue. Can update the draft content, mark the post as edited, or attach image URLs. Only provided fields are updated.',
+      'Updates a post in the content queue. Can update the draft content or mark the post as edited. Only provided fields are updated.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -24,11 +24,6 @@ export const contentQueueTools: Tool[] = [
         mark_edited: {
           type: 'boolean',
           description: 'When true, marks the post as editor-reviewed',
-        },
-        image_urls: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Image URLs to attach to the post',
         },
       },
       required: ['post_id'],

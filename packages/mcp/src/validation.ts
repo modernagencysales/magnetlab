@@ -371,7 +371,6 @@ export const toolSchemas: Record<string, z.ZodType> = {
     post_id: uuidField,
     draft_content: z.string().optional(),
     mark_edited: z.boolean().optional(),
-    image_urls: z.array(z.string().url()).optional(),
   }),
 
   magnetlab_submit_queue_batch: z.object({

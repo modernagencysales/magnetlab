@@ -112,16 +112,24 @@ export function ContentQueuePage() {
 
   const handleReviewLeadMagnet = useCallback(
     async (lmId: string, reviewed: boolean) => {
-      await reviewLeadMagnet(lmId, reviewed);
-      await refetch();
+      try {
+        await reviewLeadMagnet(lmId, reviewed);
+        await refetch();
+      } catch {
+        toast.error('Failed to update lead magnet review status. Please try again.');
+      }
     },
     [refetch]
   );
 
   const handleReviewFunnel = useCallback(
     async (funnelId: string, reviewed: boolean) => {
-      await reviewFunnel(funnelId, reviewed);
-      await refetch();
+      try {
+        await reviewFunnel(funnelId, reviewed);
+        await refetch();
+      } catch {
+        toast.error('Failed to update funnel review status. Please try again.');
+      }
     },
     [refetch]
   );

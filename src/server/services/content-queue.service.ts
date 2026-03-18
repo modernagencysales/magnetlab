@@ -471,8 +471,10 @@ export async function submitBatch(
     }
 
     const lmIds = lms.map((lm) => lm.id);
+    let funnelCount = 0;
     if (lmIds.length > 0) {
       const funnels = await queueRepo.findFunnelsByLeadMagnetIds(lmIds);
+      funnelCount = funnels.length;
       const unreviewedFunnels = funnels.filter((f) => f.reviewed_at === null);
       if (unreviewedFunnels.length > 0) {
         throw Object.assign(
@@ -485,7 +487,7 @@ export async function submitBatch(
     }
 
     automationType = 'asset_review';
-    resultPayload = { lead_magnets_reviewed: lms.length };
+    resultPayload = { lead_magnets_reviewed: lms.length, funnels_reviewed: funnelCount };
   } else {
     // Default: posts flow
     const { data: profiles } = await supabase

@@ -507,7 +507,6 @@ export class MagnetLabClient {
     params: {
       draft_content?: string;
       mark_edited?: boolean;
-      image_urls?: string[];
     }
   ) {
     return this.request<{ success: boolean }>('PATCH', `/content-queue/posts/${postId}`, params);

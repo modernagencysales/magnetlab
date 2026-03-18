@@ -15,7 +15,6 @@ export async function handleContentQueueTools(
       return client.updateQueuePost(args.post_id as string, {
         draft_content: args.draft_content as string | undefined,
         mark_edited: args.mark_edited as boolean | undefined,
-        image_urls: args.image_urls as string[] | undefined,
       });
 
     case 'magnetlab_submit_queue_batch':

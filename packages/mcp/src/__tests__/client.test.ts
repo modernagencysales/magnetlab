@@ -462,10 +462,10 @@ describe('MagnetLabClient', () => {
     });
 
     it('updateQueuePost sends only provided fields', async () => {
-      await client.updateQueuePost('post-xyz', { image_urls: ['https://example.com/img.png'] });
+      await client.updateQueuePost('post-xyz', { mark_edited: true });
       expect(lastCall().method).toBe('PATCH');
       expect(lastCall().url).toContain('/content-queue/posts/post-xyz');
-      expect(lastCall().body).toMatchObject({ image_urls: ['https://example.com/img.png'] });
+      expect(lastCall().body).toMatchObject({ mark_edited: true });
     });
 
     it('submitQueueBatch uses POST with team_id in body', async () => {
