@@ -184,8 +184,11 @@ export async function POST(req: NextRequest) {
       // Skip orphan tool_result (handled above)
     }
 
-    // Build system prompt
-    const systemPrompt = await buildCopilotSystemPrompt(userId, body.pageContext);
+    // Resolve scope once — used for both system prompt and action execution
+    const scope = await getDataScope(userId);
+
+    // Build system prompt with scope-aware voice profile + post performance
+    const systemPrompt = await buildCopilotSystemPrompt(userId, body.pageContext, scope);
 
     // Get tool definitions
     const tools = getToolDefinitions();
@@ -200,7 +203,6 @@ export async function POST(req: NextRequest) {
 
         try {
           const client = createAnthropicClient('copilot', { timeout: 240_000 });
-          const scope = await getDataScope(userId);
           const actionCtx: ActionContext = { scope };
 
           send('conversation_id', { conversationId });
