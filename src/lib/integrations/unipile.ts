@@ -86,7 +86,23 @@ export class UnipileClient extends BaseApiClient {
   // POSTS
   // ============================================
 
-  async createPost(accountId: string, text: string): Promise<ApiResponse<UnipilePost>> {
+  async createPost(
+    accountId: string,
+    text: string,
+    imageFile?: { buffer: Buffer; filename: string; mimeType: string }
+  ): Promise<ApiResponse<UnipilePost>> {
+    if (imageFile) {
+      const formData = new FormData();
+      formData.append('account_id', accountId);
+      formData.append('text', text);
+      const bytes = new Uint8Array(imageFile.buffer);
+      formData.append(
+        'attachments',
+        new Blob([bytes], { type: imageFile.mimeType }),
+        imageFile.filename
+      );
+      return this.postMultipart<UnipilePost>('/posts', formData);
+    }
     return this.post<UnipilePost>('/posts', {
       account_id: accountId,
       text,
@@ -104,7 +120,11 @@ export class UnipileClient extends BaseApiClient {
   async addComment(
     postSocialId: string,
     accountId: string,
-    text: string
+    text: string,
+    options?: {
+      commentId?: string;
+      mentions?: Array<{ name: string; profile_id: string }>;
+    }
   ): Promise<
     ApiResponse<{
       id: string;
@@ -113,6 +133,8 @@ export class UnipileClient extends BaseApiClient {
     return this.post(`/posts/${postSocialId}/comments`, {
       account_id: accountId,
       text,
+      ...(options?.commentId && { comment_id: options.commentId }),
+      ...(options?.mentions && { mentions: options.mentions }),
     });
   }
 
@@ -182,11 +204,11 @@ export class UnipileClient extends BaseApiClient {
     recipientProviderId: string,
     text: string
   ): Promise<ApiResponse<UnipileChatResponse>> {
-    return this.post<UnipileChatResponse>('/chats', {
-      account_id: accountId,
-      attendees_ids: [recipientProviderId],
-      text,
-    });
+    const formData = new FormData();
+    formData.append('account_id', accountId);
+    formData.append('attendees_ids', recipientProviderId);
+    formData.append('text', text);
+    return this.postMultipart<UnipileChatResponse>('/chats', formData);
   }
 
   async sendConnectionRequest(
