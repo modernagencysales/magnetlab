@@ -1,7 +1,8 @@
 /**
- * Teams Members API — GET /api/teams/members, POST /api/teams/members
+ * Teams Members API — GET, POST, DELETE /api/teams/members
  * GET: List active members of a team (requires team access).
  * POST: Add a member to a team (owner only).
+ * DELETE: Remove a member from a team (owner only).
  * Access is controlled via team_members table — never team_profiles.
  */
 
@@ -9,7 +10,12 @@ import { NextResponse, NextRequest } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { ApiErrors, logApiError, isValidUUID } from '@/lib/api/errors';
-import { hasTeamAccess, listMembers, addMember } from '@/server/repositories/team.repo';
+import {
+  hasTeamAccess,
+  listMembers,
+  addMember,
+  removeMember,
+} from '@/server/repositories/team.repo';
 
 // ─── Validation schemas ─────────────────────────────────────────────────────
 
@@ -74,6 +80,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ member }, { status: 201 });
   } catch (error) {
     logApiError('teams-members-add', error);
+    return ApiErrors.databaseError();
+  }
+}
+
+// ─── DELETE — Remove a member ───────────────────────────────────────────────
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return ApiErrors.unauthorized();
+
+    const teamId = request.nextUrl.searchParams.get('team_id');
+    const userId = request.nextUrl.searchParams.get('user_id');
+
+    if (!teamId || !userId) {
+      return ApiErrors.validationError('team_id and user_id query params are required');
+    }
+
+    if (!isValidUUID(teamId) || !isValidUUID(userId)) {
+      return ApiErrors.validationError('Invalid team_id or user_id');
+    }
+
+    // Only team owners can remove members
+    const access = await hasTeamAccess(session.user.id, teamId);
+    if (!access.access || access.role !== 'owner') {
+      return NextResponse.json({ error: 'Only team owners can remove members' }, { status: 403 });
+    }
+
+    // Can't remove the team owner
+    if (userId === session.user.id) {
+      return NextResponse.json({ error: 'Cannot remove team owner' }, { status: 400 });
+    }
+
+    await removeMember(teamId, userId);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    logApiError('teams-members-remove', error);
     return ApiErrors.databaseError();
   }
 }
