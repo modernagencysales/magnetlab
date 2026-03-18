@@ -10,10 +10,10 @@ export async function handleFunnelTools(
 ): Promise<unknown> {
   switch (name) {
     case 'magnetlab_list_funnels':
-      return client.listFunnels();
+      return client.listFunnels(args.team_id as string | undefined);
 
     case 'magnetlab_get_funnel':
-      return client.getFunnel(args.id as string);
+      return client.getFunnel(args.id as string, args.team_id as string | undefined);
 
     case 'magnetlab_create_funnel':
       return client.createFunnel({
@@ -35,6 +35,7 @@ export async function handleFunnelTools(
         backgroundStyle: args.background_style as BackgroundStyle | undefined,
         logoUrl: args.logo_url as string | undefined,
         qualificationFormId: args.qualification_form_id as string | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_update_funnel':
@@ -61,16 +62,17 @@ export async function handleFunnelTools(
         homepageUrl: args.homepage_url as string | null | undefined,
         homepageLabel: args.homepage_label as string | null | undefined,
         sendResourceEmail: args.send_resource_email as boolean | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_delete_funnel':
-      return client.deleteFunnel(args.id as string);
+      return client.deleteFunnel(args.id as string, args.team_id as string | undefined);
 
     case 'magnetlab_publish_funnel':
-      return client.publishFunnel(args.id as string);
+      return client.publishFunnel(args.id as string, args.team_id as string | undefined);
 
     case 'magnetlab_unpublish_funnel':
-      return client.unpublishFunnel(args.id as string);
+      return client.unpublishFunnel(args.id as string, args.team_id as string | undefined);
 
     default:
       throw new Error(`Unknown funnel tool: ${name}`);

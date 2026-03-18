@@ -9,10 +9,13 @@ export async function handleFeedbackTools(
 ): Promise<unknown> {
   switch (name) {
     case 'magnetlab_get_performance_insights':
-      return client.getPerformanceInsights(args.period as string | undefined);
+      return client.getPerformanceInsights(
+        args.period as string | undefined,
+        args.team_id as string | undefined
+      );
 
     case 'magnetlab_get_recommendations':
-      return client.getRecommendations();
+      return client.getRecommendations(args.team_id as string | undefined);
 
     default:
       throw new Error(`Unknown feedback tool: ${name}`);

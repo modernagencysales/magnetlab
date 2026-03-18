@@ -19,18 +19,22 @@ export async function handleCompoundTools(
         email_sequence: args.email_sequence as
           | { emails: Array<{ subject: string; body: string; delay_days: number }> }
           | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_schedule_content_week':
-      return client.scheduleContentWeek({
-        posts: args.posts as Array<{
-          body: string;
-          title?: string;
-          pillar?: ContentPillar;
-          content_type?: ContentType;
-        }>,
-        week_start: args.week_start as string | undefined,
-      });
+      return client.scheduleContentWeek(
+        {
+          posts: args.posts as Array<{
+            body: string;
+            title?: string;
+            pillar?: ContentPillar;
+            content_type?: ContentType;
+          }>,
+          week_start: args.week_start as string | undefined,
+        },
+        args.team_id as string | undefined
+      );
 
     default:
       throw new Error(`Unknown compound tool: ${name}`);

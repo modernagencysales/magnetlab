@@ -134,13 +134,32 @@ describe('MagnetLabClient', () => {
     });
 
     it('launchLeadMagnet uses POST', async () => {
-      await client.launchLeadMagnet({ lead_magnet_id: 'lm-1', slug: 'my-guide' });
+      await client.launchLeadMagnet({
+        title: 'My Guide',
+        archetype: 'prompt',
+        content: { headline: 'Test' },
+        slug: 'my-guide',
+      });
       expect(lastCall().method).toBe('POST');
       expect(lastCall().url).toContain('/lead-magnet/launch');
       expect(lastCall().body).toEqual({
-        lead_magnet_id: 'lm-1',
+        title: 'My Guide',
+        archetype: 'prompt',
+        content: { headline: 'Test' },
         slug: 'my-guide',
       });
+    });
+
+    it('launchLeadMagnet appends team_id when provided', async () => {
+      await client.launchLeadMagnet({
+        title: 'My Guide',
+        archetype: 'prompt',
+        content: { headline: 'Test' },
+        slug: 'my-guide',
+        teamId: 'team-abc',
+      });
+      expect(lastCall().url).toContain('team_id=team-abc');
+      expect(lastCall().body).not.toHaveProperty('teamId');
     });
   });
 
@@ -300,19 +319,20 @@ describe('MagnetLabClient', () => {
 
     it('scheduleContentWeek uses POST', async () => {
       await client.scheduleContentWeek({
-        start_date: '2026-03-16',
-        posts_per_day: 2,
-        pillars: ['teaching_promotion', 'human_personal'],
-        auto_approve: true,
+        posts: [{ body: 'Post 1' }, { body: 'Post 2' }],
+        week_start: '2026-03-16',
       });
       expect(lastCall().method).toBe('POST');
       expect(lastCall().url).toContain('/content-pipeline/posts/schedule-week');
       expect(lastCall().body).toEqual({
-        start_date: '2026-03-16',
-        posts_per_day: 2,
-        pillars: ['teaching_promotion', 'human_personal'],
-        auto_approve: true,
+        posts: [{ body: 'Post 1' }, { body: 'Post 2' }],
+        week_start: '2026-03-16',
       });
+    });
+
+    it('scheduleContentWeek appends team_id when provided', async () => {
+      await client.scheduleContentWeek({ posts: [{ body: 'Post 1' }] }, 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
     });
   });
 
@@ -453,6 +473,213 @@ describe('MagnetLabClient', () => {
       expect(lastCall().method).toBe('POST');
       expect(lastCall().url).toContain('/content-queue/submit');
       expect(lastCall().body).toMatchObject({ team_id: 'team-123' });
+    });
+  });
+
+  // ── Team ID Propagation ───────────────────────────────────────────────────
+
+  describe('Team ID propagation (appendTeamId)', () => {
+    it('listLeadMagnets appends team_id when provided', async () => {
+      await client.listLeadMagnets({ status: 'published', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+      expect(lastCall().url).toContain('status=published');
+    });
+
+    it('listLeadMagnets omits team_id when not provided', async () => {
+      await client.listLeadMagnets({ status: 'published' });
+      expect(lastCall().url).not.toContain('team_id');
+    });
+
+    it('getLeadMagnet appends team_id when provided', async () => {
+      await client.getLeadMagnet('lm-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('getLeadMagnet omits team_id when not provided', async () => {
+      await client.getLeadMagnet('lm-1');
+      expect(lastCall().url).not.toContain('team_id');
+    });
+
+    it('createLeadMagnet strips teamId from body and appends to URL', async () => {
+      await client.createLeadMagnet({ title: 'Test', archetype: 'prompt', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+      expect(lastCall().body).not.toHaveProperty('teamId');
+    });
+
+    it('updateLeadMagnetContent appends team_id when provided', async () => {
+      await client.updateLeadMagnetContent('lm-1', { headline: 'New' }, undefined, 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('deleteLeadMagnet appends team_id when provided', async () => {
+      await client.deleteLeadMagnet('lm-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('listFunnels appends team_id when provided', async () => {
+      await client.listFunnels('team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('getFunnel appends team_id when provided', async () => {
+      await client.getFunnel('f-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('createFunnel strips teamId from body and appends to URL', async () => {
+      await client.createFunnel({ slug: 'my-funnel', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+      expect(lastCall().body).not.toHaveProperty('teamId');
+    });
+
+    it('updateFunnel strips teamId from body and appends to URL', async () => {
+      await client.updateFunnel('f-1', { slug: 'new-slug', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+      expect(lastCall().body).not.toHaveProperty('teamId');
+    });
+
+    it('deleteFunnel appends team_id when provided', async () => {
+      await client.deleteFunnel('f-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('publishFunnel appends team_id when provided', async () => {
+      await client.publishFunnel('f-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('unpublishFunnel appends team_id when provided', async () => {
+      await client.unpublishFunnel('f-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('searchKnowledge appends team_id when provided', async () => {
+      await client.searchKnowledge({ query: 'pricing', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+      expect(lastCall().url).toContain('q=pricing');
+    });
+
+    it('browseKnowledge appends team_id when provided', async () => {
+      await client.browseKnowledge({ category: 'insight', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('getKnowledgeClusters appends team_id when provided', async () => {
+      await client.getKnowledgeClusters('team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('askKnowledge strips teamId from body and appends to URL', async () => {
+      await client.askKnowledge({ question: 'What is pricing?', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+      expect(lastCall().body).not.toHaveProperty('teamId');
+    });
+
+    it('submitTranscript strips teamId from body and appends to URL', async () => {
+      await client.submitTranscript({
+        transcript: 'A'.repeat(100),
+        teamId: 'team-abc',
+      });
+      expect(lastCall().url).toContain('team_id=team-abc');
+      expect(lastCall().body).not.toHaveProperty('teamId');
+    });
+
+    it('listPosts appends team_id when provided', async () => {
+      await client.listPosts({ status: 'draft', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+      expect(lastCall().url).toContain('status=draft');
+    });
+
+    it('listPosts omits team_id when not provided', async () => {
+      await client.listPosts({ status: 'draft' });
+      expect(lastCall().url).not.toContain('team_id');
+    });
+
+    it('getPost appends team_id when provided', async () => {
+      await client.getPost('post-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('createPost strips teamId from body and appends to URL', async () => {
+      await client.createPost({ body: 'My post', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+      expect(lastCall().body).not.toHaveProperty('teamId');
+    });
+
+    it('updatePost appends team_id when provided', async () => {
+      await client.updatePost('post-1', { draft_content: 'updated' }, 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('deletePost appends team_id when provided', async () => {
+      await client.deletePost('post-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('publishPost appends team_id when provided', async () => {
+      await client.publishPost('post-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('getEmailSequence appends team_id when provided', async () => {
+      await client.getEmailSequence('lm-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('saveEmailSequence appends team_id when provided', async () => {
+      await client.saveEmailSequence('lm-1', { status: 'draft' }, 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('activateEmailSequence appends team_id when provided', async () => {
+      await client.activateEmailSequence('lm-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('listLeads appends team_id when provided', async () => {
+      await client.listLeads({ search: 'john', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('getLead appends team_id when provided', async () => {
+      await client.getLead('lead-1', 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('exportLeads appends team_id when provided', async () => {
+      await client.exportLeads({ funnelId: 'f-1', teamId: 'team-abc' });
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('getBusinessContext appends team_id when provided', async () => {
+      await client.getBusinessContext('team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('getPerformanceInsights appends team_id alongside period', async () => {
+      await client.getPerformanceInsights('7d', 'team-abc');
+      expect(lastCall().url).toContain('period=7d');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('getPerformanceInsights appends team_id without period', async () => {
+      await client.getPerformanceInsights(undefined, 'team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('getRecommendations appends team_id when provided', async () => {
+      await client.getRecommendations('team-abc');
+      expect(lastCall().url).toContain('team_id=team-abc');
+    });
+
+    it('uses ? separator on clean URL', async () => {
+      await client.getLeadMagnet('lm-1', 'team-xyz');
+      expect(lastCall().url).toMatch(/\?team_id=team-xyz$/);
+    });
+
+    it('uses & separator when URL already has query params', async () => {
+      await client.listLeadMagnets({ status: 'published', teamId: 'team-xyz' });
+      expect(lastCall().url).toMatch(/&team_id=team-xyz$/);
     });
   });
 
