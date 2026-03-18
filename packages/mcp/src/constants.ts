@@ -98,6 +98,10 @@ export const KNOWLEDGE_TYPES = [
 ] as const;
 export type KnowledgeType = (typeof KNOWLEDGE_TYPES)[number];
 
+// Post campaign status
+export const POST_CAMPAIGN_STATUS = ['draft', 'active', 'paused', 'completed'] as const;
+export type PostCampaignStatus = (typeof POST_CAMPAIGN_STATUS)[number];
+
 // Knowledge readiness goals
 export const READINESS_GOALS = [
   'lead_magnet',

@@ -46,7 +46,7 @@ export const postTools: Tool[] = [
   {
     name: 'magnetlab_create_post',
     description:
-      'Create a new post directly. Requires a body at minimum. Optionally specify title, content pillar, and content type.',
+      'Create a new post directly. Requires a body at minimum. Optionally specify title, content pillar, content type, image URL, and lead magnet post automation flags.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -75,6 +75,20 @@ export const postTools: Tool[] = [
             'contrarian',
           ],
           description: 'Content type',
+        },
+        image_url: {
+          type: 'string',
+          description: 'URL of image to attach to the post',
+        },
+        is_lead_magnet_post: {
+          type: 'boolean',
+          description:
+            'When true, triggers auto-setup of a post campaign on publish to capture leads from comments',
+        },
+        auto_activate: {
+          type: 'boolean',
+          description:
+            'When true and is_lead_magnet_post is true, auto-activates the campaign if AI confidence is high',
         },
         team_id: {
           type: 'string',

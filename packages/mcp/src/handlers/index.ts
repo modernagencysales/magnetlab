@@ -1,4 +1,4 @@
-/** Handler dispatcher. Routes all 40 tool calls to domain handlers via flat lookup map. Never contains business logic. */
+/** Handler dispatcher. Routes all 50 tool calls to domain handlers via flat lookup map. Never contains business logic. */
 
 import type { MagnetLabClient } from '../client.js';
 import { validateToolArgs } from '../validation.js';
@@ -13,6 +13,8 @@ import { handleCompoundTools } from './compound.js';
 import { handleFeedbackTools } from './feedback.js';
 import { handleAccountTools } from './account.js';
 import { handleContentQueueTools } from './content-queue.js';
+import { handlePostCampaignTools } from './post-campaigns.js';
+import { handleAccountSafetyTools } from './account-safety.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -90,6 +92,20 @@ const handlerMap: Record<string, Handler> = {
   magnetlab_list_content_queue: handleContentQueueTools,
   magnetlab_update_queue_post: handleContentQueueTools,
   magnetlab_submit_queue_batch: handleContentQueueTools,
+
+  // Post Campaigns (8)
+  magnetlab_list_post_campaigns: handlePostCampaignTools,
+  magnetlab_create_post_campaign: handlePostCampaignTools,
+  magnetlab_auto_setup_post_campaign: handlePostCampaignTools,
+  magnetlab_get_post_campaign: handlePostCampaignTools,
+  magnetlab_update_post_campaign: handlePostCampaignTools,
+  magnetlab_activate_post_campaign: handlePostCampaignTools,
+  magnetlab_pause_post_campaign: handlePostCampaignTools,
+  magnetlab_delete_post_campaign: handlePostCampaignTools,
+
+  // Account Safety (2)
+  magnetlab_get_account_safety_settings: handleAccountSafetyTools,
+  magnetlab_update_account_safety_settings: handleAccountSafetyTools,
 };
 
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
@@ -128,3 +144,5 @@ export { handleCompoundTools } from './compound.js';
 export { handleFeedbackTools } from './feedback.js';
 export { handleAccountTools } from './account.js';
 export { handleContentQueueTools } from './content-queue.js';
+export { handlePostCampaignTools } from './post-campaigns.js';
+export { handleAccountSafetyTools } from './account-safety.js';
