@@ -122,6 +122,7 @@ export interface Team {
   industry: string | null;
   target_audience: string | null;
   shared_goal: string | null;
+  billing_team_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -184,13 +185,26 @@ export interface TeamProfile {
   expertise_areas: string[];
   voice_profile: TeamVoiceProfile;
   avatar_url: string | null;
-  role: 'owner' | 'member';
-  status: 'active' | 'pending' | 'removed';
+  status: 'active' | 'removed';
   is_default: boolean;
-  invited_at: string | null;
-  accepted_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface TeamMember {
+  id: string;
+  team_id: string;
+  user_id: string;
+  role: 'owner' | 'member';
+  status: 'active' | 'pending' | 'removed';
+  joined_at: string;
+}
+
+export interface TeamLink {
+  id: string;
+  agency_team_id: string;
+  client_team_id: string;
+  created_at: string;
 }
 
 // ============================================
@@ -386,6 +400,7 @@ export interface ContentIdea {
   composite_score: number | null;
   last_surfaced_at: string | null;
   similarity_hash: string | null;
+  team_id?: string | null;
   team_profile_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -533,6 +548,7 @@ export interface PostTemplate {
   usage_count: number;
   avg_engagement_score: number | null;
   is_active: boolean;
+  team_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -732,11 +748,22 @@ export interface AutoPilotConfig {
   profileId?: string;
 }
 
+export interface ProfileBatchResult {
+  profileId: string;
+  profileName: string;
+  postsCreated: number;
+  postsScheduled: number;
+  ideasUsed: string[];
+  errors: string[];
+}
+
 export interface BatchResult {
   postsCreated: number;
   postsScheduled: number;
   ideasProcessed: number;
   errors: string[];
+  /** Per-profile breakdown (only populated in team mode). */
+  profileResults?: ProfileBatchResult[];
 }
 
 // ============================================

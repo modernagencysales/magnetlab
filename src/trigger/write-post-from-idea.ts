@@ -1,6 +1,6 @@
 import { task, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { writePostWithAutoTemplate } from '@/lib/ai/content-pipeline/post-writer';
+import { writePost } from '@/lib/ai/content-pipeline/post-writer';
 import { buildContentBriefForIdea } from '@/lib/ai/content-pipeline/briefing-agent';
 import { polishPost } from '@/lib/ai/content-pipeline/post-polish';
 import { isEmbeddingsConfigured } from '@/lib/ai/embeddings';
@@ -85,20 +85,28 @@ export const writePostFromIdea = task({
 
     // Write the post (with automatic template RAG matching)
     logger.info('Writing post');
-    const writtenPost = await writePostWithAutoTemplate({
-      idea: {
-        id: idea.id,
-        title: idea.title,
-        core_insight: idea.core_insight,
-        full_context: idea.full_context,
-        why_post_worthy: idea.why_post_worthy,
-        content_type: idea.content_type,
+    // Resolve teamId for template matching — prefer payload, fall back to userId
+    const resolvedTeamId = teamId ?? userId;
+    const resolvedTemplateProfileId = resolvedProfileId ?? userId;
+
+    const writtenPost = await writePost(
+      {
+        idea: {
+          id: idea.id,
+          title: idea.title,
+          core_insight: idea.core_insight,
+          full_context: idea.full_context,
+          why_post_worthy: idea.why_post_worthy,
+          content_type: idea.content_type,
+        },
+        knowledgeContext,
+        voiceProfile,
+        authorName,
+        authorTitle,
       },
-      knowledgeContext,
-      voiceProfile,
-      authorName,
-      authorTitle,
-    }, userId);
+      resolvedTeamId,
+      resolvedTemplateProfileId
+    );
 
     // Polish the post
     logger.info('Polishing post');

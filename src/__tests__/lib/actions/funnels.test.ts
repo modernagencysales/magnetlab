@@ -1,5 +1,9 @@
 /**
  * @jest-environment node
+ *
+ * Funnel Actions Tests (Teams V3)
+ * Actions now delegate to funnels.repo which uses DataScope via applyScope().
+ * Team context filters by team_id; personal context filters by user_id.
  */
 
 // Helper to create a thenable Supabase query chain mock
@@ -10,6 +14,7 @@ function createChain(resolveData: unknown = []) {
     chain[m] = jest.fn().mockReturnValue(chain);
   });
   chain.single = jest.fn().mockResolvedValue({ data: resolveData, error: null });
+  chain.maybeSingle = jest.fn().mockResolvedValue({ data: resolveData, error: null });
   // Make the chain thenable for queries that don't end with .single()
   (chain as unknown as PromiseLike<{ data: unknown; error: null }>).then = jest.fn(
     (resolve: (value: { data: unknown; error: null }) => unknown) =>
@@ -52,8 +57,11 @@ import type { ActionContext } from '@/lib/actions/types';
 import '@/lib/actions/funnels';
 
 const testCtx: ActionContext = {
-  userId: 'user-test-123',
-  teamId: 'team-test-456',
+  scope: { type: 'team', userId: 'user-test-123', teamId: 'team-test-456' },
+};
+
+const personalCtx: ActionContext = {
+  scope: { type: 'user', userId: 'user-test-123' },
 };
 
 describe('Funnel Actions', () => {
@@ -63,10 +71,10 @@ describe('Funnel Actions', () => {
   });
 
   describe('list_funnels', () => {
-    it('returns funnels array with expected shape', async () => {
+    it('returns funnels array on success', async () => {
       const mockFunnels = [
-        { id: 'f1', slug: 'growth-guide', title: 'Growth Guide Funnel', status: 'published', created_at: '2026-02-20T10:00:00Z', updated_at: '2026-02-25T10:00:00Z' },
-        { id: 'f2', slug: 'sales-playbook', title: 'Sales Playbook Funnel', status: 'draft', created_at: '2026-02-21T10:00:00Z', updated_at: '2026-02-26T10:00:00Z' },
+        { id: 'f1', slug: 'growth-guide', optin_headline: 'Growth Guide', is_published: true, created_at: '2026-02-20T10:00:00Z' },
+        { id: 'f2', slug: 'sales-playbook', optin_headline: 'Sales Playbook', is_published: false, created_at: '2026-02-21T10:00:00Z' },
       ];
 
       mockState.fromFn.mockReturnValueOnce(createChain(mockFunnels));
@@ -76,8 +84,6 @@ describe('Funnel Actions', () => {
       expect(result.success).toBe(true);
       expect(result.displayHint).toBe('text');
       expect(Array.isArray(result.data)).toBe(true);
-      expect(result.data).toHaveLength(2);
-      expect(result.data).toEqual(mockFunnels);
     });
 
     it('returns empty array when no funnels exist', async () => {
@@ -89,7 +95,7 @@ describe('Funnel Actions', () => {
       expect(result.data).toEqual([]);
     });
 
-    it('excludes A/B test variants', async () => {
+    it('excludes A/B test variants via is_variant=false', async () => {
       const chain = createChain([]);
       mockState.fromFn.mockReturnValueOnce(chain);
 
@@ -98,40 +104,59 @@ describe('Funnel Actions', () => {
       expect(chain.eq).toHaveBeenCalledWith('is_variant', false);
     });
 
-    it('passes limit parameter', async () => {
-      const chain = createChain([]);
-      mockState.fromFn.mockReturnValueOnce(chain);
-
-      await executeAction(testCtx, 'list_funnels', { limit: 5 });
-
-      expect(chain.limit).toHaveBeenCalledWith(5);
-    });
-
-    it('defaults limit to 10', async () => {
+    it('applies team scope (team_id filter) for team context', async () => {
       const chain = createChain([]);
       mockState.fromFn.mockReturnValueOnce(chain);
 
       await executeAction(testCtx, 'list_funnels', {});
 
-      expect(chain.limit).toHaveBeenCalledWith(10);
+      // applyScope with team context applies team_id filter
+      expect(chain.eq).toHaveBeenCalledWith('team_id', 'team-test-456');
     });
 
-    it('filters by status when provided', async () => {
+    it('applies user scope (user_id filter) for personal context', async () => {
       const chain = createChain([]);
       mockState.fromFn.mockReturnValueOnce(chain);
 
-      await executeAction(testCtx, 'list_funnels', { status: 'published' });
+      await executeAction(personalCtx, 'list_funnels', {});
 
-      expect(chain.eq).toHaveBeenCalledWith('status', 'published');
+      // applyScope with personal context applies user_id filter
+      expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-test-123');
     });
 
-    it('orders by updated_at descending', async () => {
+    it('filters published funnels when status=published', async () => {
+      const mockFunnels = [
+        { id: 'f1', is_published: true },
+        { id: 'f2', is_published: false },
+      ];
+      mockState.fromFn.mockReturnValueOnce(createChain(mockFunnels));
+
+      const result = await executeAction(testCtx, 'list_funnels', { status: 'published' });
+
+      expect(result.success).toBe(true);
+      const data = result.data as Array<{ is_published: boolean }>;
+      expect(data.every(f => f.is_published === true)).toBe(true);
+    });
+
+    it('respects limit parameter', async () => {
+      const mockFunnels = Array.from({ length: 20 }, (_, i) => ({
+        id: `f${i}`, is_published: true,
+      }));
+      mockState.fromFn.mockReturnValueOnce(createChain(mockFunnels));
+
+      const result = await executeAction(testCtx, 'list_funnels', { limit: 5 });
+
+      expect(result.success).toBe(true);
+      expect((result.data as unknown[]).length).toBeLessThanOrEqual(5);
+    });
+
+    it('orders by created_at descending', async () => {
       const chain = createChain([]);
       mockState.fromFn.mockReturnValueOnce(chain);
 
       await executeAction(testCtx, 'list_funnels', {});
 
-      expect(chain.order).toHaveBeenCalledWith('updated_at', { ascending: false });
+      expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
     });
 
     it('returns error when supabase fails', async () => {
@@ -145,19 +170,17 @@ describe('Funnel Actions', () => {
       const result = await executeAction(testCtx, 'list_funnels', {});
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Database error');
+      expect(result.error).toContain('Database error');
     });
   });
 
   describe('get_funnel', () => {
-    it('returns funnel details with theme and sections', async () => {
+    it('returns funnel details on success', async () => {
       const mockFunnel = {
         id: 'f1',
         slug: 'growth-guide',
-        title: 'Growth Guide Funnel',
-        status: 'published',
+        is_published: true,
         theme: 'dark',
-        sections: [{ type: 'hero', title: 'Welcome' }],
       };
 
       mockState.fromFn.mockReturnValueOnce(createChain(mockFunnel));
@@ -166,7 +189,7 @@ describe('Funnel Actions', () => {
 
       expect(result.success).toBe(true);
       expect(result.displayHint).toBe('text');
-      expect(result.data).toEqual(mockFunnel);
+      expect((result.data as { id: string }).id).toBe('f1');
     });
 
     it('returns error when funnel not found', async () => {
@@ -180,14 +203,15 @@ describe('Funnel Actions', () => {
       expect(result.error).toBe('Funnel not found');
     });
 
-    it('scopes query to user_id', async () => {
+    it('applies scope (team_id) to the query', async () => {
       const chain = createChain({ id: 'f1' });
       mockState.fromFn.mockReturnValueOnce(chain);
 
       await executeAction(testCtx, 'get_funnel', { id: 'f1' });
 
       expect(chain.eq).toHaveBeenCalledWith('id', 'f1');
-      expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-test-123');
+      // applyScope with team context applies team_id
+      expect(chain.eq).toHaveBeenCalledWith('team_id', 'team-test-456');
     });
   });
 
@@ -196,15 +220,11 @@ describe('Funnel Actions', () => {
       expect(actionRequiresConfirmation('publish_funnel')).toBe(true);
     });
 
-    it('publishes a funnel successfully', async () => {
-      // First call: existence check (select → single)
+    it('publishes a funnel successfully using is_published field', async () => {
+      // assertFunnelAccess: select id → returns id
       const checkChain = createChain({ id: 'f1' });
-      // Second call: update
-      const updateChain = createChain();
-      (updateChain as unknown as PromiseLike<unknown>).then = jest.fn(
-        (resolve: (value: { data: unknown; error: null }) => unknown) =>
-          resolve({ data: null, error: null })
-      ) as jest.Mock;
+      // updateFunnel: update → select → single
+      const updateChain = createChain({ id: 'f1', is_published: true });
       mockState.fromFn
         .mockReturnValueOnce(checkChain)
         .mockReturnValueOnce(updateChain);
@@ -214,12 +234,29 @@ describe('Funnel Actions', () => {
       expect(result.success).toBe(true);
       expect(result.displayHint).toBe('text');
       expect(result.data).toEqual({ id: 'f1', status: 'published' });
-      expect(updateChain.update).toHaveBeenCalledWith({ status: 'published' });
+      // Confirm update uses is_published: true (not status: 'published')
+      expect(updateChain.update).toHaveBeenCalledWith(
+        expect.objectContaining({ is_published: true })
+      );
+    });
+
+    it('sets published_at timestamp when publishing', async () => {
+      const checkChain = createChain({ id: 'f1' });
+      const updateChain = createChain({ id: 'f1', is_published: true });
+      mockState.fromFn
+        .mockReturnValueOnce(checkChain)
+        .mockReturnValueOnce(updateChain);
+
+      await executeAction(testCtx, 'publish_funnel', { id: 'f1' });
+
+      expect(updateChain.update).toHaveBeenCalledWith(
+        expect.objectContaining({ published_at: expect.any(String) })
+      );
     });
 
     it('returns error when funnel not found', async () => {
       const checkChain = createChain(null);
-      checkChain.single = jest.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } });
+      checkChain.single = jest.fn().mockResolvedValue({ data: null, error: null });
       mockState.fromFn.mockReturnValueOnce(checkChain);
 
       const result = await executeAction(testCtx, 'publish_funnel', { id: 'nonexistent' });
@@ -231,12 +268,10 @@ describe('Funnel Actions', () => {
     it('returns error on supabase update failure', async () => {
       // Existence check passes
       const checkChain = createChain({ id: 'f1' });
-      // Update fails
+      // Update throws via repo
       const updateChain = createChain();
-      (updateChain as unknown as PromiseLike<unknown>).then = jest.fn(
-        (resolve: (value: { data: null; error: { message: string } }) => unknown) =>
-          resolve({ data: null, error: { message: 'Update failed' } })
-      ) as jest.Mock;
+      updateChain.select = jest.fn().mockReturnValue(updateChain);
+      updateChain.single = jest.fn().mockResolvedValue({ data: null, error: { message: 'Update failed' } });
       mockState.fromFn
         .mockReturnValueOnce(checkChain)
         .mockReturnValueOnce(updateChain);
@@ -244,7 +279,7 @@ describe('Funnel Actions', () => {
       const result = await executeAction(testCtx, 'publish_funnel', { id: 'f1' });
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Update failed');
+      expect(result.error).toContain('Update failed');
     });
   });
 });

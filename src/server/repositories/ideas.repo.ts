@@ -11,7 +11,7 @@ import type { ContentIdea, IdeaStatus } from '@/lib/types/content-pipeline';
 // ─── Select column sets ────────────────────────────────────────────────────
 
 const IDEA_COLUMNS =
-  'id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, composite_score, hook, key_points, source_quote, target_audience, status, team_profile_id, created_at, updated_at';
+  'id, user_id, transcript_id, title, core_insight, why_post_worthy, full_context, content_type, content_pillar, relevance_score, composite_score, hook, key_points, source_quote, target_audience, status, team_id, team_profile_id, created_at, updated_at';
 
 // ─── Filter types ──────────────────────────────────────────────────────────
 
@@ -33,18 +33,6 @@ export interface IdeaUpdateInput {
   full_context?: string;
 }
 
-// ─── Internal helpers ──────────────────────────────────────────────────────
-
-async function getTeamProfileIds(teamId: string): Promise<string[]> {
-  const supabase = createSupabaseAdminClient();
-  const { data: profiles } = await supabase
-    .from('team_profiles')
-    .select('id')
-    .eq('team_id', teamId)
-    .eq('status', 'active');
-  return profiles?.map((p) => p.id) ?? [];
-}
-
 // ─── List queries ──────────────────────────────────────────────────────────
 
 export async function findIdeas(
@@ -60,13 +48,9 @@ export async function findIdeas(
     .order('created_at', { ascending: false })
     .limit(limit);
 
+  // Ideas now have team_id directly — scope by team_id in team mode
   if (scope.type === 'team' && scope.teamId) {
-    const profileIds = await getTeamProfileIds(scope.teamId);
-    if (profileIds.length > 0) {
-      query = query.in('team_profile_id', profileIds);
-    } else {
-      query = query.eq('user_id', scope.userId);
-    }
+    query = query.eq('team_id', scope.teamId);
   } else {
     query = query.eq('user_id', scope.userId);
   }
@@ -95,12 +79,7 @@ export async function findIdeaById(
     .eq('id', id);
 
   if (scope.type === 'team' && scope.teamId) {
-    const profileIds = await getTeamProfileIds(scope.teamId);
-    if (profileIds.length > 0) {
-      query = query.in('team_profile_id', profileIds);
-    } else {
-      query = query.eq('user_id', scope.userId);
-    }
+    query = query.eq('team_id', scope.teamId);
   } else {
     query = query.eq('user_id', scope.userId);
   }
@@ -123,12 +102,7 @@ export async function findIdeaForWrite(
     .eq('id', id);
 
   if (scope.type === 'team' && scope.teamId) {
-    const profileIds = await getTeamProfileIds(scope.teamId);
-    if (profileIds.length > 0) {
-      query = query.in('team_profile_id', profileIds);
-    } else {
-      query = query.eq('user_id', scope.userId);
-    }
+    query = query.eq('team_id', scope.teamId);
   } else {
     query = query.eq('user_id', scope.userId);
   }

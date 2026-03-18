@@ -1,5 +1,5 @@
 /**
- * Teams API (client). Routes: /api/teams, /api/teams/profiles, /api/team/[id]
+ * Teams API (client). Routes: /api/teams, /api/teams/profiles, /api/teams/members, /api/teams/links
  */
 
 import { apiClient } from './client';
@@ -69,4 +69,42 @@ export async function updateProfile(id: string, body: Record<string, unknown>): 
 
 export async function deleteProfile(id: string): Promise<void> {
   await apiClient.delete(`/teams/profiles/${id}`);
+}
+
+// ─── Members ─────────────────────────────────────────────────────────────────
+
+export async function listMembers(teamId: string): Promise<unknown> {
+  return apiClient.get(`/teams/members?team_id=${teamId}`);
+}
+
+export async function addMember(
+  teamId: string,
+  userId: string,
+  role: string = 'member'
+): Promise<unknown> {
+  return apiClient.post('/teams/members', { team_id: teamId, user_id: userId, role });
+}
+
+export async function removeMember(teamId: string, userId: string): Promise<void> {
+  await apiClient.delete(`/teams/members?team_id=${teamId}&user_id=${userId}`);
+}
+
+// ─── Team Links ───────────────────────────────────────────────────────────────
+
+export async function listTeamLinks(): Promise<unknown> {
+  return apiClient.get('/teams/links');
+}
+
+export async function createTeamLink(
+  agencyTeamId: string,
+  clientTeamId: string
+): Promise<unknown> {
+  return apiClient.post('/teams/links', {
+    agency_team_id: agencyTeamId,
+    client_team_id: clientTeamId,
+  });
+}
+
+export async function deleteTeamLink(linkId: string): Promise<void> {
+  await apiClient.delete(`/teams/links/${linkId}`);
 }

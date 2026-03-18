@@ -1,10 +1,12 @@
 /**
- * Content Pipeline Templates Service
+ * Content Pipeline Templates Service.
  * List, create, update, delete, seed, bulk-import, match.
+ * All operations are team-scoped via DataScope.
  */
 
 import { generateEmbedding, createTemplateEmbeddingText } from '@/lib/ai/embeddings';
 import { logError } from '@/lib/utils/logger';
+import type { DataScope } from '@/lib/utils/team-context';
 import * as cpTemplatesRepo from '@/server/repositories/cp-templates.repo';
 
 const SEED_TEMPLATES = [
@@ -99,8 +101,10 @@ const SEED_TEMPLATES = [
   },
 ];
 
-export async function list(userId: string, scope: cpTemplatesRepo.TemplateScope) {
-  const { data, error } = await cpTemplatesRepo.listTemplates(userId, scope);
+// ─── Read operations ────────────────────────────────────────────────────────
+
+export async function list(scope: DataScope, filter: cpTemplatesRepo.TemplateScope) {
+  const { data, error } = await cpTemplatesRepo.listTemplates(scope, filter);
   if (error) {
     logError('cp/templates', error, { step: 'templates_list_error' });
     return { success: false, error: 'database' as const };
@@ -108,8 +112,16 @@ export async function list(userId: string, scope: cpTemplatesRepo.TemplateScope)
   return { success: true, templates: data };
 }
 
+export async function getById(scope: DataScope, id: string) {
+  const { data, error } = await cpTemplatesRepo.getTemplateById(id, scope);
+  if (error || !data) return { success: false, error: 'not_found' as const };
+  return { success: true, template: data };
+}
+
+// ─── Write operations ───────────────────────────────────────────────────────
+
 export async function create(
-  userId: string,
+  scope: DataScope,
   payload: {
     name: string;
     category?: string;
@@ -144,17 +156,11 @@ export async function create(
     tags: payload.tags ?? null,
     embedding: embedding ? JSON.stringify(embedding) : undefined,
   };
-  const { data, error } = await cpTemplatesRepo.createTemplate(userId, row);
+  const { data, error } = await cpTemplatesRepo.createTemplate(scope, row);
   if (error) {
     logError('cp/templates', error, { step: 'template_create_error' });
     return { success: false, error: 'database' as const };
   }
-  return { success: true, template: data };
-}
-
-export async function getById(userId: string, id: string) {
-  const { data, error } = await cpTemplatesRepo.getTemplateById(id, userId);
-  if (error || !data) return { success: false, error: 'not_found' as const };
   return { success: true, template: data };
 }
 
@@ -169,7 +175,7 @@ const ALLOWED_UPDATE_FIELDS = [
   'is_active',
 ];
 
-export async function update(userId: string, id: string, body: Record<string, unknown>) {
+export async function update(scope: DataScope, id: string, body: Record<string, unknown>) {
   const updates: Record<string, unknown> = {};
   for (const field of ALLOWED_UPDATE_FIELDS) {
     if (field in body) updates[field] = body[field];
@@ -177,7 +183,7 @@ export async function update(userId: string, id: string, body: Record<string, un
   if (Object.keys(updates).length === 0)
     return { success: false, error: 'validation' as const, message: 'No valid fields to update' };
 
-  const { data, error } = await cpTemplatesRepo.updateTemplate(id, userId, updates);
+  const { data, error } = await cpTemplatesRepo.updateTemplate(id, scope, updates);
   if (error) {
     logError('cp/templates', error, { step: 'template_update_error' });
     return { success: false, error: 'database' as const };
@@ -185,8 +191,8 @@ export async function update(userId: string, id: string, body: Record<string, un
   return { success: true, template: data };
 }
 
-export async function deleteTemplate(userId: string, id: string) {
-  const { error } = await cpTemplatesRepo.deleteTemplate(id, userId);
+export async function deleteTemplate(scope: DataScope, id: string) {
+  const { error } = await cpTemplatesRepo.deleteTemplate(id, scope);
   if (error) {
     logError('cp/templates', error, { step: 'template_delete_error' });
     return { success: false, error: 'database' as const };
@@ -194,8 +200,10 @@ export async function deleteTemplate(userId: string, id: string) {
   return { success: true };
 }
 
-export async function seed(userId: string) {
-  const count = await cpTemplatesRepo.countTemplatesByUser(userId);
+// ─── Seed & bulk import ─────────────────────────────────────────────────────
+
+export async function seed(scope: DataScope) {
+  const count = await cpTemplatesRepo.countTemplatesByScope(scope);
   if (count >= 10) return { success: true, message: 'Templates already seeded', seeded: 0 };
 
   const rows: Array<Record<string, unknown>> = [];
@@ -207,12 +215,12 @@ export async function seed(userId: string) {
     } catch {
       // continue without embedding
     }
-    const row: Record<string, unknown> = { user_id: userId, ...template };
+    const row: Record<string, unknown> = { ...template };
     if (embedding) row.embedding = JSON.stringify(embedding);
     rows.push(row);
   }
 
-  const { data, error } = await cpTemplatesRepo.insertTemplates(userId, rows);
+  const { data, error } = await cpTemplatesRepo.insertTemplates(scope, rows);
   if (error) {
     logError('cp/templates', error, { step: 'template_seed_error' });
     return { success: false, error: 'database' as const };
@@ -221,7 +229,7 @@ export async function seed(userId: string) {
 }
 
 export async function bulkImport(
-  userId: string,
+  scope: DataScope,
   templates: Array<{
     name: string;
     structure: string;
@@ -253,7 +261,6 @@ export async function bulkImport(
       // continue without embedding
     }
     const row: Record<string, unknown> = {
-      user_id: userId,
       name: template.name,
       category: template.category ?? null,
       description: template.description ?? null,
@@ -266,7 +273,7 @@ export async function bulkImport(
     rows.push(row);
   }
 
-  const { data, error } = await cpTemplatesRepo.insertTemplates(userId, rows);
+  const { data, error } = await cpTemplatesRepo.insertTemplates(scope, rows);
   if (error) {
     logError('cp/templates', error, { step: 'template_bulk_import_error' });
     return { success: false, error: 'database' as const };
@@ -274,15 +281,17 @@ export async function bulkImport(
   return { success: true, imported: data.length, templates: data };
 }
 
+// ─── Match (service wrapper for API routes) ─────────────────────────────────
+
 export async function match(
-  userId: string,
+  teamId: string,
   topicText: string,
   count: number,
   minSimilarity: number
 ) {
   const embedding = await generateEmbedding(topicText);
   const { data, error } = await cpTemplatesRepo.matchTemplatesRpc(
-    userId,
+    teamId,
     JSON.stringify(embedding),
     count,
     minSimilarity

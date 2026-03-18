@@ -17,6 +17,7 @@ export async function handleKnowledgeTools(
         topic: args.topic as string | undefined,
         min_quality: args.min_quality as number | undefined,
         since: args.since as string | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_browse_knowledge':
@@ -24,20 +25,23 @@ export async function handleKnowledgeTools(
         category: args.category as KnowledgeCategory | undefined,
         tag: args.tag as string | undefined,
         limit: args.limit as number | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_get_knowledge_clusters':
-      return client.getKnowledgeClusters();
+      return client.getKnowledgeClusters(args.team_id as string | undefined);
 
     case 'magnetlab_ask_knowledge':
       return client.askKnowledge({
         question: args.question as string,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_submit_transcript':
       return client.submitTranscript({
         transcript: args.transcript as string,
         title: args.title as string | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     default:

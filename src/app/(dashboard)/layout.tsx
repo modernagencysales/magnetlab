@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { checkTeamRole } from '@/lib/auth/rbac';
+import { hasTeamAccess } from '@/server/repositories/team.repo';
 import { isSuperAdmin } from '@/lib/auth/super-admin';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -24,7 +24,14 @@ export default async function DashboardLayout({
   const cookieStore = await cookies();
   const activeTeamId = cookieStore.get('ml-team-context')?.value;
 
-  let teamContext: { isTeamMode: boolean; teamId: string; teamName: string; isOwner: boolean } | null = null;
+  let teamContext: {
+    isTeamMode: boolean;
+    teamId: string;
+    teamName: string;
+    isOwner: boolean;
+    via: 'direct' | 'team_link';
+    agencyTeamName?: string;
+  } | null = null;
 
   if (activeTeamId && activeTeamId !== 'personal') {
     const supabase = createSupabaseAdminClient();
@@ -35,13 +42,29 @@ export default async function DashboardLayout({
       .single();
 
     if (team) {
-      const role = await checkTeamRole(session.user.id, team.id);
-      if (role) {
+      const access = await hasTeamAccess(session.user.id, team.id);
+      if (access.access) {
+        let agencyTeamName: string | undefined;
+
+        if (access.via === 'team_link') {
+          // Look up the agency team name so the sidebar can display "via [Agency]"
+          const { data: link } = await supabase
+            .from('team_links')
+            .select('agency_team_id, teams!team_links_agency_team_id_fkey(name)')
+            .eq('client_team_id', activeTeamId)
+            .limit(1)
+            .maybeSingle();
+          const agencyTeams = link?.teams as { name: string } | null;
+          agencyTeamName = agencyTeams?.name ?? undefined;
+        }
+
         teamContext = {
           isTeamMode: true,
           teamId: team.id,
           teamName: team.name,
-          isOwner: role === 'owner',
+          isOwner: access.role === 'owner',
+          via: access.via,
+          agencyTeamName,
         };
       }
     }

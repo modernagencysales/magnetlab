@@ -90,15 +90,15 @@ Hook requirements:
 
 // ============================================
 // post-writer-freeform
-// Source: src/lib/ai/content-pipeline/post-writer.ts → writePostFreeform()
+// Source: src/lib/ai/content-pipeline/post-writer.ts → writePost()
 // ============================================
 
 PROMPT_DEFAULTS['post-writer-freeform'] = {
   slug: 'post-writer-freeform',
-  name: 'Post Writer (Freeform)',
+  name: 'Post Writer',
   category: 'content_writing',
   description:
-    'Writes a LinkedIn post from a content idea using freeform style. Used by writePostFreeform().',
+    'Writes a LinkedIn post from a content idea with multi-template soft guidance. Used by writePost().',
   system_prompt: '',
   user_prompt: `You are writing a LinkedIn post. Write the post without any preamble. Your first word is the first word of the post.
 
@@ -211,15 +211,16 @@ Now write the post. Return ONLY valid JSON:
 
 // ============================================
 // post-writer-template
-// Source: src/lib/ai/content-pipeline/post-writer.ts → writePostWithTemplate()
+// Deprecated — template guidance is now injected as soft context into post-writer-freeform.
+// Kept in PROMPT_DEFAULTS for backward compatibility with existing DB prompt records.
 // ============================================
 
 PROMPT_DEFAULTS['post-writer-template'] = {
   slug: 'post-writer-template',
-  name: 'Post Writer (Template)',
+  name: 'Post Writer (Template) — Deprecated',
   category: 'content_writing',
   description:
-    'Writes a LinkedIn post by combining a template with user-provided information. Used by writePostWithTemplate().',
+    'Deprecated. Template guidance is now injected into the post-writer-freeform prompt as soft structural inspiration via writePost().',
   system_prompt: '',
   user_prompt: `You are creating a LinkedIn post by combining a template with user-provided information.
 

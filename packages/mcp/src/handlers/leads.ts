@@ -16,16 +16,18 @@ export async function handleLeadTools(
         search: args.search as string | undefined,
         limit: args.limit as number | undefined,
         offset: args.offset as number | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_get_lead':
-      return client.getLead(args.id as string);
+      return client.getLead(args.id as string, args.team_id as string | undefined);
 
     case 'magnetlab_export_leads':
       return client.exportLeads({
         funnelId: args.funnel_id as string | undefined,
         leadMagnetId: args.lead_magnet_id as string | undefined,
         qualified: args.qualified as boolean | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     default:

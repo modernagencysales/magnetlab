@@ -1,14 +1,22 @@
+/**
+ * Content pipeline copilot actions.
+ * All data access goes through repos — no raw Supabase queries.
+ */
+
 import { registerAction } from './registry';
 import type { ActionContext, ActionResult } from './types';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { writePost, type WritePostInput } from '@/lib/ai/content-pipeline/post-writer';
 import { polishPost } from '@/lib/ai/content-pipeline/post-polish';
 import { buildContentBrief } from '@/lib/ai/content-pipeline/briefing-agent';
+import {
+  findPosts,
+  createPost,
+  findPostForPolish,
+  updatePost,
+} from '@/server/repositories/posts.repo';
+import { getDefaultProfile, getTeamIdByOwnerProfileUserId } from '@/server/repositories/team.repo';
 
-// ─── Column Constants ─────────────────────────────────────────────────────────
-
-const CP_POST_TEMPLATE_COLUMNS =
-  'id, user_id, name, category, description, structure, example_posts, use_cases, tags, usage_count, avg_engagement_score, is_active, created_at, updated_at';
+// ─── Actions ──────────────────────────────────────────────────────────────
 
 registerAction({
   name: 'write_post',
@@ -45,18 +53,18 @@ registerAction({
       style_id?: string;
     }
   ): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
+    const { userId, teamId } = ctx.scope;
 
     // Build knowledge brief for context
-    const brief = await buildContentBrief(ctx.userId, params.topic, { teamId: ctx.teamId });
+    const brief = await buildContentBrief(userId, params.topic, { teamId });
 
-    // Get voice profile
-    const { data: profile } = await supabase
-      .from('team_profiles')
-      .select('voice_profile, full_name, title')
-      .eq('user_id', ctx.userId)
-      .limit(1)
-      .single();
+    // Get voice profile via team.repo — use team's default profile in team mode,
+    // or find via the user's owned team in personal mode.
+    const resolvedTeamIdForProfile =
+      teamId ?? (await getTeamIdByOwnerProfileUserId(userId));
+    const profile = resolvedTeamIdForProfile
+      ? await getDefaultProfile(resolvedTeamIdForProfile)
+      : null;
 
     const input: WritePostInput = {
       idea: {
@@ -74,40 +82,22 @@ registerAction({
       authorTitle: profile?.title || undefined,
     };
 
-    // Load template if specified
-    if (params.template_id) {
-      const { data: template } = await supabase
-        .from('cp_post_templates')
-        .select(CP_POST_TEMPLATE_COLUMNS)
-        .eq('id', params.template_id)
-        .eq('user_id', ctx.userId)
-        .single();
-      if (template) {
-        input.template = template;
-      }
-    }
+    // writePost handles template matching internally via RAG — team-scoped
+    const resolvedTeamId = teamId ?? userId;
+    const result = await writePost(input, resolvedTeamId, userId);
 
-    const result = await writePost(input);
-
-    // Persist to pipeline
-    const { data: post } = await supabase
-      .from('cp_pipeline_posts')
-      .insert({
-        user_id: ctx.userId,
-        draft_content: result.content,
-        variations: result.variations?.map((v, i) => ({
-          id: `copilot-var-${i}-${Date.now()}`,
-          content: v.content,
-          selected: false,
-        })),
-        dm_template: result.dm_template,
-        cta_word: result.cta_word,
-        status: 'draft',
-        template_id: params.template_id || null,
-        style_id: params.style_id || null,
-      })
-      .select('id, draft_content, status, created_at')
-      .single();
+    // Persist to pipeline via repo
+    const post = await createPost(userId, {
+      draft_content: result.content,
+      variations: result.variations?.map((v, i) => ({
+        id: `copilot-var-${i}-${Date.now()}`,
+        content: v.content,
+        selected: false,
+      })),
+      dm_template: result.dm_template,
+      cta_word: result.cta_word,
+      status: 'draft',
+    });
 
     return {
       success: true,
@@ -128,15 +118,9 @@ registerAction({
     required: ['post_id'],
   },
   handler: async (ctx: ActionContext, params: { post_id: string }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
+    const { userId } = ctx.scope;
 
-    const { data: post } = await supabase
-      .from('cp_pipeline_posts')
-      .select('id, draft_content, final_content')
-      .eq('id', params.post_id)
-      .eq('user_id', ctx.userId)
-      .single();
-
+    const post = await findPostForPolish(userId, params.post_id);
     if (!post) return { success: false, error: 'Post not found' };
 
     const content = post.final_content || post.draft_content;
@@ -144,12 +128,11 @@ registerAction({
 
     const result = await polishPost(content);
 
-    // Save polished content
-    await supabase
-      .from('cp_pipeline_posts')
-      .update({ final_content: result.polished, polish_status: 'polished' })
-      .eq('id', params.post_id)
-      .eq('user_id', ctx.userId);
+    // Save polished content via repo
+    await updatePost(userId, params.post_id, {
+      final_content: result.polished,
+      polish_status: 'polished',
+    });
 
     return {
       success: true,
@@ -182,24 +165,14 @@ registerAction({
     ctx: ActionContext,
     params: { status?: string; limit?: number }
   ): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
-
-    let query = supabase
-      .from('cp_pipeline_posts')
-      .select('id, draft_content, final_content, status, scheduled_time, hook_score, created_at')
-      .eq('user_id', ctx.userId)
-      .order('created_at', { ascending: false })
-      .limit(params.limit || 10);
-
-    if (params.status) {
-      query = query.eq('status', params.status);
-    }
-
-    const { data: posts } = await query;
+    const posts = await findPosts(ctx.scope, {
+      status: params.status,
+      limit: params.limit || 10,
+    });
 
     return {
       success: true,
-      data: (posts || []).map((p) => ({
+      data: posts.map((p) => ({
         id: p.id,
         content_preview: (p.final_content || p.draft_content || '').slice(0, 150),
         status: p.status,
@@ -226,15 +199,15 @@ registerAction({
     ctx: ActionContext,
     params: { post_id: string; content: string }
   ): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
-
-    const { error } = await supabase
-      .from('cp_pipeline_posts')
-      .update({ draft_content: params.content, updated_at: new Date().toISOString() })
-      .eq('id', params.post_id)
-      .eq('user_id', ctx.userId);
-
-    if (error) return { success: false, error: error.message };
-    return { success: true, data: { post_id: params.post_id, updated: true }, displayHint: 'text' };
+    try {
+      await updatePost(ctx.scope.userId, params.post_id, {
+        draft_content: params.content,
+        updated_at: new Date().toISOString(),
+      });
+      return { success: true, data: { post_id: params.post_id, updated: true }, displayHint: 'text' };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Update failed';
+      return { success: false, error: message };
+    }
   },
 });

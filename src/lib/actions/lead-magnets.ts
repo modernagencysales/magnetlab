@@ -2,15 +2,24 @@
  * Lead Magnet Actions.
  *
  * Copilot actions for listing, viewing, and creating lead magnets
- * through the Brain-aware creation pipeline. Read actions are direct DB
- * queries; creation actions delegate to the lead-magnet-creation orchestrator.
+ * through the Brain-aware creation pipeline. Read actions delegate to
+ * repos with DataScope; creation actions delegate to the lead-magnet-creation
+ * orchestrator.
  *
  * Never imports NextRequest, NextResponse, or cookies.
  */
 
 import { registerAction } from './registry';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
-import { analyzeContextGaps, generateContent, generatePosts } from '@/lib/ai/copilot/lead-magnet-creation';
+import {
+  findLeadMagnets,
+  findLeadMagnetById,
+  createLeadMagnet,
+} from '@/server/repositories/lead-magnets.repo';
+import {
+  analyzeContextGaps,
+  generateContent,
+  generatePosts,
+} from '@/lib/ai/copilot/lead-magnet-creation';
 import type { ActionContext, ActionResult } from './types';
 import type { LeadMagnetArchetype, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 
@@ -18,7 +27,8 @@ import type { LeadMagnetArchetype, LeadMagnetConcept } from '@/lib/types/lead-ma
 
 registerAction({
   name: 'list_lead_magnets',
-  description: 'List lead magnets for the current user. Returns title, status, archetype, and timestamps. Optionally filter by status.',
+  description:
+    'List lead magnets for the current user. Returns title, status, archetype, and timestamps. Optionally filter by status.',
   parameters: {
     properties: {
       status: {
@@ -29,23 +39,15 @@ registerAction({
       limit: { type: 'number', description: 'Max results (default 10)' },
     },
   },
-  handler: async (ctx: ActionContext, params: { status?: string; limit?: number }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
-
-    let query = supabase
-      .from('lead_magnets')
-      .select('id, title, status, archetype, created_at, updated_at')
-      .eq('user_id', ctx.userId)
-      .order('updated_at', { ascending: false })
-      .limit(params.limit || 10);
-
-    if (params.status) {
-      query = query.eq('status', params.status);
-    }
-
-    const { data, error } = await query;
-
-    if (error) return { success: false, error: error.message };
+  handler: async (
+    ctx: ActionContext,
+    params: { status?: string; limit?: number }
+  ): Promise<ActionResult> => {
+    const { data } = await findLeadMagnets(ctx.scope, {
+      status: params.status || null,
+      limit: params.limit || 10,
+      offset: 0,
+    });
 
     return {
       success: true,
@@ -57,7 +59,8 @@ registerAction({
 
 registerAction({
   name: 'get_lead_magnet',
-  description: 'Get full details of a specific lead magnet by ID, including content blocks and extraction data.',
+  description:
+    'Get full details of a specific lead magnet by ID, including content blocks and extraction data.',
   parameters: {
     properties: {
       id: { type: 'string', description: 'The lead magnet ID' },
@@ -65,16 +68,9 @@ registerAction({
     required: ['id'],
   },
   handler: async (ctx: ActionContext, params: { id: string }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
+    const data = await findLeadMagnetById(ctx.scope, params.id);
 
-    const { data, error } = await supabase
-      .from('lead_magnets')
-      .select('id, title, archetype, status, content_blocks, extraction_data, created_at')
-      .eq('id', params.id)
-      .eq('user_id', ctx.userId)
-      .single();
-
-    if (error || !data) {
+    if (!data) {
       return { success: false, error: 'Lead magnet not found' };
     }
 
@@ -104,7 +100,8 @@ registerAction({
       },
       archetype: {
         type: 'string',
-        description: 'Lead magnet archetype (e.g. guide, single-breakdown, focused-toolkit). Defaults to guide.',
+        description:
+          'Lead magnet archetype (e.g. guide, single-breakdown, focused-toolkit). Defaults to guide.',
       },
       target_audience: {
         type: 'string',
@@ -112,7 +109,8 @@ registerAction({
       },
       pasted_content: {
         type: 'string',
-        description: 'User-pasted content (article, transcript, notes) to pre-answer extraction questions',
+        description:
+          'User-pasted content (article, transcript, notes) to pre-answer extraction questions',
       },
     },
     required: ['topic'],
@@ -148,8 +146,8 @@ registerAction({
     };
 
     const result = await analyzeContextGaps({
-      userId: ctx.userId,
-      teamId: ctx.teamId,
+      userId: ctx.scope.userId,
+      teamId: ctx.scope.teamId,
       archetype,
       concept,
       pastedContent: params.pasted_content,
@@ -228,7 +226,7 @@ registerAction({
     };
 
     const extractedContent = await generateContent(
-      { archetype, concept, userId: ctx.userId },
+      { archetype, concept, userId: ctx.scope.userId },
       params.answers
     );
 
@@ -276,28 +274,26 @@ registerAction({
       extraction_data?: Record<string, unknown>;
     }
   ): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from('lead_magnets')
-      .insert({
-        user_id: ctx.userId,
+    try {
+      const data = await createLeadMagnet(ctx.scope.userId, ctx.scope.teamId ?? null, {
         title: params.title,
         archetype: params.archetype,
         status: 'draft',
         content_blocks: params.content_blocks,
         extraction_data: params.extraction_data || null,
-      })
-      .select('id, title, archetype, status, created_at')
-      .single();
+      });
 
-    if (error) return { success: false, error: error.message };
-
-    return {
-      success: true,
-      data,
-      displayHint: 'text',
-    };
+      return {
+        success: true,
+        data,
+        displayHint: 'text',
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to save lead magnet',
+      };
+    }
   },
 });
 
@@ -319,7 +315,7 @@ registerAction({
     ctx: ActionContext,
     params: { lead_magnet_id: string }
   ): Promise<ActionResult> => {
-    const result = await generatePosts(ctx.userId, params.lead_magnet_id);
+    const result = await generatePosts(ctx.scope.userId, params.lead_magnet_id);
 
     return {
       success: true,

@@ -1,44 +1,90 @@
+/**
+ * Team Context & Data Scope Resolution.
+ * Resolves the active DataScope for the current request from cookie, API key,
+ * or explicit requestTeamId param. Uses hasTeamAccess() for all access checks
+ * (supports direct membership AND agency team links).
+ * Never imported by 'use client' files.
+ */
+
 import { cookies, headers } from 'next/headers';
-import { checkTeamRole } from '@/lib/auth/rbac';
+import { hasTeamAccess } from '@/server/repositories/team.repo';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logWarn } from '@/lib/utils/logger';
 
 export interface DataScope {
   type: 'user' | 'team';
-  userId: string;       // Always the logged-in user
-  teamId?: string;      // Set when in team context
-  ownerId?: string;     // Team owner's user_id (for billing lookups)
+  userId: string; // Always the logged-in user
+  teamId?: string; // Set when in team context
+  billingUserId?: string; // Billing team owner's user_id (for billing lookups)
 }
+
+// ─── Billing resolution ─────────────────────────────────────────────────────
+
+/**
+ * Resolve the billing user ID for a team.
+ * If the team has a billing_team_id, follow one hop to that team's owner_id.
+ * If billing_team_id is NULL, use the team's own owner_id.
+ */
+async function resolveBillingUserId(teamId: string): Promise<string> {
+  const supabase = createSupabaseAdminClient();
+  const { data: team } = await supabase
+    .from('teams')
+    .select('owner_id, billing_team_id')
+    .eq('id', teamId)
+    .single();
+
+  if (!team) return teamId; // shouldn't happen — caller verified team exists
+
+  if (!team.billing_team_id) {
+    return team.owner_id;
+  }
+
+  // Follow one hop to the billing team's owner
+  const { data: billingTeam } = await supabase
+    .from('teams')
+    .select('owner_id')
+    .eq('id', team.billing_team_id)
+    .single();
+
+  return billingTeam?.owner_id ?? team.owner_id;
+}
+
+// ─── getDataScope ────────────────────────────────────────────────────────────
 
 /**
  * Get the current data scope based on session and team context.
- * The ml-team-context cookie now stores a **team ID** directly.
- * For API key requests (no cookies), falls back to the user's team membership.
- * Falls back to user scope if no team context or membership check fails.
+ * Resolution order:
+ * 1. ml-team-context cookie → validate via hasTeamAccess
+ * 2. requestTeamId param (MCP requests) → validate via hasTeamAccess
+ * 3. API key requests → resolveTeamForApiKey
+ * 4. Personal mode fallback
+ *
+ * Multi-team ambiguity: if no cookie, no API key, no requestTeamId,
+ * always returns personal mode (never picks a random team).
  */
-export async function getDataScope(userId: string): Promise<DataScope> {
+export async function getDataScope(userId: string, requestTeamId?: string): Promise<DataScope> {
   const cookieStore = await cookies();
   const contextTeamId = cookieStore.get('ml-team-context')?.value;
 
+  // 1. Cookie-based team context
   if (contextTeamId && contextTeamId !== 'personal') {
-    const supabase = createSupabaseAdminClient();
-    const { data: team } = await supabase
-      .from('teams')
-      .select('id, owner_id')
-      .eq('id', contextTeamId)
-      .single();
-
-    if (team) {
-      const role = await checkTeamRole(userId, team.id);
-      if (role) {
-        return { type: 'team', userId, teamId: team.id, ownerId: team.owner_id };
-      }
+    const result = await hasTeamAccess(userId, contextTeamId);
+    if (result.access) {
+      const billingUserId = await resolveBillingUserId(contextTeamId);
+      return { type: 'team', userId, teamId: contextTeamId, billingUserId };
     }
   }
 
-  // For API key requests (no cookie mechanism), resolve team from membership.
-  // Browser requests without the cookie mean the user chose personal mode,
-  // but API key requests never have cookies — so we fall back to their team.
+  // 2. Explicit requestTeamId (MCP / API callers pass this)
+  if (!contextTeamId && requestTeamId) {
+    const result = await hasTeamAccess(userId, requestTeamId);
+    if (result.access) {
+      const billingUserId = await resolveBillingUserId(requestTeamId);
+      return { type: 'team', userId, teamId: requestTeamId, billingUserId };
+    }
+  }
+
+  // 3. API key requests (no cookie mechanism) — resolve team from membership
   if (!contextTeamId) {
     let isApiKeyRequest = false;
     try {
@@ -58,8 +104,11 @@ export async function getDataScope(userId: string): Promise<DataScope> {
     }
   }
 
+  // 4. Personal mode fallback
   return { type: 'user', userId };
 }
+
+// ─── requireTeamScope ────────────────────────────────────────────────────────
 
 /**
  * Get team scope, falling back to team ownership/membership lookup if no
@@ -77,82 +126,65 @@ export async function requireTeamScope(userId: string): Promise<DataScope | null
   return resolved;
 }
 
+// ─── resolveTeamForApiKey ────────────────────────────────────────────────────
+
 /**
  * Resolve team context for an API key user by checking membership tables.
- * Priority: owned team → V2 team_profiles → V1 team_members.
+ * Priority: owned team (via team_members) → any active team_members entry.
  * Returns null if user has no team membership.
  */
 async function resolveTeamForApiKey(userId: string): Promise<DataScope | null> {
   const supabase = createSupabaseAdminClient();
 
-  // 1. Check if user owns a team (maybeSingle returns null for 0 rows)
-  const { data: ownedTeam, error: ownedErr } = await supabase
-    .from('teams')
-    .select('id, owner_id')
-    .eq('owner_id', userId)
+  // 1. Check if user owns a team (via team_members with role='owner')
+  const { data: ownerMembership, error: ownerErr } = await supabase
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', userId)
+    .eq('role', 'owner')
+    .eq('status', 'active')
     .limit(1)
     .maybeSingle();
 
-  if (ownedErr) {
-    logWarn('getDataScope', 'Owned team lookup failed', { userId, error: ownedErr });
-  } else if (ownedTeam) {
-    return { type: 'team', userId, teamId: ownedTeam.id, ownerId: ownedTeam.owner_id };
+  if (ownerErr) {
+    logWarn('getDataScope', 'Owner membership lookup failed', { userId, error: ownerErr });
+  } else if (ownerMembership) {
+    const billingUserId = await resolveBillingUserId(ownerMembership.team_id);
+    return { type: 'team', userId, teamId: ownerMembership.team_id, billingUserId };
   }
 
-  // 2. Check team_profiles (V2 membership)
-  const { data: v2Profile, error: v2Err } = await supabase
-    .from('team_profiles')
-    .select('team_id, teams!inner(id, owner_id)')
+  // 2. Check any active team_members entry (non-owner membership)
+  const { data: membership, error: memberErr } = await supabase
+    .from('team_members')
+    .select('team_id')
     .eq('user_id', userId)
     .eq('status', 'active')
     .limit(1)
     .maybeSingle();
 
-  if (v2Err) {
-    logWarn('getDataScope', 'V2 team_profiles lookup failed', { userId, error: v2Err });
-  } else if (v2Profile) {
-    const team = v2Profile.teams as unknown as { id: string; owner_id: string };
-    return { type: 'team', userId, teamId: team.id, ownerId: team.owner_id };
-  }
-
-  // 3. Check team_members (V1 membership — owner_id + member_id pattern)
-  const { data: v1Member, error: v1Err } = await supabase
-    .from('team_members')
-    .select('owner_id')
-    .eq('member_id', userId)
-    .eq('status', 'active')
-    .limit(1)
-    .maybeSingle();
-
-  if (v1Err) {
-    logWarn('getDataScope', 'V1 team_members lookup failed', { userId, error: v1Err });
-  } else if (v1Member) {
-    const { data: ownerTeam } = await supabase
-      .from('teams')
-      .select('id, owner_id')
-      .eq('owner_id', v1Member.owner_id)
-      .limit(1)
-      .maybeSingle();
-
-    if (ownerTeam) {
-      return { type: 'team', userId, teamId: ownerTeam.id, ownerId: ownerTeam.owner_id };
-    }
+  if (memberErr) {
+    logWarn('getDataScope', 'Member lookup failed', { userId, error: memberErr });
+  } else if (membership) {
+    const billingUserId = await resolveBillingUserId(membership.team_id);
+    return { type: 'team', userId, teamId: membership.team_id, billingUserId };
   }
 
   return null;
 }
 
+// ─── getScopeForResource ─────────────────────────────────────────────────────
+
 /**
  * Resolve scope for a specific resource's team. Used when the cookie-based
  * scope (getDataScope) doesn't match the resource being modified — e.g. a
- * DFY manager editing a client team's funnel.
+ * DFY manager editing a client team's funnel via agency team link.
  *
  * Falls back to cookie-based scope when the resource has no team_id or the
  * user's scope already matches. Throws if the user has no access.
  */
 export async function getScopeForResource(
   userId: string,
-  resourceTeamId: string | null | undefined,
+  resourceTeamId: string | null | undefined
 ): Promise<DataScope> {
   const scope = await getDataScope(userId);
 
@@ -163,20 +195,22 @@ export async function getScopeForResource(
   if (scope.type === 'team' && scope.teamId === resourceTeamId) return scope;
 
   // Cookie scope doesn't match — check if user has access to the resource's team
-  const role = await checkTeamRole(userId, resourceTeamId);
-  if (role) {
-    const supabase = createSupabaseAdminClient();
-    const { data: team } = await supabase
-      .from('teams')
-      .select('owner_id')
-      .eq('id', resourceTeamId)
-      .single();
-    return { type: 'team', userId, teamId: resourceTeamId, ownerId: team?.owner_id ?? userId };
+  const result = await hasTeamAccess(userId, resourceTeamId);
+  if (result.access) {
+    const billingUserId = await resolveBillingUserId(resourceTeamId);
+    return {
+      type: 'team',
+      userId,
+      teamId: resourceTeamId,
+      billingUserId,
+    };
   }
 
   // No cross-team access — fall back to cookie scope (will likely 404 at query level)
   return scope;
 }
+
+// ─── applyScope ──────────────────────────────────────────────────────────────
 
 /**
  * Apply the current data scope to a Supabase query builder.

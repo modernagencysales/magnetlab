@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 import { buildCopilotSystemPrompt, clearSystemPromptCache } from '@/lib/ai/copilot/system-prompt';
+import type { DataScope } from '@/lib/utils/team-context';
 
 jest.mock('@/lib/services/prompt-registry', () => ({
   getPrompt: jest.fn().mockResolvedValue({
@@ -16,6 +17,11 @@ jest.mock('@/lib/services/prompt-registry', () => ({
 
 jest.mock('@/lib/ai/content-pipeline/voice-prompt-builder', () => ({
   buildVoicePromptSection: jest.fn().mockReturnValue('Voice: Direct, concise'),
+}));
+
+const mockGetDefaultProfile = jest.fn();
+jest.mock('@/server/repositories/team.repo', () => ({
+  getDefaultProfile: (...args: unknown[]) => mockGetDefaultProfile(...args),
 }));
 
 const mockFrom = jest.fn();
@@ -35,8 +41,9 @@ function createChain(data: unknown = null) {
   chain.order = jest.fn().mockReturnValue(chain);
   chain.limit = jest.fn().mockReturnValue(chain);
   chain.single = jest.fn().mockResolvedValue(result);
+  chain.maybeSingle = jest.fn().mockResolvedValue(result);
 
-  // Make the chain thenable for queries that don't end with .single()
+  // Make the chain thenable for queries that don't end with .single() / .maybeSingle()
   // This allows `const { data } = await supabase.from(...).select(...).eq(...)...`
   chain.then = jest.fn((resolve: (value: typeof result) => void) => {
     return Promise.resolve(resolve(result));
@@ -227,5 +234,110 @@ describe('buildCopilotSystemPrompt', () => {
 
     const result = await buildCopilotSystemPrompt('user-1');
     expect(result).not.toContain('Feedback Patterns');
+  });
+
+  // ─── Scope-aware tests ────────────────────────────────────────────────────
+
+  describe('scope-aware voice profile', () => {
+    it('in team mode, voice profile comes from getDefaultProfile(teamId)', async () => {
+      mockGetDefaultProfile.mockResolvedValue({
+        id: 'profile-1',
+        team_id: 'team-1',
+        user_id: null,
+        voice_profile: { tone: 'professional' },
+        full_name: 'Sarah Smith',
+        title: 'CEO',
+        status: 'active',
+        is_default: true,
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'team_profiles') {
+          // In team mode this is only called for post scoping (profileIds lookup)
+          return createChain([{ id: 'profile-1' }, { id: 'profile-2' }]);
+        }
+        if (table === 'copilot_memories') return createChain([]);
+        if (table === 'cp_pipeline_posts') return createChain([]);
+        if (table === 'copilot_conversations') return createChain([]);
+        if (table === 'copilot_messages') return createChain([]);
+        return createChain();
+      });
+
+      const scope: DataScope = { type: 'team', userId: 'user-1', teamId: 'team-1' };
+      const result = await buildCopilotSystemPrompt('user-1', undefined, scope);
+
+      expect(mockGetDefaultProfile).toHaveBeenCalledWith('team-1');
+      expect(result).toContain('Voice: Direct, concise'); // from buildVoicePromptSection mock
+      expect(result).toContain('Sarah Smith');
+    });
+
+    it('in personal mode, voice profile comes from user linked profile (user_id filter)', async () => {
+      // getDefaultProfile should NOT be called in personal mode
+      mockGetDefaultProfile.mockResolvedValue(null);
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'team_profiles') {
+          return createChain({ voice_profile: { tone: 'casual' }, full_name: 'Tim', title: 'Founder' });
+        }
+        if (table === 'copilot_memories') return createChain([]);
+        if (table === 'cp_pipeline_posts') return createChain([]);
+        if (table === 'copilot_conversations') return createChain([]);
+        if (table === 'copilot_messages') return createChain([]);
+        return createChain();
+      });
+
+      const scope: DataScope = { type: 'user', userId: 'user-1' };
+      const result = await buildCopilotSystemPrompt('user-1', undefined, scope);
+
+      expect(mockGetDefaultProfile).not.toHaveBeenCalled();
+      expect(result).toContain('Tim');
+      // Verify personal mode filtered by user_id (not team_id)
+      const teamProfilesChain = mockFrom.mock.results.find(
+        (_: jest.MockResult<ReturnType<typeof createChain>>, i: number) =>
+          mockFrom.mock.calls[i][0] === 'team_profiles'
+      );
+      if (teamProfilesChain) {
+        expect(teamProfilesChain.value.eq).toHaveBeenCalledWith('user_id', 'user-1');
+      }
+    });
+
+    it('in team mode, post performance is scoped by team profile IDs', async () => {
+      mockGetDefaultProfile.mockResolvedValue({
+        id: 'profile-1',
+        team_id: 'team-1',
+        user_id: 'user-1',
+        voice_profile: null,
+        full_name: 'Tim',
+        title: null,
+        status: 'active',
+        is_default: true,
+      });
+
+      const teamProfileChain = createChain([{ id: 'profile-1' }, { id: 'profile-2' }]);
+      const postsChain = createChain([
+        {
+          draft_content: 'Team post',
+          final_content: 'Team post final',
+          engagement_stats: { impressions: 800, comments: 5, likes: 40 },
+          published_at: new Date().toISOString(),
+        },
+      ]);
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'team_profiles') return teamProfileChain;
+        if (table === 'cp_pipeline_posts') return postsChain;
+        if (table === 'copilot_memories') return createChain([]);
+        if (table === 'copilot_conversations') return createChain([]);
+        if (table === 'copilot_messages') return createChain([]);
+        return createChain();
+      });
+
+      const scope: DataScope = { type: 'team', userId: 'user-1', teamId: 'team-1' };
+      const result = await buildCopilotSystemPrompt('user-1', undefined, scope);
+
+      // Posts query should have used .in('team_profile_id', [...]) not .eq('user_id', ...)
+      expect(postsChain.in).toHaveBeenCalledWith('team_profile_id', ['profile-1', 'profile-2']);
+      expect(result).toContain('800 impressions');
+    });
   });
 });

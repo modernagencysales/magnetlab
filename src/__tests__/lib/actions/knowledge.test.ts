@@ -24,7 +24,7 @@ jest.mock('@/lib/ai/content-pipeline/briefing-agent', () => ({
   }),
 }));
 
-const ctx: ActionContext = { userId: 'user-1' };
+const ctx: ActionContext = { scope: { type: 'user', userId: 'user-1' } };
 
 describe('Knowledge Actions', () => {
   it('search_knowledge returns results', async () => {

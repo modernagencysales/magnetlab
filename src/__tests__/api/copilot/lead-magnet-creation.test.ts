@@ -45,6 +45,11 @@ function createMockSupabase() {
     chain.eq = jest.fn(() => chain);
     chain.order = jest.fn(() => chain);
     chain.limit = jest.fn(() => chain);
+    chain.range = jest.fn(() => chain);
+    chain.maybeSingle = jest.fn(() => {
+      const result = tableResults[tableName] || { data: null, error: null };
+      return Promise.resolve(result);
+    });
     chain.single = jest.fn(() => {
       const result = tableResults[tableName] || { data: null, error: null };
       return Promise.resolve(result);
@@ -90,6 +95,11 @@ jest.mock('@/lib/utils/supabase-server', () => ({
   })),
 }));
 
+jest.mock('@/lib/utils/team-context', () => ({
+  getDataScope: jest.fn().mockResolvedValue({ type: 'user', userId: 'user-test-123' }),
+  applyScope: jest.fn((query) => query),
+}));
+
 // ─── Imports (after mocks) ──────────────────────────────────
 
 // Import actions module to trigger registration
@@ -101,7 +111,7 @@ import type { ActionContext } from '@/lib/actions/types';
 
 // ─── Fixtures ───────────────────────────────────────────────
 
-const CTX: ActionContext = { userId: 'user-test-123', teamId: 'team-1' };
+const CTX: ActionContext = { scope: { type: 'user', userId: 'user-test-123', teamId: 'team-1' } };
 
 const MOCK_GAP_RESULT = {
   questions: [
@@ -226,8 +236,8 @@ describe('start_lead_magnet_creation', () => {
 
     expect(mockAnalyzeContextGaps).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: CTX.userId,
-        teamId: CTX.teamId,
+        userId: CTX.scope.userId,
+        teamId: CTX.scope.teamId,
         archetype: 'single-system',
         pastedContent: 'Here is my transcript...',
         concept: expect.objectContaining({
@@ -298,7 +308,7 @@ describe('submit_extraction_answers', () => {
     expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
         archetype: 'single-system',
-        userId: CTX.userId,
+        userId: CTX.scope.userId,
         concept: expect.objectContaining({
           title: 'My Guide',
           painSolved: 'No leads',
@@ -418,7 +428,7 @@ describe('generate_lead_magnet_posts', () => {
       lead_magnet_id: 'lm-42',
     });
 
-    expect(mockGeneratePosts).toHaveBeenCalledWith(CTX.userId, 'lm-42');
+    expect(mockGeneratePosts).toHaveBeenCalledWith(CTX.scope.userId, 'lm-42');
   });
 
   it('handles generatePosts failure gracefully', async () => {

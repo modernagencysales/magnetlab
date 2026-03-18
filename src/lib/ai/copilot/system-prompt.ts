@@ -1,6 +1,8 @@
 import { getPrompt } from '@/lib/services/prompt-registry';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { buildVoicePromptSection } from '@/lib/ai/content-pipeline/voice-prompt-builder';
+import { getDefaultProfile } from '@/server/repositories/team.repo';
+import type { DataScope } from '@/lib/utils/team-context';
 
 interface PageContext {
   page: string;
@@ -28,7 +30,7 @@ interface FeedbackPayload {
   note?: string;
 }
 
-// Cache assembled prompts per user for 5 minutes
+// Cache assembled prompts per scope+page for 5 minutes
 const promptCache = new Map<string, { prompt: string; expires: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -73,9 +75,11 @@ function buildFeedbackSection(negativeNotes: string[]): string | null {
 
 export async function buildCopilotSystemPrompt(
   userId: string,
-  pageContext?: PageContext
+  pageContext?: PageContext,
+  scope?: DataScope
 ): Promise<string> {
-  const cacheKey = `${userId}:${pageContext?.page || 'none'}:${pageContext?.entityId || 'none'}`;
+  const scopeKey = scope?.type === 'team' ? `team:${scope.teamId}` : `user:${userId}`;
+  const cacheKey = `${scopeKey}:${pageContext?.page || 'none'}:${pageContext?.entityId || 'none'}`;
   const cached = promptCache.get(cacheKey);
   if (cached && Date.now() < cached.expires) {
     return cached.prompt;
@@ -88,13 +92,29 @@ export async function buildCopilotSystemPrompt(
   const basePrompt = await getPrompt('copilot-system');
   sections.push(basePrompt.system_prompt);
 
-  // 2. Voice profile
-  const { data: profile } = await supabase
-    .from('team_profiles')
-    .select('voice_profile, full_name, title')
-    .eq('user_id', userId)
-    .limit(1)
-    .single();
+  // 2. Voice profile — team mode uses default team profile, personal mode uses user's linked profile
+  let profile: { voice_profile: unknown; full_name: string | null; title: string | null } | null = null;
+
+  if (scope?.type === 'team' && scope.teamId) {
+    // Team mode: use the team's default profile (the "post as" identity for the whole team)
+    const defaultProfile = await getDefaultProfile(scope.teamId);
+    if (defaultProfile) {
+      profile = {
+        voice_profile: defaultProfile.voice_profile,
+        full_name: defaultProfile.full_name,
+        title: defaultProfile.title,
+      };
+    }
+  } else {
+    // Personal mode: find the user's own linked team profile
+    const { data } = await supabase
+      .from('team_profiles')
+      .select('voice_profile, full_name, title')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+    profile = data as typeof profile;
+  }
 
   if (profile?.voice_profile) {
     const voiceSection = buildVoicePromptSection(profile.voice_profile, 'linkedin');
@@ -126,12 +146,31 @@ export async function buildCopilotSystemPrompt(
   }
 
   // 4. Recent post performance (last 30 days)
+  // cp_pipeline_posts uses team_profile_id, not team_id — can't use applyScope directly
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
 
-  const { data: topPosts } = await supabase
+  let postsQuery = supabase
     .from('cp_pipeline_posts')
-    .select('draft_content, final_content, engagement_stats, published_at')
-    .eq('user_id', userId)
+    .select('draft_content, final_content, engagement_stats, published_at');
+
+  if (scope?.type === 'team' && scope.teamId) {
+    // Team mode: scope by active profile IDs for the team
+    const { data: teamProfiles } = await supabase
+      .from('team_profiles')
+      .select('id')
+      .eq('team_id', scope.teamId)
+      .eq('status', 'active');
+    const profileIds = (teamProfiles ?? []).map((p: { id: string }) => p.id);
+    if (profileIds.length > 0) {
+      postsQuery = postsQuery.in('team_profile_id', profileIds);
+    } else {
+      postsQuery = postsQuery.eq('user_id', userId);
+    }
+  } else {
+    postsQuery = postsQuery.eq('user_id', userId);
+  }
+
+  const { data: topPosts } = await postsQuery
     .eq('status', 'published')
     .not('engagement_stats', 'is', null)
     .gte('published_at', thirtyDaysAgo)

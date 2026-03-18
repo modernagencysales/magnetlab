@@ -1,6 +1,11 @@
+/**
+ * Analytics copilot actions.
+ * All data access goes through repos — no raw Supabase queries.
+ */
+
 import { registerAction } from './registry';
 import type { ActionContext, ActionResult } from './types';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { findPosts } from '@/server/repositories/posts.repo';
 
 registerAction({
   name: 'get_post_performance',
@@ -11,21 +16,14 @@ registerAction({
     },
   },
   handler: async (ctx: ActionContext, params: { limit?: number }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
+    const posts = await findPosts(ctx.scope, { limit: params.limit || 10 });
 
-    const { data: posts, error } = await supabase
-      .from('cp_pipeline_posts')
-      .select('id, draft_content, final_content, status, engagement_stats, published_at')
-      .eq('user_id', ctx.userId)
-      .not('engagement_stats', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(params.limit || 10);
-
-    if (error) return { success: false, error: error.message };
+    // Filter to posts with engagement stats (JSONB filtering not supported in PostFilters)
+    const withStats = posts.filter((p) => p.engagement_stats != null);
 
     return {
       success: true,
-      data: (posts || []).map(p => ({
+      data: withStats.map((p) => ({
         id: p.id,
         content_preview: (p.final_content || p.draft_content || '').slice(0, 100),
         status: p.status,
@@ -46,22 +44,15 @@ registerAction({
     },
   },
   handler: async (ctx: ActionContext, params: { limit?: number }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
     const requestedLimit = params.limit || 5;
 
-    // I7 FIX: Fetch more posts then sort client-side by total engagement
-    // (JSONB fields can't be reliably sorted via PostgREST)
-    const { data: posts, error } = await supabase
-      .from('cp_pipeline_posts')
-      .select('id, draft_content, final_content, status, engagement_stats, published_at')
-      .eq('user_id', ctx.userId)
-      .eq('status', 'published')
-      .not('engagement_stats', 'is', null)
-      .limit(100);
+    // Fetch published posts (up to 100) then sort client-side by total engagement
+    // (JSONB fields cannot be reliably sorted via PostgREST)
+    const posts = await findPosts(ctx.scope, { status: 'published', limit: 100 });
 
-    if (error) return { success: false, error: error.message };
+    const withStats = posts.filter((p) => p.engagement_stats != null);
 
-    const sorted = (posts || [])
+    const sorted = withStats
       .sort((a, b) => {
         const statsA = (a.engagement_stats || {}) as Record<string, number>;
         const statsB = (b.engagement_stats || {}) as Record<string, number>;
@@ -73,7 +64,7 @@ registerAction({
 
     return {
       success: true,
-      data: sorted.map(p => ({
+      data: sorted.map((p) => ({
         id: p.id,
         content_preview: (p.final_content || p.draft_content || '').slice(0, 100),
         status: p.status,

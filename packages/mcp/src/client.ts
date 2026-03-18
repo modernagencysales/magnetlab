@@ -104,39 +104,65 @@ export class MagnetLabClient {
     return this.request<T>(method, path, body, AI_TIMEOUT_MS);
   }
 
+  // ─── Team ID Helper ───────────────────────────────────────────────────────
+
+  private appendTeamId(url: string, teamId?: string): string {
+    if (!teamId) return url;
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}team_id=${teamId}`;
+  }
+
   // ─── Lead Magnets ─────────────────────────────────────────────────────────
 
-  async listLeadMagnets(params?: { status?: LeadMagnetStatusV2; limit?: number; offset?: number }) {
+  async listLeadMagnets(params?: {
+    status?: LeadMagnetStatusV2;
+    limit?: number;
+    offset?: number;
+    teamId?: string;
+  }) {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
     const qs = searchParams.toString();
-    return this.request<{ leadMagnets: unknown[]; total: number }>(
-      'GET',
-      `/lead-magnet${qs ? `?${qs}` : ''}`
-    );
+    const url = this.appendTeamId(`/lead-magnet${qs ? `?${qs}` : ''}`, params?.teamId);
+    return this.request<{ leadMagnets: unknown[]; total: number }>('GET', url);
   }
 
-  async getLeadMagnet(id: string) {
-    return this.request<unknown>('GET', `/lead-magnet/${id}`);
+  async getLeadMagnet(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/lead-magnet/${id}`, teamId);
+    return this.request<unknown>('GET', url);
   }
 
-  async createLeadMagnet(params: { title: string; archetype: Archetype; concept?: unknown }) {
-    return this.request<unknown>('POST', `/lead-magnet`, params);
+  async createLeadMagnet(params: {
+    title: string;
+    archetype: Archetype;
+    concept?: unknown;
+    teamId?: string;
+  }) {
+    const { teamId, ...body } = params;
+    const url = this.appendTeamId(`/lead-magnet`, teamId);
+    return this.request<unknown>('POST', url, body);
   }
 
   /** Update lead magnet content with optional optimistic locking via expected_version. */
-  async updateLeadMagnetContent(id: string, content: unknown, expectedVersion?: number) {
+  async updateLeadMagnetContent(
+    id: string,
+    content: unknown,
+    expectedVersion?: number,
+    teamId?: string
+  ) {
     const body: Record<string, unknown> = { content };
     if (expectedVersion !== undefined) {
       body.expected_version = expectedVersion;
     }
-    return this.request<unknown>('PATCH', `/lead-magnet/${id}`, body);
+    const url = this.appendTeamId(`/lead-magnet/${id}`, teamId);
+    return this.request<unknown>('PATCH', url, body);
   }
 
-  async deleteLeadMagnet(id: string) {
-    return this.request<{ success: boolean }>('DELETE', `/lead-magnet/${id}`);
+  async deleteLeadMagnet(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/lead-magnet/${id}`, teamId);
+    return this.request<{ success: boolean }>('DELETE', url);
   }
 
   /** Compound action: create + funnel + publish a lead magnet end-to-end. */
@@ -149,18 +175,23 @@ export class MagnetLabClient {
     email_sequence?: {
       emails: Array<{ subject: string; body: string; delay_days: number }>;
     };
+    teamId?: string;
   }) {
-    return this.request<unknown>('POST', `/lead-magnet/launch`, data);
+    const { teamId, ...body } = data;
+    const url = this.appendTeamId(`/lead-magnet/launch`, teamId);
+    return this.request<unknown>('POST', url, body);
   }
 
   // ─── Funnels ──────────────────────────────────────────────────────────────
 
-  async listFunnels() {
-    return this.request<{ funnels: unknown[] }>('GET', `/funnel/all`);
+  async listFunnels(teamId?: string) {
+    const url = this.appendTeamId(`/funnel/all`, teamId);
+    return this.request<{ funnels: unknown[] }>('GET', url);
   }
 
-  async getFunnel(id: string) {
-    return this.request<{ funnel: unknown }>('GET', `/funnel/${id}`);
+  async getFunnel(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/funnel/${id}`, teamId);
+    return this.request<{ funnel: unknown }>('GET', url);
   }
 
   async createFunnel(params: {
@@ -182,8 +213,11 @@ export class MagnetLabClient {
     backgroundStyle?: BackgroundStyle;
     logoUrl?: string;
     qualificationFormId?: string;
+    teamId?: string;
   }) {
-    return this.request<{ funnel: unknown }>('POST', `/funnel`, params);
+    const { teamId, ...body } = params;
+    const url = this.appendTeamId(`/funnel`, teamId);
+    return this.request<{ funnel: unknown }>('POST', url, body);
   }
 
   async updateFunnel(
@@ -211,25 +245,29 @@ export class MagnetLabClient {
       homepageUrl?: string | null;
       homepageLabel?: string | null;
       sendResourceEmail?: boolean;
+      teamId?: string;
     }
   ) {
-    return this.request<{ funnel: unknown }>('PUT', `/funnel/${id}`, params);
+    const { teamId, ...body } = params;
+    const url = this.appendTeamId(`/funnel/${id}`, teamId);
+    return this.request<{ funnel: unknown }>('PUT', url, body);
   }
 
-  async deleteFunnel(id: string) {
-    return this.request<{ success: boolean }>('DELETE', `/funnel/${id}`);
+  async deleteFunnel(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/funnel/${id}`, teamId);
+    return this.request<{ success: boolean }>('DELETE', url);
   }
 
-  async publishFunnel(id: string) {
-    return this.request<{ funnel: unknown; publicUrl: string | null }>(
-      'POST',
-      `/funnel/${id}/publish`,
-      { publish: true }
-    );
+  async publishFunnel(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/funnel/${id}/publish`, teamId);
+    return this.request<{ funnel: unknown; publicUrl: string | null }>('POST', url, {
+      publish: true,
+    });
   }
 
-  async unpublishFunnel(id: string) {
-    return this.request<{ funnel: unknown }>('POST', `/funnel/${id}/publish`, { publish: false });
+  async unpublishFunnel(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/funnel/${id}/publish`, teamId);
+    return this.request<{ funnel: unknown }>('POST', url, { publish: false });
   }
 
   // ─── Knowledge Base ───────────────────────────────────────────────────────
@@ -241,6 +279,7 @@ export class MagnetLabClient {
     topic?: string;
     min_quality?: number;
     since?: string;
+    teamId?: string;
   }) {
     const searchParams = new URLSearchParams();
     if (params.query) searchParams.set('q', params.query);
@@ -250,62 +289,76 @@ export class MagnetLabClient {
     if (params.min_quality) searchParams.set('min_quality', String(params.min_quality));
     if (params.since) searchParams.set('since', params.since);
     const qs = searchParams.toString();
-    return this.request<{ entries?: unknown[]; total_count?: number }>(
-      'GET',
-      `/content-pipeline/knowledge${qs ? `?${qs}` : ''}`
+    const url = this.appendTeamId(
+      `/content-pipeline/knowledge${qs ? `?${qs}` : ''}`,
+      params.teamId
     );
+    return this.request<{ entries?: unknown[]; total_count?: number }>('GET', url);
   }
 
-  async browseKnowledge(params?: { category?: KnowledgeCategory; tag?: string; limit?: number }) {
+  async browseKnowledge(params?: {
+    category?: KnowledgeCategory;
+    tag?: string;
+    limit?: number;
+    teamId?: string;
+  }) {
     const searchParams = new URLSearchParams();
     if (params?.category) searchParams.set('category', params.category);
     if (params?.tag) searchParams.set('tag', params.tag);
     if (params?.limit) searchParams.set('limit', String(params.limit));
     const qs = searchParams.toString();
+    const url = this.appendTeamId(
+      `/content-pipeline/knowledge${qs ? `?${qs}` : ''}`,
+      params?.teamId
+    );
     return this.request<{ entries?: unknown[]; tags?: unknown[]; total_count?: number }>(
       'GET',
-      `/content-pipeline/knowledge${qs ? `?${qs}` : ''}`
+      url
     );
   }
 
-  async getKnowledgeClusters() {
-    return this.request<{ clusters: unknown[] }>('GET', `/content-pipeline/knowledge/clusters`);
+  async getKnowledgeClusters(teamId?: string) {
+    const url = this.appendTeamId(`/content-pipeline/knowledge/clusters`, teamId);
+    return this.request<{ clusters: unknown[] }>('GET', url);
   }
 
-  async askKnowledge(params: { question: string }) {
-    return this.aiRequest<{ answer: string; sources: unknown[] }>(
-      'POST',
-      `/content-pipeline/knowledge/ask`,
-      params
-    );
+  async askKnowledge(params: { question: string; teamId?: string }) {
+    const { teamId, ...body } = params;
+    const url = this.appendTeamId(`/content-pipeline/knowledge/ask`, teamId);
+    return this.aiRequest<{ answer: string; sources: unknown[] }>('POST', url, body);
   }
 
   // ─── Transcripts ──────────────────────────────────────────────────────────
 
-  async submitTranscript(params: { transcript: string; title?: string }) {
-    return this.request<{ success: boolean; transcript_id: string }>(
-      'POST',
-      `/content-pipeline/transcripts`,
-      params
-    );
+  async submitTranscript(params: { transcript: string; title?: string; teamId?: string }) {
+    const { teamId, ...body } = params;
+    const url = this.appendTeamId(`/content-pipeline/transcripts`, teamId);
+    return this.request<{ success: boolean; transcript_id: string }>('POST', url, body);
   }
 
   // ─── Posts ────────────────────────────────────────────────────────────────
 
-  async listPosts(params?: { status?: PipelinePostStatus; isBuffer?: boolean; limit?: number }) {
+  async listPosts(params?: {
+    status?: PipelinePostStatus;
+    isBuffer?: boolean;
+    limit?: number;
+    teamId?: string;
+  }) {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
     if (params?.isBuffer !== undefined) searchParams.set('is_buffer', String(params.isBuffer));
     if (params?.limit) searchParams.set('limit', String(params.limit));
     const qs = searchParams.toString();
-    return this.request<{ posts: unknown[] }>(
-      'GET',
-      `/content-pipeline/posts${qs ? `?${qs}` : ''}`
+    const url = this.appendTeamId(
+      `/content-pipeline/posts${qs ? `?${qs}` : ''}`,
+      params?.teamId
     );
+    return this.request<{ posts: unknown[] }>('GET', url);
   }
 
-  async getPost(id: string) {
-    return this.request<{ post: unknown }>('GET', `/content-pipeline/posts/${id}`);
+  async getPost(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/content-pipeline/posts/${id}`, teamId);
+    return this.request<{ post: unknown }>('GET', url);
   }
 
   /** Create a new post directly (agent-authored). */
@@ -314,42 +367,50 @@ export class MagnetLabClient {
     title?: string;
     pillar?: ContentPillar;
     content_type?: ContentType;
+    teamId?: string;
   }) {
-    return this.request<{ post: unknown }>('POST', `/content-pipeline/posts`, params);
+    const { teamId, ...body } = params;
+    const url = this.appendTeamId(`/content-pipeline/posts`, teamId);
+    return this.request<{ post: unknown }>('POST', url, body);
   }
 
-  async updatePost(id: string, params: Record<string, unknown>) {
-    return this.request<{ post: unknown }>('PATCH', `/content-pipeline/posts/${id}`, params);
+  async updatePost(id: string, params: Record<string, unknown>, teamId?: string) {
+    const url = this.appendTeamId(`/content-pipeline/posts/${id}`, teamId);
+    return this.request<{ post: unknown }>('PATCH', url, params);
   }
 
-  async deletePost(id: string) {
-    return this.request<{ success: boolean }>('DELETE', `/content-pipeline/posts/${id}`);
+  async deletePost(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/content-pipeline/posts/${id}`, teamId);
+    return this.request<{ success: boolean }>('DELETE', url);
   }
 
-  async publishPost(id: string) {
-    return this.request<unknown>('POST', `/content-pipeline/posts/${id}/publish`, {});
+  async publishPost(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/content-pipeline/posts/${id}/publish`, teamId);
+    return this.request<unknown>('POST', url, {});
   }
 
   /** Compound action: schedule a full content week with agent-authored posts. */
-  async scheduleContentWeek(data: {
-    posts: Array<{
-      body: string;
-      title?: string;
-      pillar?: ContentPillar;
-      content_type?: ContentType;
-    }>;
-    week_start?: string;
-  }) {
-    return this.request<unknown>('POST', `/content-pipeline/posts/schedule-week`, data);
+  async scheduleContentWeek(
+    data: {
+      posts: Array<{
+        body: string;
+        title?: string;
+        pillar?: ContentPillar;
+        content_type?: ContentType;
+      }>;
+      week_start?: string;
+    },
+    teamId?: string
+  ) {
+    const url = this.appendTeamId(`/content-pipeline/posts/schedule-week`, teamId);
+    return this.request<unknown>('POST', url, data);
   }
 
   // ─── Email Sequences ──────────────────────────────────────────────────────
 
-  async getEmailSequence(leadMagnetId: string) {
-    return this.request<{ emailSequence: unknown | null }>(
-      'GET',
-      `/email-sequence/${leadMagnetId}`
-    );
+  async getEmailSequence(leadMagnetId: string, teamId?: string) {
+    const url = this.appendTeamId(`/email-sequence/${leadMagnetId}`, teamId);
+    return this.request<{ emailSequence: unknown | null }>('GET', url);
   }
 
   /** Full-replace save of an email sequence. */
@@ -363,13 +424,16 @@ export class MagnetLabClient {
         replyTrigger?: string;
       }>;
       status?: EmailSequenceStatus;
-    }
+    },
+    teamId?: string
   ) {
-    return this.request<{ emailSequence: unknown }>('PUT', `/email-sequence/${leadMagnetId}`, data);
+    const url = this.appendTeamId(`/email-sequence/${leadMagnetId}`, teamId);
+    return this.request<{ emailSequence: unknown }>('PUT', url, data);
   }
 
-  async activateEmailSequence(leadMagnetId: string) {
-    return this.request<unknown>('POST', `/email-sequence/${leadMagnetId}/activate`, {});
+  async activateEmailSequence(leadMagnetId: string, teamId?: string) {
+    const url = this.appendTeamId(`/email-sequence/${leadMagnetId}/activate`, teamId);
+    return this.request<unknown>('POST', url, {});
   }
 
   // ─── Leads ────────────────────────────────────────────────────────────────
@@ -381,6 +445,7 @@ export class MagnetLabClient {
     search?: string;
     limit?: number;
     offset?: number;
+    teamId?: string;
   }) {
     const searchParams = new URLSearchParams();
     if (params?.funnelId) searchParams.set('funnelId', params.funnelId);
@@ -390,37 +455,48 @@ export class MagnetLabClient {
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
     const qs = searchParams.toString();
-    return this.request<{ leads: unknown[]; total: number }>('GET', `/leads${qs ? `?${qs}` : ''}`);
+    const url = this.appendTeamId(`/leads${qs ? `?${qs}` : ''}`, params?.teamId);
+    return this.request<{ leads: unknown[]; total: number }>('GET', url);
   }
 
-  async getLead(id: string) {
-    return this.request<{ lead: unknown }>('GET', `/leads/${id}`);
+  async getLead(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/leads/${id}`, teamId);
+    return this.request<{ lead: unknown }>('GET', url);
   }
 
-  async exportLeads(params?: { funnelId?: string; leadMagnetId?: string; qualified?: boolean }) {
+  async exportLeads(params?: {
+    funnelId?: string;
+    leadMagnetId?: string;
+    qualified?: boolean;
+    teamId?: string;
+  }) {
     const searchParams = new URLSearchParams();
     if (params?.funnelId) searchParams.set('funnelId', params.funnelId);
     if (params?.leadMagnetId) searchParams.set('leadMagnetId', params.leadMagnetId);
     if (params?.qualified !== undefined) searchParams.set('qualified', String(params.qualified));
     const qs = searchParams.toString();
-    return this.request<{ csv: string }>('GET', `/leads/export${qs ? `?${qs}` : ''}`);
+    const url = this.appendTeamId(`/leads/export${qs ? `?${qs}` : ''}`, params?.teamId);
+    return this.request<{ csv: string }>('GET', url);
   }
 
   // ─── Business Context ─────────────────────────────────────────────────────
 
-  async getBusinessContext() {
-    return this.request<{ businessContext: unknown }>('GET', `/content-pipeline/business-context`);
+  async getBusinessContext(teamId?: string) {
+    const url = this.appendTeamId(`/content-pipeline/business-context`, teamId);
+    return this.request<{ businessContext: unknown }>('GET', url);
   }
 
   // ─── Analytics ────────────────────────────────────────────────────────────
 
-  async getPerformanceInsights(period?: string) {
+  async getPerformanceInsights(period?: string, teamId?: string) {
     const qs = period ? `?period=${encodeURIComponent(period)}` : '';
-    return this.request<unknown>('GET', `/analytics/performance-insights${qs}`);
+    const url = this.appendTeamId(`/analytics/performance-insights${qs}`, teamId);
+    return this.request<unknown>('GET', url);
   }
 
-  async getRecommendations() {
-    return this.request<unknown>('GET', `/analytics/recommendations`);
+  async getRecommendations(teamId?: string) {
+    const url = this.appendTeamId(`/analytics/recommendations`, teamId);
+    return this.request<unknown>('GET', url);
   }
 
   // ─── Content Queue ────────────────────────────────────────────────────────

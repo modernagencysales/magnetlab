@@ -1,13 +1,13 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { CLAUDE_SONNET_MODEL } from './model-config';
-import { writePostFreeform } from './post-writer';
-import { findBestTemplate, buildTemplateGuidance } from './template-matcher';
+import { writePost } from './post-writer';
 import { polishPost } from './post-polish';
 import type { WrittenPost, IdeaContext } from './post-writer';
 import type { PolishResult } from './post-polish';
 
 interface QuickWriteOptions {
-  userId?: string;
+  teamId?: string;
+  profileId?: string;
   templateStructure?: string;
   styleInstructions?: string;
   targetAudience?: string;
@@ -63,29 +63,25 @@ export async function quickWrite(
   // Step 1: Expand raw thought into a structured idea
   const syntheticIdea = await expandToIdea(rawThought);
 
-  // Step 2: Find matching template via RAG (if userId provided)
-  let templateGuidance = '';
-  if (options.userId) {
-    const topicText = [syntheticIdea.title, syntheticIdea.core_insight, syntheticIdea.content_type].filter(Boolean).join('\n');
-    const match = await findBestTemplate(topicText, options.userId);
-    if (match) {
-      templateGuidance = buildTemplateGuidance(match);
-    }
-  }
+  // Step 2: Write the post — writePost handles template matching internally
+  // Fall back to a stub ID when no team context is available (no templates will match)
+  const teamId = options.teamId ?? 'no-team';
+  const profileId = options.profileId ?? 'no-profile';
 
-  const mergedKnowledge = [options.knowledgeContext, templateGuidance].filter(Boolean).join('\n\n');
+  const post = await writePost(
+    {
+      idea: syntheticIdea,
+      targetAudience: options.targetAudience,
+      knowledgeContext: options.knowledgeContext,
+      voiceProfile: options.voiceProfile,
+      authorName: options.authorName,
+      authorTitle: options.authorTitle,
+    },
+    teamId,
+    profileId
+  );
 
-  // Step 3: Write the post using the expanded idea
-  const post = await writePostFreeform({
-    idea: syntheticIdea,
-    targetAudience: options.targetAudience,
-    knowledgeContext: mergedKnowledge || undefined,
-    voiceProfile: options.voiceProfile,
-    authorName: options.authorName,
-    authorTitle: options.authorTitle,
-  });
-
-  // Step 4: Polish the result
+  // Step 3: Polish the result
   const polish = await polishPost(post.content, { voiceProfile: options.voiceProfile });
 
   return {

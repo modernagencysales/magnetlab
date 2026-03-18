@@ -65,7 +65,7 @@ export default async function MagnetDetailPage({ params }: PageProps) {
 
   // Resolve the team context for downstream queries
   const effectiveTeamId = leadMagnetData.team_id;
-  const effectiveOwnerId = scope.type === 'team' ? scope.ownerId : null;
+  const effectiveOwnerId = scope.type === 'team' ? scope.billingUserId : null;
 
   // Resolve the username for public URLs — use team owner if available
   let usernameUserId = session.user.id;

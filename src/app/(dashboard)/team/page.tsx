@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-// Image removed - unused
 import { useRouter } from 'next/navigation';
-import { Plus, ArrowLeft, Loader2, Settings, Users as UsersIcon } from 'lucide-react';
-import type { Team, TeamProfile, TeamVoiceProfile } from '@/lib/types/content-pipeline';
+import { Plus, ArrowLeft, Loader2, Settings, Users as UsersIcon, Link2, UserPlus } from 'lucide-react';
+import type { Team, TeamProfile, TeamVoiceProfile, TeamMember, TeamLink } from '@/lib/types/content-pipeline';
 
 import {
   PageContainer,
@@ -37,8 +36,9 @@ import {
 } from '@magnetlab/magnetui';
 
 import { logError } from '@/lib/utils/logger';
-import { getTeamMemberships, getTeam } from '@/frontend/api/team';
 import * as teamsApi from '@/frontend/api/teams';
+
+// ─── Local types ──────────────────────────────────────────────────────────────
 
 interface TeamMembership {
   id: string;
@@ -58,6 +58,16 @@ interface ProfileFormData {
   voice_profile: TeamVoiceProfile;
 }
 
+interface TeamLinkWithNames extends TeamLink {
+  agencyTeamName?: string;
+  clientTeamName?: string;
+  direction?: 'agency' | 'client';
+}
+
+type ManageTab = 'members' | 'profiles' | 'links';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const emptyForm: ProfileFormData = {
   full_name: '',
   email: '',
@@ -67,6 +77,8 @@ const emptyForm: ProfileFormData = {
   expertise_areas: [],
   voice_profile: {},
 };
+
+// ─── Page component ───────────────────────────────────────────────────────────
 
 export default function TeamPage() {
   const router = useRouter();
@@ -84,21 +96,51 @@ export default function TeamPage() {
 
   // Manage team state
   const [managingTeam, setManagingTeam] = useState<Team | null>(null);
-  const [profiles, setProfiles] = useState<TeamProfile[]>([]);
+  const [manageTab, setManageTab] = useState<ManageTab>('members');
   const [teamName, setTeamName] = useState('');
   const [teamIndustry, setTeamIndustry] = useState('');
   const [teamGoal, setTeamGoal] = useState('');
 
-  // Profile modal
+  // Members tab state
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [showAddMemberForm, setShowAddMemberForm] = useState(false);
+  const [newMemberUserId, setNewMemberUserId] = useState('');
+
+  // Profiles tab state
+  const [profiles, setProfiles] = useState<TeamProfile[]>([]);
   const [editingProfile, setEditingProfile] = useState<TeamProfile | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileForm, setProfileForm] = useState<ProfileFormData>(emptyForm);
 
+  // Linked Teams tab state
+  const [teamLinks, setTeamLinks] = useState<TeamLinkWithNames[]>([]);
+  const [showAddLinkForm, setShowAddLinkForm] = useState(false);
+  const [newLinkAgencyTeamId, setNewLinkAgencyTeamId] = useState('');
+  const [newLinkClientTeamId, setNewLinkClientTeamId] = useState('');
+
+  const [teamCache, setTeamCache] = useState<Record<string, Team>>({});
+
+  // ─── Data fetching ──────────────────────────────────────────────────────────
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getTeamMemberships();
-      setMemberships(data as TeamMembership[]);
+      const data = await teamsApi.listTeams();
+      const allEntries = [
+        ...((data as { owned?: unknown[] }).owned ?? []),
+        ...((data as { member?: unknown[] }).member ?? []),
+      ] as Array<{ team: Team; role: 'owner' | 'member' }>;
+      const normalized: TeamMembership[] = allEntries.map((e) => ({
+        id: e.team.id,
+        teamId: e.team.id,
+        teamName: e.team.name,
+        ownerId: e.team.owner_id,
+        role: e.role,
+      }));
+      setMemberships(normalized);
+      const cache: Record<string, Team> = {};
+      for (const e of allEntries) cache[e.team.id] = e.team;
+      setTeamCache(cache);
     } catch (err) {
       logError('dashboard/team', err, { step: 'failed_to_fetch_team_data' });
     } finally {
@@ -109,6 +151,47 @@ export default function TeamPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const loadManageData = useCallback(
+    async (teamId: string) => {
+      setError(null);
+      try {
+        const [profilesList, membersData, linksData] = await Promise.all([
+          teamsApi.listProfiles(),
+          teamsApi.listMembers(teamId),
+          teamsApi.listTeamLinks(),
+        ]);
+
+        const teamProfiles = (profilesList || []).filter(
+          (p: unknown) => (p as TeamProfile).team_id === teamId
+        );
+        setProfiles(teamProfiles as TeamProfile[]);
+
+        const membersArr = ((membersData as { members?: TeamMember[] })?.members ?? []) as TeamMember[];
+        setMembers(membersArr);
+
+        // Annotate links with direction and team names
+        const rawLinks = ((linksData as { links?: TeamLink[] })?.links ?? []) as TeamLink[];
+        const annotated: TeamLinkWithNames[] = rawLinks.map((link) => {
+          const agencyTeam = teamCache[link.agency_team_id];
+          const clientTeam = teamCache[link.client_team_id];
+          return {
+            ...link,
+            agencyTeamName: agencyTeam?.name ?? link.agency_team_id,
+            clientTeamName: clientTeam?.name ?? link.client_team_id,
+            direction: link.agency_team_id === teamId ? 'agency' : 'client',
+          };
+        });
+        setTeamLinks(annotated);
+      } catch (err) {
+        logError('dashboard/team', err, { step: 'failed_to_load_manage_data' });
+        setError('Failed to load team details');
+      }
+    },
+    [teamCache]
+  );
+
+  // ─── Team CRUD ──────────────────────────────────────────────────────────────
 
   const enterTeam = (teamId: string) => {
     document.cookie = `ml-team-context=${teamId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
@@ -142,26 +225,15 @@ export default function TeamPage() {
   const openManage = async (teamId: string) => {
     setError(null);
     setSuccess(null);
-    try {
-      const [teamData, profilesList] = await Promise.all([
-        getTeam(teamId),
-        teamsApi.listProfiles(),
-      ]);
-      const team = teamData as { team?: Team };
-      if (team.team) {
-        setManagingTeam(team.team);
-        setTeamName(team.team.name);
-        setTeamIndustry(team.team.industry || '');
-        setTeamGoal(team.team.shared_goal || '');
-      }
-      const teamProfiles = (profilesList || []).filter(
-        (p: unknown) => (p as TeamProfile).team_id === teamId
-      );
-      setProfiles(teamProfiles as TeamProfile[]);
-    } catch (err) {
-      logError('dashboard/team', err, { step: 'failed_to_open_manage' });
-      setError('Failed to load team details');
+    setManageTab('members');
+    const team = teamCache[teamId] ?? null;
+    if (team) {
+      setManagingTeam(team);
+      setTeamName(team.name);
+      setTeamIndustry(team.industry || '');
+      setTeamGoal(team.shared_goal || '');
     }
+    await loadManageData(teamId);
   };
 
   const updateTeam = async () => {
@@ -184,6 +256,38 @@ export default function TeamPage() {
       setSaving(false);
     }
   };
+
+  // ─── Members actions ────────────────────────────────────────────────────────
+
+  const addMember = async () => {
+    if (!managingTeam || !newMemberUserId.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await teamsApi.addMember(managingTeam.id, newMemberUserId.trim());
+      setSuccess('Member added');
+      setShowAddMemberForm(false);
+      setNewMemberUserId('');
+      await loadManageData(managingTeam.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add member');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeMember = async (userId: string) => {
+    if (!managingTeam || !confirm('Remove this member from the team?')) return;
+    try {
+      await teamsApi.removeMember(managingTeam.id, userId);
+      setSuccess('Member removed');
+      await loadManageData(managingTeam.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove member');
+    }
+  };
+
+  // ─── Profiles actions ───────────────────────────────────────────────────────
 
   const openProfileModal = (profile?: TeamProfile) => {
     if (profile) {
@@ -220,7 +324,7 @@ export default function TeamPage() {
       }
       setSuccess(editingProfile ? 'Profile updated' : 'Profile added');
       setShowProfileModal(false);
-      if (managingTeam) await openManage(managingTeam.id);
+      if (managingTeam) await loadManageData(managingTeam.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile');
     } finally {
@@ -229,10 +333,47 @@ export default function TeamPage() {
   };
 
   const removeProfile = async (id: string) => {
-    if (!confirm('Remove this team member?')) return;
-    await teamsApi.deleteProfile(id);
-    if (managingTeam) await openManage(managingTeam.id);
+    if (!confirm('Remove this profile?')) return;
+    try {
+      await teamsApi.deleteProfile(id);
+      if (managingTeam) await loadManageData(managingTeam.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove profile');
+    }
   };
+
+  // ─── Team Links actions ─────────────────────────────────────────────────────
+
+  const createLink = async () => {
+    if (!newLinkAgencyTeamId.trim() || !newLinkClientTeamId.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await teamsApi.createTeamLink(newLinkAgencyTeamId.trim(), newLinkClientTeamId.trim());
+      setSuccess('Team link created');
+      setShowAddLinkForm(false);
+      setNewLinkAgencyTeamId('');
+      setNewLinkClientTeamId('');
+      if (managingTeam) await loadManageData(managingTeam.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create team link');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const severLink = async (linkId: string) => {
+    if (!managingTeam || !confirm('Sever this team link?')) return;
+    try {
+      await teamsApi.deleteTeamLink(linkId);
+      setSuccess('Team link removed');
+      await loadManageData(managingTeam.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove team link');
+    }
+  };
+
+  // ─── Loading state ──────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -242,7 +383,8 @@ export default function TeamPage() {
     );
   }
 
-  // ── Managing a specific team ──
+  // ─── Managing a specific team ───────────────────────────────────────────────
+
   if (managingTeam) {
     const isOwner = memberships.find((m) => m.teamId === managingTeam.id)?.role === 'owner';
 
@@ -255,7 +397,7 @@ export default function TeamPage() {
 
         <PageTitle
           title={managingTeam.name}
-          description="Manage team settings and profiles."
+          description="Manage team members, profiles, and linked teams."
           actions={
             <Button onClick={() => enterTeam(managingTeam.id)} size="sm">
               Enter Team
@@ -318,90 +460,341 @@ export default function TeamPage() {
             </SectionContainer>
           )}
 
-          {/* Profiles */}
-          <SectionContainer
-            title="Team Profiles"
-            actions={
-              isOwner ? (
-                <Button size="sm" onClick={() => openProfileModal()}>
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add Profile
-                </Button>
-              ) : undefined
-            }
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {profiles.map((profile) => (
-                <Card key={profile.id}>
-                  <CardContent className="p-4">
-                    {profile.is_default && (
-                      <Badge variant="blue" className="mb-2">
-                        Default
-                      </Badge>
-                    )}
-                    <div className="flex items-center gap-3 mb-3">
-                      <Avatar size="sm">
-                        {profile.avatar_url ? (
-                          <AvatarImage src={profile.avatar_url} alt="" />
-                        ) : null}
-                        <AvatarFallback name={profile.full_name}>
-                          {profile.full_name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{profile.full_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {profile.title || 'No title'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground mb-3">
-                      {profile.email || 'No email'}
-                      <span className="mx-1.5">·</span>
-                      <Badge variant={profile.status === 'active' ? 'green' : 'orange'}>
-                        {profile.status}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Voice:{' '}
-                      {profile.voice_profile?.tone ? profile.voice_profile.tone : 'Not configured'}
-                    </p>
-                    {isOwner && (
-                      <div className="flex gap-1.5">
+          {/* Tabbed sections: Members / Profiles / Linked Teams */}
+          <div>
+            {/* Tab bar */}
+            <div className="flex gap-1 border-b border-border mb-4">
+              {(['members', 'profiles', 'links'] as ManageTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setManageTab(tab)}
+                  className={`px-4 py-2 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${
+                    manageTab === tab
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {tab === 'links' ? 'Linked Teams' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab: Members */}
+            {manageTab === 'members' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Users who can work in this team.
+                  </p>
+                  {isOwner && (
+                    <Button size="sm" onClick={() => setShowAddMemberForm((v) => !v)}>
+                      <UserPlus className="h-3.5 w-3.5 mr-1" />
+                      Add Member
+                    </Button>
+                  )}
+                </div>
+
+                {showAddMemberForm && isOwner && (
+                  <Card>
+                    <CardContent className="p-4 space-y-3">
+                      <FormField label="User ID" hint="The user's UUID from their account">
+                        <Input
+                          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                          value={newMemberUserId}
+                          onChange={(e) => setNewMemberUserId(e.target.value)}
+                        />
+                      </FormField>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={addMember}
+                          disabled={!newMemberUserId.trim() || saving}
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                              Adding...
+                            </>
+                          ) : (
+                            'Add Member'
+                          )}
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => openProfileModal(profile)}
+                          onClick={() => {
+                            setShowAddMemberForm(false);
+                            setNewMemberUserId('');
+                          }}
                         >
-                          Edit
+                          Cancel
                         </Button>
-                        {profile.role !== 'owner' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeProfile(profile.id)}
-                            className="text-destructive hover:bg-destructive/10"
-                          >
-                            Remove
-                          </Button>
-                        )}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </SectionContainer>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {members.length === 0 ? (
+                  <EmptyState
+                    icon={<UsersIcon />}
+                    title="No members yet"
+                    description="Add team members to collaborate on content."
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    {members.map((member) => (
+                      <Card key={member.id}>
+                        <CardContent className="p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar size="sm">
+                              <AvatarFallback name={member.user_id}>
+                                {member.user_id.substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-sm font-medium">{member.user_id}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <Badge variant={member.role === 'owner' ? 'blue' : 'gray'}>
+                                  {member.role}
+                                </Badge>
+                                {member.status !== 'active' && (
+                                  <Badge variant="orange">{member.status}</Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {isOwner && member.role !== 'owner' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeMember(member.user_id)}
+                              className="text-destructive hover:bg-destructive/10"
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Profiles */}
+            {manageTab === 'profiles' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Personas that content is published as.
+                  </p>
+                  {isOwner && (
+                    <Button size="sm" onClick={() => openProfileModal()}>
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Add Profile
+                    </Button>
+                  )}
+                </div>
+
+                {profiles.length === 0 ? (
+                  <EmptyState
+                    icon={<UsersIcon />}
+                    title="No profiles yet"
+                    description="Add a profile to start publishing content under a persona."
+                  />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {profiles.map((profile) => (
+                      <Card key={profile.id}>
+                        <CardContent className="p-4">
+                          {profile.is_default && (
+                            <Badge variant="blue" className="mb-2">
+                              Default
+                            </Badge>
+                          )}
+                          <div className="flex items-center gap-3 mb-3">
+                            <Avatar size="sm">
+                              {profile.avatar_url ? (
+                                <AvatarImage src={profile.avatar_url} alt="" />
+                              ) : null}
+                              <AvatarFallback name={profile.full_name}>
+                                {profile.full_name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{profile.full_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {profile.title || 'No title'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground mb-3">
+                            {profile.email || 'No email'}
+                            <span className="mx-1.5">·</span>
+                            <Badge variant={profile.status === 'active' ? 'green' : 'orange'}>
+                              {profile.status}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-3">
+                            Voice:{' '}
+                            {profile.voice_profile?.tone
+                              ? profile.voice_profile.tone
+                              : 'Not configured'}
+                          </p>
+                          {profile.linkedin_url && (
+                            <p className="text-xs text-muted-foreground truncate mb-3">
+                              {profile.linkedin_url}
+                            </p>
+                          )}
+                          {isOwner && (
+                            <div className="flex gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openProfileModal(profile)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeProfile(profile.id)}
+                                className="text-destructive hover:bg-destructive/10"
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Linked Teams */}
+            {manageTab === 'links' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Agency-to-client relationships for shared access.
+                  </p>
+                  {isOwner && (
+                    <Button size="sm" onClick={() => setShowAddLinkForm((v) => !v)}>
+                      <Link2 className="h-3.5 w-3.5 mr-1" />
+                      Link Team
+                    </Button>
+                  )}
+                </div>
+
+                {showAddLinkForm && isOwner && (
+                  <Card>
+                    <CardContent className="p-4 space-y-3">
+                      <FormField label="Agency Team ID" hint="The UUID of the agency team">
+                        <Input
+                          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                          value={newLinkAgencyTeamId}
+                          onChange={(e) => setNewLinkAgencyTeamId(e.target.value)}
+                        />
+                      </FormField>
+                      <FormField label="Client Team ID" hint="The UUID of the client team">
+                        <Input
+                          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                          value={newLinkClientTeamId}
+                          onChange={(e) => setNewLinkClientTeamId(e.target.value)}
+                        />
+                      </FormField>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={createLink}
+                          disabled={
+                            !newLinkAgencyTeamId.trim() || !newLinkClientTeamId.trim() || saving
+                          }
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                              Linking...
+                            </>
+                          ) : (
+                            'Create Link'
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowAddLinkForm(false);
+                            setNewLinkAgencyTeamId('');
+                            setNewLinkClientTeamId('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {teamLinks.length === 0 ? (
+                  <EmptyState
+                    icon={<Link2 />}
+                    title="No linked teams"
+                    description="Link an agency and client team to share access."
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    {teamLinks.map((link) => (
+                      <Card key={link.id}>
+                        <CardContent className="p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center">
+                              <Link2 className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">
+                                {link.agencyTeamName}{' '}
+                                <span className="text-muted-foreground font-normal">→</span>{' '}
+                                {link.clientTeamName}
+                              </p>
+                              <Badge
+                                variant={link.direction === 'agency' ? 'blue' : 'green'}
+                                className="mt-0.5"
+                              >
+                                {link.direction === 'agency' ? 'You are agency' : 'You are client'}
+                              </Badge>
+                            </div>
+                          </div>
+                          {isOwner && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => severLink(link.id)}
+                              className="text-destructive hover:bg-destructive/10"
+                            >
+                              Sever
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Profile Editor Modal */}
+        {/* Profile Editor Modal — Details + Voice Profile tabs, no role field */}
         <Dialog
           open={showProfileModal}
           onOpenChange={(open) => !open && setShowProfileModal(false)}
         >
           <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingProfile ? 'Edit Profile' : 'Add Team Member'}</DialogTitle>
+              <DialogTitle>{editingProfile ? 'Edit Profile' : 'Add Profile'}</DialogTitle>
             </DialogHeader>
 
             <Tabs defaultValue="details">
@@ -572,7 +965,10 @@ export default function TeamPage() {
                     onChange={(e) =>
                       setProfileForm((f) => ({
                         ...f,
-                        voice_profile: { ...f.voice_profile, storytelling_style: e.target.value },
+                        voice_profile: {
+                          ...f.voice_profile,
+                          storytelling_style: e.target.value,
+                        },
                       }))
                     }
                   />
@@ -597,7 +993,7 @@ export default function TeamPage() {
                 ) : editingProfile ? (
                   'Save Changes'
                 ) : (
-                  'Add Member'
+                  'Add Profile'
                 )}
               </Button>
             </DialogFooter>
@@ -607,7 +1003,8 @@ export default function TeamPage() {
     );
   }
 
-  // ── Team list view ──
+  // ─── Team list view ─────────────────────────────────────────────────────────
+
   const ownedTeams = memberships.filter((m) => m.role === 'owner');
   const memberTeams = memberships.filter((m) => m.role === 'member');
 

@@ -1,8 +1,8 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
-import { findBestTemplate, buildTemplateGuidance } from './template-matcher';
+import { matchAndRerankTemplates, buildTemplateGuidance } from './template-matcher';
 import { buildVoicePromptSection } from './voice-prompt-builder';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
-import type { PostTemplate, StyleProfile, PostVariation, TeamVoiceProfile } from '@/lib/types/content-pipeline';
+import type { StyleProfile, PostVariation, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 import { logError } from '@/lib/utils/logger';
 
 export interface IdeaContext {
@@ -18,7 +18,6 @@ export interface IdeaContext {
 
 export interface WritePostInput {
   idea: IdeaContext;
-  template?: PostTemplate;
   styleProfile?: StyleProfile;
   targetAudience?: string;
   knowledgeContext?: string; // AI Brain context injected by briefing agent
@@ -116,13 +115,42 @@ Hook requirements:
 - 1-2 sentences max`;
 }
 
-export async function writePostFreeform(input: WritePostInput): Promise<WrittenPost> {
+/**
+ * Single entry point for post writing.
+ * Fetches top matching templates via shortlist+rerank and injects them as
+ * soft structural inspiration — the model may blend, adapt, or ignore them.
+ * Never enforces strict template adherence.
+ */
+export async function writePost(
+  input: WritePostInput,
+  teamId: string,
+  profileId: string
+): Promise<WrittenPost & { matchedTemplateId?: string }> {
   const { idea, targetAudience, knowledgeContext } = input;
 
-  const knowledgeSection = knowledgeContext
-    ? `\nKNOWLEDGE BASE CONTEXT (from your calls):
-${knowledgeContext}
-Use specific quotes, real numbers, and validated insights from this context.\n`
+  // Build topic text for RAG matching
+  const topicText = [
+    idea.title,
+    idea.core_insight,
+    idea.full_context,
+    idea.content_type,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const ranked = await matchAndRerankTemplates(topicText, teamId, profileId, 3);
+
+  // Merge template guidance into knowledge context (soft guidance only)
+  let mergedKnowledgeContext = knowledgeContext;
+  if (ranked.length > 0) {
+    const templateGuidance = buildTemplateGuidance(ranked);
+    mergedKnowledgeContext = knowledgeContext
+      ? `${knowledgeContext}\n\n${templateGuidance}`
+      : templateGuidance;
+  }
+
+  const knowledgeSection = mergedKnowledgeContext
+    ? `\nKNOWLEDGE BASE CONTEXT (from your calls):\n${mergedKnowledgeContext}\nUse specific quotes, real numbers, and validated insights from this context.\n`
     : '';
 
   const voiceSection = buildVoiceSection(input);
@@ -154,105 +182,14 @@ Use specific quotes, real numbers, and validated insights from this context.\n`
     throw new Error('No text response from Claude');
   }
 
-  return parseJsonResponse<WrittenPost>(textContent.text);
-}
+  const result = parseJsonResponse<WrittenPost>(textContent.text);
 
-export async function writePostWithTemplate(input: WritePostInput): Promise<WrittenPost> {
-  const { idea, template: postTemplate, targetAudience, knowledgeContext } = input;
-
-  if (!postTemplate) {
-    throw new Error('Template is required for writePostWithTemplate');
+  // Increment usage count for the top-ranked template (fire-and-forget)
+  if (ranked.length > 0) {
+    incrementTemplateUsage(ranked[0].id).catch(() => {});
   }
 
-  const knowledgeSection = knowledgeContext
-    ? `\nKNOWLEDGE BASE CONTEXT (from your calls):
-${knowledgeContext}
-Use specific quotes, real numbers, and validated insights from this context.\n`
-    : '';
-
-  const voiceSection = buildVoiceSection(input);
-  const styleSection = buildVoicePromptSection(input.voiceProfile, 'linkedin');
-
-  const promptTemplate = await getPrompt('post-writer-template');
-  const prompt = interpolatePrompt(promptTemplate.user_prompt, {
-    template_structure: postTemplate.structure,
-    template_examples: postTemplate.example_posts?.length
-      ? `EXAMPLE POSTS USING THIS TEMPLATE:\n${postTemplate.example_posts.slice(0, 2).join('\n\n---\n\n')}`
-      : '',
-    voice_section: voiceSection,
-    voice_style_section: styleSection,
-    idea_title: idea.title,
-    idea_core_insight: idea.core_insight || '',
-    idea_full_context: idea.full_context || '',
-    idea_why_post_worthy: idea.why_post_worthy || '',
-    idea_content_type: idea.content_type || '',
-    knowledge_section: knowledgeSection,
-    target_audience: targetAudience || 'B2B professionals, agency owners, and marketers',
-  });
-
-  const client = getAnthropicClient('post-writer');
-  const response = await client.messages.create({
-    model: promptTemplate.model,
-    max_tokens: promptTemplate.max_tokens,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  const textContent = response.content.find((block) => block.type === 'text');
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text response from Claude');
-  }
-
-  return parseJsonResponse<WrittenPost>(textContent.text);
-}
-
-export async function writePost(input: WritePostInput): Promise<WrittenPost> {
-  if (input.template) {
-    return writePostWithTemplate(input);
-  }
-  return writePostFreeform(input);
-}
-
-export async function writePostWithAutoTemplate(
-  input: WritePostInput,
-  userId: string
-): Promise<WrittenPost & { matchedTemplateId?: string }> {
-  // If template already provided, use it directly
-  if (input.template) {
-    const result = await writePostWithTemplate(input);
-    return { ...result, matchedTemplateId: input.template.id };
-  }
-
-  // Build topic text for RAG matching
-  const topicText = [
-    input.idea.title,
-    input.idea.core_insight,
-    input.idea.full_context,
-    input.idea.content_type,
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  const match = await findBestTemplate(topicText, userId);
-
-  if (match) {
-    // Inject template guidance into the freeform prompt via knowledgeContext
-    const templateGuidance = buildTemplateGuidance(match);
-    const enhancedInput: WritePostInput = {
-      ...input,
-      knowledgeContext: input.knowledgeContext
-        ? `${input.knowledgeContext}\n\n${templateGuidance}`
-        : templateGuidance,
-    };
-    const result = await writePostFreeform(enhancedInput);
-
-    // Increment usage count (fire-and-forget)
-    incrementTemplateUsage(match.id).catch(() => {});
-
-    return { ...result, matchedTemplateId: match.id };
-  }
-
-  // No match — proceed freeform
-  return writePostFreeform(input);
+  return { ...result, matchedTemplateId: ranked[0]?.id };
 }
 
 async function incrementTemplateUsage(templateId: string): Promise<void> {
@@ -262,7 +199,7 @@ async function incrementTemplateUsage(templateId: string): Promise<void> {
 }
 
 export async function bulkWritePosts(
-  inputs: WritePostInput[]
+  inputs: Array<WritePostInput & { teamId: string; profileId: string }>
 ): Promise<Map<string, WrittenPost | null>> {
   const results = new Map<string, WrittenPost | null>();
 
@@ -272,7 +209,7 @@ export async function bulkWritePosts(
     const batchResults = await Promise.all(
       batch.map(async (input) => {
         try {
-          const result = await writePost(input);
+          const result = await writePost(input, input.teamId, input.profileId);
           return { ideaId: input.idea.id || input.idea.title, result };
         } catch (error) {
           logError('ai/post-writer', error, { ideaTitle: input.idea.title });

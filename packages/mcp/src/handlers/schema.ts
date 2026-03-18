@@ -516,7 +516,7 @@ export async function handleSchemaTools(
     }
 
     case 'magnetlab_get_business_context':
-      return client.getBusinessContext();
+      return client.getBusinessContext(args.team_id as string | undefined);
 
     default:
       throw new Error(`Unknown schema tool: ${name}`);

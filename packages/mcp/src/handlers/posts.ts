@@ -14,10 +14,11 @@ export async function handlePostTools(
         status: args.status as PipelinePostStatus | undefined,
         isBuffer: args.is_buffer as boolean | undefined,
         limit: args.limit as number | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_get_post':
-      return client.getPost(args.id as string);
+      return client.getPost(args.id as string, args.team_id as string | undefined);
 
     case 'magnetlab_create_post':
       return client.createPost({
@@ -25,20 +26,25 @@ export async function handlePostTools(
         title: args.title as string | undefined,
         pillar: args.pillar as ContentPillar | undefined,
         content_type: args.content_type as ContentType | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_update_post':
-      return client.updatePost(args.id as string, {
-        draft_content: args.draft_content as string | undefined,
-        final_content: args.final_content as string | undefined,
-        status: args.status as PipelinePostStatus | undefined,
-      });
+      return client.updatePost(
+        args.id as string,
+        {
+          draft_content: args.draft_content as string | undefined,
+          final_content: args.final_content as string | undefined,
+          status: args.status as PipelinePostStatus | undefined,
+        },
+        args.team_id as string | undefined
+      );
 
     case 'magnetlab_delete_post':
-      return client.deletePost(args.id as string);
+      return client.deletePost(args.id as string, args.team_id as string | undefined);
 
     case 'magnetlab_publish_post':
-      return client.publishPost(args.id as string);
+      return client.publishPost(args.id as string, args.team_id as string | undefined);
 
     default:
       throw new Error(`Unknown post tool: ${name}`);

@@ -5,7 +5,7 @@ import { executeAction } from '@/lib/actions/executor';
 import { registerAction, getAction, getToolDefinitions } from '@/lib/actions/registry';
 import type { ActionContext } from '@/lib/actions/types';
 
-const ctx: ActionContext = { userId: 'user-1' };
+const ctx: ActionContext = { scope: { type: 'user', userId: 'user-1' } };
 
 describe('Action Registry', () => {
   beforeAll(() => {

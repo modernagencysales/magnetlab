@@ -3,7 +3,7 @@ export { extractKnowledgeFromTranscript, batchExtractKnowledge } from './knowled
 export type { ExtractedKnowledgeEntry, KnowledgeExtractionResult } from './knowledge-extractor';
 export { extractIdeasFromTranscript, batchExtractIdeas } from './content-extractor';
 export type { ExtractedIdea, ExtractionResult } from './content-extractor';
-export { writePost, writePostFreeform, writePostWithTemplate, bulkWritePosts, rewriteSection } from './post-writer';
+export { writePost, bulkWritePosts, rewriteSection } from './post-writer';
 export type { IdeaContext, WritePostInput, WrittenPost } from './post-writer';
 export { polishPost, detectAIPatterns, scoreHook, formatPost } from './post-polish';
 export type { HookScore, PolishResult, PolishOptions } from './post-polish';
@@ -18,8 +18,8 @@ export { analyzePerformancePatterns, getTopPerformingAttributes, generatePerform
 export type { PerformancePattern, TopAttribute, PerformanceInsight, PatternAnalysisResult } from './performance-analyzer';
 export { searchTopPerformingPosts, searchTopLeadMagnets, searchCreatorContent, searchHashtagContent, analyzeInspiration, batchAnalyzeInspiration, extractTrends } from './inspiration-researcher';
 export type { InspirationContent, InspirationAnalysis, TrendSummary } from './inspiration-researcher';
-export { matchTemplates, findBestTemplate, buildTemplateGuidance } from './template-matcher';
-export type { MatchedTemplate, MatchTemplateOptions } from './template-matcher';
+export { matchAndRerankTemplates, rerankTemplates, buildTemplateGuidance } from './template-matcher';
+export type { RankedTemplate } from './template-matcher';
 export { classifyEditPatterns } from './edit-classifier';
 export type { ClassifyInput, EditPattern, ClassifyResult } from './edit-classifier';
 export { detectContentCollisions } from './collision-detector';

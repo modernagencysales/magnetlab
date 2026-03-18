@@ -406,7 +406,7 @@ export async function publishFunnel(
   let cachedUsername: string | null = null;
   if (publish) {
     // In team mode, use team owner's username for public URL routing (main parity)
-    const userIdForUsername = scope.type === 'team' && scope.ownerId ? scope.ownerId : scope.userId;
+    const userIdForUsername = scope.type === 'team' && scope.billingUserId ? scope.billingUserId : scope.userId;
     const username = await funnelsRepo.getUsernameById(userIdForUsername);
     if (!username) {
       throw Object.assign(

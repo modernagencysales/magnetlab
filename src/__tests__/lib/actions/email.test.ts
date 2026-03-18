@@ -53,8 +53,7 @@ import type { ActionContext } from '@/lib/actions/types';
 import '@/lib/actions/email';
 
 const testCtx: ActionContext = {
-  userId: 'user-test-123',
-  teamId: 'team-test-456',
+  scope: { type: 'team', userId: 'user-test-123', teamId: 'team-test-456' },
 };
 
 describe('Email Actions', () => {
@@ -184,7 +183,8 @@ describe('Email Actions', () => {
       await executeAction(testCtx, 'get_subscriber_count', {});
 
       expect(chain.eq).toHaveBeenCalledWith('status', 'active');
-      expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-test-123');
+      // email_subscribers is team-scoped — filtered by team_id, not user_id
+      expect(chain.eq).toHaveBeenCalledWith('team_id', 'team-test-456');
     });
 
     it('uses head:true count query', async () => {
@@ -237,7 +237,11 @@ describe('Email Actions', () => {
     it('calls searchKnowledgeV2 with user ID and topic', async () => {
       await executeAction(testCtx, 'generate_newsletter_email', { topic: 'AI automation' });
 
-      expect(mockSearchKnowledgeV2).toHaveBeenCalledWith('user-test-123', { query: 'AI automation' });
+      // teamId from ctx.scope is now forwarded to searchKnowledgeV2
+      expect(mockSearchKnowledgeV2).toHaveBeenCalledWith('user-test-123', {
+        query: 'AI automation',
+        teamId: 'team-test-456',
+      });
     });
 
     it('handles empty knowledge results', async () => {

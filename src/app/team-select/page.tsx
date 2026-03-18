@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Users, Loader2, Magnet, ArrowRight, UsersRound } from 'lucide-react';
 
 import { logError } from '@/lib/utils/logger';
-import { getTeamMemberships } from '@/frontend/api/team';
+import { listTeams } from '@/frontend/api/teams';
 
 interface TeamMembership {
   id: string;
@@ -13,6 +13,7 @@ interface TeamMembership {
   teamName: string;
   ownerId: string;
   role: 'owner' | 'member';
+  via: 'direct' | 'team_link';
 }
 
 /**
@@ -28,8 +29,23 @@ export default function TeamSelectPage() {
   useEffect(() => {
     const fetchMemberships = async () => {
       try {
-        const data = await getTeamMemberships();
-        setMemberships(data as TeamMembership[]);
+        const data = await listTeams();
+        // Normalize V2 UserTeamEntry list to local TeamMembership shape
+        const entries = ((data as { teams?: unknown[] }).teams ?? []) as Array<{
+          id: string;
+          name: string;
+          role: 'owner' | 'member';
+          via?: 'direct' | 'team_link';
+        }>;
+        const normalized: TeamMembership[] = entries.map((e) => ({
+          id: e.id,
+          teamId: e.id,
+          teamName: e.name,
+          ownerId: '',
+          role: e.role,
+          via: e.via ?? 'direct',
+        }));
+        setMemberships(normalized);
 
         // Only auto-select when no cookie exists (first visit / fresh session).
         // If the user already has a cookie, they're explicitly switching — show the UI.
@@ -37,8 +53,8 @@ export default function TeamSelectPage() {
           .split('; ')
           .some((c) => c.startsWith('ml-team-context='));
 
-        if (!hasExistingContext && data.length === 1) {
-          selectTeam((data[0] as TeamMembership).teamId);
+        if (!hasExistingContext && normalized.length === 1) {
+          selectTeam(normalized[0].teamId);
         }
       } catch (err) {
         logError('dashboard/team-select', err, { step: 'failed_to_fetch_memberships' });
@@ -121,7 +137,14 @@ export default function TeamSelectPage() {
                 <UsersRound size={18} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{m.teamName}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-sm truncate">{m.teamName}</p>
+                  {m.via === 'team_link' && (
+                    <span className="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">
+                      Linked
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {m.role === 'owner' ? 'Owner' : 'Member'}
                 </p>

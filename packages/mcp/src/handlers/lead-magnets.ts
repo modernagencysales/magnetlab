@@ -14,27 +14,30 @@ export async function handleLeadMagnetTools(
         status: args.status as LeadMagnetStatusV2 | undefined,
         limit: args.limit as number | undefined,
         offset: args.offset as number | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_get_lead_magnet':
-      return client.getLeadMagnet(args.id as string);
+      return client.getLeadMagnet(args.id as string, args.team_id as string | undefined);
 
     case 'magnetlab_create_lead_magnet':
       return client.createLeadMagnet({
         title: args.title as string,
         archetype: args.archetype as Archetype,
         concept: args.concept as Record<string, unknown> | undefined,
+        teamId: args.team_id as string | undefined,
       });
 
     case 'magnetlab_update_lead_magnet':
       return client.updateLeadMagnetContent(
         args.id as string,
         args.content as Record<string, unknown>,
-        args.expected_version as number | undefined
+        args.expected_version as number | undefined,
+        args.team_id as string | undefined
       );
 
     case 'magnetlab_delete_lead_magnet':
-      return client.deleteLeadMagnet(args.id as string);
+      return client.deleteLeadMagnet(args.id as string, args.team_id as string | undefined);
 
     default:
       throw new Error(`Unknown lead magnet tool: ${name}`);

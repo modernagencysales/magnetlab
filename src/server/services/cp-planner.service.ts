@@ -95,7 +95,6 @@ export async function generate(
   }
 ) {
   const ideas = await cpPlannerRepo.getIdeasForPlanner(userId);
-  const templates = await cpPlannerRepo.getActiveTemplates(userId);
   const slots = await cpPlannerRepo.getActiveSlots(userId);
   const businessContext = await cpPlannerRepo.getBusinessContext(userId);
   const recentPostTitles = await cpPlannerRepo.getRecentPostDraftContent(userId, 20);
@@ -121,7 +120,6 @@ export async function generate(
     postsPerWeek: payload.posts_per_week || 5,
     pillarDistribution: dist as unknown as PillarDistribution,
     ideas,
-    templates,
     slots,
     businessContext,
     recentPostTitles,

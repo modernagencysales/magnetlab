@@ -15,6 +15,8 @@ interface TeamContext {
   teamId: string;
   teamName: string;
   isOwner: boolean;
+  via: 'direct' | 'team_link';
+  agencyTeamName?: string;
 }
 
 interface DashboardShellProps {

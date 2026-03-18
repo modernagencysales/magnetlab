@@ -4,7 +4,7 @@
  * Never imports from Next.js HTTP layer (no NextRequest, NextResponse, cookies).
  */
 
-import { getMergedMemberships } from '@/lib/utils/team-membership';
+import * as teamRepo from '@/server/repositories/team.repo';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError, logInfo } from '@/lib/utils/logger';
 import * as queueRepo from '@/server/repositories/content-queue.repo';
@@ -62,18 +62,18 @@ export interface SubmitResult {
  * grouped by team with counts.
  */
 export async function getQueue(userId: string): Promise<QueueListResult> {
-  const memberships = await getMergedMemberships(userId);
-  if (memberships.length === 0) {
+  const userTeams = await teamRepo.getUserTeams(userId);
+  if (userTeams.length === 0) {
     return { teams: [], summary: { total_teams: 0, total_posts: 0, remaining: 0 } };
   }
 
-  const teamIds = memberships.map((m) => m.teamId);
+  const teamIds = userTeams.map((e) => e.team.id);
 
   // Get all active team profiles for these teams
   const supabase = createSupabaseAdminClient();
   const { data: profiles } = await supabase
     .from('team_profiles')
-    .select('id, team_id, full_name, company, user_id')
+    .select('id, team_id, full_name, title, user_id')
     .in('team_id', teamIds)
     .eq('status', 'active');
 
@@ -122,8 +122,8 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
     profileToTeam.set(p.id, p);
   }
 
-  // Build membership lookup for team names and owner IDs
-  const membershipByTeam = new Map(memberships.map((m) => [m.teamId, m]));
+  // Build team entry lookup for team names and owner IDs
+  const teamEntryByTeamId = new Map(userTeams.map((e) => [e.team.id, e]));
 
   // Group posts by team
   const teamPostsMap = new Map<string, QueueTeam>();
@@ -132,8 +132,8 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
     const profile = post.team_profile_id ? profileToTeam.get(post.team_profile_id) : null;
     if (!profile) continue;
 
-    const membership = membershipByTeam.get(profile.team_id);
-    if (!membership) continue;
+    const entry = teamEntryByTeamId.get(profile.team_id);
+    if (!entry) continue;
 
     let team = teamPostsMap.get(profile.team_id);
     if (!team) {
@@ -142,10 +142,10 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
         : null;
       team = {
         team_id: profile.team_id,
-        team_name: membership.teamName,
+        team_name: entry.team.name,
         profile_name: profile.full_name ?? '',
-        profile_company: profile.company ?? '',
-        owner_id: membership.ownerId,
+        profile_company: profile.title ?? '',
+        owner_id: entry.team.owner_id,
         writing_style: style,
         posts: [],
         edited_count: 0,
@@ -199,8 +199,8 @@ export async function updateQueuePost(
   input: ContentQueueUpdateInput
 ): Promise<void> {
   // Get user's accessible profile IDs
-  const memberships = await getMergedMemberships(userId);
-  const teamIds = memberships.map((m) => m.teamId);
+  const userTeams = await teamRepo.getUserTeams(userId);
+  const teamIds = userTeams.map((e) => e.team.id);
 
   const supabase = createSupabaseAdminClient();
   const { data: profiles } = await supabase
@@ -240,9 +240,8 @@ export async function updateQueuePost(
  */
 export async function submitBatch(userId: string, teamId: string): Promise<SubmitResult> {
   // Verify user has team membership
-  const memberships = await getMergedMemberships(userId);
-  const membership = memberships.find((m) => m.teamId === teamId);
-  if (!membership) {
+  const access = await teamRepo.hasTeamAccess(userId, teamId);
+  if (!access.access) {
     throw Object.assign(new Error('Not a member of this team'), { statusCode: 403 });
   }
 
@@ -266,7 +265,8 @@ export async function submitBatch(userId: string, teamId: string): Promise<Submi
   }
 
   // Look up DFY engagement by team owner's user_id (magnetlab_user_id)
-  const ownerId = membership.ownerId;
+  const team = await teamRepo.getTeamById(teamId);
+  const ownerId = team?.owner_id;
   let dfyCallbackSent = false;
 
   try {

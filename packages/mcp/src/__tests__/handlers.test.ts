@@ -54,12 +54,13 @@ describe('Handler Routing — All 37 Tools', () => {
         status: 'published',
         limit: 10,
         offset: 5,
+        teamId: undefined,
       });
     });
 
     it('magnetlab_get_lead_magnet passes id', async () => {
       await callTool(client, 'magnetlab_get_lead_magnet', { id: 'lm-1' });
-      expect(client.getLeadMagnet).toHaveBeenCalledWith('lm-1');
+      expect(client.getLeadMagnet).toHaveBeenCalledWith('lm-1', undefined);
     });
 
     it('magnetlab_create_lead_magnet passes params', async () => {
@@ -71,6 +72,7 @@ describe('Handler Routing — All 37 Tools', () => {
         title: 'My Guide',
         archetype: 'single-breakdown',
         concept: undefined,
+        teamId: undefined,
       });
     });
 
@@ -83,7 +85,8 @@ describe('Handler Routing — All 37 Tools', () => {
       expect(client.updateLeadMagnetContent).toHaveBeenCalledWith(
         'lm-1',
         { headline: 'New Headline' },
-        2
+        2,
+        undefined
       );
     });
 
@@ -95,13 +98,14 @@ describe('Handler Routing — All 37 Tools', () => {
       expect(client.updateLeadMagnetContent).toHaveBeenCalledWith(
         'lm-1',
         { headline: 'New' },
+        undefined,
         undefined
       );
     });
 
     it('magnetlab_delete_lead_magnet passes id', async () => {
       await callTool(client, 'magnetlab_delete_lead_magnet', { id: 'lm-1' });
-      expect(client.deleteLeadMagnet).toHaveBeenCalledWith('lm-1');
+      expect(client.deleteLeadMagnet).toHaveBeenCalledWith('lm-1', undefined);
     });
   });
 
@@ -110,12 +114,12 @@ describe('Handler Routing — All 37 Tools', () => {
   describe('Funnels', () => {
     it('magnetlab_list_funnels calls client', async () => {
       await callTool(client, 'magnetlab_list_funnels', {});
-      expect(client.listFunnels).toHaveBeenCalled();
+      expect(client.listFunnels).toHaveBeenCalledWith(undefined);
     });
 
     it('magnetlab_get_funnel passes id', async () => {
       await callTool(client, 'magnetlab_get_funnel', { id: 'f-1' });
-      expect(client.getFunnel).toHaveBeenCalledWith('f-1');
+      expect(client.getFunnel).toHaveBeenCalledWith('f-1', undefined);
     });
 
     it('magnetlab_create_funnel transforms snake_case to camelCase', async () => {
@@ -156,17 +160,17 @@ describe('Handler Routing — All 37 Tools', () => {
 
     it('magnetlab_delete_funnel passes id', async () => {
       await callTool(client, 'magnetlab_delete_funnel', { id: 'f-1' });
-      expect(client.deleteFunnel).toHaveBeenCalledWith('f-1');
+      expect(client.deleteFunnel).toHaveBeenCalledWith('f-1', undefined);
     });
 
     it('magnetlab_publish_funnel passes id', async () => {
       await callTool(client, 'magnetlab_publish_funnel', { id: 'f-1' });
-      expect(client.publishFunnel).toHaveBeenCalledWith('f-1');
+      expect(client.publishFunnel).toHaveBeenCalledWith('f-1', undefined);
     });
 
     it('magnetlab_unpublish_funnel passes id', async () => {
       await callTool(client, 'magnetlab_unpublish_funnel', { id: 'f-1' });
-      expect(client.unpublishFunnel).toHaveBeenCalledWith('f-1');
+      expect(client.unpublishFunnel).toHaveBeenCalledWith('f-1', undefined);
     });
   });
 
@@ -189,6 +193,7 @@ describe('Handler Routing — All 37 Tools', () => {
         topic: 'sales',
         min_quality: 3,
         since: '2026-01-01',
+        teamId: undefined,
       });
     });
 
@@ -202,12 +207,13 @@ describe('Handler Routing — All 37 Tools', () => {
         category: 'question',
         tag: 'sales',
         limit: 10,
+        teamId: undefined,
       });
     });
 
     it('magnetlab_get_knowledge_clusters calls client', async () => {
       await callTool(client, 'magnetlab_get_knowledge_clusters', {});
-      expect(client.getKnowledgeClusters).toHaveBeenCalled();
+      expect(client.getKnowledgeClusters).toHaveBeenCalledWith(undefined);
     });
 
     it('magnetlab_ask_knowledge passes question', async () => {
@@ -216,6 +222,7 @@ describe('Handler Routing — All 37 Tools', () => {
       });
       expect(client.askKnowledge).toHaveBeenCalledWith({
         question: 'What is our pricing strategy?',
+        teamId: undefined,
       });
     });
 
@@ -227,6 +234,7 @@ describe('Handler Routing — All 37 Tools', () => {
       expect(client.submitTranscript).toHaveBeenCalledWith({
         transcript: 'A'.repeat(100),
         title: 'Call Recording',
+        teamId: undefined,
       });
     });
   });
@@ -244,12 +252,13 @@ describe('Handler Routing — All 37 Tools', () => {
         status: 'draft',
         isBuffer: true,
         limit: 25,
+        teamId: undefined,
       });
     });
 
     it('magnetlab_get_post passes id', async () => {
       await callTool(client, 'magnetlab_get_post', { id: 'post-1' });
-      expect(client.getPost).toHaveBeenCalledWith('post-1');
+      expect(client.getPost).toHaveBeenCalledWith('post-1', undefined);
     });
 
     it('magnetlab_create_post passes body and optional fields', async () => {
@@ -264,6 +273,7 @@ describe('Handler Routing — All 37 Tools', () => {
         title: 'Day 1',
         pillar: 'teaching_promotion',
         content_type: 'insight',
+        teamId: undefined,
       });
     });
 
@@ -273,21 +283,25 @@ describe('Handler Routing — All 37 Tools', () => {
         draft_content: 'Updated draft',
         status: 'review',
       });
-      expect(client.updatePost).toHaveBeenCalledWith('post-1', {
-        draft_content: 'Updated draft',
-        final_content: undefined,
-        status: 'review',
-      });
+      expect(client.updatePost).toHaveBeenCalledWith(
+        'post-1',
+        {
+          draft_content: 'Updated draft',
+          final_content: undefined,
+          status: 'review',
+        },
+        undefined
+      );
     });
 
     it('magnetlab_delete_post passes id', async () => {
       await callTool(client, 'magnetlab_delete_post', { id: 'post-1' });
-      expect(client.deletePost).toHaveBeenCalledWith('post-1');
+      expect(client.deletePost).toHaveBeenCalledWith('post-1', undefined);
     });
 
     it('magnetlab_publish_post passes id', async () => {
       await callTool(client, 'magnetlab_publish_post', { id: 'post-1' });
-      expect(client.publishPost).toHaveBeenCalledWith('post-1');
+      expect(client.publishPost).toHaveBeenCalledWith('post-1', undefined);
     });
   });
 
@@ -296,7 +310,7 @@ describe('Handler Routing — All 37 Tools', () => {
   describe('Email Sequences', () => {
     it('magnetlab_get_email_sequence passes lead_magnet_id', async () => {
       await callTool(client, 'magnetlab_get_email_sequence', { lead_magnet_id: 'lm-1' });
-      expect(client.getEmailSequence).toHaveBeenCalledWith('lm-1');
+      expect(client.getEmailSequence).toHaveBeenCalledWith('lm-1', undefined);
     });
 
     it('magnetlab_save_email_sequence passes lead_magnet_id and data', async () => {
@@ -305,15 +319,19 @@ describe('Handler Routing — All 37 Tools', () => {
         emails: [{ day: 0, subject: 'Welcome', body: '<p>Hi</p>', replyTrigger: 'welcome' }],
         status: 'draft',
       });
-      expect(client.saveEmailSequence).toHaveBeenCalledWith('lm-1', {
-        emails: [{ day: 0, subject: 'Welcome', body: '<p>Hi</p>', replyTrigger: 'welcome' }],
-        status: 'draft',
-      });
+      expect(client.saveEmailSequence).toHaveBeenCalledWith(
+        'lm-1',
+        {
+          emails: [{ day: 0, subject: 'Welcome', body: '<p>Hi</p>', replyTrigger: 'welcome' }],
+          status: 'draft',
+        },
+        undefined
+      );
     });
 
     it('magnetlab_activate_email_sequence passes lead_magnet_id', async () => {
       await callTool(client, 'magnetlab_activate_email_sequence', { lead_magnet_id: 'lm-1' });
-      expect(client.activateEmailSequence).toHaveBeenCalledWith('lm-1');
+      expect(client.activateEmailSequence).toHaveBeenCalledWith('lm-1', undefined);
     });
   });
 
@@ -336,12 +354,13 @@ describe('Handler Routing — All 37 Tools', () => {
         search: 'john',
         limit: 20,
         offset: 5,
+        teamId: undefined,
       });
     });
 
     it('magnetlab_get_lead passes id', async () => {
       await callTool(client, 'magnetlab_get_lead', { id: 'lead-1' });
-      expect(client.getLead).toHaveBeenCalledWith('lead-1');
+      expect(client.getLead).toHaveBeenCalledWith('lead-1', undefined);
     });
 
     it('magnetlab_export_leads passes filter params (snake_case to camelCase)', async () => {
@@ -353,6 +372,7 @@ describe('Handler Routing — All 37 Tools', () => {
         funnelId: 'f-1',
         leadMagnetId: undefined,
         qualified: false,
+        teamId: undefined,
       });
     });
   });
@@ -390,7 +410,7 @@ describe('Handler Routing — All 37 Tools', () => {
 
     it('magnetlab_get_business_context calls client', async () => {
       await callTool(client, 'magnetlab_get_business_context', {});
-      expect(client.getBusinessContext).toHaveBeenCalled();
+      expect(client.getBusinessContext).toHaveBeenCalledWith(undefined);
     });
   });
 
@@ -417,6 +437,7 @@ describe('Handler Routing — All 37 Tools', () => {
         email_sequence: {
           emails: [{ subject: 'Welcome', body: 'Hi', delay_days: 0 }],
         },
+        teamId: undefined,
       });
     });
 
@@ -428,13 +449,16 @@ describe('Handler Routing — All 37 Tools', () => {
         ],
         week_start: '2026-03-16',
       });
-      expect(client.scheduleContentWeek).toHaveBeenCalledWith({
-        posts: [
-          { body: 'Post 1', pillar: 'teaching_promotion' },
-          { body: 'Post 2', pillar: 'human_personal' },
-        ],
-        week_start: '2026-03-16',
-      });
+      expect(client.scheduleContentWeek).toHaveBeenCalledWith(
+        {
+          posts: [
+            { body: 'Post 1', pillar: 'teaching_promotion' },
+            { body: 'Post 2', pillar: 'human_personal' },
+          ],
+          week_start: '2026-03-16',
+        },
+        undefined
+      );
     });
   });
 
@@ -443,17 +467,17 @@ describe('Handler Routing — All 37 Tools', () => {
   describe('Feedback / Analytics', () => {
     it('magnetlab_get_performance_insights passes period', async () => {
       await callTool(client, 'magnetlab_get_performance_insights', { period: '7d' });
-      expect(client.getPerformanceInsights).toHaveBeenCalledWith('7d');
+      expect(client.getPerformanceInsights).toHaveBeenCalledWith('7d', undefined);
     });
 
     it('magnetlab_get_performance_insights works without period', async () => {
       await callTool(client, 'magnetlab_get_performance_insights', {});
-      expect(client.getPerformanceInsights).toHaveBeenCalledWith(undefined);
+      expect(client.getPerformanceInsights).toHaveBeenCalledWith(undefined, undefined);
     });
 
     it('magnetlab_get_recommendations calls client', async () => {
       await callTool(client, 'magnetlab_get_recommendations', {});
-      expect(client.getRecommendations).toHaveBeenCalled();
+      expect(client.getRecommendations).toHaveBeenCalledWith(undefined);
     });
   });
 
@@ -597,6 +621,272 @@ describe('Handler Routing — All 37 Tools', () => {
       expect(result.content_fields.steps.nested_fields).toHaveProperty('action');
       expect(result.content_fields.steps.nested_fields).toHaveProperty('tool');
       expect(result.content_fields.steps.nested_fields).toHaveProperty('output');
+    });
+  });
+
+  // ── Team ID Propagation Through Handlers ──────────────────────────────────
+
+  describe('Team ID propagation', () => {
+    it('magnetlab_list_lead_magnets passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_list_lead_magnets', { team_id: 'team-abc' });
+      expect(client.listLeadMagnets).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_get_lead_magnet passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_get_lead_magnet', { id: 'lm-1', team_id: 'team-abc' });
+      expect(client.getLeadMagnet).toHaveBeenCalledWith('lm-1', 'team-abc');
+    });
+
+    it('magnetlab_create_lead_magnet passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_create_lead_magnet', {
+        title: 'My Guide',
+        archetype: 'prompt',
+        team_id: 'team-abc',
+      });
+      expect(client.createLeadMagnet).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_update_lead_magnet passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_update_lead_magnet', {
+        id: 'lm-1',
+        content: { headline: 'New' },
+        team_id: 'team-abc',
+      });
+      expect(client.updateLeadMagnetContent).toHaveBeenCalledWith(
+        'lm-1',
+        { headline: 'New' },
+        undefined,
+        'team-abc'
+      );
+    });
+
+    it('magnetlab_delete_lead_magnet passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_delete_lead_magnet', { id: 'lm-1', team_id: 'team-abc' });
+      expect(client.deleteLeadMagnet).toHaveBeenCalledWith('lm-1', 'team-abc');
+    });
+
+    it('magnetlab_list_funnels passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_list_funnels', { team_id: 'team-abc' });
+      expect(client.listFunnels).toHaveBeenCalledWith('team-abc');
+    });
+
+    it('magnetlab_get_funnel passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_get_funnel', { id: 'f-1', team_id: 'team-abc' });
+      expect(client.getFunnel).toHaveBeenCalledWith('f-1', 'team-abc');
+    });
+
+    it('magnetlab_create_funnel passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_create_funnel', {
+        slug: 'my-funnel',
+        team_id: 'team-abc',
+      });
+      expect(client.createFunnel).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_update_funnel passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_update_funnel', {
+        id: 'f-1',
+        slug: 'new-slug',
+        team_id: 'team-abc',
+      });
+      expect(client.updateFunnel).toHaveBeenCalledWith(
+        'f-1',
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_delete_funnel passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_delete_funnel', { id: 'f-1', team_id: 'team-abc' });
+      expect(client.deleteFunnel).toHaveBeenCalledWith('f-1', 'team-abc');
+    });
+
+    it('magnetlab_publish_funnel passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_publish_funnel', { id: 'f-1', team_id: 'team-abc' });
+      expect(client.publishFunnel).toHaveBeenCalledWith('f-1', 'team-abc');
+    });
+
+    it('magnetlab_unpublish_funnel passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_unpublish_funnel', { id: 'f-1', team_id: 'team-abc' });
+      expect(client.unpublishFunnel).toHaveBeenCalledWith('f-1', 'team-abc');
+    });
+
+    it('magnetlab_search_knowledge passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_search_knowledge', {
+        query: 'pricing',
+        team_id: 'team-abc',
+      });
+      expect(client.searchKnowledge).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_browse_knowledge passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_browse_knowledge', { team_id: 'team-abc' });
+      expect(client.browseKnowledge).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_get_knowledge_clusters passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_get_knowledge_clusters', { team_id: 'team-abc' });
+      expect(client.getKnowledgeClusters).toHaveBeenCalledWith('team-abc');
+    });
+
+    it('magnetlab_ask_knowledge passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_ask_knowledge', {
+        question: 'What is pricing?',
+        team_id: 'team-abc',
+      });
+      expect(client.askKnowledge).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_submit_transcript passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_submit_transcript', {
+        transcript: 'A'.repeat(100),
+        team_id: 'team-abc',
+      });
+      expect(client.submitTranscript).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_list_posts passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_list_posts', { team_id: 'team-abc' });
+      expect(client.listPosts).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_get_post passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_get_post', { id: 'post-1', team_id: 'team-abc' });
+      expect(client.getPost).toHaveBeenCalledWith('post-1', 'team-abc');
+    });
+
+    it('magnetlab_create_post passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_create_post', {
+        body: 'My post',
+        team_id: 'team-abc',
+      });
+      expect(client.createPost).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_update_post passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_update_post', {
+        id: 'post-1',
+        draft_content: 'updated',
+        team_id: 'team-abc',
+      });
+      expect(client.updatePost).toHaveBeenCalledWith('post-1', expect.any(Object), 'team-abc');
+    });
+
+    it('magnetlab_delete_post passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_delete_post', { id: 'post-1', team_id: 'team-abc' });
+      expect(client.deletePost).toHaveBeenCalledWith('post-1', 'team-abc');
+    });
+
+    it('magnetlab_publish_post passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_publish_post', { id: 'post-1', team_id: 'team-abc' });
+      expect(client.publishPost).toHaveBeenCalledWith('post-1', 'team-abc');
+    });
+
+    it('magnetlab_get_email_sequence passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_get_email_sequence', {
+        lead_magnet_id: 'lm-1',
+        team_id: 'team-abc',
+      });
+      expect(client.getEmailSequence).toHaveBeenCalledWith('lm-1', 'team-abc');
+    });
+
+    it('magnetlab_save_email_sequence passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_save_email_sequence', {
+        lead_magnet_id: 'lm-1',
+        status: 'draft',
+        team_id: 'team-abc',
+      });
+      expect(client.saveEmailSequence).toHaveBeenCalledWith('lm-1', expect.any(Object), 'team-abc');
+    });
+
+    it('magnetlab_activate_email_sequence passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_activate_email_sequence', {
+        lead_magnet_id: 'lm-1',
+        team_id: 'team-abc',
+      });
+      expect(client.activateEmailSequence).toHaveBeenCalledWith('lm-1', 'team-abc');
+    });
+
+    it('magnetlab_list_leads passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_list_leads', { team_id: 'team-abc' });
+      expect(client.listLeads).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_get_lead passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_get_lead', { id: 'lead-1', team_id: 'team-abc' });
+      expect(client.getLead).toHaveBeenCalledWith('lead-1', 'team-abc');
+    });
+
+    it('magnetlab_export_leads passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_export_leads', { team_id: 'team-abc' });
+      expect(client.exportLeads).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_get_business_context passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_get_business_context', { team_id: 'team-abc' });
+      expect(client.getBusinessContext).toHaveBeenCalledWith('team-abc');
+    });
+
+    it('magnetlab_get_performance_insights passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_get_performance_insights', {
+        period: '7d',
+        team_id: 'team-abc',
+      });
+      expect(client.getPerformanceInsights).toHaveBeenCalledWith('7d', 'team-abc');
+    });
+
+    it('magnetlab_get_recommendations passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_get_recommendations', { team_id: 'team-abc' });
+      expect(client.getRecommendations).toHaveBeenCalledWith('team-abc');
+    });
+
+    it('magnetlab_launch_lead_magnet passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_launch_lead_magnet', {
+        title: 'My Guide',
+        archetype: 'prompt',
+        content: { headline: 'Test' },
+        slug: 'my-guide',
+        team_id: 'team-abc',
+      });
+      expect(client.launchLeadMagnet).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: 'team-abc' })
+      );
+    });
+
+    it('magnetlab_schedule_content_week passes team_id to client', async () => {
+      await callTool(client, 'magnetlab_schedule_content_week', {
+        posts: [{ body: 'Post 1' }],
+        team_id: 'team-abc',
+      });
+      expect(client.scheduleContentWeek).toHaveBeenCalledWith(expect.any(Object), 'team-abc');
+    });
+
+    it('handlers pass undefined team_id when team_id not in args', async () => {
+      await callTool(client, 'magnetlab_list_posts', { status: 'draft' });
+      expect(client.listPosts).toHaveBeenCalledWith(
+        expect.objectContaining({ teamId: undefined })
+      );
     });
   });
 

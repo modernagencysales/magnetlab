@@ -1,8 +1,7 @@
 import { getTopIdeas } from './idea-scorer';
-import { cosineSimilarity, generateEmbedding, createIdeaEmbeddingText, createTemplateEmbeddingText } from '@/lib/ai/embeddings';
+import { matchAndRerankTemplates } from './template-matcher';
 import type {
   ContentIdea,
-  PostTemplate,
   PostingSlot,
   PlannedPost,
   ContentPillar,
@@ -13,11 +12,12 @@ import type { ScoringContext } from './idea-scorer';
 
 interface WeekPlanInput {
   userId: string;
+  teamId?: string;
+  profileId?: string;
   weekStartDate: string;
   postsPerWeek: number;
   pillarDistribution: PillarDistribution;
   ideas: ContentIdea[];
-  templates: PostTemplate[];
   slots: PostingSlot[];
   businessContext?: BusinessContext | null;
   recentPostTitles: string[];
@@ -104,50 +104,31 @@ function getSlotsForWeek(slots: PostingSlot[]): Array<{ day: number; time: strin
 
 async function matchIdeasToTemplates(
   ideas: ContentIdea[],
-  templates: PostTemplate[]
+  teamId: string,
+  profileId: string
 ): Promise<Map<string, { templateId: string; templateName: string; score: number } | null>> {
   const matches = new Map<string, { templateId: string; templateName: string; score: number } | null>();
 
-  if (templates.length === 0) {
-    ideas.forEach((idea) => matches.set(idea.id, null));
-    return matches;
-  }
+  for (const idea of ideas) {
+    try {
+      const topicText = [idea.title, idea.core_insight, idea.content_type]
+        .filter(Boolean)
+        .join('\n');
 
-  // Generate embeddings for ideas and templates
-  const ideaTexts = ideas.map((idea) => createIdeaEmbeddingText(idea));
-  const templateTexts = templates.map((t) => createTemplateEmbeddingText(t));
+      const ranked = await matchAndRerankTemplates(topicText, teamId, profileId, 1);
 
-  try {
-    const [ideaEmbeddings, templateEmbeddings] = await Promise.all([
-      Promise.all(ideaTexts.map((t) => generateEmbedding(t))),
-      Promise.all(templateTexts.map((t) => generateEmbedding(t))),
-    ]);
-
-    for (let i = 0; i < ideas.length; i++) {
-      let bestScore = 0;
-      let bestIdx = -1;
-
-      for (let j = 0; j < templates.length; j++) {
-        const score = cosineSimilarity(ideaEmbeddings[i], templateEmbeddings[j]);
-        if (score > bestScore) {
-          bestScore = score;
-          bestIdx = j;
-        }
-      }
-
-      if (bestIdx >= 0 && bestScore > 0.5) {
-        matches.set(ideas[i].id, {
-          templateId: templates[bestIdx].id,
-          templateName: templates[bestIdx].name,
-          score: bestScore,
+      if (ranked.length > 0) {
+        matches.set(idea.id, {
+          templateId: ranked[0].id,
+          templateName: ranked[0].name,
+          score: ranked[0].rerank_score,
         });
       } else {
-        matches.set(ideas[i].id, null);
+        matches.set(idea.id, null);
       }
+    } catch {
+      matches.set(idea.id, null);
     }
-  } catch {
-    // Fallback: no template matching if embeddings fail
-    ideas.forEach((idea) => matches.set(idea.id, null));
   }
 
   return matches;
@@ -155,13 +136,17 @@ async function matchIdeasToTemplates(
 
 export async function generateWeekPlan(input: WeekPlanInput): Promise<WeekPlanResult> {
   const {
+    userId,
     postsPerWeek,
     pillarDistribution,
     ideas,
-    templates,
     slots,
     recentPostTitles,
   } = input;
+
+  // Resolve team/profile — fall back to userId (consistent with autopilot + trigger task)
+  const teamId = input.teamId ?? userId;
+  const profileId = input.profileId ?? userId;
 
   // Build scoring context
   const pillarCounts: Record<ContentPillar, number> = {
@@ -178,9 +163,9 @@ export async function generateWeekPlan(input: WeekPlanInput): Promise<WeekPlanRe
   // Calculate posts per pillar
   const postsPerPillar = getPostCountPerPillar(postsPerWeek, pillarDistribution);
 
-  // Match ideas to templates
+  // Match ideas to templates via shortlist+rerank
   const ideaList = topIdeas.map((ri) => ri.idea);
-  const templateMatches = await matchIdeasToTemplates(ideaList, templates);
+  const templateMatches = await matchIdeasToTemplates(ideaList, teamId, profileId);
 
   // Get available slots for the week
   const weekSlots = getSlotsForWeek(slots);

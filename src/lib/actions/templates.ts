@@ -1,51 +1,53 @@
+/**
+ * Templates & Writing Styles Actions.
+ * Copilot actions for listing post templates and writing styles.
+ * Uses repos with DataScope — never raw Supabase queries.
+ * Never imports NextRequest, NextResponse, or cookies.
+ */
+
 import { registerAction } from './registry';
 import type { ActionContext, ActionResult } from './types';
-import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { listTemplates } from '@/server/repositories/cp-templates.repo';
+import { findStylesByUserId } from '@/server/repositories/styles.repo';
+
+// ─── Templates ────────────────────────────────────────────────
 
 registerAction({
   name: 'list_templates',
-  description: 'List available post templates. Returns template names, descriptions, content types, and example posts.',
+  description:
+    'List available post templates. Returns template names, descriptions, categories, and example posts.',
   parameters: {
     properties: {
       limit: { type: 'number', description: 'Max templates to return (default 20)' },
     },
   },
   handler: async (ctx: ActionContext, params: { limit?: number }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
-
-    const { data: templates, error } = await supabase
-      .from('cp_post_templates')
-      .select('id, name, description, content_type, example_post')
-      .eq('user_id', ctx.userId)
-      .order('created_at', { ascending: false })
-      .limit(params.limit || 20);
+    const { data, error } = await listTemplates(ctx.scope, null);
 
     if (error) return { success: false, error: error.message };
 
-    return { success: true, data: templates || [], displayHint: 'text' };
+    const limited = (data || []).slice(0, params.limit || 20);
+
+    return { success: true, data: limited, displayHint: 'text' };
   },
 });
 
+// ─── Writing Styles ────────────────────────────────────────────
+
 registerAction({
   name: 'list_writing_styles',
-  description: 'List the user\'s saved writing styles. Returns style names, descriptions, and tone keywords.',
+  description:
+    "List the user's saved writing styles. Returns style names, descriptions, and tone keywords.",
   parameters: {
     properties: {
       limit: { type: 'number', description: 'Max styles to return (default 20)' },
     },
   },
   handler: async (ctx: ActionContext, params: { limit?: number }): Promise<ActionResult> => {
-    const supabase = createSupabaseAdminClient();
+    const styles = await findStylesByUserId(ctx.scope.userId, true);
 
-    const { data: styles, error } = await supabase
-      .from('cp_writing_styles')
-      .select('id, name, description, tone_keywords')
-      .eq('user_id', ctx.userId)
-      .order('created_at', { ascending: false })
-      .limit(params.limit || 20);
+    const limited = (styles || []).slice(0, params.limit || 20);
 
-    if (error) return { success: false, error: error.message };
-
-    return { success: true, data: styles || [], displayHint: 'text' };
+    return { success: true, data: limited, displayHint: 'text' };
   },
 });
