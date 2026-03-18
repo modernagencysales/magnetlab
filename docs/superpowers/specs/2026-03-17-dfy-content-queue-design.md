@@ -129,9 +129,9 @@ List queue items grouped by team.
     posts: Array<{
       id: string;
       draft_content: string;
-      content_type: string;
-      topic: string;
       idea_id: string | null;
+      idea_title: string | null;       // joined from cp_content_ideas.title
+      idea_content_type: string | null; // joined from cp_content_ideas.content_type
       edited_at: string | null;
       created_at: string;
     }>;
@@ -197,9 +197,12 @@ The existing DFY callbacks (from background automation tasks) are fire-and-forge
 
 If the client requests revisions (`content_stage → 'revising'`):
 
-1. gtm-api updates engagement
-2. Trigger task resets `edited_at = null` on affected posts in magnetlab (via existing external API or new callback)
-3. Posts reappear as unedited in the content queue
+1. gtm-api updates engagement `content_stage = 'revising'`
+2. gtm-api calls magnetlab `POST /api/external/reset-edited-posts` with `{ userId: magnetlab_user_id }` (new endpoint, uses existing external API auth pattern — Bearer token + timing-safe comparison)
+3. Magnetlab resets `edited_at = null` on all draft posts for that user's team
+4. Posts reappear as unedited in the content queue
+
+The `/api/external/reset-edited-posts` endpoint is in scope for this spec. It follows the existing external API pattern (`src/lib/middleware/external-auth.ts`) — no new auth mechanism needed.
 
 ### Engagement Lookup
 
@@ -227,6 +230,7 @@ The callback identifies engagements by `magnetlab_user_id`, not `engagement_id`.
 | `src/app/api/content-queue/submit/route.ts` | POST handler (submit batch) |
 | `src/server/services/content-queue.service.ts` | Business logic: cross-team queries, batch validation, callback |
 | `src/server/repositories/content-queue.repo.ts` | Cross-team post queries |
+| `src/app/api/external/reset-edited-posts/route.ts` | External API: reset edited_at for revision flow |
 
 ### State Management
 
@@ -263,6 +267,11 @@ The distinction is automatic: submit checks for a DFY engagement by `magnetlab_u
 | Components | QueueView renders client cards with correct counts, EditingView keyboard navigation, FeedPreview toggle, PostList status dots | 3 component test files |
 
 **Security focus:** The cross-team query must never leak posts from teams the user doesn't belong to. Test: user A belongs to teams 1 and 2 but not team 3 — query returns posts from 1 and 2 only. This is the critical boundary.
+
+## Coordination Notes
+
+- **Callback type:** The `DfyCallbackPayload` type in `@mas/types` currently allows `automation_type: 'lead_magnet_generation' | 'content_calendar'`. This spec adds `'content_editing'`. The DFY pipeline hardening spec is rewriting the callback contract — coordinate the type update there.
+- **Linear bidirectional sync:** The hardening spec also allows `content_stage = 'review'` to be set via Linear issue drag (bidirectional sync). The content queue fires a direct callback instead. Both paths to the same state change are valid — the engagement update must be idempotent (setting `content_stage = 'review'` when already `'review'` is a no-op).
 
 ## Not In Scope
 
