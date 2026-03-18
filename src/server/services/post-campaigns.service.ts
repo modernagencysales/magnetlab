@@ -6,6 +6,11 @@
 
 import { logError } from '@/lib/utils/logger';
 import { normalizePostUrl } from '@/lib/utils/linkedin-url';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import { getTeamProfilesWithConnections } from '@/lib/services/team-integrations';
+import { analyzePostForCampaign } from '@/lib/ai/post-campaign/auto-setup';
+import type { AutoSetupResult } from '@/lib/ai/post-campaign/auto-setup';
+import type { DataScope } from '@/lib/utils/team-context';
 import * as repo from '@/server/repositories/post-campaigns.repo';
 import type {
   PostCampaignStatus,
@@ -288,6 +293,73 @@ export function randomDelay(minMs: number, maxMs: number): number {
 /** Resolve after ms milliseconds. */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ─── Auto-Setup ─────────────────────────────────────────────────────────────
+
+/**
+ * AI-powered campaign auto-setup. Fetches post text, published funnels,
+ * and team profiles with LinkedIn connections, then calls the AI analyzer
+ * to generate a draft campaign configuration.
+ */
+export async function autoSetupCampaign(
+  scope: DataScope,
+  postId: string
+): Promise<AutoSetupResult> {
+  const supabase = createSupabaseAdminClient();
+
+  // 1. Fetch post text from cp_pipeline_posts
+  const { data: post, error: postError } = await supabase
+    .from('cp_pipeline_posts')
+    .select('id, final_content, draft_content, team_profile_id')
+    .eq('id', postId)
+    .single();
+
+  if (postError || !post) {
+    throw Object.assign(new Error('Post not found'), { statusCode: 404 });
+  }
+
+  const postText = post.final_content || post.draft_content || '';
+
+  // 2. Fetch user's published funnels with lead magnet titles
+  const { data: funnels } = await supabase
+    .from('funnel_pages')
+    .select('id, slug, optin_headline, lead_magnets(title)')
+    .eq('user_id', scope.userId)
+    .eq('is_published', true);
+
+  const publishedFunnels = (funnels || []).map((f) => ({
+    id: f.id as string,
+    title: (f.optin_headline as string) || '',
+    slug: (f.slug as string) || '',
+    leadMagnetTitle: (f.lead_magnets as { title: string } | null)?.title || '',
+  }));
+
+  // 3. Fetch team profiles with Unipile connections
+  // Use team-integrations service which handles both team_profile_integrations
+  // and user_integrations fallback for resolving unipile_account_id.
+  let teamProfiles: Array<{ id: string; name: string; unipileAccountId: string }> = [];
+
+  if (scope.type === 'team' && scope.teamId) {
+    const profilesWithConnections = await getTeamProfilesWithConnections(scope.teamId);
+    teamProfiles = profilesWithConnections
+      .filter((p) => p.linkedin_connected && p.unipile_account_id)
+      .map((p) => ({
+        id: p.id,
+        name: p.full_name || '',
+        unipileAccountId: p.unipile_account_id!,
+      }));
+  }
+
+  // 4. Call AI analyzer
+  const result = await analyzePostForCampaign({
+    postText,
+    publishedFunnels,
+    teamProfiles,
+    posterProfileId: post.team_profile_id || '',
+  });
+
+  return result;
 }
 
 // ─── Error Helper ───────────────────────────────────────────────────────────
