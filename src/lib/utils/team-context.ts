@@ -5,9 +5,9 @@ import { logWarn } from '@/lib/utils/logger';
 
 export interface DataScope {
   type: 'user' | 'team';
-  userId: string;       // Always the logged-in user
-  teamId?: string;      // Set when in team context
-  ownerId?: string;     // Team owner's user_id (for billing lookups)
+  userId: string; // Always the logged-in user
+  teamId?: string; // Set when in team context
+  billingUserId?: string; // Billing team owner's user_id (for billing lookups)
 }
 
 /**
@@ -31,7 +31,7 @@ export async function getDataScope(userId: string): Promise<DataScope> {
     if (team) {
       const role = await checkTeamRole(userId, team.id);
       if (role) {
-        return { type: 'team', userId, teamId: team.id, ownerId: team.owner_id };
+        return { type: 'team', userId, teamId: team.id, billingUserId: team.owner_id };
       }
     }
   }
@@ -96,7 +96,7 @@ async function resolveTeamForApiKey(userId: string): Promise<DataScope | null> {
   if (ownedErr) {
     logWarn('getDataScope', 'Owned team lookup failed', { userId, error: ownedErr });
   } else if (ownedTeam) {
-    return { type: 'team', userId, teamId: ownedTeam.id, ownerId: ownedTeam.owner_id };
+    return { type: 'team', userId, teamId: ownedTeam.id, billingUserId: ownedTeam.owner_id };
   }
 
   // 2. Check team_profiles (V2 membership)
@@ -112,7 +112,7 @@ async function resolveTeamForApiKey(userId: string): Promise<DataScope | null> {
     logWarn('getDataScope', 'V2 team_profiles lookup failed', { userId, error: v2Err });
   } else if (v2Profile) {
     const team = v2Profile.teams as unknown as { id: string; owner_id: string };
-    return { type: 'team', userId, teamId: team.id, ownerId: team.owner_id };
+    return { type: 'team', userId, teamId: team.id, billingUserId: team.owner_id };
   }
 
   // 3. Check team_members (V1 membership — owner_id + member_id pattern)
@@ -135,7 +135,7 @@ async function resolveTeamForApiKey(userId: string): Promise<DataScope | null> {
       .maybeSingle();
 
     if (ownerTeam) {
-      return { type: 'team', userId, teamId: ownerTeam.id, ownerId: ownerTeam.owner_id };
+      return { type: 'team', userId, teamId: ownerTeam.id, billingUserId: ownerTeam.owner_id };
     }
   }
 
@@ -152,7 +152,7 @@ async function resolveTeamForApiKey(userId: string): Promise<DataScope | null> {
  */
 export async function getScopeForResource(
   userId: string,
-  resourceTeamId: string | null | undefined,
+  resourceTeamId: string | null | undefined
 ): Promise<DataScope> {
   const scope = await getDataScope(userId);
 
@@ -171,7 +171,12 @@ export async function getScopeForResource(
       .select('owner_id')
       .eq('id', resourceTeamId)
       .single();
-    return { type: 'team', userId, teamId: resourceTeamId, ownerId: team?.owner_id ?? userId };
+    return {
+      type: 'team',
+      userId,
+      teamId: resourceTeamId,
+      billingUserId: team?.owner_id ?? userId,
+    };
   }
 
   // No cross-team access — fall back to cookie scope (will likely 404 at query level)

@@ -122,6 +122,7 @@ export interface Team {
   industry: string | null;
   target_audience: string | null;
   shared_goal: string | null;
+  billing_team_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -184,13 +185,26 @@ export interface TeamProfile {
   expertise_areas: string[];
   voice_profile: TeamVoiceProfile;
   avatar_url: string | null;
-  role: 'owner' | 'member';
   status: 'active' | 'pending' | 'removed';
   is_default: boolean;
-  invited_at: string | null;
-  accepted_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface TeamMember {
+  id: string;
+  team_id: string;
+  user_id: string;
+  role: 'owner' | 'member';
+  status: 'active' | 'pending' | 'removed';
+  joined_at: string;
+}
+
+export interface TeamLink {
+  id: string;
+  agency_team_id: string;
+  client_team_id: string;
+  created_at: string;
 }
 
 // ============================================
@@ -533,6 +547,7 @@ export interface PostTemplate {
   usage_count: number;
   avg_engagement_score: number | null;
   is_active: boolean;
+  team_id?: string | null;
   created_at: string;
   updated_at: string;
 }

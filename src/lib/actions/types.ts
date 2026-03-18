@@ -1,6 +1,7 @@
+import { DataScope } from '@/lib/utils/team-context';
+
 export interface ActionContext {
-  userId: string;
-  teamId?: string;
+  scope: DataScope;
 }
 
 export interface ActionResult<T = unknown> {
