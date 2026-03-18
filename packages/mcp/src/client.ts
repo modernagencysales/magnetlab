@@ -270,6 +270,88 @@ export class MagnetLabClient {
     return this.request<{ funnel: unknown }>('POST', url, { publish: false });
   }
 
+  // ─── Libraries ──────────────────────────────────────────────────────────
+
+  async createLibrary(params: {
+    name: string;
+    description?: string;
+    icon?: string;
+    slug?: string;
+    autoFeatureDays?: number;
+    teamId?: string;
+  }) {
+    const { teamId, ...body } = params;
+    const url = this.appendTeamId('/libraries', teamId);
+    return this.request<{ library: unknown }>('POST', url, body);
+  }
+
+  async listLibraries(limit?: number, offset?: number, teamId?: string) {
+    const params = new URLSearchParams();
+    if (limit !== undefined) params.set('limit', String(limit));
+    if (offset !== undefined) params.set('offset', String(offset));
+    const qs = params.toString();
+    const path = qs ? `/libraries?${qs}` : '/libraries';
+    const url = this.appendTeamId(path, teamId);
+    return this.request<{ libraries: unknown[] }>('GET', url);
+  }
+
+  async getLibrary(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/libraries/${id}`, teamId);
+    return this.request<{ library: unknown; items: unknown[] }>('GET', url);
+  }
+
+  async updateLibrary(
+    id: string,
+    params: {
+      name?: string;
+      description?: string | null;
+      icon?: string;
+      slug?: string;
+      autoFeatureDays?: number;
+      teamId?: string;
+    }
+  ) {
+    const { teamId, ...body } = params;
+    const url = this.appendTeamId(`/libraries/${id}`, teamId);
+    return this.request<{ library: unknown }>('PUT', url, body);
+  }
+
+  async deleteLibrary(id: string, teamId?: string) {
+    const url = this.appendTeamId(`/libraries/${id}`, teamId);
+    return this.request<{ success: boolean }>('DELETE', url);
+  }
+
+  async addLibraryItem(
+    libraryId: string,
+    params: {
+      assetType: string;
+      leadMagnetId?: string;
+      externalResourceId?: string;
+      iconOverride?: string;
+      sortOrder?: number;
+      isFeatured?: boolean;
+      teamId?: string;
+    }
+  ) {
+    const { teamId, ...body } = params;
+    const url = this.appendTeamId(`/libraries/${libraryId}/items`, teamId);
+    return this.request<{ item: unknown }>('POST', url, body);
+  }
+
+  async removeLibraryItem(libraryId: string, itemId: string, teamId?: string) {
+    const url = this.appendTeamId(`/libraries/${libraryId}/items/${itemId}`, teamId);
+    return this.request<{ success: boolean }>('DELETE', url);
+  }
+
+  async reorderLibraryItems(
+    libraryId: string,
+    items: Array<{ id: string; sortOrder: number }>,
+    teamId?: string
+  ) {
+    const url = this.appendTeamId(`/libraries/${libraryId}/items/reorder`, teamId);
+    return this.request<{ success: boolean }>('POST', url, { items });
+  }
+
   // ─── Knowledge Base ───────────────────────────────────────────────────────
 
   async searchKnowledge(params: {
@@ -349,10 +431,7 @@ export class MagnetLabClient {
     if (params?.isBuffer !== undefined) searchParams.set('is_buffer', String(params.isBuffer));
     if (params?.limit) searchParams.set('limit', String(params.limit));
     const qs = searchParams.toString();
-    const url = this.appendTeamId(
-      `/content-pipeline/posts${qs ? `?${qs}` : ''}`,
-      params?.teamId
-    );
+    const url = this.appendTeamId(`/content-pipeline/posts${qs ? `?${qs}` : ''}`, params?.teamId);
     return this.request<{ posts: unknown[] }>('GET', url);
   }
 
