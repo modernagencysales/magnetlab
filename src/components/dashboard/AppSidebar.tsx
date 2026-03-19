@@ -86,6 +86,7 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   activePrefix?: string;
+  activePrefixes?: string[];
 }
 
 const mainNav: NavItem[] = [
@@ -96,10 +97,9 @@ const mainNav: NavItem[] = [
   { href: '/posts', label: 'Posts', icon: PenTool },
   { href: '/content-queue', label: 'Content Queue', icon: ListChecks },
   { href: '/inspo', label: 'Inspo', icon: Sparkles },
-  { href: '/automations', label: 'Automations', icon: Bot },
+  { href: '/campaigns', label: 'Campaigns', icon: Megaphone, activePrefixes: ['/campaigns', '/post-campaigns'] },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/signals', label: 'Signals', icon: Radio },
-  { href: '/post-campaigns', label: 'Post Campaigns', icon: Megaphone },
   { href: '/email/flows', label: 'Email', icon: Mail, activePrefix: '/email' },
   { href: '/team', label: 'Team', icon: UsersRound },
 ];
@@ -112,11 +112,12 @@ const bottomNav: NavItem[] = [
 
 // ─── Helpers ───────────────────────────────────────────
 
-function isRouteActive(pathname: string, href: string, activePrefix?: string) {
-  const matchPath = activePrefix || href;
-  return href === '/'
-    ? pathname === '/'
-    : pathname === matchPath || pathname.startsWith(matchPath + '/');
+function isRouteActive(pathname: string, item: NavItem) {
+  if (item.activePrefixes) {
+    return item.activePrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
+  }
+  const matchPath = item.activePrefix || item.href;
+  return item.href === '/' ? pathname === '/' : pathname === matchPath || pathname.startsWith(matchPath + '/');
 }
 
 function getTourId(href: string) {
@@ -275,7 +276,7 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNav.map((item) => {
-                const active = isRouteActive(pathname, item.href, item.activePrefix);
+                const active = isRouteActive(pathname, item);
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
@@ -303,7 +304,7 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
           <SidebarGroupContent>
             <SidebarMenu>
               {bottomNav.map((item) => {
-                const active = isRouteActive(pathname, item.href, item.activePrefix);
+                const active = isRouteActive(pathname, item);
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
@@ -326,7 +327,7 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
-                    isActive={isRouteActive(pathname, '/admin')}
+                    isActive={isRouteActive(pathname, { href: '/admin', label: 'Admin', icon: Shield })}
                     tooltip="Admin"
                     data-tour="admin"
                   >
