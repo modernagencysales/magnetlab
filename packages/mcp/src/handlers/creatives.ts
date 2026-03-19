@@ -39,10 +39,15 @@ export async function handleCreativeTools(
       });
 
     case 'magnetlab_list_recyclable_posts':
-      return { message: 'Phase 2 not yet implemented' };
+      return client.listRecyclablePosts({
+        limit: args.limit as number | undefined,
+      });
 
     case 'magnetlab_recycle_post':
-      return { message: 'Phase 2 not yet implemented' };
+      return client.recyclePost({
+        postId: args.post_id as string,
+        type: args.type as 'repost' | 'cousin',
+      });
 
     default:
       throw new Error(`Unknown creative tool: ${name}`);

@@ -735,4 +735,22 @@ export class MagnetLabClient {
       priority,
     });
   }
+
+  async listRecyclablePosts(params: { limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params.limit !== undefined) searchParams.set('limit', String(params.limit));
+    const qs = searchParams.toString();
+    return this.request<{ posts: unknown[] }>(
+      'GET',
+      `/content-pipeline/posts/recyclable${qs ? `?${qs}` : ''}`
+    );
+  }
+
+  async recyclePost(params: { postId: string; type: 'repost' | 'cousin' }) {
+    return this.request<{ post: unknown }>(
+      'POST',
+      `/content-pipeline/posts/${params.postId}/recycle`,
+      { type: params.type }
+    );
+  }
 }
