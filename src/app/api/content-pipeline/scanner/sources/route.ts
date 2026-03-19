@@ -20,7 +20,14 @@ const SOURCE_COLUMNS =
 // ─── Validation schemas ───────────────────────────────────────────────────────
 
 const CreateSourceSchema = z.object({
-  source_type: z.enum(['creator', 'search_term', 'hashtag', 'competitor']),
+  source_type: z.enum([
+    'creator',
+    'search_term',
+    'hashtag',
+    'competitor',
+    'reddit_subreddit',
+    'reddit_search',
+  ]),
   source_value: z.string().min(1, 'source_value is required').max(500),
   priority: z.number().int().min(1).max(5).optional().default(3),
 });

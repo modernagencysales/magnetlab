@@ -1,4 +1,4 @@
-/** Handler dispatcher. Routes all 51 tool calls to domain handlers via flat lookup map. Never contains business logic. */
+/** Handler dispatcher. Routes all 52 tool calls to domain handlers via flat lookup map. Never contains business logic. */
 
 import type { MagnetLabClient } from '../client.js';
 import { validateToolArgs } from '../validation.js';
@@ -96,9 +96,10 @@ const handlerMap: Record<string, Handler> = {
   magnetlab_review_funnel: handleContentQueueTools,
   magnetlab_submit_asset_review: handleContentQueueTools,
 
-  // Exploits (2)
+  // Exploits (3)
   magnetlab_list_exploits: handleExploitTools,
   magnetlab_generate_post: handleExploitTools,
+  magnetlab_get_trends: handleExploitTools,
 
   // Creatives (6)
   magnetlab_create_creative: handleCreativeTools,

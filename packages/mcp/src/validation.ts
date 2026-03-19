@@ -474,7 +474,7 @@ export const toolSchemas: Record<string, z.ZodType> = {
     team_id: z.string().min(1, 'team_id is required'),
   }),
 
-  // ── Exploits (2) ─────────────────────────────────────────────────────────
+  // ── Exploits (3) ─────────────────────────────────────────────────────────
 
   magnetlab_list_exploits: z.object({
     category: z.enum(['regular_post', 'lead_magnet'] as [string, ...string[]]).optional(),
@@ -491,6 +491,10 @@ export const toolSchemas: Record<string, z.ZodType> = {
     style_id: z.string().optional(),
     hook: z.string().optional(),
     instructions: z.string().optional(),
+  }),
+
+  magnetlab_get_trends: z.object({
+    limit: z.number().min(1).max(100).default(10).optional(),
   }),
 
   // ── Creatives (6) ────────────────────────────────────────────────────────
