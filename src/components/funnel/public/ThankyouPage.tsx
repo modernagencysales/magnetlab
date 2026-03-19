@@ -686,8 +686,8 @@ export function ThankyouPage({
                   handleSkip={handleSkip}
                 />
               ) : qualificationComplete && isQualified && calendlyUrl ? (
-                /* State 3a: Booking (replaces survey) */
-                <div className="space-y-4">
+                /* State 3a: Booking (replaces survey) — break out of max-w-2xl for wider iClosed embed */
+                <div className="space-y-4 relative left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-4xl">
                   <QualificationResult isQualified={true} passMessage={passMessage} failMessage={failMessage} />
                   <CalendlyEmbed url={calendlyUrl} prefillData={buildPrefillData()} />
                 </div>
