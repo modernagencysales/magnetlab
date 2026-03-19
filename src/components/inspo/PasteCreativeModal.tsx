@@ -3,7 +3,6 @@
 /**
  * PasteCreativeModal. Simple dialog for manually inputting creative content.
  * Submits to creatives API, shows score in toast result.
- * Never imports from Next.js HTTP layer.
  */
 
 import { useState } from 'react';
