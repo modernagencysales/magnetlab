@@ -874,23 +874,18 @@ async function runImport(): Promise<void> {
 
   // ── Fetch existing lead magnets for idempotency ─────────────────────────────
 
-  console.log('Fetching existing lead magnets for dedup check...');
-  let existingTitles: Set<string>;
+  console.log('Fetching existing lead magnets...');
+  let existingLms: Array<{ id: string; title: string; content_version?: number }> = [];
   try {
     const existing = await client.listLeadMagnets({ limit: 500 });
-    existingTitles = new Set(
-      (existing.leadMagnets as Array<{ title?: string }>)
-        .map((lm) => lm.title)
-        .filter((t): t is string => !!t)
-    );
-    console.log(`  Found ${existingTitles.size} existing lead magnets\n`);
+    existingLms = (existing.leadMagnets as Array<{ id: string; title: string; content_version?: number }>) || [];
+    console.log(`  Found ${existingLms.length} existing lead magnets\n`);
   } catch (err) {
     console.error(
       '  Failed to fetch existing lead magnets:',
       err instanceof Error ? err.message : String(err)
     );
-    console.error('  Proceeding without dedup — duplicates may be created.\n');
-    existingTitles = new Set();
+    console.error('  Proceeding without existing LM lookup.\n');
   }
 
   // ── Step 1: Create library ──────────────────────────────────────────────────
@@ -924,27 +919,31 @@ async function runImport(): Promise<void> {
     const resource = resources[i];
     const label = `[${i + 1}/${resources.length}]`;
 
-    // Idempotency check
-    if (existingTitles.has(resource.title)) {
-      console.log(`${label} SKIP (exists): ${resource.title}`);
-      skipped.push(resource.title);
-      continue;
-    }
-
     console.log(`${label} Importing: ${resource.title}`);
 
     try {
-      // 2a. Create lead magnet
-      const createResult = await client.createLeadMagnet({
-        title: resource.title,
-        archetype: 'single-system' as const,
-        concept: { creatorIoId: resource.creatorId },
-      });
-      const leadMagnetId = (createResult as { leadMagnet: { id: string } }).leadMagnet.id;
-      console.log(`  Created LM: ${leadMagnetId}`);
+      let leadMagnetId: string;
 
-      // 2b. Update content
-      await client.updateLeadMagnetContent(leadMagnetId, resource.content, 1);
+      // Check if LM already exists (from a prior partial run)
+      const existingLm = existingLms.find((lm: any) => lm.title === resource.title);
+      if (existingLm) {
+        leadMagnetId = existingLm.id;
+        console.log(`  Found existing LM: ${leadMagnetId}`);
+      } else {
+        // 2a. Create lead magnet
+        const createResult = await client.createLeadMagnet({
+          title: resource.title,
+          archetype: 'single-system' as const,
+          concept: { creatorIoId: resource.creatorId },
+        });
+        leadMagnetId = (createResult as { id: string }).id;
+        console.log(`  Created LM: ${leadMagnetId}`);
+      }
+
+      // 2b. Update content (always — handles partial runs where LM exists but has no content)
+      const lmDetail = existingLm || {} as any;
+      const currentVersion = lmDetail.content_version ?? 1;
+      await client.updateLeadMagnetContent(leadMagnetId, resource.content, currentVersion);
       console.log(`  Content updated`);
 
       // 2c. Add to library
@@ -978,7 +977,9 @@ async function runImport(): Promise<void> {
         targetType: 'library' as const,
         libraryId,
       });
-      funnelId = (funnelResult.funnel as { id: string }).id;
+      funnelId = (funnelResult as { id?: string; funnel?: { id: string } }).id
+        ?? (funnelResult as { funnel?: { id: string } }).funnel?.id
+        ?? '';
       console.log(`  Funnel created: ${funnelId}`);
     } catch (err) {
       console.error('  ERROR creating funnel:', err instanceof Error ? err.message : String(err));
