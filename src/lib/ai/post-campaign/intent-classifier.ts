@@ -5,14 +5,14 @@
  * Cost: ~$0.003/call. At 100 non-keyword comments/day = $0.30/day.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 import { logError } from '@/lib/utils/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface IntentClassificationResult {
   isInterested: boolean;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: number;
   reasoning?: string;
 }
 
@@ -27,17 +27,16 @@ export async function classifyCommentIntent(
   ctaText: string,
   commentText: string
 ): Promise<IntentClassificationResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return { isInterested: false, confidence: 'low', reasoning: 'No API key configured' };
+  if (!commentText || commentText.trim() === '') {
+    return { isInterested: false, confidence: 0.2 };
   }
 
   try {
-    const client = new Anthropic({ apiKey });
+    const client = createAnthropicClient('intent-classifier');
 
     const response = await client.messages.create({
-      model: 'claude-haiku-4-20250414',
-      max_tokens: 100,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 10,
       messages: [
         {
           role: 'user',
@@ -55,15 +54,15 @@ Respond with exactly one word: YES or NO.`,
       response.content[0]?.type === 'text' ? response.content[0].text.trim().toUpperCase() : '';
 
     if (text.startsWith('YES')) {
-      return { isInterested: true, confidence: 'high' };
+      return { isInterested: true, confidence: 0.8 };
     }
-    return { isInterested: false, confidence: 'high' };
+    return { isInterested: false, confidence: 0.2 };
   } catch (err) {
     logError('intent-classifier/classify', err instanceof Error ? err : new Error(String(err)), {
       ctaText: ctaText.slice(0, 100),
       commentText: commentText.slice(0, 100),
     });
     // Fail-safe: default to not interested on error
-    return { isInterested: false, confidence: 'low', reasoning: 'Classification error' };
+    return { isInterested: false, confidence: 0.2 };
   }
 }

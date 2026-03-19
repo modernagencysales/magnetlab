@@ -157,15 +157,16 @@ export function ClientCard({
 
         {/* Action buttons */}
         <div className="flex shrink-0 flex-col gap-1.5">
-          {/* Review button is always present so the user can navigate to the AssetPicker */}
-          <button
-            type="button"
-            onClick={() => onEdit(teamId)}
-            className="flex items-center gap-1.5 rounded-md bg-violet-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-700"
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            Review
-          </button>
+          {!allPostsEdited && (
+            <button
+              type="button"
+              onClick={() => onEdit(teamId)}
+              className="flex items-center gap-1.5 rounded-md bg-violet-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-violet-700"
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              Review
+            </button>
+          )}
 
           {allPostsEdited && (
             <button
