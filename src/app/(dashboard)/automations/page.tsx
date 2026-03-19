@@ -1,10 +1,5 @@
-import { AutomationList } from '@/components/automations/AutomationList';
-
-export const metadata = {
-  title: 'Automations | MagnetLab',
-  description: 'Manage your LinkedIn comment-to-DM automations',
-};
+import { redirect } from 'next/navigation';
 
 export default function AutomationsPage() {
-  return <AutomationList />;
+  redirect('/campaigns');
 }
