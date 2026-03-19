@@ -11,9 +11,11 @@ import { FeedbackWidget } from './FeedbackWidget';
 import { PostPreviewCard } from './PostPreviewCard';
 import { KnowledgeResultCard } from './KnowledgeResultCard';
 import { IdeaListCard } from './IdeaListCard';
+import { ContentReviewPanel } from './ContentReviewPanel';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import type { CopilotMessage } from './copilot-types';
 import type { PendingConfirmation } from './copilot-types';
+import type { ExtractedContent } from '@/lib/types/lead-magnet';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -22,6 +24,8 @@ interface MessageListProps {
   pendingConfirmation: PendingConfirmation | null;
   onConfirm: (toolUseId: string, approved: boolean) => void;
   onFeedback: (messageId: string, rating: 'positive' | 'negative', note?: string) => void;
+  onContentApprove?: (content: ExtractedContent) => void;
+  onContentRequestChanges?: (feedback: string) => void;
 }
 
 // ─── Clipboard Copy Handler ─────────────────────────────────────────────────────
@@ -51,13 +55,29 @@ function ToolCallMessage({ message }: { message: CopilotMessage }) {
 
 // ─── Tool Result Card ───────────────────────────────────────────────────────────
 
-function ToolResultMessage({ message }: { message: CopilotMessage }) {
+function ToolResultMessage({
+  message,
+  onContentApprove,
+  onContentRequestChanges,
+}: {
+  message: CopilotMessage;
+  onContentApprove?: (content: ExtractedContent) => void;
+  onContentRequestChanges?: (feedback: string) => void;
+}) {
   const result = message.toolResult;
   const resultData = (
     result && typeof result === 'object' && 'data' in result ? result.data : result
   ) as Record<string, unknown> | unknown[] | undefined;
 
   switch (message.displayHint) {
+    case 'content_review':
+      return (
+        <ContentReviewPanel
+          content={resultData as unknown as ExtractedContent}
+          onApprove={onContentApprove ?? (() => {})}
+          onRequestChanges={onContentRequestChanges ?? (() => {})}
+        />
+      );
     case 'post_preview':
       return (
         <div className="my-2 max-w-2xl">
@@ -218,6 +238,8 @@ export function MessageList({
   pendingConfirmation,
   onConfirm,
   onFeedback,
+  onContentApprove,
+  onContentRequestChanges,
 }: MessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -243,7 +265,14 @@ export function MessageList({
           case 'tool_call':
             return <ToolCallMessage key={msg.id} message={msg} />;
           case 'tool_result':
-            return <ToolResultMessage key={msg.id} message={msg} />;
+            return (
+              <ToolResultMessage
+                key={msg.id}
+                message={msg}
+                onContentApprove={onContentApprove}
+                onContentRequestChanges={onContentRequestChanges}
+              />
+            );
           default:
             return null;
         }

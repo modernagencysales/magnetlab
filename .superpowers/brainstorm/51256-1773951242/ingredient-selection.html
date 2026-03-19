@@ -1,0 +1,219 @@
+<h2>How do you pick a specific ingredient?</h2>
+<p class="subtitle">When you tap an ingredient tile (e.g. "Exploit"), how should the selection work?</p>
+
+<div class="cards">
+  <!-- Option A: Inline expand -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;border-radius:8px;padding:16px;font-family:system-ui;color:#e0e0e0;font-size:12px;">
+        <!-- Grid with one expanded -->
+        <div style="font-size:10px;color:#888;margin-bottom:8px;font-weight:600;">PICK INGREDIENTS</div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
+          <div style="background:#312e81;border:2px solid #6366f1;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:14px;">🎯</div>
+            <div style="font-size:9px;color:white;font-weight:600;">Exploit</div>
+            <div style="font-size:8px;color:#a5b4fc;">▼ selected</div>
+          </div>
+          <div style="background:#252547;border:1px solid #444;border-radius:8px;padding:8px;text-align:center;opacity:0.5;">
+            <div style="font-size:14px;">🧠</div>
+            <div style="font-size:9px;color:#888;">Knowledge</div>
+          </div>
+          <div style="background:#252547;border:1px solid #444;border-radius:8px;padding:8px;text-align:center;opacity:0.5;">
+            <div style="font-size:14px;">✍️</div>
+            <div style="font-size:9px;color:#888;">Style</div>
+          </div>
+          <div style="background:#252547;border:1px solid #444;border-radius:8px;padding:8px;text-align:center;opacity:0.5;">
+            <div style="font-size:14px;">📐</div>
+            <div style="font-size:9px;color:#888;">Template</div>
+          </div>
+        </div>
+
+        <!-- Expanded panel below the grid -->
+        <div style="background:#252547;border:2px solid #6366f1;border-radius:8px;padding:12px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:10px;color:#a5b4fc;font-weight:600;">🎯 Choose an Exploit</div>
+            <div style="font-size:9px;color:#888;">13 available</div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="background:#312e81;border:1px solid #6366f1;border-radius:6px;padding:8px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:10px;color:white;font-weight:600;">Authority Play</div>
+                <div style="font-size:8px;color:#888;">Share expertise to build credibility</div>
+              </div>
+              <div style="font-size:8px;color:#22c55e;">3.2x ⚡</div>
+            </div>
+            <div style="background:#1e1e3a;border:1px solid #333;border-radius:6px;padding:8px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:10px;color:#ccc;">Contrarian Take</div>
+                <div style="font-size:8px;color:#888;">Challenge conventional wisdom</div>
+              </div>
+              <div style="font-size:8px;color:#22c55e;">2.8x ⚡</div>
+            </div>
+            <div style="background:#1e1e3a;border:1px solid #333;border-radius:6px;padding:8px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:10px;color:#ccc;">Story → Lesson</div>
+                <div style="font-size:8px;color:#888;">Personal story with a takeaway</div>
+              </div>
+              <div style="font-size:8px;color:#f59e0b;">1.9x</div>
+            </div>
+            <div style="font-size:9px;color:#6366f1;text-align:center;padding:4px;cursor:pointer;">Show 10 more...</div>
+          </div>
+        </div>
+
+        <div style="font-size:9px;color:#666;text-align:center;">Panel expands inline below the tiles</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A: Inline Expand</h3>
+      <p>Tap a tile → panel expands below with a scrollable list of options. Sorted by performance. Pick one, panel collapses, tile shows your selection. Everything stays on one page.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Slide-over drawer -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;border-radius:8px;padding:16px;font-family:system-ui;color:#e0e0e0;font-size:12px;position:relative;overflow:hidden;min-height:280px;">
+        <!-- Main page (dimmed) -->
+        <div style="opacity:0.3;">
+          <div style="font-size:10px;color:#888;margin-bottom:8px;">PICK INGREDIENTS</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+            <div style="background:#252547;border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:14px;">🎯</div>
+              <div style="font-size:9px;">Exploit</div>
+            </div>
+            <div style="background:#252547;border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:14px;">🧠</div>
+              <div style="font-size:9px;">Knowledge</div>
+            </div>
+            <div style="background:#252547;border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:14px;">✍️</div>
+              <div style="font-size:9px;">Style</div>
+            </div>
+            <div style="background:#252547;border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:14px;">📐</div>
+              <div style="font-size:9px;">Template</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide-over drawer -->
+        <div style="position:absolute;top:0;right:0;bottom:0;width:70%;background:#1e1e3a;border-left:2px solid #6366f1;padding:16px;box-shadow:-4px 0 20px rgba(0,0,0,0.5);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:11px;color:white;font-weight:600;">🎯 Exploits</div>
+            <div style="font-size:10px;color:#888;cursor:pointer;">✕</div>
+          </div>
+
+          <!-- Search -->
+          <div style="background:#252547;border:1px solid #333;border-radius:6px;padding:6px 10px;margin-bottom:10px;font-size:10px;color:#666;">Search exploits...</div>
+
+          <!-- Filters -->
+          <div style="display:flex;gap:4px;margin-bottom:10px;">
+            <span style="background:#6366f1;padding:3px 8px;border-radius:10px;font-size:8px;color:white;">All</span>
+            <span style="background:#252547;padding:3px 8px;border-radius:10px;font-size:8px;color:#888;">Top ⚡</span>
+            <span style="background:#252547;padding:3px 8px;border-radius:10px;font-size:8px;color:#888;">Regular</span>
+            <span style="background:#252547;padding:3px 8px;border-radius:10px;font-size:8px;color:#888;">Lead Mag</span>
+          </div>
+
+          <!-- List -->
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="background:#312e81;border:1px solid #6366f1;border-radius:6px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;">
+                <div style="font-size:10px;color:white;font-weight:600;">Authority Play</div>
+                <div style="font-size:8px;color:#22c55e;">3.2x ⚡</div>
+              </div>
+              <div style="font-size:8px;color:#888;margin-top:2px;">Share expertise to build credibility</div>
+              <div style="font-size:7px;color:#6366f1;margin-top:4px;">Used 12 times · Best with Knowledge</div>
+            </div>
+            <div style="background:#252547;border:1px solid #333;border-radius:6px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;">
+                <div style="font-size:10px;color:#ccc;">Contrarian Take</div>
+                <div style="font-size:8px;color:#22c55e;">2.8x ⚡</div>
+              </div>
+              <div style="font-size:8px;color:#888;margin-top:2px;">Challenge conventional wisdom</div>
+              <div style="font-size:7px;color:#6366f1;margin-top:4px;">Used 8 times · Best with Trends</div>
+            </div>
+            <div style="background:#252547;border:1px solid #333;border-radius:6px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;">
+                <div style="font-size:10px;color:#ccc;">Story → Lesson</div>
+                <div style="font-size:8px;color:#f59e0b;">1.9x</div>
+              </div>
+              <div style="font-size:8px;color:#888;margin-top:2px;">Personal story with a takeaway</div>
+            </div>
+            <div style="background:#252547;border:1px solid #333;border-radius:6px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;">
+                <div style="font-size:10px;color:#ccc;">Framework Drop</div>
+                <div style="font-size:8px;color:#888;">1.4x</div>
+              </div>
+              <div style="font-size:8px;color:#888;margin-top:2px;">Share a reusable method</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B: Slide-Over Drawer</h3>
+      <p>Tap a tile → drawer slides in from the right with search, filters, and a richer list. More room for detail: descriptions, performance stats, "best paired with" hints. Feels like a picker. Shadcn Sheet component.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Smart defaults -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;border-radius:8px;padding:16px;font-family:system-ui;color:#e0e0e0;font-size:12px;">
+        <div style="font-size:10px;color:#888;margin-bottom:8px;font-weight:600;">PICK INGREDIENTS</div>
+
+        <!-- Tiles with smart suggestions -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
+          <div style="background:#312e81;border:2px solid #6366f1;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:14px;">🎯</div>
+            <div style="font-size:9px;color:white;font-weight:600;">Exploit</div>
+            <div style="font-size:8px;color:#a5b4fc;">Authority Play</div>
+          </div>
+          <div style="background:#1e3a2e;border:2px solid #22c55e;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:14px;">🧠</div>
+            <div style="font-size:9px;color:white;font-weight:600;">Knowledge</div>
+            <div style="font-size:8px;color:#86efac;">Auto-picked</div>
+          </div>
+          <div style="background:#1e3a2e;border:2px solid #22c55e;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:14px;">✍️</div>
+            <div style="font-size:9px;color:white;font-weight:600;">Style</div>
+            <div style="font-size:8px;color:#86efac;">Sarah's voice</div>
+          </div>
+          <div style="background:#252547;border:1px solid #444;border-radius:8px;padding:8px;text-align:center;opacity:0.5;">
+            <div style="font-size:14px;">📐</div>
+            <div style="font-size:9px;color:#888;">Template</div>
+          </div>
+        </div>
+
+        <!-- The magic: AI picked for you -->
+        <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:10px;">
+          <div style="font-size:10px;color:#f59e0b;margin-bottom:6px;">✦ AI SUGGESTED RECIPE</div>
+          <div style="font-size:10px;color:#ccc;margin-bottom:8px;">Based on what's working for Sarah: <span style="color:white;">Authority Play + Knowledge + Sarah's voice</span></div>
+          <div style="display:flex;gap:6px;">
+            <div style="background:#6366f1;color:white;padding:6px 14px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;">Generate with this</div>
+            <div style="background:transparent;border:1px solid #444;color:#888;padding:6px 14px;border-radius:6px;font-size:10px;cursor:pointer;">Customize →</div>
+          </div>
+        </div>
+
+        <!-- Tap any tile to override -->
+        <div style="font-size:9px;color:#666;text-align:center;margin-bottom:8px;">Tap any tile to change the AI's pick. Or just hit Generate.</div>
+
+        <!-- If they tap to customize, show inline expand -->
+        <div style="background:#252547;border:1px dashed #444;border-radius:8px;padding:10px;">
+          <div style="font-size:9px;color:#888;text-align:center;">💡 "Customize" opens inline or drawer picker</div>
+          <div style="font-size:9px;color:#888;text-align:center;">Most users never need to — AI picks the best combo</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C: AI Picks, You Override</h3>
+      <p>AI pre-selects the best combo based on performance data. User sees the suggestion and can either accept ("Generate with this") or customize any tile. Power users override; casual users just click Generate. Lowest friction.</p>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;padding:16px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px;">
+  <p style="margin:0;font-size:14px;color:#a5b4fc;"><strong>Note:</strong> These aren't mutually exclusive. C (AI picks) could use A (inline) or B (drawer) when you tap to customize. The question is: what's the default experience?</p>
+</div>

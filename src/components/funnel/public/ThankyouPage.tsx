@@ -379,7 +379,6 @@ export function ThankyouPage({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [surveyWasCompleted, setSurveyWasCompleted] = useState(false);
-  const [bookingRevealed, setBookingRevealed] = useState(false);
   const [ctaClicked, setCtaClicked] = useState(false);
   const bookingRef = useRef<HTMLDivElement>(null);
   const surveyRef = useRef<HTMLDivElement>(null);
@@ -417,7 +416,6 @@ export function ThankyouPage({
       }
       setQualificationComplete(true);
       setSurveyWasCompleted(true);
-      setBookingRevealed(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       logError('funnel/thankyou', err, { step: 'error_submitting_qualification' });
@@ -492,8 +490,7 @@ export function ThankyouPage({
         surveyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     } else {
-      // No survey — reveal booking and scroll to it
-      setBookingRevealed(true);
+      // No survey — scroll to booking
       setTimeout(() => {
         bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
@@ -643,37 +640,31 @@ export function ThankyouPage({
               </div>
             )}
 
-            {/* CTA bridge — only render when video exists */}
-            {vslUrl && (ctaHeadline || ctaButtonText) && (
-              <div className="text-center space-y-4 py-4">
-                {ctaHeadline && (
-                  <p
-                    className="text-lg md:text-xl font-semibold"
-                    style={{ color: 'var(--ds-text)' }}
-                  >
-                    {ctaHeadline}
-                  </p>
-                )}
-                <button
-                  onClick={handleCtaClick}
-                  className="inline-flex items-center rounded-lg px-10 py-4 text-lg font-bold text-white uppercase tracking-wide transition-opacity hover:opacity-90"
-                  style={{ background: primaryColor }}
-                >
-                  {ctaButtonText || 'BOOK YOUR CALL NOW'}
-                </button>
-              </div>
-            )}
-
-            {/* All sections — social proof between CTA and survey */}
-            {sections.length > 0 && (
-              <div className="space-y-6">
-                {sections.map(s => <SectionRenderer key={s.id} section={s} />)}
-              </div>
-            )}
-
-            {/* Survey — hidden until CTA is clicked */}
+            {/* ─── Conversion Zone: CTA → Survey → Booking (same space, transforms) ─── */}
             <div ref={surveyRef}>
-              {ctaClicked && hasQuestions && !qualificationComplete && (
+              {!ctaClicked ? (
+                /* State 1: CTA headline + button */
+                vslUrl && (ctaHeadline || ctaButtonText) ? (
+                  <div className="text-center space-y-4 py-4">
+                    {ctaHeadline && (
+                      <p
+                        className="text-lg md:text-xl font-semibold"
+                        style={{ color: 'var(--ds-text)' }}
+                      >
+                        {ctaHeadline}
+                      </p>
+                    )}
+                    <button
+                      onClick={handleCtaClick}
+                      className="inline-flex items-center rounded-lg px-10 py-4 text-lg font-bold text-white uppercase tracking-wide transition-opacity hover:opacity-90"
+                      style={{ background: primaryColor }}
+                    >
+                      {ctaButtonText || 'BOOK YOUR CALL NOW'}
+                    </button>
+                  </div>
+                ) : null
+              ) : hasQuestions && !qualificationComplete ? (
+                /* State 2: Survey (replaces CTA) */
                 <SurveyCard
                   questions={questions}
                   currentQuestionIndex={currentQuestionIndex}
@@ -691,8 +682,27 @@ export function ThankyouPage({
                   handleMultipleChoiceSelect={handleMultipleChoiceSelect}
                   handleSkip={handleSkip}
                 />
-              )}
+              ) : qualificationComplete && isQualified && calendlyUrl ? (
+                /* State 3a: Booking (replaces survey) */
+                <div className="space-y-4">
+                  <QualificationResult isQualified={true} passMessage={passMessage} failMessage={failMessage} />
+                  <CalendlyEmbed url={calendlyUrl} prefillData={buildPrefillData()} />
+                </div>
+              ) : qualificationComplete && isQualified === false ? (
+                /* State 3b: Not qualified */
+                <QualificationResult isQualified={false} passMessage={passMessage} failMessage={failMessage} />
+              ) : qualificationComplete && isQualified && !calendlyUrl ? (
+                /* State 3c: Qualified but no booking URL */
+                <QualificationResult isQualified={true} passMessage={passMessage} failMessage={failMessage} />
+              ) : null}
             </div>
+
+            {/* Social proof sections — always visible below conversion zone */}
+            {sections.length > 0 && (
+              <div className="space-y-6">
+                {sections.map(s => <SectionRenderer key={s.id} section={s} />)}
+              </div>
+            )}
           </>
         )}
 
@@ -783,8 +793,8 @@ export function ThankyouPage({
           </>
         )}
 
-        {/* 8. Qualification Result — only when user completed an actual survey (not auto-qualified with no questions) */}
-        {hasQuestions && qualificationComplete && isQualified !== null && !(layout === 'side_by_side' && vslUrl) && (
+        {/* 8. Qualification Result — skip for video_first (handled inside conversion zone) and side_by_side with video */}
+        {layout !== 'video_first' && hasQuestions && qualificationComplete && isQualified !== null && !(layout === 'side_by_side' && vslUrl) && (
           <QualificationResult isQualified={isQualified} passMessage={passMessage} failMessage={failMessage} />
         )}
 
@@ -814,18 +824,15 @@ export function ThankyouPage({
         )}
       </div>
 
-      {/* 10. Booking embed — in video_first, only show after user earns it (survey or CTA click) */}
-      {qualificationComplete && isQualified && calendlyUrl &&
-        (layout !== 'video_first' || bookingRevealed) && (
+      {/* 10. Booking embed — skip for video_first (handled inside conversion zone) */}
+      {layout !== 'video_first' && qualificationComplete && isQualified && calendlyUrl && (
         <div ref={bookingRef} className="w-full max-w-5xl px-4 mt-8 space-y-4">
-          {!(layout === 'video_first' && vslUrl) && (
-            <h3
-              className="text-lg font-semibold text-center"
-              style={{ color: 'var(--ds-text)' }}
-            >
-              Book Your Call
-            </h3>
-          )}
+          <h3
+            className="text-lg font-semibold text-center"
+            style={{ color: 'var(--ds-text)' }}
+          >
+            Book Your Call
+          </h3>
           <CalendlyEmbed url={calendlyUrl} prefillData={buildPrefillData()} />
         </div>
       )}
