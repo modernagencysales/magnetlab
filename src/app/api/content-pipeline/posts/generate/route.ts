@@ -153,7 +153,9 @@ export async function POST(request: NextRequest) {
     if (exploit_id) insertRow.exploit_id = exploit_id;
     if (creative_id) insertRow.creative_id = creative_id;
     if (idea_id) insertRow.idea_id = idea_id;
-    if (scope.teamId) insertRow.team_id = scope.teamId;
+    // Note: cp_pipeline_posts uses team_profile_id (not team_id) for team scoping.
+    // Resolving team_profile_id requires a DB lookup; omit here — consistent with
+    // createAgentPost default behavior where profile resolution is optional.
 
     const { data: post, error: insertError } = await supabase
       .from('cp_pipeline_posts')
