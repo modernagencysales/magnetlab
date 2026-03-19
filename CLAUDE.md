@@ -244,10 +244,53 @@ Detailed docs for each feature live in `docs/`. Consult these when working on a 
 | MCP v2 Agent-Native Spec | [docs/superpowers/specs/2026-03-13-mcp-v2-agent-native-rearchitecture.md](docs/superpowers/specs/2026-03-13-mcp-v2-agent-native-rearchitecture.md) |
 | Content Queue | [docs/superpowers/specs/2026-03-17-dfy-content-queue-design.md](docs/superpowers/specs/2026-03-17-dfy-content-queue-design.md) |
 | Unified Asset Review Queue | [docs/superpowers/specs/2026-03-18-unified-asset-review-queue-design.md](docs/superpowers/specs/2026-03-18-unified-asset-review-queue-design.md) |
+| Outreach Sequence Engine | [docs/superpowers/specs/2026-03-18-outreach-sequence-engine-design.md](docs/superpowers/specs/2026-03-18-outreach-sequence-engine-design.md) |
+
+## Outreach Sequence Engine (Mar 2026)
+
+Proactive LinkedIn outreach — create campaigns with preset sequences, add leads, and the system automatically executes view profile → connect → message → follow-up steps with human-like timing.
+
+### Architecture
+
+```
+Agent creates campaign + adds leads via MCP
+  → advance-outreach-sequences evaluates leads every 5 min
+  → enqueues actions into linkedin_action_queue
+  → execute-linkedin-actions drains queue per account (safety-gated)
+  → check-outreach-replies detects replies every 30 min
+```
+
+All LinkedIn actions (from both outreach sequences AND post campaigns) flow through a single shared queue. One action at a time per account, randomized delays, operating hours, circuit breaker.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/trigger/execute-linkedin-actions.ts` | Shared queue executor (drains all LinkedIn actions) |
+| `src/trigger/advance-outreach-sequences.ts` | Lead state machine (evaluates next steps per preset) |
+| `src/trigger/check-outreach-replies.ts` | Reply detection + follow-up |
+| `src/server/services/linkedin-action-executor.ts` | Maps action types to Unipile API calls |
+| `src/server/repositories/linkedin-action-queue.repo.ts` | Queue CRUD operations |
+| `src/server/services/outreach-campaigns.service.ts` | Campaign CRUD + validation |
+| `src/server/repositories/outreach-campaigns.repo.ts` | Campaign + lead DB access |
+| `src/lib/types/outreach-campaigns.ts` | Types, presets (warm_connect, direct_connect, nurture) |
+| `src/lib/types/linkedin-action-queue.ts` | Queue types, priority constants |
+
+### Presets
+
+| Preset | Steps |
+|--------|-------|
+| warm_connect | view profile → wait 1 day → connect → message on accept → follow up 3 days |
+| direct_connect | view profile → connect immediately → message on accept → follow up 3 days |
+| nurture | view profile → wait 3 days → connect → message on accept → follow up 5 days |
+
+### MCP Tools (12)
+
+`magnetlab_create_outreach_campaign`, `magnetlab_list_outreach_campaigns`, `magnetlab_get_outreach_campaign`, `magnetlab_update_outreach_campaign`, `magnetlab_activate_outreach_campaign`, `magnetlab_pause_outreach_campaign`, `magnetlab_delete_outreach_campaign`, `magnetlab_add_outreach_leads`, `magnetlab_list_outreach_leads`, `magnetlab_get_outreach_lead`, `magnetlab_skip_outreach_lead`, `magnetlab_get_linkedin_activity`
 
 ## MCP Server (v2 — Agent-Native)
 
-The MCP server (`packages/mcp/`) provides 43 direct tools for AI agents. No execute gateway, no category browsers — every tool is registered with full parameter schemas.
+The MCP server (`packages/mcp/`) provides 63 direct tools for AI agents. No execute gateway, no category browsers — every tool is registered with full parameter schemas.
 
 **Philosophy:** Backend handles CRUD + rendering + embeddings. Agent handles all creative content work. Content is a single `content` JSONB field validated against archetype-specific Zod schemas at publish time.
 
@@ -257,7 +300,7 @@ The MCP server (`packages/mcp/`) provides 43 direct tools for AI agents. No exec
 - **Compound actions**: `launch_lead_magnet` (create + funnel + publish atomic), `schedule_content_week` (batch post creation).
 - **Team scoping**: Every tool accepts optional `team_id`. No implicit session state.
 
-**Tool categories (43 tools):**
+**Tool categories (63 tools):**
 | Category | Tools | Count |
 |----------|-------|-------|
 | Lead Magnets | list, get, create, update, delete | 5 |
@@ -269,6 +312,8 @@ The MCP server (`packages/mcp/`) provides 43 direct tools for AI agents. No exec
 | Schema | list_archetypes, get_archetype_schema, get_business_context | 3 |
 | Compound | launch_lead_magnet, schedule_content_week | 2 |
 | Feedback | performance_insights, recommendations | 2 |
+| Outreach | create, list, get, update, activate, pause, delete, add_leads, list_leads, get_lead, skip_lead | 11 |
+| LinkedIn Activity | get_linkedin_activity | 1 |
 | Account | list_teams | 1 |
 | Content Queue | list_content_queue, update_queue_post, submit_queue_batch, review_lead_magnet, review_funnel, submit_asset_review | 6 |
 

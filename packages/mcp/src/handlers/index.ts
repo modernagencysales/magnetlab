@@ -1,4 +1,4 @@
-/** Handler dispatcher. Routes all 52 tool calls to domain handlers via flat lookup map. Never contains business logic. */
+/** Handler dispatcher. Routes all 64 tool calls to domain handlers via flat lookup map. Never contains business logic. */
 
 import type { MagnetLabClient } from '../client.js';
 import { validateToolArgs } from '../validation.js';
@@ -15,6 +15,8 @@ import { handleAccountTools } from './account.js';
 import { handleContentQueueTools } from './content-queue.js';
 import { handleExploitTools } from './exploits.js';
 import { handleCreativeTools } from './creatives.js';
+import { handleOutreachCampaignTools } from './outreach-campaigns.js';
+import { handleLinkedInActivityTools } from './linkedin-activity.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -108,6 +110,22 @@ const handlerMap: Record<string, Handler> = {
   magnetlab_configure_scanner: handleCreativeTools,
   magnetlab_list_recyclable_posts: handleCreativeTools,
   magnetlab_recycle_post: handleCreativeTools,
+
+  // Outreach campaigns (11)
+  magnetlab_create_outreach_campaign: handleOutreachCampaignTools,
+  magnetlab_list_outreach_campaigns: handleOutreachCampaignTools,
+  magnetlab_get_outreach_campaign: handleOutreachCampaignTools,
+  magnetlab_update_outreach_campaign: handleOutreachCampaignTools,
+  magnetlab_activate_outreach_campaign: handleOutreachCampaignTools,
+  magnetlab_pause_outreach_campaign: handleOutreachCampaignTools,
+  magnetlab_delete_outreach_campaign: handleOutreachCampaignTools,
+  magnetlab_add_outreach_leads: handleOutreachCampaignTools,
+  magnetlab_list_outreach_leads: handleOutreachCampaignTools,
+  magnetlab_get_outreach_lead: handleOutreachCampaignTools,
+  magnetlab_skip_outreach_lead: handleOutreachCampaignTools,
+
+  // LinkedIn activity (1)
+  magnetlab_get_linkedin_activity: handleLinkedInActivityTools,
 };
 
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
@@ -148,3 +166,5 @@ export { handleAccountTools } from './account.js';
 export { handleContentQueueTools } from './content-queue.js';
 export { handleExploitTools } from './exploits.js';
 export { handleCreativeTools } from './creatives.js';
+export { handleOutreachCampaignTools } from './outreach-campaigns.js';
+export { handleLinkedInActivityTools } from './linkedin-activity.js';

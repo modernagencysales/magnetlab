@@ -1,11 +1,12 @@
 /**
  * Process Post Campaigns Task
  * Scheduled every 5 minutes. Four phases:
+ *   Phase 0 — Process Results: consume completed/failed queue actions, update campaign leads.
  *   Phase 1 — Detection: query signal_events for commenters, keyword match + AI intent fallback.
- *   Phase 2 — React + Reply + Connect: like post, reply to comments, send connection requests.
- *   Phase 3 — DM Sending: for leads with status='connection_accepted', send DMs.
- * Detection runs regardless of operating hours. Action phases are gated by safety checks.
- * Never runs parallel LinkedIn actions. Obeys per-account safety limits at all times.
+ *   Phase 2 — Enqueue React + Reply + Connect: enqueue actions instead of calling Unipile directly.
+ *   Phase 3 — Enqueue DMs: enqueue DM actions for leads with status='connection_accepted'.
+ * Detection runs regardless of operating hours. Action phases enqueue to the shared queue;
+ * the executor task handles safety checks, operating hours, delays, and rate limits.
  */
 
 import { schedules, logger } from '@trigger.dev/sdk/v3';
@@ -19,19 +20,163 @@ import {
   insertCampaignLead,
   findLeadsByStatus,
   updateCampaignLead,
-  incrementDailyLimit,
 } from '@/server/repositories/post-campaigns.repo';
 import { renderDmTemplate } from '@/server/services/post-campaigns.service';
 import {
-  getAccountSettings,
-  isWithinOperatingHours,
-  isCircuitBreakerActive,
-  checkDailyLimit,
-  randomDelay,
-  sleep,
-} from '@/server/services/account-safety.service';
+  enqueueAction,
+  getUnprocessedResultsByCampaign,
+  markProcessed,
+  hasPendingAction,
+} from '@/server/repositories/linkedin-action-queue.repo';
+import { QUEUE_PRIORITY } from '@/lib/types/linkedin-action-queue';
+import type { QueuedAction } from '@/lib/types/linkedin-action-queue';
 import { classifyCommentIntent } from '@/lib/ai/post-campaign/intent-classifier';
-import { LINKEDIN_SAFETY } from '@/lib/types/post-campaigns';
+
+// ─── Phase 0: Process Completed Queue Actions ────────────────────────────────
+// Consumes completed/failed actions from the queue and updates campaign lead records.
+
+async function processCompletedActions(): Promise<number> {
+  const { data: campaigns, error: campaignError } = await listActiveCampaigns();
+  if (campaignError || !campaigns || campaigns.length === 0) {
+    return 0;
+  }
+
+  let totalProcessed = 0;
+
+  for (const campaign of campaigns) {
+    try {
+      const { data: results, error: resultsError } = await getUnprocessedResultsByCampaign(
+        'post_campaign',
+        campaign.id
+      );
+
+      if (resultsError) {
+        logger.error('process-post-campaigns/phase0: failed to fetch unprocessed results', {
+          campaignId: campaign.id,
+          error: resultsError.message,
+        });
+        continue;
+      }
+
+      if (!results || results.length === 0) continue;
+
+      for (const action of results as QueuedAction[]) {
+        try {
+          if (action.status === 'completed') {
+            await processCompletedAction(action);
+          } else if (action.status === 'failed') {
+            await processFailedAction(action);
+          }
+
+          await markProcessed(action.id);
+          totalProcessed++;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          logger.warn('process-post-campaigns/phase0: failed to process action result', {
+            actionId: action.id,
+            actionType: action.action_type,
+            error: msg,
+          });
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      logError('process-post-campaigns/phase0', err instanceof Error ? err : new Error(msg), {
+        campaignId: campaign.id,
+      });
+    }
+  }
+
+  return totalProcessed;
+}
+
+/** Update campaign lead based on a successfully completed queue action. */
+async function processCompletedAction(action: QueuedAction): Promise<void> {
+  switch (action.action_type) {
+    case 'react':
+      await updateCampaignLead(action.source_lead_id, {
+        liked_at: new Date().toISOString(),
+      });
+      logger.info('process-post-campaigns/phase0: react completed', {
+        leadId: action.source_lead_id,
+        campaignId: action.source_campaign_id,
+      });
+      break;
+
+    case 'comment':
+      await updateCampaignLead(action.source_lead_id, {
+        replied_at: new Date().toISOString(),
+      });
+      logger.info('process-post-campaigns/phase0: comment completed', {
+        leadId: action.source_lead_id,
+        campaignId: action.source_campaign_id,
+      });
+      break;
+
+    case 'connect':
+      await updateCampaignLead(action.source_lead_id, {
+        status: 'connection_pending',
+        connection_requested_at: new Date().toISOString(),
+      });
+      logger.info('process-post-campaigns/phase0: connect completed', {
+        leadId: action.source_lead_id,
+        campaignId: action.source_campaign_id,
+      });
+      break;
+
+    case 'message':
+      await updateCampaignLead(action.source_lead_id, {
+        status: 'dm_sent',
+        dm_sent_at: new Date().toISOString(),
+        error: null,
+      });
+      logger.info('process-post-campaigns/phase0: DM completed', {
+        leadId: action.source_lead_id,
+        campaignId: action.source_campaign_id,
+      });
+      break;
+
+    case 'accept_invitation':
+      await updateCampaignLead(action.source_lead_id, {
+        status: 'connection_accepted',
+        connection_accepted_at: new Date().toISOString(),
+      });
+      logger.info('process-post-campaigns/phase0: accept_invitation completed', {
+        leadId: action.source_lead_id,
+        campaignId: action.source_campaign_id,
+      });
+      break;
+
+    default:
+      logger.warn('process-post-campaigns/phase0: unhandled action type', {
+        actionType: action.action_type,
+        actionId: action.id,
+      });
+  }
+}
+
+/** Update campaign lead based on a failed queue action. */
+async function processFailedAction(action: QueuedAction): Promise<void> {
+  if (action.action_type === 'message') {
+    await updateCampaignLead(action.source_lead_id, {
+      status: 'dm_failed',
+      error: action.error ?? 'Queue action failed',
+    });
+    logger.warn('process-post-campaigns/phase0: DM action failed', {
+      leadId: action.source_lead_id,
+      campaignId: action.source_campaign_id,
+      error: action.error,
+    });
+  } else {
+    // Log other failures but don't change lead status — the action can be retried
+    logger.warn('process-post-campaigns/phase0: action failed', {
+      actionType: action.action_type,
+      leadId: action.source_lead_id,
+      campaignId: action.source_campaign_id,
+      error: action.error,
+    });
+  }
+}
 
 // ─── Phase 1: Detect New Commenters ─────────────────────────────────────────
 // Runs regardless of operating hours — DB-only work (+ AI intent call for Tier 2).
@@ -188,52 +333,25 @@ async function detectCommenters(): Promise<number> {
   return totalInserted;
 }
 
-// ─── Phase 2: React + Reply + Connect ───────────────────────────────────────
-// Gated by operating hours and circuit breaker. Uses safety service for all limit checks.
+// ─── Phase 2: Enqueue React + Reply + Connect ───────────────────────────────
+// Enqueues actions to the shared queue. The executor handles safety, delays, and limits.
 
 async function reactReplyConnect(): Promise<{
-  replied: number;
-  connectsSent: number;
-  liked: boolean;
+  enqueued: number;
 }> {
   const { data: campaigns, error: campaignError } = await listActiveCampaigns();
   if (campaignError || !campaigns || campaigns.length === 0) {
-    return { replied: 0, connectsSent: 0, liked: false };
+    return { enqueued: 0 };
   }
 
   const client = getUnipileClient();
-  let totalReplied = 0;
-  let totalConnects = 0;
-  let anyLiked = false;
-  let actionsThisRun = 0;
+  let totalEnqueued = 0;
 
   for (const campaign of campaigns) {
-    if (actionsThisRun >= LINKEDIN_SAFETY.MAX_ACTIONS_PER_RUN) break;
-
     try {
       // Determine poster and delivery account IDs
       const posterAccountId = campaign.poster_account_id ?? campaign.unipile_account_id;
       const deliveryAccountId = campaign.unipile_account_id;
-
-      // Get safety settings for both accounts
-      const posterSettings = await getAccountSettings(campaign.user_id, posterAccountId);
-      const deliverySettings = await getAccountSettings(campaign.user_id, deliveryAccountId);
-
-      // Operating hours gate — skip action phases if outside hours
-      if (!isWithinOperatingHours(posterSettings) || !isWithinOperatingHours(deliverySettings)) {
-        logger.info('process-post-campaigns/react-reply: outside operating hours', {
-          campaignId: campaign.id,
-        });
-        continue;
-      }
-
-      // Circuit breaker gate
-      if (isCircuitBreakerActive(posterSettings) || isCircuitBreakerActive(deliverySettings)) {
-        logger.info('process-post-campaigns/react-reply: circuit breaker active', {
-          campaignId: campaign.id,
-        });
-        continue;
-      }
 
       // ── Step 2a: One-time post reaction (LIKE) from poster's account ──
       if (campaign.auto_like_comments) {
@@ -241,35 +359,33 @@ async function reactReplyConnect(): Promise<{
         const hasAnyLikedLeads = await hasPostBeenLiked(campaign.id);
 
         if (anyLikedLead && anyLikedLead.length > 0 && !hasAnyLikedLeads) {
-          const { allowed: canLike } = await checkDailyLimit(
-            posterAccountId,
-            'like',
-            posterSettings
-          );
-          if (canLike) {
-            try {
-              await client.addReaction(campaign.post_url, posterAccountId, 'LIKE');
-              await incrementDailyLimit(posterAccountId, 'likes_sent');
-              anyLiked = true;
-              actionsThisRun++;
-              logger.info('process-post-campaigns/react: liked post', {
-                campaignId: campaign.id,
+          const leadForLike = anyLikedLead[0];
+          if (leadForLike) {
+            // Check if there's already a pending react action for this lead
+            const pending = await hasPendingAction(leadForLike.id);
+            if (!pending) {
+              const { error: enqueueErr } = await enqueueAction({
+                user_id: campaign.user_id,
+                unipile_account_id: posterAccountId,
+                action_type: 'react',
+                payload: { post_id: campaign.post_url },
+                priority: QUEUE_PRIORITY.POST_CAMPAIGN,
+                source_type: 'post_campaign',
+                source_campaign_id: campaign.id,
+                source_lead_id: leadForLike.id,
               });
 
-              // Mark first lead as liked to track that we've reacted to this post
-              if (anyLikedLead[0]) {
-                await updateCampaignLead(anyLikedLead[0].id, {
-                  liked_at: new Date().toISOString(),
+              if (enqueueErr) {
+                logger.warn('process-post-campaigns/react: failed to enqueue like', {
+                  campaignId: campaign.id,
+                  error: enqueueErr.message,
+                });
+              } else {
+                totalEnqueued++;
+                logger.info('process-post-campaigns/react: enqueued post like', {
+                  campaignId: campaign.id,
                 });
               }
-
-              await sleep(randomDelay(deliverySettings));
-            } catch (likeErr) {
-              const msg = likeErr instanceof Error ? likeErr.message : 'Unknown error';
-              logger.warn('process-post-campaigns/react: like failed', {
-                campaignId: campaign.id,
-                error: msg,
-              });
             }
           }
         }
@@ -277,165 +393,138 @@ async function reactReplyConnect(): Promise<{
 
       // ── Step 2b: Reply to comments from delivery account ──
       if (campaign.reply_template) {
-        const remaining = LINKEDIN_SAFETY.MAX_ACTIONS_PER_RUN - actionsThisRun;
-        if (remaining <= 0) break;
-
-        const { data: unrepliedLeads } = await findLeadsByStatus(
-          campaign.id,
-          'detected',
-          remaining
-        );
+        const { data: unrepliedLeads } = await findLeadsByStatus(campaign.id, 'detected', 20);
 
         if (unrepliedLeads && unrepliedLeads.length > 0) {
           // Filter to leads that haven't been replied to yet
           const needsReply = unrepliedLeads.filter((l) => !l.replied_at);
 
           for (const lead of needsReply) {
-            if (actionsThisRun >= LINKEDIN_SAFETY.MAX_ACTIONS_PER_RUN) break;
+            // Skip if this lead already has a pending action
+            const pending = await hasPendingAction(lead.id);
+            if (pending) continue;
 
-            const { allowed: canComment } = await checkDailyLimit(
-              deliveryAccountId,
-              'comment',
-              deliverySettings
-            );
-            if (!canComment) {
-              logger.info('process-post-campaigns/reply: daily comment limit reached', {
-                campaignId: campaign.id,
-              });
-              break;
+            // Render reply template with {{name}}
+            const firstName = lead.name?.split(' ')[0] ?? '';
+            const replyText = campaign.reply_template
+              .replace(/\{\{name\}\}/g, firstName)
+              .replace(/\{\{full_name\}\}/g, lead.name ?? '');
+
+            // Build comment options for threading and mentions
+            const commentOptions: {
+              commentId?: string;
+              mentions?: Array<{ name: string; profile_id: string }>;
+            } = {};
+
+            if (lead.comment_social_id) {
+              commentOptions.commentId = lead.comment_social_id;
+            }
+            if (lead.name && lead.unipile_provider_id) {
+              commentOptions.mentions = [{ name: lead.name, profile_id: lead.unipile_provider_id }];
             }
 
-            try {
-              // Render reply template with {{name}}
-              const firstName = lead.name?.split(' ')[0] ?? '';
-              const replyText = campaign.reply_template
-                .replace(/\{\{name\}\}/g, firstName)
-                .replace(/\{\{full_name\}\}/g, lead.name ?? '');
+            // Prepend mention marker if we have mention data
+            const textWithMention =
+              commentOptions.mentions && commentOptions.mentions.length > 0
+                ? `{{0}} ${replyText}`
+                : replyText;
 
-              // Build comment options for threading and mentions
-              const commentOptions: {
-                commentId?: string;
-                mentions?: Array<{ name: string; profile_id: string }>;
-              } = {};
+            const { error: enqueueErr } = await enqueueAction({
+              user_id: campaign.user_id,
+              unipile_account_id: deliveryAccountId,
+              action_type: 'comment',
+              payload: {
+                post_id: campaign.post_url,
+                text: textWithMention,
+                options: Object.keys(commentOptions).length > 0 ? commentOptions : undefined,
+              },
+              priority: QUEUE_PRIORITY.POST_CAMPAIGN,
+              source_type: 'post_campaign',
+              source_campaign_id: campaign.id,
+              source_lead_id: lead.id,
+            });
 
-              if (lead.comment_social_id) {
-                commentOptions.commentId = lead.comment_social_id;
-              }
-              if (lead.name && lead.unipile_provider_id) {
-                commentOptions.mentions = [
-                  { name: lead.name, profile_id: lead.unipile_provider_id },
-                ];
-              }
+            if (enqueueErr) {
+              logger.warn('process-post-campaigns/reply: failed to enqueue comment', {
+                campaignId: campaign.id,
+                leadId: lead.id,
+                error: enqueueErr.message,
+              });
+            } else {
+              totalEnqueued++;
+              logger.info('process-post-campaigns/reply: enqueued comment reply', {
+                campaignId: campaign.id,
+                leadId: lead.id,
+              });
+            }
 
-              // Prepend mention marker if we have mention data
-              const textWithMention =
-                commentOptions.mentions && commentOptions.mentions.length > 0
-                  ? `{{0}} ${replyText}`
-                  : replyText;
-
-              await client.addComment(
-                campaign.post_url,
-                deliveryAccountId,
-                textWithMention,
-                Object.keys(commentOptions).length > 0 ? commentOptions : undefined
+            // ── Step 2c: Enqueue connection request (location-gated) ──
+            if (campaign.auto_connect_non_requesters) {
+              const shouldConnect = matchesTargetLocations(
+                lead.location,
+                campaign.target_locations ?? []
               );
 
-              await updateCampaignLead(lead.id, {
-                replied_at: new Date().toISOString(),
-              });
-              await incrementDailyLimit(deliveryAccountId, 'comments_sent');
-              totalReplied++;
-              actionsThisRun++;
-
-              logger.info('process-post-campaigns/reply: replied to comment', {
-                campaignId: campaign.id,
-                leadId: lead.id,
-              });
-
-              // ── Step 2c: Send connection request (location-gated) ──
-              if (
-                campaign.auto_connect_non_requesters &&
-                actionsThisRun < LINKEDIN_SAFETY.MAX_ACTIONS_PER_RUN
-              ) {
-                const shouldConnect = matchesTargetLocations(
-                  lead.location,
-                  campaign.target_locations ?? []
-                );
-
-                if (shouldConnect) {
-                  const { allowed: canConnect } = await checkDailyLimit(
-                    deliveryAccountId,
-                    'connection_request',
-                    deliverySettings
-                  );
-
-                  if (canConnect) {
-                    try {
-                      // Resolve provider_id if not cached
-                      let providerId = lead.unipile_provider_id;
-                      if (!providerId) {
-                        const username =
-                          lead.linkedin_username ?? extractLinkedInUsername(lead.linkedin_url);
-                        if (username) {
-                          const profileResult = await client.resolveLinkedInProfile(
-                            deliveryAccountId,
-                            username
-                          );
-                          if (profileResult.data) {
-                            providerId = profileResult.data.provider_id;
-                            await updateCampaignLead(lead.id, {
-                              unipile_provider_id: providerId,
-                            });
-                          }
-                        }
-                      }
-
-                      if (providerId) {
-                        await client.sendConnectionRequest(
-                          deliveryAccountId,
-                          providerId,
-                          campaign.connect_message_template ?? undefined
-                        );
-
+              if (shouldConnect) {
+                try {
+                  // Resolve provider_id if not cached (direct Unipile lookup, not an "action")
+                  let providerId = lead.unipile_provider_id;
+                  if (!providerId) {
+                    const username =
+                      lead.linkedin_username ?? extractLinkedInUsername(lead.linkedin_url);
+                    if (username) {
+                      const profileResult = await client.resolveLinkedInProfile(
+                        deliveryAccountId,
+                        username
+                      );
+                      if (profileResult.data) {
+                        providerId = profileResult.data.provider_id;
                         await updateCampaignLead(lead.id, {
-                          status: 'connection_pending',
-                          connection_requested_at: new Date().toISOString(),
-                        });
-                        await incrementDailyLimit(deliveryAccountId, 'connection_requests_sent');
-                        totalConnects++;
-                        actionsThisRun++;
-
-                        logger.info('process-post-campaigns/connect: connection request sent', {
-                          campaignId: campaign.id,
-                          leadId: lead.id,
+                          unipile_provider_id: providerId,
                         });
                       }
-                    } catch (connectErr) {
-                      const msg =
-                        connectErr instanceof Error ? connectErr.message : 'Unknown error';
-                      logger.warn('process-post-campaigns/connect: connection request failed', {
+                    }
+                  }
+
+                  if (providerId) {
+                    const { error: connectErr } = await enqueueAction({
+                      user_id: campaign.user_id,
+                      unipile_account_id: deliveryAccountId,
+                      action_type: 'connect',
+                      target_provider_id: providerId,
+                      target_linkedin_url: lead.linkedin_url,
+                      payload: {
+                        message: campaign.connect_message_template ?? undefined,
+                      },
+                      priority: QUEUE_PRIORITY.POST_CAMPAIGN,
+                      source_type: 'post_campaign',
+                      source_campaign_id: campaign.id,
+                      source_lead_id: lead.id,
+                    });
+
+                    if (connectErr) {
+                      logger.warn('process-post-campaigns/connect: failed to enqueue connect', {
                         campaignId: campaign.id,
                         leadId: lead.id,
-                        error: msg,
+                        error: connectErr.message,
+                      });
+                    } else {
+                      totalEnqueued++;
+                      logger.info('process-post-campaigns/connect: enqueued connection request', {
+                        campaignId: campaign.id,
+                        leadId: lead.id,
                       });
                     }
-
-                    await sleep(randomDelay(deliverySettings));
                   }
+                } catch (connectErr) {
+                  const msg = connectErr instanceof Error ? connectErr.message : 'Unknown error';
+                  logger.warn('process-post-campaigns/connect: provider resolution failed', {
+                    campaignId: campaign.id,
+                    leadId: lead.id,
+                    error: msg,
+                  });
                 }
               }
-
-              // Delay between replies
-              if (actionsThisRun < LINKEDIN_SAFETY.MAX_ACTIONS_PER_RUN) {
-                await sleep(randomDelay(deliverySettings));
-              }
-            } catch (replyErr) {
-              const msg = replyErr instanceof Error ? replyErr.message : 'Unknown error';
-              logger.warn('process-post-campaigns/reply: reply failed', {
-                campaignId: campaign.id,
-                leadId: lead.id,
-                error: msg,
-              });
             }
           }
         }
@@ -448,11 +537,11 @@ async function reactReplyConnect(): Promise<{
     }
   }
 
-  return { replied: totalReplied, connectsSent: totalConnects, liked: anyLiked };
+  return { enqueued: totalEnqueued };
 }
 
-// ─── Phase 3: Send DMs to Accepted Connections ──────────────────────────────
-// Uses safety service for all limit checks and delays.
+// ─── Phase 3: Enqueue DMs for Accepted Connections ──────────────────────────
+// Enqueues DM actions. The executor handles safety, delays, and limits.
 
 async function sendDms(): Promise<number> {
   const supabase = createSupabaseAdminClient();
@@ -469,32 +558,19 @@ async function sendDms(): Promise<number> {
     return 0;
   }
 
-  let totalSent = 0;
-  let actionsThisRun = 0;
+  let totalEnqueued = 0;
 
   const client = getUnipileClient();
 
   for (const campaign of campaigns) {
-    if (actionsThisRun >= LINKEDIN_SAFETY.MAX_ACTIONS_PER_RUN) break;
-
     try {
       const deliveryAccountId = campaign.unipile_account_id;
-      const deliverySettings = await getAccountSettings(campaign.user_id, deliveryAccountId);
-
-      // Operating hours + circuit breaker gate
-      if (!isWithinOperatingHours(deliverySettings)) {
-        continue;
-      }
-      if (isCircuitBreakerActive(deliverySettings)) {
-        continue;
-      }
 
       // Fetch leads ready for DM (connection_accepted)
-      const remaining = LINKEDIN_SAFETY.MAX_ACTIONS_PER_RUN - actionsThisRun;
       const { data: leads, error: leadsError } = await findLeadsByStatus(
         campaign.id,
         'connection_accepted',
-        remaining
+        20
       );
 
       if (leadsError) {
@@ -534,24 +610,12 @@ async function sendDms(): Promise<number> {
       }
 
       for (const lead of leads) {
-        if (actionsThisRun >= LINKEDIN_SAFETY.MAX_ACTIONS_PER_RUN) break;
-
-        // Check daily DM limit using safety service
-        const { allowed: canSend } = await checkDailyLimit(
-          deliveryAccountId,
-          'dm',
-          deliverySettings
-        );
-        if (!canSend) {
-          logger.info('process-post-campaigns/send-dms: daily DM limit reached', {
-            campaignId: campaign.id,
-            userId: campaign.user_id,
-          });
-          break;
-        }
+        // Skip if this lead already has a pending action
+        const pending = await hasPendingAction(lead.id);
+        if (pending) continue;
 
         try {
-          // Step 1: Resolve provider_id if not cached
+          // Step 1: Resolve provider_id if not cached (direct Unipile lookup, not an "action")
           let providerId = lead.unipile_provider_id ?? null;
 
           if (!providerId) {
@@ -595,37 +659,32 @@ async function sendDms(): Promise<number> {
             funnel_url: funnelUrl,
           });
 
-          // Step 3: Send DM
-          const dmResult = await client.sendDirectMessage(deliveryAccountId, providerId, dmText);
+          // Step 3: Enqueue DM action
+          const { error: enqueueErr } = await enqueueAction({
+            user_id: campaign.user_id,
+            unipile_account_id: deliveryAccountId,
+            action_type: 'message',
+            target_provider_id: providerId,
+            target_linkedin_url: lead.linkedin_url,
+            payload: { text: dmText },
+            priority: QUEUE_PRIORITY.POST_CAMPAIGN,
+            source_type: 'post_campaign',
+            source_campaign_id: campaign.id,
+            source_lead_id: lead.id,
+          });
 
-          if (dmResult.error) {
-            logger.warn('process-post-campaigns/send-dms: DM send failed', {
+          if (enqueueErr) {
+            logger.warn('process-post-campaigns/send-dms: failed to enqueue DM', {
               leadId: lead.id,
-              error: dmResult.error,
-            });
-            await updateCampaignLead(lead.id, {
-              status: 'dm_failed',
-              error: `DM failed: ${dmResult.error}`,
+              campaignId: campaign.id,
+              error: enqueueErr.message,
             });
           } else {
-            await updateCampaignLead(lead.id, {
-              status: 'dm_sent',
-              dm_sent_at: new Date().toISOString(),
-              error: null,
-            });
-            await incrementDailyLimit(deliveryAccountId, 'dms_sent');
-            totalSent++;
-            actionsThisRun++;
-
-            logger.info('process-post-campaigns/send-dms: DM sent', {
+            totalEnqueued++;
+            logger.info('process-post-campaigns/send-dms: DM enqueued', {
               campaignId: campaign.id,
               leadId: lead.id,
             });
-          }
-
-          // Step 4: Randomized delay between DMs using safety service settings
-          if (actionsThisRun < LINKEDIN_SAFETY.MAX_ACTIONS_PER_RUN) {
-            await sleep(randomDelay(deliverySettings));
           }
         } catch (leadErr) {
           const msg = leadErr instanceof Error ? leadErr.message : 'Unknown error';
@@ -648,7 +707,7 @@ async function sendDms(): Promise<number> {
     }
   }
 
-  return totalSent;
+  return totalEnqueued;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -691,29 +750,34 @@ export const processPostCampaigns = schedules.task({
   run: async () => {
     logger.info('process-post-campaigns: starting run');
 
+    // Phase 0: Process completed/failed queue actions → update campaign leads
+    const actionsProcessed = await processCompletedActions();
+    logger.info('process-post-campaigns: phase 0 complete', { actionsProcessed });
+
     // Phase 1: Detect new commenters from signal_events (DB-only, no operating hours gate)
     const detected = await detectCommenters();
     logger.info('process-post-campaigns: detection phase complete', { detected });
 
-    // Phase 2: React + Reply + Connect (operating hours + circuit breaker gated)
-    const { replied, connectsSent, liked } = await reactReplyConnect();
-    logger.info('process-post-campaigns: react/reply/connect phase complete', {
-      replied,
-      connectsSent,
-      liked,
+    // Phase 2: Enqueue React + Reply + Connect actions
+    const { enqueued: phase2Enqueued } = await reactReplyConnect();
+    logger.info('process-post-campaigns: react/reply/connect enqueue phase complete', {
+      enqueued: phase2Enqueued,
     });
 
-    // Phase 3: Send DMs to accepted connections (operating hours + circuit breaker gated)
-    const dmsSent = await sendDms();
-    logger.info('process-post-campaigns: DM phase complete', { dmsSent });
+    // Phase 3: Enqueue DMs for accepted connections
+    const dmsEnqueued = await sendDms();
+    logger.info('process-post-campaigns: DM enqueue phase complete', { dmsEnqueued });
 
-    return { detected, replied, connectsSent, liked, dmsSent };
+    return { actionsProcessed, detected, phase2Enqueued, dmsEnqueued };
   },
 });
 
 // ─── Exported for testing ───────────────────────────────────────────────────
 
 export const _testExports = {
+  processCompletedActions,
+  processCompletedAction,
+  processFailedAction,
   detectCommenters,
   reactReplyConnect,
   sendDms,

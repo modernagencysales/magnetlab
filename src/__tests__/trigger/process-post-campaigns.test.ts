@@ -31,18 +31,15 @@ jest.mock('@/server/repositories/post-campaigns.repo', () => ({
   insertCampaignLead: jest.fn(),
   findLeadsByStatus: jest.fn(),
   updateCampaignLead: jest.fn(),
-  incrementDailyLimit: jest.fn(),
 }));
 jest.mock('@/server/services/post-campaigns.service', () => ({
   renderDmTemplate: jest.fn(),
 }));
-jest.mock('@/server/services/account-safety.service', () => ({
-  getAccountSettings: jest.fn(),
-  isWithinOperatingHours: jest.fn(),
-  isCircuitBreakerActive: jest.fn(),
-  checkDailyLimit: jest.fn(),
-  randomDelay: jest.fn(),
-  sleep: jest.fn(),
+jest.mock('@/server/repositories/linkedin-action-queue.repo', () => ({
+  enqueueAction: jest.fn(),
+  getUnprocessedResultsByCampaign: jest.fn(),
+  markProcessed: jest.fn(),
+  hasPendingAction: jest.fn(),
 }));
 jest.mock('@/lib/ai/post-campaign/intent-classifier', () => ({
   classifyCommentIntent: jest.fn(),
@@ -94,6 +91,9 @@ describe('matchesTargetLocations', () => {
 
 describe('process-post-campaigns type contracts', () => {
   it('_testExports should expose all test helpers', () => {
+    expect(_testExports).toHaveProperty('processCompletedActions');
+    expect(_testExports).toHaveProperty('processCompletedAction');
+    expect(_testExports).toHaveProperty('processFailedAction');
     expect(_testExports).toHaveProperty('detectCommenters');
     expect(_testExports).toHaveProperty('reactReplyConnect');
     expect(_testExports).toHaveProperty('sendDms');
@@ -102,6 +102,9 @@ describe('process-post-campaigns type contracts', () => {
   });
 
   it('all exported functions should be callable', () => {
+    expect(typeof _testExports.processCompletedActions).toBe('function');
+    expect(typeof _testExports.processCompletedAction).toBe('function');
+    expect(typeof _testExports.processFailedAction).toBe('function');
     expect(typeof _testExports.detectCommenters).toBe('function');
     expect(typeof _testExports.reactReplyConnect).toBe('function');
     expect(typeof _testExports.sendDms).toBe('function');

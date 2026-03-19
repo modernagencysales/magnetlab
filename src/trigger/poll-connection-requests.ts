@@ -1,12 +1,15 @@
 /**
  * Poll Connection Requests Task
- * Scheduled every 20 minutes with random jitter. Polls Unipile for pending connection
- * requests and accepts those from detected or connection_pending campaign leads.
- * Never runs parallel LinkedIn actions. Uses account-safety service for operating hours,
- * circuit breaker, daily limits, and randomized delays.
+ * Scheduled every 20 minutes with random jitter. Two phases:
+ *   Phase 0 — Process Results: consume completed accept_invitation actions from queue,
+ *             update post_campaign_leads + outreach_campaign_leads status.
+ *   Phase 1 — Discover & Enqueue: poll Unipile for pending invitations, match to campaign
+ *             leads, and enqueue accept_invitation actions to the shared queue.
+ * The executor task handles safety checks, operating hours, delays, and rate limits.
  */
 
 import { schedules, logger } from '@trigger.dev/sdk/v3';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getUnipileClient } from '@/lib/integrations/unipile';
 import { logError } from '@/lib/utils/logger';
 import {
@@ -14,19 +17,18 @@ import {
   findLeadsByStatuses,
   updateCampaignLead,
 } from '@/server/repositories/post-campaigns.repo';
+import { shouldSkipRun } from '@/server/services/account-safety.service';
 import {
-  getAccountSettings,
-  isWithinOperatingHours,
-  isCircuitBreakerActive,
-  shouldSkipRun,
-  randomDelay,
-  checkDailyLimit,
-} from '@/server/services/account-safety.service';
-import { setCircuitBreaker, incrementDailyLimit } from '@/server/repositories/account-safety.repo';
+  enqueueAction,
+  getUnprocessedResultsByCampaign,
+  markProcessed,
+  hasPendingAction,
+} from '@/server/repositories/linkedin-action-queue.repo';
+import { QUEUE_PRIORITY } from '@/lib/types/linkedin-action-queue';
+import type { QueuedAction } from '@/lib/types/linkedin-action-queue';
 import { sleep } from '@/server/services/post-campaigns.service';
 import { LINKEDIN_SAFETY } from '@/lib/types/post-campaigns';
 import type { PostCampaign, PostCampaignLead } from '@/lib/types/post-campaigns';
-import type { AccountSafetySettings } from '@/server/services/account-safety.service';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -86,223 +88,337 @@ function matchInvitationToLead(
   return null;
 }
 
-/** Get today's date string in the account's timezone (YYYY-MM-DD). */
-function getLocalDate(settings: AccountSafetySettings): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: settings.timezone });
-}
+// ─── Phase 0: Process Completed Accept Actions ──────────────────────────────
+// Consumes completed/failed accept_invitation actions from the queue,
+// updates post_campaign_leads and checks outreach_campaign_leads.
 
-/** Check if an error message indicates a rate limit or account restriction. */
-function isRateLimitOrRestriction(errorMsg: string): boolean {
-  const lower = errorMsg.toLowerCase();
-  return (
-    lower.includes('429') ||
-    lower.includes('restricted') ||
-    lower.includes('temporarily') ||
-    lower.includes('challenge')
-  );
-}
-
-// ─── Core Accept Logic (per account) ─────────────────────────────────────────
-
-async function processAccountInvitations(
-  group: CampaignGroup,
-  actionsRemaining: { count: number },
-  settings: AccountSafetySettings
-): Promise<number> {
-  const client = getUnipileClient();
-  let accepted = 0;
-
-  // Check daily accept limit for this account before fetching invitations
-  const { allowed: canAccept } = await checkDailyLimit(
-    group.accountId,
-    'connection_accept',
-    settings
-  );
-  if (!canAccept) {
-    logger.info('poll-connection-requests: daily accept limit reached for account', {
-      accountId: group.accountId,
-      userId: group.userId,
-    });
+async function processCompletedAccepts(): Promise<number> {
+  const { data: campaigns, error: campaignError } = await listActiveCampaigns();
+  if (campaignError || !campaigns || campaigns.length === 0) {
     return 0;
   }
 
-  // Fetch pending invitations for this account
-  const invitationsResult = await client.listReceivedInvitations(group.accountId);
-  if (invitationsResult.error || !invitationsResult.data) {
-    const errorMsg = String(invitationsResult.error ?? '');
-    // Check if this is a rate limit / restriction that should trigger circuit breaker
-    if (isRateLimitOrRestriction(errorMsg)) {
-      const breakerUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      await setCircuitBreaker(group.userId, group.accountId, breakerUntil);
-      logger.error('poll-connection-requests: circuit breaker activated on list invitations', {
-        accountId: group.accountId,
-        error: errorMsg,
-        breakerUntil: breakerUntil.toISOString(),
-      });
-    } else {
-      logger.error('poll-connection-requests: failed to list invitations', {
-        accountId: group.accountId,
-        error: invitationsResult.error,
-      });
-    }
-    return 0;
-  }
+  const supabase = createSupabaseAdminClient();
+  let totalProcessed = 0;
 
-  const invitations = invitationsResult.data;
-  if (invitations.length === 0) {
-    logger.info('poll-connection-requests: no pending invitations', {
-      accountId: group.accountId,
-    });
-    return 0;
-  }
-
-  logger.info('poll-connection-requests: invitations found', {
-    accountId: group.accountId,
-    count: invitations.length,
-  });
-
-  // Gather all detected + connection_pending leads across all campaigns for this account
-  const allMatchableLeads: Array<{ lead: PostCampaignLead; campaign: PostCampaign }> = [];
-
-  for (const campaign of group.campaigns) {
-    if (!campaign.auto_accept_connections) continue;
-
-    const { data: leads, error: leadsError } = await findLeadsByStatuses(campaign.id, [
-      'detected',
-      'connection_pending',
-    ]);
-
-    if (leadsError) {
-      logger.error('poll-connection-requests: failed to fetch matchable leads', {
-        campaignId: campaign.id,
-        error: leadsError.message,
-      });
-      continue;
-    }
-
-    for (const lead of leads ?? []) {
-      allMatchableLeads.push({ lead, campaign });
-    }
-  }
-
-  if (allMatchableLeads.length === 0) {
-    logger.info('poll-connection-requests: no leads waiting for acceptance', {
-      accountId: group.accountId,
-    });
-    return 0;
-  }
-
-  // Process each invitation — one at a time, never in parallel
-  for (const invitation of invitations) {
-    if (actionsRemaining.count <= 0) break;
-
-    const senderProviderId = invitation.sender?.provider_id ?? invitation.provider_id ?? null;
-    const senderPublicIdentifier =
-      ((invitation.sender as Record<string, unknown> | undefined)?.public_identifier as
-        | string
-        | undefined) ?? null;
-
-    // Try to match this invitation sender to a detected/connection_pending campaign lead
-    const match = matchInvitationToLead(
-      senderProviderId,
-      senderPublicIdentifier,
-      allMatchableLeads.map((e) => e.lead)
-    );
-
-    if (!match) continue;
-
-    const matchEntry = allMatchableLeads.find((e) => e.lead.id === match.id);
-    if (!matchEntry) continue;
-
-    const { lead, campaign } = matchEntry;
-
-    // Re-check daily limit before each accept
-    const { allowed: stillCanAccept } = await checkDailyLimit(
-      group.accountId,
-      'connection_accept',
-      settings
-    );
-    if (!stillCanAccept) {
-      logger.info('poll-connection-requests: daily accept limit reached mid-run', {
-        accountId: group.accountId,
-      });
-      break;
-    }
-
+  for (const campaign of campaigns) {
     try {
-      const acceptResult = await client.handleInvitation(invitation.id, 'accept');
+      const { data: results, error: resultsError } = await getUnprocessedResultsByCampaign(
+        'post_campaign',
+        campaign.id
+      );
 
-      if (acceptResult.error) {
-        const errorMsg = String(acceptResult.error);
-        // Check for rate limit / restriction errors
-        if (isRateLimitOrRestriction(errorMsg)) {
-          const breakerUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
-          await setCircuitBreaker(group.userId, group.accountId, breakerUntil);
-          logger.error('poll-connection-requests: circuit breaker activated for 24h', {
-            accountId: group.accountId,
-            error: errorMsg,
-            breakerUntil: breakerUntil.toISOString(),
-          });
-          break; // Stop all actions for this account
-        }
-
-        logger.warn('poll-connection-requests: failed to accept invitation', {
-          invitationId: invitation.id,
-          leadId: lead.id,
-          error: acceptResult.error,
-        });
-        // Don't update lead status — leave for retry
-      } else {
-        await updateCampaignLead(lead.id, {
-          status: 'connection_accepted',
-          connection_accepted_at: new Date().toISOString(),
-          // Cache the provider_id if we resolved it from the invitation sender
-          unipile_provider_id: lead.unipile_provider_id ?? senderProviderId ?? null,
-          error: null,
-        });
-        const localDate = getLocalDate(settings);
-        await incrementDailyLimit(group.accountId, localDate, 'connection_accept');
-        accepted++;
-        actionsRemaining.count--;
-
-        logger.info('poll-connection-requests: connection accepted', {
+      if (resultsError) {
+        logger.error('poll-connection-requests/phase0: failed to fetch unprocessed results', {
           campaignId: campaign.id,
-          leadId: lead.id,
-          invitationId: invitation.id,
+          error: resultsError.message,
         });
+        continue;
+      }
 
-        // Randomized delay between accepts — uses per-account safety settings
-        if (actionsRemaining.count > 0) {
-          await sleep(randomDelay(settings));
+      if (!results || results.length === 0) continue;
+
+      // Filter to accept_invitation actions only — other action types are handled by
+      // process-post-campaigns Phase 0
+      const acceptActions = (results as QueuedAction[]).filter(
+        (a) => a.action_type === 'accept_invitation'
+      );
+
+      for (const action of acceptActions) {
+        try {
+          if (action.status === 'completed') {
+            // Update post_campaign_lead status
+            await updateCampaignLead(action.source_lead_id, {
+              status: 'connection_accepted',
+              connection_accepted_at: new Date().toISOString(),
+            });
+
+            logger.info('poll-connection-requests/phase0: accept completed', {
+              leadId: action.source_lead_id,
+              campaignId: action.source_campaign_id,
+            });
+
+            // Check if this sender also matches an outreach campaign lead
+            await matchOutreachLeadOnAccept(supabase, action);
+          } else if (action.status === 'failed') {
+            // Log failure but don't change lead status — can be retried
+            logger.warn('poll-connection-requests/phase0: accept action failed', {
+              leadId: action.source_lead_id,
+              campaignId: action.source_campaign_id,
+              error: action.error,
+            });
+          }
+
+          await markProcessed(action.id);
+          totalProcessed++;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          logger.warn('poll-connection-requests/phase0: failed to process action result', {
+            actionId: action.id,
+            error: msg,
+          });
         }
       }
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-
-      // Check for rate limit / restriction errors from thrown exceptions
-      if (isRateLimitOrRestriction(errorMsg)) {
-        const breakerUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        await setCircuitBreaker(group.userId, group.accountId, breakerUntil);
-        logger.error('poll-connection-requests: circuit breaker activated for 24h', {
-          accountId: group.accountId,
-          error: errorMsg,
-          breakerUntil: breakerUntil.toISOString(),
-        });
-        break; // Stop all actions for this account
-      }
-
-      logError(
-        'poll-connection-requests/accept',
-        err instanceof Error ? err : new Error(errorMsg),
-        {
-          invitationId: invitation.id,
-          leadId: lead.id,
-        }
-      );
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      logError('poll-connection-requests/phase0', err instanceof Error ? err : new Error(msg), {
+        campaignId: campaign.id,
+      });
     }
   }
 
-  return accepted;
+  return totalProcessed;
+}
+
+/**
+ * When a connection is accepted, check if the sender matches an outreach campaign lead
+ * that sent a connect request but hasn't been marked connected yet.
+ * The outreach_campaign_leads table doesn't exist yet (Task 10 migration), so this is
+ * wrapped in a try/catch to silently skip until the table is created.
+ */
+async function matchOutreachLeadOnAccept(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  action: QueuedAction
+): Promise<void> {
+  try {
+    const senderProviderId = (action.result as Record<string, unknown> | null)?.provider_id as
+      | string
+      | undefined;
+
+    if (!senderProviderId) return;
+
+    const { data: outreachMatch } = await supabase
+      .from('outreach_campaign_leads')
+      .select('id, campaign_id, user_id')
+      .eq('unipile_provider_id', senderProviderId)
+      .eq('status', 'active')
+      .not('connect_sent_at', 'is', null)
+      .is('connected_at', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (outreachMatch) {
+      await supabase
+        .from('outreach_campaign_leads')
+        .update({
+          connected_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', outreachMatch.id);
+
+      logger.info('poll-connection-requests: outreach lead connected', {
+        leadId: outreachMatch.id,
+        campaignId: outreachMatch.campaign_id,
+      });
+    }
+  } catch {
+    // Table doesn't exist yet — silently skip until Task 10 migration runs
+  }
+}
+
+// ─── Phase 1: Discover & Enqueue Accept Actions ─────────────────────────────
+// Polls Unipile for pending invitations, matches to campaign leads, and enqueues
+// accept_invitation actions. The executor handles all safety checks.
+
+async function discoverAndEnqueueAccepts(): Promise<number> {
+  const client = getUnipileClient();
+  const supabase = createSupabaseAdminClient();
+
+  const { data: campaigns, error: campaignError } = await listActiveCampaigns();
+  if (campaignError || !campaigns || campaigns.length === 0) {
+    return 0;
+  }
+
+  const accountGroups = groupByAccount(campaigns);
+  let totalEnqueued = 0;
+
+  for (const group of accountGroups) {
+    try {
+      // Fetch pending invitations for this account (READ from Unipile — not an action)
+      const invitationsResult = await client.listReceivedInvitations(group.accountId);
+      if (invitationsResult.error || !invitationsResult.data) {
+        logger.error('poll-connection-requests/discover: failed to list invitations', {
+          accountId: group.accountId,
+          error: invitationsResult.error,
+        });
+        continue;
+      }
+
+      const invitations = invitationsResult.data;
+      if (invitations.length === 0) {
+        logger.info('poll-connection-requests/discover: no pending invitations', {
+          accountId: group.accountId,
+        });
+        continue;
+      }
+
+      logger.info('poll-connection-requests/discover: invitations found', {
+        accountId: group.accountId,
+        count: invitations.length,
+      });
+
+      // Gather all detected + connection_pending leads across all campaigns for this account
+      const allMatchableLeads: Array<{ lead: PostCampaignLead; campaign: PostCampaign }> = [];
+
+      for (const campaign of group.campaigns) {
+        if (!campaign.auto_accept_connections) continue;
+
+        const { data: leads, error: leadsError } = await findLeadsByStatuses(campaign.id, [
+          'detected',
+          'connection_pending',
+        ]);
+
+        if (leadsError) {
+          logger.error('poll-connection-requests/discover: failed to fetch matchable leads', {
+            campaignId: campaign.id,
+            error: leadsError.message,
+          });
+          continue;
+        }
+
+        for (const lead of leads ?? []) {
+          allMatchableLeads.push({ lead, campaign });
+        }
+      }
+
+      if (allMatchableLeads.length === 0) {
+        // No post campaign leads to match — still check outreach leads
+        await matchOutreachInvitations(supabase, invitations, group);
+        continue;
+      }
+
+      // Process each invitation
+      for (const invitation of invitations) {
+        const senderProviderId = invitation.sender?.provider_id ?? invitation.provider_id ?? null;
+        const senderPublicIdentifier =
+          ((invitation.sender as Record<string, unknown> | undefined)?.public_identifier as
+            | string
+            | undefined) ?? null;
+
+        // Try to match this invitation sender to a detected/connection_pending campaign lead
+        const match = matchInvitationToLead(
+          senderProviderId,
+          senderPublicIdentifier,
+          allMatchableLeads.map((e) => e.lead)
+        );
+
+        if (!match) {
+          // No post campaign match — check outreach leads for this sender
+          await matchOutreachInvitationSender(supabase, senderProviderId);
+          continue;
+        }
+
+        const matchEntry = allMatchableLeads.find((e) => e.lead.id === match.id);
+        if (!matchEntry) continue;
+
+        const { lead, campaign } = matchEntry;
+
+        // Skip if this lead already has a pending action
+        const pending = await hasPendingAction(lead.id);
+        if (pending) continue;
+
+        // Enqueue accept_invitation action — executor handles safety
+        const { error: enqueueErr } = await enqueueAction({
+          user_id: campaign.user_id,
+          unipile_account_id: group.accountId,
+          action_type: 'accept_invitation',
+          payload: { invitation_id: invitation.id },
+          priority: QUEUE_PRIORITY.POST_CAMPAIGN,
+          source_type: 'post_campaign',
+          source_campaign_id: campaign.id,
+          source_lead_id: lead.id,
+        });
+
+        if (enqueueErr) {
+          logger.warn('poll-connection-requests/discover: failed to enqueue accept', {
+            campaignId: campaign.id,
+            leadId: lead.id,
+            error: enqueueErr.message,
+          });
+        } else {
+          // Cache the provider_id if we resolved it from the invitation sender
+          if (!lead.unipile_provider_id && senderProviderId) {
+            await updateCampaignLead(lead.id, {
+              unipile_provider_id: senderProviderId,
+            });
+          }
+
+          totalEnqueued++;
+          logger.info('poll-connection-requests/discover: accept enqueued', {
+            campaignId: campaign.id,
+            leadId: lead.id,
+            invitationId: invitation.id,
+          });
+        }
+
+        // Also check outreach leads for this sender (in addition to post campaign match)
+        await matchOutreachInvitationSender(supabase, senderProviderId);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      logError('poll-connection-requests/discover', err instanceof Error ? err : new Error(msg), {
+        accountId: group.accountId,
+      });
+    }
+  }
+
+  return totalEnqueued;
+}
+
+/**
+ * Check all invitations against outreach campaign leads for an account group.
+ * Called when there are no post campaign leads to match.
+ */
+async function matchOutreachInvitations(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  invitations: Array<{ sender?: { provider_id?: string }; provider_id?: string }>,
+  _group: CampaignGroup
+): Promise<void> {
+  for (const invitation of invitations) {
+    const senderProviderId = invitation.sender?.provider_id ?? invitation.provider_id ?? null;
+    await matchOutreachInvitationSender(supabase, senderProviderId);
+  }
+}
+
+/**
+ * When an invitation is received, check if the sender matches an outreach campaign lead
+ * that sent a connect request. If so, mark them as connected.
+ * The outreach_campaign_leads table doesn't exist yet (Task 10 migration).
+ */
+async function matchOutreachInvitationSender(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  senderProviderId: string | null | undefined
+): Promise<void> {
+  if (!senderProviderId) return;
+
+  try {
+    const { data: outreachMatch } = await supabase
+      .from('outreach_campaign_leads')
+      .select('id, campaign_id, user_id')
+      .eq('unipile_provider_id', senderProviderId)
+      .eq('status', 'active')
+      .not('connect_sent_at', 'is', null)
+      .is('connected_at', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (outreachMatch) {
+      await supabase
+        .from('outreach_campaign_leads')
+        .update({
+          connected_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', outreachMatch.id);
+
+      logger.info('poll-connection-requests: outreach lead connected via invitation', {
+        leadId: outreachMatch.id,
+        campaignId: outreachMatch.campaign_id,
+      });
+    }
+  } catch {
+    // Table doesn't exist yet — silently skip until Task 10 migration runs
+  }
 }
 
 // ─── Scheduled Task ──────────────────────────────────────────────────────────
@@ -316,7 +432,7 @@ export const pollConnectionRequests = schedules.task({
     // Step 0: Random skip — 10% chance to add natural unpredictability
     if (shouldSkipRun()) {
       logger.info('poll-connection-requests: randomly skipping this run (10% jitter)');
-      return { skipped: true, accepted: 0 };
+      return { skipped: true, phase0Processed: 0, enqueued: 0 };
     }
 
     // Step 1: Apply random jitter before starting (0 to POLL_JITTER_MINUTES * 60s)
@@ -326,68 +442,26 @@ export const pollConnectionRequests = schedules.task({
 
     logger.info('poll-connection-requests: starting run');
 
-    // Step 2: Fetch all active campaigns
-    const { data: campaigns, error: campaignError } = await listActiveCampaigns();
-    if (campaignError) {
-      logger.error('poll-connection-requests: failed to fetch active campaigns', {
-        error: campaignError.message,
-      });
-      return { accepted: 0 };
-    }
+    // Phase 0: Process completed/failed accept_invitation actions from queue
+    const phase0Processed = await processCompletedAccepts();
+    logger.info('poll-connection-requests: phase 0 complete', { phase0Processed });
 
-    if (!campaigns || campaigns.length === 0) {
-      logger.info('poll-connection-requests: no active campaigns');
-      return { accepted: 0 };
-    }
+    // Phase 1: Discover pending invitations and enqueue accept actions
+    const enqueued = await discoverAndEnqueueAccepts();
+    logger.info('poll-connection-requests: phase 1 complete', { enqueued });
 
-    // Step 3: Group campaigns by Unipile account (one API call per account)
-    const accountGroups = groupByAccount(campaigns);
-    logger.info('poll-connection-requests: processing accounts', {
-      accountCount: accountGroups.length,
-    });
-
-    // Shared counter — capped across all accounts
-    const actionsRemaining = { count: LINKEDIN_SAFETY.MAX_ACTIONS_PER_RUN };
-    let totalAccepted = 0;
-
-    // Step 4: Process each account sequentially — never in parallel
-    for (const group of accountGroups) {
-      if (actionsRemaining.count <= 0) break;
-
-      // Load per-account safety settings (returns defaults if none configured)
-      const settings = await getAccountSettings(group.userId, group.accountId);
-
-      // Skip accounts outside operating hours
-      if (!isWithinOperatingHours(settings)) {
-        logger.info('poll-connection-requests: outside operating hours, skipping', {
-          accountId: group.accountId,
-          hours: `${settings.operating_hours_start}-${settings.operating_hours_end}`,
-          timezone: settings.timezone,
-        });
-        continue;
-      }
-
-      // Skip accounts with active circuit breaker
-      if (isCircuitBreakerActive(settings)) {
-        logger.info('poll-connection-requests: circuit breaker active, skipping', {
-          accountId: group.accountId,
-          breakerUntil: settings.circuit_breaker_until,
-        });
-        continue;
-      }
-
-      try {
-        const accepted = await processAccountInvitations(group, actionsRemaining, settings);
-        totalAccepted += accepted;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Unknown error';
-        logError('poll-connection-requests/account', err instanceof Error ? err : new Error(msg), {
-          accountId: group.accountId,
-        });
-      }
-    }
-
-    logger.info('poll-connection-requests: run complete', { totalAccepted });
-    return { accepted: totalAccepted };
+    logger.info('poll-connection-requests: run complete', { phase0Processed, enqueued });
+    return { phase0Processed, enqueued };
   },
 });
+
+// ─── Exported for testing ───────────────────────────────────────────────────
+
+export const _testExports = {
+  groupByAccount,
+  matchInvitationToLead,
+  processCompletedAccepts,
+  matchOutreachLeadOnAccept,
+  discoverAndEnqueueAccepts,
+  matchOutreachInvitationSender,
+};
