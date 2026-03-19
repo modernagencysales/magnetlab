@@ -73,7 +73,7 @@ function ToolResultMessage({
     case 'content_review':
       return (
         <ContentReviewPanel
-          content={resultData as ExtractedContent}
+          content={resultData as unknown as ExtractedContent}
           onApprove={onContentApprove ?? (() => {})}
           onRequestChanges={onContentRequestChanges ?? (() => {})}
         />
