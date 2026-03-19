@@ -8,7 +8,7 @@
 import { registerAction } from './registry';
 import type { ActionContext, ActionResult } from './types';
 import { listTemplates } from '@/server/repositories/cp-templates.repo';
-import { findStylesByUserId } from '@/server/repositories/styles.repo';
+import { findStylesByScope } from '@/server/repositories/styles.repo';
 
 // ─── Templates ────────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ registerAction({
     },
   },
   handler: async (ctx: ActionContext, params: { limit?: number }): Promise<ActionResult> => {
-    const styles = await findStylesByUserId(ctx.scope.userId, true);
+    const styles = await findStylesByScope(ctx.scope, true);
 
     const limited = (styles || []).slice(0, params.limit || 20);
 
