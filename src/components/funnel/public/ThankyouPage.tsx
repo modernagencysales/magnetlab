@@ -379,6 +379,7 @@ export function ThankyouPage({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [surveyWasCompleted, setSurveyWasCompleted] = useState(false);
+  const [bookingRevealed, setBookingRevealed] = useState(false);
   const bookingRef = useRef<HTMLDivElement>(null);
   const surveyRef = useRef<HTMLDivElement>(null);
 
@@ -415,6 +416,7 @@ export function ThankyouPage({
       }
       setQualificationComplete(true);
       setSurveyWasCompleted(true);
+      setBookingRevealed(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       logError('funnel/thankyou', err, { step: 'error_submitting_qualification' });
@@ -482,8 +484,15 @@ export function ThankyouPage({
   };
 
   const handleCtaClick = () => {
-    const target = hasQuestions ? surveyRef.current : bookingRef.current;
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (hasQuestions) {
+      surveyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      // No survey — reveal booking and scroll to it
+      setBookingRevealed(true);
+      setTimeout(() => {
+        bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
   };
 
   // If no questions, determine qualification (default to qualified)
@@ -800,8 +809,9 @@ export function ThankyouPage({
         )}
       </div>
 
-      {/* 10. Booking embed — hide heading when CTA bridge already introduced it */}
-      {qualificationComplete && isQualified && calendlyUrl && (
+      {/* 10. Booking embed — in video_first, only show after user earns it (survey or CTA click) */}
+      {qualificationComplete && isQualified && calendlyUrl &&
+        (layout !== 'video_first' || bookingRevealed) && (
         <div ref={bookingRef} className="w-full max-w-5xl px-4 mt-8 space-y-4">
           {!(layout === 'video_first' && vslUrl) && (
             <h3
