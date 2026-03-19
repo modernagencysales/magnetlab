@@ -55,7 +55,9 @@ function buildVoiceSection(input: WritePostInput): string {
     parts.push(`STORYTELLING STYLE: ${voiceProfile.storytelling_style}`);
   }
 
-  parts.push(`\nWrite as this specific person. Use "I" from their experience. Do NOT write generically.\n`);
+  parts.push(
+    `\nWrite as this specific person. Use "I" from their experience. Do NOT write generically.\n`
+  );
   return parts.join('\n');
 }
 
@@ -66,7 +68,7 @@ export interface WrittenPost {
   cta_word: string;
 }
 
-function getBaseStyleGuidelines(): string {
+export function getBaseStyleGuidelines(): string {
   return `Voice:
 - Direct, conversational, authoritative but not arrogant
 - No-BS, results-focused, slightly contrarian
@@ -99,6 +101,8 @@ Structures to avoid:
 
 Formatting:
 - Short paragraphs (1-4 sentences max)
+- Line breaks between most sentences. Not necessarily every sentence,
+  but most. LinkedIn is read on mobile — dense paragraphs get skipped.
 - Strategic line breaks for emphasis, but not after every sentence
 - Numbered lists only when teaching a process
 - Occasional all-caps for ONE key word, not whole phrases
@@ -129,12 +133,7 @@ export async function writePost(
   const { idea, targetAudience, knowledgeContext } = input;
 
   // Build topic text for RAG matching
-  const topicText = [
-    idea.title,
-    idea.core_insight,
-    idea.full_context,
-    idea.content_type,
-  ]
+  const topicText = [idea.title, idea.core_insight, idea.full_context, idea.content_type]
     .filter(Boolean)
     .join('\n');
 
