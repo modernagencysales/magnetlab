@@ -37,7 +37,20 @@ Consolidate into one "Campaigns" sidebar entry that shows both outreach and post
 **Keep:**
 - `Signals` (line 101) — unchanged
 
-**Active state:** The sidebar highlights "Campaigns" when on `/campaigns` OR `/post-campaigns` (both prefixes). Update `isRouteActive` or add a second `activePrefix` check.
+**Active state:** The sidebar highlights "Campaigns" when on `/campaigns` OR `/post-campaigns`. Extend `NavItem` with `activePrefixes?: string[]` and update `isRouteActive` to check any of them:
+
+```typescript
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  activePrefix?: string;
+  activePrefixes?: string[];  // NEW: match any of these prefixes
+}
+
+// Campaigns entry:
+{ href: '/campaigns', label: 'Campaigns', icon: Megaphone, activePrefixes: ['/campaigns', '/post-campaigns'] },
+```
 
 **Result:** Sidebar goes from 3 LinkedIn items to 2 (Campaigns, Signals).
 
@@ -68,7 +81,7 @@ Consolidate into one "Campaigns" sidebar entry that shows both outreach and post
   - Outreach: `/campaigns/[id]`
   - Post: `/post-campaigns/[id]` (existing page)
 
-**Server component** — fetches both campaign lists, merges, sorts by created_at DESC.
+**Client component** (`"use client"`) — fetches via `src/frontend/api/outreach-campaigns.ts` and `src/frontend/api/post-campaigns.ts` modules. Merges results client-side, sorts by created_at DESC. Follows the same pattern as existing list pages.
 
 ### 2. New Outreach Campaign — `/(dashboard)/campaigns/new/page.tsx`
 
@@ -136,42 +149,51 @@ Campaign is created in `draft` status. User adds leads and activates from the de
 ### New Files
 
 ```
-src/app/(dashboard)/campaigns/page.tsx              — unified list (server component)
-src/app/(dashboard)/campaigns/new/page.tsx           — new outreach campaign form
-src/app/(dashboard)/campaigns/[id]/page.tsx          — outreach campaign detail
+src/frontend/api/outreach-campaigns.ts               — client API module (follows post-campaigns.ts pattern)
+src/frontend/hooks/api/useOutreachCampaigns.ts       — SWR hooks for campaigns + leads
 
-src/components/campaigns/CampaignsList.tsx           — list table with type badges + filters
-src/components/campaigns/OutreachCampaignDetail.tsx  — detail view (stats + lead table)
-src/components/campaigns/OutreachCampaignForm.tsx    — create/edit form
-src/components/campaigns/AddLeadsModal.tsx           — bulk add leads modal
-src/components/campaigns/LeadTable.tsx               — lead list with status + actions
+src/app/(dashboard)/campaigns/page.tsx               — unified list (client component)
+src/app/(dashboard)/campaigns/new/page.tsx            — new outreach campaign form
+src/app/(dashboard)/campaigns/[id]/page.tsx           — outreach campaign detail
+
+src/components/campaigns/CampaignsList.tsx            — list table with type badges + filters
+src/components/campaigns/OutreachCampaignDetail.tsx   — detail view (stats + lead table)
+src/components/campaigns/OutreachCampaignForm.tsx     — create/edit form
+src/components/campaigns/AddLeadsModal.tsx            — bulk add leads modal
+src/components/campaigns/LeadTable.tsx                — lead list with status + actions
 ```
 
 ### Modified Files
 
 ```
-src/components/dashboard/AppSidebar.tsx              — remove Automations + Post Campaigns, add Campaigns
+src/components/dashboard/AppSidebar.tsx               — remove Automations + Post Campaigns, add Campaigns with activePrefixes
 ```
 
-### Deleted Files
+### Deleted/Replaced Files
 
 ```
-src/app/(dashboard)/automations/page.tsx             — deprecated page
+src/app/(dashboard)/automations/page.tsx              — replace with redirect to /campaigns
+```
+
+**Note:** Replace `automations/page.tsx` with a redirect stub rather than deleting:
+```typescript
+import { redirect } from 'next/navigation';
+export default function AutomationsPage() { redirect('/campaigns'); }
 ```
 
 ---
 
 ## No Backend Changes
 
-All API routes already exist from the Outreach Sequence Engine implementation. The frontend calls them directly. No new API routes, services, or repos needed.
+All API routes already exist from the Outreach Sequence Engine implementation. No new API routes, services, or repos needed. The only new data-access code is the frontend API module (`src/frontend/api/outreach-campaigns.ts`) which wraps `fetch('/api/outreach-campaigns/...')` calls — same pattern as `src/frontend/api/post-campaigns.ts`.
 
 ---
 
 ## Component Patterns
 
 Follow existing patterns from the codebase:
-- Server components for page-level data fetching
-- Client components (`"use client"`) for interactive elements (forms, modals, filters)
+- Client components (`"use client"`) for pages with data fetching and interactive elements
 - shadcn/ui components from `@magnetlab/magnetui` (Table, Badge, Button, Select, Dialog, Input, Textarea)
 - Tailwind for styling
-- `fetch('/api/...')` via `src/frontend/api/` module (if one exists) or direct server-side Supabase calls in server components
+- `src/frontend/api/` modules for API calls
+- `src/frontend/hooks/api/` for SWR hooks
