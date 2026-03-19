@@ -11,7 +11,13 @@ jest.mock('react-markdown', () => {
   const React = require('react');
   return {
     __esModule: true,
-    default: ({ children, components }: { children: string; components?: Record<string, React.ComponentType<Record<string, unknown>>> }) => {
+    default: ({
+      children,
+      components,
+    }: {
+      children: string;
+      components?: Record<string, React.ComponentType<Record<string, unknown>>>;
+    }) => {
       // Simple markdown-like rendering that uses the component overrides
       if (!components) return React.createElement('div', null, children);
 
@@ -21,10 +27,12 @@ jest.mock('react-markdown', () => {
       if (boldMatch && components.strong) {
         const Strong = components.strong;
         const parts = children.split(/\*\*(.+?)\*\*/);
-        content = React.createElement(React.Fragment, null,
+        content = React.createElement(
+          React.Fragment,
+          null,
           parts[0],
           React.createElement(Strong, { key: 'bold' }, parts[1]),
-          parts[2] || '',
+          parts[2] || ''
         );
       }
 
@@ -33,8 +41,17 @@ jest.mock('react-markdown', () => {
       if (codeBlockMatch && components.code) {
         const Code = components.code;
         const Pre = components.pre || 'pre';
-        content = React.createElement(Pre, { key: 'pre' },
-          React.createElement(Code, { node: { position: { start: { line: 1 }, end: { line: 3 } } }, className: 'language-' }, codeBlockMatch[1]),
+        content = React.createElement(
+          Pre,
+          { key: 'pre' },
+          React.createElement(
+            Code,
+            {
+              node: { position: { start: { line: 1 }, end: { line: 3 } } },
+              className: 'language-',
+            },
+            codeBlockMatch[1]
+          )
         );
       }
 
@@ -57,15 +74,19 @@ jest.mock('remark-gfm', () => ({
 jest.mock('lucide-react', () => ({
   Send: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-send" {...props} />,
   Square: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-square" {...props} />,
-  ThumbsUp: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-thumbs-up" {...props} />,
-  ThumbsDown: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-thumbs-down" {...props} />,
+  ThumbsUp: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-thumbs-up" {...props} />
+  ),
+  ThumbsDown: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="icon-thumbs-down" {...props} />
+  ),
   Wrench: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-wrench" {...props} />,
   X: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-x" {...props} />,
 }));
 
 import { ConversationInput } from '@/components/copilot/ConversationInput';
 import { CopilotMessage } from '@/components/copilot/CopilotMessage';
-import type { CopilotMessage as CopilotMessageType } from '@/components/copilot/CopilotProvider';
+import type { CopilotMessage as CopilotMessageType } from '@/components/copilot/copilot-types';
 
 // ---------------------------------------------------------------------------
 // ConversationInput

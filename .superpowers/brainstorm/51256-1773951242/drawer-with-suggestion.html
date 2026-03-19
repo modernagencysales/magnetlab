@@ -1,0 +1,196 @@
+<h2>Ingredient Picker Drawer</h2>
+<p class="subtitle">Drawer slides in when you tap an ingredient tile. Smart suggestion at top when data exists.</p>
+
+<div class="split">
+  <!-- With performance data -->
+  <div class="mockup">
+    <div class="mockup-header">With Performance Data (existing client)</div>
+    <div class="mockup-body" style="padding:0;">
+      <div style="background:#1a1a2e;padding:16px;font-family:system-ui;color:#e0e0e0;font-size:12px;min-height:420px;">
+
+        <!-- Drawer header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #333;">
+          <div>
+            <div style="font-size:13px;color:white;font-weight:600;">🎯 Pick an Exploit</div>
+            <div style="font-size:10px;color:#888;">13 available · sorted by performance</div>
+          </div>
+          <div style="width:24px;height:24px;border-radius:6px;background:#252547;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;cursor:pointer;">✕</div>
+        </div>
+
+        <!-- Smart suggestion -->
+        <div style="background:linear-gradient(135deg,#312e81,#1e1e3a);border:1px solid #6366f1;border-radius:10px;padding:14px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+            <span style="font-size:9px;background:#f59e0b30;color:#f59e0b;padding:2px 8px;border-radius:10px;font-weight:600;">✦ SUGGESTED</span>
+            <span style="font-size:9px;color:#888;">Based on Sarah's top posts</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:12px;color:white;font-weight:600;">Authority Play</div>
+              <div style="font-size:9px;color:#a5b4fc;margin-top:2px;">3.2x avg engagement · used 12 times</div>
+              <div style="font-size:9px;color:#888;margin-top:2px;">Best paired with: Knowledge, Story template</div>
+            </div>
+            <div style="background:#6366f1;color:white;padding:8px 16px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Use this</div>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#666;display:flex;align-items:center;gap:6px;">
+          <span style="color:#888;">🔍</span> Search exploits...
+        </div>
+
+        <!-- Filter chips -->
+        <div style="display:flex;gap:4px;margin-bottom:12px;">
+          <span style="background:#6366f130;border:1px solid #6366f1;padding:4px 10px;border-radius:14px;font-size:9px;color:#a5b4fc;">All (13)</span>
+          <span style="background:#252547;border:1px solid #333;padding:4px 10px;border-radius:14px;font-size:9px;color:#888;">Top ⚡ (5)</span>
+          <span style="background:#252547;border:1px solid #333;padding:4px 10px;border-radius:14px;font-size:9px;color:#888;">Regular (10)</span>
+          <span style="background:#252547;border:1px solid #333;padding:4px 10px;border-radius:14px;font-size:9px;color:#888;">Lead Mag (3)</span>
+        </div>
+
+        <!-- List -->
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:12px;cursor:pointer;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div style="flex:1;">
+                <div style="font-size:11px;color:white;font-weight:600;">Contrarian Take</div>
+                <div style="font-size:9px;color:#888;margin-top:2px;">Challenge conventional wisdom with a strong stance</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:10px;color:#22c55e;font-weight:600;">2.8x</div>
+                <div style="font-size:8px;color:#888;">8 uses</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:12px;cursor:pointer;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div style="flex:1;">
+                <div style="font-size:11px;color:white;font-weight:600;">Story → Lesson</div>
+                <div style="font-size:9px;color:#888;margin-top:2px;">Personal narrative with actionable takeaway</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:10px;color:#f59e0b;">1.9x</div>
+                <div style="font-size:8px;color:#888;">6 uses</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:12px;cursor:pointer;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div style="flex:1;">
+                <div style="font-size:11px;color:white;font-weight:600;">Framework Drop</div>
+                <div style="font-size:9px;color:#888;margin-top:2px;">Share a reusable method or mental model</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:10px;color:#888;">1.4x</div>
+                <div style="font-size:8px;color:#888;">4 uses</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:12px;cursor:pointer;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div style="flex:1;">
+                <div style="font-size:11px;color:white;font-weight:600;">Question Hook</div>
+                <div style="font-size:9px;color:#888;margin-top:2px;">Open with a provocative question</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:10px;color:#888;">—</div>
+                <div style="font-size:8px;color:#888;">unused</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Without performance data -->
+  <div class="mockup">
+    <div class="mockup-header">New Client (no data yet)</div>
+    <div class="mockup-body" style="padding:0;">
+      <div style="background:#1a1a2e;padding:16px;font-family:system-ui;color:#e0e0e0;font-size:12px;min-height:420px;">
+
+        <!-- Drawer header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #333;">
+          <div>
+            <div style="font-size:13px;color:white;font-weight:600;">🎯 Pick an Exploit</div>
+            <div style="font-size:10px;color:#888;">13 available · sorted by popularity</div>
+          </div>
+          <div style="width:24px;height:24px;border-radius:6px;background:#252547;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;cursor:pointer;">✕</div>
+        </div>
+
+        <!-- No suggestion — just a hint -->
+        <div style="background:#252547;border:1px dashed #444;border-radius:10px;padding:12px;margin-bottom:14px;text-align:center;">
+          <div style="font-size:10px;color:#888;">✦ Suggestions appear after a few published posts</div>
+          <div style="font-size:9px;color:#666;margin-top:4px;">We'll learn what works best for this client</div>
+        </div>
+
+        <!-- Search -->
+        <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#666;display:flex;align-items:center;gap:6px;">
+          <span style="color:#888;">🔍</span> Search exploits...
+        </div>
+
+        <!-- Filter chips -->
+        <div style="display:flex;gap:4px;margin-bottom:12px;">
+          <span style="background:#6366f130;border:1px solid #6366f1;padding:4px 10px;border-radius:14px;font-size:9px;color:#a5b4fc;">All (13)</span>
+          <span style="background:#252547;border:1px solid #333;padding:4px 10px;border-radius:14px;font-size:9px;color:#888;">Popular</span>
+          <span style="background:#252547;border:1px solid #333;padding:4px 10px;border-radius:14px;font-size:9px;color:#888;">Regular</span>
+          <span style="background:#252547;border:1px solid #333;padding:4px 10px;border-radius:14px;font-size:9px;color:#888;">Lead Mag</span>
+        </div>
+
+        <!-- List (no performance data) -->
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:12px;cursor:pointer;">
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div style="font-size:11px;color:white;font-weight:600;">Authority Play</div>
+                <span style="font-size:8px;background:#6366f120;color:#a5b4fc;padding:2px 6px;border-radius:4px;">popular</span>
+              </div>
+              <div style="font-size:9px;color:#888;margin-top:2px;">Share expertise to build credibility</div>
+            </div>
+          </div>
+
+          <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:12px;cursor:pointer;">
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div style="font-size:11px;color:white;font-weight:600;">Story → Lesson</div>
+                <span style="font-size:8px;background:#6366f120;color:#a5b4fc;padding:2px 6px;border-radius:4px;">popular</span>
+              </div>
+              <div style="font-size:9px;color:#888;margin-top:2px;">Personal narrative with actionable takeaway</div>
+            </div>
+          </div>
+
+          <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:12px;cursor:pointer;">
+            <div>
+              <div style="font-size:11px;color:white;font-weight:600;">Contrarian Take</div>
+              <div style="font-size:9px;color:#888;margin-top:2px;">Challenge conventional wisdom with a strong stance</div>
+            </div>
+          </div>
+
+          <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:12px;cursor:pointer;">
+            <div>
+              <div style="font-size:11px;color:white;font-weight:600;">Framework Drop</div>
+              <div style="font-size:9px;color:#888;margin-top:2px;">Share a reusable method or mental model</div>
+            </div>
+          </div>
+
+          <div style="background:#252547;border:1px solid #333;border-radius:8px;padding:12px;cursor:pointer;">
+            <div>
+              <div style="font-size:11px;color:white;font-weight:600;">Question Hook</div>
+              <div style="font-size:9px;color:#888;margin-top:2px;">Open with a provocative question</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;padding:16px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px;">
+  <p style="margin:0 0 8px;font-size:14px;color:#a5b4fc;"><strong>Key differences:</strong></p>
+  <ul style="margin:0;padding-left:20px;font-size:13px;color:#ccc;line-height:1.6;">
+    <li><strong>With data:</strong> Smart suggestion card at top with "Use this" one-tap. List sorted by client performance. Shows multiplier + usage count.</li>
+    <li><strong>Without data:</strong> Gentle placeholder explaining suggestions will come. List sorted by global popularity. Shows "popular" badges instead of stats.</li>
+    <li><strong>Both:</strong> Same search + filters. Same layout. No mode switch — just progressively richer as data accumulates.</li>
+  </ul>
+</div>
