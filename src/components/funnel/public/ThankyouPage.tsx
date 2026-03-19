@@ -96,7 +96,7 @@ function SurveyCard({
             className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white"
             style={{ background: primaryColor }}
           >
-            {questions.length <= 3 ? '30-second' : '2-minute'} survey
+            {questions.length <= 5 ? `${questions.length} quick questions` : '2-minute survey'}
           </span>
         </div>
 
