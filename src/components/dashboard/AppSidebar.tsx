@@ -152,8 +152,8 @@ function NavGroup({
   onNavigate: () => void;
 }) {
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+    <SidebarGroup className="py-0">
+      <SidebarGroupLabel className="h-7 text-[10px] uppercase tracking-wider opacity-50">{label}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => {
@@ -328,7 +328,7 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
       {/* ── Main nav ── */}
       <SidebarContent>
         {/* Home (ungrouped) */}
-        <SidebarGroup>
+        <SidebarGroup className="pb-0">
           <SidebarGroupContent>
             <SidebarMenu>
               {homeNav.map((item) => {
