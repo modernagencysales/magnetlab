@@ -16,7 +16,7 @@ const POST_COLUMNS =
   'id, user_id, draft_content, final_content, status, exploit_id, creative_id, published_at, recycle_after, engagement_stats' as const;
 
 const POST_RECYCLE_COLUMNS =
-  'id, user_id, draft_content, final_content, status, exploit_id, creative_id, image_url, published_at, recycle_after, engagement_stats' as const;
+  'id, user_id, team_profile_id, draft_content, final_content, status, exploit_id, creative_id, image_url, published_at, recycle_after, engagement_stats' as const;
 
 const PERF_COLUMNS = 'post_id, impressions, engagement_rate' as const;
 
@@ -255,6 +255,8 @@ export async function detectWinners(userId: string): Promise<number> {
     const isEngagementWinner =
       perfData.engagement_rate > baseline.avgEngagementRate * ENGAGEMENT_MULTIPLIER;
 
+    // Both thresholds must be met (AND logic) per spec — a post needs
+    // both high impressions AND high engagement to be worth recycling
     if (isImpressionsWinner && isEngagementWinner) {
       winnerIds.push(postId);
     }
@@ -320,6 +322,7 @@ export async function createRepost(userId: string, originalPostId: string): Prom
     exploit_id: string | null;
     creative_id: string | null;
     image_url: string | null;
+    team_profile_id: string | null;
   };
 
   const content = orig.final_content ?? orig.draft_content;
@@ -329,6 +332,7 @@ export async function createRepost(userId: string, originalPostId: string): Prom
     .from('cp_pipeline_posts')
     .insert({
       user_id: userId,
+      team_profile_id: orig.team_profile_id ?? null,
       parent_post_id: originalPostId,
       lineage_type: 'repost',
       status: 'approved',
@@ -396,6 +400,7 @@ export async function createCousin(userId: string, originalPostId: string): Prom
     exploit_id: string | null;
     creative_id: string | null;
     image_url: string | null;
+    team_profile_id: string | null;
   };
 
   // ─── 2. Fetch exploit (optional) ─────────────────────────────────────
@@ -456,6 +461,7 @@ export async function createCousin(userId: string, originalPostId: string): Prom
     .from('cp_pipeline_posts')
     .insert({
       user_id: userId,
+      team_profile_id: orig.team_profile_id ?? null,
       parent_post_id: originalPostId,
       lineage_type: 'cousin',
       status: 'draft',
@@ -484,6 +490,8 @@ export async function createCousin(userId: string, originalPostId: string): Prom
  * Called by the nightly autopilot batch.
  * For each recyclable post: creates one repost (auto-approved) + one cousin (draft).
  */
+// TODO (Phase 2 follow-up): If repost underperforms original, stop recycling it
+// TODO (Phase 2 follow-up): If cousin outperforms original, it becomes the new "original" for future recycling
 export async function runRecyclingLoop(userId: string): Promise<RecyclingLoopResult> {
   const recyclable = await listRecyclablePosts(userId);
 
