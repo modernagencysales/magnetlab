@@ -1,4 +1,4 @@
-/** Tool definition aggregator. Exports flat array of all 63 MCP tools + name lookup map. */
+/** Tool definition aggregator. Exports flat array of all 67 MCP tools + name lookup map. */
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { leadMagnetTools } from './lead-magnets.js';
@@ -16,6 +16,7 @@ import { exploitTools } from './exploits.js';
 import { creativeTools } from './creatives.js';
 import { outreachCampaignTools } from './outreach-campaigns.js';
 import { linkedinActivityTools } from './linkedin-activity.js';
+import { mixerTools } from './mixer.js';
 
 export const tools: Tool[] = [
   ...leadMagnetTools,
@@ -33,6 +34,7 @@ export const tools: Tool[] = [
   ...creativeTools,
   ...outreachCampaignTools,
   ...linkedinActivityTools,
+  ...mixerTools,
 ];
 
 export const toolsByName = new Map<string, Tool>(tools.map((t) => [t.name, t]));

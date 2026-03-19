@@ -829,4 +829,53 @@ export class MagnetLabClient {
       `/content-pipeline/trends${qs ? `?${qs}` : ''}`
     );
   }
+
+  // ─── Ingredients Mixer ────────────────────────────────────────────────────
+
+  /** Get ingredient counts and health status for a team profile. */
+  async getIngredientInventory(teamProfileId: string) {
+    return this.request<unknown>(
+      'GET',
+      `/content-pipeline/inventory?team_profile_id=${encodeURIComponent(teamProfileId)}`
+    );
+  }
+
+  /** Get suggested ingredient combinations based on past performance. */
+  async getSuggestedRecipes(teamProfileId: string, limit?: number) {
+    const searchParams = new URLSearchParams();
+    searchParams.set('team_profile_id', teamProfileId);
+    if (limit !== undefined) searchParams.set('limit', String(limit));
+    return this.request<unknown>('GET', `/content-pipeline/recipes?${searchParams.toString()}`);
+  }
+
+  /** Generate content by mixing any combination of ingredients. */
+  async mix(input: {
+    team_profile_id: string;
+    exploit_id?: string;
+    knowledge_topic?: string;
+    knowledge_query?: string;
+    style_id?: string;
+    template_id?: string;
+    creative_id?: string;
+    trend_topic?: string;
+    recycled_post_id?: string;
+    idea_id?: string;
+    hook?: string;
+    instructions?: string;
+    count?: number;
+    output?: 'drafts' | 'ideas';
+  }) {
+    return this.aiRequest<unknown>('POST', `/content-pipeline/mix`, input);
+  }
+
+  /** Get historical performance data for ingredient combinations. */
+  async getComboPerformance(teamProfileId: string, limit?: number) {
+    const searchParams = new URLSearchParams();
+    searchParams.set('team_profile_id', teamProfileId);
+    if (limit !== undefined) searchParams.set('limit', String(limit));
+    return this.request<unknown>(
+      'GET',
+      `/content-pipeline/combo-performance?${searchParams.toString()}`
+    );
+  }
 }

@@ -1,4 +1,4 @@
-/** Handler dispatcher. Routes all 64 tool calls to domain handlers via flat lookup map. Never contains business logic. */
+/** Handler dispatcher. Routes all 68 tool calls to domain handlers via flat lookup map. Never contains business logic. */
 
 import type { MagnetLabClient } from '../client.js';
 import { validateToolArgs } from '../validation.js';
@@ -17,6 +17,7 @@ import { handleExploitTools } from './exploits.js';
 import { handleCreativeTools } from './creatives.js';
 import { handleOutreachCampaignTools } from './outreach-campaigns.js';
 import { handleLinkedInActivityTools } from './linkedin-activity.js';
+import { handleMixerTools } from './mixer.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,12 @@ const handlerMap: Record<string, Handler> = {
 
   // LinkedIn activity (1)
   magnetlab_get_linkedin_activity: handleLinkedInActivityTools,
+
+  // Ingredients mixer (4)
+  magnetlab_get_ingredient_inventory: handleMixerTools,
+  magnetlab_get_suggested_recipes: handleMixerTools,
+  magnetlab_mix: handleMixerTools,
+  magnetlab_get_combo_performance: handleMixerTools,
 };
 
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
@@ -168,3 +175,4 @@ export { handleExploitTools } from './exploits.js';
 export { handleCreativeTools } from './creatives.js';
 export { handleOutreachCampaignTools } from './outreach-campaigns.js';
 export { handleLinkedInActivityTools } from './linkedin-activity.js';
+export { handleMixerTools } from './mixer.js';
