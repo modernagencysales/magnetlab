@@ -21,7 +21,8 @@ import type {
   ProfileBatchResult,
   TeamVoiceProfile,
 } from '@/lib/types/content-pipeline';
-import { logError } from '@/lib/utils/logger';
+import { logError, logInfo } from '@/lib/utils/logger';
+import { detectWinners, runRecyclingLoop } from '@/server/services/recycling.service';
 import type { DataScope } from '@/lib/utils/team-context';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -803,7 +804,30 @@ async function runPersonalBatch(config: AutoPilotConfig): Promise<BatchResult> {
  * - Personal/single-profile mode: generates for one user/profile (original behavior)
  */
 export async function runNightlyBatch(config: AutoPilotConfig): Promise<BatchResult> {
-  const { teamId, profileId } = config;
+  const { userId, teamId, profileId } = config;
+
+  // ─── Recycling Step ──────────────────────────────────────────────────────────
+  // 1. Detect new winners (flag posts for future recycling)
+  try {
+    const winnersFound = await detectWinners(userId);
+    if (winnersFound > 0) {
+      logInfo('autopilot', 'Detected new recyclable posts', { userId, winnersFound });
+    }
+  } catch (winnerError) {
+    // Non-critical — don't block the batch
+    logError('autopilot', winnerError, { step: 'detect_winners', userId });
+  }
+
+  // 2. Process recyclable posts (create reposts + cousins)
+  try {
+    const recycleResult = await runRecyclingLoop(userId);
+    if (recycleResult.repostsCreated > 0 || recycleResult.cousinsCreated > 0) {
+      logInfo('autopilot', 'Recycled content', { userId, ...recycleResult });
+    }
+  } catch (recycleError) {
+    // Non-critical — don't block the batch
+    logError('autopilot', recycleError, { step: 'recycling_loop', userId });
+  }
 
   // Team mode: teamId set AND no specific profileId → generate for all profiles
   if (teamId && !profileId) {
