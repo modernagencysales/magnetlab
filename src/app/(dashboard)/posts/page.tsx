@@ -1,38 +1,29 @@
+/**
+ * Posts Page (server component).
+ * Auth check + scope resolution only — the mixer client component handles
+ * all data fetching via SWR hooks. No heavy server-side prefetch needed.
+ * Never imports NextRequest, NextResponse, or cookies directly.
+ */
+
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { getDataScope } from '@/lib/utils/team-context';
-import { getBufferStatus } from '@/lib/services/autopilot';
-import * as postsService from '@/server/services/posts.service';
-import * as ideasService from '@/server/services/ideas.service';
 import { PostsContent } from '@/components/posts/PostsContent';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Posts | MagnetLab',
-  description: 'Manage your LinkedIn posts and content pipeline',
+  description: 'Create content by mixing ingredients — exploits, styles, templates, and more',
 };
 
 export default async function PostsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/login');
 
-  const scope = await getDataScope(session.user.id);
-  const [buffer, initialPosts, initialIdeas] = await Promise.all([
-    getBufferStatus(session.user.id, scope),
-    postsService.getPosts(scope, { limit: 200 }),
-    ideasService.getIdeas(scope, { status: 'extracted', limit: 200 }),
-  ]);
-  const initialBufferLow = (buffer?.length ?? 0) < 3;
-
   return (
     <Suspense>
-      <PostsContent
-        initialBufferLow={initialBufferLow}
-        initialIdeas={initialIdeas}
-        initialPosts={initialPosts}
-      />
+      <PostsContent />
     </Suspense>
   );
 }
