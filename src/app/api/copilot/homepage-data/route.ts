@@ -41,6 +41,7 @@ interface HomepageData {
   suggestions: Suggestion[];
   stats: Stat[];
   recentConversations: RecentConversation[];
+  userName: string | null;
 }
 
 // ─── Column selects ───────────────────────────────────────────────────────────
@@ -130,7 +131,8 @@ export async function GET() {
       conversationsRes.data as { id: string; title: string; updated_at: string }[] | null
     );
 
-    const data: HomepageData = { suggestions, stats, recentConversations };
+    const userName = session.user.name?.split(' ')[0] ?? null;
+    const data: HomepageData = { suggestions, stats, recentConversations, userName };
     return NextResponse.json(data);
   } catch (err) {
     logError('GET /api/copilot/homepage-data', err, { userId });

@@ -30,6 +30,7 @@ interface HomepageData {
   suggestions: Suggestion[];
   stats: StatCard[];
   recentConversations: RecentConversation[];
+  userName: string | null;
 }
 
 // ─── Fetcher ──────────────────────────────────────────────

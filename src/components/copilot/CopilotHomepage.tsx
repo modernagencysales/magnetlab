@@ -4,7 +4,6 @@
 
 import { useState, useCallback, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { useHomepageData } from '@/frontend/hooks/api/useHomepageData';
 import { useCopilotNavigator } from '@/components/copilot/CopilotNavigator';
 import { SuggestionChips } from '@/components/copilot/SuggestionChips';
@@ -54,12 +53,11 @@ function HomepageSkeleton() {
 
 export function CopilotHomepage() {
   const router = useRouter();
-  const { data: session } = useSession();
   const { startConversation } = useCopilotNavigator();
   const { data, isLoading, error, mutate } = useHomepageData();
   const [prompt, setPrompt] = useState('');
 
-  const userName = session?.user?.name?.split(' ')[0] ?? 'there';
+  const userName = data?.userName ?? 'there';
   const timeOfDay = getTimeOfDay();
   const greeting = `Good ${timeOfDay}, ${userName}`;
 
