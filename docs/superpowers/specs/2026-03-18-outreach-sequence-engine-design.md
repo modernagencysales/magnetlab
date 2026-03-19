@@ -118,6 +118,13 @@ Single Trigger.dev task. Drains the queue per account.
 ```
 10% chance skip for naturalness (shouldSkipRun())
 
+// Hourly cleanup (first run of each hour only)
+if isFirstRunOfHour():
+  DELETE FROM linkedin_action_queue
+    WHERE status IN ('completed', 'failed', 'cancelled')
+    AND processed = true
+    AND created_at < now() - interval '7 days'
+
 Get distinct account_ids with queued actions
 
 For each account:
@@ -136,7 +143,10 @@ For each account:
 
     if !action → break
 
-    if !checkDailyLimit(account, action.action_type, settings) → break
+    // Skip daily limit check for view_profile and withdraw (no LinkedIn daily limit)
+    // All other actions: map to DailyLimitAction and check
+    limitAction = mapToLimitAction(action.action_type)
+    if limitAction && !checkDailyLimit(account, limitAction, settings) → break
 
     UPDATE status = 'executing'
 
@@ -144,7 +154,8 @@ For each account:
       result = executeAction(client, action)
       UPDATE status = 'completed', executed_at = now(), result = result
       INSERT INTO linkedin_activity_log (...)
-      incrementDailyLimit(account, action.action_type)
+      if limitAction:
+        incrementDailyLimit(account, action.user_id, limitAction)  // timezone-aware version
       actionsThisRun++
     catch (err):
       if isRateLimitError(err):
@@ -157,6 +168,23 @@ For each account:
 
     await sleep(randomDelay(settings))  // 45-210s
 ```
+
+**Action type → daily limit mapping:**
+
+| Queue `action_type` | `DailyLimitAction` | Notes |
+|---------------------|-------------------|-------|
+| `view_profile` | `profile_view` | New limit: 80/day (LinkedIn ~100/day cap) |
+| `connect` | `connection_request` | Existing |
+| `message` | `dm` | Existing |
+| `follow_up_message` | `dm` | Same as message at API level |
+| `withdraw` | *(skip)* | No daily limit |
+| `accept_invitation` | `connection_accept` | Existing |
+| `react` | `like` | Existing |
+| `comment` | `comment` | Existing |
+
+**Note:** `follow_up_message` is functionally identical to `message` at the Unipile API level — both call `sendDirectMessage`. They are differentiated only for lead progress tracking (sets `follow_up_sent_at` instead of `messaged_at`).
+
+**Daily limit consolidation:** The executor uses the timezone-aware `incrementDailyLimit` from `account-safety.repo.ts` exclusively. The UTC-based version in `post-campaigns.repo.ts` is deprecated during the refactor. Both functions are consolidated into a single implementation that accepts `user_id` for the foreign key.
 
 **`executeAction` dispatch:**
 
@@ -193,18 +221,7 @@ CREATE INDEX idx_activity_log_account
   ON linkedin_activity_log (unipile_account_id, created_at DESC);
 ```
 
-#### Queue Cleanup
-
-Rows with `status IN ('completed', 'failed', 'cancelled') AND processed = true` are deleted after 7 days. Runs as a lightweight query in the executor task at the start of each run:
-
-```sql
-DELETE FROM linkedin_action_queue
-WHERE status IN ('completed', 'failed', 'cancelled')
-  AND processed = true
-  AND created_at < now() - interval '7 days';
-```
-
-The `linkedin_activity_log` is the permanent record.
+The `linkedin_activity_log` is the permanent record. Queue cleanup runs hourly in the executor (see executor pseudocode above).
 
 ---
 
@@ -329,7 +346,8 @@ CREATE TABLE outreach_campaign_leads (
   withdrawn_at timestamptz,
 
   error text,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 ```
 
@@ -522,13 +540,36 @@ All safety enforcement lives in the executor. No other task calls Unipile direct
 | Cross-system limits | Shared counters | Both systems consume from same `linkedin_daily_limits` |
 | Priority | Queue ordering | Post campaigns (priority 1) drain before outreach (priority 10) |
 
-**Latency trade-off:** The queue adds ~5 minutes of scheduling overhead per action compared to inline calls. For post campaigns (current worst case: 40 min), this extends to ~45 min — still natural. For outreach sequences (delays in days), irrelevant.
+**Latency trade-off:** The queue adds scheduling overhead per action compared to inline calls. Worst case per action: 5 min (enqueue) + 5 min (executor runs) + 5 min (advancer reads result) = 15 min. For a post campaign action chain (reply + connect + DM), worst case extends from 40 min to ~55 min. Average case: ~30-35 min. Still looks natural. For outreach sequences (delays measured in days), irrelevant.
+
+---
+
+## Safety Settings Update
+
+Add `max_profile_views_per_day` to `account_safety_settings`:
+
+```sql
+ALTER TABLE account_safety_settings ADD COLUMN
+  max_profile_views_per_day integer NOT NULL DEFAULT 80;
+```
+
+LinkedIn allows ~100 profile retrievals/day. Default 80 gives headroom. Added to `DailyLimitAction` type as `'profile_view'` and to `linkedin_daily_limits` as `profile_views integer NOT NULL DEFAULT 0`.
 
 ---
 
 ## Unipile Client Updates
 
-New methods needed (all documented in `docs/unipile-api-reference.md`):
+### Verification Required Before Implementation
+
+Two existing methods need verification against the live Unipile API:
+
+1. **`sendDirectMessage` content-type** — Currently sends `application/json` to `POST /chats`. Unipile docs specify `multipart/form-data`. The method works in production (post campaigns send DMs successfully), suggesting Unipile accepts both. Verify explicitly; if JSON fails, switch to `postMultipart()` from `BaseApiClient`.
+
+2. **`addReaction` endpoint path** — Currently calls `POST /posts/{postSocialId}/reactions` with `{ account_id, type }`. API reference documents `POST /posts/reaction` with `{ account_id, post_id, reaction_type }`. Current code works in production. Verify which is correct and update the API reference to match.
+
+### New Methods
+
+New methods needed (verify against live API and document response shapes in `docs/unipile-api-reference.md`):
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
@@ -537,7 +578,9 @@ New methods needed (all documented in `docs/unipile-api-reference.md`):
 | `listSentInvitations(accountId)` | `GET /users/invite/sent?account_id=X` | Find invitation ID for withdrawal |
 | `cancelInvitation(invitationId)` | `DELETE /users/invite/{id}` | Withdraw connection request |
 
-**Withdrawal flow:** When withdrawing, call `listSentInvitations` to find the pending invitation matching the target's `provider_id`, then call `cancelInvitation` with that invitation ID. More reliable than storing invitation IDs from the connect response.
+**Withdrawal flow:** When withdrawing, call `listSentInvitations` to find the pending invitation matching the target's `provider_id`, then call `cancelInvitation` with that invitation ID. More reliable than storing invitation IDs from the connect response. **Fallback:** If the invitation cannot be found in the sent list (already withdrawn, expired, or pagination issue), mark the lead as `failed` with error `"Invitation not found for withdrawal"` rather than silently doing nothing.
+
+**`listSentInvitations` response shape:** Must be verified against the live API and documented. If the endpoint supports pagination or filtering by provider_id, use it to avoid fetching the entire sent invitation list.
 
 ---
 
@@ -557,6 +600,8 @@ GET    /api/outreach-campaigns/[id]/leads/[leadId] — individual lead detail
 POST   /api/outreach-campaigns/[id]/leads/[leadId]/skip — skip lead + cancel queued actions
 GET    /api/linkedin-activity                     — unified stream with filters + pagination
 ```
+
+**Team scoping:** All queries filter by `user_id` from session (same pattern as post campaigns). `team_id` is populated for team-scoped accounts. MCP tools accept optional `team_id` consistent with the "every tool accepts optional team_id" convention from the MCP v2 spec.
 
 **Activation validation:** Cannot activate if:
 - 0 leads added
@@ -660,16 +705,51 @@ packages/mcp/src/client.ts                        — add outreach + activity cl
 
 ---
 
+## RLS Policies
+
+All new tables enable RLS. Access goes through the admin client (service role key), but policies follow project convention:
+
+```sql
+ALTER TABLE linkedin_action_queue ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own actions" ON linkedin_action_queue FOR ALL USING (user_id = auth.uid());
+
+ALTER TABLE linkedin_activity_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users view own activity" ON linkedin_activity_log FOR SELECT USING (user_id = auth.uid());
+
+ALTER TABLE outreach_campaigns ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own campaigns" ON outreach_campaigns FOR ALL USING (user_id = auth.uid());
+
+ALTER TABLE outreach_campaign_steps ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own steps" ON outreach_campaign_steps FOR ALL
+  USING (campaign_id IN (SELECT id FROM outreach_campaigns WHERE user_id = auth.uid()));
+
+ALTER TABLE outreach_campaign_leads ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own leads" ON outreach_campaign_leads FOR ALL USING (user_id = auth.uid());
+```
+
+---
+
 ## Migration Plan
 
-### Phase 1: LinkedIn Action Queue + Activity Log
-- `linkedin_action_queue` table + migration
-- `linkedin_activity_log` table + migration
+**Deployment ordering:** The executor task (`execute-linkedin-actions`) MUST be deployed and verified before the refactored `process-post-campaigns`. Otherwise, queued actions will never execute.
+
+### Phase 1a: LinkedIn Action Queue + Executor
+- `linkedin_action_queue` table + migration + RLS
+- `linkedin_activity_log` table + migration + RLS
+- `max_profile_views_per_day` column on `account_safety_settings`
+- `profile_views` column on `linkedin_daily_limits`
+- Consolidate `incrementDailyLimit` to timezone-aware version (deprecate UTC version)
+- Action type → daily limit mapping
 - Queue repo (enqueue, dequeue, markProcessed, cancel, cleanup)
 - `linkedin-action-executor.ts` service (executeAction dispatch)
 - `execute-linkedin-actions` Trigger.dev task
+- Verify Unipile: `sendDirectMessage` content-type, `addReaction` endpoint path
+- Deploy executor and verify it drains queue correctly with test actions
+
+### Phase 1b: Post Campaign Refactor
 - Refactor `process-post-campaigns` to enqueue + process results
 - Refactor `poll-connection-requests` to enqueue accept actions
+- Deploy and verify post campaigns still work end-to-end
 
 ### Phase 2: Outreach Campaign CRUD
 - `outreach_campaigns` + `outreach_campaign_steps` + `outreach_campaign_leads` tables

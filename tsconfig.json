@@ -37,6 +37,7 @@
   "exclude": [
     "node_modules",
     "packages",
+    "scripts",
     "**/__tests__/**",
     "**/*.test.ts",
     "**/*.test.tsx"
