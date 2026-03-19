@@ -81,6 +81,9 @@ export interface FunnelPage {
   // Resource email delivery
   sendResourceEmail: boolean;
 
+  // Bootcamp auto-enrollment
+  bootcampInviteCode: string | null;
+
   // Thank-you page layout
   thankyouLayout: ThankyouLayout;
 
@@ -505,6 +508,7 @@ export interface FunnelPageRow {
   homepage_url: string | null;
   homepage_label: string | null;
   send_resource_email: boolean;
+  bootcamp_invite_code: string | null;
   thankyou_layout: string;
   vsl_headline: string | null;
   vsl_subline: string | null;
@@ -595,6 +599,7 @@ export function funnelPageFromRow(row: FunnelPageRow): FunnelPage {
     homepageUrl: row.homepage_url || null,
     homepageLabel: row.homepage_label || null,
     sendResourceEmail: row.send_resource_email ?? true,
+    bootcampInviteCode: row.bootcamp_invite_code || null,
     thankyouLayout: (row.thankyou_layout || 'survey_first') as ThankyouLayout,
     vslHeadline: row.vsl_headline || null,
     vslSubline: row.vsl_subline || null,

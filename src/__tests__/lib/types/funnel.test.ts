@@ -42,7 +42,12 @@ describe('Funnel Type Conversions', () => {
       homepage_url: null,
       homepage_label: null,
       send_resource_email: true,
+      bootcamp_invite_code: null,
       thankyou_layout: 'survey_first',
+      vsl_headline: null,
+      vsl_subline: null,
+      cta_headline: null,
+      cta_button_text: null,
       font_family: null,
       font_url: null,
       is_published: true,
@@ -83,7 +88,12 @@ describe('Funnel Type Conversions', () => {
         homepageUrl: null,
         homepageLabel: null,
         sendResourceEmail: true,
+        bootcampInviteCode: null,
         thankyouLayout: 'survey_first',
+        vslHeadline: null,
+        vslSubline: null,
+        ctaHeadline: null,
+        ctaButtonText: null,
         fontFamily: null,
         fontUrl: null,
         isPublished: true,
@@ -128,6 +138,7 @@ describe('Funnel Type Conversions', () => {
       placeholder: null,
       is_qualifying: true,
       is_required: true,
+      booking_prefill_key: null,
       created_at: '2025-01-25T00:00:00Z',
     };
 
@@ -146,6 +157,7 @@ describe('Funnel Type Conversions', () => {
         placeholder: null,
         isQualifying: true,
         isRequired: true,
+        bookingPrefillKey: null,
         createdAt: '2025-01-25T00:00:00Z',
       });
     });

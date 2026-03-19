@@ -154,7 +154,7 @@ export function FunnelBuilder({
     existingFunnel?.sendResourceEmail ?? true
   );
   const [bootcampInviteCode, setBootcampInviteCode] = useState(
-    ((existingFunnel as unknown as Record<string, unknown>)?.bootcampInviteCode as string) ?? ''
+    existingFunnel?.bootcampInviteCode ?? ''
   );
   const [thankyouLayout, setThankyouLayout] = useState<ThankyouLayout>(
     existingFunnel?.thankyouLayout || 'survey_first'

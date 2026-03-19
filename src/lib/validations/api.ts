@@ -282,6 +282,7 @@ export const updateFunnelSchema = z.object({
   homepageUrl: z.string().url().max(2000).nullable().optional(),
   homepageLabel: z.string().max(200).nullable().optional(),
   sendResourceEmail: z.boolean().optional(),
+  bootcampInviteCode: z.string().max(100).nullable().optional(),
   thankyouLayout: z.enum(['survey_first', 'video_first', 'side_by_side']).optional(),
   vslHeadline: z.string().max(500).nullable().optional(),
   vslSubline: z.string().max(1000).nullable().optional(),

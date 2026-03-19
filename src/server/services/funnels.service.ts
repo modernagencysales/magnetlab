@@ -218,6 +218,7 @@ export async function createFunnel(
     font_url: brandKit?.font_url || null,
     qualification_form_id: qualificationFormId || null,
     send_resource_email: true,
+    bootcamp_invite_code: funnelData.bootcampInviteCode || null,
     thankyou_layout: funnelData.thankyouLayout || 'video_first',
     vsl_headline: funnelData.vslHeadline || null,
     vsl_subline: funnelData.vslSubline || null,
@@ -322,6 +323,7 @@ export async function updateFunnel(
   if (v.homepageUrl !== undefined) updates.homepage_url = v.homepageUrl;
   if (v.homepageLabel !== undefined) updates.homepage_label = v.homepageLabel;
   if (v.sendResourceEmail !== undefined) updates.send_resource_email = v.sendResourceEmail;
+  if (v.bootcampInviteCode !== undefined) updates.bootcamp_invite_code = v.bootcampInviteCode;
   if (v.thankyouLayout !== undefined) updates.thankyou_layout = v.thankyouLayout;
   if (v.vslHeadline !== undefined) updates.vsl_headline = v.vslHeadline;
   if (v.vslSubline !== undefined) updates.vsl_subline = v.vslSubline;
@@ -416,7 +418,8 @@ export async function publishFunnel(
   let cachedUsername: string | null = null;
   if (publish) {
     // In team mode, use team owner's username for public URL routing (main parity)
-    const userIdForUsername = scope.type === 'team' && scope.billingUserId ? scope.billingUserId : scope.userId;
+    const userIdForUsername =
+      scope.type === 'team' && scope.billingUserId ? scope.billingUserId : scope.userId;
     const username = await funnelsRepo.getUsernameById(userIdForUsername);
     if (!username) {
       throw Object.assign(

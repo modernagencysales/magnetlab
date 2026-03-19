@@ -31,7 +31,7 @@ export type { FunnelPage, FunnelPageSection, QualificationQuestion };
 // ─── Column sets ───────────────────────────────────────────────────────────
 
 const FUNNEL_COLUMNS =
-  'id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, font_family, font_url, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, send_resource_email, thankyou_layout, vsl_headline, vsl_subline, cta_headline, cta_button_text';
+  'id, lead_magnet_id, user_id, slug, target_type, library_id, external_resource_id, optin_headline, optin_subline, optin_button_text, optin_social_proof, thankyou_headline, thankyou_subline, vsl_url, calendly_url, qualification_pass_message, qualification_fail_message, theme, primary_color, background_style, font_family, font_url, logo_url, qualification_form_id, is_published, published_at, created_at, updated_at, redirect_trigger, redirect_url, redirect_fail_url, send_resource_email, bootcamp_invite_code, thankyou_layout, vsl_headline, vsl_subline, cta_headline, cta_button_text';
 
 const FUNNEL_FULL_COLUMNS = FUNNEL_COLUMNS + ', homepage_url, homepage_label';
 
