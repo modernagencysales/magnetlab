@@ -413,6 +413,9 @@ export function ThankyouPage({
       if (leadId) {
         const data = await publicApi.updateLeadQualification({ leadId, answers: finalAnswers });
         setIsQualified(data.isQualified);
+      } else {
+        // No lead record (direct visit without leadId) — default to qualified
+        setIsQualified(true);
       }
       setQualificationComplete(true);
       setSurveyWasCompleted(true);
