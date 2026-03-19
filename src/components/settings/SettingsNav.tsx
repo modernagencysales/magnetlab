@@ -25,6 +25,7 @@ import {
   BookOpen,
   Brain,
   Shield,
+  ScanSearch,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/index';
@@ -64,9 +65,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'Safety',
-    items: [
-      { label: 'Account Safety', href: '/settings/safety', icon: Shield },
-    ],
+    items: [{ label: 'Account Safety', href: '/settings/safety', icon: Shield }],
   },
   {
     title: 'Signal Engine',
@@ -78,6 +77,10 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    title: 'Content',
+    items: [{ label: 'Scanner', href: '/settings/scanner', icon: ScanSearch }],
+  },
+  {
     title: 'Branding',
     items: [
       { label: 'Brand & Theme', href: '/settings/branding', icon: Palette },
@@ -87,9 +90,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'AI Co-pilot',
-    items: [
-      { label: 'Preferences', href: '/settings/copilot', icon: Brain },
-    ],
+    items: [{ label: 'Preferences', href: '/settings/copilot', icon: Brain }],
   },
   {
     title: 'Developer',
