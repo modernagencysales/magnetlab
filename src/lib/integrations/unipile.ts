@@ -208,6 +208,60 @@ export class UnipileClient extends BaseApiClient {
     if (message) body.message = message;
     return this.post<void>('/users/invite', body);
   }
+
+  // ─── Chat & Reply Detection ─────────────────────────────────────────
+
+  async listChats(accountId: string): Promise<
+    ApiResponse<
+      Array<{
+        id: string;
+        attendees?: Array<{ provider_id?: string; name?: string }>;
+      }>
+    >
+  > {
+    const result = await this.get<{
+      items: Array<{ id: string; attendees?: Array<{ provider_id?: string; name?: string }> }>;
+    }>(`/chats?account_id=${encodeURIComponent(accountId)}`);
+    if (result.error || !result.data) {
+      return { data: null, error: result.error, status: result.status };
+    }
+    return { data: result.data.items ?? [], error: null, status: result.status };
+  }
+
+  async getChatMessages(chatId: string): Promise<
+    ApiResponse<
+      Array<{
+        id: string;
+        sender_id?: string;
+        text?: string;
+        timestamp?: string;
+      }>
+    >
+  > {
+    const result = await this.get<{
+      items: Array<{ id: string; sender_id?: string; text?: string; timestamp?: string }>;
+    }>(`/chats/${encodeURIComponent(chatId)}/messages`);
+    if (result.error || !result.data) {
+      return { data: null, error: result.error, status: result.status };
+    }
+    return { data: result.data.items ?? [], error: null, status: result.status };
+  }
+
+  // ─── Invitation Management ──────────────────────────────────────────
+
+  async listSentInvitations(accountId: string): Promise<ApiResponse<UnipileInvitation[]>> {
+    const result = await this.get<UnipileInvitationListResponse>(
+      `/users/invite/sent?account_id=${encodeURIComponent(accountId)}`
+    );
+    if (result.error || !result.data) {
+      return { data: null, error: result.error, status: result.status };
+    }
+    return { data: result.data.items ?? [], error: null, status: result.status };
+  }
+
+  async cancelInvitation(invitationId: string): Promise<ApiResponse<void>> {
+    return this.delete(`/users/invite/${encodeURIComponent(invitationId)}`);
+  }
 }
 
 // ============================================
