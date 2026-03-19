@@ -753,4 +753,17 @@ export class MagnetLabClient {
       { type: params.type }
     );
   }
+
+  // ─── Trends ───────────────────────────────────────────────────────────────
+
+  /** Get trending topics from recently scanned creatives. */
+  async getTrends(params?: { limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit !== undefined) searchParams.set('limit', String(params.limit));
+    const qs = searchParams.toString();
+    return this.request<{ topics: unknown[] }>(
+      'GET',
+      `/content-pipeline/trends${qs ? `?${qs}` : ''}`
+    );
+  }
 }

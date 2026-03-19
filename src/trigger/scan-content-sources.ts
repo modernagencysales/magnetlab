@@ -11,6 +11,7 @@ import { searchPosts, getProfilePosts, getCompanyPosts } from '@/lib/integration
 import { fetchSubredditPosts, searchReddit } from '@/lib/scanners/reddit-fetcher';
 import { analyzeCreative } from '@/lib/ai/content-pipeline/creative-analyzer';
 import { getExploitBySlug } from '@/server/services/exploits.service';
+import { updateTopicCounts } from '@/server/services/trends.service';
 import type { HarvestPostShort } from '@/lib/types/signals';
 import type { ScannedContent } from '@/lib/types/exploits';
 
@@ -402,6 +403,17 @@ export const scanContentSources = schedules.task({
           creativesCreated: result.creativesCreated,
           errors: result.errors.length,
         });
+
+        // Update trending topics after processing all sources for this user
+        try {
+          await updateTopicCounts(userId);
+        } catch (trendError) {
+          // Non-critical — log and continue
+          logger.warn('Failed to update topic counts', {
+            userId,
+            error: trendError instanceof Error ? trendError.message : String(trendError),
+          });
+        }
       } catch (userError) {
         const msg = userError instanceof Error ? userError.message : String(userError);
         logger.error('Failed to scan for user', { userId, error: msg });
@@ -465,6 +477,17 @@ export const scanContentSourcesManual = task({
       creativesCreated: result.creativesCreated,
       errors: result.errors.length,
     });
+
+    // Update trending topics after processing all sources for this user
+    try {
+      await updateTopicCounts(userId);
+    } catch (trendError) {
+      // Non-critical — log and continue
+      logger.warn('Failed to update topic counts after manual scan', {
+        userId,
+        error: trendError instanceof Error ? trendError.message : String(trendError),
+      });
+    }
 
     return result;
   },
