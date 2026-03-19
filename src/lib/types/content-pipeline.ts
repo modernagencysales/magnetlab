@@ -474,6 +474,11 @@ export interface PipelinePost {
   image_generation_status: ImageGenerationStatus | null;
   broadcast_group_id?: string | null;
   team_profile_id?: string | null;
+  exploit_id?: string | null;
+  creative_id?: string | null;
+  parent_post_id?: string | null;
+  lineage_type?: 'repost' | 'cousin' | null;
+  recycle_after?: string | null;
   created_at: string;
   updated_at: string;
 }
