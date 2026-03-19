@@ -380,6 +380,7 @@ export function ThankyouPage({
   const [error, setError] = useState<string | null>(null);
   const [surveyWasCompleted, setSurveyWasCompleted] = useState(false);
   const [bookingRevealed, setBookingRevealed] = useState(false);
+  const [ctaClicked, setCtaClicked] = useState(false);
   const bookingRef = useRef<HTMLDivElement>(null);
   const surveyRef = useRef<HTMLDivElement>(null);
 
@@ -484,8 +485,12 @@ export function ThankyouPage({
   };
 
   const handleCtaClick = () => {
+    setCtaClicked(true);
     if (hasQuestions) {
-      surveyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Reveal survey, scroll to it after render
+      setTimeout(() => {
+        surveyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     } else {
       // No survey — reveal booking and scroll to it
       setBookingRevealed(true);
@@ -666,9 +671,9 @@ export function ThankyouPage({
               </div>
             )}
 
-            {/* Survey */}
+            {/* Survey — hidden until CTA is clicked */}
             <div ref={surveyRef}>
-              {hasQuestions && !qualificationComplete && (
+              {ctaClicked && hasQuestions && !qualificationComplete && (
                 <SurveyCard
                   questions={questions}
                   currentQuestionIndex={currentQuestionIndex}
