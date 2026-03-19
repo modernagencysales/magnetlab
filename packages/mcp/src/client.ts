@@ -631,4 +631,108 @@ export class MagnetLabClient {
   async listTeams() {
     return this.request<{ teams: unknown[] }>('GET', `/teams`);
   }
+
+  // ─── Exploits ─────────────────────────────────────────────────────────────
+
+  async listExploits(params?: { category?: string; creativeType?: string; withStats?: boolean }) {
+    const searchParams = new URLSearchParams();
+    if (params?.category) searchParams.set('category', params.category);
+    if (params?.creativeType) searchParams.set('creative_type', params.creativeType);
+    if (params?.withStats !== undefined) searchParams.set('with_stats', String(params.withStats));
+    const qs = searchParams.toString();
+    return this.request<{ exploits: unknown[] }>(
+      'GET',
+      `/content-pipeline/exploits${qs ? `?${qs}` : ''}`
+    );
+  }
+
+  /** Generate a LinkedIn post from any combination of primitives (creative, exploit, knowledge, template, idea, style, hook, instructions). */
+  async generatePost(params: {
+    creativeId?: string;
+    exploitId?: string;
+    knowledgeIds?: string[];
+    templateId?: string;
+    ideaId?: string;
+    styleId?: string;
+    hook?: string;
+    instructions?: string;
+  }) {
+    return this.aiRequest<{ post: unknown }>('POST', `/content-pipeline/posts/generate`, {
+      creative_id: params.creativeId,
+      exploit_id: params.exploitId,
+      knowledge_ids: params.knowledgeIds,
+      template_id: params.templateId,
+      idea_id: params.ideaId,
+      style_id: params.styleId,
+      hook: params.hook,
+      instructions: params.instructions,
+    });
+  }
+
+  // ─── Creatives ────────────────────────────────────────────────────────────
+
+  async createCreative(params: {
+    contentText: string;
+    sourcePlatform?: string;
+    sourceUrl?: string;
+    sourceAuthor?: string;
+    imageUrl?: string;
+    teamId?: string;
+  }) {
+    const { teamId, contentText, sourcePlatform, sourceUrl, sourceAuthor, imageUrl } = params;
+    return this.request<{ creative: unknown }>('POST', `/content-pipeline/creatives`, {
+      content_text: contentText,
+      source_platform: sourcePlatform,
+      source_url: sourceUrl,
+      source_author: sourceAuthor,
+      image_url: imageUrl,
+      team_id: teamId,
+    });
+  }
+
+  async listCreatives(params?: {
+    status?: string;
+    sourcePlatform?: string;
+    minScore?: number;
+    limit?: number;
+  }) {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.sourcePlatform) searchParams.set('source_platform', params.sourcePlatform);
+    if (params?.minScore !== undefined) searchParams.set('min_score', String(params.minScore));
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    const qs = searchParams.toString();
+    return this.request<{ creatives: unknown[] }>(
+      'GET',
+      `/content-pipeline/creatives${qs ? `?${qs}` : ''}`
+    );
+  }
+
+  async runScanner() {
+    return this.request<{ success: boolean; message: string }>(
+      'POST',
+      `/content-pipeline/scanner/run`,
+      {}
+    );
+  }
+
+  async configureScanner(params: {
+    action: 'add' | 'remove';
+    sourceType?: string;
+    sourceValue?: string;
+    sourceId?: string;
+    priority?: number;
+  }) {
+    const { action, sourceType, sourceValue, sourceId, priority } = params;
+    if (action === 'remove') {
+      return this.request<{ deleted: boolean }>('DELETE', `/content-pipeline/scanner/sources`, {
+        source_id: sourceId,
+      });
+    }
+    return this.request<{ source: unknown }>('POST', `/content-pipeline/scanner/sources`, {
+      source_type: sourceType,
+      source_value: sourceValue,
+      priority,
+    });
+  }
 }

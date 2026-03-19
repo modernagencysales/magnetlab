@@ -4,8 +4,8 @@ import { toolSchemas, validateToolArgs } from '../validation.js';
 describe('Validation Schemas', () => {
   const schemaNames = Object.keys(toolSchemas);
 
-  it('has exactly 43 schemas', () => {
-    expect(schemaNames.length).toBe(43);
+  it('has exactly 61 schemas', () => {
+    expect(schemaNames.length).toBe(61);
   });
 
   it('every schema name starts with magnetlab_', () => {
