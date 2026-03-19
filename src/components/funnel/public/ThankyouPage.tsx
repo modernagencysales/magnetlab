@@ -769,8 +769,9 @@ export function ThankyouPage({
           </>
         )}
 
-        {/* 8. Qualification Result (skip for side_by_side with video — already shown in grid) */}
-        {qualificationComplete && isQualified !== null && !(layout === 'side_by_side' && vslUrl) && (
+        {/* 8. Qualification Result — only show when there was an actual survey to pass/fail.
+             Skip when: no questions (auto-qualified, result is meaningless), or side_by_side with video (shown in grid). */}
+        {hasQuestions && qualificationComplete && isQualified !== null && !(layout === 'side_by_side' && vslUrl) && (
           <QualificationResult isQualified={isQualified} passMessage={passMessage} failMessage={failMessage} />
         )}
 
@@ -800,15 +801,18 @@ export function ThankyouPage({
         )}
       </div>
 
-      {/* 10. Cal.com booking embed - wider container for desktop mode */}
+      {/* 10. Booking embed - wider container for desktop mode */}
       {qualificationComplete && isQualified && calendlyUrl && (
         <div ref={bookingRef} className="w-full max-w-5xl px-4 mt-8 space-y-4">
-          <h3
-            className="text-lg font-semibold text-center"
-            style={{ color: 'var(--ds-text)' }}
-          >
-            Book Your Call
-          </h3>
+          {/* Only show heading when CTA bridge didn't already introduce the booking (i.e., non-video_first or no vslUrl) */}
+          {!(layout === 'video_first' && vslUrl) && (
+            <h3
+              className="text-lg font-semibold text-center"
+              style={{ color: 'var(--ds-text)' }}
+            >
+              Book Your Call
+            </h3>
+          )}
           <CalendlyEmbed url={calendlyUrl} prefillData={buildPrefillData()} />
         </div>
       )}

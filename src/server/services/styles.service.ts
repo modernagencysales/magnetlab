@@ -4,51 +4,49 @@
  * Never imports from Next.js HTTP layer.
  */
 
-import * as stylesRepo from "@/server/repositories/styles.repo";
-import { extractWritingStyle } from "@/lib/ai/style-extractor";
-import { generateEmbedding } from "@/lib/ai/embeddings";
-import { getProfilePosts } from "@/lib/integrations/harvest-api";
-import type { WritingStyle } from "@/lib/types/content-pipeline";
-import type { ExtractedStyle } from "@/lib/ai/style-extractor";
+import * as stylesRepo from '@/server/repositories/styles.repo';
+import { extractWritingStyle } from '@/lib/ai/style-extractor';
+import { generateEmbedding } from '@/lib/ai/embeddings';
+import { getProfilePosts } from '@/lib/integrations/harvest-api';
+import type { WritingStyle } from '@/lib/types/content-pipeline';
+import type { ExtractedStyle } from '@/lib/ai/style-extractor';
+import type { DataScope } from '@/lib/utils/team-context';
 
 /** Normalize LinkedIn URL (slug, /in/slug, or full URL). */
 export function normalizeLinkedInUrl(input: string): string {
   const trimmed = input.trim();
-  if (trimmed.startsWith("/in/")) {
+  if (trimmed.startsWith('/in/')) {
     return `https://www.linkedin.com${trimmed}`;
   }
-  if (trimmed.startsWith("in/")) {
+  if (trimmed.startsWith('in/')) {
     return `https://www.linkedin.com/${trimmed}`;
   }
-  if (!trimmed.includes("/") && !trimmed.includes(".")) {
+  if (!trimmed.includes('/') && !trimmed.includes('.')) {
     return `https://www.linkedin.com/in/${trimmed}`;
   }
   return trimmed;
 }
 
-export async function getStyles(userId: string): Promise<WritingStyle[]> {
-  return stylesRepo.findStylesByUserId(userId, true);
+export async function getStyles(scope: DataScope): Promise<WritingStyle[]> {
+  return stylesRepo.findStylesByScope(scope, true);
 }
 
-export async function getStyleById(
-  userId: string,
-  id: string,
-): Promise<WritingStyle | null> {
+export async function getStyleById(userId: string, id: string): Promise<WritingStyle | null> {
   return stylesRepo.findStyleById(userId, id);
 }
 
 const ALLOWED_UPDATE_FIELDS: (keyof stylesRepo.StyleUpdateInput)[] = [
-  "name",
-  "description",
-  "style_profile",
-  "example_posts",
-  "is_active",
+  'name',
+  'description',
+  'style_profile',
+  'example_posts',
+  'is_active',
 ];
 
 export async function updateStyle(
   userId: string,
   id: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ): Promise<WritingStyle> {
   const updates: stylesRepo.StyleUpdateInput = {};
   for (const field of ALLOWED_UPDATE_FIELDS) {
@@ -57,7 +55,7 @@ export async function updateStyle(
     }
   }
   if (Object.keys(updates).length === 0) {
-    const err = Object.assign(new Error("No valid fields to update"), {
+    const err = Object.assign(new Error('No valid fields to update'), {
       statusCode: 400,
     });
     throw err;
@@ -76,11 +74,11 @@ async function buildStyleRow(
   options: {
     source_linkedin_url?: string | null;
     source_posts_analyzed: number;
-  },
+  }
 ): Promise<{ row: stylesRepo.StyleInsertInput; embedding: number[] | null }> {
   let embedding: number[] | null = null;
   try {
-    const embeddingText = `Style: ${extracted.name}. ${extracted.description}. Tone: ${extracted.style_profile.tone}. Patterns: ${extracted.style_profile.hook_patterns.join(", ")}`;
+    const embeddingText = `Style: ${extracted.name}. ${extracted.description}. Tone: ${extracted.style_profile.tone}. Patterns: ${extracted.style_profile.hook_patterns.join(', ')}`;
     embedding = await generateEmbedding(embeddingText);
   } catch {
     // continue without embedding
@@ -114,7 +112,7 @@ export async function extractFromPostsAndCreate(
     author_name?: string | null;
     author_headline?: string | null;
     source_linkedin_url?: string | null;
-  },
+  }
 ): Promise<ExtractFromPostsResult> {
   const extracted = await extractWritingStyle({
     posts: input.posts,
@@ -147,7 +145,7 @@ export async function extractFromUrlAndCreate(
   input: {
     linkedin_url: string;
     author_name?: string | null;
-  },
+  }
 ): Promise<ExtractFromUrlResult> {
   const normalizedUrl = normalizeLinkedInUrl(input.linkedin_url);
 
@@ -155,10 +153,9 @@ export async function extractFromUrlAndCreate(
     profile: normalizedUrl,
   });
   if (scrapeError) {
-    const err = Object.assign(
-      new Error(`Failed to scrape profile: ${scrapeError}`),
-      { statusCode: 502 },
-    );
+    const err = Object.assign(new Error(`Failed to scrape profile: ${scrapeError}`), {
+      statusCode: 502,
+    });
     throw err;
   }
 
@@ -166,18 +163,15 @@ export async function extractFromUrlAndCreate(
   if (textPosts.length < 3) {
     const err = Object.assign(
       new Error(
-        `Only found ${textPosts.length} text posts (need at least 3). The profile may not have enough public posts.`,
+        `Only found ${textPosts.length} text posts (need at least 3). The profile may not have enough public posts.`
       ),
-      { statusCode: 422 },
+      { statusCode: 422 }
     );
     throw err;
   }
 
   const firstPost = textPosts[0];
-  const authorName =
-    input.author_name ||
-    firstPost.name ||
-    "";
+  const authorName = input.author_name || firstPost.name || '';
   const authorHeadline = undefined;
 
   const extracted = await extractWritingStyle({
@@ -201,7 +195,7 @@ export async function extractFromUrlAndCreate(
 }
 
 export function getStatusCode(err: unknown): number {
-  if (err && typeof err === "object" && "statusCode" in err) {
+  if (err && typeof err === 'object' && 'statusCode' in err) {
     return (err as { statusCode: number }).statusCode;
   }
   return 500;

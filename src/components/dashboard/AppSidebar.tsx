@@ -19,7 +19,7 @@ import {
   ArrowLeftRight,
   Home,
   Brain,
-  Bot,
+
   BookOpen,
   Mail,
   HelpCircle,

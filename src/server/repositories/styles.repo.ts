@@ -4,11 +4,12 @@
  * Never imported by 'use client' files.
  */
 
-import { createSupabaseAdminClient } from "@/lib/utils/supabase-server";
-import type { WritingStyle, StyleProfile } from "@/lib/types/content-pipeline";
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
+import type { WritingStyle, StyleProfile } from '@/lib/types/content-pipeline';
+import type { DataScope } from '@/lib/utils/team-context';
 
 const STYLE_COLUMNS =
-  "id, user_id, name, description, source_linkedin_url, source_posts_analyzed, style_profile, example_posts, is_active, last_updated_at, created_at";
+  'id, user_id, name, description, source_linkedin_url, source_posts_analyzed, style_profile, example_posts, is_active, last_updated_at, created_at';
 
 export interface StyleInsertInput {
   user_id: string;
@@ -30,45 +31,63 @@ export interface StyleUpdateInput {
   last_updated_at?: string;
 }
 
-export async function findStylesByUserId(
-  userId: string,
-  activeOnly = true,
+export async function findStylesByScope(
+  scope: DataScope,
+  activeOnly = true
 ): Promise<WritingStyle[]> {
   const supabase = createSupabaseAdminClient();
   let query = supabase
-    .from("cp_writing_styles")
+    .from('cp_writing_styles')
     .select(STYLE_COLUMNS)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order('created_at', { ascending: false });
+
+  if (scope.type === 'team' && scope.teamId) {
+    const { data: teamProfiles } = await supabase
+      .from('team_profiles')
+      .select('id')
+      .eq('team_id', scope.teamId)
+      .eq('status', 'active');
+    const profileIds = (teamProfiles ?? []).map((p: { id: string }) => p.id);
+    if (profileIds.length > 0) {
+      query = query.in('team_profile_id', profileIds);
+    } else {
+      query = query.eq('user_id', scope.userId);
+    }
+  } else {
+    query = query.eq('user_id', scope.userId);
+  }
 
   if (activeOnly) {
-    query = query.eq("is_active", true);
+    query = query.eq('is_active', true);
   }
 
   const { data, error } = await query;
-  if (error) throw new Error(`styles.findByUserId: ${error.message}`);
+  if (error) throw new Error(`styles.findByScope: ${error.message}`);
   return (data ?? []) as WritingStyle[];
 }
 
-export async function findStyleById(
+/** @deprecated Use findStylesByScope instead */
+export async function findStylesByUserId(
   userId: string,
-  id: string,
-): Promise<WritingStyle | null> {
+  activeOnly = true
+): Promise<WritingStyle[]> {
+  return findStylesByScope({ type: 'user', userId }, activeOnly);
+}
+
+export async function findStyleById(userId: string, id: string): Promise<WritingStyle | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("cp_writing_styles")
+    .from('cp_writing_styles')
     .select(STYLE_COLUMNS)
-    .eq("id", id)
-    .eq("user_id", userId)
+    .eq('id', id)
+    .eq('user_id', userId)
     .single();
 
   if (error || !data) return null;
   return data as WritingStyle;
 }
 
-export async function createStyle(
-  input: StyleInsertInput,
-): Promise<WritingStyle> {
+export async function createStyle(input: StyleInsertInput): Promise<WritingStyle> {
   const supabase = createSupabaseAdminClient();
   const row: Record<string, unknown> = {
     user_id: input.user_id,
@@ -84,7 +103,7 @@ export async function createStyle(
   }
 
   const { data, error } = await supabase
-    .from("cp_writing_styles")
+    .from('cp_writing_styles')
     .insert(row)
     .select(STYLE_COLUMNS)
     .single();
@@ -96,14 +115,14 @@ export async function createStyle(
 export async function updateStyle(
   userId: string,
   id: string,
-  updates: StyleUpdateInput,
+  updates: StyleUpdateInput
 ): Promise<WritingStyle> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("cp_writing_styles")
+    .from('cp_writing_styles')
     .update(updates)
-    .eq("id", id)
-    .eq("user_id", userId)
+    .eq('id', id)
+    .eq('user_id', userId)
     .select(STYLE_COLUMNS)
     .single();
 
@@ -114,10 +133,10 @@ export async function updateStyle(
 export async function deleteStyle(userId: string, id: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase
-    .from("cp_writing_styles")
+    .from('cp_writing_styles')
     .delete()
-    .eq("id", id)
-    .eq("user_id", userId);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(`styles.delete: ${error.message}`);
 }
