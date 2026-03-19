@@ -1,0 +1,242 @@
+<h2>Ingredients Page — Full Layout</h2>
+<p class="subtitle">The complete mixer experience. Profile-scoped. Step-by-step with smart defaults.</p>
+
+<div class="mockup" style="max-width:800px;margin:0 auto;">
+  <div class="mockup-header">magnetlab.app/ingredients — Sarah Johnson selected</div>
+  <div class="mockup-body" style="padding:0;">
+    <div style="background:#0f0f1a;font-family:system-ui;color:#e0e0e0;font-size:12px;padding:24px;">
+
+      <!-- Page header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <div>
+          <div style="font-size:18px;font-weight:700;color:white;">Ingredients</div>
+          <div style="font-size:12px;color:#888;">Pick ingredients, get content.</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="display:flex;align-items:center;gap:8px;background:#252547;padding:6px 12px;border-radius:8px;">
+            <div style="width:24px;height:24px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:white;">SJ</div>
+            <span style="font-size:11px;color:white;">Sarah Johnson</span>
+            <span style="font-size:10px;color:#888;">▾</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <!-- SECTION 1: THE MIXER -->
+      <!-- ═══════════════════════════════════════════ -->
+      <div style="background:#1a1a2e;border-radius:12px;padding:20px;margin-bottom:20px;border:1px solid #252547;">
+
+        <!-- Ingredient tiles -->
+        <div style="font-size:10px;color:#888;margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Select ingredients</div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+          <!-- Selected: Exploit -->
+          <div style="background:#312e81;border:2px solid #6366f1;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <span style="font-size:16px;">🎯</span>
+            <div>
+              <div style="font-size:10px;color:white;font-weight:600;">Exploit</div>
+              <div style="font-size:9px;color:#a5b4fc;">Authority Play</div>
+            </div>
+            <span style="font-size:9px;color:#6366f1;margin-left:4px;">✕</span>
+          </div>
+
+          <!-- Selected: Knowledge -->
+          <div style="background:#1e3a2e;border:2px solid #22c55e;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <span style="font-size:16px;">🧠</span>
+            <div>
+              <div style="font-size:10px;color:white;font-weight:600;">Knowledge</div>
+              <div style="font-size:9px;color:#86efac;">Sales Objections</div>
+            </div>
+            <span style="font-size:9px;color:#22c55e;margin-left:4px;">✕</span>
+          </div>
+
+          <!-- Selected: Style -->
+          <div style="background:#3a1e2e;border:2px solid #ec4899;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <span style="font-size:16px;">✍️</span>
+            <div>
+              <div style="font-size:10px;color:white;font-weight:600;">Style</div>
+              <div style="font-size:9px;color:#f9a8d4;">Sarah's voice</div>
+            </div>
+            <span style="font-size:9px;color:#ec4899;margin-left:4px;">✕</span>
+          </div>
+
+          <!-- Unselected tiles -->
+          <div style="background:#252547;border:1px dashed #444;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;opacity:0.6;">
+            <span style="font-size:16px;">📐</span>
+            <div style="font-size:10px;color:#888;">Template</div>
+          </div>
+
+          <div style="background:#252547;border:1px dashed #444;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;opacity:0.6;">
+            <span style="font-size:16px;">💡</span>
+            <div style="font-size:10px;color:#888;">Creative</div>
+          </div>
+
+          <div style="background:#252547;border:1px dashed #444;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;opacity:0.6;">
+            <span style="font-size:16px;">📈</span>
+            <div style="font-size:10px;color:#888;">Trend</div>
+          </div>
+
+          <div style="background:#252547;border:1px dashed #444;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;opacity:0.6;">
+            <span style="font-size:16px;">♻️</span>
+            <div style="font-size:10px;color:#888;">Recycled</div>
+          </div>
+        </div>
+
+        <!-- Instructions + Generate -->
+        <div style="display:flex;gap:10px;align-items:stretch;">
+          <div style="flex:1;background:#252547;border:1px solid #333;border-radius:8px;padding:10px 14px;font-size:11px;color:#666;display:flex;align-items:center;">
+            Add instructions (optional)... e.g. "make it punchy" or "focus on pricing"
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="background:#6366f1;color:white;padding:10px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;text-align:center;white-space:nowrap;">
+              ✦ Generate Drafts
+            </div>
+            <div style="background:transparent;border:1px solid #444;color:#888;padding:4px 20px;border-radius:6px;font-size:9px;cursor:pointer;text-align:center;white-space:nowrap;">
+              Generate Ideas instead
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <!-- SECTION 2: SUGGESTED RECIPES -->
+      <!-- ═══════════════════════════════════════════ -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:10px;color:#888;margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Suggested recipes</div>
+
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">
+          <div style="background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:12px 16px;min-width:200px;cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;">
+              <span style="font-size:10px;">🎯</span>
+              <span style="font-size:10px;">🧠</span>
+              <span style="font-size:10px;">✍️</span>
+              <span style="font-size:9px;color:#22c55e;margin-left:auto;font-weight:600;">3.2x ⚡</span>
+            </div>
+            <div style="font-size:11px;color:white;font-weight:600;">Authority + Knowledge</div>
+            <div style="font-size:9px;color:#888;margin-top:2px;">Sarah's top combo · 12 posts</div>
+          </div>
+
+          <div style="background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:12px 16px;min-width:200px;cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;">
+              <span style="font-size:10px;">🎯</span>
+              <span style="font-size:10px;">📈</span>
+              <span style="font-size:9px;color:#22c55e;margin-left:auto;font-weight:600;">2.8x ⚡</span>
+            </div>
+            <div style="font-size:11px;color:white;font-weight:600;">Contrarian + Trend</div>
+            <div style="font-size:9px;color:#888;margin-top:2px;">Hot right now · 4 posts</div>
+          </div>
+
+          <div style="background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:12px 16px;min-width:200px;cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;">
+              <span style="font-size:10px;">♻️</span>
+              <span style="font-size:10px;">🎯</span>
+              <span style="font-size:9px;color:#f59e0b;margin-left:auto;font-weight:600;">2.1x</span>
+            </div>
+            <div style="font-size:11px;color:white;font-weight:600;">Recycled + New Exploit</div>
+            <div style="font-size:9px;color:#888;margin-top:2px;">Low effort, proven content</div>
+          </div>
+
+          <div style="background:#1a1a2e;border:1px dashed #444;border-radius:10px;padding:12px 16px;min-width:140px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+            <div style="font-size:10px;color:#888;">✦ Surprise me</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <!-- SECTION 3: YOUR INVENTORY -->
+      <!-- ═══════════════════════════════════════════ -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Your inventory</div>
+          <div style="font-size:10px;color:#6366f1;cursor:pointer;">Manage →</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div style="background:#1a1a2e;border:1px solid #252547;border-radius:10px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:16px;">🧠</span>
+              <span style="font-size:8px;background:#22c55e20;color:#22c55e;padding:2px 6px;border-radius:4px;">healthy</span>
+            </div>
+            <div style="font-size:18px;font-weight:700;color:white;">47</div>
+            <div style="font-size:10px;color:#888;">Knowledge</div>
+            <div style="font-size:9px;color:#6366f1;margin-top:4px;">12 topics</div>
+          </div>
+
+          <div style="background:#1a1a2e;border:1px solid #252547;border-radius:10px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:16px;">🎯</span>
+              <span style="font-size:8px;background:#22c55e20;color:#22c55e;padding:2px 6px;border-radius:4px;">healthy</span>
+            </div>
+            <div style="font-size:18px;font-weight:700;color:white;">13</div>
+            <div style="font-size:10px;color:#888;">Exploits</div>
+            <div style="font-size:9px;color:#22c55e;margin-top:4px;">3 top performers</div>
+          </div>
+
+          <div style="background:#1a1a2e;border:1px solid #252547;border-radius:10px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:16px;">✍️</span>
+              <span style="font-size:8px;background:#22c55e20;color:#22c55e;padding:2px 6px;border-radius:4px;">active</span>
+            </div>
+            <div style="font-size:18px;font-weight:700;color:white;">3</div>
+            <div style="font-size:10px;color:#888;">Styles</div>
+            <div style="font-size:9px;color:#6366f1;margin-top:4px;">1 active</div>
+          </div>
+
+          <div style="background:#1a1a2e;border:1px solid #252547;border-radius:10px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:16px;">📐</span>
+            </div>
+            <div style="font-size:18px;font-weight:700;color:white;">8</div>
+            <div style="font-size:10px;color:#888;">Templates</div>
+            <div style="font-size:9px;color:#888;margin-top:4px;">+ 5 global</div>
+          </div>
+
+          <div style="background:#1a1a2e;border:1px solid #252547;border-radius:10px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:16px;">💡</span>
+              <span style="font-size:8px;background:#f59e0b20;color:#f59e0b;padding:2px 6px;border-radius:4px;">12 new</span>
+            </div>
+            <div style="font-size:18px;font-weight:700;color:white;">87</div>
+            <div style="font-size:10px;color:#888;">Creatives</div>
+            <div style="font-size:9px;color:#f59e0b;margin-top:4px;">12 unreviewed</div>
+          </div>
+
+          <div style="background:#1a1a2e;border:1px solid #252547;border-radius:10px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:16px;">📈</span>
+            </div>
+            <div style="font-size:18px;font-weight:700;color:white;">6</div>
+            <div style="font-size:10px;color:#888;">Trends</div>
+            <div style="font-size:9px;color:#888;margin-top:4px;">this week</div>
+          </div>
+
+          <div style="background:#1a1a2e;border:1px solid #252547;border-radius:10px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:16px;">♻️</span>
+            </div>
+            <div style="font-size:18px;font-weight:700;color:white;">15</div>
+            <div style="font-size:10px;color:#888;">Recyclable</div>
+            <div style="font-size:9px;color:#888;margin-top:4px;">eligible posts</div>
+          </div>
+
+          <!-- Add more -->
+          <div style="background:#1a1a2e;border:1px dashed #333;border-radius:10px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;">
+            <div style="font-size:20px;color:#444;margin-bottom:4px;">+</div>
+            <div style="font-size:9px;color:#888;">Add transcript</div>
+            <div style="font-size:9px;color:#888;">or creative</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;padding:16px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px;">
+  <p style="margin:0 0 8px;font-size:14px;color:#a5b4fc;"><strong>Three zones, top to bottom:</strong></p>
+  <ol style="margin:0;padding-left:20px;font-size:13px;color:#ccc;line-height:1.8;">
+    <li><strong>The Mixer</strong> — select ingredient tiles (tap to open drawer picker), optional instructions, Generate Drafts / Generate Ideas</li>
+    <li><strong>Suggested Recipes</strong> — horizontal scroll of proven combos with performance data. Tap to auto-fill the mixer. "Surprise me" = random combo.</li>
+    <li><strong>Your Inventory</strong> — at-a-glance cards showing what you have. Health indicators. "Manage →" goes to detailed views. "+ Add" for quick transcript/creative upload.</li>
+  </ol>
+</div>

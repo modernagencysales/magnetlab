@@ -1,0 +1,146 @@
+<h2>Homepage Layout Direction</h2>
+<p class="subtitle">How should the copilot relate to the dashboard? Pick the layout that feels right for how you want users to interact.</p>
+
+<div class="cards">
+  <!-- Option A: Copilot-Centered -->
+  <div class="card" data-choice="copilot-centered" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background: #0a0a0a; border-radius: 8px; padding: 24px; min-height: 280px; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Greeting -->
+        <div style="text-align: center; padding-top: 20px;">
+          <div style="font-size: 20px; color: #e5e5e5; font-weight: 600;">Good afternoon, Tim</div>
+          <div style="font-size: 13px; color: #737373; margin-top: 4px;">3 posts ready for review &middot; 12 new leads this week</div>
+        </div>
+        <!-- Big prompt box -->
+        <div style="max-width: 500px; margin: 8px auto 0; width: 100%;">
+          <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 14px 16px; color: #737373; font-size: 13px;">What would you like to work on?</div>
+        </div>
+        <!-- Suggestion chips -->
+        <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+          <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 16px; padding: 6px 12px; font-size: 11px; color: #a3a3a3;">Draft this week's posts</div>
+          <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 16px; padding: 6px 12px; font-size: 11px; color: #a3a3a3;">Review content queue</div>
+          <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 16px; padding: 6px 12px; font-size: 11px; color: #a3a3a3;">Create a lead magnet</div>
+        </div>
+        <!-- Compact stats row -->
+        <div style="display: flex; gap: 12px; justify-content: center; margin-top: auto; padding-top: 12px; border-top: 1px solid #1a1a1a;">
+          <div style="text-align: center;">
+            <div style="font-size: 16px; color: #e5e5e5; font-weight: 600;">24</div>
+            <div style="font-size: 10px; color: #737373;">Posts</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 16px; color: #e5e5e5; font-weight: 600;">847</div>
+            <div style="font-size: 10px; color: #737373;">Views</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 16px; color: #e5e5e5; font-weight: 600;">38</div>
+            <div style="font-size: 10px; color: #737373;">Leads</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 16px; color: #e5e5e5; font-weight: 600;">5</div>
+            <div style="font-size: 10px; color: #737373;">Magnets</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Copilot-Centered</h3>
+      <p>Big prompt box front and center, like Attio or ChatGPT. Smart suggestions below. Stats are compact and secondary. The AI is the primary way to get things done.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Split Panel -->
+  <div class="card" data-choice="split-panel" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background: #0a0a0a; border-radius: 8px; padding: 0; min-height: 280px; display: flex;">
+        <!-- Left: copilot -->
+        <div style="flex: 0 0 45%; border-right: 1px solid #1a1a1a; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="font-size: 12px; color: #737373; font-weight: 500;">COPILOT</div>
+          <div style="background: #1a1a1a; border-radius: 8px; padding: 10px; font-size: 11px; color: #a3a3a3;">Ask anything...</div>
+          <div style="background: #1a1a1a; border-radius: 8px; padding: 8px; font-size: 10px; color: #a3a3a3;">
+            <div style="color: #525252; font-size: 9px;">You:</div>
+            What should I post about?
+          </div>
+          <div style="background: #262626; border-radius: 8px; padding: 8px; font-size: 10px; color: #d4d4d4;">
+            <div style="color: #525252; font-size: 9px;">Copilot:</div>
+            Based on your top-performing topics...
+          </div>
+        </div>
+        <!-- Right: context -->
+        <div style="flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="font-size: 12px; color: #737373; font-weight: 500;">CONTEXT</div>
+          <div style="background: #1a1a1a; border-radius: 6px; padding: 8px;">
+            <div style="font-size: 10px; color: #737373;">Top Post This Week</div>
+            <div style="font-size: 11px; color: #d4d4d4; margin-top: 2px;">"The 3 mistakes agencies make..."</div>
+            <div style="font-size: 10px; color: #525252; margin-top: 2px;">2.4k impressions</div>
+          </div>
+          <div style="background: #1a1a1a; border-radius: 6px; padding: 8px;">
+            <div style="font-size: 10px; color: #737373;">Content Queue</div>
+            <div style="font-size: 11px; color: #d4d4d4; margin-top: 2px;">3 drafts ready for review</div>
+          </div>
+          <div style="background: #1a1a1a; border-radius: 6px; padding: 8px;">
+            <div style="font-size: 10px; color: #737373;">New Leads</div>
+            <div style="font-size: 11px; color: #d4d4d4; margin-top: 2px;">12 this week (+40%)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Split Panel</h3>
+      <p>Copilot chat on the left, contextual widgets on the right. Always-visible AI alongside relevant data. Like a command center with a built-in assistant.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Dashboard + Elevated Copilot -->
+  <div class="card" data-choice="dashboard-elevated" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background: #0a0a0a; border-radius: 8px; padding: 16px; min-height: 280px; display: flex; flex-direction: column; gap: 12px;">
+        <!-- Prompt bar at top -->
+        <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 8px;">
+          <div style="width: 16px; height: 16px; background: #7c3aed; border-radius: 4px; flex-shrink: 0;"></div>
+          <div style="font-size: 12px; color: #737373;">Ask copilot anything...</div>
+        </div>
+        <!-- Stats cards row -->
+        <div style="display: flex; gap: 8px;">
+          <div style="flex: 1; background: #1a1a1a; border-radius: 6px; padding: 10px;">
+            <div style="font-size: 10px; color: #737373;">Posts</div>
+            <div style="font-size: 18px; color: #e5e5e5; font-weight: 600;">24</div>
+            <div style="font-size: 9px; color: #22c55e;">+3 this week</div>
+          </div>
+          <div style="flex: 1; background: #1a1a1a; border-radius: 6px; padding: 10px;">
+            <div style="font-size: 10px; color: #737373;">Leads</div>
+            <div style="font-size: 18px; color: #e5e5e5; font-weight: 600;">38</div>
+            <div style="font-size: 9px; color: #22c55e;">+12 this week</div>
+          </div>
+          <div style="flex: 1; background: #1a1a1a; border-radius: 6px; padding: 10px;">
+            <div style="font-size: 10px; color: #737373;">Views</div>
+            <div style="font-size: 18px; color: #e5e5e5; font-weight: 600;">847</div>
+            <div style="font-size: 9px; color: #ef4444;">-5% vs last</div>
+          </div>
+        </div>
+        <!-- Action cards -->
+        <div style="display: flex; gap: 8px;">
+          <div style="flex: 1; background: #1a1a1a; border-radius: 6px; padding: 10px;">
+            <div style="font-size: 10px; color: #737373;">Content Queue</div>
+            <div style="font-size: 12px; color: #d4d4d4; margin-top: 4px;">3 posts ready to review</div>
+            <div style="font-size: 10px; color: #7c3aed; margin-top: 4px;">Review now &rarr;</div>
+          </div>
+          <div style="flex: 1; background: #1a1a1a; border-radius: 6px; padding: 10px;">
+            <div style="font-size: 10px; color: #737373;">Autopilot</div>
+            <div style="font-size: 12px; color: #d4d4d4; margin-top: 4px;">Next post: Tomorrow 9am</div>
+            <div style="font-size: 10px; color: #7c3aed; margin-top: 4px;">View schedule &rarr;</div>
+          </div>
+        </div>
+        <!-- Recent activity -->
+        <div style="background: #1a1a1a; border-radius: 6px; padding: 10px;">
+          <div style="font-size: 10px; color: #737373; margin-bottom: 6px;">Recent Activity</div>
+          <div style="font-size: 11px; color: #a3a3a3;">New lead: Sarah K. via "Agency Growth Guide"</div>
+          <div style="font-size: 11px; color: #a3a3a3; margin-top: 3px;">Post published: "Why most agencies fail at..."</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Dashboard + Elevated Copilot</h3>
+      <p>Traditional dashboard with stats, action cards, and activity feed — but with a prominent copilot bar at the top. Best of both worlds: visual overview + AI access without sacrificing dashboard utility.</p>
+    </div>
+  </div>
+</div>

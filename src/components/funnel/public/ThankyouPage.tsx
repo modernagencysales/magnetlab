@@ -416,7 +416,6 @@ export function ThankyouPage({
       }
       setQualificationComplete(true);
       setSurveyWasCompleted(true);
-      setBookingRevealed(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       logError('funnel/thankyou', err, { step: 'error_submitting_qualification' });
@@ -491,8 +490,7 @@ export function ThankyouPage({
         surveyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     } else {
-      // No survey — reveal booking and scroll to it
-      setBookingRevealed(true);
+      // No survey — scroll to booking
       setTimeout(() => {
         bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);

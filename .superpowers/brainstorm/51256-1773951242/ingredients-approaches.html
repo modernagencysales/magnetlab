@@ -1,0 +1,188 @@
+<h2>Ingredients Page: Two Approaches</h2>
+<p class="subtitle">Which layout feels right for an agency operator creating content for a client?</p>
+
+<div class="cards">
+  <!-- Approach A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;border-radius:8px;padding:20px;font-family:system-ui;color:#e0e0e0;font-size:12px;">
+        <!-- Profile header -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #333;">
+          <div style="width:36px;height:36px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-weight:bold;color:white;">SJ</div>
+          <div>
+            <div style="font-weight:600;color:white;">Sarah Johnson</div>
+            <div style="font-size:10px;color:#888;">Agency coach · 47 knowledge entries · 3 styles</div>
+          </div>
+          <div style="margin-left:auto;background:#6366f1;color:white;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">✦ Generate Posts</div>
+        </div>
+
+        <!-- Quick generate bar -->
+        <div style="background:#252547;border-radius:8px;padding:12px;margin-bottom:16px;border:1px solid #333;">
+          <div style="font-size:10px;color:#888;margin-bottom:8px;">QUICK GENERATE</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <span style="background:#1e1e3a;border:1px solid #444;padding:4px 10px;border-radius:12px;font-size:10px;color:#a5b4fc;">🎯 Authority Play</span>
+            <span style="background:#1e1e3a;border:1px solid #444;padding:4px 10px;border-radius:12px;font-size:10px;color:#a5b4fc;">+ Story → Lesson</span>
+            <span style="background:#1e1e3a;border:1px solid #444;padding:4px 10px;border-radius:12px;font-size:10px;color:#a5b4fc;">+ Sarah's voice</span>
+            <span style="background:#6366f1;padding:4px 10px;border-radius:12px;font-size:10px;color:white;">→ Go</span>
+          </div>
+        </div>
+
+        <!-- Ingredient cards grid -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+          <div style="background:#252547;border-radius:8px;padding:10px;border:1px solid #333;">
+            <div style="font-size:10px;color:#888;">🧠 Knowledge</div>
+            <div style="font-size:18px;font-weight:bold;color:white;">47</div>
+            <div style="font-size:9px;color:#6366f1;">12 topics</div>
+          </div>
+          <div style="background:#252547;border-radius:8px;padding:10px;border:1px solid #333;">
+            <div style="font-size:10px;color:#888;">🎯 Exploits</div>
+            <div style="font-size:18px;font-weight:bold;color:white;">13</div>
+            <div style="font-size:9px;color:#22c55e;">3 top performers</div>
+          </div>
+          <div style="background:#252547;border-radius:8px;padding:10px;border:1px solid #333;">
+            <div style="font-size:10px;color:#888;">✍️ Styles</div>
+            <div style="font-size:18px;font-weight:bold;color:white;">3</div>
+            <div style="font-size:9px;color:#6366f1;">1 active</div>
+          </div>
+          <div style="background:#252547;border-radius:8px;padding:10px;border:1px solid #333;">
+            <div style="font-size:10px;color:#888;">📐 Templates</div>
+            <div style="font-size:18px;font-weight:bold;color:white;">8</div>
+            <div style="font-size:9px;color:#888;">+ 5 global</div>
+          </div>
+          <div style="background:#252547;border-radius:8px;padding:10px;border:1px solid #333;">
+            <div style="font-size:10px;color:#888;">💡 Creatives</div>
+            <div style="font-size:18px;font-weight:bold;color:white;">87</div>
+            <div style="font-size:9px;color:#f59e0b;">12 new</div>
+          </div>
+          <div style="background:#252547;border-radius:8px;padding:10px;border:1px solid #333;">
+            <div style="font-size:10px;color:#888;">📈 Trends</div>
+            <div style="font-size:18px;font-weight:bold;color:white;">6</div>
+            <div style="font-size:9px;color:#888;">this week</div>
+          </div>
+        </div>
+
+        <!-- What's working -->
+        <div style="background:#252547;border-radius:8px;padding:10px;border:1px solid #333;">
+          <div style="font-size:10px;color:#888;margin-bottom:6px;">🏆 WHAT'S WORKING</div>
+          <div style="display:flex;gap:6px;font-size:9px;">
+            <span style="background:#22c55e20;color:#22c55e;padding:3px 8px;border-radius:4px;">Authority + Knowledge → 3.2x</span>
+            <span style="background:#22c55e20;color:#22c55e;padding:3px 8px;border-radius:4px;">Story + Exploit → 2.1x</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A: Creative Brief</h3>
+      <p>Land on a dashboard scoped to the current client. See everything at a glance: what ingredients you have, quick-generate bar at the top, performance insights at the bottom. Click any ingredient card to browse/manage. The page IS the mixer — select chips in the bar, hit Go.</p>
+    </div>
+  </div>
+
+  <!-- Approach B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;border-radius:8px;padding:20px;font-family:system-ui;color:#e0e0e0;font-size:12px;">
+        <!-- Profile header -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #333;">
+          <div style="width:36px;height:36px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-weight:bold;color:white;">SJ</div>
+          <div>
+            <div style="font-weight:600;color:white;">Sarah Johnson</div>
+            <div style="font-size:10px;color:#888;">Agency coach</div>
+          </div>
+        </div>
+
+        <!-- Step 1: Pick ingredients -->
+        <div style="margin-bottom:14px;">
+          <div style="font-size:10px;color:#888;margin-bottom:8px;font-weight:600;">STEP 1 — PICK INGREDIENTS</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+            <div style="background:#312e81;border:2px solid #6366f1;border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:14px;">🎯</div>
+              <div style="font-size:9px;color:white;font-weight:600;">Exploit</div>
+              <div style="font-size:8px;color:#a5b4fc;">Authority Play</div>
+            </div>
+            <div style="background:#252547;border:1px solid #444;border-radius:8px;padding:8px;text-align:center;opacity:0.6;">
+              <div style="font-size:14px;">🧠</div>
+              <div style="font-size:9px;color:#888;">Knowledge</div>
+              <div style="font-size:8px;color:#666;">tap to pick</div>
+            </div>
+            <div style="background:#1e3a2e;border:2px solid #22c55e;border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:14px;">✍️</div>
+              <div style="font-size:9px;color:white;font-weight:600;">Style</div>
+              <div style="font-size:8px;color:#86efac;">Sarah's voice</div>
+            </div>
+            <div style="background:#252547;border:1px solid #444;border-radius:8px;padding:8px;text-align:center;opacity:0.6;">
+              <div style="font-size:14px;">📐</div>
+              <div style="font-size:9px;color:#888;">Template</div>
+              <div style="font-size:8px;color:#666;">tap to pick</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px;">
+            <div style="background:#252547;border:1px solid #444;border-radius:8px;padding:8px;text-align:center;opacity:0.6;">
+              <div style="font-size:14px;">💡</div>
+              <div style="font-size:9px;color:#888;">Creative</div>
+            </div>
+            <div style="background:#252547;border:1px solid #444;border-radius:8px;padding:8px;text-align:center;opacity:0.6;">
+              <div style="font-size:14px;">📈</div>
+              <div style="font-size:9px;color:#888;">Trend</div>
+            </div>
+            <div style="background:#252547;border:1px solid #444;border-radius:8px;padding:8px;text-align:center;opacity:0.6;">
+              <div style="font-size:14px;">♻️</div>
+              <div style="font-size:9px;color:#888;">Recycled</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Generate -->
+        <div style="margin-bottom:14px;">
+          <div style="font-size:10px;color:#888;margin-bottom:8px;font-weight:600;">STEP 2 — GENERATE</div>
+          <div style="background:#252547;border-radius:8px;padding:12px;border:1px solid #333;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="background:#6366f120;color:#a5b4fc;padding:3px 8px;border-radius:4px;font-size:9px;">🎯 Authority Play</span>
+              <span style="font-size:10px;color:#444;">+</span>
+              <span style="background:#22c55e20;color:#86efac;padding:3px 8px;border-radius:4px;font-size:9px;">✍️ Sarah's voice</span>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;background:#1e1e3a;border:1px solid #333;border-radius:6px;padding:8px;font-size:10px;color:#666;">Add instructions (optional)...</div>
+              <div style="background:#6366f1;color:white;padding:8px 16px;border-radius:6px;font-size:11px;font-weight:600;">Generate 3</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suggestions -->
+        <div>
+          <div style="font-size:10px;color:#888;margin-bottom:6px;">💡 SUGGESTED COMBOS</div>
+          <div style="display:flex;gap:6px;font-size:9px;">
+            <span style="background:#252547;border:1px solid #444;padding:4px 8px;border-radius:4px;color:#a5b4fc;cursor:pointer;">Story + Knowledge → 3.2x ⚡</span>
+            <span style="background:#252547;border:1px solid #444;padding:4px 8px;border-radius:4px;color:#a5b4fc;cursor:pointer;">Contrarian + Trend → 2.8x ⚡</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B: Step-by-Step Mixer</h3>
+      <p>Land on a guided workflow. Step 1: tap ingredient tiles to select (highlighted = selected, dim = available). Step 2: review your recipe, add optional instructions, generate. Suggested combos shown based on past performance. Feels like building a recipe card.</p>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons" style="margin-top:24px;">
+  <div class="pros">
+    <h4>A: Creative Brief</h4>
+    <ul>
+      <li>One glance = full picture of what you have</li>
+      <li>Quick generate bar for power users (2 clicks)</li>
+      <li>Performance data front and center</li>
+      <li>Natural entry point to manage each ingredient type</li>
+      <li>Works great as an agent/MCP dashboard too</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>B: Step-by-Step Mixer</h4>
+    <ul>
+      <li>Self-explanatory — no learning curve</li>
+      <li>Guides non-technical users through the process</li>
+      <li>Suggested combos surface performance data naturally</li>
+      <li>Mobile-friendly (vertical flow)</li>
+      <li>But: inventory management needs a separate view</li>
+    </ul>
+  </div>
+</div>

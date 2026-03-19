@@ -84,7 +84,9 @@ export function CopilotConversation({
       try {
         const res = await fetch(`/api/copilot/conversations/${id}`);
         if (!res.ok) {
-          console.warn(`Conversation ${id} not found or inaccessible, redirecting to /`);
+          logError('CopilotConversation/loadConversation', new Error('Conversation not found'), {
+            id,
+          });
           router.replace('/');
           return;
         }
@@ -108,7 +110,6 @@ export function CopilotConversation({
         );
       } catch (err) {
         logError('CopilotConversation/loadConversation', err, { id });
-        console.warn('Failed to load conversation, redirecting to /');
         router.replace('/');
       }
     },

@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCopilotNavigator } from '@/components/copilot/CopilotNavigator';
+import { logError } from '@/lib/utils/logger';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -68,11 +69,16 @@ export function CommandBar() {
 
     // Fetch recent conversations
     fetch('/api/copilot/conversations?limit=5')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data: { conversations: Conversation[] }) => {
         setConversations(data.conversations ?? []);
       })
-      .catch(() => {});
+      .catch((err) => {
+        logError('CommandBar', err, { step: 'fetch_conversations' });
+      });
   }, [isOpen, pageContext]);
 
   // ─── Auto-focus input when open ────────────────────────────────────────────
