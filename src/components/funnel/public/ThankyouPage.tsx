@@ -379,7 +379,6 @@ export function ThankyouPage({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [surveyWasCompleted, setSurveyWasCompleted] = useState(false);
-  const [bookingRevealed, setBookingRevealed] = useState(false);
   const [ctaClicked, setCtaClicked] = useState(false);
   const bookingRef = useRef<HTMLDivElement>(null);
   const surveyRef = useRef<HTMLDivElement>(null);

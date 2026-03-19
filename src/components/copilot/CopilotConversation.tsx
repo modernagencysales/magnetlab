@@ -9,6 +9,7 @@ import { Button } from '@magnetlab/magnetui';
 import { MessageList } from './MessageList';
 import { PromptInput } from './PromptInput';
 import type { CopilotMessage, PendingConfirmation } from './copilot-types';
+import type { ExtractedContent } from '@/lib/types/lead-magnet';
 import { logError } from '@/lib/utils/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -420,6 +421,19 @@ export function CopilotConversation({
     }
   }, [messages]);
 
+  // ─── Content Review Callbacks ─────────────────────────────────────────────────
+
+  /** Called when user approves content in the inline review panel. Resumes conversation. */
+  const handleContentApprove = useCallback((content: ExtractedContent) => {
+    // Notify the conversation so Claude can proceed with the approved content
+    sendMessageRef.current(`Approved. Content title: "${content.title}". Please continue.`);
+  }, []);
+
+  /** Called when user requests changes from the inline review panel. Resumes with feedback. */
+  const handleContentRequestChanges = useCallback((feedback: string) => {
+    sendMessageRef.current(`Please revise the content. Feedback: ${feedback}`);
+  }, []);
+
   // ─── Initialization ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -496,6 +510,8 @@ export function CopilotConversation({
               pendingConfirmation={pendingConfirmation}
               onConfirm={confirmAction}
               onFeedback={submitFeedback}
+              onContentApprove={handleContentApprove}
+              onContentRequestChanges={handleContentRequestChanges}
             />
           )}
 
