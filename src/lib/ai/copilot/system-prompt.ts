@@ -2,6 +2,10 @@ import { getPrompt } from '@/lib/services/prompt-registry';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { buildVoicePromptSection } from '@/lib/ai/content-pipeline/voice-prompt-builder';
 import { getDefaultProfile } from '@/server/repositories/team.repo';
+import {
+  fetchBriefingData,
+  formatBriefingPrompt,
+} from '@/server/services/copilot-briefing.service';
 import type { DataScope } from '@/lib/utils/team-context';
 
 interface PageContext {
@@ -76,10 +80,12 @@ function buildFeedbackSection(negativeNotes: string[]): string | null {
 export async function buildCopilotSystemPrompt(
   userId: string,
   pageContext?: PageContext,
-  scope?: DataScope
+  scope?: DataScope,
+  briefing?: boolean,
+  sourceContext?: PageContext
 ): Promise<string> {
   const scopeKey = scope?.type === 'team' ? `team:${scope.teamId}` : `user:${userId}`;
-  const cacheKey = `${scopeKey}:${pageContext?.page || 'none'}:${pageContext?.entityId || 'none'}`;
+  const cacheKey = `${scopeKey}:${pageContext?.page || 'none'}:${pageContext?.entityId || 'none'}:${briefing ? 'briefed' : 'standard'}`;
   const cached = promptCache.get(cacheKey);
   if (cached && Date.now() < cached.expires) {
     return cached.prompt;
@@ -93,7 +99,8 @@ export async function buildCopilotSystemPrompt(
   sections.push(basePrompt.system_prompt);
 
   // 2. Voice profile — team mode uses default team profile, personal mode uses user's linked profile
-  let profile: { voice_profile: unknown; full_name: string | null; title: string | null } | null = null;
+  let profile: { voice_profile: unknown; full_name: string | null; title: string | null } | null =
+    null;
 
   if (scope?.type === 'team' && scope.teamId) {
     // Team mode: use the team's default profile (the "post as" identity for the whole team)
@@ -127,6 +134,13 @@ export async function buildCopilotSystemPrompt(
     sections.push(
       `\n## User Info\nName: ${profile.full_name}${profile.title ? `, ${profile.title}` : ''}`
     );
+  }
+
+  // 2b. Briefing — live dashboard metrics (optional, homepage only)
+  if (briefing && scope) {
+    const briefingData = await fetchBriefingData(supabase, scope);
+    const briefingSection = formatBriefingPrompt(briefingData);
+    sections.push('\n' + briefingSection);
   }
 
   // 3. Active memories
@@ -208,13 +222,14 @@ export async function buildCopilotSystemPrompt(
     }
   }
 
-  // 6. Page context
-  if (pageContext) {
+  // 6. Page context — sourceContext (Cmd+K originating page) takes precedence over pageContext
+  const effectivePageContext = sourceContext ?? pageContext;
+  if (effectivePageContext) {
     sections.push(`\n## Current Page Context`);
-    sections.push(`The user is on: ${pageContext.page}`);
-    if (pageContext.entityType && pageContext.entityId) {
+    sections.push(`The user is on: ${effectivePageContext.page}`);
+    if (effectivePageContext.entityType && effectivePageContext.entityId) {
       sections.push(
-        `Viewing ${pageContext.entityType}: ${pageContext.entityTitle || pageContext.entityId}`
+        `Viewing ${effectivePageContext.entityType}: ${effectivePageContext.entityTitle || effectivePageContext.entityId}`
       );
     }
   }

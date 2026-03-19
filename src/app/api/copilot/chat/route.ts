@@ -20,6 +20,13 @@ interface ChatRequest {
     entityId?: string;
     entityTitle?: string;
   };
+  briefing?: boolean;
+  sourceContext?: {
+    page: string;
+    entityType?: string;
+    entityId?: string;
+    entityTitle?: string;
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -188,7 +195,13 @@ export async function POST(req: NextRequest) {
     const scope = await getDataScope(userId);
 
     // Build system prompt with scope-aware voice profile + post performance
-    const systemPrompt = await buildCopilotSystemPrompt(userId, body.pageContext, scope);
+    const systemPrompt = await buildCopilotSystemPrompt(
+      userId,
+      body.pageContext,
+      scope,
+      body.briefing,
+      body.sourceContext
+    );
 
     // Get tool definitions
     const tools = getToolDefinitions();
