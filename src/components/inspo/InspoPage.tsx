@@ -40,7 +40,12 @@ export function InspoPage() {
             description="Review external content, pick exploits, generate posts"
           />
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => triggerScan()} disabled={scanning}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => triggerScan().catch(() => toast.error('Failed to start scan'))}
+              disabled={scanning}
+            >
               <ScanSearch className="h-4 w-4 mr-1.5" />
               {scanning ? 'Scanning...' : 'Run Scanner'}
             </Button>
@@ -61,7 +66,7 @@ export function InspoPage() {
           </TabsList>
 
           <TabsContent value="queue" className="mt-4">
-            <InspoQueueTab />
+            <InspoQueueTab onPasteCreative={() => setPasteOpen(true)} />
           </TabsContent>
           <TabsContent value="exploits" className="mt-4">
             <InspoExploitsTab />

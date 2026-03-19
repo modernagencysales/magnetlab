@@ -90,17 +90,23 @@ export function useDeleteScannerSource(onSuccess?: () => void) {
 
 export function useRunScanner(onSuccess?: () => void) {
   const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   const mutate = useCallback(async () => {
     setIsPending(true);
+    setError(null);
     try {
       const result = await runScanner();
       onSuccess?.();
       return result;
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      setError(e);
+      throw e;
     } finally {
       setIsPending(false);
     }
   }, [onSuccess]);
 
-  return { mutate, isPending };
+  return { mutate, isPending, error };
 }

@@ -211,7 +211,12 @@ export function ScannerSettings() {
         <Label className="text-sm font-medium">Scan Status</Label>
         <div className="mt-1.5 p-4 rounded-lg bg-card border border-border flex items-center justify-between">
           <div className="text-sm text-muted-foreground">{sources.length} sources configured</div>
-          <Button variant="outline" size="sm" onClick={() => runScan()} disabled={scanning}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => runScan().catch(() => toast.error('Failed to start scan'))}
+            disabled={scanning}
+          >
             {scanning ? (
               <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
             ) : (

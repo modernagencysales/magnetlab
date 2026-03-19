@@ -298,6 +298,7 @@ interface Question {
   options: string[] | null;
   placeholder: string | null;
   isRequired: boolean;
+  bookingPrefillKey: string | null;
 }
 
 interface ThankyouPageProps {
@@ -329,6 +330,11 @@ interface ThankyouPageProps {
   homepageLabel?: string | null;
   showResourceOnPage?: boolean;
   layout?: 'survey_first' | 'video_first' | 'side_by_side';
+  vslHeadline?: string | null;
+  vslSubline?: string | null;
+  ctaHeadline?: string | null;
+  ctaButtonText?: string | null;
+  leadName?: string | null;
 }
 
 export function ThankyouPage({
@@ -359,6 +365,11 @@ export function ThankyouPage({
   homepageLabel,
   showResourceOnPage,
   layout = 'survey_first',
+  vslHeadline,
+  vslSubline,
+  ctaHeadline,
+  ctaButtonText,
+  leadName,
 }: ThankyouPageProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -367,7 +378,9 @@ export function ThankyouPage({
   const [isQualified, setIsQualified] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [surveyWasCompleted, setSurveyWasCompleted] = useState(false);
   const bookingRef = useRef<HTMLDivElement>(null);
+  const surveyRef = useRef<HTMLDivElement>(null);
 
   const themeVars = getThemeVars(theme, primaryColor);
   const isDark = theme === 'dark';
@@ -401,6 +414,7 @@ export function ThankyouPage({
         setIsQualified(data.isQualified);
       }
       setQualificationComplete(true);
+      setSurveyWasCompleted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       logError('funnel/thankyou', err, { step: 'error_submitting_qualification' });
@@ -453,6 +467,25 @@ export function ThankyouPage({
     advanceOrSubmit(newAnswers);
   };
 
+  const buildPrefillData = () => {
+    const surveyMappedAnswers: Record<string, string> = {};
+    for (const q of questions) {
+      if (q.bookingPrefillKey && answers[q.id]) {
+        surveyMappedAnswers[q.bookingPrefillKey] = answers[q.id];
+      }
+    }
+    return {
+      leadName: leadName || undefined,
+      leadEmail: email || undefined,
+      surveyAnswers: Object.keys(surveyMappedAnswers).length > 0 ? surveyMappedAnswers : undefined,
+    };
+  };
+
+  const handleCtaClick = () => {
+    const target = hasQuestions ? surveyRef.current : bookingRef.current;
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   // If no questions, determine qualification (default to qualified)
   useEffect(() => {
     if (questions.length === 0) {
@@ -460,16 +493,16 @@ export function ThankyouPage({
     }
   }, [questions.length]);
 
-  // Auto-scroll to booking embed after survey completion
+  // Auto-scroll to booking embed after survey completion (only when user actively completed the survey,
+  // not on initial page load when there are no questions — we want them to see the video first)
   useEffect(() => {
-    if (qualificationComplete && isQualified && calendlyUrl && bookingRef.current) {
-      // Small delay to let the DOM render the booking section
+    if (surveyWasCompleted && qualificationComplete && isQualified && calendlyUrl && bookingRef.current) {
       const timer = setTimeout(() => {
         bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [qualificationComplete, isQualified, calendlyUrl]);
+  }, [surveyWasCompleted, qualificationComplete, isQualified, calendlyUrl]);
 
   // Redirect after qualification if configured
   useEffect(() => {
@@ -523,10 +556,10 @@ export function ThankyouPage({
           <div className="text-center">
             <a
               href={contentPageUrl}
-              className="inline-flex items-center gap-2 rounded-lg px-8 py-3 text-base font-semibold text-white transition-opacity hover:opacity-90"
+              className="inline-flex items-center gap-2 rounded-lg px-10 py-4 text-lg font-bold text-white transition-opacity hover:opacity-90"
               style={{ background: 'var(--ds-primary)' }}
             >
-              View Your Resource &rarr;
+              Access Your Free Resource &rarr;
             </a>
           </div>
         )}
@@ -541,21 +574,23 @@ export function ThankyouPage({
           />
         )}
 
-        {/* 3. Value headline + subline (selling the survey) */}
-        <div className="text-center space-y-3">
-          <h1
-            className="text-2xl md:text-3xl font-semibold"
-            style={{ color: 'var(--ds-text)' }}
-          >
-            {headline}
-          </h1>
+        {/* 3. Value headline + subline — hidden in video_first when VSL framing exists (avoids redundancy) */}
+        {!(layout === 'video_first' && vslHeadline) && (
+          <div className="text-center space-y-3">
+            <h1
+              className="text-2xl md:text-3xl font-semibold"
+              style={{ color: 'var(--ds-text)' }}
+            >
+              {headline}
+            </h1>
 
-          {subline && (
-            <p style={{ color: 'var(--ds-muted)' }}>
-              {subline}
-            </p>
-          )}
-        </div>
+            {subline && (
+              <p style={{ color: 'var(--ds-muted)' }}>
+                {subline}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 4. Above-video sections (social proof) — only for survey_first layout */}
         {layout === 'survey_first' && aboveSections.length > 0 && (
@@ -564,9 +599,87 @@ export function ThankyouPage({
           </div>
         )}
 
-        {/* Layout: video_first — show video before survey */}
-        {layout === 'video_first' && vslUrl && (
-          <VideoEmbed url={vslUrl} />
+        {/* Layout: video_first — VSL framing + video + CTA bridge + sections + survey */}
+        {layout === 'video_first' && (
+          <>
+            {/* VSL framing + video */}
+            {vslUrl && (
+              <div className="space-y-4">
+                {(vslHeadline || vslSubline) && (
+                  <div className="text-center space-y-2">
+                    {vslHeadline && (
+                      <p
+                        className="text-xs font-bold uppercase tracking-widest"
+                        style={{ color: primaryColor }}
+                      >
+                        {vslHeadline}
+                      </p>
+                    )}
+                    {vslSubline && (
+                      <h2
+                        className="text-xl md:text-2xl font-semibold"
+                        style={{ color: 'var(--ds-text)' }}
+                      >
+                        {vslSubline}
+                      </h2>
+                    )}
+                  </div>
+                )}
+                <VideoEmbed url={vslUrl} />
+              </div>
+            )}
+
+            {/* CTA bridge — only render when video exists */}
+            {vslUrl && (ctaHeadline || ctaButtonText) && (
+              <div className="text-center space-y-4 py-4">
+                {ctaHeadline && (
+                  <p
+                    className="text-lg md:text-xl font-semibold"
+                    style={{ color: 'var(--ds-text)' }}
+                  >
+                    {ctaHeadline}
+                  </p>
+                )}
+                <button
+                  onClick={handleCtaClick}
+                  className="inline-flex items-center rounded-lg px-10 py-4 text-lg font-bold text-white uppercase tracking-wide transition-opacity hover:opacity-90"
+                  style={{ background: primaryColor }}
+                >
+                  {ctaButtonText || 'BOOK YOUR CALL NOW'}
+                </button>
+              </div>
+            )}
+
+            {/* All sections — social proof between CTA and survey */}
+            {sections.length > 0 && (
+              <div className="space-y-6">
+                {sections.map(s => <SectionRenderer key={s.id} section={s} />)}
+              </div>
+            )}
+
+            {/* Survey */}
+            <div ref={surveyRef}>
+              {hasQuestions && !qualificationComplete && (
+                <SurveyCard
+                  questions={questions}
+                  currentQuestionIndex={currentQuestionIndex}
+                  setCurrentQuestionIndex={setCurrentQuestionIndex}
+                  currentTextValue={currentTextValue}
+                  setCurrentTextValue={setCurrentTextValue}
+                  answers={answers}
+                  error={error}
+                  setError={setError}
+                  submitting={submitting}
+                  primaryColor={primaryColor}
+                  currentQuestion={currentQuestion}
+                  handleYesNoAnswer={handleYesNoAnswer}
+                  handleTextSubmit={handleTextSubmit}
+                  handleMultipleChoiceSelect={handleMultipleChoiceSelect}
+                  handleSkip={handleSkip}
+                />
+              )}
+            </div>
+          </>
         )}
 
         {/* Layout: side_by_side — 2-column grid (falls back to single column when no video) */}
@@ -628,8 +741,8 @@ export function ThankyouPage({
           )
         ) : (
           <>
-            {/* Survey card — for survey_first and video_first layouts */}
-            {hasQuestions && !qualificationComplete && (
+            {/* Survey card — for survey_first layout only (video_first has its own) */}
+            {layout === 'survey_first' && hasQuestions && !qualificationComplete && (
               <SurveyCard
                 questions={questions}
                 currentQuestionIndex={currentQuestionIndex}
@@ -679,8 +792,8 @@ export function ThankyouPage({
           </div>
         )}
 
-        {/* 9. Below-content sections */}
-        {belowSections.length > 0 && (
+        {/* 9. Below-content sections (video_first renders all sections inline) */}
+        {layout !== 'video_first' && belowSections.length > 0 && (
           <div className="space-y-6">
             {belowSections.map(s => <SectionRenderer key={s.id} section={s} />)}
           </div>
@@ -696,7 +809,7 @@ export function ThankyouPage({
           >
             Book Your Call
           </h3>
-          <CalendlyEmbed url={calendlyUrl} />
+          <CalendlyEmbed url={calendlyUrl} prefillData={buildPrefillData()} />
         </div>
       )}
 

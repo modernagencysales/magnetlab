@@ -392,7 +392,7 @@ export function ThankyouPageEditor({
                 placeholder="https://cal.com/your-name/30min"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                Supports Cal.com and Calendly URLs
+                Supports iClosed, Cal.com, and Calendly URLs
               </p>
             </div>
           </div>

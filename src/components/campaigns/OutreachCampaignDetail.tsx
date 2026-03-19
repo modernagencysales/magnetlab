@@ -29,12 +29,11 @@ interface OutreachCampaignDetailProps {
 
 type BadgeVariant = 'outline' | 'default' | 'blue' | 'green' | 'red' | 'orange' | 'gray';
 
-// Matches CampaignsList: active=green, completed=blue
 const CAMPAIGN_STATUS_VARIANTS: Record<string, BadgeVariant> = {
-  draft: 'gray',
-  active: 'green',
+  draft: 'outline',
+  active: 'blue',
   paused: 'orange',
-  completed: 'blue',
+  completed: 'green',
 };
 
 const PRESET_LABELS: Record<string, string> = {
@@ -82,7 +81,6 @@ export function OutreachCampaignDetail({ campaignId }: OutreachCampaignDetailPro
   const [statusFilter, setStatusFilter] = useState('');
   const [addLeadsOpen, setAddLeadsOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
 
   const { campaign, isLoading, mutate: mutateCampaign } = useOutreachCampaign(campaignId);
   const {
@@ -94,28 +92,24 @@ export function OutreachCampaignDetail({ campaignId }: OutreachCampaignDetailPro
   // ── Actions ────────────────────────────────────────────────────────────────
 
   const handleActivate = async () => {
-    setActionError(null);
     setActionLoading(true);
     try {
       await outreachCampaignsApi.activateCampaign(campaignId);
       await mutateCampaign();
     } catch (err) {
       logError('OutreachCampaignDetail/activate', err);
-      setActionError(err instanceof Error ? err.message : 'Action failed');
     } finally {
       setActionLoading(false);
     }
   };
 
   const handlePause = async () => {
-    setActionError(null);
     setActionLoading(true);
     try {
       await outreachCampaignsApi.pauseCampaign(campaignId);
       await mutateCampaign();
     } catch (err) {
       logError('OutreachCampaignDetail/pause', err);
-      setActionError(err instanceof Error ? err.message : 'Action failed');
     } finally {
       setActionLoading(false);
     }
@@ -123,26 +117,22 @@ export function OutreachCampaignDetail({ campaignId }: OutreachCampaignDetailPro
 
   const handleDelete = async () => {
     if (!confirm('Delete this campaign? This cannot be undone.')) return;
-    setActionError(null);
     setActionLoading(true);
     try {
       await outreachCampaignsApi.deleteCampaign(campaignId);
       router.push('/campaigns');
     } catch (err) {
       logError('OutreachCampaignDetail/delete', err);
-      setActionError(err instanceof Error ? err.message : 'Action failed');
       setActionLoading(false);
     }
   };
 
   const handleSkipLead = async (leadId: string) => {
-    setActionError(null);
     try {
       await outreachCampaignsApi.skipLead(campaignId, leadId);
       await mutateLeads();
     } catch (err) {
       logError('OutreachCampaignDetail/skipLead', err);
-      setActionError(err instanceof Error ? err.message : 'Action failed');
     }
   };
 
@@ -182,7 +172,7 @@ export function OutreachCampaignDetail({ campaignId }: OutreachCampaignDetailPro
             <h1 className="text-2xl font-bold">{campaign.name}</h1>
             <div className="mt-1 flex items-center gap-2">
               <Badge variant="outline">{PRESET_LABELS[campaign.preset] ?? campaign.preset}</Badge>
-              <Badge variant={CAMPAIGN_STATUS_VARIANTS[campaign.status] ?? 'gray'}>
+              <Badge variant={CAMPAIGN_STATUS_VARIANTS[campaign.status] ?? 'outline'}>
                 {campaign.status}
               </Badge>
             </div>
@@ -206,13 +196,6 @@ export function OutreachCampaignDetail({ campaignId }: OutreachCampaignDetailPro
           </Button>
         </div>
       </div>
-
-      {/* ── Action error ───────────────────────────────────────────────── */}
-      {actionError && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {actionError}
-        </div>
-      )}
 
       {/* ── Stats row ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">

@@ -845,6 +845,7 @@ export async function createQuestion(
     placeholder: body.placeholder || null,
     is_qualifying: isQualifying,
     is_required: body.isRequired ?? true,
+    booking_prefill_key: body.bookingPrefillKey || null,
   });
 }
 
@@ -874,6 +875,7 @@ export async function updateQuestion(
   if (body.placeholder !== undefined) updateData.placeholder = body.placeholder;
   if (body.isQualifying !== undefined) updateData.is_qualifying = body.isQualifying;
   if (body.isRequired !== undefined) updateData.is_required = body.isRequired;
+  if (body.bookingPrefillKey !== undefined) updateData.booking_prefill_key = body.bookingPrefillKey;
 
   if (Object.keys(updateData).length === 0) {
     throw Object.assign(new Error('No valid fields to update'), { statusCode: 400 });
