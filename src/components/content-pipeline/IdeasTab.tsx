@@ -25,7 +25,7 @@ import type {
 } from '@/lib/types/content-pipeline';
 import { useIdeas } from '@/frontend/hooks/api/useIdeas';
 import { useWriteFromIdea, useArchiveIdea } from '@/frontend/hooks/api/useIdeasMutations';
-import { useCopilot } from '@/components/copilot/CopilotProvider';
+import { useCopilotNavigator } from '@/components/copilot/CopilotNavigator';
 
 const STATUSES: { value: IdeaStatus | ''; label: string }[] = [
   { value: '', label: 'All Statuses' },
@@ -101,7 +101,7 @@ export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
   const { mutate: archiveIdeaMutate } = useArchiveIdea(() => {
     fetchIdeas(true);
   });
-  const { open: openCopilot, sendMessage: sendCopilotMessage } = useCopilot();
+  const { startConversation } = useCopilotNavigator();
 
   const handleWritePost = useCallback(
     async (ideaId: string) => {
@@ -424,8 +424,7 @@ export function IdeasTab({ profileId, teamId, initialIdeas }: IdeasTabProps) {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          openCopilot();
-                          sendCopilotMessage(
+                          startConversation(
                             `Create a lead magnet from this idea: "${idea.title}". ${idea.core_insight || ''}`
                           );
                         }}

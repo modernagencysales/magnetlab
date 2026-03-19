@@ -8,7 +8,7 @@ import { ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@magnetlab/magnetui';
 import { MessageList } from './MessageList';
 import { PromptInput } from './PromptInput';
-import type { CopilotMessage, PendingConfirmation } from './CopilotProvider';
+import type { CopilotMessage, PendingConfirmation } from './copilot-types';
 import { logError } from '@/lib/utils/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────

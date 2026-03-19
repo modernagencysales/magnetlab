@@ -8,7 +8,7 @@ import { KnowledgeOverview } from './KnowledgeOverview';
 import { TopicBrowser } from './TopicBrowser';
 import { GapAnalysis } from './GapAnalysis';
 import { KnowledgeSearch } from './KnowledgeSearch';
-import { useCopilotContext } from '@/components/copilot/useCopilotContext';
+import { useCopilotPageContext } from '@/components/copilot/CopilotNavigator';
 
 const SUBTABS = [
   { id: 'overview', label: 'Overview', icon: Brain },
@@ -29,7 +29,7 @@ export function KnowledgeDashboard() {
   const [teamId, setTeamId] = useState<string | undefined>();
   const [userTeamId, setUserTeamId] = useState<string | undefined>();
 
-  useCopilotContext({ page: 'knowledge' });
+  useCopilotPageContext({ page: 'knowledge' });
   useEffect(() => {
     // Read the active team from the cookie (set by team-select page)
     const cookieTeamId = getActiveTeamFromCookie();

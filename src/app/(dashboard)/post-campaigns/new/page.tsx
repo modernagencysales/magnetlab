@@ -11,9 +11,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { PageContainer, PageTitle, Button, Input, Label, Card, CardContent } from '@magnetlab/magnetui';
+import {
+  PageContainer,
+  PageTitle,
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
+} from '@magnetlab/magnetui';
 import { logError } from '@/lib/utils/logger';
-import { useCopilotContext } from '@/components/copilot/useCopilotContext';
+import { useCopilotPageContext } from '@/components/copilot/CopilotNavigator';
 import { CampaignForm } from '@/components/post-campaigns/CampaignForm';
 import { AutoSetupCard } from '@/components/post-campaigns/AutoSetupCard';
 import * as campaignsApi from '@/frontend/api/post-campaigns';
@@ -23,7 +31,7 @@ import type { CreatePostCampaignInput } from '@/lib/types/post-campaigns';
 type Step = 'url' | 'auto-setup' | 'manual';
 
 export default function NewPostCampaignPage() {
-  useCopilotContext({ page: 'post-campaigns' });
+  useCopilotPageContext({ page: 'post-campaigns' });
   const router = useRouter();
 
   const [step, setStep] = useState<Step>('url');
@@ -136,10 +144,7 @@ export default function NewPostCampaignPage() {
                   )}
                   Auto-Setup with AI
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setStep('manual')}
-                >
+                <Button variant="outline" onClick={() => setStep('manual')}>
                   Set Up Manually
                 </Button>
               </div>

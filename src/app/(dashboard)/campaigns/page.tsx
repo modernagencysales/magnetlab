@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { Button, PageContainer, PageTitle } from '@magnetlab/magnetui';
 import { CampaignsList } from '@/components/campaigns/CampaignsList';
-import { useCopilotContext } from '@/components/copilot/useCopilotContext';
+import { useCopilotPageContext } from '@/components/copilot/CopilotNavigator';
 
 export default function CampaignsPage() {
-  useCopilotContext({ page: 'campaigns' });
+  useCopilotPageContext({ page: 'campaigns' });
 
   return (
     <PageContainer maxWidth="xl">

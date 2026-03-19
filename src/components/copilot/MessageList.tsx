@@ -12,8 +12,8 @@ import { PostPreviewCard } from './PostPreviewCard';
 import { KnowledgeResultCard } from './KnowledgeResultCard';
 import { IdeaListCard } from './IdeaListCard';
 import { ConfirmationDialog } from './ConfirmationDialog';
-import type { CopilotMessage } from './CopilotProvider';
-import type { PendingConfirmation } from './CopilotProvider';
+import type { CopilotMessage } from './copilot-types';
+import type { PendingConfirmation } from './copilot-types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 

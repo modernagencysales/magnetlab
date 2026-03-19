@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Wrench } from 'lucide-react';
 import { FeedbackWidget } from './FeedbackWidget';
-import type { CopilotMessage as CopilotMessageType } from './CopilotProvider';
+import type { CopilotMessage as CopilotMessageType } from './copilot-types';
 import { PostPreviewCard } from './PostPreviewCard';
 import { KnowledgeResultCard } from './KnowledgeResultCard';
 import { IdeaListCard } from './IdeaListCard';

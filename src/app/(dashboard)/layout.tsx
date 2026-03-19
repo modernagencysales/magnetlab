@@ -9,12 +9,9 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { PostHogIdentify } from '@/components/providers/PostHogIdentify';
 import { CopilotShell } from '@/components/copilot/CopilotShell';
+import { CopilotNavigatorProvider } from '@/components/copilot/CopilotNavigator';
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
   if (!session?.user) {
@@ -88,8 +85,8 @@ export default async function DashboardLayout({
       .eq('owner_id', session.user.id!);
 
     const teamIds = new Set([
-      ...(profiles || []).map(p => p.team_id),
-      ...(ownedTeams || []).map(t => t.id),
+      ...(profiles || []).map((p) => p.team_id),
+      ...(ownedTeams || []).map((t) => t.id),
     ]);
 
     if (teamIds.size > 0) {
@@ -126,13 +123,14 @@ export default async function DashboardLayout({
         defaultOpen={sidebarOpen}
       >
         <CopilotShell>
-          <div id="main-content"><ErrorBoundary>{children}</ErrorBoundary></div>
+          <CopilotNavigatorProvider>
+            <div id="main-content">
+              <ErrorBoundary>{children}</ErrorBoundary>
+            </div>
+          </CopilotNavigatorProvider>
         </CopilotShell>
       </DashboardShell>
-      <FeedbackWidget
-        userEmail={session.user.email ?? null}
-        userId={session.user.id ?? null}
-      />
+      <FeedbackWidget userEmail={session.user.email ?? null} userId={session.user.id ?? null} />
     </div>
   );
 }

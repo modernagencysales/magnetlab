@@ -2,10 +2,10 @@
 
 import { PageContainer, PageTitle } from '@magnetlab/magnetui';
 import { SignalLeadsTable } from '@/components/signals/SignalLeadsTable';
-import { useCopilotContext } from '@/components/copilot/useCopilotContext';
+import { useCopilotPageContext } from '@/components/copilot/CopilotNavigator';
 
 export default function SignalsPage() {
-  useCopilotContext({ page: 'signals' });
+  useCopilotPageContext({ page: 'signals' });
 
   return (
     <PageContainer maxWidth="xl">
