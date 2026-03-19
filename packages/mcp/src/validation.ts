@@ -473,6 +473,64 @@ export const toolSchemas: Record<string, z.ZodType> = {
   magnetlab_submit_asset_review: z.object({
     team_id: z.string().min(1, 'team_id is required'),
   }),
+
+  // ── Exploits (2) ─────────────────────────────────────────────────────────
+
+  magnetlab_list_exploits: z.object({
+    category: z.enum(['regular_post', 'lead_magnet'] as [string, ...string[]]).optional(),
+    creative_type: z.string().optional(),
+    with_stats: z.boolean().optional(),
+  }),
+
+  magnetlab_generate_post: z.object({
+    creative_id: z.string().optional(),
+    exploit_id: z.string().optional(),
+    knowledge_ids: z.array(z.string()).optional(),
+    template_id: z.string().optional(),
+    idea_id: z.string().optional(),
+    style_id: z.string().optional(),
+    hook: z.string().optional(),
+    instructions: z.string().optional(),
+  }),
+
+  // ── Creatives (6) ────────────────────────────────────────────────────────
+
+  magnetlab_create_creative: z.object({
+    content_text: z.string().min(1, 'content_text is required'),
+    source_platform: z.string().optional(),
+    source_url: z.string().url().optional(),
+    source_author: z.string().optional(),
+    image_url: z.string().url().optional(),
+    team_id: teamIdField,
+  }),
+
+  magnetlab_list_creatives: z.object({
+    status: z.enum(['pending', 'analyzed', 'failed'] as [string, ...string[]]).optional(),
+    source_platform: z.string().optional(),
+    min_score: z.number().min(0).max(100).optional(),
+    limit: paginationLimit,
+  }),
+
+  magnetlab_run_scanner: z.object({}),
+
+  magnetlab_configure_scanner: z.object({
+    action: z.enum(['add', 'remove'] as [string, ...string[]]),
+    source_type: z.enum(['search_term', 'hashtag', 'creator', 'competitor'] as [
+      string,
+      ...string[],
+    ]),
+    source_value: z.string().min(1, 'source_value is required'),
+    priority: z.number().optional(),
+  }),
+
+  magnetlab_list_recyclable_posts: z.object({
+    limit: z.number().min(1).max(100).default(20).optional(),
+  }),
+
+  magnetlab_recycle_post: z.object({
+    post_id: uuidField,
+    type: z.enum(['repost', 'cousin'] as [string, ...string[]]),
+  }),
 };
 
 // ─── Validation Function ──────────────────────────────────────────────────────

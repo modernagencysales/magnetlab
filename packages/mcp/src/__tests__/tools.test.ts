@@ -1,9 +1,9 @@
-/** Tool registration tests for MCP v2. Verifies 43 tools, naming, schemas, and no old tools. */
+/** Tool registration tests for MCP v2. Verifies 51 tools, naming, schemas, and no old tools. */
 
 import { describe, it, expect } from 'vitest';
 import { tools, toolsByName } from '../tools/index.js';
 
-// ─── All 43 expected tool names ────────────────────────────────────────────────
+// ─── All 51 expected tool names ────────────────────────────────────────────────
 
 const EXPECTED_TOOL_NAMES = [
   // Lead Magnets (5)
@@ -60,6 +60,16 @@ const EXPECTED_TOOL_NAMES = [
   'magnetlab_review_lead_magnet',
   'magnetlab_review_funnel',
   'magnetlab_submit_asset_review',
+  // Exploits (2)
+  'magnetlab_list_exploits',
+  'magnetlab_generate_post',
+  // Creatives (6)
+  'magnetlab_create_creative',
+  'magnetlab_list_creatives',
+  'magnetlab_run_scanner',
+  'magnetlab_configure_scanner',
+  'magnetlab_list_recyclable_posts',
+  'magnetlab_recycle_post',
 ] as const;
 
 // ─── Old tools that must NOT exist ────────────────────────────────────────────
@@ -85,8 +95,8 @@ const REMOVED_TOOLS = [
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('Tool Registration', () => {
-  it('exports exactly 43 tools', () => {
-    expect(tools).toHaveLength(43);
+  it('exports exactly 51 tools', () => {
+    expect(tools).toHaveLength(51);
   });
 
   it('all tools have unique names', () => {
@@ -117,8 +127,8 @@ describe('Tool Registration', () => {
     }
   });
 
-  it('toolsByName map has 43 entries', () => {
-    expect(toolsByName.size).toBe(43);
+  it('toolsByName map has 51 entries', () => {
+    expect(toolsByName.size).toBe(51);
   });
 
   it('toolsByName contains all tools and references correct objects', () => {
@@ -146,8 +156,8 @@ describe('Expected Tool Names', () => {
     }
   });
 
-  it('expected list has exactly 43 entries', () => {
-    expect(EXPECTED_TOOL_NAMES).toHaveLength(43);
+  it('expected list has exactly 51 entries', () => {
+    expect(EXPECTED_TOOL_NAMES).toHaveLength(51);
   });
 });
 

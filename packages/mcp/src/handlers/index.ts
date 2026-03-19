@@ -1,4 +1,4 @@
-/** Handler dispatcher. Routes all 43 tool calls to domain handlers via flat lookup map. Never contains business logic. */
+/** Handler dispatcher. Routes all 51 tool calls to domain handlers via flat lookup map. Never contains business logic. */
 
 import type { MagnetLabClient } from '../client.js';
 import { validateToolArgs } from '../validation.js';
@@ -13,6 +13,8 @@ import { handleCompoundTools } from './compound.js';
 import { handleFeedbackTools } from './feedback.js';
 import { handleAccountTools } from './account.js';
 import { handleContentQueueTools } from './content-queue.js';
+import { handleExploitTools } from './exploits.js';
+import { handleCreativeTools } from './creatives.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -93,6 +95,18 @@ const handlerMap: Record<string, Handler> = {
   magnetlab_review_lead_magnet: handleContentQueueTools,
   magnetlab_review_funnel: handleContentQueueTools,
   magnetlab_submit_asset_review: handleContentQueueTools,
+
+  // Exploits (2)
+  magnetlab_list_exploits: handleExploitTools,
+  magnetlab_generate_post: handleExploitTools,
+
+  // Creatives (6)
+  magnetlab_create_creative: handleCreativeTools,
+  magnetlab_list_creatives: handleCreativeTools,
+  magnetlab_run_scanner: handleCreativeTools,
+  magnetlab_configure_scanner: handleCreativeTools,
+  magnetlab_list_recyclable_posts: handleCreativeTools,
+  magnetlab_recycle_post: handleCreativeTools,
 };
 
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
@@ -131,3 +145,5 @@ export { handleCompoundTools } from './compound.js';
 export { handleFeedbackTools } from './feedback.js';
 export { handleAccountTools } from './account.js';
 export { handleContentQueueTools } from './content-queue.js';
+export { handleExploitTools } from './exploits.js';
+export { handleCreativeTools } from './creatives.js';

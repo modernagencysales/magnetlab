@@ -1,4 +1,4 @@
-/** Handler routing tests for MCP v2. Verifies all 43 tools route correctly through handleToolCall. */
+/** Handler routing tests for MCP v2. Verifies all 51 tools route correctly through handleToolCall. */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MagnetLabClient } from '../client.js';
@@ -34,7 +34,7 @@ async function callTool(client: MagnetLabClient, name: string, args: Record<stri
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe('Handler Routing — All 43 Tools', () => {
+describe('Handler Routing — All 51 Tools', () => {
   let client: MagnetLabClient;
 
   beforeEach(() => {
@@ -926,6 +926,178 @@ describe('Handler Routing — All 43 Tools', () => {
     it('magnetlab_submit_asset_review passes team_id', async () => {
       await callTool(client, 'magnetlab_submit_asset_review', { team_id: 'team-1' });
       expect(client.submitAssetReview).toHaveBeenCalledWith('team-1');
+    });
+  });
+
+  // ── Exploits (2) ──────────────────────────────────────────────────────────
+
+  describe('Exploits', () => {
+    it('magnetlab_list_exploits passes filter params', async () => {
+      await callTool(client, 'magnetlab_list_exploits', {
+        category: 'regular_post',
+        creative_type: 'story',
+        with_stats: true,
+      });
+      expect(client.listExploits).toHaveBeenCalledWith({
+        category: 'regular_post',
+        creativeType: 'story',
+        withStats: true,
+      });
+    });
+
+    it('magnetlab_list_exploits works with no params', async () => {
+      await callTool(client, 'magnetlab_list_exploits', {});
+      expect(client.listExploits).toHaveBeenCalledWith({
+        category: undefined,
+        creativeType: undefined,
+        withStats: undefined,
+      });
+    });
+
+    it('magnetlab_generate_post passes all primitive params', async () => {
+      await callTool(client, 'magnetlab_generate_post', {
+        creative_id: 'creative-1',
+        exploit_id: 'exploit-1',
+        knowledge_ids: ['k-1', 'k-2'],
+        template_id: 'tmpl-1',
+        idea_id: 'idea-1',
+        style_id: 'style-1',
+        hook: 'Most people get this wrong...',
+        instructions: 'Make it more vulnerable',
+      });
+      expect(client.generatePost).toHaveBeenCalledWith({
+        creativeId: 'creative-1',
+        exploitId: 'exploit-1',
+        knowledgeIds: ['k-1', 'k-2'],
+        templateId: 'tmpl-1',
+        ideaId: 'idea-1',
+        styleId: 'style-1',
+        hook: 'Most people get this wrong...',
+        instructions: 'Make it more vulnerable',
+      });
+    });
+
+    it('magnetlab_generate_post works with no params', async () => {
+      await callTool(client, 'magnetlab_generate_post', {});
+      expect(client.generatePost).toHaveBeenCalledWith({
+        creativeId: undefined,
+        exploitId: undefined,
+        knowledgeIds: undefined,
+        templateId: undefined,
+        ideaId: undefined,
+        styleId: undefined,
+        hook: undefined,
+        instructions: undefined,
+      });
+    });
+  });
+
+  // ── Creatives (6) ─────────────────────────────────────────────────────────
+
+  describe('Creatives', () => {
+    it('magnetlab_create_creative passes required content_text', async () => {
+      await callTool(client, 'magnetlab_create_creative', {
+        content_text: 'This is a great LinkedIn post about cold outreach.',
+      });
+      expect(client.createCreative).toHaveBeenCalledWith({
+        contentText: 'This is a great LinkedIn post about cold outreach.',
+        sourcePlatform: undefined,
+        sourceUrl: undefined,
+        sourceAuthor: undefined,
+        imageUrl: undefined,
+        teamId: undefined,
+      });
+    });
+
+    it('magnetlab_create_creative passes all optional params', async () => {
+      await callTool(client, 'magnetlab_create_creative', {
+        content_text: 'Post content here',
+        source_platform: 'linkedin',
+        source_url: 'https://linkedin.com/feed/update/123',
+        source_author: 'John Doe',
+        image_url: 'https://example.com/image.jpg',
+        team_id: 'team-abc',
+      });
+      expect(client.createCreative).toHaveBeenCalledWith({
+        contentText: 'Post content here',
+        sourcePlatform: 'linkedin',
+        sourceUrl: 'https://linkedin.com/feed/update/123',
+        sourceAuthor: 'John Doe',
+        imageUrl: 'https://example.com/image.jpg',
+        teamId: 'team-abc',
+      });
+    });
+
+    it('magnetlab_list_creatives passes filter params', async () => {
+      await callTool(client, 'magnetlab_list_creatives', {
+        status: 'analyzed',
+        source_platform: 'linkedin',
+        min_score: 75,
+        limit: 20,
+      });
+      expect(client.listCreatives).toHaveBeenCalledWith({
+        status: 'analyzed',
+        sourcePlatform: 'linkedin',
+        minScore: 75,
+        limit: 20,
+      });
+    });
+
+    it('magnetlab_list_creatives works with no params', async () => {
+      await callTool(client, 'magnetlab_list_creatives', {});
+      expect(client.listCreatives).toHaveBeenCalledWith({
+        status: undefined,
+        sourcePlatform: undefined,
+        minScore: undefined,
+        limit: undefined,
+      });
+    });
+
+    it('magnetlab_run_scanner calls runScanner with no args', async () => {
+      await callTool(client, 'magnetlab_run_scanner', {});
+      expect(client.runScanner).toHaveBeenCalled();
+    });
+
+    it('magnetlab_configure_scanner passes add action params', async () => {
+      await callTool(client, 'magnetlab_configure_scanner', {
+        action: 'add',
+        source_type: 'hashtag',
+        source_value: '#coldoutreach',
+        priority: 2,
+      });
+      expect(client.configureScanner).toHaveBeenCalledWith({
+        action: 'add',
+        sourceType: 'hashtag',
+        sourceValue: '#coldoutreach',
+        priority: 2,
+      });
+    });
+
+    it('magnetlab_configure_scanner passes remove action params', async () => {
+      await callTool(client, 'magnetlab_configure_scanner', {
+        action: 'remove',
+        source_type: 'creator',
+        source_value: 'johndoe',
+      });
+      expect(client.configureScanner).toHaveBeenCalledWith({
+        action: 'remove',
+        sourceType: 'creator',
+        sourceValue: 'johndoe',
+        priority: undefined,
+      });
+    });
+
+    it('magnetlab_list_recyclable_posts returns Phase 2 stub message', async () => {
+      const result = await callTool(client, 'magnetlab_list_recyclable_posts', {});
+      expect(result.message).toBe('Phase 2 not yet implemented');
+    });
+
+    it('magnetlab_recycle_post returns Phase 2 stub message', async () => {
+      const result = await callTool(client, 'magnetlab_recycle_post', {
+        post_id: 'post-uuid',
+        type: 'cousin',
+      });
+      expect(result.message).toBe('Phase 2 not yet implemented');
     });
   });
 
