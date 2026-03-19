@@ -735,4 +735,85 @@ export class MagnetLabClient {
       priority,
     });
   }
+
+  async listRecyclablePosts(params: { limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params.limit !== undefined) searchParams.set('limit', String(params.limit));
+    const qs = searchParams.toString();
+    return this.request<{ posts: unknown[] }>(
+      'GET',
+      `/content-pipeline/posts/recyclable${qs ? `?${qs}` : ''}`
+    );
+  }
+
+  async recyclePost(params: { postId: string; type: 'repost' | 'cousin' }) {
+    return this.request<{ post: unknown }>(
+      'POST',
+      `/content-pipeline/posts/${params.postId}/recycle`,
+      { type: params.type }
+    );
+  }
+
+  // ─── Outreach Campaigns ─────────────────────────────────────────────────────
+
+  async createOutreachCampaign(input: Record<string, unknown>) {
+    return this.request('POST', '/outreach-campaigns', input);
+  }
+
+  async listOutreachCampaigns(status?: string) {
+    const params = status ? `?status=${status}` : '';
+    return this.request('GET', `/outreach-campaigns${params}`);
+  }
+
+  async getOutreachCampaign(campaignId: string) {
+    return this.request('GET', `/outreach-campaigns/${campaignId}`);
+  }
+
+  async updateOutreachCampaign(campaignId: string, input: Record<string, unknown>) {
+    return this.request('PATCH', `/outreach-campaigns/${campaignId}`, input);
+  }
+
+  async activateOutreachCampaign(campaignId: string) {
+    return this.request('POST', `/outreach-campaigns/${campaignId}/activate`);
+  }
+
+  async pauseOutreachCampaign(campaignId: string) {
+    return this.request('POST', `/outreach-campaigns/${campaignId}/pause`);
+  }
+
+  async deleteOutreachCampaign(campaignId: string) {
+    return this.request('DELETE', `/outreach-campaigns/${campaignId}`);
+  }
+
+  async addOutreachLeads(campaignId: string, leads: Array<Record<string, unknown>>) {
+    return this.request('POST', `/outreach-campaigns/${campaignId}/leads`, { leads });
+  }
+
+  async listOutreachLeads(campaignId: string, status?: string) {
+    const params = status ? `?status=${status}` : '';
+    return this.request('GET', `/outreach-campaigns/${campaignId}/leads${params}`);
+  }
+
+  async getOutreachLead(leadId: string) {
+    return this.request('GET', `/outreach-campaigns/_/leads/${leadId}`);
+  }
+
+  async skipOutreachLead(leadId: string) {
+    return this.request('POST', `/outreach-campaigns/_/leads/${leadId}/skip`);
+  }
+
+  // ─── LinkedIn Activity ───────────────────────────────────────────────────────
+
+  async getLinkedInActivity(params: Record<string, unknown>) {
+    const searchParams = new URLSearchParams();
+    if (params.account_id) searchParams.set('account_id', String(params.account_id));
+    if (params.action_type) searchParams.set('action_type', String(params.action_type));
+    if (params.since) searchParams.set('since', String(params.since));
+    if (params.source_campaign_id)
+      searchParams.set('source_campaign_id', String(params.source_campaign_id));
+    if (params.limit) searchParams.set('limit', String(params.limit));
+    if (params.offset) searchParams.set('offset', String(params.offset));
+    const qs = searchParams.toString();
+    return this.request('GET', `/linkedin-activity${qs ? `?${qs}` : ''}`);
+  }
 }

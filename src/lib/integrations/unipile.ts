@@ -47,6 +47,40 @@ interface UnipileChatResponse {
   account_id: string;
 }
 
+// ─── Chat Listing Types ───────────────────────────────────────────────────
+
+export interface UnipileChatAttendee {
+  id?: string;
+  provider_id?: string;
+  name?: string;
+}
+
+export interface UnipileChat {
+  id: string;
+  account_id?: string;
+  attendees?: UnipileChatAttendee[];
+  last_message_at?: string;
+  unread_count?: number;
+}
+
+interface UnipileChatListResponse {
+  items: UnipileChat[];
+  cursor?: string;
+}
+
+export interface UnipileChatMessage {
+  id: string;
+  sender_id?: string;
+  text?: string;
+  timestamp?: string;
+  created_at?: string;
+}
+
+interface UnipileMessageListResponse {
+  items: UnipileChatMessage[];
+  cursor?: string;
+}
+
 export class UnipileClient extends BaseApiClient {
   private dsn: string;
 
@@ -209,44 +243,34 @@ export class UnipileClient extends BaseApiClient {
     return this.post<void>('/users/invite', body);
   }
 
-  // ─── Chat & Reply Detection ─────────────────────────────────────────
+  // ─── Chat Read Operations (reply detection) ──────────────────────────
 
-  async listChats(accountId: string): Promise<
-    ApiResponse<
-      Array<{
-        id: string;
-        attendees?: Array<{ provider_id?: string; name?: string }>;
-      }>
-    >
-  > {
-    const result = await this.get<{
-      items: Array<{ id: string; attendees?: Array<{ provider_id?: string; name?: string }> }>;
-    }>(`/chats?account_id=${encodeURIComponent(accountId)}`);
+  /**
+   * List recent chats for an account. Used for reply detection.
+   * Returns an array of chats with attendees for matching against known leads.
+   */
+  async listChats(accountId: string, limit = 100): Promise<ApiResponse<UnipileChat[]>> {
+    const result = await this.get<UnipileChatListResponse>(
+      `/chats?account_id=${encodeURIComponent(accountId)}&limit=${limit}`
+    );
     if (result.error || !result.data) {
       return { data: null, error: result.error, status: result.status };
     }
     return { data: result.data.items ?? [], error: null, status: result.status };
   }
 
-  async getChatMessages(chatId: string): Promise<
-    ApiResponse<
-      Array<{
-        id: string;
-        sender_id?: string;
-        text?: string;
-        timestamp?: string;
-      }>
-    >
-  > {
-    const result = await this.get<{
-      items: Array<{ id: string; sender_id?: string; text?: string; timestamp?: string }>;
-    }>(`/chats/${encodeURIComponent(chatId)}/messages`);
+  /**
+   * Get messages for a specific chat. Used to detect replies after a sent DM.
+   */
+  async getChatMessages(chatId: string, limit = 50): Promise<ApiResponse<UnipileChatMessage[]>> {
+    const result = await this.get<UnipileMessageListResponse>(
+      `/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}`
+    );
     if (result.error || !result.data) {
       return { data: null, error: result.error, status: result.status };
     }
     return { data: result.data.items ?? [], error: null, status: result.status };
   }
-
   // ─── Invitation Management ──────────────────────────────────────────
 
   async listSentInvitations(accountId: string): Promise<ApiResponse<UnipileInvitation[]>> {

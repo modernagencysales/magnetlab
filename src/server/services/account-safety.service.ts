@@ -267,7 +267,6 @@ const SETTINGS_FIELD_MAP: Record<string, string> = {
   maxConnectionAcceptsPerDay: 'max_connection_accepts_per_day',
   maxCommentsPerDay: 'max_comments_per_day',
   maxLikesPerDay: 'max_likes_per_day',
-  maxProfileViewsPerDay: 'max_profile_views_per_day',
   minActionDelayMs: 'min_action_delay_ms',
   maxActionDelayMs: 'max_action_delay_ms',
   operatingHoursStart: 'operating_hours_start',
@@ -329,6 +328,8 @@ export function sleep(ms: number): Promise<void> {
 export function shouldSkipRun(): boolean {
   return Math.random() < 0.1;
 }
+
+// ─── Queue Action Mapping ───────────────────────────────────────────────────
 
 /** Map a queue action_type to DailyLimitAction. Returns null for actions without daily limits (withdraw). */
 export function mapToLimitAction(actionType: string): DailyLimitAction | null {

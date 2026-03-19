@@ -7,7 +7,7 @@
 import type { UnipileClient } from '@/lib/integrations/unipile';
 import type { QueuedAction } from '@/lib/types/linkedin-action-queue';
 
-// ─── Action Dispatch ────────────────────────────────────────────────────────
+// ─── Action Dispatch ────────────────────────────────────────────────────
 
 export async function executeAction(client: UnipileClient, action: QueuedAction): Promise<unknown> {
   switch (action.action_type) {
@@ -27,11 +27,11 @@ export async function executeAction(client: UnipileClient, action: QueuedAction)
     case 'comment':
       return executeComment(client, action);
     default:
-      throw new Error(`Unknown action type: ${(action as QueuedAction).action_type}`);
+      throw new Error(`Unknown action type: ${action.action_type}`);
   }
 }
 
-// ─── Action Implementations ──────────────────────────────────────────────────
+// ─── Action Implementations ─────────────────────────────────────────────
 
 async function executeViewProfile(client: UnipileClient, action: QueuedAction) {
   const username = action.payload.username as string;
@@ -69,7 +69,7 @@ async function executeMessage(client: UnipileClient, action: QueuedAction) {
 async function executeWithdrawal(client: UnipileClient, action: QueuedAction) {
   if (!action.target_provider_id) throw new Error('withdraw requires target_provider_id');
 
-  // Find the invitation by listing sent invitations and matching on provider_id
+  // Find the invitation ID by listing sent invitations and matching provider_id
   const invResult = await client.listSentInvitations(action.unipile_account_id);
   if (invResult.error || !invResult.data) {
     throw new Error(`Failed to list sent invitations: ${invResult.error ?? 'no data'}`);
@@ -120,7 +120,7 @@ async function executeComment(client: UnipileClient, action: QueuedAction) {
   return result.data;
 }
 
-// ─── Rate Limit Detection ────────────────────────────────────────────────────
+// ─── Rate Limit Detection ───────────────────────────────────────────────
 
 const RATE_LIMIT_PATTERNS = [
   '429',

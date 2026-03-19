@@ -1,9 +1,9 @@
-/** Tool registration tests for MCP v2. Verifies 51 tools, naming, schemas, and no old tools. */
+/** Tool registration tests for MCP v2. Verifies 63 tools, naming, schemas, and no old tools. */
 
 import { describe, it, expect } from 'vitest';
 import { tools, toolsByName } from '../tools/index.js';
 
-// ─── All 51 expected tool names ────────────────────────────────────────────────
+// ─── All 63 expected tool names ────────────────────────────────────────────────
 
 const EXPECTED_TOOL_NAMES = [
   // Lead Magnets (5)
@@ -70,6 +70,20 @@ const EXPECTED_TOOL_NAMES = [
   'magnetlab_configure_scanner',
   'magnetlab_list_recyclable_posts',
   'magnetlab_recycle_post',
+  // Outreach Campaigns (11)
+  'magnetlab_create_outreach_campaign',
+  'magnetlab_list_outreach_campaigns',
+  'magnetlab_get_outreach_campaign',
+  'magnetlab_update_outreach_campaign',
+  'magnetlab_activate_outreach_campaign',
+  'magnetlab_pause_outreach_campaign',
+  'magnetlab_delete_outreach_campaign',
+  'magnetlab_add_outreach_leads',
+  'magnetlab_list_outreach_leads',
+  'magnetlab_get_outreach_lead',
+  'magnetlab_skip_outreach_lead',
+  // LinkedIn Activity (1)
+  'magnetlab_get_linkedin_activity',
 ] as const;
 
 // ─── Old tools that must NOT exist ────────────────────────────────────────────
@@ -95,8 +109,8 @@ const REMOVED_TOOLS = [
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('Tool Registration', () => {
-  it('exports exactly 51 tools', () => {
-    expect(tools).toHaveLength(51);
+  it('exports exactly 63 tools', () => {
+    expect(tools).toHaveLength(63);
   });
 
   it('all tools have unique names', () => {
@@ -127,8 +141,8 @@ describe('Tool Registration', () => {
     }
   });
 
-  it('toolsByName map has 51 entries', () => {
-    expect(toolsByName.size).toBe(51);
+  it('toolsByName map has 63 entries', () => {
+    expect(toolsByName.size).toBe(63);
   });
 
   it('toolsByName contains all tools and references correct objects', () => {
@@ -156,8 +170,8 @@ describe('Expected Tool Names', () => {
     }
   });
 
-  it('expected list has exactly 51 entries', () => {
-    expect(EXPECTED_TOOL_NAMES).toHaveLength(51);
+  it('expected list has exactly 63 entries', () => {
+    expect(EXPECTED_TOOL_NAMES).toHaveLength(63);
   });
 });
 
@@ -319,5 +333,28 @@ describe('Tool Group Sizes', () => {
         n === 'magnetlab_submit_asset_review'
     );
     expect(queueTools).toHaveLength(6);
+  });
+
+  it('has 11 outreach campaign tools', () => {
+    const outreachTools = toolNames.filter(
+      (n) =>
+        n === 'magnetlab_create_outreach_campaign' ||
+        n === 'magnetlab_list_outreach_campaigns' ||
+        n === 'magnetlab_get_outreach_campaign' ||
+        n === 'magnetlab_update_outreach_campaign' ||
+        n === 'magnetlab_activate_outreach_campaign' ||
+        n === 'magnetlab_pause_outreach_campaign' ||
+        n === 'magnetlab_delete_outreach_campaign' ||
+        n === 'magnetlab_add_outreach_leads' ||
+        n === 'magnetlab_list_outreach_leads' ||
+        n === 'magnetlab_get_outreach_lead' ||
+        n === 'magnetlab_skip_outreach_lead'
+    );
+    expect(outreachTools).toHaveLength(11);
+  });
+
+  it('has 1 LinkedIn activity tool', () => {
+    const activityTools = toolNames.filter((n) => n === 'magnetlab_get_linkedin_activity');
+    expect(activityTools).toHaveLength(1);
   });
 });
