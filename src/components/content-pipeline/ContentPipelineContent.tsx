@@ -2,23 +2,67 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import { Mic, Brain, Lightbulb, FileText, Zap, Loader2, LayoutGrid, LayoutTemplate, Sparkles, CalendarRange } from 'lucide-react';
+import {
+  Mic,
+  Brain,
+  Lightbulb,
+  FileText,
+  Zap,
+  Loader2,
+  LayoutGrid,
+  LayoutTemplate,
+  Sparkles,
+  CalendarRange,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProfileSwitcher, useProfileSelection } from './ProfileSwitcher';
-import { useCopilotContext } from '@/components/copilot/useCopilotContext';
+import { useCopilotPageContext } from '@/components/copilot/CopilotNavigator';
 
 // Dynamic imports for code splitting — each tab loads only when selected
-const TranscriptsTab = dynamic(() => import('./TranscriptsTab').then((m) => ({ default: m.TranscriptsTab })), { ssr: false });
-const KnowledgeDashboard = dynamic(() => import('./KnowledgeDashboard').then((m) => ({ default: m.KnowledgeDashboard })), { ssr: false });
-const IdeasTab = dynamic(() => import('./IdeasTab').then((m) => ({ default: m.IdeasTab })), { ssr: false });
-const PostsTab = dynamic(() => import('./PostsTab').then((m) => ({ default: m.PostsTab })), { ssr: false });
-const AutopilotTab = dynamic(() => import('./AutopilotTab').then((m) => ({ default: m.AutopilotTab })), { ssr: false });
-const PipelineTab = dynamic(() => import('./PipelineTab').then((m) => ({ default: m.PipelineTab })), { ssr: false });
-const TemplatesTab = dynamic(() => import('./TemplatesTab').then((m) => ({ default: m.TemplatesTab })), { ssr: false });
-const QuickWriteModal = dynamic(() => import('./QuickWriteModal').then((m) => ({ default: m.QuickWriteModal })), { ssr: false });
-const TeamCommandCenter = dynamic(() => import('./TeamCommandCenter').then((m) => ({ default: m.TeamCommandCenter })), { ssr: false });
+const TranscriptsTab = dynamic(
+  () => import('./TranscriptsTab').then((m) => ({ default: m.TranscriptsTab })),
+  { ssr: false }
+);
+const KnowledgeDashboard = dynamic(
+  () => import('./KnowledgeDashboard').then((m) => ({ default: m.KnowledgeDashboard })),
+  { ssr: false }
+);
+const IdeasTab = dynamic(() => import('./IdeasTab').then((m) => ({ default: m.IdeasTab })), {
+  ssr: false,
+});
+const PostsTab = dynamic(() => import('./PostsTab').then((m) => ({ default: m.PostsTab })), {
+  ssr: false,
+});
+const AutopilotTab = dynamic(
+  () => import('./AutopilotTab').then((m) => ({ default: m.AutopilotTab })),
+  { ssr: false }
+);
+const PipelineTab = dynamic(
+  () => import('./PipelineTab').then((m) => ({ default: m.PipelineTab })),
+  { ssr: false }
+);
+const TemplatesTab = dynamic(
+  () => import('./TemplatesTab').then((m) => ({ default: m.TemplatesTab })),
+  { ssr: false }
+);
+const QuickWriteModal = dynamic(
+  () => import('./QuickWriteModal').then((m) => ({ default: m.QuickWriteModal })),
+  { ssr: false }
+);
+const TeamCommandCenter = dynamic(
+  () => import('./TeamCommandCenter').then((m) => ({ default: m.TeamCommandCenter })),
+  { ssr: false }
+);
 
-type Tab = 'transcripts' | 'brain' | 'ideas' | 'posts' | 'pipeline' | 'templates' | 'autopilot' | 'command-center';
+type Tab =
+  | 'transcripts'
+  | 'brain'
+  | 'ideas'
+  | 'posts'
+  | 'pipeline'
+  | 'templates'
+  | 'autopilot'
+  | 'command-center';
 
 const TABS: { id: Tab; label: string; icon: typeof Mic; teamOnly?: boolean }[] = [
   { id: 'transcripts', label: 'Transcripts', icon: Mic },
@@ -52,7 +96,7 @@ export function ContentPipelineContent() {
   const [teamId, setTeamId] = useState<string | undefined>();
   const [teamContextReady, setTeamContextReady] = useState(false);
 
-  useCopilotContext({ page: 'content-pipeline' });
+  useCopilotPageContext({ page: 'content-pipeline' });
 
   useEffect(() => {
     setTeamId(getTeamFromCookie());
@@ -69,10 +113,7 @@ export function ContentPipelineContent() {
             Turn call transcripts into LinkedIn posts on autopilot
           </p>
         </div>
-        <ProfileSwitcher
-          selectedProfileId={selectedProfileId}
-          onProfileChange={onProfileChange}
-        />
+        <ProfileSwitcher selectedProfileId={selectedProfileId} onProfileChange={onProfileChange} />
       </div>
 
       {/* Tabs */}

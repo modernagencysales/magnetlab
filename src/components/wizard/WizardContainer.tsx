@@ -15,7 +15,7 @@ import { GeneratingScreen } from './GeneratingScreen';
 import { WizardProgress } from './WizardProgress';
 import { DraftPicker } from './DraftPicker';
 import { useWizard } from '@/frontend/hooks/useWizard';
-import { useCopilotContext } from '@/components/copilot/useCopilotContext';
+import { useCopilotPageContext } from '@/components/copilot/CopilotNavigator';
 import type { BusinessContext } from '@/lib/types/lead-magnet';
 
 export function WizardContainer() {
@@ -58,7 +58,7 @@ export function WizardContainer() {
     ideationGeneratedAt,
   } = useWizard();
 
-  useCopilotContext({
+  useCopilotPageContext({
     page: 'lead-magnet-creation',
     entityType: 'lead-magnet',
     entityId: draftId || undefined,

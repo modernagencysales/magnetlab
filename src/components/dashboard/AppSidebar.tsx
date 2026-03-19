@@ -19,7 +19,7 @@ import {
   ArrowLeftRight,
   Home,
   Brain,
-
+  MessageSquare,
   BookOpen,
   Mail,
   HelpCircle,
@@ -91,6 +91,7 @@ interface NavItem {
 
 const homeNav: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
+  { href: '/copilot/new', label: 'New Chat', icon: MessageSquare },
 ];
 
 const planNav: NavItem[] = [
@@ -105,12 +106,15 @@ const createNav: NavItem[] = [
   { href: '/email/flows', label: 'Email', icon: Mail, activePrefix: '/email' },
 ];
 
-const editNav: NavItem[] = [
-  { href: '/content-queue', label: 'Content Queue', icon: ListChecks },
-];
+const editNav: NavItem[] = [{ href: '/content-queue', label: 'Content Queue', icon: ListChecks }];
 
 const distributeNav: NavItem[] = [
-  { href: '/campaigns', label: 'Campaigns', icon: Megaphone, activePrefixes: ['/campaigns', '/post-campaigns'] },
+  {
+    href: '/campaigns',
+    label: 'Campaigns',
+    icon: Megaphone,
+    activePrefixes: ['/campaigns', '/post-campaigns'],
+  },
   { href: '/signals', label: 'Signals', icon: Radio },
   { href: '/leads', label: 'Leads', icon: Users },
 ];
@@ -124,9 +128,16 @@ const bottomNav: NavItem[] = [
 
 // ─── Helpers ───────────────────────────────────────────
 
-function isRouteActive(pathname: string, href: string, activePrefix?: string, activePrefixes?: string[]) {
+function isRouteActive(
+  pathname: string,
+  href: string,
+  activePrefix?: string,
+  activePrefixes?: string[]
+) {
   if (activePrefixes) {
-    return activePrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
+    return activePrefixes.some(
+      (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
+    );
   }
   const matchPath = activePrefix || href;
   return href === '/'
@@ -153,11 +164,18 @@ function NavGroup({
 }) {
   return (
     <SidebarGroup className="py-0">
-      <SidebarGroupLabel className="h-7 text-[10px] uppercase tracking-wider opacity-50">{label}</SidebarGroupLabel>
+      <SidebarGroupLabel className="h-7 text-[10px] uppercase tracking-wider opacity-50">
+        {label}
+      </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => {
-            const active = isRouteActive(pathname, item.href, item.activePrefix, item.activePrefixes);
+            const active = isRouteActive(
+              pathname,
+              item.href,
+              item.activePrefix,
+              item.activePrefixes
+            );
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
@@ -332,7 +350,12 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
           <SidebarGroupContent>
             <SidebarMenu>
               {homeNav.map((item) => {
-                const active = isRouteActive(pathname, item.href, item.activePrefix, item.activePrefixes);
+                const active = isRouteActive(
+                  pathname,
+                  item.href,
+                  item.activePrefix,
+                  item.activePrefixes
+                );
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
@@ -357,13 +380,23 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
         <NavGroup label="Plan" items={planNav} pathname={pathname} onNavigate={handleNavigate} />
 
         {/* Create */}
-        <NavGroup label="Create" items={createNav} pathname={pathname} onNavigate={handleNavigate} />
+        <NavGroup
+          label="Create"
+          items={createNav}
+          pathname={pathname}
+          onNavigate={handleNavigate}
+        />
 
         {/* Edit */}
         <NavGroup label="Edit" items={editNav} pathname={pathname} onNavigate={handleNavigate} />
 
         {/* Distribute */}
-        <NavGroup label="Distribute" items={distributeNav} pathname={pathname} onNavigate={handleNavigate} />
+        <NavGroup
+          label="Distribute"
+          items={distributeNav}
+          pathname={pathname}
+          onNavigate={handleNavigate}
+        />
 
         <SidebarSeparator />
 
@@ -372,7 +405,12 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
           <SidebarGroupContent>
             <SidebarMenu>
               {bottomNav.map((item) => {
-                const active = isRouteActive(pathname, item.href, item.activePrefix, item.activePrefixes);
+                const active = isRouteActive(
+                  pathname,
+                  item.href,
+                  item.activePrefix,
+                  item.activePrefixes
+                );
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton

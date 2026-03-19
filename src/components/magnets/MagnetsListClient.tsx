@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Search, ArrowUpDown, Eye, Users, Globe, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ARCHETYPE_NAMES } from '@/lib/types/lead-magnet';
-import { useCopilot } from '@/components/copilot/CopilotProvider';
+import { useCopilotNavigator } from '@/components/copilot/CopilotNavigator';
 
 export interface MagnetListItem {
   id: string;
@@ -64,7 +64,7 @@ export default function MagnetsListClient({
   items: MagnetListItem[];
   totalCount: number;
 }) {
-  const { open, sendMessage, startNewConversation } = useCopilot();
+  const { startConversation } = useCopilotNavigator();
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortOption>('newest');
@@ -255,9 +255,7 @@ export default function MagnetsListClient({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        startNewConversation();
-                        open();
-                        sendMessage(
+                        startConversation(
                           `Generate LinkedIn posts for my lead magnet "${item.title}" (ID: ${item.id})`
                         );
                       }}
@@ -333,9 +331,7 @@ export default function MagnetsListClient({
             <div className="mt-2 flex justify-end">
               <button
                 onClick={() => {
-                  startNewConversation();
-                  open();
-                  sendMessage(
+                  startConversation(
                     `Generate LinkedIn posts for my lead magnet "${item.title}" (ID: ${item.id})`
                   );
                 }}
