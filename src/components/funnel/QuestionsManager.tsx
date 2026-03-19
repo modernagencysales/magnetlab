@@ -47,6 +47,7 @@ export function QuestionsManager({
   const [newIsQualifying, setNewIsQualifying] = useState(true);
   const [newIsRequired, setNewIsRequired] = useState(true);
   const [newQualifyingOptions, setNewQualifyingOptions] = useState<string[]>([]);
+  const [newBookingPrefillKey, setNewBookingPrefillKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +65,7 @@ export function QuestionsManager({
     setNewIsQualifying(true);
     setNewIsRequired(true);
     setNewQualifyingOptions([]);
+    setNewBookingPrefillKey('');
   };
 
   const handleAddQuestion = async () => {
@@ -109,6 +111,7 @@ export function QuestionsManager({
           newAnswerType === 'text' || newAnswerType === 'textarea' ? newPlaceholder || null : null,
         isQualifying,
         isRequired: newIsRequired,
+        bookingPrefillKey: newBookingPrefillKey || null,
       };
 
       if (funnelId) {
@@ -573,6 +576,27 @@ export function QuestionsManager({
                     </div>
                   </div>
                 )}
+
+                {/* Booking Pre-fill Key */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Booking Pre-fill Key
+                  </label>
+                  <input
+                    type="text"
+                    value={question.bookingPrefillKey || ''}
+                    onChange={(e) =>
+                      handleUpdateQuestion(question.id, {
+                        bookingPrefillKey: e.target.value || null,
+                      })
+                    }
+                    className="w-full rounded border border-border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="e.g. monthlyrevenue, businesstype"
+                  />
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    Maps this answer to a booking form field
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -748,6 +772,22 @@ export function QuestionsManager({
             </div>
           </div>
         )}
+
+        {/* Booking Pre-fill Key */}
+        <div>
+          <Label className="block text-xs font-medium mb-1 text-muted-foreground">
+            Booking Pre-fill Key (optional)
+          </Label>
+          <Input
+            value={newBookingPrefillKey}
+            onChange={(e) => setNewBookingPrefillKey(e.target.value)}
+            placeholder="e.g. monthlyrevenue, businesstype"
+            className="text-sm"
+          />
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            Maps this answer to a booking form field. Common: monthlyrevenue, businesstype, linkedinurl
+          </p>
+        </div>
 
         <div className="flex justify-end">
           <Button onClick={handleAddQuestion} disabled={!newQuestion.trim() || saving}>
