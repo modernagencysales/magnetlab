@@ -8,9 +8,12 @@
 import { schedules, task, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { searchPosts, getProfilePosts, getCompanyPosts } from '@/lib/integrations/harvest-api';
+import { fetchSubredditPosts, searchReddit } from '@/lib/scanners/reddit-fetcher';
 import { analyzeCreative } from '@/lib/ai/content-pipeline/creative-analyzer';
 import { getExploitBySlug } from '@/server/services/exploits.service';
+import { updateTopicCounts } from '@/server/services/trends.service';
 import type { HarvestPostShort } from '@/lib/types/signals';
+import type { ScannedContent } from '@/lib/types/exploits';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -36,6 +39,11 @@ interface ScanResult {
   creativesCreated: number;
   errors: string[];
 }
+
+/** LinkedIn sources return HarvestPostShort[]; Reddit sources return ScannedContent[]. */
+type FetchResult =
+  | { kind: 'linkedin'; posts: HarvestPostShort[] }
+  | { kind: 'reddit'; posts: ScannedContent[] };
 
 // ─── Core logic ─────────────────────────────────────────────────────────────
 
@@ -118,9 +126,85 @@ async function processPost(
 }
 
 /**
- * Fetch LinkedIn posts for a single inspiration source.
+ * Processes a single ScannedContent (from Reddit or other non-LinkedIn sources)
+ * into a cp_creative row.
+ * Returns true if a creative was created, false if skipped or deduped.
  */
-async function fetchPostsForSource(source: SourceRow): Promise<HarvestPostShort[]> {
+async function processScannedContent(
+  scanned: ScannedContent,
+  userId: string,
+  teamId: string | null,
+  supabase: ReturnType<typeof createSupabaseAdminClient>
+): Promise<boolean> {
+  // Skip posts with no content or no URL
+  if (!scanned.content_text || !scanned.source_url) return false;
+
+  // Dedup: check cp_creatives for existing source_url
+  const { data: existing } = await supabase
+    .from('cp_creatives')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('source_url', scanned.source_url)
+    .maybeSingle();
+
+  if (existing) return false;
+
+  // AI analysis
+  const analysis = await analyzeCreative({
+    content_text: scanned.content_text,
+    source_platform: scanned.source_platform,
+    source_url: scanned.source_url,
+  });
+
+  // Skip if score below threshold
+  const score = analysis?.commentary_worthy_score ?? 0;
+  if (score < SCORE_AUTO_CREATIVE) return false;
+
+  // Resolve suggested exploit by slug
+  let suggested_exploit_id: string | null = null;
+  if (analysis?.suggested_exploit_slug) {
+    const exploit = await getExploitBySlug(userId, analysis.suggested_exploit_slug);
+    suggested_exploit_id = exploit?.id ?? null;
+  }
+
+  // Insert into cp_creatives
+  const { error } = await supabase
+    .from('cp_creatives')
+    .insert({
+      user_id: userId,
+      team_id: teamId,
+      source_platform: scanned.source_platform,
+      source_url: scanned.source_url,
+      source_author: scanned.source_author ?? null,
+      content_text: scanned.content_text,
+      image_url: scanned.image_url ?? null,
+      creative_type: analysis?.creative_type ?? 'reddit_post',
+      topics: analysis?.topics ?? [],
+      commentary_worthy_score: score,
+      suggested_hooks: analysis?.suggested_hooks ?? [],
+      suggested_exploit_id,
+      status: 'new',
+      times_used: 0,
+    })
+    .select(CREATIVE_COLUMNS);
+
+  if (error) {
+    logger.error('Failed to insert creative from reddit scanner', {
+      userId,
+      sourceUrl: scanned.source_url,
+      error: error.message,
+    });
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Fetch posts for a single inspiration source.
+ * Returns a discriminated union so the caller knows which processor to use.
+ */
+async function fetchPostsForSource(source: SourceRow): Promise<FetchResult> {
   switch (source.source_type) {
     case 'search_term':
     case 'hashtag': {
@@ -132,7 +216,7 @@ async function fetchPostsForSource(source: SourceRow): Promise<HarvestPostShort[
       if (error) {
         logger.warn('searchPosts error', { sourceId: source.id, error });
       }
-      return data ?? [];
+      return { kind: 'linkedin', posts: data ?? [] };
     }
 
     case 'creator': {
@@ -143,7 +227,7 @@ async function fetchPostsForSource(source: SourceRow): Promise<HarvestPostShort[
       if (error) {
         logger.warn('getProfilePosts error', { sourceId: source.id, error });
       }
-      return data ?? [];
+      return { kind: 'linkedin', posts: data ?? [] };
     }
 
     case 'competitor': {
@@ -154,11 +238,30 @@ async function fetchPostsForSource(source: SourceRow): Promise<HarvestPostShort[
       if (error) {
         logger.warn('getCompanyPosts error', { sourceId: source.id, error });
       }
-      return data ?? [];
+      return { kind: 'linkedin', posts: data ?? [] };
+    }
+
+    case 'reddit_subreddit': {
+      const posts = await fetchSubredditPosts(source.source_value, {
+        sort: 'hot',
+        limit: 25,
+        minScore: 50,
+      });
+      return { kind: 'reddit', posts };
+    }
+
+    case 'reddit_search': {
+      const posts = await searchReddit(source.source_value, {
+        sort: 'relevance',
+        timeframe: 'week',
+        limit: 25,
+        minScore: 20,
+      });
+      return { kind: 'reddit', posts };
     }
 
     default:
-      return [];
+      return { kind: 'linkedin', posts: [] };
   }
 }
 
@@ -185,22 +288,40 @@ async function scanForUser(
 
   for (const source of sources) {
     try {
-      const posts = await fetchPostsForSource(source);
-      postsScanned += posts.length;
+      const fetchResult = await fetchPostsForSource(source);
+      postsScanned += fetchResult.posts.length;
 
-      for (const post of posts) {
-        try {
-          const created = await processPost(post, userId, teamId, supabase);
-          if (created) creativesCreated++;
-        } catch (postError) {
-          const msg = postError instanceof Error ? postError.message : String(postError);
-          logger.error('Failed to process post', {
-            userId,
-            sourceId: source.id,
-            url: post.linkedinUrl,
-            error: msg,
-          });
-          errors.push(`post ${post.linkedinUrl ?? 'unknown'}: ${msg}`);
+      if (fetchResult.kind === 'linkedin') {
+        for (const post of fetchResult.posts) {
+          try {
+            const created = await processPost(post, userId, teamId, supabase);
+            if (created) creativesCreated++;
+          } catch (postError) {
+            const msg = postError instanceof Error ? postError.message : String(postError);
+            logger.error('Failed to process post', {
+              userId,
+              sourceId: source.id,
+              url: post.linkedinUrl,
+              error: msg,
+            });
+            errors.push(`post ${post.linkedinUrl ?? 'unknown'}: ${msg}`);
+          }
+        }
+      } else {
+        for (const scanned of fetchResult.posts) {
+          try {
+            const created = await processScannedContent(scanned, userId, teamId, supabase);
+            if (created) creativesCreated++;
+          } catch (postError) {
+            const msg = postError instanceof Error ? postError.message : String(postError);
+            logger.error('Failed to process reddit post', {
+              userId,
+              sourceId: source.id,
+              url: scanned.source_url,
+              error: msg,
+            });
+            errors.push(`post ${scanned.source_url}: ${msg}`);
+          }
         }
       }
 
@@ -282,6 +403,17 @@ export const scanContentSources = schedules.task({
           creativesCreated: result.creativesCreated,
           errors: result.errors.length,
         });
+
+        // Update trending topics after processing all sources for this user
+        try {
+          await updateTopicCounts(userId);
+        } catch (trendError) {
+          // Non-critical — log and continue
+          logger.warn('Failed to update topic counts', {
+            userId,
+            error: trendError instanceof Error ? trendError.message : String(trendError),
+          });
+        }
       } catch (userError) {
         const msg = userError instanceof Error ? userError.message : String(userError);
         logger.error('Failed to scan for user', { userId, error: msg });
@@ -345,6 +477,17 @@ export const scanContentSourcesManual = task({
       creativesCreated: result.creativesCreated,
       errors: result.errors.length,
     });
+
+    // Update trending topics after processing all sources for this user
+    try {
+      await updateTopicCounts(userId);
+    } catch (trendError) {
+      // Non-critical — log and continue
+      logger.warn('Failed to update topic counts after manual scan', {
+        userId,
+        error: trendError instanceof Error ? trendError.message : String(trendError),
+      });
+    }
 
     return result;
   },

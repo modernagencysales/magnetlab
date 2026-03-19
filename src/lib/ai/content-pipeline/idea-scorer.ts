@@ -6,6 +6,7 @@ export interface ScoringContext {
 }
 
 export interface ScoreFactors {
+  exploitBacked: number;
   relevance: number;
   freshness: number;
   pillarBalance: number;
@@ -25,10 +26,11 @@ export interface RankedIdea {
 }
 
 const SCORE_WEIGHTS = {
-  relevance: 0.35,
-  freshness: 0.25,
-  pillarBalance: 0.25,
-  hookStrength: 0.15,
+  exploitBacked: 0.3,
+  relevance: 0.25,
+  freshness: 0.2,
+  pillarBalance: 0.15,
+  hookStrength: 0.1,
 } as const;
 
 export function generateSimilarityHash(idea: ContentIdea): string {
@@ -98,6 +100,14 @@ function calculatePillarBalanceScore(
   return 4;
 }
 
+/**
+ * Exploit-backed ideas have both an exploit_id (proven format) and a creative_id
+ * (source content to react to). Binary: 10 if both present, 0 if knowledge-only.
+ */
+function calculateExploitBackedScore(idea: ContentIdea): number {
+  return idea.exploit_id && idea.creative_id ? 10 : 0;
+}
+
 function calculateHookStrengthScore(idea: ContentIdea): number {
   let score = 5;
 
@@ -126,6 +136,7 @@ function calculateHookStrengthScore(idea: ContentIdea): number {
 
 export function scoreIdea(idea: ContentIdea, context: ScoringContext): IdeaScore {
   const factors: ScoreFactors = {
+    exploitBacked: calculateExploitBackedScore(idea),
     relevance: idea.relevance_score ?? 5,
     freshness: calculateFreshnessScore(idea, context.recentPostTitles),
     pillarBalance: calculatePillarBalanceScore(idea, context.pillarCounts),
@@ -133,6 +144,7 @@ export function scoreIdea(idea: ContentIdea, context: ScoringContext): IdeaScore
   };
 
   const compositeScore =
+    factors.exploitBacked * SCORE_WEIGHTS.exploitBacked +
     factors.relevance * SCORE_WEIGHTS.relevance +
     factors.freshness * SCORE_WEIGHTS.freshness +
     factors.pillarBalance * SCORE_WEIGHTS.pillarBalance +
@@ -176,9 +188,7 @@ export function deduplicateIdeas(ideas: ContentIdea[]): ContentIdea[] {
   });
 }
 
-export function getSuggestedPillar(
-  pillarCounts: Record<ContentPillar, number>
-): ContentPillar {
+export function getSuggestedPillar(pillarCounts: Record<ContentPillar, number>): ContentPillar {
   const pillars: ContentPillar[] = [
     'moments_that_matter',
     'teaching_promotion',

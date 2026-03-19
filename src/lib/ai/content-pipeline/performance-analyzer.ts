@@ -50,6 +50,7 @@ interface PostWithPerformance {
   scheduled_time: string | null;
   published_at: string | null;
   idea_id: string | null;
+  exploit_id: string | null;
   created_at: string;
   // Joined performance data
   performance?: {
@@ -69,6 +70,10 @@ interface PostWithPerformance {
     content_pillar: string | null;
     hook: string | null;
   } | null;
+  // Joined exploit data
+  exploit?: {
+    slug: string;
+  } | null;
 }
 
 // ============================================
@@ -85,7 +90,9 @@ export async function analyzePerformancePatterns(userId: string): Promise<Patter
   // Fetch all posts with performance data
   const { data: posts, error: postsError } = await supabase
     .from('cp_pipeline_posts')
-    .select('id, draft_content, final_content, variations, hook_score, status, scheduled_time, published_at, idea_id, created_at')
+    .select(
+      'id, draft_content, final_content, variations, hook_score, status, scheduled_time, published_at, idea_id, exploit_id, created_at'
+    )
     .eq('user_id', userId)
     .eq('status', 'published');
 
@@ -97,22 +104,33 @@ export async function analyzePerformancePatterns(userId: string): Promise<Patter
   const postIds = posts.map((p) => p.id);
   const { data: perfData } = await supabase
     .from('cp_post_performance')
-    .select('post_id, views, likes, comments, shares, saves, clicks, impressions, engagement_rate, captured_at')
+    .select(
+      'post_id, views, likes, comments, shares, saves, clicks, impressions, engagement_rate, captured_at'
+    )
     .eq('user_id', userId)
     .in('post_id', postIds)
     .order('captured_at', { ascending: false });
 
   // Fetch associated ideas for content_type and content_pillar
   const ideaIds = posts.map((p) => p.idea_id).filter(Boolean) as string[];
-  const { data: ideas } = ideaIds.length > 0
-    ? await supabase
-        .from('cp_content_ideas')
-        .select('id, content_type, content_pillar, hook')
-        .in('id', ideaIds)
-    : { data: [] };
+  const { data: ideas } =
+    ideaIds.length > 0
+      ? await supabase
+          .from('cp_content_ideas')
+          .select('id, content_type, content_pillar, hook')
+          .in('id', ideaIds)
+      : { data: [] };
+
+  // Fetch exploit slugs for posts that have an exploit_id
+  const exploitIds = [...new Set(posts.map((p) => p.exploit_id).filter(Boolean) as string[])];
+  const { data: exploits } =
+    exploitIds.length > 0
+      ? await supabase.from('cp_exploits').select('id, slug').in('id', exploitIds)
+      : { data: [] };
 
   // Merge data
   const ideaMap = new Map((ideas || []).map((i) => [i.id, i]));
+  const exploitMap = new Map((exploits || []).map((e) => [e.id, e]));
   const perfMap = new Map<string, typeof perfData>();
   for (const perf of perfData || []) {
     const existing = perfMap.get(perf.post_id) || [];
@@ -125,6 +143,7 @@ export async function analyzePerformancePatterns(userId: string): Promise<Patter
       ...post,
       performance: perfMap.get(post.id) || [],
       idea: post.idea_id ? ideaMap.get(post.idea_id) || null : null,
+      exploit: post.exploit_id ? exploitMap.get(post.exploit_id) || null : null,
     }))
     .filter((p) => p.performance && p.performance.length > 0);
 
@@ -165,12 +184,16 @@ export async function analyzePerformancePatterns(userId: string): Promise<Patter
 /**
  * Get which archetypes, hooks, formats, and topics perform best for a user.
  */
-export async function getTopPerformingAttributes(userId: string): Promise<Record<string, TopAttribute[]>> {
+export async function getTopPerformingAttributes(
+  userId: string
+): Promise<Record<string, TopAttribute[]>> {
   const supabase = createSupabaseAdminClient();
 
   const { data: patterns, error } = await supabase
     .from('cp_performance_patterns')
-    .select('pattern_type, pattern_value, avg_engagement_rate, avg_views, avg_likes, avg_comments, sample_count, confidence')
+    .select(
+      'pattern_type, pattern_value, avg_engagement_rate, avg_views, avg_likes, avg_comments, sample_count, confidence'
+    )
     .eq('user_id', userId)
     .order('avg_engagement_rate', { ascending: false });
 
@@ -205,13 +228,16 @@ export async function generatePerformanceInsights(userId: string): Promise<Perfo
   // Fetch patterns
   const { data: patterns } = await supabase
     .from('cp_performance_patterns')
-    .select('pattern_type, pattern_value, avg_engagement_rate, avg_views, avg_likes, avg_comments, sample_count, confidence')
+    .select(
+      'pattern_type, pattern_value, avg_engagement_rate, avg_views, avg_likes, avg_comments, sample_count, confidence'
+    )
     .eq('user_id', userId)
     .order('avg_engagement_rate', { ascending: false });
 
   if (!patterns || patterns.length === 0) {
     return {
-      summary: 'Not enough data yet. Submit performance metrics for your published posts to get insights.',
+      summary:
+        'Not enough data yet. Submit performance metrics for your published posts to get insights.',
       topPerforming: [],
       underperforming: [],
       recommendations: ['Start tracking post performance to build your feedback loop.'],
@@ -226,9 +252,12 @@ export async function generatePerformanceInsights(userId: string): Promise<Perfo
     .eq('user_id', userId)
     .eq('status', 'published');
 
-  const patternSummary = patterns.map((p) =>
-    `${p.pattern_type}="${p.pattern_value}": engagement=${p.avg_engagement_rate}%, views=${p.avg_views}, likes=${p.avg_likes}, comments=${p.avg_comments} (n=${p.sample_count}, confidence=${p.confidence})`
-  ).join('\n');
+  const patternSummary = patterns
+    .map(
+      (p) =>
+        `${p.pattern_type}="${p.pattern_value}": engagement=${p.avg_engagement_rate}%, views=${p.avg_views}, likes=${p.avg_likes}, comments=${p.avg_comments} (n=${p.sample_count}, confidence=${p.confidence})`
+    )
+    .join('\n');
 
   const client = getAnthropicClient('performance-analyzer');
   const response = await client.messages.create({
@@ -268,16 +297,14 @@ Return ONLY valid JSON:
  * Inject performance data into ideation/writing prompts to bias toward what works.
  * Returns a prompt section to prepend/append to existing prompts.
  */
-export async function biasIdeationPrompt(
-  basePrompt: string,
-  userId: string
-): Promise<string> {
+export async function biasIdeationPrompt(basePrompt: string, userId: string): Promise<string> {
   const topAttributes = await getTopPerformingAttributes(userId);
 
   // Only use medium/high confidence patterns
   const reliablePatterns: string[] = [];
 
   for (const [type, attrs] of Object.entries(topAttributes)) {
+    if (type === 'exploit') continue; // Handled separately in the BEST EXPLOIT FORMAT section below
     const reliable = attrs.filter((a) => a.confidence !== 'low');
     if (reliable.length > 0) {
       const best = reliable[0];
@@ -287,13 +314,21 @@ export async function biasIdeationPrompt(
     }
   }
 
-  if (reliablePatterns.length === 0) {
+  // Add exploit performance as a dedicated section when available
+  const exploitPatterns = (topAttributes['exploit'] || []).filter((a) => a.confidence !== 'low');
+
+  if (reliablePatterns.length === 0 && exploitPatterns.length === 0) {
     return basePrompt;
   }
 
+  const exploitSection =
+    exploitPatterns.length > 0
+      ? `\nBEST EXPLOIT FORMAT: ${exploitPatterns[0].value} (avg ${exploitPatterns[0].avgViews.toLocaleString()} impressions, ${exploitPatterns[0].sampleCount} posts) — prioritize this format when a matching creative is available.`
+      : '';
+
   const performanceSection = `
 PERFORMANCE DATA (bias toward these proven patterns):
-${reliablePatterns.join('\n')}
+${reliablePatterns.join('\n')}${exploitSection}
 
 Use this data to inform your content choices. Lean toward formats, hooks, and topics that have demonstrated strong engagement for this creator. Do not blindly repeat — use these patterns as a starting point and add variety.
 
@@ -323,9 +358,15 @@ interface AggregatedPattern {
 }
 
 function extractPatternsFromData(posts: PostWithPerformance[]): AggregatedPattern[] {
-  const buckets = new Map<string, { views: number[]; likes: number[]; comments: number[]; engagement: number[] }>();
+  const buckets = new Map<
+    string,
+    { views: number[]; likes: number[]; comments: number[]; engagement: number[] }
+  >();
 
-  function addToBucket(key: string, perf: { views: number; likes: number; comments: number; engagement_rate: number }) {
+  function addToBucket(
+    key: string,
+    perf: { views: number; likes: number; comments: number; engagement_rate: number }
+  ) {
     if (!buckets.has(key)) {
       buckets.set(key, { views: [], likes: [], comments: [], engagement: [] });
     }
@@ -361,7 +402,16 @@ function extractPatternsFromData(posts: PostWithPerformance[]): AggregatedPatter
     const timestamp = post.published_at || post.scheduled_time;
     if (timestamp) {
       const hour = new Date(timestamp).getUTCHours();
-      const timeBucket = hour < 6 ? 'early_morning' : hour < 10 ? 'morning' : hour < 14 ? 'midday' : hour < 18 ? 'afternoon' : 'evening';
+      const timeBucket =
+        hour < 6
+          ? 'early_morning'
+          : hour < 10
+            ? 'morning'
+            : hour < 14
+              ? 'midday'
+              : hour < 18
+                ? 'afternoon'
+                : 'evening';
       addToBucket(`time_of_day:${timeBucket}`, perf);
     }
 
@@ -376,6 +426,11 @@ function extractPatternsFromData(posts: PostWithPerformance[]): AggregatedPatter
     const format = detectFormat(content);
     if (format) {
       addToBucket(`format:${format}`, perf);
+    }
+
+    // Exploit pattern — track performance by exploit format slug
+    if (post.exploit_id && post.exploit?.slug) {
+      addToBucket(`exploit:${post.exploit.slug}`, perf);
     }
   }
 
