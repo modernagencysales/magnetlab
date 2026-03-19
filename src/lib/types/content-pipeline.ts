@@ -402,6 +402,10 @@ export interface ContentIdea {
   similarity_hash: string | null;
   team_id?: string | null;
   team_profile_id?: string | null;
+  /** Exploit format this idea was generated from (Phase 4: exploit-aware scoring). */
+  exploit_id?: string | null;
+  /** Creative source this idea was generated from (Phase 4: exploit-aware scoring). */
+  creative_id?: string | null;
   created_at: string;
   updated_at: string;
 }
