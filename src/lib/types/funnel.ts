@@ -84,6 +84,12 @@ export interface FunnelPage {
   // Thank-you page layout
   thankyouLayout: ThankyouLayout;
 
+  // VSL framing + CTA bridge (video_first layout)
+  vslHeadline: string | null;
+  vslSubline: string | null;
+  ctaHeadline: string | null;
+  ctaButtonText: string | null;
+
   // Theme configuration
   theme: FunnelTheme;
   primaryColor: string;
@@ -122,6 +128,7 @@ export interface QualificationQuestion {
   placeholder: string | null; // For text/textarea
   isQualifying: boolean;
   isRequired: boolean;
+  bookingPrefillKey: string | null;
   createdAt: string;
 }
 
@@ -340,6 +347,10 @@ export interface UpdateFunnelPagePayload {
   backgroundStyle?: BackgroundStyle;
   logoUrl?: string | null;
   thankyouLayout?: ThankyouLayout;
+  vslHeadline?: string | null;
+  vslSubline?: string | null;
+  ctaHeadline?: string | null;
+  ctaButtonText?: string | null;
 }
 
 export interface CreateQuestionPayload {
@@ -351,6 +362,7 @@ export interface CreateQuestionPayload {
   placeholder?: string | null;
   isQualifying?: boolean;
   isRequired?: boolean;
+  bookingPrefillKey?: string | null;
 }
 
 export interface UpdateQuestionPayload {
@@ -362,6 +374,7 @@ export interface UpdateQuestionPayload {
   placeholder?: string | null;
   isQualifying?: boolean;
   isRequired?: boolean;
+  bookingPrefillKey?: string | null;
 }
 
 export interface CaptureLeadPayload {
@@ -493,6 +506,10 @@ export interface FunnelPageRow {
   homepage_label: string | null;
   send_resource_email: boolean;
   thankyou_layout: string;
+  vsl_headline: string | null;
+  vsl_subline: string | null;
+  cta_headline: string | null;
+  cta_button_text: string | null;
   theme: string;
   primary_color: string;
   background_style: string;
@@ -518,6 +535,7 @@ export interface QualificationQuestionRow {
   placeholder: string | null;
   is_qualifying: boolean;
   is_required: boolean;
+  booking_prefill_key: string | null;
   created_at: string;
 }
 
@@ -578,6 +596,10 @@ export function funnelPageFromRow(row: FunnelPageRow): FunnelPage {
     homepageLabel: row.homepage_label || null,
     sendResourceEmail: row.send_resource_email ?? true,
     thankyouLayout: (row.thankyou_layout || 'survey_first') as ThankyouLayout,
+    vslHeadline: row.vsl_headline || null,
+    vslSubline: row.vsl_subline || null,
+    ctaHeadline: row.cta_headline || null,
+    ctaButtonText: row.cta_button_text || null,
     qualificationFormId: row.qualification_form_id || null,
     theme: (row.theme || 'dark') as FunnelTheme,
     primaryColor: row.primary_color || '#8b5cf6',
@@ -615,6 +637,7 @@ export function qualificationQuestionFromRow(row: QualificationQuestionRow): Qua
     placeholder: row.placeholder || null,
     isQualifying: row.is_qualifying ?? true,
     isRequired: row.is_required ?? true,
+    bookingPrefillKey: row.booking_prefill_key || null,
     createdAt: row.created_at,
   };
 }
