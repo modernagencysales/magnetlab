@@ -202,7 +202,8 @@ export async function getDailyLimits(
 export async function incrementDailyLimit(
   accountId: string,
   localDate: string,
-  actionType: ActionType
+  actionType: ActionType,
+  userId?: string
 ): Promise<void> {
   const column = ACTION_COLUMN_MAP[actionType];
   if (!column)
@@ -229,6 +230,7 @@ export async function incrementDailyLimit(
       comments_sent: 0,
       likes_sent: 0,
       profile_views: 0,
+      ...(userId ? { user_id: userId } : {}),
     };
     insertData[column] = 1;
 
