@@ -39,7 +39,7 @@ interface UnifiedCampaign {
   type: CampaignType;
   status: OutreachCampaignStatus | PostCampaignStatus;
   details: string;
-  leadCount: number;
+  leadCount: number | null;
   createdAt: string;
   href: string;
 }
@@ -113,7 +113,7 @@ export function CampaignsList() {
       type: 'outreach' as const,
       status: c.status,
       details: formatPreset(c.preset),
-      leadCount: 0,
+      leadCount: null,
       createdAt: c.created_at,
       href: `/campaigns/${c.id}`,
     }));
@@ -260,7 +260,7 @@ export function CampaignsList() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {campaign.leadCount}
+                    {campaign.leadCount ?? '—'}
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-muted-foreground">

@@ -75,9 +75,6 @@ export function AddLeadsModal({ campaignId, open, onOpenChange, onAdded }: AddLe
         `Added ${res.added} leads${res.skipped > 0 ? ` (${res.skipped} skipped — already in campaign)` : ''}`
       );
       onAdded();
-      setTimeout(() => {
-        handleClose();
-      }, 1000);
     } catch (err) {
       logError('AddLeadsModal/submit', err);
       setError(err instanceof Error ? err.message : 'Failed to add leads');

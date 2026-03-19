@@ -2,6 +2,7 @@
 
 /** Lead table for outreach campaigns. Shows status, progress step, and skip action. */
 
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import {
   Table,
@@ -77,6 +78,16 @@ const STATUS_FILTER_OPTIONS = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function LeadTable({ leads, onSkip, statusFilter, onStatusFilter }: LeadTableProps) {
+  const [page, setPage] = useState(0);
+  const pageSize = 50;
+  const totalPages = Math.ceil(leads.length / pageSize);
+  const pagedLeads = leads.slice(page * pageSize, (page + 1) * pageSize);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setPage(0);
+  }, [statusFilter]);
+
   return (
     <div className="space-y-4">
       {/* Status filter */}
@@ -115,7 +126,7 @@ export function LeadTable({ leads, onSkip, statusFilter, onStatusFilter }: LeadT
               </TableCell>
             </TableRow>
           ) : (
-            leads.map((lead) => {
+            pagedLeads.map((lead) => {
               const config = STATUS_CONFIG[lead.status] ?? { variant: 'outline' as BadgeVariant };
               const canSkip = SKIPPABLE_STATUSES.has(lead.status);
               const displayName = lead.name ?? lead.linkedin_username ?? lead.linkedin_url;
@@ -152,6 +163,32 @@ export function LeadTable({ leads, onSkip, statusFilter, onStatusFilter }: LeadT
           )}
         </TableBody>
       </Table>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-3">
+          <span className="text-sm text-muted-foreground">
+            Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, leads.length)} of {leads.length}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={page === 0}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= totalPages - 1}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

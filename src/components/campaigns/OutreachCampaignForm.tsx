@@ -2,7 +2,7 @@
 
 /** Outreach campaign creation form. Preset selection + message templates. */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
   Card,
@@ -21,6 +21,7 @@ import {
 } from '@magnetlab/magnetui';
 import { logError } from '@/lib/utils/logger';
 import * as outreachCampaignsApi from '@/frontend/api/outreach-campaigns';
+import * as postCampaignsApi from '@/frontend/api/post-campaigns';
 import type { CreateOutreachCampaignInput } from '@/frontend/api/outreach-campaigns';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -58,7 +59,12 @@ export function OutreachCampaignForm({ onSubmit }: OutreachCampaignFormProps) {
   const [followUpDelayDays, setFollowUpDelayDays] = useState(3);
   const [withdrawDelayDays, setWithdrawDelayDays] = useState(7);
   const [isLoading, setIsLoading] = useState(false);
+  const [accounts, setAccounts] = useState<Array<{ id: string; name: string | null }>>([]);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    postCampaignsApi.listSenderAccounts().then((res) => setAccounts(res.accounts)).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,14 +132,29 @@ export function OutreachCampaignForm({ onSubmit }: OutreachCampaignFormProps) {
 
           {/* Unipile Account ID */}
           <div className="space-y-2">
-            <Label htmlFor="unipile-account-id">Unipile Account ID</Label>
-            <Input
-              id="unipile-account-id"
-              value={unipileAccountId}
-              onChange={(e) => setUnipileAccountId(e.target.value)}
-              placeholder="Enter Unipile account ID"
-              required
-            />
+            <Label htmlFor="unipile-account-id">LinkedIn Account</Label>
+            {accounts.length > 0 ? (
+              <Select value={unipileAccountId} onValueChange={setUnipileAccountId}>
+                <SelectTrigger id="unipile-account-id">
+                  <SelectValue placeholder="Select LinkedIn account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name ?? a.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="unipile-account-id"
+                value={unipileAccountId}
+                onChange={(e) => setUnipileAccountId(e.target.value)}
+                placeholder="Unipile Account ID (find in Settings → Integrations)"
+                required
+              />
+            )}
           </div>
 
           {/* Connect Message */}
