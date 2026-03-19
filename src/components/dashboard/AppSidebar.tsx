@@ -89,22 +89,34 @@ interface NavItem {
   activePrefixes?: string[];
 }
 
-const mainNav: NavItem[] = [
+const homeNav: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
+];
+
+const planNav: NavItem[] = [
+  { href: '/knowledge', label: 'Knowledge', icon: Brain },
+  { href: '/inspo', label: 'Inspo', icon: Sparkles },
+];
+
+const createNav: NavItem[] = [
   { href: '/magnets', label: 'Lead Magnets', icon: Magnet },
   { href: '/pages', label: 'Pages', icon: Globe },
-  { href: '/knowledge', label: 'Knowledge', icon: Brain },
   { href: '/posts', label: 'Posts', icon: PenTool },
-  { href: '/content-queue', label: 'Content Queue', icon: ListChecks },
-  { href: '/inspo', label: 'Inspo', icon: Sparkles },
-  { href: '/campaigns', label: 'Campaigns', icon: Megaphone, activePrefixes: ['/campaigns', '/post-campaigns'] },
-  { href: '/leads', label: 'Leads', icon: Users },
-  { href: '/signals', label: 'Signals', icon: Radio },
   { href: '/email/flows', label: 'Email', icon: Mail, activePrefix: '/email' },
-  { href: '/team', label: 'Team', icon: UsersRound },
+];
+
+const editNav: NavItem[] = [
+  { href: '/content-queue', label: 'Content Queue', icon: ListChecks },
+];
+
+const distributeNav: NavItem[] = [
+  { href: '/campaigns', label: 'Campaigns', icon: Megaphone, activePrefixes: ['/campaigns', '/post-campaigns'] },
+  { href: '/signals', label: 'Signals', icon: Radio },
+  { href: '/leads', label: 'Leads', icon: Users },
 ];
 
 const bottomNav: NavItem[] = [
+  { href: '/team', label: 'Team', icon: UsersRound },
   { href: '/docs', label: 'Docs', icon: BookOpen },
   { href: '/help', label: 'Help', icon: HelpCircle },
   { href: '/settings', label: 'Settings', icon: Settings },
@@ -124,6 +136,48 @@ function isRouteActive(pathname: string, href: string, activePrefix?: string, ac
 
 function getTourId(href: string) {
   return href === '/' ? 'home' : href.slice(1);
+}
+
+// ─── Nav group helper ─────────────────────────────────
+
+function NavGroup({
+  label,
+  items,
+  pathname,
+  onNavigate,
+}: {
+  label: string;
+  items: NavItem[];
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => {
+            const active = isRouteActive(pathname, item.href, item.activePrefix, item.activePrefixes);
+            return (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={active}
+                  tooltip={item.label}
+                  data-tour={getTourId(item.href)}
+                >
+                  <Link href={item.href} onClick={onNavigate}>
+                    <item.icon className="size-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
 }
 
 // ─── Create dropdown ───────────────────────────────────
@@ -273,11 +327,11 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
 
       {/* ── Main nav ── */}
       <SidebarContent>
+        {/* Home (ungrouped) */}
         <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map((item) => {
+              {homeNav.map((item) => {
                 const active = isRouteActive(pathname, item.href, item.activePrefix, item.activePrefixes);
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -298,6 +352,18 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Plan */}
+        <NavGroup label="Plan" items={planNav} pathname={pathname} onNavigate={handleNavigate} />
+
+        {/* Create */}
+        <NavGroup label="Create" items={createNav} pathname={pathname} onNavigate={handleNavigate} />
+
+        {/* Edit */}
+        <NavGroup label="Edit" items={editNav} pathname={pathname} onNavigate={handleNavigate} />
+
+        {/* Distribute */}
+        <NavGroup label="Distribute" items={distributeNav} pathname={pathname} onNavigate={handleNavigate} />
 
         <SidebarSeparator />
 
