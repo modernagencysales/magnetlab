@@ -304,6 +304,7 @@ export async function biasIdeationPrompt(basePrompt: string, userId: string): Pr
   const reliablePatterns: string[] = [];
 
   for (const [type, attrs] of Object.entries(topAttributes)) {
+    if (type === 'exploit') continue; // Handled separately in the BEST EXPLOIT FORMAT section below
     const reliable = attrs.filter((a) => a.confidence !== 'low');
     if (reliable.length > 0) {
       const best = reliable[0];
