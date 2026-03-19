@@ -62,7 +62,7 @@ export function PostEditor({
           <button
             type="button"
             onClick={onTogglePreview}
-            className="flex items-center gap-1.5 rounded-md border border-zinc-600 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-zinc-700"
+            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary"
           >
             <EyeOff className="h-3.5 w-3.5" />
             Exit Preview
@@ -86,18 +86,18 @@ export function PostEditor({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {post.idea_content_type && (
-            <span className="rounded bg-zinc-700/50 px-2 py-0.5 text-xs text-zinc-400">
+            <span className="rounded bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
               {post.idea_content_type}
             </span>
           )}
           {post.idea_title && (
-            <span className="truncate text-xs text-zinc-500">{post.idea_title}</span>
+            <span className="truncate text-xs text-muted-foreground">{post.idea_title}</span>
           )}
         </div>
         <button
           type="button"
           onClick={onTogglePreview}
-          className="flex items-center gap-1.5 rounded-md border border-zinc-600 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-zinc-700"
+          className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary"
         >
           <Eye className="h-3.5 w-3.5" />
           Preview
@@ -105,16 +105,16 @@ export function PostEditor({
       </div>
 
       {/* LinkedIn chrome */}
-      <div className="rounded-lg border border-zinc-700 bg-zinc-800">
+      <div className="rounded-lg border border-border bg-card">
         {/* Author header */}
         <div className="flex items-start gap-3 px-4 pt-4 pb-2">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-600 text-sm font-semibold text-white">
             {initials}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-zinc-100">{authorName}</span>
-            <span className="text-xs text-zinc-400">{authorHeadline}</span>
-            <span className="flex items-center gap-1 text-xs text-zinc-500">
+            <span className="text-sm font-semibold text-foreground">{authorName}</span>
+            <span className="text-xs text-muted-foreground">{authorHeadline}</span>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
               Just now &middot; <Globe className="inline h-3 w-3" />
             </span>
           </div>
@@ -126,25 +126,25 @@ export function PostEditor({
             content={post.draft_content ?? ''}
             onChange={onContentChange}
             placeholder="Write your post content..."
-            className="min-h-[200px] text-sm text-zinc-100 [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:outline-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-zinc-500"
+            className="min-h-[200px] text-sm text-foreground [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:outline-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground"
           />
         </div>
 
         {/* Image URL input */}
-        <div className="border-t border-zinc-700/50 px-4 py-2">
+        <div className="border-t border-border px-4 py-2">
           <div className="flex items-center gap-2">
             <input
               type="url"
               value={imageUrlOverride}
               onChange={(e) => setImageUrlOverride(e.target.value)}
               placeholder="Paste image URL for preview..."
-              className="flex-1 rounded border border-zinc-700 bg-zinc-900/50 px-2 py-1 text-xs text-zinc-300 placeholder-zinc-600 outline-none focus:border-zinc-500"
+              className="flex-1 rounded border border-border bg-muted px-2 py-1 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-ring"
             />
             {imageUrlOverride && (
               <button
                 type="button"
                 onClick={() => setImageUrlOverride('')}
-                className="shrink-0 rounded p-1 text-zinc-500 hover:text-zinc-300"
+                className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
                 title="Remove image URL"
               >
                 <X className="h-3 w-3" />
@@ -155,7 +155,7 @@ export function PostEditor({
 
         {/* Image display */}
         {firstImage && (
-          <div className="border-t border-zinc-700 px-4 py-3">
+          <div className="border-t border-border px-4 py-3">
             <Image
               src={firstImage}
               alt="Post image"
@@ -168,8 +168,8 @@ export function PostEditor({
         )}
 
         {/* Engagement bar */}
-        <div className="border-t border-zinc-700 px-4 py-2">
-          <div className="flex items-center gap-6 text-xs text-zinc-500">
+        <div className="border-t border-border px-4 py-2">
+          <div className="flex items-center gap-6 text-xs text-muted-foreground">
             <span>Like</span>
             <span>Comment</span>
             <span>Repost</span>

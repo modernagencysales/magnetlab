@@ -175,7 +175,7 @@ export function EditingView({
   if (!currentPost) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-zinc-400">No posts to edit</p>
+        <p className="text-muted-foreground">No posts to edit</p>
       </div>
     );
   }
@@ -195,21 +195,21 @@ export function EditingView({
         {/* Team header */}
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-medium text-zinc-200">{team.profile_name}</h2>
-            <p className="text-xs text-zinc-500">{team.profile_company}</p>
+            <h2 className="text-sm font-medium text-foreground">{team.profile_name}</h2>
+            <p className="text-xs text-muted-foreground">{team.profile_company}</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-muted-foreground">
               {team.edited_count}/{team.total_count} edited
             </span>
-            <kbd className="rounded border border-zinc-600 px-1.5 py-0.5 text-[10px] text-zinc-500">
+            <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
               Cmd+Enter
             </kbd>
-            <span className="text-[10px] text-zinc-600">mark edited</span>
+            <span className="text-[10px] text-muted-foreground">mark edited</span>
             <button
               type="button"
               onClick={handleDelete}
-              className="ml-1 rounded p-1 text-zinc-500 transition-colors hover:bg-red-900/30 hover:text-red-400"
+              className="ml-1 rounded p-1 text-muted-foreground transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
               title="Delete post (Backspace)"
             >
               <Trash2 className="h-3.5 w-3.5" />

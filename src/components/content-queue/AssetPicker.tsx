@@ -36,7 +36,7 @@ function getArchetypeLabel(archetype: string): string {
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
       {children}
     </h3>
   );
@@ -60,16 +60,12 @@ function ReviewToggle({
       disabled={loading}
       className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
         reviewed
-          ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-          : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20'
+          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
       }`}
       aria-label={label}
     >
-      {reviewed ? (
-        <CheckCircle2 className="h-3.5 w-3.5" />
-      ) : (
-        <Circle className="h-3.5 w-3.5" />
-      )}
+      {reviewed ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
       {reviewed ? 'Reviewed' : 'Mark Reviewed'}
     </button>
   );
@@ -92,8 +88,7 @@ export function AssetPicker({
   const [loadingFunnel, setLoadingFunnel] = useState<string | null>(null);
 
   const allPostsEdited = team.total_count > 0 && team.edited_count >= team.total_count;
-  const allLMsReviewed =
-    team.lm_total_count > 0 && team.lm_reviewed_count >= team.lm_total_count;
+  const allLMsReviewed = team.lm_total_count > 0 && team.lm_reviewed_count >= team.lm_total_count;
   const allFunnelsReviewed =
     team.funnel_total_count === 0 || team.funnel_reviewed_count >= team.funnel_total_count;
   const allAssetsReviewed = allLMsReviewed && allFunnelsReviewed;
@@ -150,38 +145,38 @@ export function AssetPicker({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-zinc-400 transition-colors hover:text-zinc-200"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
           aria-label="Back to queue"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
         </button>
-        <div className="h-4 w-px bg-zinc-700" />
+        <div className="h-4 w-px bg-border" />
         <div>
-          <h1 className="text-xl font-semibold text-zinc-100">{team.profile_name}</h1>
+          <h1 className="text-xl font-semibold text-foreground">{team.profile_name}</h1>
           {team.profile_company && (
-            <p className="text-sm text-zinc-400">{team.profile_company}</p>
+            <p className="text-sm text-muted-foreground">{team.profile_company}</p>
           )}
         </div>
       </div>
 
       <div className="flex flex-col gap-6">
         {/* Posts Section */}
-        <div className="rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-4">
+        <div className="rounded-lg border border-border bg-card p-4">
           <SectionHeader>Posts</SectionHeader>
 
           <div className="mb-3 flex items-center gap-3">
-            <span className="text-sm text-zinc-300">
+            <span className="text-sm text-foreground">
               {team.total_count} posts &middot; {team.edited_count} edited
             </span>
             {/* Progress bar */}
-            <div className="h-1.5 flex-1 rounded-full bg-zinc-700">
+            <div className="h-1.5 flex-1 rounded-full bg-secondary">
               <div
                 className={`h-full rounded-full transition-all ${allPostsEdited ? 'bg-emerald-500' : 'bg-violet-500'}`}
                 style={{ width: `${postsProgress}%` }}
               />
             </div>
-            <span className="text-xs text-zinc-400">{postsProgress}%</span>
+            <span className="text-xs text-muted-foreground">{postsProgress}%</span>
           </div>
 
           <button
@@ -196,23 +191,25 @@ export function AssetPicker({
 
         {/* Lead Magnets + Funnels Section */}
         {team.lead_magnets.length > 0 && (
-          <div className="rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-4">
+          <div className="rounded-lg border border-border bg-card p-4">
             <SectionHeader>Lead Magnets & Funnels</SectionHeader>
 
             <div className="flex flex-col gap-4">
               {team.lead_magnets.map((lm) => (
                 <div key={lm.id} className="flex flex-col gap-2">
                   {/* Lead Magnet Row */}
-                  <div className="flex items-center gap-3 rounded-md bg-zinc-700/40 px-3 py-2">
+                  <div className="flex items-center gap-3 rounded-md bg-secondary/60 px-3 py-2">
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate text-sm font-medium text-zinc-100">
+                      <span className="truncate text-sm font-medium text-foreground">
                         {lm.title}
                       </span>
-                      <span className="text-xs text-zinc-500">
+                      <span className="text-xs text-muted-foreground">
                         {getArchetypeLabel(lm.archetype)} &middot;{' '}
                         <span
                           className={
-                            lm.status === 'published' ? 'text-emerald-400' : 'text-zinc-400'
+                            lm.status === 'published'
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-muted-foreground'
                           }
                         >
                           {lm.status}
@@ -229,7 +226,7 @@ export function AssetPicker({
                       <button
                         type="button"
                         onClick={() => openInEditor(`/magnets/${lm.id}`, team.team_id)}
-                        className="flex items-center gap-1 text-xs text-zinc-400 transition-colors hover:text-zinc-200"
+                        className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                         aria-label={`Review ${lm.title} in editor`}
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
@@ -242,17 +239,17 @@ export function AssetPicker({
                   {lm.funnels.map((funnel) => (
                     <div
                       key={funnel.id}
-                      className="ml-4 flex items-center gap-3 rounded-md bg-zinc-700/20 px-3 py-2"
+                      className="ml-4 flex items-center gap-3 rounded-md bg-secondary/30 px-3 py-2"
                     >
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="truncate text-sm text-zinc-200">
-                          /{funnel.slug}
-                        </span>
-                        <span className="text-xs text-zinc-500">
+                        <span className="truncate text-sm text-foreground">/{funnel.slug}</span>
+                        <span className="text-xs text-muted-foreground">
                           Funnel &middot;{' '}
                           <span
                             className={
-                              funnel.is_published ? 'text-emerald-400' : 'text-zinc-400'
+                              funnel.is_published
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-muted-foreground'
                             }
                           >
                             {funnel.is_published ? 'published' : 'draft'}
@@ -270,13 +267,8 @@ export function AssetPicker({
                         />
                         <button
                           type="button"
-                          onClick={() =>
-                            openInEditor(
-                              `/magnets/${lm.id}?tab=funnel`,
-                              team.team_id
-                            )
-                          }
-                          className="flex items-center gap-1 text-xs text-zinc-400 transition-colors hover:text-zinc-200"
+                          onClick={() => openInEditor(`/magnets/${lm.id}?tab=funnel`, team.team_id)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                           aria-label={`Review funnel /${funnel.slug}`}
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -316,7 +308,7 @@ export function AssetPicker({
           )}
 
           {!allPostsEdited && (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted-foreground">
               {team.total_count - team.edited_count} post
               {team.total_count - team.edited_count !== 1 ? 's' : ''} still need editing
             </p>

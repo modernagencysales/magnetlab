@@ -23,7 +23,7 @@ interface PostListProps {
 function getStatusColor(post: QueuePost, index: number, currentIndex: number): string {
   if (index === currentIndex) return 'bg-amber-400';
   if (post.edited_at) return 'bg-emerald-400';
-  return 'bg-zinc-500';
+  return 'bg-muted-foreground';
 }
 
 function truncateFirstLine(content: string | null, maxLen = 40): string {
@@ -36,12 +36,12 @@ function truncateFirstLine(content: string | null, maxLen = 40): string {
 
 export function PostList({ posts, currentIndex, onSelect, onBack }: PostListProps) {
   return (
-    <div className="flex h-full w-[200px] shrink-0 flex-col border-r border-zinc-700 bg-zinc-900">
+    <div className="flex h-full w-[200px] shrink-0 flex-col border-r border-border bg-muted">
       {/* Back button */}
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center gap-2 border-b border-zinc-700 px-3 py-2.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+        className="flex items-center gap-2 border-b border-border px-3 py-2.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         Back to Queue
@@ -56,13 +56,13 @@ export function PostList({ posts, currentIndex, onSelect, onBack }: PostListProp
             onClick={() => onSelect(index)}
             className={`flex w-full items-start gap-2 px-3 py-2 text-left text-xs transition-colors ${
               index === currentIndex
-                ? 'bg-zinc-800 text-zinc-100'
-                : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'
+                ? 'bg-secondary text-foreground'
+                : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
             }`}
           >
             {/* Status dot */}
             <div className="mt-1 flex shrink-0 items-center gap-1.5">
-              <span className="text-zinc-500">{index + 1}.</span>
+              <span className="text-muted-foreground">{index + 1}.</span>
               <div
                 className={`h-2 w-2 rounded-full ${getStatusColor(post, index, currentIndex)}`}
               />
@@ -75,8 +75,8 @@ export function PostList({ posts, currentIndex, onSelect, onBack }: PostListProp
       </div>
 
       {/* Status legend */}
-      <div className="border-t border-zinc-700 px-3 py-2">
-        <div className="flex flex-col gap-1 text-[10px] text-zinc-500">
+      <div className="border-t border-border px-3 py-2">
+        <div className="flex flex-col gap-1 text-[10px] text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             Edited
@@ -86,7 +86,7 @@ export function PostList({ posts, currentIndex, onSelect, onBack }: PostListProp
             Current
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
+            <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
             Unedited
           </div>
         </div>

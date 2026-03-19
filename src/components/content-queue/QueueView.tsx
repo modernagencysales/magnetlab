@@ -37,8 +37,8 @@ export function QueueView({
   if (teams.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2">
-        <p className="text-lg font-medium text-zinc-300">No posts in queue</p>
-        <p className="text-sm text-zinc-500">
+        <p className="text-lg font-medium text-foreground">No posts in queue</p>
+        <p className="text-sm text-muted-foreground">
           Draft posts from your teams will appear here for editing.
         </p>
       </div>
@@ -52,8 +52,8 @@ export function QueueView({
     <div className="mx-auto max-w-3xl px-4 py-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-100">Content Queue</h1>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h1 className="text-xl font-semibold text-foreground">Content Queue</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           {summary.total_teams} clients &middot; {summary.total_posts} posts &middot;{' '}
           {summary.remaining} remaining
           {totalLMs > 0 && (

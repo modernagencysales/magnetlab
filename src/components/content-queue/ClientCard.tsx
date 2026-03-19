@@ -66,7 +66,7 @@ export function ClientCard({
   const hasAssets = lmTotalCount > 0;
 
   return (
-    <div className="rounded-lg border border-zinc-700/50 bg-zinc-800/50 px-4 py-3 transition-colors hover:bg-zinc-800">
+    <div className="rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-secondary">
       <div className="flex items-center gap-4">
         {/* Avatar */}
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-600 text-sm font-semibold text-white">
@@ -76,36 +76,38 @@ export function ClientCard({
         {/* Info */}
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-medium text-zinc-100">{profileName}</span>
+            <span className="truncate text-sm font-medium text-foreground">{profileName}</span>
             {profileCompany && (
-              <span className="truncate text-xs text-zinc-400">{profileCompany}</span>
+              <span className="truncate text-xs text-muted-foreground">{profileCompany}</span>
             )}
           </div>
 
           {/* Posts progress row */}
           <div className="flex items-center gap-3">
-            <span className="min-w-[140px] text-xs text-zinc-400">
+            <span className="min-w-[140px] text-xs text-muted-foreground">
               {totalCount} posts &middot; {editedCount} edited
             </span>
-            <div className="h-1.5 flex-1 rounded-full bg-zinc-700">
+            <div className="h-1.5 flex-1 rounded-full bg-secondary">
               <div
                 className={`h-full rounded-full transition-all ${allPostsEdited ? 'bg-emerald-500' : 'bg-violet-500'}`}
                 style={{ width: `${postsProgress}%` }}
               />
             </div>
             {allPostsEdited && (
-              <span className="shrink-0 text-xs font-medium text-emerald-400">✓ Posts ready</span>
+              <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                ✓ Posts ready
+              </span>
             )}
           </div>
 
           {/* Lead magnet progress row */}
           {hasAssets && (
             <div className="flex items-center gap-3">
-              <span className="min-w-[140px] text-xs text-zinc-400">
+              <span className="min-w-[140px] text-xs text-muted-foreground">
                 {lmTotalCount} lead magnet{lmTotalCount !== 1 ? 's' : ''} &middot; {lmReviewedCount}{' '}
                 reviewed
               </span>
-              <div className="h-1.5 flex-1 rounded-full bg-zinc-700">
+              <div className="h-1.5 flex-1 rounded-full bg-secondary">
                 <div
                   className={`h-full rounded-full transition-all ${lmReviewedCount >= lmTotalCount ? 'bg-emerald-500' : 'bg-amber-500'}`}
                   style={{
@@ -114,9 +116,13 @@ export function ClientCard({
                 />
               </div>
               {lmReviewedCount >= lmTotalCount ? (
-                <span className="shrink-0 text-xs font-medium text-emerald-400">✓</span>
+                <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  ✓
+                </span>
               ) : (
-                <span className="shrink-0 text-xs text-amber-400">needs review</span>
+                <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">
+                  needs review
+                </span>
               )}
             </div>
           )}
@@ -124,11 +130,11 @@ export function ClientCard({
           {/* Funnel progress row */}
           {funnelTotalCount > 0 && (
             <div className="flex items-center gap-3">
-              <span className="min-w-[140px] text-xs text-zinc-400">
+              <span className="min-w-[140px] text-xs text-muted-foreground">
                 {funnelTotalCount} funnel{funnelTotalCount !== 1 ? 's' : ''} &middot;{' '}
                 {funnelReviewedCount} reviewed
               </span>
-              <div className="h-1.5 flex-1 rounded-full bg-zinc-700">
+              <div className="h-1.5 flex-1 rounded-full bg-secondary">
                 <div
                   className={`h-full rounded-full transition-all ${funnelReviewedCount >= funnelTotalCount ? 'bg-emerald-500' : 'bg-amber-500'}`}
                   style={{
@@ -137,9 +143,13 @@ export function ClientCard({
                 />
               </div>
               {funnelReviewedCount >= funnelTotalCount ? (
-                <span className="shrink-0 text-xs font-medium text-emerald-400">✓</span>
+                <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  ✓
+                </span>
               ) : (
-                <span className="shrink-0 text-xs text-amber-400">needs review</span>
+                <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">
+                  needs review
+                </span>
               )}
             </div>
           )}
