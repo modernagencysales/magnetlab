@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useCallback, type KeyboardEvent } from 'react';
+import { useState, useCallback, useEffect, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useHomepageData } from '@/frontend/hooks/api/useHomepageData';
 import { useCopilotNavigator } from '@/components/copilot/CopilotNavigator';
@@ -58,8 +58,12 @@ export function CopilotHomepage() {
   const [prompt, setPrompt] = useState('');
 
   const userName = data?.userName ?? 'there';
-  const timeOfDay = getTimeOfDay();
-  const greeting = `Good ${timeOfDay}, ${userName}`;
+  // Compute time-of-day in useEffect to avoid hydration mismatch (server vs client time)
+  const [timeOfDay, setTimeOfDay] = useState<string>('');
+  useEffect(() => {
+    setTimeOfDay(getTimeOfDay());
+  }, []);
+  const greeting = timeOfDay ? `Good ${timeOfDay}, ${userName}` : `Hey, ${userName}`;
 
   const summaryLine =
     data?.suggestions && data.suggestions.length > 0
