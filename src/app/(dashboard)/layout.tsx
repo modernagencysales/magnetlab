@@ -8,8 +8,8 @@ import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { PostHogIdentify } from '@/components/providers/PostHogIdentify';
-import { CopilotShell } from '@/components/copilot/CopilotShell';
 import { CopilotNavigatorProvider } from '@/components/copilot/CopilotNavigator';
+import { CommandBar } from '@/components/copilot/CommandBar';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -122,13 +122,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
         isSuperAdmin={isAdmin}
         defaultOpen={sidebarOpen}
       >
-        <CopilotShell>
-          <CopilotNavigatorProvider>
-            <div id="main-content">
-              <ErrorBoundary>{children}</ErrorBoundary>
-            </div>
-          </CopilotNavigatorProvider>
-        </CopilotShell>
+        <CopilotNavigatorProvider>
+          <div id="main-content">
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </div>
+          <CommandBar />
+        </CopilotNavigatorProvider>
       </DashboardShell>
       <FeedbackWidget userEmail={session.user.email ?? null} userId={session.user.id ?? null} />
     </div>
