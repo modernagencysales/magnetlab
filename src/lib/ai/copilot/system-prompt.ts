@@ -85,7 +85,8 @@ export async function buildCopilotSystemPrompt(
   sourceContext?: PageContext
 ): Promise<string> {
   const scopeKey = scope?.type === 'team' ? `team:${scope.teamId}` : `user:${userId}`;
-  const cacheKey = `${scopeKey}:${pageContext?.page || 'none'}:${pageContext?.entityId || 'none'}:${briefing ? 'briefed' : 'standard'}`;
+  const effectiveContext = sourceContext ?? pageContext;
+  const cacheKey = `${scopeKey}:${effectiveContext?.page || 'none'}:${effectiveContext?.entityId || 'none'}:${briefing ? 'briefed' : 'standard'}`;
   const cached = promptCache.get(cacheKey);
   if (cached && Date.now() < cached.expires) {
     return cached.prompt;
