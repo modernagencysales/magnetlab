@@ -598,13 +598,13 @@ export class MagnetLabClient {
     teamId?: string;
   }) {
     const { teamId, contentText, sourcePlatform, sourceUrl, sourceAuthor, imageUrl } = params;
-    const url = this.appendTeamId(`/content-pipeline/creatives`, teamId);
-    return this.request<{ creative: unknown }>('POST', url, {
+    return this.request<{ creative: unknown }>('POST', `/content-pipeline/creatives`, {
       content_text: contentText,
       source_platform: sourcePlatform,
       source_url: sourceUrl,
       source_author: sourceAuthor,
       image_url: imageUrl,
+      team_id: teamId,
     });
   }
 
@@ -636,15 +636,15 @@ export class MagnetLabClient {
 
   async configureScanner(params: {
     action: 'add' | 'remove';
-    sourceType: string;
-    sourceValue: string;
+    sourceType?: string;
+    sourceValue?: string;
+    sourceId?: string;
     priority?: number;
   }) {
-    const { action, sourceType, sourceValue, priority } = params;
+    const { action, sourceType, sourceValue, sourceId, priority } = params;
     if (action === 'remove') {
-      return this.request<{ success: boolean }>('DELETE', `/content-pipeline/scanner/sources`, {
-        source_type: sourceType,
-        source_value: sourceValue,
+      return this.request<{ deleted: boolean }>('DELETE', `/content-pipeline/scanner/sources`, {
+        source_id: sourceId,
       });
     }
     return this.request<{ source: unknown }>('POST', `/content-pipeline/scanner/sources`, {

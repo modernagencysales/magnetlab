@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getDataScope } from '@/lib/utils/team-context';
 import { logError } from '@/lib/utils/logger';
+import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { GeneratePostSchema } from '@/lib/validations/exploits';
 import { formatZodError } from '@/lib/validations/api';
 import { generateFromPrimitives } from '@/lib/ai/content-pipeline/primitives-assembler';
@@ -47,7 +48,6 @@ export async function POST(request: NextRequest) {
     const scope = await getDataScope(session.user.id);
     const userId = scope.userId;
 
-    const { createSupabaseAdminClient } = await import('@/lib/utils/supabase-server');
     const supabase = createSupabaseAdminClient();
 
     // ── 4. Fetch each primitive from DB ────────────────────────────────────
@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
         .from('cp_exploits')
         .select('name, prompt_template, example_posts')
         .eq('id', exploit_id)
+        .or(`is_global.eq.true,user_id.eq.${session.user.id}`)
         .single();
       if (exploit) {
         primitives.exploit = {
@@ -188,8 +189,11 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', creative_id)
           .eq('user_id', userId);
-      } catch {
-        // Creative usage tracking must never block the response
+      } catch (sideEffectError) {
+        logError('cp/posts/generate', sideEffectError, {
+          step: 'creative_usage_update',
+          creativeId: creative_id,
+        });
       }
     }
 

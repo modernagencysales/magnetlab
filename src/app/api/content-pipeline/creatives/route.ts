@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
     }
 
-    const scope = await getDataScope(session.user.id);
+    const scope = await getDataScope(session.user.id, parsed.data.team_id);
     const creative = await creativesService.createCreative(scope, parsed.data);
 
     return NextResponse.json({ creative }, { status: 201 });

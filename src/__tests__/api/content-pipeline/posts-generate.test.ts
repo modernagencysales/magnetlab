@@ -62,6 +62,7 @@ function createMockSupabase() {
 
     chain.select = jest.fn(() => chain);
     chain.eq = jest.fn(() => chain);
+    chain.or = jest.fn(() => chain);
     chain.in = jest.fn(() => chain);
     chain.update = jest.fn(() => chain);
     chain.insert = jest.fn(() => chain);
@@ -348,6 +349,7 @@ describe('POST /api/content-pipeline/posts/generate', () => {
             const chain: Record<string, jest.Mock> = {};
             chain.select = jest.fn(() => chain);
             chain.eq = jest.fn(() => chain);
+            chain.or = jest.fn(() => chain);
             chain.in = jest.fn(() => chain);
             chain.update = jest.fn(() => chain);
             chain.insert = jest.fn(() => chain);
@@ -361,6 +363,7 @@ describe('POST /api/content-pipeline/posts/generate', () => {
         const chain: Record<string, jest.Mock> = {};
         chain.select = jest.fn(() => chain);
         chain.eq = jest.fn(() => chain);
+        chain.or = jest.fn(() => chain);
         chain.in = jest.fn(() => chain);
         chain.update = jest.fn(() => chain);
         chain.insert = jest.fn(() => chain);

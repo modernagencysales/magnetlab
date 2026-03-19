@@ -505,9 +505,9 @@ export const toolSchemas: Record<string, z.ZodType> = {
   }),
 
   magnetlab_list_creatives: z.object({
-    status: z.enum(['pending', 'analyzed', 'failed'] as [string, ...string[]]).optional(),
+    status: z.enum(['new', 'approved', 'used', 'dismissed'] as [string, ...string[]]).optional(),
     source_platform: z.string().optional(),
-    min_score: z.number().min(0).max(100).optional(),
+    min_score: z.number().min(0).max(10).optional(),
     limit: paginationLimit,
   }),
 
@@ -515,11 +515,11 @@ export const toolSchemas: Record<string, z.ZodType> = {
 
   magnetlab_configure_scanner: z.object({
     action: z.enum(['add', 'remove'] as [string, ...string[]]),
-    source_type: z.enum(['search_term', 'hashtag', 'creator', 'competitor'] as [
-      string,
-      ...string[],
-    ]),
-    source_value: z.string().min(1, 'source_value is required'),
+    source_type: z
+      .enum(['search_term', 'hashtag', 'creator', 'competitor'] as [string, ...string[]])
+      .optional(),
+    source_value: z.string().min(1).optional(),
+    source_id: z.string().uuid().optional(),
     priority: z.number().optional(),
   }),
 

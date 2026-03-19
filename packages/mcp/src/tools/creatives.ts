@@ -47,8 +47,8 @@ export const creativeTools: Tool[] = [
       properties: {
         status: {
           type: 'string',
-          enum: ['pending', 'analyzed', 'failed'],
-          description: 'Filter by analysis status',
+          enum: ['new', 'approved', 'used', 'dismissed'],
+          description: 'Filter by creative status',
         },
         source_platform: {
           type: 'string',
@@ -56,7 +56,7 @@ export const creativeTools: Tool[] = [
         },
         min_score: {
           type: 'number',
-          description: 'Minimum quality/virality score (0-100)',
+          description: 'Minimum commentary-worthy score (0-10)',
         },
         limit: {
           type: 'number',
@@ -78,7 +78,7 @@ export const creativeTools: Tool[] = [
   {
     name: 'magnetlab_configure_scanner',
     description:
-      'Add or remove a source from the LinkedIn content scanner. Sources can be search terms, hashtags, creator profiles, or competitor accounts to monitor for high-performing content.',
+      'Add or remove a source from the LinkedIn content scanner. Sources can be search terms, hashtags, creator profiles, or competitor accounts to monitor for high-performing content. Use action="add" with source_type and source_value to add a new source. Use action="remove" with source_id (UUID from list) to remove an existing source.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -90,18 +90,23 @@ export const creativeTools: Tool[] = [
         source_type: {
           type: 'string',
           enum: ['search_term', 'hashtag', 'creator', 'competitor'],
-          description: 'Type of source to monitor',
+          description: 'Type of source to monitor (required when action="add")',
         },
         source_value: {
           type: 'string',
-          description: 'The value to monitor (e.g. "cold outreach", "#b2bsales", "johndoe")',
+          description:
+            'The value to monitor, e.g. "cold outreach", "#b2bsales", "johndoe" (required when action="add")',
+        },
+        source_id: {
+          type: 'string',
+          description: 'UUID of the source to remove (required when action="remove")',
         },
         priority: {
           type: 'number',
           description: 'Priority level for this source (higher = scanned more frequently)',
         },
       },
-      required: ['action', 'source_type', 'source_value'],
+      required: ['action'],
     },
   },
   {

@@ -32,8 +32,9 @@ export async function handleCreativeTools(
     case 'magnetlab_configure_scanner':
       return client.configureScanner({
         action: args.action as 'add' | 'remove',
-        sourceType: args.source_type as string,
-        sourceValue: args.source_value as string,
+        sourceType: args.source_type as string | undefined,
+        sourceValue: args.source_value as string | undefined,
+        sourceId: args.source_id as string | undefined,
         priority: args.priority as number | undefined,
       });
 
