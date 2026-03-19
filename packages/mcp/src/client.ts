@@ -446,6 +446,9 @@ export class MagnetLabClient {
     title?: string;
     pillar?: ContentPillar;
     content_type?: ContentType;
+    image_url?: string;
+    is_lead_magnet_post?: boolean;
+    auto_activate?: boolean;
     teamId?: string;
   }) {
     const { teamId, ...body } = params;
@@ -815,6 +818,70 @@ export class MagnetLabClient {
     if (params.offset) searchParams.set('offset', String(params.offset));
     const qs = searchParams.toString();
     return this.request('GET', `/linkedin-activity${qs ? `?${qs}` : ''}`);
+  }
+
+  // ─── Account Safety ───────────────────────────────────────────────────────
+
+  async getAccountSafetySettings(unipileAccountId: string) {
+    return this.request<unknown>(
+      `GET`,
+      `/account-safety-settings/${encodeURIComponent(unipileAccountId)}`
+    );
+  }
+
+  async updateAccountSafetySettings(unipileAccountId: string, settings: Record<string, unknown>) {
+    return this.request<unknown>(
+      `PATCH`,
+      `/account-safety-settings/${encodeURIComponent(unipileAccountId)}`,
+      settings
+    );
+  }
+
+  // ─── Post Campaigns ───────────────────────────────────────────────────────
+
+  async listPostCampaigns(status?: string) {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    return this.request<unknown>('GET', `/post-campaigns${qs}`);
+  }
+
+  async createPostCampaign(params: Record<string, unknown>) {
+    return this.request<unknown>('POST', `/post-campaigns`, params);
+  }
+
+  async autoSetupPostCampaign(postId: string) {
+    return this.request<unknown>('POST', `/post-campaigns/auto-setup`, { post_id: postId });
+  }
+
+  async getPostCampaign(campaignId: string) {
+    return this.request<unknown>('GET', `/post-campaigns/${encodeURIComponent(campaignId)}`);
+  }
+
+  async updatePostCampaign(campaignId: string, updates: Record<string, unknown>) {
+    return this.request<unknown>(
+      'PATCH',
+      `/post-campaigns/${encodeURIComponent(campaignId)}`,
+      updates
+    );
+  }
+
+  async activatePostCampaign(campaignId: string) {
+    return this.request<unknown>(
+      'POST',
+      `/post-campaigns/${encodeURIComponent(campaignId)}/activate`,
+      {}
+    );
+  }
+
+  async pausePostCampaign(campaignId: string) {
+    return this.request<unknown>(
+      'POST',
+      `/post-campaigns/${encodeURIComponent(campaignId)}/pause`,
+      {}
+    );
+  }
+
+  async deletePostCampaign(campaignId: string) {
+    return this.request<unknown>('DELETE', `/post-campaigns/${encodeURIComponent(campaignId)}`);
   }
 
   // ─── Trends ───────────────────────────────────────────────────────────────

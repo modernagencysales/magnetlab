@@ -1,9 +1,9 @@
-/** Tool registration tests for MCP v2. Verifies 63 tools, naming, schemas, and no old tools. */
+/** Tool registration tests for MCP v2. Verifies 78 tools, naming, schemas, and no old tools. */
 
 import { describe, it, expect } from 'vitest';
 import { tools, toolsByName } from '../tools/index.js';
 
-// ─── All 63 expected tool names ────────────────────────────────────────────────
+// ─── All 78 expected tool names ────────────────────────────────────────────────
 
 const EXPECTED_TOOL_NAMES = [
   // Lead Magnets (5)
@@ -60,9 +60,10 @@ const EXPECTED_TOOL_NAMES = [
   'magnetlab_review_lead_magnet',
   'magnetlab_review_funnel',
   'magnetlab_submit_asset_review',
-  // Exploits (2)
+  // Exploits (3)
   'magnetlab_list_exploits',
   'magnetlab_generate_post',
+  'magnetlab_get_trends',
   // Creatives (6)
   'magnetlab_create_creative',
   'magnetlab_list_creatives',
@@ -84,6 +85,23 @@ const EXPECTED_TOOL_NAMES = [
   'magnetlab_skip_outreach_lead',
   // LinkedIn Activity (1)
   'magnetlab_get_linkedin_activity',
+  // Ingredients Mixer (4)
+  'magnetlab_get_ingredient_inventory',
+  'magnetlab_get_suggested_recipes',
+  'magnetlab_mix',
+  'magnetlab_get_combo_performance',
+  // Post Campaigns (8)
+  'magnetlab_list_post_campaigns',
+  'magnetlab_create_post_campaign',
+  'magnetlab_auto_setup_post_campaign',
+  'magnetlab_get_post_campaign',
+  'magnetlab_update_post_campaign',
+  'magnetlab_activate_post_campaign',
+  'magnetlab_pause_post_campaign',
+  'magnetlab_delete_post_campaign',
+  // Account Safety (2)
+  'magnetlab_get_account_safety_settings',
+  'magnetlab_update_account_safety_settings',
 ] as const;
 
 // ─── Old tools that must NOT exist ────────────────────────────────────────────
@@ -109,8 +127,8 @@ const REMOVED_TOOLS = [
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('Tool Registration', () => {
-  it('exports exactly 63 tools', () => {
-    expect(tools).toHaveLength(63);
+  it('exports exactly 78 tools', () => {
+    expect(tools).toHaveLength(78);
   });
 
   it('all tools have unique names', () => {
@@ -141,8 +159,8 @@ describe('Tool Registration', () => {
     }
   });
 
-  it('toolsByName map has 63 entries', () => {
-    expect(toolsByName.size).toBe(63);
+  it('toolsByName map has 78 entries', () => {
+    expect(toolsByName.size).toBe(78);
   });
 
   it('toolsByName contains all tools and references correct objects', () => {
@@ -170,8 +188,8 @@ describe('Expected Tool Names', () => {
     }
   });
 
-  it('expected list has exactly 63 entries', () => {
-    expect(EXPECTED_TOOL_NAMES).toHaveLength(63);
+  it('expected list has exactly 78 entries', () => {
+    expect(EXPECTED_TOOL_NAMES).toHaveLength(78);
   });
 });
 

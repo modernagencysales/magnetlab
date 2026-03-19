@@ -18,6 +18,8 @@ import { handleCreativeTools } from './creatives.js';
 import { handleOutreachCampaignTools } from './outreach-campaigns.js';
 import { handleLinkedInActivityTools } from './linkedin-activity.js';
 import { handleMixerTools } from './mixer.js';
+import { handlePostCampaignTools } from './post-campaigns.js';
+import { handleAccountSafetyTools } from './account-safety.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -133,6 +135,20 @@ const handlerMap: Record<string, Handler> = {
   magnetlab_get_suggested_recipes: handleMixerTools,
   magnetlab_mix: handleMixerTools,
   magnetlab_get_combo_performance: handleMixerTools,
+
+  // Post campaigns (8)
+  magnetlab_list_post_campaigns: handlePostCampaignTools,
+  magnetlab_create_post_campaign: handlePostCampaignTools,
+  magnetlab_auto_setup_post_campaign: handlePostCampaignTools,
+  magnetlab_get_post_campaign: handlePostCampaignTools,
+  magnetlab_update_post_campaign: handlePostCampaignTools,
+  magnetlab_activate_post_campaign: handlePostCampaignTools,
+  magnetlab_pause_post_campaign: handlePostCampaignTools,
+  magnetlab_delete_post_campaign: handlePostCampaignTools,
+
+  // Account safety (2)
+  magnetlab_get_account_safety_settings: handleAccountSafetyTools,
+  magnetlab_update_account_safety_settings: handleAccountSafetyTools,
 };
 
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
@@ -176,3 +192,5 @@ export { handleCreativeTools } from './creatives.js';
 export { handleOutreachCampaignTools } from './outreach-campaigns.js';
 export { handleLinkedInActivityTools } from './linkedin-activity.js';
 export { handleMixerTools } from './mixer.js';
+export { handlePostCampaignTools } from './post-campaigns.js';
+export { handleAccountSafetyTools } from './account-safety.js';
