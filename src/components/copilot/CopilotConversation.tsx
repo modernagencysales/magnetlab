@@ -199,8 +199,10 @@ export function CopilotConversation({
               const newId = data.conversationId as string;
               setConversationId(newId);
               conversationIdRef.current = newId;
-              // Update URL without full navigation
-              router.replace(`/copilot/${newId}`, { scroll: false });
+              // Update URL without triggering Next.js re-render/remount
+              // router.replace() would change the [id] param, causing component remount
+              // which aborts the active SSE stream. Use native history API instead.
+              window.history.replaceState(null, '', `/copilot/${newId}`);
               // Use first message as title until API provides one
               setConversationTitle(text.slice(0, 100));
               break;
@@ -300,7 +302,7 @@ export function CopilotConversation({
         abortRef.current = null;
       }
     },
-    [isStreaming, sourceContext, router]
+    [isStreaming, sourceContext]
   );
 
   // Keep ref in sync so confirmAction can call sendMessage
