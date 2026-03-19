@@ -218,6 +218,11 @@ export async function createFunnel(
     font_url: brandKit?.font_url || null,
     qualification_form_id: qualificationFormId || null,
     send_resource_email: true,
+    thankyou_layout: funnelData.thankyouLayout || 'video_first',
+    vsl_headline: funnelData.vslHeadline || null,
+    vsl_subline: funnelData.vslSubline || null,
+    cta_headline: funnelData.ctaHeadline || null,
+    cta_button_text: funnelData.ctaButtonText || null,
   };
 
   const funnel = await funnelsRepo.createFunnel(row);
@@ -317,6 +322,11 @@ export async function updateFunnel(
   if (v.homepageUrl !== undefined) updates.homepage_url = v.homepageUrl;
   if (v.homepageLabel !== undefined) updates.homepage_label = v.homepageLabel;
   if (v.sendResourceEmail !== undefined) updates.send_resource_email = v.sendResourceEmail;
+  if (v.thankyouLayout !== undefined) updates.thankyou_layout = v.thankyouLayout;
+  if (v.vslHeadline !== undefined) updates.vsl_headline = v.vslHeadline;
+  if (v.vslSubline !== undefined) updates.vsl_subline = v.vslSubline;
+  if (v.ctaHeadline !== undefined) updates.cta_headline = v.ctaHeadline;
+  if (v.ctaButtonText !== undefined) updates.cta_button_text = v.ctaButtonText;
 
   return funnelsRepo.updateFunnel(scope, id, updates);
 }
@@ -835,6 +845,7 @@ export async function createQuestion(
     placeholder: body.placeholder || null,
     is_qualifying: isQualifying,
     is_required: body.isRequired ?? true,
+    booking_prefill_key: body.bookingPrefillKey || null,
   });
 }
 
@@ -864,6 +875,7 @@ export async function updateQuestion(
   if (body.placeholder !== undefined) updateData.placeholder = body.placeholder;
   if (body.isQualifying !== undefined) updateData.is_qualifying = body.isQualifying;
   if (body.isRequired !== undefined) updateData.is_required = body.isRequired;
+  if (body.bookingPrefillKey !== undefined) updateData.booking_prefill_key = body.bookingPrefillKey;
 
   if (Object.keys(updateData).length === 0) {
     throw Object.assign(new Error('No valid fields to update'), { statusCode: 400 });

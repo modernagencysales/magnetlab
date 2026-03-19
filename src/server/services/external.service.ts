@@ -361,7 +361,12 @@ export async function setupThankyou(
       await funnelsRepo.insertSections(sections);
     }
 
-    const funnelUpdate: Record<string, unknown> = { send_resource_email: true };
+    const funnelUpdate: Record<string, unknown> = {
+      send_resource_email: true,
+      thankyou_layout: 'video_first',
+      cta_headline: 'Ready to Take the Next Step?',
+      cta_button_text: 'BOOK YOUR STRATEGY CALL',
+    };
     if (brandKit) {
       if (brandKit.default_theme) funnelUpdate.theme = brandKit.default_theme;
       if (brandKit.default_primary_color)

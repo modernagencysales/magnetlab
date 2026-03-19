@@ -7,7 +7,7 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 
 const FORM_COLUMNS = 'id, user_id, name, created_at, updated_at';
 const QUESTION_COLUMNS =
-  'id, funnel_page_id, form_id, question_text, question_order, answer_type, qualifying_answer, options, placeholder, is_qualifying, is_required, created_at';
+  'id, funnel_page_id, form_id, question_text, question_order, answer_type, qualifying_answer, options, placeholder, is_qualifying, is_required, created_at, booking_prefill_key';
 
 export async function listForms(userId: string, limit: number, offset: number): Promise<Record<string, unknown>[]> {
   const supabase = createSupabaseAdminClient();

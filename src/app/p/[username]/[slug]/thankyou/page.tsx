@@ -96,7 +96,11 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
       homepage_url,
       homepage_label,
       send_resource_email,
-      thankyou_layout
+      thankyou_layout,
+      vsl_headline,
+      vsl_subline,
+      cta_headline,
+      cta_button_text
     `
     )
     .eq('user_id', user.id)
@@ -144,7 +148,7 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
     const { data: variants } = await supabase
       .from('funnel_pages')
       .select(
-        'id, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message, is_variant, qualification_form_id, thankyou_layout'
+        'id, thankyou_headline, thankyou_subline, vsl_url, qualification_pass_message, is_variant, qualification_form_id, thankyou_layout, vsl_headline, vsl_subline, cta_headline, cta_button_text'
       )
       .or(`id.eq.${funnel.id},experiment_id.eq.${activeExperiment.id}`)
       .eq('is_published', true);
@@ -169,6 +173,10 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
         qualification_pass_message: selected.qualification_pass_message,
         qualification_form_id: selected.qualification_form_id,
         thankyou_layout: selected.thankyou_layout,
+        vsl_headline: selected.vsl_headline,
+        vsl_subline: selected.vsl_subline,
+        cta_headline: selected.cta_headline,
+        cta_button_text: selected.cta_button_text,
       };
     }
   }
@@ -180,16 +188,18 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
     .eq('id', funnel.lead_magnet_id)
     .single();
 
-  // Fetch lead email for redirect URL params (scoped to this funnel page)
+  // Fetch lead email + name for redirect URL params and booking pre-fill
   let leadEmail: string | null = null;
+  let leadName: string | null = null;
   if (leadId) {
     const { data: lead } = await supabase
       .from('funnel_leads')
-      .select('email')
+      .select('email, name')
       .eq('id', leadId)
       .eq('funnel_page_id', activeFunnel.id)
       .single();
     leadEmail = lead?.email || null;
+    leadName = lead?.name || null;
   }
 
   // Check if an active email sequence exists for this lead magnet
@@ -215,14 +225,14 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
   if (activeFunnel.qualification_form_id) {
     const { data } = await supabase
       .from('qualification_questions')
-      .select('id, question_text, question_order, answer_type, options, placeholder, is_required')
+      .select('id, question_text, question_order, answer_type, options, placeholder, is_required, booking_prefill_key')
       .eq('form_id', activeFunnel.qualification_form_id)
       .order('question_order', { ascending: true });
     questions = data;
   } else {
     const { data } = await supabase
       .from('qualification_questions')
-      .select('id, question_text, question_order, answer_type, options, placeholder, is_required')
+      .select('id, question_text, question_order, answer_type, options, placeholder, is_required, booking_prefill_key')
       .eq('funnel_page_id', activeFunnel.id)
       .order('question_order', { ascending: true });
     questions = data;
@@ -290,6 +300,7 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
         options: q.options || null,
         placeholder: q.placeholder || null,
         isRequired: q.is_required ?? true,
+        bookingPrefillKey: q.booking_prefill_key || null,
       }))}
       theme={(funnel.theme as 'dark' | 'light') || 'dark'}
       primaryColor={funnel.primary_color || '#8b5cf6'}
@@ -316,6 +327,11 @@ export default async function PublicThankyouPage({ params, searchParams }: PageP
         (activeFunnel.thankyou_layout as 'survey_first' | 'video_first' | 'side_by_side') ||
         'survey_first'
       }
+      vslHeadline={activeFunnel.vsl_headline}
+      vslSubline={activeFunnel.vsl_subline}
+      ctaHeadline={activeFunnel.cta_headline}
+      ctaButtonText={activeFunnel.cta_button_text}
+      leadName={leadName}
     />
   );
 }

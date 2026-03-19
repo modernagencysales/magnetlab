@@ -43,6 +43,14 @@ interface ThankyouPageEditorProps {
   setBootcampInviteCode: (value: string) => void;
   layout: ThankyouLayout;
   setLayout: (value: ThankyouLayout) => void;
+  vslHeadline: string;
+  setVslHeadline: (value: string) => void;
+  vslSubline: string;
+  setVslSubline: (value: string) => void;
+  ctaHeadline: string;
+  setCtaHeadline: (value: string) => void;
+  ctaButtonText: string;
+  setCtaButtonText: (value: string) => void;
 }
 
 export function ThankyouPageEditor({
@@ -74,6 +82,14 @@ export function ThankyouPageEditor({
   setBootcampInviteCode,
   layout,
   setLayout,
+  vslHeadline,
+  setVslHeadline,
+  vslSubline,
+  setVslSubline,
+  ctaHeadline,
+  setCtaHeadline,
+  ctaButtonText,
+  setCtaButtonText,
 }: ThankyouPageEditorProps) {
   const layoutOptions: { value: ThankyouLayout; label: string; description: string }[] = [
     {
@@ -299,6 +315,65 @@ export function ThankyouPageEditor({
             </div>
           </div>
 
+          {/* VSL Conversion Flow (video_first only) */}
+          {layout === 'video_first' && (
+            <div className="space-y-4 rounded-lg border border-dashed border-violet-500/30 p-4">
+              <h3 className="text-sm font-semibold text-violet-400 uppercase tracking-wide">
+                VSL Conversion Flow
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                These fields frame the video and add a call-to-action between the video and survey.
+              </p>
+
+              <div>
+                <Label className="block text-sm font-medium mb-1.5">Video Headline</Label>
+                <Input
+                  type="text"
+                  value={vslHeadline}
+                  onChange={(e) => setVslHeadline(e.target.value)}
+                  placeholder="THE MODERN AGENCY SALES METHOD"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Bold label above the video (uppercase recommended)
+                </p>
+              </div>
+
+              <div>
+                <Label className="block text-sm font-medium mb-1.5">Video Subline</Label>
+                <Textarea
+                  value={vslSubline}
+                  onChange={(e) => setVslSubline(e.target.value)}
+                  rows={2}
+                  className="resize-none"
+                  placeholder="Watch this free training to learn how agencies are closing $5k+/mo retainers"
+                />
+              </div>
+
+              <div>
+                <Label className="block text-sm font-medium mb-1.5">CTA Headline</Label>
+                <Input
+                  type="text"
+                  value={ctaHeadline}
+                  onChange={(e) => setCtaHeadline(e.target.value)}
+                  placeholder="Want to see how this applies to your agency?"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Text above the call-to-action button
+                </p>
+              </div>
+
+              <div>
+                <Label className="block text-sm font-medium mb-1.5">CTA Button Text</Label>
+                <Input
+                  type="text"
+                  value={ctaButtonText}
+                  onChange={(e) => setCtaButtonText(e.target.value)}
+                  placeholder="BOOK YOUR CALL NOW"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Calendly */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -317,7 +392,7 @@ export function ThankyouPageEditor({
                 placeholder="https://cal.com/your-name/30min"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                Supports Cal.com and Calendly URLs
+                Supports iClosed, Cal.com, and Calendly URLs
               </p>
             </div>
           </div>

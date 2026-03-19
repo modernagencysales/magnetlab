@@ -283,6 +283,10 @@ export const updateFunnelSchema = z.object({
   homepageLabel: z.string().max(200).nullable().optional(),
   sendResourceEmail: z.boolean().optional(),
   thankyouLayout: z.enum(['survey_first', 'video_first', 'side_by_side']).optional(),
+  vslHeadline: z.string().max(500).nullable().optional(),
+  vslSubline: z.string().max(1000).nullable().optional(),
+  ctaHeadline: z.string().max(500).nullable().optional(),
+  ctaButtonText: z.string().max(200).nullable().optional(),
 });
 
 export type UpdateFunnelInput = z.infer<typeof updateFunnelSchema>;

@@ -159,6 +159,10 @@ export function FunnelBuilder({
   const [thankyouLayout, setThankyouLayout] = useState<ThankyouLayout>(
     existingFunnel?.thankyouLayout || 'survey_first'
   );
+  const [vslHeadline, setVslHeadline] = useState(existingFunnel?.vslHeadline || '');
+  const [vslSubline, setVslSubline] = useState(existingFunnel?.vslSubline || '');
+  const [ctaHeadline, setCtaHeadline] = useState(existingFunnel?.ctaHeadline || '');
+  const [ctaButtonText, setCtaButtonText] = useState(existingFunnel?.ctaButtonText || '');
 
   // Form state for theme
   const [theme, setTheme] = useState<FunnelTheme>(existingFunnel?.theme || 'dark');
@@ -295,6 +299,10 @@ export function FunnelBuilder({
         sendResourceEmail,
         bootcampInviteCode: bootcampInviteCode || null,
         thankyouLayout,
+        vslHeadline: vslHeadline || null,
+        vslSubline: vslSubline || null,
+        ctaHeadline: ctaHeadline || null,
+        ctaButtonText: ctaButtonText || null,
         theme,
         primaryColor,
         backgroundStyle,
@@ -618,6 +626,14 @@ export function FunnelBuilder({
                   setBootcampInviteCode={setBootcampInviteCode}
                   layout={thankyouLayout}
                   setLayout={setThankyouLayout}
+                  vslHeadline={vslHeadline}
+                  setVslHeadline={setVslHeadline}
+                  vslSubline={vslSubline}
+                  setVslSubline={setVslSubline}
+                  ctaHeadline={ctaHeadline}
+                  setCtaHeadline={setCtaHeadline}
+                  ctaButtonText={ctaButtonText}
+                  setCtaButtonText={setCtaButtonText}
                 />
                 {funnel && <ABTestPanel funnelPageId={funnel.id} />}
               </div>
