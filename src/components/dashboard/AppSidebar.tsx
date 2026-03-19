@@ -18,16 +18,14 @@ import {
   Moon,
   ArrowLeftRight,
   Home,
-  Brain,
   MessageSquare,
   BookOpen,
   Mail,
   HelpCircle,
   Shield,
   Radio,
-  ListChecks,
   Megaphone,
-  Sparkles,
+  LayoutGrid,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -94,21 +92,14 @@ const homeNav: NavItem[] = [
   { href: '/copilot/new', label: 'New Chat', icon: MessageSquare },
 ];
 
-const planNav: NavItem[] = [
-  { href: '/knowledge', label: 'Knowledge', icon: Brain },
-  { href: '/inspo', label: 'Inspo', icon: Sparkles },
-];
-
 const createNav: NavItem[] = [
-  { href: '/magnets', label: 'Lead Magnets', icon: Magnet },
-  { href: '/pages', label: 'Pages', icon: Globe },
   { href: '/posts', label: 'Posts', icon: PenTool },
+  { href: '/magnets', label: 'Lead Magnets', icon: Magnet },
   { href: '/email/flows', label: 'Email', icon: Mail, activePrefix: '/email' },
 ];
 
-const editNav: NavItem[] = [{ href: '/content-queue', label: 'Content Queue', icon: ListChecks }];
-
 const distributeNav: NavItem[] = [
+  { href: '/pipeline', label: 'Pipeline', icon: LayoutGrid },
   {
     href: '/campaigns',
     label: 'Campaigns',
@@ -234,7 +225,7 @@ function CreateNewDropdown() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/pages/new" onClick={handleNavigate}>
+          <Link href="/magnets" onClick={handleNavigate}>
             <Globe className="size-4 text-emerald-500" />
             Landing Page
           </Link>
@@ -376,9 +367,6 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Plan */}
-        <NavGroup label="Plan" items={planNav} pathname={pathname} onNavigate={handleNavigate} />
-
         {/* Create */}
         <NavGroup
           label="Create"
@@ -386,9 +374,6 @@ export function AppSidebar({ user, teamContext, isSuperAdmin }: AppSidebarProps)
           pathname={pathname}
           onNavigate={handleNavigate}
         />
-
-        {/* Edit */}
-        <NavGroup label="Edit" items={editNav} pathname={pathname} onNavigate={handleNavigate} />
 
         {/* Distribute */}
         <NavGroup
