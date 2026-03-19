@@ -6,25 +6,38 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@magnetlab/magnetui';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Button,
+} from '@magnetlab/magnetui';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreatives, useUpdateCreative } from '@/frontend/hooks/api/useCreatives';
 import { CreativeCard } from './CreativeCard';
 import { GenerateDrawer } from './GenerateDrawer';
 import type { Creative, CreativeStatus, SourcePlatform } from '@/lib/types/exploits';
 
-export function InspoQueueTab() {
+interface InspoQueueTabProps {
+  onPasteCreative?: () => void;
+}
+
+export function InspoQueueTab({ onPasteCreative }: InspoQueueTabProps) {
   // ─── Filters ─────────────────────────────────────────────
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [minScore, setMinScore] = useState<number>(0);
+  const [limit, setLimit] = useState(50);
 
   // ─── Data ────────────────────────────────────────────────
   const { creatives, isLoading, setCreatives, refetch } = useCreatives({
     status: statusFilter !== 'all' ? (statusFilter as CreativeStatus) : undefined,
     source_platform: platformFilter !== 'all' ? (platformFilter as SourcePlatform) : undefined,
     min_score: minScore > 0 ? minScore : undefined,
-    limit: 50,
+    limit,
   });
 
   // ─── Generate drawer ────────────────────────────────────
@@ -124,19 +137,34 @@ export function InspoQueueTab() {
           <p className="text-sm mt-1">
             Paste one manually or configure the scanner to find them automatically.
           </p>
+          {onPasteCreative && (
+            <Button size="sm" className="mt-3" onClick={onPasteCreative}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Paste Creative
+            </Button>
+          )}
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {creatives.map((creative) => (
-            <CreativeCard
-              key={creative.id}
-              creative={creative}
-              onApprove={handleApprove}
-              onDismiss={handleDismiss}
-              onGenerate={setGenerateCreative}
-            />
-          ))}
-        </div>
+        <>
+          <div className="flex flex-col gap-2">
+            {creatives.map((creative) => (
+              <CreativeCard
+                key={creative.id}
+                creative={creative}
+                onApprove={handleApprove}
+                onDismiss={handleDismiss}
+                onGenerate={setGenerateCreative}
+              />
+            ))}
+          </div>
+          {creatives.length >= limit && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" size="sm" onClick={() => setLimit((l) => l + 50)}>
+                Load more
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Generate drawer */}

@@ -240,6 +240,9 @@ export function GenerateDrawer({ creative, open, onOpenChange, onGenerated }: Ge
                 </Select>
               </div>
 
+              {/* TODO: Knowledge Context multi-select picker — deferred to v2
+                  API supports knowledge_ids in GeneratePostInput */}
+
               {/* ─── Instructions ─────────────────────────────── */}
               <div>
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">
