@@ -27,8 +27,9 @@ import { toast } from 'sonner';
 import { useExploits } from '@/frontend/hooks/api/useExploits';
 import { useGeneratePost } from '@/frontend/hooks/api/useGenerate';
 import { updatePost } from '@/frontend/api/content-pipeline/posts';
+import { getStyles } from '@/frontend/api/content-pipeline/styles';
 import type { Creative } from '@/lib/types/exploits';
-import type { PipelinePost } from '@/lib/types/content-pipeline';
+import type { PipelinePost, WritingStyle } from '@/lib/types/content-pipeline';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ export function GenerateDrawer({ creative, open, onOpenChange, onGenerated }: Ge
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [sending, setSending] = useState(false);
+  const [styles, setStyles] = useState<WritingStyle[]>([]);
 
   // ─── Data ───────────────────────────────────────────────
   const { exploits } = useExploits({ with_stats: true });
@@ -59,6 +61,19 @@ export function GenerateDrawer({ creative, open, onOpenChange, onGenerated }: Ge
     setGeneratedPost(result.post);
     setHookScore(result.hook_score ?? null);
   });
+
+  // ─── Load styles ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (open) {
+      getStyles()
+        .then((res) => {
+          setStyles((res.styles as WritingStyle[]) ?? []);
+        })
+        .catch(() => {
+          // Non-critical -- drawer works without styles
+        });
+    }
+  }, [open]);
 
   // ─── Reset on open ─────────────────────────────────────
   useEffect(() => {
@@ -216,6 +231,11 @@ export function GenerateDrawer({ creative, open, onOpenChange, onGenerated }: Ge
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Default voice</SelectItem>
+                    {styles.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
