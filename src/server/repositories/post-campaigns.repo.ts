@@ -352,6 +352,7 @@ export async function getDailyLimit(userId: string, accountId: string) {
   return { data: created, error: insertError };
 }
 
+/** @deprecated Use incrementDailyLimit from account-safety.repo.ts (timezone-aware) instead. */
 export async function incrementDailyLimit(
   accountId: string,
   field:

@@ -23,6 +23,7 @@ export interface AccountSafetySettings {
   max_connection_accepts_per_day: number;
   max_comments_per_day: number;
   max_likes_per_day: number;
+  max_profile_views_per_day: number;
   min_action_delay_ms: number;
   max_action_delay_ms: number;
   account_connected_at: string | null;
@@ -36,10 +37,11 @@ export type DailyLimitAction =
   | 'connection_request'
   | 'connection_accept'
   | 'comment'
-  | 'like';
+  | 'like'
+  | 'profile_view';
 
 const ACCOUNT_SAFETY_COLUMNS =
-  'id, user_id, unipile_account_id, operating_hours_start, operating_hours_end, timezone, max_dms_per_day, max_connection_requests_per_day, max_connection_accepts_per_day, max_comments_per_day, max_likes_per_day, min_action_delay_ms, max_action_delay_ms, account_connected_at, circuit_breaker_until, created_at, updated_at';
+  'id, user_id, unipile_account_id, operating_hours_start, operating_hours_end, timezone, max_dms_per_day, max_connection_requests_per_day, max_connection_accepts_per_day, max_comments_per_day, max_likes_per_day, max_profile_views_per_day, min_action_delay_ms, max_action_delay_ms, account_connected_at, circuit_breaker_until, created_at, updated_at';
 
 // ─── Default Settings ───────────────────────────────────────────────────────
 
@@ -55,6 +57,7 @@ const DEFAULT_SETTINGS: Omit<
   max_connection_accepts_per_day: LINKEDIN_SAFETY.MAX_ACCEPTS_PER_DAY,
   max_comments_per_day: 30,
   max_likes_per_day: 60,
+  max_profile_views_per_day: 80,
   min_action_delay_ms: LINKEDIN_SAFETY.MIN_DELAY_BETWEEN_DMS_MS,
   max_action_delay_ms: LINKEDIN_SAFETY.MAX_DELAY_BETWEEN_DMS_MS,
   account_connected_at: null,
@@ -185,7 +188,8 @@ const ACTION_MAP: Record<
       | 'connections_accepted'
       | 'connection_requests_sent'
       | 'comments_sent'
-      | 'likes_sent';
+      | 'likes_sent'
+      | 'profile_views';
     settingsField: keyof AccountSafetySettings;
     isHighRisk: boolean;
   }
@@ -203,6 +207,11 @@ const ACTION_MAP: Record<
   },
   comment: { dbField: 'comments_sent', settingsField: 'max_comments_per_day', isHighRisk: false },
   like: { dbField: 'likes_sent', settingsField: 'max_likes_per_day', isHighRisk: false },
+  profile_view: {
+    dbField: 'profile_views',
+    settingsField: 'max_profile_views_per_day',
+    isHighRisk: false,
+  },
 };
 
 /**
@@ -258,6 +267,7 @@ const SETTINGS_FIELD_MAP: Record<string, string> = {
   maxConnectionAcceptsPerDay: 'max_connection_accepts_per_day',
   maxCommentsPerDay: 'max_comments_per_day',
   maxLikesPerDay: 'max_likes_per_day',
+  maxProfileViewsPerDay: 'max_profile_views_per_day',
   minActionDelayMs: 'min_action_delay_ms',
   maxActionDelayMs: 'max_action_delay_ms',
   operatingHoursStart: 'operating_hours_start',
@@ -318,4 +328,19 @@ export function sleep(ms: number): Promise<void> {
 /** Return true ~10% of the time to add natural unpredictability to scheduled runs. */
 export function shouldSkipRun(): boolean {
   return Math.random() < 0.1;
+}
+
+/** Map a queue action_type to DailyLimitAction. Returns null for actions without daily limits (withdraw). */
+export function mapToLimitAction(actionType: string): DailyLimitAction | null {
+  const map: Record<string, DailyLimitAction | null> = {
+    view_profile: 'profile_view',
+    connect: 'connection_request',
+    message: 'dm',
+    follow_up_message: 'dm',
+    withdraw: null,
+    accept_invitation: 'connection_accept',
+    react: 'like',
+    comment: 'comment',
+  };
+  return map[actionType] ?? null;
 }

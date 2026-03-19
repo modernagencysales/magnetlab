@@ -38,7 +38,8 @@ const SELECT_DAILY_LIMITS = `
   connections_accepted,
   connection_requests_sent,
   comments_sent,
-  likes_sent
+  likes_sent,
+  profile_views
 `;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -73,6 +74,7 @@ export interface DailyLimitsRow {
   connection_requests_sent: number;
   comments_sent: number;
   likes_sent: number;
+  profile_views: number;
 }
 
 export interface SafetyUpsertInput {
@@ -113,6 +115,7 @@ const ACTION_COLUMN_MAP: Record<ActionType, keyof DailyLimitsRow> = {
   connection_accept: 'connections_accepted',
   comment: 'comments_sent',
   like: 'likes_sent',
+  profile_view: 'profile_views',
 };
 
 // ─── Safety Settings ─────────────────────────────────────────────────────────
@@ -225,6 +228,7 @@ export async function incrementDailyLimit(
       connection_requests_sent: 0,
       comments_sent: 0,
       likes_sent: 0,
+      profile_views: 0,
     };
     insertData[column] = 1;
 

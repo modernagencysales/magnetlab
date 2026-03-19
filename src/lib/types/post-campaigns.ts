@@ -190,7 +190,13 @@ export const SAFETY_DEFAULTS = {
   timezone: 'America/New_York',
 } as const;
 
-export type ActionType = 'dm' | 'connection_request' | 'connection_accept' | 'comment' | 'like';
+export type ActionType =
+  | 'dm'
+  | 'connection_request'
+  | 'connection_accept'
+  | 'comment'
+  | 'like'
+  | 'profile_view';
 
 /** High-risk actions get warm-up ramp applied */
 export const HIGH_RISK_ACTIONS: ActionType[] = ['dm', 'connection_request'];
