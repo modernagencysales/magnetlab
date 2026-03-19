@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
     }
 
+    await mixerService.verifyAccess(session.user.id, parsed.data.team_profile_id);
+
     const combos = await mixerService.getComboPerformance(
       parsed.data.team_profile_id,
       parsed.data.limit

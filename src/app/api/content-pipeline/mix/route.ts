@@ -28,6 +28,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
     }
 
+    await mixerService.verifyAccess(session.user.id, parsed.data.team_profile_id);
+
     const result = await mixerService.mix(parsed.data);
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

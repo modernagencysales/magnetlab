@@ -1,6 +1,14 @@
 /** Mixer service. Core orchestrator for the ingredient mixer. Never imports from Next.js request/response objects. */
 
 import Anthropic from '@anthropic-ai/sdk';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Escape % and _ characters in user input before use in .ilike() queries. */
+function escapeIlike(str: string): string {
+  return str.replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError } from '@/lib/utils/logger';
 import { insertRecipe, getRecipesByProfile } from '@/server/repositories/mix-recipes.repo';
@@ -74,6 +82,39 @@ export async function resolveScope(
     teamId: profile.team_id,
     teamProfileId: profile.id,
   };
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Verify that the calling user is an active member of the team that owns the profile.
+ * Throws 403 if not authorized.
+ */
+export async function verifyAccess(userId: string, teamProfileId: string): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+
+  // Resolve team_id from the profile
+  const { data: profile } = await supabase
+    .from('team_profiles')
+    .select('team_id')
+    .eq('id', teamProfileId)
+    .maybeSingle();
+
+  if (!profile) {
+    throw Object.assign(new Error('Team profile not found'), { statusCode: 404 });
+  }
+
+  const { data: membership } = await supabase
+    .from('team_members')
+    .select('id')
+    .eq('team_id', profile.team_id)
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (!membership) {
+    throw Object.assign(new Error('Forbidden'), { statusCode: 403 });
+  }
 }
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
@@ -348,7 +389,7 @@ export async function mix(input: MixInput): Promise<MixerResult> {
           .from('cp_knowledge_entries')
           .select(KNOWLEDGE_COLUMNS)
           .eq('team_profile_id', teamProfileId)
-          .ilike('content', `%${input.knowledge_query}%`)
+          .ilike('content', `%${escapeIlike(input.knowledge_query)}%`)
           .limit(10);
         knowledgeEntries = (textData ?? []) as Array<{ content: string; context?: string }>;
         knowledgeTopic = input.knowledge_query;
@@ -534,6 +575,7 @@ export async function mix(input: MixInput): Promise<MixerResult> {
     creative_id: input.creative_id ?? null,
     trend_topic: input.trend_topic ?? null,
     recycled_post_id: input.recycled_post_id ?? null,
+    idea_id: input.idea_id ?? null,
     instructions: input.instructions ?? null,
   });
 
@@ -698,17 +740,48 @@ export async function getComboPerformance(
 
   // Gather all post IDs
   const allPostIds = [...new Set(recipes.flatMap((r) => r.post_ids))];
-  if (allPostIds.length === 0) return [];
 
-  // Fetch engagement data for all posts
-  const { data: engagementData } = await supabase
-    .from('cp_pipeline_posts')
-    .select('id, engagement_stats')
-    .in('id', allPostIds)
-    .eq('status', 'published');
+  // Collect unique ingredient IDs for name lookups
+  const exploitIds = [
+    ...new Set(recipes.map((r) => r.exploit_id).filter((id): id is string => !!id)),
+  ];
+  const styleIds = [...new Set(recipes.map((r) => r.style_id).filter((id): id is string => !!id))];
+  const templateIds = [
+    ...new Set(recipes.map((r) => r.template_id).filter((id): id is string => !!id)),
+  ];
+
+  // Fetch names + engagement in parallel
+  const [exploitNames, styleNames, templateNames, engagementData] = await Promise.all([
+    exploitIds.length > 0
+      ? supabase.from('cp_exploits').select('id, name').in('id', exploitIds)
+      : Promise.resolve({ data: [] }),
+    styleIds.length > 0
+      ? supabase.from('cp_writing_styles').select('id, name').in('id', styleIds)
+      : Promise.resolve({ data: [] }),
+    templateIds.length > 0
+      ? supabase.from('cp_post_templates').select('id, name').in('id', templateIds)
+      : Promise.resolve({ data: [] }),
+    allPostIds.length > 0
+      ? supabase
+          .from('cp_pipeline_posts')
+          .select('id, engagement_stats')
+          .in('id', allPostIds)
+          .eq('status', 'published')
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const exploitNameById = new Map<string, string>(
+    ((exploitNames.data ?? []) as Array<{ id: string; name: string }>).map((r) => [r.id, r.name])
+  );
+  const styleNameById = new Map<string, string>(
+    ((styleNames.data ?? []) as Array<{ id: string; name: string }>).map((r) => [r.id, r.name])
+  );
+  const templateNameById = new Map<string, string>(
+    ((templateNames.data ?? []) as Array<{ id: string; name: string }>).map((r) => [r.id, r.name])
+  );
 
   const engagementByPostId = new Map<string, number>();
-  for (const post of (engagementData ?? []) as Array<{
+  for (const post of (engagementData.data ?? []) as Array<{
     id: string;
     engagement_stats: { views?: number; likes?: number; comments?: number } | null;
   }>) {
@@ -737,10 +810,10 @@ export async function getComboPerformance(
     const multiplier = profileAvg > 0 ? avgEngagement / profileAvg : 0;
 
     return {
-      exploit_name: recipe.exploit_id ?? null,
+      exploit_name: recipe.exploit_id ? (exploitNameById.get(recipe.exploit_id) ?? null) : null,
       knowledge_topic: recipe.knowledge_topic,
-      style_name: recipe.style_id ?? null,
-      template_name: recipe.template_id ?? null,
+      style_name: recipe.style_id ? (styleNameById.get(recipe.style_id) ?? null) : null,
+      template_name: recipe.template_id ? (templateNameById.get(recipe.template_id) ?? null) : null,
       avg_engagement: avgEngagement,
       multiplier,
       post_count: recipe.post_ids.length,

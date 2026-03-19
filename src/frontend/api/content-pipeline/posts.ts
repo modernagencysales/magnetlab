@@ -125,3 +125,19 @@ export async function updatePostEngagement(
 ): Promise<{ post: unknown }> {
   return apiClient.patch<{ post: unknown }>(`/content-pipeline/posts/${postId}/engagement`, body);
 }
+
+export interface CreatePostBody {
+  body: string;
+  title?: string;
+  pillar?: string;
+  content_type?: string;
+}
+
+export interface CreatePostResponse {
+  post: PipelinePost;
+}
+
+export async function createPost(input: CreatePostBody): Promise<PipelinePost> {
+  const data = await apiClient.post<CreatePostResponse>('/content-pipeline/posts', input);
+  return data.post;
+}

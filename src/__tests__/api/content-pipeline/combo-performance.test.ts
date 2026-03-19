@@ -14,6 +14,7 @@ jest.mock('@/lib/auth', () => ({
 }));
 
 jest.mock('@/server/services/mixer.service', () => ({
+  verifyAccess: jest.fn(),
   getComboPerformance: jest.fn(),
   getStatusCode: jest.fn((err: unknown) => {
     if (err && typeof err === 'object' && 'statusCode' in err) {

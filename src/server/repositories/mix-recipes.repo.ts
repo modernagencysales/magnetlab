@@ -6,7 +6,7 @@ import type { MixRecipe } from '@/lib/types/mixer';
 // ─── Column constants ────────────────────────────────────────────────────────
 
 const MIX_RECIPE_COLUMNS =
-  'id, team_profile_id, exploit_id, knowledge_topic, knowledge_query, style_id, template_id, creative_id, trend_topic, recycled_post_id, instructions, output_type, post_ids, created_at, updated_at';
+  'id, team_profile_id, exploit_id, knowledge_topic, knowledge_query, style_id, template_id, creative_id, trend_topic, recycled_post_id, idea_id, instructions, output_type, post_ids, created_at, updated_at';
 
 // ─── Input types ─────────────────────────────────────────────────────────────
 
@@ -21,6 +21,7 @@ export interface InsertMixRecipe {
   creative_id?: string | null;
   trend_topic?: string | null;
   recycled_post_id?: string | null;
+  idea_id?: string | null;
   instructions?: string | null;
 }
 
@@ -85,6 +86,7 @@ export async function insertRecipe(input: InsertMixRecipe): Promise<MixRecipe> {
       creative_id: input.creative_id ?? null,
       trend_topic: input.trend_topic ?? null,
       recycled_post_id: input.recycled_post_id ?? null,
+      idea_id: input.idea_id ?? null,
       instructions: input.instructions ?? null,
     })
     .select(MIX_RECIPE_COLUMNS)

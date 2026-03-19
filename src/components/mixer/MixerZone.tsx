@@ -12,6 +12,7 @@ import { Button } from '@magnetlab/magnetui';
 import { Zap, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMix } from '@/frontend/hooks/api/useMixer';
+import { createPost } from '@/frontend/api/content-pipeline/posts';
 import { IngredientTile } from './IngredientTile';
 import { IngredientDrawer } from './IngredientDrawer';
 import { MixerBar } from './MixerBar';
@@ -132,10 +133,13 @@ export function MixerZone({
     }
   }, [selected, instructions, teamProfileId, generate, result]);
 
-  const handleSendToQueue = useCallback((postContent: string) => {
-    // Parent page handles the actual queue action; emit a toast here for feedback
-    toast.success('Post sent to content queue');
-    void postContent;
+  const handleSendToQueue = useCallback(async (postContent: string) => {
+    try {
+      await createPost({ body: postContent });
+      toast.success('Post sent to content queue');
+    } catch {
+      toast.error('Failed to send to queue — please try again');
+    }
   }, []);
 
   // ─── Selected ingredients for MixerBar ──────────────

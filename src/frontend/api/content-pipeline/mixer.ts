@@ -18,22 +18,25 @@ export async function mix(input: MixInput): Promise<MixerResult> {
 // ─── Reads ────────────────────────────────────────────────────────────────────
 
 export async function getInventory(teamProfileId: string): Promise<IngredientInventory> {
-  return apiClient.get<IngredientInventory>(
+  const res = await apiClient.get<{ inventory: IngredientInventory }>(
     `/content-pipeline/inventory?team_profile_id=${encodeURIComponent(teamProfileId)}`
   );
+  return res.inventory;
 }
 
 export async function getRecipes(teamProfileId: string, limit = 5): Promise<RecipeSuggestion[]> {
-  return apiClient.get<RecipeSuggestion[]>(
+  const res = await apiClient.get<{ recipes: RecipeSuggestion[] }>(
     `/content-pipeline/recipes?team_profile_id=${encodeURIComponent(teamProfileId)}&limit=${limit}`
   );
+  return res.recipes;
 }
 
 export async function getComboPerformance(
   teamProfileId: string,
   limit = 10
 ): Promise<ComboPerformance[]> {
-  return apiClient.get<ComboPerformance[]>(
+  const res = await apiClient.get<{ combos: ComboPerformance[] }>(
     `/content-pipeline/combo-performance?team_profile_id=${encodeURIComponent(teamProfileId)}&limit=${limit}`
   );
+  return res.combos;
 }

@@ -102,6 +102,7 @@ export interface MixRecipe {
   creative_id: string | null;
   trend_topic: string | null;
   recycled_post_id: string | null;
+  idea_id: string | null;
   instructions: string | null;
   output_type: 'drafts' | 'ideas';
   post_ids: string[];
