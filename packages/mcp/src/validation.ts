@@ -135,6 +135,11 @@ export const toolSchemas: Record<string, z.ZodType> = {
     homepage_url: z.string().nullable().optional(),
     homepage_label: z.string().nullable().optional(),
     send_resource_email: z.boolean().optional(),
+    vsl_headline: z.string().nullable().optional(),
+    vsl_subline: z.string().nullable().optional(),
+    cta_headline: z.string().nullable().optional(),
+    cta_button_text: z.string().nullable().optional(),
+    thankyou_layout: z.enum(['survey_first', 'video_first', 'side_by_side'] as [string, ...string[]]).optional(),
     team_id: teamIdField,
   }),
 
