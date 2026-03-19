@@ -378,6 +378,7 @@ export function ThankyouPage({
   const [isQualified, setIsQualified] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [surveyWasCompleted, setSurveyWasCompleted] = useState(false);
   const bookingRef = useRef<HTMLDivElement>(null);
   const surveyRef = useRef<HTMLDivElement>(null);
 
@@ -413,6 +414,7 @@ export function ThankyouPage({
         setIsQualified(data.isQualified);
       }
       setQualificationComplete(true);
+      setSurveyWasCompleted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       logError('funnel/thankyou', err, { step: 'error_submitting_qualification' });
@@ -491,16 +493,16 @@ export function ThankyouPage({
     }
   }, [questions.length]);
 
-  // Auto-scroll to booking embed after survey completion
+  // Auto-scroll to booking embed after survey completion (only when user actively completed the survey,
+  // not on initial page load when there are no questions — we want them to see the video first)
   useEffect(() => {
-    if (qualificationComplete && isQualified && calendlyUrl && bookingRef.current) {
-      // Small delay to let the DOM render the booking section
+    if (surveyWasCompleted && qualificationComplete && isQualified && calendlyUrl && bookingRef.current) {
       const timer = setTimeout(() => {
         bookingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [qualificationComplete, isQualified, calendlyUrl]);
+  }, [surveyWasCompleted, qualificationComplete, isQualified, calendlyUrl]);
 
   // Redirect after qualification if configured
   useEffect(() => {
@@ -572,21 +574,23 @@ export function ThankyouPage({
           />
         )}
 
-        {/* 3. Value headline + subline (selling the survey) */}
-        <div className="text-center space-y-3">
-          <h1
-            className="text-2xl md:text-3xl font-semibold"
-            style={{ color: 'var(--ds-text)' }}
-          >
-            {headline}
-          </h1>
+        {/* 3. Value headline + subline — hidden in video_first when VSL framing exists (avoids redundancy) */}
+        {!(layout === 'video_first' && vslHeadline) && (
+          <div className="text-center space-y-3">
+            <h1
+              className="text-2xl md:text-3xl font-semibold"
+              style={{ color: 'var(--ds-text)' }}
+            >
+              {headline}
+            </h1>
 
-          {subline && (
-            <p style={{ color: 'var(--ds-muted)' }}>
-              {subline}
-            </p>
-          )}
-        </div>
+            {subline && (
+              <p style={{ color: 'var(--ds-muted)' }}>
+                {subline}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 4. Above-video sections (social proof) — only for survey_first layout */}
         {layout === 'survey_first' && aboveSections.length > 0 && (
