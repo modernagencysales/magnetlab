@@ -7,6 +7,7 @@ import {
   formatBriefingPrompt,
 } from '@/server/services/copilot-briefing.service';
 import type { DataScope } from '@/lib/utils/team-context';
+import { logWarn } from '@/lib/utils/logger';
 
 interface PageContext {
   page: string;
@@ -139,9 +140,16 @@ export async function buildCopilotSystemPrompt(
 
   // 2b. Briefing — live dashboard metrics (optional, homepage only)
   if (briefing && scope) {
-    const briefingData = await fetchBriefingData(supabase, scope);
-    const briefingSection = formatBriefingPrompt(briefingData);
-    sections.push('\n' + briefingSection);
+    try {
+      const briefingData = await fetchBriefingData(supabase, scope);
+      const briefingSection = formatBriefingPrompt(briefingData);
+      sections.push('\n' + briefingSection);
+    } catch (err) {
+      // Briefing is non-critical — log and continue without it
+      logWarn('buildCopilotSystemPrompt', 'Briefing data fetch failed, skipping', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   // 3. Active memories
