@@ -7,6 +7,12 @@ import { useRouter } from 'next/navigation';
 import type { CopilotMessage, PendingConfirmation } from './copilot-types';
 import type { ExtractedContent } from '@/lib/types/lead-magnet';
 import { logError } from '@/lib/utils/logger';
+import {
+  getConversation as apiGetConversation,
+  confirmAction as apiConfirmAction,
+  submitFeedback as apiSubmitFeedback,
+  deleteConversation as apiDeleteConversation,
+} from '@/frontend/api/copilot';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -80,16 +86,7 @@ export function useConversationStream({
   const loadConversation = useCallback(
     async (id: string) => {
       try {
-        const res = await fetch(`/api/copilot/conversations/${id}`);
-        if (!res.ok) {
-          logError('useConversationStream/loadConversation', new Error('Conversation not found'), {
-            id,
-          });
-          router.replace('/');
-          return;
-        }
-
-        const data = await res.json();
+        const data = await apiGetConversation(id);
         setConversationTitle(data.conversation?.title || '');
         setMessages(
           (data.messages || []).map((m: Record<string, unknown>) => ({
@@ -324,38 +321,29 @@ export function useConversationStream({
       setPendingConfirmation(null);
 
       try {
-        const res = await fetch('/api/copilot/confirm-action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: currentId,
-            toolUseId,
-            approved,
-            toolName,
-            toolArgs,
-          }),
-        });
+        const data = await apiConfirmAction(currentId, toolUseId, approved, toolName, toolArgs);
 
-        if (res.ok) {
-          const data = await res.json();
+        if (data.executed && data.result) {
+          const result = data.result;
+          // Update the awaiting_confirmation tool_result with the real result
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.role === 'tool_result' &&
+              m.toolName === toolName &&
+              m.toolResult?.awaiting_confirmation
+                ? {
+                    ...m,
+                    toolResult: result,
+                    displayHint: result.displayHint as string | undefined,
+                  }
+                : m
+            )
+          );
 
-          if (data.executed && data.result) {
-            // Update the awaiting_confirmation tool_result with the real result
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.role === 'tool_result' &&
-                m.toolName === toolName &&
-                m.toolResult?.awaiting_confirmation
-                  ? { ...m, toolResult: data.result, displayHint: data.result.displayHint }
-                  : m
-              )
-            );
-
-            // Resume conversation so Claude can continue
-            await sendMessageRef.current(approved ? 'Confirmed.' : 'Cancelled.');
-          } else if (!approved) {
-            await sendMessageRef.current('The user declined the action.');
-          }
+          // Resume conversation so Claude can continue
+          await sendMessageRef.current(approved ? 'Confirmed.' : 'Cancelled.');
+        } else if (!approved) {
+          await sendMessageRef.current('The user declined the action.');
         }
       } catch (err) {
         logError('useConversationStream/confirmAction', err, { toolUseId });
@@ -372,11 +360,7 @@ export function useConversationStream({
       if (!currentId || currentId === 'new') return;
 
       try {
-        await fetch(`/api/copilot/conversations/${currentId}/feedback`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messageId, rating, note }),
-        });
+        await apiSubmitFeedback(currentId, messageId, rating, note);
 
         setMessages((prev) =>
           prev.map((m) => (m.id === messageId ? { ...m, feedback: { rating, note } } : m))
@@ -395,7 +379,7 @@ export function useConversationStream({
     if (!currentId || currentId === 'new') return;
 
     try {
-      await fetch(`/api/copilot/conversations/${currentId}`, { method: 'DELETE' });
+      await apiDeleteConversation(currentId);
       router.push('/');
     } catch (err) {
       logError('useConversationStream/deleteConversation', err, { id: currentId });
