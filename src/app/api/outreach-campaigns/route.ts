@@ -9,10 +9,9 @@ import { auth } from '@/lib/auth';
 import { logError } from '@/lib/utils/logger';
 import * as service from '@/server/services/outreach-campaigns.service';
 import { getStatusCode } from '@/server/services/outreach-campaigns.service';
-import type {
-  OutreachCampaignStatus,
-  CreateOutreachCampaignInput,
-} from '@/lib/types/outreach-campaigns';
+import { CreateOutreachCampaignSchema } from '@/lib/validations/outreach-campaigns';
+import { formatZodError } from '@/lib/validations/api';
+import type { OutreachCampaignStatus } from '@/lib/types/outreach-campaigns';
 
 const VALID_STATUSES: OutreachCampaignStatus[] = ['draft', 'active', 'paused', 'completed'];
 
@@ -47,7 +46,12 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = (await request.json()) as CreateOutreachCampaignInput;
+    const rawBody = await request.json();
+    const parsed = CreateOutreachCampaignSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+    }
+    const body = parsed.data;
     const result = await service.createCampaign(session.user.id, null, body);
     if (!result.success) {
       const status = result.error === 'validation' ? 400 : 500;

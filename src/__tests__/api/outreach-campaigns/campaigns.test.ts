@@ -187,11 +187,6 @@ describe('Outreach Campaigns API', () => {
 
     it('returns 400 on validation failure', async () => {
       (auth as jest.Mock).mockResolvedValue(SESSION);
-      (service.createCampaign as jest.Mock).mockResolvedValue({
-        success: false,
-        error: 'validation',
-        message: 'Campaign name is required',
-      });
       const res = await createCampaign(
         makeRequest('http://localhost/api/outreach-campaigns', {
           method: 'POST',
@@ -200,7 +195,7 @@ describe('Outreach Campaigns API', () => {
       );
       expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.error).toBe('Campaign name is required');
+      expect(body.error).toContain('Name is required');
     });
   });
 
