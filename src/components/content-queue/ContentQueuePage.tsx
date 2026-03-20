@@ -39,6 +39,8 @@ export function ContentQueuePage() {
   // ─── Refs ────────────────────────────────────────────────────────────
 
   const contentChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Track latest unsaved content per post — used to flush on Cmd+Enter or navigation
+  const pendingContentRef = useRef<Map<string, string>>(new Map());
   // Stash AI-generated original content per post — captured once when first loaded
   const originalContentRef = useRef<Map<string, string>>(new Map());
 
@@ -138,13 +140,27 @@ export function ContentQueuePage() {
 
   const handleMarkEdited = useCallback(
     async (postId: string) => {
-      // Optimistic update FIRST
+      // Flush any pending debounced content save — Cmd+Enter must persist content immediately
+      if (contentChangeTimeoutRef.current) {
+        clearTimeout(contentChangeTimeoutRef.current);
+        contentChangeTimeoutRef.current = null;
+      }
+      const pendingContent = pendingContentRef.current.get(postId);
+      pendingContentRef.current.delete(postId);
+
+      // Optimistic update FIRST — include draft_content so SWR cache reflects edits
       if (editingTeamId) {
         mutateTeam(editingTeamId, (team) => ({
           ...team,
           edited_count: team.edited_count + 1,
           posts: team.posts.map((p) =>
-            p.id === postId ? { ...p, edited_at: new Date().toISOString() } : p
+            p.id === postId
+              ? {
+                  ...p,
+                  edited_at: new Date().toISOString(),
+                  ...(pendingContent !== undefined ? { draft_content: pendingContent } : {}),
+                }
+              : p
           ),
         }));
       }
@@ -153,6 +169,7 @@ export function ContentQueuePage() {
         const originalContent = originalContentRef.current.get(postId);
         await updateQueuePost(postId, {
           mark_edited: true,
+          ...(pendingContent !== undefined ? { draft_content: pendingContent } : {}),
           ...(originalContent ? { original_content: originalContent } : {}),
         });
       } catch (err) {
@@ -184,11 +201,27 @@ export function ContentQueuePage() {
     [refetch]
   );
 
+  const flushContentSave = useCallback((postId: string) => {
+    const pendingContent = pendingContentRef.current.get(postId);
+    if (pendingContent === undefined) return;
+    pendingContentRef.current.delete(postId);
+    if (contentChangeTimeoutRef.current) {
+      clearTimeout(contentChangeTimeoutRef.current);
+      contentChangeTimeoutRef.current = null;
+    }
+    // Fire-and-forget — save must not block navigation
+    updateQueuePost(postId, { draft_content: pendingContent }).catch(() => {
+      toast.error('Failed to save content. Please try again.');
+    });
+  }, []);
+
   const handleContentChange = useCallback((postId: string, content: string) => {
+    pendingContentRef.current.set(postId, content);
     if (contentChangeTimeoutRef.current) {
       clearTimeout(contentChangeTimeoutRef.current);
     }
     contentChangeTimeoutRef.current = setTimeout(async () => {
+      pendingContentRef.current.delete(postId);
       try {
         await updateQueuePost(postId, { draft_content: content });
       } catch {
@@ -246,6 +279,7 @@ export function ContentQueuePage() {
         onMarkEdited={handleMarkEdited}
         onDeletePost={handleDeletePost}
         onContentChange={handleContentChange}
+        onFlushContent={flushContentSave}
       />
     );
   }

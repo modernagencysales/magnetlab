@@ -23,6 +23,7 @@ interface EditingViewProps {
   onMarkEdited: (postId: string) => Promise<void>;
   onDeletePost: (postId: string) => Promise<void>;
   onContentChange: (postId: string, content: string) => void;
+  onFlushContent: (postId: string) => void;
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ export function EditingView({
   onMarkEdited,
   onDeletePost,
   onContentChange,
+  onFlushContent,
 }: EditingViewProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -117,12 +119,14 @@ export function EditingView({
 
       if (e.key === 'ArrowUp' || e.key === 'k') {
         e.preventDefault();
+        if (currentPost) onFlushContent(currentPost.id);
         setCurrentIndex((prev) => Math.max(0, prev - 1));
         return;
       }
 
       if (e.key === 'ArrowDown' || e.key === 'j') {
         e.preventDefault();
+        if (currentPost) onFlushContent(currentPost.id);
         setCurrentIndex((prev) => Math.min(posts.length - 1, prev + 1));
         return;
       }
@@ -139,10 +143,19 @@ export function EditingView({
     onBack,
     onMarkEdited,
     onDeletePost,
+    onFlushContent,
     findNextUnedited,
   ]);
 
   // ─── Handlers ────────────────────────────────────────────────────
+
+  const handleSelectPost = useCallback(
+    (index: number) => {
+      if (currentPost) onFlushContent(currentPost.id);
+      setCurrentIndex(index);
+    },
+    [currentPost, onFlushContent]
+  );
 
   const handleContentChange = useCallback(
     (content: string) => {
@@ -186,7 +199,7 @@ export function EditingView({
       <PostList
         posts={posts}
         currentIndex={currentIndex}
-        onSelect={setCurrentIndex}
+        onSelect={handleSelectPost}
         onBack={onBack}
       />
 
