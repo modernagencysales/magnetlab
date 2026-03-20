@@ -139,7 +139,9 @@ export const toolSchemas: Record<string, z.ZodType> = {
     vsl_subline: z.string().nullable().optional(),
     cta_headline: z.string().nullable().optional(),
     cta_button_text: z.string().nullable().optional(),
-    thankyou_layout: z.enum(['survey_first', 'video_first', 'side_by_side'] as [string, ...string[]]).optional(),
+    thankyou_layout: z
+      .enum(['survey_first', 'video_first', 'side_by_side'] as [string, ...string[]])
+      .optional(),
     team_id: teamIdField,
   }),
 
@@ -539,6 +541,24 @@ export const toolSchemas: Record<string, z.ZodType> = {
   magnetlab_recycle_post: z.object({
     post_id: uuidField,
     type: z.enum(['repost', 'cousin'] as [string, ...string[]]),
+  }),
+
+  // ── Lead Magnet Post (3) ───────────────────────────────────────────────────
+
+  magnetlab_list_sender_accounts: z.object({}),
+
+  magnetlab_publish_linkedin_post: z.object({
+    team_profile_id: uuidField,
+    post_text: z.string().min(1, 'post_text is required'),
+  }),
+
+  magnetlab_launch_lead_magnet_post: z.object({
+    team_profile_id: uuidField,
+    post_text: z.string().min(1, 'post_text is required'),
+    funnel_page_id: z.string().optional(),
+    keywords: z.array(z.string()).optional(),
+    dm_template: z.string().optional(),
+    campaign_name: z.string().optional(),
   }),
 };
 
