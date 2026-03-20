@@ -75,7 +75,6 @@ export function MixerZone({
 
   // ─── Handlers ───────────────────────────────────────
   const handleTileClick = useCallback((type: IngredientType) => {
-    console.log('[MixerZone] tile clicked:', type, 'setting drawer open');
     setActiveDrawerType(type);
     setDrawerOpen(true);
   }, []);
