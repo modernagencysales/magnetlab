@@ -24,6 +24,15 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@magnetlab/magnetui": [
+        "./packages/magnetui/src/index.ts"
+      ],
+      "@magnetlab/magnetui/charts": [
+        "./packages/magnetui/src/charts.ts"
+      ],
+      "@magnetlab/magnetui/preset": [
+        "./packages/magnetui/src/preset/tailwind-preset.ts"
       ]
     },
     "target": "ES2017"
