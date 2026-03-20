@@ -1,9 +1,9 @@
-/** Tool registration tests for MCP v2. Verifies 78 tools, naming, schemas, and no old tools. */
+/** Tool registration tests for MCP v2. Verifies 81 tools, naming, schemas, and no old tools. */
 
 import { describe, it, expect } from 'vitest';
 import { tools, toolsByName } from '../tools/index.js';
 
-// ─── All 78 expected tool names ────────────────────────────────────────────────
+// ─── All 81 expected tool names ────────────────────────────────────────────────
 
 const EXPECTED_TOOL_NAMES = [
   // Lead Magnets (5)
@@ -102,6 +102,10 @@ const EXPECTED_TOOL_NAMES = [
   // Account Safety (2)
   'magnetlab_get_account_safety_settings',
   'magnetlab_update_account_safety_settings',
+  // Lead Magnet Post (3)
+  'magnetlab_list_sender_accounts',
+  'magnetlab_publish_linkedin_post',
+  'magnetlab_launch_lead_magnet_post',
 ] as const;
 
 // ─── Old tools that must NOT exist ────────────────────────────────────────────
@@ -127,8 +131,8 @@ const REMOVED_TOOLS = [
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('Tool Registration', () => {
-  it('exports exactly 78 tools', () => {
-    expect(tools).toHaveLength(78);
+  it('exports exactly 81 tools', () => {
+    expect(tools).toHaveLength(81);
   });
 
   it('all tools have unique names', () => {
@@ -159,8 +163,8 @@ describe('Tool Registration', () => {
     }
   });
 
-  it('toolsByName map has 78 entries', () => {
-    expect(toolsByName.size).toBe(78);
+  it('toolsByName map has 81 entries', () => {
+    expect(toolsByName.size).toBe(81);
   });
 
   it('toolsByName contains all tools and references correct objects', () => {
@@ -188,8 +192,8 @@ describe('Expected Tool Names', () => {
     }
   });
 
-  it('expected list has exactly 78 entries', () => {
-    expect(EXPECTED_TOOL_NAMES).toHaveLength(78);
+  it('expected list has exactly 81 entries', () => {
+    expect(EXPECTED_TOOL_NAMES).toHaveLength(81);
   });
 });
 

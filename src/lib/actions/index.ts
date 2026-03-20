@@ -8,6 +8,7 @@ import './lead-magnets';
 import './funnels';
 import './email';
 import './content-queue';
+import './dm-coach';
 
 // Re-export the executor and registry
 export { executeAction, actionRequiresConfirmation } from './executor';

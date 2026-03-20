@@ -72,6 +72,7 @@ All client-side API calls and shared client state live under `src/frontend/`: `a
 | `/(dashboard)/swipe-file` | Community post inspiration |
 | `/(dashboard)/signals` | LinkedIn Signal Engine leads |
 | `/(dashboard)/content-queue` | Cross-team content editing queue |
+| `/(dashboard)/dm-coach` | AI-coached DM reply tool |
 
 ### Settings Routes
 
@@ -245,6 +246,56 @@ Detailed docs for each feature live in `docs/`. Consult these when working on a 
 | Content Queue | [docs/superpowers/specs/2026-03-17-dfy-content-queue-design.md](docs/superpowers/specs/2026-03-17-dfy-content-queue-design.md) |
 | Unified Asset Review Queue | [docs/superpowers/specs/2026-03-18-unified-asset-review-queue-design.md](docs/superpowers/specs/2026-03-18-unified-asset-review-queue-design.md) |
 | Outreach Sequence Engine | [docs/superpowers/specs/2026-03-18-outreach-sequence-engine-design.md](docs/superpowers/specs/2026-03-18-outreach-sequence-engine-design.md) |
+
+## DM Reply Coach (Mar 2026)
+
+AI-coached DM reply tool — users paste LinkedIn DM conversations, get style-matched reply suggestions with full reasoning (qualification stage, signals, strategy, goal alignment). Teaching tool, not AI SDR.
+
+### Architecture
+
+```
+User pastes DM conversation
+  → POST /api/dm-coach/{contactId}/messages
+  → POST /api/dm-coach/{contactId}/suggest
+  → prompt-builder.ts assembles goal-adapted prompt
+  → Claude Sonnet generates coaching analysis
+  → response-parser.ts extracts structured suggestion
+  → Saved to dmc_suggestions, stage auto-advanced
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/ai/dm-coach/prompt-builder.ts` | Goal-adapted coaching prompt (forked from mas-platform DM coach) |
+| `src/lib/ai/dm-coach/response-parser.ts` | Parse Claude output into structured CoachSuggestion |
+| `src/server/services/dm-coach.service.ts` | Business logic: CRUD + AI suggest |
+| `src/server/repositories/dm-coach.repo.ts` | Supabase CRUD for dmc_* tables |
+| `src/lib/types/dm-coach.ts` | Types, goal config, qualification ladder config |
+| `src/lib/validations/dm-coach.ts` | Zod schemas |
+| `src/app/api/dm-coach/` | 8 API route handlers |
+| `src/components/dm-coach/` | 15 UI components (two-panel layout) |
+| `src/frontend/api/dm-coach.ts` | Client API module |
+| `src/frontend/hooks/api/useDmCoach.ts` | SWR hooks |
+| `src/frontend/stores/dm-coach.ts` | Zustand UI state |
+| `src/lib/actions/dm-coach.ts` | Copilot actions (dm_coach_suggest, dm_coach_save) |
+| `packages/mcp/src/tools/dm-coach.ts` | 7 MCP tools |
+
+### Database Tables
+
+`dmc_contacts` (goal, stage, status), `dmc_messages` (role: them/me), `dmc_suggestions` (reasoning jsonb, stage before/after)
+
+### Conversation Goals
+
+`book_meeting`, `build_relationship`, `promote_content`, `explore_partnership`, `nurture_lead`, `close_deal` — each adapts the qualification ladder emphasis and closing behavior.
+
+### MCP Tools (7)
+
+`magnetlab_list_dm_contacts`, `magnetlab_get_dm_contact`, `magnetlab_create_dm_contact`, `magnetlab_update_dm_contact`, `magnetlab_delete_dm_contact`, `magnetlab_add_dm_messages`, `magnetlab_dm_coach_suggest`
+
+### Copilot Actions (2)
+
+`dm_coach_suggest` (one-off or tracked coaching), `dm_coach_save` (save conversation as tracked contact)
 
 ## Outreach Sequence Engine (Mar 2026)
 
