@@ -78,8 +78,19 @@ async function fetchItems(type: IngredientType): Promise<DrawerItem[]> {
       return styles.map((s) => ({ id: s.id, name: s.name, description: s.description }));
     }
     case 'templates': {
-      const templates = await listTemplates('mine');
-      return (templates as Array<{ id: string; name: string; description?: string }>).map((t) => ({
+      // Fetch both user's own templates and global ones
+      const [mine, global] = await Promise.all([
+        listTemplates('mine'),
+        listTemplates('global'),
+      ]);
+      const all = [...(mine as Array<{ id: string; name: string; description?: string }>), ...(global as Array<{ id: string; name: string; description?: string }>)];
+      // Deduplicate by id
+      const seen = new Set<string>();
+      return all.filter((t) => {
+        if (seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      }).map((t) => ({
         id: t.id,
         name: t.name,
         description: t.description,
