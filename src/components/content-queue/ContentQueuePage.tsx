@@ -221,7 +221,6 @@ export function ContentQueuePage() {
       clearTimeout(contentChangeTimeoutRef.current);
     }
     contentChangeTimeoutRef.current = setTimeout(async () => {
-      pendingContentRef.current.delete(postId);
       try {
         await updateQueuePost(postId, { draft_content: content });
       } catch {
