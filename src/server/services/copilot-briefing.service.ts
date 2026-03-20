@@ -47,7 +47,6 @@ async function applyPostScope(
   scope: DataScope,
   supabase: SupabaseClient
 ): Promise<any> {
-  /* eslint-enable @typescript-eslint/no-explicit-any */
   if (scope.type === 'team' && scope.teamId) {
     const { data: profile } = await supabase
       .from('team_profiles')
@@ -61,6 +60,7 @@ async function applyPostScope(
   }
   return query.eq('user_id', scope.userId);
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Apply scope to cp_content_ideas — has team_id for team mode.
