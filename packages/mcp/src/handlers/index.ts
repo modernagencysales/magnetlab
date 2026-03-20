@@ -1,4 +1,4 @@
-/** Handler dispatcher. Routes all 68 tool calls to domain handlers via flat lookup map. Never contains business logic. */
+/** Handler dispatcher. Routes all 81 tool calls to domain handlers via flat lookup map. Never contains business logic. */
 
 import type { MagnetLabClient } from '../client.js';
 import { validateToolArgs } from '../validation.js';
@@ -21,6 +21,7 @@ import { handleMixerTools } from './mixer.js';
 import { handlePostCampaignTools } from './post-campaigns.js';
 import { handleAccountSafetyTools } from './account-safety.js';
 import { handleDmCoachTools } from './dm-coach.js';
+import { handleLeadMagnetPostTools } from './lead-magnet-post.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -159,6 +160,11 @@ const handlerMap: Record<string, Handler> = {
   magnetlab_delete_dm_contact: handleDmCoachTools,
   magnetlab_add_dm_messages: handleDmCoachTools,
   magnetlab_dm_coach_suggest: handleDmCoachTools,
+
+  // Lead magnet post (3)
+  magnetlab_list_sender_accounts: handleLeadMagnetPostTools,
+  magnetlab_publish_linkedin_post: handleLeadMagnetPostTools,
+  magnetlab_launch_lead_magnet_post: handleLeadMagnetPostTools,
 };
 
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
@@ -205,3 +211,4 @@ export { handleMixerTools } from './mixer.js';
 export { handlePostCampaignTools } from './post-campaigns.js';
 export { handleAccountSafetyTools } from './account-safety.js';
 export { handleDmCoachTools } from './dm-coach.js';
+export { handleLeadMagnetPostTools } from './lead-magnet-post.js';

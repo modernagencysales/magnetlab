@@ -633,6 +633,24 @@ export const toolSchemas: Record<string, z.ZodType> = {
   magnetlab_dm_coach_suggest: z.object({
     contact_id: uuidField,
   }),
+
+  // ── Lead Magnet Post (3) ───────────────────────────────────────────────────
+
+  magnetlab_list_sender_accounts: z.object({}),
+
+  magnetlab_publish_linkedin_post: z.object({
+    team_profile_id: uuidField,
+    post_text: z.string().min(1, 'post_text is required'),
+  }),
+
+  magnetlab_launch_lead_magnet_post: z.object({
+    team_profile_id: uuidField,
+    post_text: z.string().min(1, 'post_text is required'),
+    funnel_page_id: z.string().optional(),
+    keywords: z.array(z.string()).optional(),
+    dm_template: z.string().optional(),
+    campaign_name: z.string().optional(),
+  }),
 };
 
 // ─── Validation Function ──────────────────────────────────────────────────────
