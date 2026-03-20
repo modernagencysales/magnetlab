@@ -62,13 +62,14 @@ const TYPE_BORDER_COLORS: Record<IngredientType, string> = {
 };
 
 function topicToCard(topic: KnowledgeTopic): FeedCard {
-  const entryWord = topic.entry_count === 1 ? 'entry' : 'entries';
+  const count = topic.entry_count ?? 0;
+  const entryWord = count === 1 ? 'entry' : 'entries';
   return {
     key: `knowledge-${topic.id}`,
     type: 'knowledge',
-    id: topic.id,
-    name: topic.display_name,
-    description: `${topic.entry_count} ${entryWord} in your knowledge base`,
+    id: topic.slug || topic.id,
+    name: topic.display_name || topic.slug || 'Unknown topic',
+    description: `${count} ${entryWord} in your knowledge base`,
     borderColorClass: TYPE_BORDER_COLORS.knowledge,
   };
 }
@@ -165,7 +166,7 @@ export function StartFromHere({ teamProfileId, onSelectIngredient }: StartFromHe
     setIsLoading(true);
     try {
       const [topicsRes, exploits, creatives, trends, inventory] = await Promise.allSettled([
-        getTopics({ limit: 6, team_id: teamProfileId }),
+        getTopics({ limit: 6 }),
         getExploits({ with_stats: true }),
         getCreatives({ status: 'approved', limit: 5 }),
         getTrends(8),

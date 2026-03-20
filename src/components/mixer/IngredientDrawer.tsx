@@ -45,18 +45,19 @@ const PLACEHOLDER_MESSAGES: Record<string, string> = {
 
 // ─── Data fetchers ────────────────────────────────────────────────────────────
 
-async function fetchItems(type: IngredientType): Promise<DrawerItem[]> {
+async function fetchItems(type: IngredientType, teamProfileId?: string): Promise<DrawerItem[]> {
   switch (type) {
     case 'knowledge': {
       const res = await getTopics({ limit: 50 });
       const topics = (res.topics ?? []) as Array<{
+        id: string;
         slug: string;
-        name: string;
+        display_name: string;
         entry_count?: number;
       }>;
       return topics.map((t) => ({
-        id: t.slug,
-        name: t.name,
+        id: t.slug || t.id,
+        name: t.display_name,
         description: t.entry_count ? `${t.entry_count} entries` : undefined,
       }));
     }
@@ -119,7 +120,7 @@ async function fetchItems(type: IngredientType): Promise<DrawerItem[]> {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function IngredientDrawer({ type, open, onOpenChange, onSelect }: IngredientDrawerProps) {
+export function IngredientDrawer({ type, open, onOpenChange, teamProfileId, onSelect }: IngredientDrawerProps) {
   const [items, setItems] = useState<DrawerItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -133,7 +134,7 @@ export function IngredientDrawer({ type, open, onOpenChange, onSelect }: Ingredi
     if (!open || isPlaceholder) return;
     setLoading(true);
     setSearch('');
-    fetchItems(type)
+    fetchItems(type, teamProfileId)
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
