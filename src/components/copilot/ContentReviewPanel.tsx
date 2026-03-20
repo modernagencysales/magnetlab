@@ -7,8 +7,9 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { X, ChevronDown, ChevronRight, Plus, Trash2, Check, Pencil } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { ExtractedContent } from '@/lib/types/lead-magnet';
+import { EditableField, SectionRenderer, MistakesList } from './ContentReviewSections';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -16,17 +17,6 @@ interface ContentReviewPanelProps {
   content: ExtractedContent;
   onApprove: (content: ExtractedContent) => void;
   onRequestChanges: (feedback: string) => void;
-}
-
-interface EditableFieldProps {
-  value: string;
-  isEditing: boolean;
-  onStartEdit: () => void;
-  onSave: (value: string) => void;
-  onCancel: () => void;
-  large?: boolean;
-  inline?: boolean;
-  multiline?: boolean;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -41,111 +31,6 @@ function normalizeItem(item: unknown): string {
     return String((item as { content: string }).content);
   }
   return String(item ?? '');
-}
-
-// ─── EditableField Sub-component ───────────────────────────────────────────────
-
-function EditableField({
-  value,
-  isEditing,
-  onStartEdit,
-  onSave,
-  onCancel,
-  large = false,
-  inline = false,
-  multiline = false,
-}: EditableFieldProps) {
-  const [draft, setDraft] = useState(value);
-  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (isEditing) {
-      setDraft(value);
-      // Focus on next tick so the element is rendered
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }, [isEditing, value]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onCancel();
-        return;
-      }
-      if (multiline) {
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-          e.preventDefault();
-          onSave(draft);
-        }
-      } else {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          onSave(draft);
-        }
-      }
-    },
-    [draft, multiline, onSave, onCancel]
-  );
-
-  if (isEditing) {
-    const sharedClasses =
-      'w-full rounded-md border border-violet-300 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500';
-
-    return (
-      <div className="flex items-start gap-2">
-        {multiline ? (
-          <textarea
-            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={4}
-            className={`${sharedClasses} resize-y`}
-          />
-        ) : (
-          <input
-            ref={inputRef as React.RefObject<HTMLInputElement>}
-            type="text"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className={`${sharedClasses} ${large ? 'text-2xl font-bold' : ''}`}
-          />
-        )}
-        <button
-          onClick={() => onSave(draft)}
-          className="mt-1 p-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors flex-shrink-0"
-          aria-label="Save"
-        >
-          <Check className="w-4 h-4" />
-        </button>
-        <button
-          onClick={onCancel}
-          className="mt-1 p-1.5 rounded-md bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors flex-shrink-0"
-          aria-label="Cancel"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-    );
-  }
-
-  const textClasses = large
-    ? 'text-2xl font-bold text-zinc-900 dark:text-zinc-100'
-    : inline
-      ? 'text-sm text-zinc-700 dark:text-zinc-300'
-      : 'text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed';
-
-  return (
-    <div
-      className="group relative cursor-pointer rounded-md px-1 -mx-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-      onClick={onStartEdit}
-    >
-      <span className={textClasses}>{value || '(empty)'}</span>
-      <Pencil className="absolute top-1/2 -translate-y-1/2 right-1 w-3.5 h-3.5 text-zinc-400 opacity-0 group-hover:opacity-50 transition-opacity" />
-    </div>
-  );
 }
 
 // ─── ContentReviewPanel ────────────────────────────────────────────────────────
@@ -353,9 +238,7 @@ export function ContentReviewPanel({
     <div className="bg-card border border-border rounded-lg p-6 my-4">
       {/* ── Header ────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 mb-6">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-          Review Content
-        </h2>
+        <h2 className="text-lg font-semibold text-foreground truncate">Review Content</h2>
 
         <div className="flex items-center gap-3">
           {isRequestingChanges ? (
@@ -367,7 +250,7 @@ export function ContentReviewPanel({
                 onChange={(e) => setChangeFeedback(e.target.value)}
                 onKeyDown={handleFeedbackKeyDown}
                 placeholder="What should be changed?"
-                className="w-64 sm:w-80 rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                className="w-64 sm:w-80 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
               <button
                 onClick={submitChangeFeedback}
@@ -378,7 +261,7 @@ export function ContentReviewPanel({
               </button>
               <button
                 onClick={cancelRequestChanges}
-                className="px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
               </button>
@@ -414,7 +297,7 @@ export function ContentReviewPanel({
             onCancel={cancelEdit}
             large
           />
-          <p className="mt-1 text-sm text-zinc-400">{editedContent.format}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{editedContent.format}</p>
         </div>
 
         {/* ── Key Insight ────────────────────────────────────── */}
@@ -437,7 +320,7 @@ export function ContentReviewPanel({
         {/* ── Sections ──────────────────────────────────────── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               Sections
             </h3>
             <button
@@ -449,84 +332,24 @@ export function ContentReviewPanel({
             </button>
           </div>
 
-          {editedContent.structure.map((section, sectionIdx) => {
-            const isExpanded = expandedSections.has(sectionIdx);
-            return (
-              <div
-                key={sectionIdx}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden"
-              >
-                {/* Section header */}
-                <div className="flex items-center gap-2 px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50">
-                  <button
-                    onClick={() => toggleSection(sectionIdx)}
-                    className="p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
-                    aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
-                  >
-                    {isExpanded ? (
-                      <ChevronDown className="w-4 h-4" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4" />
-                    )}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <EditableField
-                      value={section.sectionName}
-                      isEditing={editingField === `section-name-${sectionIdx}`}
-                      onStartEdit={() => startEdit(`section-name-${sectionIdx}`)}
-                      onSave={(v) => saveField(`section-name-${sectionIdx}`, v)}
-                      onCancel={cancelEdit}
-                      inline
-                    />
-                  </div>
-                  {editedContent.structure.length > 1 && (
-                    <button
-                      onClick={() => removeSection(sectionIdx)}
-                      className="p-1 text-zinc-300 hover:text-red-500 dark:text-zinc-600 dark:hover:text-red-400 transition-colors"
-                      aria-label="Remove section"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Section body */}
-                {isExpanded && (
-                  <div className="px-4 py-3 space-y-2">
-                    {section.contents.map((item, itemIdx) => (
-                      <div key={itemIdx} className="flex items-start gap-2">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <EditableField
-                            value={normalizeItem(item)}
-                            isEditing={editingField === `item-${sectionIdx}-${itemIdx}`}
-                            onStartEdit={() => startEdit(`item-${sectionIdx}-${itemIdx}`)}
-                            onSave={(v) => saveField(`item-${sectionIdx}-${itemIdx}`, v)}
-                            onCancel={cancelEdit}
-                            multiline
-                          />
-                        </div>
-                        <button
-                          onClick={() => removeItem(sectionIdx, itemIdx)}
-                          className="mt-1 p-0.5 text-zinc-300 hover:text-red-500 dark:text-zinc-600 dark:hover:text-red-400 transition-colors flex-shrink-0"
-                          aria-label="Remove item"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => addItem(sectionIdx)}
-                      className="flex items-center gap-1 mt-1 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Add item
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {editedContent.structure.map((section, sectionIdx) => (
+            <SectionRenderer
+              key={sectionIdx}
+              section={section}
+              sectionIdx={sectionIdx}
+              isExpanded={expandedSections.has(sectionIdx)}
+              editingField={editingField}
+              canRemove={editedContent.structure.length > 1}
+              normalizeItem={normalizeItem}
+              onToggle={toggleSection}
+              onStartEdit={startEdit}
+              onSaveField={saveField}
+              onCancelEdit={cancelEdit}
+              onRemoveSection={removeSection}
+              onAddItem={addItem}
+              onRemoveItem={removeItem}
+            />
+          ))}
         </div>
 
         {/* ── Personal Experience ────────────────────────────── */}
@@ -564,44 +387,19 @@ export function ContentReviewPanel({
         )}
 
         {/* ── Common Mistakes ────────────────────────────────── */}
-        {editedContent.commonMistakes.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-3">
-              Common Mistakes
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {editedContent.commonMistakes.map((mistake, i) => (
-                <div key={i} className="group relative">
-                  {editingField === `mistake-${i}` ? (
-                    <div className="flex items-center gap-1">
-                      <EditableField
-                        value={normalizeItem(mistake)}
-                        isEditing
-                        onStartEdit={() => startEdit(`mistake-${i}`)}
-                        onSave={(v) => saveField(`mistake-${i}`, v)}
-                        onCancel={cancelEdit}
-                        inline
-                      />
-                    </div>
-                  ) : (
-                    <span
-                      onClick={() => startEdit(`mistake-${i}`)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-                    >
-                      {normalizeItem(mistake)}
-                      <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <MistakesList
+          mistakes={editedContent.commonMistakes}
+          editingField={editingField}
+          normalizeItem={normalizeItem}
+          onStartEdit={startEdit}
+          onSaveField={saveField}
+          onCancelEdit={cancelEdit}
+        />
 
         {/* ── Differentiation ────────────────────────────────── */}
         {editedContent.differentiation && (
           <div>
-            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
               What Makes This Different
             </h3>
             <EditableField

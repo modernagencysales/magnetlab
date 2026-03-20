@@ -88,17 +88,23 @@ export async function POST(request: NextRequest) {
       const { data: entries } = await supabase
         .from('cp_knowledge_entries')
         .select('content')
-        .in('id', knowledge_ids);
+        .in('id', knowledge_ids)
+        .eq('user_id', userId);
       if (entries && entries.length > 0) {
         primitives.knowledge = entries.map((e: { content: string }) => ({ content: e.content }));
       }
     }
 
     if (template_id) {
+      const teamId = scope.teamId;
+      const templateOrFilter = teamId
+        ? `is_global.eq.true,user_id.eq.${session.user.id},team_id.eq.${teamId}`
+        : `is_global.eq.true,user_id.eq.${session.user.id}`;
       const { data: template } = await supabase
         .from('cp_post_templates')
         .select('structure')
         .eq('id', template_id)
+        .or(templateOrFilter)
         .single();
       if (template) {
         primitives.template = { structure: template.structure };
@@ -110,6 +116,7 @@ export async function POST(request: NextRequest) {
         .from('cp_content_ideas')
         .select('core_insight, key_points')
         .eq('id', idea_id)
+        .eq('user_id', userId)
         .single();
       if (idea) {
         primitives.idea = {
@@ -120,10 +127,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (style_id) {
+      const teamId = scope.teamId;
+      const styleOrFilter = teamId
+        ? `user_id.eq.${userId},team_id.eq.${teamId}`
+        : `user_id.eq.${userId}`;
       const { data: style } = await supabase
         .from('cp_writing_styles')
         .select('tone, vocabulary, banned_phrases')
         .eq('id', style_id)
+        .or(styleOrFilter)
         .single();
       if (style) {
         primitives.voice = {

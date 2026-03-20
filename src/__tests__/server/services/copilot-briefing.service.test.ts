@@ -83,13 +83,26 @@ const TEAM_SCOPE: DataScope = { type: 'team', userId: 'user-test-123', teamId: '
 
 const NOW = new Date('2026-03-19T12:00:00Z');
 
+interface QueryOverrides {
+  queueCount?: number;
+  scheduledData?: { scheduled_time: string }[];
+  ideasCount?: number;
+  leadsData?: { lead_magnet_id: string }[];
+  leadMagnetsData?: { id: string; title: string }[];
+  postCampaignsCount?: number;
+  outreachCount?: number;
+  magnetTotal?: number;
+  magnetPublishedCount?: number;
+}
+
 /**
- * Build a full set of mocks in the order fetchBriefingData calls them.
+ * Build a full set of mocks in the order fetchBriefingData calls them (user scope).
  *
- * Execution order:
- *   Parallel Promise.all (calls 0–7):
- *     0. cp_pipeline_posts (queue count)
- *     1. cp_pipeline_posts (scheduled this week)
+ * Execution order (user scope — no team_profiles lookups):
+ *   Sequential pre-Promise.all:
+ *     0. cp_pipeline_posts (queue count) — applyPostScope returns user_id filter
+ *     1. cp_pipeline_posts (scheduled this week) — applyPostScope returns user_id filter
+ *   Parallel Promise.all (calls 2–9):
  *     2. cp_content_ideas (ideas count)
  *     3. funnel_leads (new leads)
  *     4. post_campaigns (active count)
@@ -99,19 +112,7 @@ const NOW = new Date('2026-03-19T12:00:00Z');
  *   Sequential (call 8, only when leads.length > 0):
  *     8. lead_magnets (title lookup for source grouping)
  */
-function mockAllQueries(
-  overrides: {
-    queueCount?: number;
-    scheduledData?: { scheduled_time: string }[];
-    ideasCount?: number;
-    leadsData?: { lead_magnet_id: string }[];
-    leadMagnetsData?: { id: string; title: string }[];
-    postCampaignsCount?: number;
-    outreachCount?: number;
-    magnetTotal?: number;
-    magnetPublishedCount?: number;
-  } = {}
-) {
+function mockAllQueries(overrides: QueryOverrides = {}) {
   // 0. queueCount: cp_pipeline_posts where status = 'reviewing'
   mockSupabaseClient.from.mockImplementationOnce(() =>
     buildChain({ data: null, error: null, count: overrides.queueCount ?? 3 })
@@ -162,6 +163,97 @@ function mockAllQueries(
   );
 
   // 8. lead_magnets title lookup (sequential, only when leadsData has items)
+  const leadMagnetsData = overrides.leadMagnetsData ?? [
+    { id: 'magnet-1', title: 'GTM Blueprint' },
+    { id: 'magnet-2', title: 'Cold Email Guide' },
+  ];
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: leadMagnetsData, error: null })
+  );
+}
+
+/**
+ * Build mocks for team scope — includes team_profiles lookups for applyPostScope.
+ *
+ * Execution order (team scope):
+ *   Sequential pre-Promise.all:
+ *     0. cp_pipeline_posts (queue chain built)
+ *     1. team_profiles (lookup for queue applyPostScope)
+ *     2. cp_pipeline_posts (scheduled chain built)
+ *     3. team_profiles (lookup for scheduled applyPostScope)
+ *   Parallel Promise.all (calls 4–11):
+ *     4. cp_content_ideas
+ *     5. funnel_leads
+ *     6. post_campaigns
+ *     7. outreach_campaigns
+ *     8. lead_magnets (total)
+ *     9. lead_magnets (published)
+ *   Sequential:
+ *     10. lead_magnets (title lookup)
+ */
+function mockTeamQueries(overrides: QueryOverrides & { teamProfileId?: string } = {}) {
+  const teamProfileId = overrides.teamProfileId ?? 'tp-1';
+
+  // 0. cp_pipeline_posts (queue chain)
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: null, error: null, count: overrides.queueCount ?? 3 })
+  );
+
+  // 1. team_profiles lookup (for queue applyPostScope)
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: { id: teamProfileId }, error: null })
+  );
+
+  // 2. cp_pipeline_posts (scheduled chain)
+  const scheduledData = overrides.scheduledData ?? [
+    { scheduled_time: new Date(NOW.getTime() + 24 * 60 * 60 * 1000).toISOString() },
+    { scheduled_time: new Date(NOW.getTime() + 48 * 60 * 60 * 1000).toISOString() },
+  ];
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: scheduledData, error: null, count: scheduledData.length })
+  );
+
+  // 3. team_profiles lookup (for scheduled applyPostScope)
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: { id: teamProfileId }, error: null })
+  );
+
+  // 4. cp_content_ideas
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: null, error: null, count: overrides.ideasCount ?? 12 })
+  );
+
+  // 5. funnel_leads
+  const leadsData = overrides.leadsData ?? [
+    { lead_magnet_id: 'magnet-1' },
+    { lead_magnet_id: 'magnet-1' },
+    { lead_magnet_id: 'magnet-2' },
+  ];
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: leadsData, error: null })
+  );
+
+  // 6. post_campaigns
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: null, error: null, count: overrides.postCampaignsCount ?? 2 })
+  );
+
+  // 7. outreach_campaigns
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: null, error: null, count: overrides.outreachCount ?? 1 })
+  );
+
+  // 8. lead_magnets total
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: null, error: null, count: overrides.magnetTotal ?? 5 })
+  );
+
+  // 9. lead_magnets published
+  mockSupabaseClient.from.mockImplementationOnce(() =>
+    buildChain({ data: null, error: null, count: overrides.magnetPublishedCount ?? 3 })
+  );
+
+  // 10. lead_magnets title lookup
   const leadMagnetsData = overrides.leadMagnetsData ?? [
     { id: 'magnet-1', title: 'GTM Blueprint' },
     { id: 'magnet-2', title: 'Cold Email Guide' },
@@ -336,11 +428,29 @@ describe('fetchBriefingData', () => {
   });
 
   it('applies team_id scope when scope type is team for lead_magnets', async () => {
-    mockAllQueries();
+    mockTeamQueries();
     await fetchBriefingData(mockSupabaseClient as never, TEAM_SCOPE);
-    // lead_magnets total is the 7th parallel query (index 6 in from.mock.results)
-    const magnetTotalChain = mockSupabaseClient.from.mock.results[6].value;
+    // lead_magnets total is index 8 in team mode (0=posts, 1=team_profiles, 2=posts, 3=team_profiles, 4=ideas, 5=leads, 6=post_campaigns, 7=outreach, 8=magnets_total)
+    const magnetTotalChain = mockSupabaseClient.from.mock.results[8].value;
     expect(magnetTotalChain.eq).toHaveBeenCalledWith('team_id', TEAM_SCOPE.teamId);
+  });
+
+  it('applies team_profile_id scope for posts in team mode', async () => {
+    mockTeamQueries({ teamProfileId: 'tp-42' });
+    await fetchBriefingData(mockSupabaseClient as never, TEAM_SCOPE);
+
+    // Queue query is index 0 (cp_pipeline_posts chain)
+    const queueChain = mockSupabaseClient.from.mock.results[0].value;
+    expect(queueChain.eq).toHaveBeenCalledWith('team_profile_id', 'tp-42');
+
+    // Scheduled query is index 2 (cp_pipeline_posts chain, after team_profiles lookup at index 1)
+    const scheduledChain = mockSupabaseClient.from.mock.results[2].value;
+    expect(scheduledChain.eq).toHaveBeenCalledWith('team_profile_id', 'tp-42');
+
+    // team_profiles was queried with correct team_id and user_id
+    const teamProfileChain = mockSupabaseClient.from.mock.results[1].value;
+    expect(teamProfileChain.eq).toHaveBeenCalledWith('team_id', TEAM_SCOPE.teamId);
+    expect(teamProfileChain.eq).toHaveBeenCalledWith('user_id', TEAM_SCOPE.userId);
   });
 
   it('handles nullish counts gracefully (returns 0)', async () => {

@@ -22,7 +22,7 @@ export default async function PostsPage() {
   if (!session?.user?.id) redirect('/login');
 
   return (
-    <Suspense>
+    <Suspense fallback={<div className="p-6 text-muted-foreground">Loading mixer...</div>}>
       <PostsContent />
     </Suspense>
   );

@@ -269,7 +269,7 @@ describe('executeLinkedInActions', () => {
     const result = await task.run();
 
     expect(mockDequeueNext).toHaveBeenCalledWith('account-1');
-    expect(mockMarkExecuting).toHaveBeenCalledWith('action-1');
+    // markExecuting no longer called — dequeue_and_claim RPC atomically sets status
     expect(mockExecuteAction).toHaveBeenCalledWith(mockUnipileClient, action);
     expect(mockMarkCompleted).toHaveBeenCalledWith('action-1', expect.any(Object));
     expect(mockInsertActivityLog).toHaveBeenCalledTimes(1);

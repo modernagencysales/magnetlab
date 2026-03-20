@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCopilotNavigator } from '@/components/copilot/CopilotNavigator';
 import { logError } from '@/lib/utils/logger';
+import { listConversations } from '@/frontend/api/copilot';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -68,12 +69,8 @@ export function CommandBar() {
     setCapturedContext(pageContext);
 
     // Fetch recent conversations
-    fetch('/api/copilot/conversations?limit=5')
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((data: { conversations: Conversation[] }) => {
+    listConversations(5)
+      .then((data) => {
         setConversations(data.conversations ?? []);
       })
       .catch((err) => {

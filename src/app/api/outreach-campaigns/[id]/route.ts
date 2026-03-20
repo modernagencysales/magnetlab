@@ -8,7 +8,8 @@ import { auth } from '@/lib/auth';
 import { logError } from '@/lib/utils/logger';
 import * as service from '@/server/services/outreach-campaigns.service';
 import { getStatusCode } from '@/server/services/outreach-campaigns.service';
-import type { UpdateOutreachCampaignInput } from '@/lib/types/outreach-campaigns';
+import { UpdateOutreachCampaignSchema } from '@/lib/validations/outreach-campaigns';
+import { formatZodError } from '@/lib/validations/api';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -37,7 +38,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const body = (await request.json()) as UpdateOutreachCampaignInput;
+    const rawBody = await request.json();
+    const parsed = UpdateOutreachCampaignSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+    }
+    const body = parsed.data;
     const result = await service.updateCampaign(session.user.id, id, body);
     if (!result.success) {
       const status = result.error === 'not_found' ? 404 : result.error === 'validation' ? 400 : 500;

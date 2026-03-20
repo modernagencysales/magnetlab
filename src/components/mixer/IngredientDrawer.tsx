@@ -2,8 +2,8 @@
 
 /**
  * IngredientDrawer. Sheet-based picker for a single ingredient type.
- * Fetches real data for: exploit, style, template, creative.
- * Shows placeholder for: knowledge, trend, recycled.
+ * Fetches real data for: knowledge (topics), exploit, style, template, creative, trends.
+ * Shows placeholder for: recycled.
  * Never imports from Next.js HTTP layer.
  */
 
@@ -14,6 +14,8 @@ import { getExploits } from '@/frontend/api/content-pipeline/exploits';
 import { getStyles } from '@/frontend/api/content-pipeline/styles';
 import { listTemplates } from '@/frontend/api/content-pipeline/templates';
 import { getCreatives } from '@/frontend/api/content-pipeline/creatives';
+import { getTopics } from '@/frontend/api/content-pipeline/knowledge';
+import { getTrends } from '@/frontend/api/content-pipeline/trends';
 import { INGREDIENT_META } from './ingredientMeta';
 import type { IngredientType } from '@/lib/types/mixer';
 
@@ -35,19 +37,30 @@ interface IngredientDrawerProps {
 
 // ─── Placeholder types ─────────────────────────────────────────────────────
 
-const PLACEHOLDER_TYPES: IngredientType[] = ['knowledge', 'trends', 'recycled'];
+const PLACEHOLDER_TYPES: IngredientType[] = ['recycled'];
 
 const PLACEHOLDER_MESSAGES: Record<string, string> = {
-  knowledge: 'Knowledge topics — coming soon. Connect your AI Brain to unlock this ingredient.',
-  trends:
-    'Trend detection — coming soon. LinkedIn trend scanning will populate this automatically.',
   recycled: 'Content recycling — coming soon. Past posts will appear here for remix.',
 };
 
 // ─── Data fetchers ────────────────────────────────────────────────────────────
 
-async function fetchItems(type: IngredientType): Promise<DrawerItem[]> {
+async function fetchItems(type: IngredientType, teamProfileId?: string): Promise<DrawerItem[]> {
   switch (type) {
+    case 'knowledge': {
+      const res = await getTopics({ limit: 50 });
+      const topics = (res.topics ?? []) as Array<{
+        id: string;
+        slug: string;
+        display_name: string;
+        entry_count?: number;
+      }>;
+      return topics.map((t) => ({
+        id: t.slug || t.id,
+        name: t.display_name,
+        description: t.entry_count ? `${t.entry_count} entries` : undefined,
+      }));
+    }
     case 'exploits': {
       const items = await getExploits({ with_stats: true });
       return items.map((e) => ({
@@ -66,8 +79,19 @@ async function fetchItems(type: IngredientType): Promise<DrawerItem[]> {
       return styles.map((s) => ({ id: s.id, name: s.name, description: s.description }));
     }
     case 'templates': {
-      const templates = await listTemplates('mine');
-      return (templates as Array<{ id: string; name: string; description?: string }>).map((t) => ({
+      // Fetch both user's own templates and global ones
+      const [mine, global] = await Promise.all([
+        listTemplates('mine'),
+        listTemplates('global'),
+      ]);
+      const all = [...(mine as Array<{ id: string; name: string; description?: string }>), ...(global as Array<{ id: string; name: string; description?: string }>)];
+      // Deduplicate by id
+      const seen = new Set<string>();
+      return all.filter((t) => {
+        if (seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      }).map((t) => ({
         id: t.id,
         name: t.name,
         description: t.description,
@@ -81,6 +105,14 @@ async function fetchItems(type: IngredientType): Promise<DrawerItem[]> {
         description: `${c.source_platform} · score ${c.commentary_worthy_score}`,
       }));
     }
+    case 'trends': {
+      const topics = await getTrends(20);
+      return topics.map((t) => ({
+        id: t.topic,
+        name: t.topic,
+        description: `${t.count} mentions · ${t.trend}`,
+      }));
+    }
     default:
       return [];
   }
@@ -88,7 +120,7 @@ async function fetchItems(type: IngredientType): Promise<DrawerItem[]> {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function IngredientDrawer({ type, open, onOpenChange, onSelect }: IngredientDrawerProps) {
+export function IngredientDrawer({ type, open, onOpenChange, teamProfileId, onSelect }: IngredientDrawerProps) {
   const [items, setItems] = useState<DrawerItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -102,7 +134,7 @@ export function IngredientDrawer({ type, open, onOpenChange, onSelect }: Ingredi
     if (!open || isPlaceholder) return;
     setLoading(true);
     setSearch('');
-    fetchItems(type)
+    fetchItems(type, teamProfileId)
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoading(false));

@@ -4,6 +4,7 @@
  * MixerZone. Zone 1 — the main mixer interface.
  * Orchestrates ingredient tile selection, drawer, instructions, and generation.
  * Collapses to MixerBar after generation and hands off to ResultsZone.
+ * Selected state is lifted to the parent (PostsContent) so StartFromHere can pre-fill it.
  * Never imports from Next.js HTTP layer.
  */
 
@@ -22,15 +23,23 @@ import type { IngredientType, MixerResult } from '@/lib/types/mixer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface MixerZoneProps {
+export interface SelectedIngredient {
+  id: string;
+  name: string;
+}
+
+export interface MixerZoneProps {
   teamProfileId: string;
   authorName?: string;
   authorInitials?: string;
-}
-
-interface SelectedIngredient {
-  id: string;
-  name: string;
+  /** Lifted state — controlled by PostsContent so StartFromHere can pre-fill */
+  selected: Map<IngredientType, SelectedIngredient>;
+  onSelect: (type: IngredientType, item: SelectedIngredient) => void;
+  onDeselect: (type: IngredientType) => void;
+  drawerOpen: boolean;
+  activeDrawerType: IngredientType;
+  onDrawerOpenChange: (open: boolean) => void;
+  onDrawerTypeChange: (type: IngredientType) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -62,41 +71,37 @@ export function MixerZone({
   teamProfileId,
   authorName = 'You',
   authorInitials = 'Y',
+  selected,
+  onSelect,
+  onDeselect,
+  drawerOpen,
+  activeDrawerType,
+  onDrawerOpenChange,
+  onDrawerTypeChange,
 }: MixerZoneProps) {
-  // ─── State ──────────────────────────────────────────
-  const [selected, setSelected] = useState<Map<IngredientType, SelectedIngredient>>(new Map());
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [activeDrawerType, setActiveDrawerType] = useState<IngredientType>('exploits');
+  // ─── Local state (not lifted — doesn't affect StartFromHere) ──────────────
   const [instructions, setInstructions] = useState('');
   const [result, setResult] = useState<MixerResult | null>(null);
   const [collapsed, setCollapsed] = useState(false);
 
   const { generate, isPending } = useMix();
 
-  // ─── Handlers ───────────────────────────────────────
-  const handleTileClick = useCallback((type: IngredientType) => {
-    setActiveDrawerType(type);
-    setDrawerOpen(true);
-  }, []);
+  // ─── Handlers ────────────────────────────────────────────────────────────
 
-  const handleSelect = useCallback(
-    (item: { id: string; name: string }) => {
-      setSelected((prev) => {
-        const next = new Map(prev);
-        next.set(activeDrawerType, item);
-        return next;
-      });
+  const handleTileClick = useCallback(
+    (type: IngredientType) => {
+      onDrawerTypeChange(type);
+      onDrawerOpenChange(true);
     },
-    [activeDrawerType]
+    [onDrawerTypeChange, onDrawerOpenChange]
   );
 
-  const handleDeselect = useCallback((type: IngredientType) => {
-    setSelected((prev) => {
-      const next = new Map(prev);
-      next.delete(type);
-      return next;
-    });
-  }, []);
+  const handleDrawerSelect = useCallback(
+    (item: { id: string; name: string }) => {
+      onSelect(activeDrawerType, item);
+    },
+    [activeDrawerType, onSelect]
+  );
 
   const handleGenerate = useCallback(
     async (output: 'drafts' | 'ideas' = 'drafts') => {
@@ -142,17 +147,19 @@ export function MixerZone({
     }
   }, []);
 
-  // ─── Selected ingredients for MixerBar ──────────────
+  // ─── Selected ingredients for MixerBar ───────────────────────────────────
+
   const selectedIngredients = INGREDIENT_TYPE_ORDER.filter((t) => selected.has(t)).map((t) => ({
     type: t,
     name: selected.get(t)!.name,
     color: INGREDIENT_META[t].selectedClasses,
   }));
 
-  // ─── Render ──────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-4">
-      {/* ─── Collapsed recipe bar ─────────────────────── */}
+      {/* ─── Collapsed recipe bar ──────────────────────── */}
       {collapsed && result ? (
         <MixerBar
           ingredients={selectedIngredients}
@@ -161,7 +168,7 @@ export function MixerZone({
         />
       ) : (
         <>
-          {/* ─── Ingredient tiles ─────────────────────── */}
+          {/* ─── Ingredient tiles ──────────────────────── */}
           <div className="flex flex-wrap gap-2">
             {INGREDIENT_TYPE_ORDER.map((type) => {
               const meta = INGREDIENT_META[type];
@@ -176,13 +183,13 @@ export function MixerZone({
                   selectedName={sel?.name ?? null}
                   color={meta.selectedClasses}
                   onSelect={() => handleTileClick(type)}
-                  onDeselect={() => handleDeselect(type)}
+                  onDeselect={() => onDeselect(type)}
                 />
               );
             })}
           </div>
 
-          {/* ─── Instructions ─────────────────────────── */}
+          {/* ─── Instructions ──────────────────────────── */}
           <div>
             <textarea
               className="w-full min-h-[72px] px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-ring"
@@ -193,7 +200,7 @@ export function MixerZone({
             />
           </div>
 
-          {/* ─── Generate actions ─────────────────────── */}
+          {/* ─── Generate actions ──────────────────────── */}
           <div className="flex items-center gap-3">
             <Button
               className="flex-1"
@@ -238,13 +245,13 @@ export function MixerZone({
         />
       )}
 
-      {/* ─── Ingredient drawer ─────────────────────────── */}
+      {/* ─── Ingredient drawer ────────────────────────── */}
       <IngredientDrawer
         type={activeDrawerType}
         open={drawerOpen}
-        onOpenChange={setDrawerOpen}
+        onOpenChange={onDrawerOpenChange}
         teamProfileId={teamProfileId}
-        onSelect={handleSelect}
+        onSelect={handleDrawerSelect}
       />
     </div>
   );
