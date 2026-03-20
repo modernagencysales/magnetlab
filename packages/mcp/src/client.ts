@@ -884,6 +884,41 @@ export class MagnetLabClient {
     return this.request<unknown>('DELETE', `/post-campaigns/${encodeURIComponent(campaignId)}`);
   }
 
+  // ─── DM Coach ──────────────────────────────────────────────────────────────
+
+  async listDmContacts(params?: Record<string, string>) {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.goal) searchParams.set('goal', params.goal);
+    if (params?.search) searchParams.set('search', params.search);
+    const qs = searchParams.toString();
+    return this.request('GET', `/dm-coach${qs ? `?${qs}` : ''}`);
+  }
+
+  async getDmContact(contactId: string) {
+    return this.request('GET', `/dm-coach/${contactId}`);
+  }
+
+  async createDmContact(input: Record<string, unknown>) {
+    return this.request('POST', `/dm-coach`, input);
+  }
+
+  async updateDmContact(contactId: string, input: Record<string, unknown>) {
+    return this.request('PATCH', `/dm-coach/${contactId}`, input);
+  }
+
+  async deleteDmContact(contactId: string) {
+    return this.request('DELETE', `/dm-coach/${contactId}`);
+  }
+
+  async addDmMessages(contactId: string, messages: Array<Record<string, unknown>>) {
+    return this.request('POST', `/dm-coach/${contactId}/messages`, { messages });
+  }
+
+  async dmCoachSuggest(contactId: string) {
+    return this.aiRequest('POST', `/dm-coach/${contactId}/suggest`, {});
+  }
+
   // ─── Lead Magnet Post ──────────────────────────────────────────────────────
 
   async listSenderAccounts() {

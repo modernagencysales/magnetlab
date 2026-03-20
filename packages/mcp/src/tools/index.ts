@@ -19,6 +19,7 @@ import { linkedinActivityTools } from './linkedin-activity.js';
 import { mixerTools } from './mixer.js';
 import { postCampaignTools } from './post-campaigns.js';
 import { accountSafetyTools } from './account-safety.js';
+import { dmCoachTools } from './dm-coach.js';
 import { leadMagnetPostTools } from './lead-magnet-post.js';
 
 export const tools: Tool[] = [
@@ -40,6 +41,7 @@ export const tools: Tool[] = [
   ...mixerTools,
   ...postCampaignTools,
   ...accountSafetyTools,
+  ...dmCoachTools,
   ...leadMagnetPostTools,
 ];
 
