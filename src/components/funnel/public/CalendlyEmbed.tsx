@@ -79,12 +79,14 @@ export function CalendlyEmbed({ url, prefillData }: CalendlyEmbedProps) {
 
     if (embedType === 'iclosed') {
       const existing = document.querySelector('script[src="https://app.iclosed.io/assets/widget.js"]');
-      if (!existing) {
-        const script = document.createElement('script');
-        script.src = 'https://app.iclosed.io/assets/widget.js';
-        script.async = true;
-        document.body.appendChild(script);
+      if (existing) {
+        // Script already loaded — remove and re-add to force re-scan of new widget divs
+        existing.remove();
       }
+      const script = document.createElement('script');
+      script.src = 'https://app.iclosed.io/assets/widget.js';
+      script.async = true;
+      document.body.appendChild(script);
     }
   }, [embedType]);
 
