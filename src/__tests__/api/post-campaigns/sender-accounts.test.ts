@@ -69,6 +69,7 @@ describe('GET /api/post-campaigns/sender-accounts', () => {
       name: 'Christian',
       unipile_account_id: 'acc1',
     });
+    expect(mockGetProfiles).toHaveBeenCalledWith('t1');
   });
 
   it('returns empty array when team scope has teamId but no profiles', async () => {
