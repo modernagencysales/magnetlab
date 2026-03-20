@@ -1,15 +1,12 @@
 /** DM Coach Actions.
  * Copilot actions for coaching DM replies and saving conversations.
- * Uses services with DataScope — no raw userId/teamId threading.
+ * Delegates all AI + persistence to dm-coach.service. Never imports AI SDK directly.
  * Never imports NextRequest, NextResponse, or cookies. */
 
 import { registerAction } from './registry';
-import type { ActionContext, ActionResult } from './types';
 import * as dmCoachService from '@/server/services/dm-coach.service';
-import { buildDmCoachPrompt } from '@/lib/ai/dm-coach/prompt-builder';
-import { parseCoachResponse } from '@/lib/ai/dm-coach/response-parser';
-import { createAnthropicClient } from '@/lib/ai/anthropic-client';
 import { logError } from '@/lib/utils/logger';
+import type { ActionContext, ActionResult } from './types';
 import type { ConversationGoal, QualificationStage } from '@/lib/types/dm-coach';
 
 // ─── Suggest ──────────────────────────────────────────────────────────────────
@@ -62,83 +59,62 @@ registerAction({
       goal?: ConversationGoal;
     }
   ): Promise<ActionResult> => {
-    // ── Tracked contact path ──────────────────────────────────────────────
-    if (params.contact_id) {
-      const result = await dmCoachService.getSuggestion(ctx.scope.userId, params.contact_id);
-      if (!result.success) {
-        return { success: false, error: result.message || 'Failed to get suggestion' };
+    try {
+      // ── Tracked contact path ────────────────────────────────────────────
+      if (params.contact_id) {
+        const suggestion = await dmCoachService.getSuggestion(ctx.scope.userId, params.contact_id);
+        return {
+          success: true,
+          data: {
+            suggestedResponse: suggestion.suggested_response,
+            reasoning: suggestion.reasoning,
+            stageBefore: suggestion.stage_before,
+            stageAfter: suggestion.stage_after,
+          },
+          displayHint: 'dm_coach_suggestion',
+        };
       }
+
+      // ── One-off coaching path ───────────────────────────────────────────
+      if (!params.messages || params.messages.length === 0) {
+        return {
+          success: false,
+          error: 'Provide either a contact_id or messages for coaching.',
+        };
+      }
+
+      const goal: ConversationGoal = params.goal || 'book_meeting';
+      const parsed = await dmCoachService.generateCoaching({
+        contactName: params.their_name || 'Contact',
+        contactHeadline: params.their_headline || '',
+        contactCompany: '',
+        contactLocation: '',
+        conversationHistory: params.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: new Date().toISOString(),
+        })),
+        conversationGoal: goal,
+        currentStage: 'unknown' as QualificationStage,
+      });
+
       return {
         success: true,
         data: {
-          suggestedResponse: result.data.suggested_response,
-          reasoning: result.data.reasoning,
-          stageBefore: result.data.stage_before,
-          stageAfter: result.data.stage_after,
+          suggestedResponse: parsed.suggestedResponse,
+          reasoning: parsed.reasoning,
+          stageBefore: parsed.qualificationStageBefore,
+          stageAfter: parsed.qualificationStageAfter,
         },
         displayHint: 'dm_coach_suggestion',
       };
-    }
-
-    // ── One-off coaching path ─────────────────────────────────────────────
-    if (!params.messages || params.messages.length === 0) {
+    } catch (err) {
+      logError('dm-coach-action/suggest', err, { userId: ctx.scope.userId });
       return {
         success: false,
-        error: 'Provide either a contact_id or messages for coaching.',
+        error: err instanceof Error ? err.message : 'Failed to get suggestion',
       };
     }
-
-    const goal: ConversationGoal = params.goal || 'book_meeting';
-    const contactName = params.their_name || 'Contact';
-
-    const prompt = buildDmCoachPrompt({
-      contactName,
-      contactHeadline: params.their_headline || '',
-      contactCompany: '',
-      contactLocation: '',
-      conversationHistory: params.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-        timestamp: new Date().toISOString(),
-      })),
-      conversationGoal: goal,
-      currentStage: 'unknown' as QualificationStage,
-    });
-
-    let rawResponse: string;
-    try {
-      const anthropic = createAnthropicClient('dm-coach-action');
-      const completion = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: prompt }],
-      });
-
-      const textBlock = completion.content.find((b: { type: string }) => b.type === 'text') as
-        | { type: 'text'; text: string }
-        | undefined;
-      rawResponse = textBlock?.text || '';
-
-      if (!rawResponse) {
-        return { success: false, error: 'AI returned an empty response' };
-      }
-    } catch (aiError) {
-      logError('dm-coach-action/suggest', aiError, { userId: ctx.scope.userId });
-      return { success: false, error: 'Failed to generate AI coaching suggestion' };
-    }
-
-    const parsed = parseCoachResponse(rawResponse);
-
-    return {
-      success: true,
-      data: {
-        suggestedResponse: parsed.suggestedResponse,
-        reasoning: parsed.reasoning,
-        stageBefore: parsed.qualificationStageBefore,
-        stageAfter: parsed.qualificationStageAfter,
-      },
-      displayHint: 'dm_coach_suggestion',
-    };
   },
 });
 
@@ -192,47 +168,42 @@ registerAction({
       goal?: ConversationGoal;
     }
   ): Promise<ActionResult> => {
-    // 1. Create contact
-    const contactResult = await dmCoachService.createContact(
-      ctx.scope.userId,
-      ctx.scope.teamId ?? null,
-      {
-        name: params.name,
-        linkedin_url: params.linkedin_url,
-        headline: params.headline,
-        company: params.company,
-        conversation_goal: params.goal,
-      }
-    );
+    try {
+      // 1. Create contact
+      const contact = await dmCoachService.createContact(
+        ctx.scope.userId,
+        ctx.scope.teamId ?? null,
+        {
+          name: params.name,
+          linkedin_url: params.linkedin_url,
+          headline: params.headline,
+          company: params.company,
+          conversation_goal: params.goal,
+        }
+      );
 
-    if (!contactResult.success) {
-      return { success: false, error: contactResult.message || 'Failed to create contact' };
-    }
+      // 2. Add messages
+      const messages = await dmCoachService.addMessages(ctx.scope.userId, contact.id, {
+        messages: params.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+      });
 
-    const contactId = contactResult.data.id;
-
-    // 2. Add messages
-    const messagesResult = await dmCoachService.addMessages(ctx.scope.userId, contactId, {
-      messages: params.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-    });
-
-    if (!messagesResult.success) {
+      return {
+        success: true,
+        data: {
+          contactId: contact.id,
+          messagesAdded: messages.length,
+        },
+        displayHint: 'text',
+      };
+    } catch (err) {
+      logError('dm-coach-action/save', err, { userId: ctx.scope.userId });
       return {
         success: false,
-        error: messagesResult.message || 'Contact created but failed to add messages',
+        error: err instanceof Error ? err.message : 'Failed to save conversation',
       };
     }
-
-    return {
-      success: true,
-      data: {
-        contactId,
-        messagesAdded: messagesResult.data.length,
-      },
-      displayHint: 'text',
-    };
   },
 });

@@ -1,5 +1,6 @@
 /** DM Coach Service. Business logic for DM coaching contacts, messages, and suggestions.
- * Never imports from the route layer. Side effects must not block core returns. */
+ * Never imports from the route layer. Side effects must not block core returns.
+ * Errors: throw Object.assign(new Error(msg), { statusCode }). */
 
 import { logError } from '@/lib/utils/logger';
 import * as repo from '@/server/repositories/dm-coach.repo';
@@ -11,24 +12,30 @@ import {
 import { buildDmCoachPrompt } from '@/lib/ai/dm-coach/prompt-builder';
 import { parseCoachResponse } from '@/lib/ai/dm-coach/response-parser';
 import { createAnthropicClient } from '@/lib/ai/anthropic-client';
+import type { DmCoachPromptParams } from '@/lib/ai/dm-coach/prompt-builder';
 import type {
   DmcContact,
   DmcMessage,
   DmcSuggestion,
+  CoachSuggestion,
   ContactStatus,
   ConversationGoal,
   QualificationStage,
 } from '@/lib/types/dm-coach';
 
-// ─── Result Types ────────────────────────────────────────────────────────────
+// ─── Error Helpers ───────────────────────────────────────────────────────────
 
-type ServiceSuccess<T> = { success: true; data: T };
-type ServiceError = {
-  success: false;
-  error: 'validation' | 'not_found' | 'database';
-  message?: string;
-};
-type ServiceResult<T> = ServiceSuccess<T> | ServiceError;
+function serviceError(message: string, statusCode: number): never {
+  throw Object.assign(new Error(message), { statusCode });
+}
+
+/** Extract statusCode from a service error, defaulting to 500. */
+export function getStatusCode(err: unknown): number {
+  if (err && typeof err === 'object' && 'statusCode' in err) {
+    return (err as { statusCode: number }).statusCode;
+  }
+  return 500;
+}
 
 // ─── Contact CRUD ────────────────────────────────────────────────────────────
 
@@ -36,39 +43,35 @@ export async function createContact(
   userId: string,
   teamId: string | null,
   input: unknown
-): Promise<ServiceResult<DmcContact>> {
+): Promise<DmcContact> {
   const parsed = CreateContactSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: 'validation', message: parsed.error.issues[0]?.message };
+    serviceError(parsed.error.issues[0]?.message || 'Invalid input', 400);
   }
 
   const { data, error } = await repo.createContact(userId, teamId, parsed.data);
   if (error) {
     logError('dm-coach/createContact', error, { userId });
-    return { success: false, error: 'database', message: error.message };
+    serviceError(error.message, 500);
   }
   if (!data) {
-    return { success: false, error: 'database', message: 'Failed to create contact' };
+    serviceError('Failed to create contact', 500);
   }
-  return { success: true, data };
+  return data as DmcContact;
 }
 
 export async function getContactWithMessages(
   userId: string,
   contactId: string
-): Promise<
-  ServiceResult<DmcContact & { messages: DmcMessage[]; latest_suggestion: DmcSuggestion | null }>
-> {
+): Promise<DmcContact & { messages: DmcMessage[]; latest_suggestion: DmcSuggestion | null }> {
   const { data: contact, error: contactError } = await repo.getContact(userId, contactId);
   if (contactError) {
-    if (contactError.code === 'PGRST116') {
-      return { success: false, error: 'not_found', message: 'Contact not found' };
-    }
+    if (contactError.code === 'PGRST116') serviceError('Contact not found', 404);
     logError('dm-coach/getContactWithMessages', contactError, { userId, contactId });
-    return { success: false, error: 'database', message: contactError.message };
+    serviceError(contactError.message, 500);
   }
   if (!contact) {
-    return { success: false, error: 'not_found', message: 'Contact not found' };
+    serviceError('Contact not found', 404);
   }
 
   const [messagesResult, suggestionsResult] = await Promise.all([
@@ -86,61 +89,53 @@ export async function getContactWithMessages(
   }
 
   return {
-    success: true,
-    data: {
-      ...contact,
-      messages: (messagesResult.data as DmcMessage[]) ?? [],
-      latest_suggestion: (suggestionsResult.data?.[0] as DmcSuggestion) ?? null,
-    },
+    ...(contact as DmcContact),
+    messages: (messagesResult.data as DmcMessage[]) ?? [],
+    latest_suggestion: (suggestionsResult.data?.[0] as DmcSuggestion) ?? null,
   };
 }
 
 export async function listContacts(
   userId: string,
   filters?: { status?: ContactStatus; goal?: ConversationGoal; search?: string }
-): Promise<ServiceResult<DmcContact[]>> {
+): Promise<DmcContact[]> {
   const { data, error } = await repo.listContacts(userId, filters);
   if (error) {
     logError('dm-coach/listContacts', error, { userId });
-    return { success: false, error: 'database', message: error.message };
+    serviceError(error.message, 500);
   }
-  return { success: true, data: (data as DmcContact[]) ?? [] };
+  return (data as DmcContact[]) ?? [];
 }
 
 export async function updateContact(
   userId: string,
   contactId: string,
   input: unknown
-): Promise<ServiceResult<DmcContact>> {
+): Promise<DmcContact> {
   const parsed = UpdateContactSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: 'validation', message: parsed.error.issues[0]?.message };
+    serviceError(parsed.error.issues[0]?.message || 'Invalid input', 400);
   }
 
   const { data, error } = await repo.updateContact(userId, contactId, parsed.data);
   if (error) {
-    if (error.code === 'PGRST116') {
-      return { success: false, error: 'not_found', message: 'Contact not found' };
-    }
+    if (error.code === 'PGRST116') serviceError('Contact not found', 404);
     logError('dm-coach/updateContact', error, { userId, contactId });
-    return { success: false, error: 'database', message: error.message };
+    serviceError(error.message, 500);
   }
   if (!data) {
-    return { success: false, error: 'not_found', message: 'Contact not found' };
+    serviceError('Contact not found', 404);
   }
-  return { success: true, data };
+  return data as DmcContact;
 }
 
-export async function deleteContact(
-  userId: string,
-  contactId: string
-): Promise<ServiceResult<{ id: string }>> {
+export async function deleteContact(userId: string, contactId: string): Promise<{ id: string }> {
   const { error } = await repo.deleteContact(userId, contactId);
   if (error) {
     logError('dm-coach/deleteContact', error, { userId, contactId });
-    return { success: false, error: 'database', message: error.message };
+    serviceError(error.message, 500);
   }
-  return { success: true, data: { id: contactId } };
+  return { id: contactId };
 }
 
 // ─── Messages ────────────────────────────────────────────────────────────────
@@ -149,75 +144,35 @@ export async function addMessages(
   userId: string,
   contactId: string,
   input: unknown
-): Promise<ServiceResult<DmcMessage[]>> {
+): Promise<DmcMessage[]> {
   const parsed = AddMessagesSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: 'validation', message: parsed.error.issues[0]?.message };
+    serviceError(parsed.error.issues[0]?.message || 'Invalid input', 400);
+  }
+
+  // Verify contact belongs to this user before inserting
+  const { data: contact, error: contactError } = await repo.getContact(userId, contactId);
+  if (contactError || !contact) {
+    serviceError('Contact not found', 404);
   }
 
   const { data, error } = await repo.addMessages(userId, contactId, parsed.data.messages);
   if (error) {
     logError('dm-coach/addMessages', error, { userId, contactId });
-    return { success: false, error: 'database', message: error.message };
+    serviceError(error.message, 500);
   }
-  return { success: true, data: (data as DmcMessage[]) ?? [] };
+  return (data as DmcMessage[]) ?? [];
 }
 
-// ─── Suggestions ─────────────────────────────────────────────────────────────
+// ─── AI Coaching ─────────────────────────────────────────────────────────────
 
-export async function getSuggestion(
-  userId: string,
-  contactId: string
-): Promise<ServiceResult<DmcSuggestion>> {
-  // 1. Verify the contact exists and belongs to this user
-  const { data: contact, error: contactError } = await repo.getContact(userId, contactId);
-  if (contactError) {
-    if (contactError.code === 'PGRST116') {
-      return { success: false, error: 'not_found', message: 'Contact not found' };
-    }
-    logError('dm-coach/getSuggestion', contactError, { userId, contactId });
-    return { success: false, error: 'database', message: contactError.message };
-  }
-  if (!contact) {
-    return { success: false, error: 'not_found', message: 'Contact not found' };
-  }
+/**
+ * Generate a coaching suggestion from a prompt. No persistence — pure AI call + parse.
+ * Used by both getSuggestion (tracked) and actions (one-off).
+ */
+export async function generateCoaching(input: DmCoachPromptParams): Promise<CoachSuggestion> {
+  const prompt = buildDmCoachPrompt(input);
 
-  // 2. Fetch conversation messages (last 20)
-  const { data: messages, error: messagesError } = await repo.listMessages(contactId, {
-    limit: 20,
-  });
-  if (messagesError) {
-    logError('dm-coach/getSuggestion/messages', messagesError, { contactId });
-    return { success: false, error: 'database', message: messagesError.message };
-  }
-
-  if (!messages || messages.length === 0) {
-    return {
-      success: false,
-      error: 'validation',
-      message: 'No messages to generate a suggestion from. Add messages first.',
-    };
-  }
-
-  // 3. Build the AI prompt
-  const typedContact = contact as DmcContact;
-  const typedMessages = messages as DmcMessage[];
-
-  const prompt = buildDmCoachPrompt({
-    contactName: typedContact.name,
-    contactHeadline: typedContact.headline || '',
-    contactCompany: typedContact.company || '',
-    contactLocation: typedContact.location || '',
-    conversationHistory: typedMessages.map((m) => ({
-      role: m.role as 'them' | 'me',
-      content: m.content,
-      timestamp: m.timestamp,
-    })),
-    conversationGoal: typedContact.conversation_goal,
-    currentStage: typedContact.qualification_stage,
-  });
-
-  // 4. Call Claude
   let rawResponse: string;
   try {
     const anthropic = createAnthropicClient('dm-coach');
@@ -231,20 +186,65 @@ export async function getSuggestion(
       | { type: 'text'; text: string }
       | undefined;
     rawResponse = textBlock?.text || '';
-
-    if (!rawResponse) {
-      logError('dm-coach/getSuggestion', new Error('Empty AI response'), { contactId });
-      return { success: false, error: 'database', message: 'AI returned an empty response' };
-    }
   } catch (aiError) {
-    logError('dm-coach/getSuggestion/ai', aiError, { userId, contactId });
-    return { success: false, error: 'database', message: 'Failed to generate AI suggestion' };
+    logError('dm-coach/generateCoaching/ai', aiError);
+    serviceError('Failed to generate AI suggestion', 500);
   }
 
-  // 5. Parse the response
-  const parsed = parseCoachResponse(rawResponse);
+  if (!rawResponse) {
+    logError('dm-coach/generateCoaching', new Error('Empty AI response'));
+    serviceError('AI returned an empty response', 500);
+  }
 
-  // 6. Save the suggestion
+  return parseCoachResponse(rawResponse);
+}
+
+// ─── Suggestions ─────────────────────────────────────────────────────────────
+
+export async function getSuggestion(userId: string, contactId: string): Promise<DmcSuggestion> {
+  // 1. Verify the contact exists and belongs to this user
+  const { data: contact, error: contactError } = await repo.getContact(userId, contactId);
+  if (contactError) {
+    if (contactError.code === 'PGRST116') serviceError('Contact not found', 404);
+    logError('dm-coach/getSuggestion', contactError, { userId, contactId });
+    serviceError(contactError.message, 500);
+  }
+  if (!contact) {
+    serviceError('Contact not found', 404);
+  }
+
+  // 2. Fetch conversation messages (last 20)
+  const { data: messages, error: messagesError } = await repo.listMessages(contactId, {
+    limit: 20,
+  });
+  if (messagesError) {
+    logError('dm-coach/getSuggestion/messages', messagesError, { contactId });
+    serviceError(messagesError.message, 500);
+  }
+
+  if (!messages || messages.length === 0) {
+    serviceError('No messages to generate a suggestion from. Add messages first.', 400);
+  }
+
+  // 3. Generate coaching via shared AI method
+  const typedContact = contact as DmcContact;
+  const typedMessages = messages as DmcMessage[];
+
+  const parsed = await generateCoaching({
+    contactName: typedContact.name,
+    contactHeadline: typedContact.headline || '',
+    contactCompany: typedContact.company || '',
+    contactLocation: typedContact.location || '',
+    conversationHistory: typedMessages.map((m) => ({
+      role: m.role as 'them' | 'me',
+      content: m.content,
+      timestamp: m.timestamp,
+    })),
+    conversationGoal: typedContact.conversation_goal,
+    currentStage: typedContact.qualification_stage,
+  });
+
+  // 4. Save the suggestion
   const { data: saved, error: saveError } = await repo.saveSuggestion(userId, contactId, {
     suggested_response: parsed.suggestedResponse,
     reasoning: parsed.reasoning,
@@ -255,13 +255,13 @@ export async function getSuggestion(
 
   if (saveError) {
     logError('dm-coach/getSuggestion/save', saveError, { contactId });
-    return { success: false, error: 'database', message: saveError.message };
+    serviceError(saveError.message, 500);
   }
   if (!saved) {
-    return { success: false, error: 'database', message: 'Failed to save suggestion' };
+    serviceError('Failed to save suggestion', 500);
   }
 
-  // 7. Auto-advance qualification stage if the AI suggests progression
+  // 5. Auto-advance qualification stage if the AI suggests progression
   // Side effect — must not block the core return
   if (
     parsed.qualificationStageAfter !== 'unknown' &&
@@ -281,34 +281,22 @@ export async function getSuggestion(
     }
   }
 
-  return { success: true, data: saved as DmcSuggestion };
+  return saved as DmcSuggestion;
 }
 
 export async function markSuggestionUsed(
   userId: string,
   suggestionId: string,
   editedResponse?: string
-): Promise<ServiceResult<DmcSuggestion>> {
+): Promise<DmcSuggestion> {
   const { data, error } = await repo.markSuggestionUsed(userId, suggestionId, editedResponse);
   if (error) {
-    if (error.code === 'PGRST116') {
-      return { success: false, error: 'not_found', message: 'Suggestion not found' };
-    }
+    if (error.code === 'PGRST116') serviceError('Suggestion not found', 404);
     logError('dm-coach/markSuggestionUsed', error, { userId, suggestionId });
-    return { success: false, error: 'database', message: error.message };
+    serviceError(error.message, 500);
   }
   if (!data) {
-    return { success: false, error: 'not_found', message: 'Suggestion not found' };
+    serviceError('Suggestion not found', 404);
   }
-  return { success: true, data: data as DmcSuggestion };
-}
-
-// ─── Error Helper ────────────────────────────────────────────────────────────
-
-/** Extract statusCode from a service error, defaulting to 500. */
-export function getStatusCode(err: unknown): number {
-  if (err && typeof err === 'object' && 'statusCode' in err) {
-    return (err as { statusCode: number }).statusCode;
-  }
-  return 500;
+  return data as DmcSuggestion;
 }

@@ -17,25 +17,17 @@ export async function POST(
 
     const { suggestionId } = await params;
     const body = await req.json().catch(() => ({}));
-    const result = await service.markSuggestionUsed(
+    const suggestion = await service.markSuggestionUsed(
       session.user.id,
       suggestionId,
       body.edited_response
     );
-
-    if (!result.success) {
-      if (result.error === 'not_found')
-        return NextResponse.json({ error: result.message }, { status: 404 });
-      if (result.error === 'validation')
-        return NextResponse.json({ error: result.message }, { status: 400 });
-      if (result.error === 'database')
-        return NextResponse.json({ error: result.message }, { status: 500 });
-      return NextResponse.json({ error: result.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ suggestion: result.data });
+    return NextResponse.json({ suggestion });
   } catch (err) {
     logError('api/dm-coach/suggestions/[suggestionId]/use/POST', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Internal server error' },
+      { status: service.getStatusCode(err) }
+    );
   }
 }

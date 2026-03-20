@@ -21,18 +21,14 @@ export async function GET(req: NextRequest) {
       search: searchParams.get('search') || undefined,
     };
 
-    const result = await service.listContacts(session.user.id, filters);
-
-    if (!result.success) {
-      if (result.error === 'database')
-        return NextResponse.json({ error: result.message }, { status: 500 });
-      return NextResponse.json({ error: result.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ contacts: result.data });
+    const contacts = await service.listContacts(session.user.id, filters);
+    return NextResponse.json({ contacts });
   } catch (err) {
     logError('api/dm-coach/GET', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Internal server error' },
+      { status: service.getStatusCode(err) }
+    );
   }
 }
 
@@ -44,19 +40,13 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const result = await service.createContact(session.user.id, null, body);
-
-    if (!result.success) {
-      if (result.error === 'validation')
-        return NextResponse.json({ error: result.message }, { status: 400 });
-      if (result.error === 'database')
-        return NextResponse.json({ error: result.message }, { status: 500 });
-      return NextResponse.json({ error: result.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ contact: result.data }, { status: 201 });
+    const contact = await service.createContact(session.user.id, null, body);
+    return NextResponse.json({ contact }, { status: 201 });
   } catch (err) {
     logError('api/dm-coach/POST', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Internal server error' },
+      { status: service.getStatusCode(err) }
+    );
   }
 }

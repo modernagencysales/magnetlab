@@ -17,21 +17,13 @@ export async function POST(
 
     const { contactId } = await params;
     const body = await req.json();
-    const result = await service.addMessages(session.user.id, contactId, body);
-
-    if (!result.success) {
-      if (result.error === 'not_found')
-        return NextResponse.json({ error: result.message }, { status: 404 });
-      if (result.error === 'validation')
-        return NextResponse.json({ error: result.message }, { status: 400 });
-      if (result.error === 'database')
-        return NextResponse.json({ error: result.message }, { status: 500 });
-      return NextResponse.json({ error: result.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ messages: result.data }, { status: 201 });
+    const messages = await service.addMessages(session.user.id, contactId, body);
+    return NextResponse.json({ messages }, { status: 201 });
   } catch (err) {
     logError('api/dm-coach/[contactId]/messages/POST', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Internal server error' },
+      { status: service.getStatusCode(err) }
+    );
   }
 }
