@@ -392,6 +392,136 @@ describe('POST /api/content-pipeline/posts/generate', () => {
     });
   });
 
+  // ─── Cross-tenant scoping ──────────────────────────────────────────────────
+
+  describe('cross-tenant data scoping', () => {
+    const KNOWLEDGE_UUID_1 = '44444444-4444-4444-4444-444444444444';
+    const KNOWLEDGE_UUID_2 = '55555555-5555-5555-5555-555555555555';
+    const TEMPLATE_UUID = '66666666-6666-6666-6666-666666666666';
+    const IDEA_UUID = '77777777-7777-7777-7777-777777777777';
+    const STYLE_UUID = '88888888-8888-8888-8888-888888888888';
+
+    it('scopes knowledge_ids query to user_id — other users knowledge excluded', async () => {
+      (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
+      (generateFromPrimitives as jest.Mock).mockResolvedValue(MOCK_GENERATED_POST);
+
+      // Knowledge query returns empty (user_id filter excluded the other user's entries)
+      mock.setTableResult('cp_knowledge_entries', { data: [], error: null });
+      mock.setTableResult('cp_pipeline_posts', { data: MOCK_SAVED_POST, error: null });
+
+      const request = new NextRequest('http://localhost:3000/api/content-pipeline/posts/generate', {
+        method: 'POST',
+        body: JSON.stringify({ knowledge_ids: [KNOWLEDGE_UUID_1, KNOWLEDGE_UUID_2] }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+
+      // Verify knowledge query was scoped to user_id
+      const knowledgeCall = (mock.client.from as jest.Mock).mock.results.find(
+        (_r: { type: string; value: unknown }, i: number) =>
+          (mock.client.from as jest.Mock).mock.calls[i][0] === 'cp_knowledge_entries'
+      );
+      expect(knowledgeCall).toBeDefined();
+      const chain = knowledgeCall!.value;
+      expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+      expect(chain.in).toHaveBeenCalledWith('id', [KNOWLEDGE_UUID_1, KNOWLEDGE_UUID_2]);
+
+      // Knowledge was empty so primitives should NOT include knowledge
+      expect(generateFromPrimitives).toHaveBeenCalledWith(
+        expect.not.objectContaining({ knowledge: expect.anything() })
+      );
+    });
+
+    it('scopes template_id query with or filter for global/user/team access', async () => {
+      (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
+      (generateFromPrimitives as jest.Mock).mockResolvedValue(MOCK_GENERATED_POST);
+
+      // Template query returns null (user doesn't own it, not global, not their team)
+      mock.setTableResult('cp_post_templates', { data: null, error: null });
+      mock.setTableResult('cp_pipeline_posts', { data: MOCK_SAVED_POST, error: null });
+
+      const request = new NextRequest('http://localhost:3000/api/content-pipeline/posts/generate', {
+        method: 'POST',
+        body: JSON.stringify({ template_id: TEMPLATE_UUID }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+
+      // Verify template query includes or() scoping
+      const templateCall = (mock.client.from as jest.Mock).mock.results.find(
+        (_r: { type: string; value: unknown }, i: number) =>
+          (mock.client.from as jest.Mock).mock.calls[i][0] === 'cp_post_templates'
+      );
+      expect(templateCall).toBeDefined();
+      const chain = templateCall!.value;
+      expect(chain.or).toHaveBeenCalledWith(expect.stringContaining('is_global.eq.true'));
+      expect(chain.or).toHaveBeenCalledWith(expect.stringContaining('user_id.eq.user-1'));
+    });
+
+    it('scopes idea_id query to user_id', async () => {
+      (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
+      (generateFromPrimitives as jest.Mock).mockResolvedValue(MOCK_GENERATED_POST);
+
+      // Idea query returns null (wrong user)
+      mock.setTableResult('cp_content_ideas', { data: null, error: null });
+      mock.setTableResult('cp_pipeline_posts', { data: MOCK_SAVED_POST, error: null });
+
+      const request = new NextRequest('http://localhost:3000/api/content-pipeline/posts/generate', {
+        method: 'POST',
+        body: JSON.stringify({ idea_id: IDEA_UUID }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+
+      // Verify idea query was scoped to user_id
+      const ideaCall = (mock.client.from as jest.Mock).mock.results.find(
+        (_r: { type: string; value: unknown }, i: number) =>
+          (mock.client.from as jest.Mock).mock.calls[i][0] === 'cp_content_ideas'
+      );
+      expect(ideaCall).toBeDefined();
+      const chain = ideaCall!.value;
+      expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+
+      // Idea was null so primitives should NOT include idea
+      expect(generateFromPrimitives).toHaveBeenCalledWith(
+        expect.not.objectContaining({ idea: expect.anything() })
+      );
+    });
+
+    it('scopes style_id query with or filter for user/team access', async () => {
+      (auth as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
+      (generateFromPrimitives as jest.Mock).mockResolvedValue(MOCK_GENERATED_POST);
+
+      // Style query returns null (wrong user, wrong team)
+      mock.setTableResult('cp_writing_styles', { data: null, error: null });
+      mock.setTableResult('cp_pipeline_posts', { data: MOCK_SAVED_POST, error: null });
+
+      const request = new NextRequest('http://localhost:3000/api/content-pipeline/posts/generate', {
+        method: 'POST',
+        body: JSON.stringify({ style_id: STYLE_UUID }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const response = await POST(request);
+
+      expect(response.status).toBe(201);
+
+      // Verify style query includes or() scoping
+      const styleCall = (mock.client.from as jest.Mock).mock.results.find(
+        (_r: { type: string; value: unknown }, i: number) =>
+          (mock.client.from as jest.Mock).mock.calls[i][0] === 'cp_writing_styles'
+      );
+      expect(styleCall).toBeDefined();
+      const chain = styleCall!.value;
+      expect(chain.or).toHaveBeenCalledWith(expect.stringContaining('user_id.eq.user-1'));
+    });
+  });
+
   // ─── generateFromPrimitives call shape ───────────────────────────────────
 
   describe('primitives assembly', () => {
