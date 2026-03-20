@@ -10,10 +10,10 @@ import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 // ─── Column Constants ─────────────────────────────────────────────────────
 
 const QUEUE_POST_COLUMNS =
-  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status, review_data';
+  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status, review_data, image_storage_path';
 
 const QUEUE_POST_WITH_IDEA_COLUMNS =
-  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status, review_data, cp_content_ideas(title, content_type)';
+  'id, draft_content, idea_id, edited_at, created_at, team_profile_id, status, review_data, image_storage_path, cp_content_ideas(title, content_type)';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -34,6 +34,7 @@ export interface QueuePost {
   team_profile_id: string | null;
   status: string;
   review_data: QueuePostReviewData | null;
+  image_storage_path: string | null;
   cp_content_ideas: { title: string | null; content_type: string | null } | null;
 }
 
@@ -314,6 +315,28 @@ export async function findFunnelByIdForTeams(
     reviewed_at: data.reviewed_at,
     lead_magnet_id: data.lead_magnet_id,
   } as QueueFunnel;
+}
+
+/**
+ * Update image_storage_path for a post, scoped to accessible profiles.
+ */
+export async function updatePostImagePath(
+  postId: string,
+  profileIds: string[],
+  storagePath: string | null
+): Promise<void> {
+  if (profileIds.length === 0) {
+    throw new Error('content-queue.updatePostImagePath: no accessible profiles');
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from('cp_pipeline_posts')
+    .update({ image_storage_path: storagePath })
+    .eq('id', postId)
+    .in('team_profile_id', profileIds);
+
+  if (error) throw new Error(`content-queue.updatePostImagePath: ${error.message}`);
 }
 
 /**
