@@ -15,7 +15,8 @@ export interface ActionResult<T = unknown> {
     | 'idea_list'
     | 'calendar'
     | 'text'
-    | 'content_review';
+    | 'content_review'
+    | 'dm_coach_suggestion';
 }
 
 export type ActionHandler = (

@@ -20,6 +20,7 @@ import { handleLinkedInActivityTools } from './linkedin-activity.js';
 import { handleMixerTools } from './mixer.js';
 import { handlePostCampaignTools } from './post-campaigns.js';
 import { handleAccountSafetyTools } from './account-safety.js';
+import { handleDmCoachTools } from './dm-coach.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,15 @@ const handlerMap: Record<string, Handler> = {
   // Account safety (2)
   magnetlab_get_account_safety_settings: handleAccountSafetyTools,
   magnetlab_update_account_safety_settings: handleAccountSafetyTools,
+
+  // DM Coach (7)
+  magnetlab_list_dm_contacts: handleDmCoachTools,
+  magnetlab_get_dm_contact: handleDmCoachTools,
+  magnetlab_create_dm_contact: handleDmCoachTools,
+  magnetlab_update_dm_contact: handleDmCoachTools,
+  magnetlab_delete_dm_contact: handleDmCoachTools,
+  magnetlab_add_dm_messages: handleDmCoachTools,
+  magnetlab_dm_coach_suggest: handleDmCoachTools,
 };
 
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
@@ -194,3 +204,4 @@ export { handleLinkedInActivityTools } from './linkedin-activity.js';
 export { handleMixerTools } from './mixer.js';
 export { handlePostCampaignTools } from './post-campaigns.js';
 export { handleAccountSafetyTools } from './account-safety.js';
+export { handleDmCoachTools } from './dm-coach.js';

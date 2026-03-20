@@ -19,6 +19,7 @@ import { linkedinActivityTools } from './linkedin-activity.js';
 import { mixerTools } from './mixer.js';
 import { postCampaignTools } from './post-campaigns.js';
 import { accountSafetyTools } from './account-safety.js';
+import { dmCoachTools } from './dm-coach.js';
 
 export const tools: Tool[] = [
   ...leadMagnetTools,
@@ -39,6 +40,7 @@ export const tools: Tool[] = [
   ...mixerTools,
   ...postCampaignTools,
   ...accountSafetyTools,
+  ...dmCoachTools,
 ];
 
 export const toolsByName = new Map<string, Tool>(tools.map((t) => [t.name, t]));
