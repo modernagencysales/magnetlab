@@ -36,15 +36,29 @@ const MAGNET_COUNT_COLUMNS = 'id';
 // ─── Scope helpers ────────────────────────────────────────────────────────────
 
 /**
- * Apply scope to cp_pipeline_posts — uses team_profile_id in team mode, not team_id.
- * Follows the same pattern as page.tsx which does a team_profiles lookup.
- * For briefing purposes we fall back to user_id in both modes to avoid
- * an extra query, since briefing data accuracy > precision here.
+ * Apply scope to cp_pipeline_posts.
+ * In team mode, resolve team_profile_id via team_profiles lookup (cp_pipeline_posts uses team_profile_id).
+ * In personal mode, scope to user_id.
+ * Extra query is small and runs once per homepage load — acceptable trade-off.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function applyPostScope(query: any, scope: DataScope): any {
-  // cp_pipeline_posts uses user_id (team_profile_id for team granularity,
-  // but for briefing counts we scope to user_id in both modes)
+/* eslint-disable @typescript-eslint/no-explicit-any */
+async function applyPostScope(
+  query: any,
+  scope: DataScope,
+  supabase: SupabaseClient
+): Promise<any> {
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+  if (scope.type === 'team' && scope.teamId) {
+    const { data: profile } = await supabase
+      .from('team_profiles')
+      .select('id')
+      .eq('team_id', scope.teamId)
+      .eq('user_id', scope.userId)
+      .maybeSingle();
+    if (profile) {
+      return query.eq('team_profile_id', profile.id);
+    }
+  }
   return query.eq('user_id', scope.userId);
 }
 
@@ -83,16 +97,17 @@ export async function fetchBriefingData(
   const weekEnd = getWeekEnd(now).toISOString();
 
   // ── Query 1: Posts pending review (status = 'reviewing') ──────────────────
-  const queueQuery = applyPostScope(
+  const queueQuery = await applyPostScope(
     supabase
       .from('cp_pipeline_posts')
       .select(POST_QUEUE_COLUMNS, { count: 'exact', head: true })
       .eq('status', 'reviewing'),
-    scope
+    scope,
+    supabase
   );
 
   // ── Query 2: Scheduled posts this week ────────────────────────────────────
-  const scheduledQuery = applyPostScope(
+  const scheduledQuery = await applyPostScope(
     supabase
       .from('cp_pipeline_posts')
       .select(SCHEDULED_POST_COLUMNS, { count: 'exact' })
@@ -100,7 +115,8 @@ export async function fetchBriefingData(
       .gte('scheduled_time', weekStart)
       .lte('scheduled_time', weekEnd)
       .order('scheduled_time', { ascending: true }),
-    scope
+    scope,
+    supabase
   );
 
   // ── Query 3: Ideas remaining (actionable statuses) ─────────────────────────
