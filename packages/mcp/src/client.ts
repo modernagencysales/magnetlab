@@ -884,6 +884,41 @@ export class MagnetLabClient {
     return this.request<unknown>('DELETE', `/post-campaigns/${encodeURIComponent(campaignId)}`);
   }
 
+  // ─── Lead Magnet Post ──────────────────────────────────────────────────────
+
+  async listSenderAccounts() {
+    return this.request<{
+      accounts: Array<{ team_profile_id: string; name: string; unipile_account_id: string }>;
+    }>('GET', '/post-campaigns/sender-accounts');
+  }
+
+  async publishLinkedInPost(teamProfileId: string, postText: string) {
+    return this.request<{ linkedinPostUrl: string; linkedinPostId: string }>(
+      'POST',
+      '/lead-magnet-post/launch',
+      { team_profile_id: teamProfileId, post_text: postText, publish_only: true }
+    );
+  }
+
+  async launchLeadMagnetPost(params: {
+    team_profile_id: string;
+    post_text: string;
+    funnel_page_id?: string;
+    keywords?: string[];
+    dm_template?: string;
+    campaign_name?: string;
+  }) {
+    return this.aiRequest<{
+      linkedinPostUrl: string;
+      linkedinPostId: string;
+      campaignId: string;
+      campaignName: string;
+      status: string;
+      keywords: string[];
+      funnelPageId: string | null;
+    }>('POST', '/lead-magnet-post/launch', params);
+  }
+
   // ─── Trends ───────────────────────────────────────────────────────────────
 
   /** Get trending topics from recently scanned creatives. */
