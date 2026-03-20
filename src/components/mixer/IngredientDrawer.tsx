@@ -2,8 +2,8 @@
 
 /**
  * IngredientDrawer. Sheet-based picker for a single ingredient type.
- * Fetches real data for: exploit, style, template, creative.
- * Shows placeholder for: knowledge, trend, recycled.
+ * Fetches real data for: knowledge (topics), exploit, style, template, creative, trends.
+ * Shows placeholder for: recycled.
  * Never imports from Next.js HTTP layer.
  */
 
@@ -14,6 +14,8 @@ import { getExploits } from '@/frontend/api/content-pipeline/exploits';
 import { getStyles } from '@/frontend/api/content-pipeline/styles';
 import { listTemplates } from '@/frontend/api/content-pipeline/templates';
 import { getCreatives } from '@/frontend/api/content-pipeline/creatives';
+import { getTopics } from '@/frontend/api/content-pipeline/knowledge';
+import { getTrends } from '@/frontend/api/content-pipeline/trends';
 import { INGREDIENT_META } from './ingredientMeta';
 import type { IngredientType } from '@/lib/types/mixer';
 
@@ -35,12 +37,9 @@ interface IngredientDrawerProps {
 
 // ─── Placeholder types ─────────────────────────────────────────────────────
 
-const PLACEHOLDER_TYPES: IngredientType[] = ['knowledge', 'trends', 'recycled'];
+const PLACEHOLDER_TYPES: IngredientType[] = ['recycled'];
 
 const PLACEHOLDER_MESSAGES: Record<string, string> = {
-  knowledge: 'Knowledge topics — coming soon. Connect your AI Brain to unlock this ingredient.',
-  trends:
-    'Trend detection — coming soon. LinkedIn trend scanning will populate this automatically.',
   recycled: 'Content recycling — coming soon. Past posts will appear here for remix.',
 };
 
@@ -48,6 +47,19 @@ const PLACEHOLDER_MESSAGES: Record<string, string> = {
 
 async function fetchItems(type: IngredientType): Promise<DrawerItem[]> {
   switch (type) {
+    case 'knowledge': {
+      const res = await getTopics({ limit: 50 });
+      const topics = (res.topics ?? []) as Array<{
+        slug: string;
+        name: string;
+        entry_count?: number;
+      }>;
+      return topics.map((t) => ({
+        id: t.slug,
+        name: t.name,
+        description: t.entry_count ? `${t.entry_count} entries` : undefined,
+      }));
+    }
     case 'exploits': {
       const items = await getExploits({ with_stats: true });
       return items.map((e) => ({
@@ -79,6 +91,14 @@ async function fetchItems(type: IngredientType): Promise<DrawerItem[]> {
         id: c.id,
         name: c.content_text.slice(0, 60) + (c.content_text.length > 60 ? '…' : ''),
         description: `${c.source_platform} · score ${c.commentary_worthy_score}`,
+      }));
+    }
+    case 'trends': {
+      const topics = await getTrends(20);
+      return topics.map((t) => ({
+        id: t.topic,
+        name: t.topic,
+        description: `${t.count} mentions · ${t.trend}`,
       }));
     }
     default:
