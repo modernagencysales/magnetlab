@@ -16,10 +16,23 @@ import {
   ProfileSwitcher,
   useProfileSelection,
 } from '@/components/content-pipeline/ProfileSwitcher';
-import { MixerZone } from '@/components/mixer/MixerZone';
-import { RecipesZone } from '@/components/mixer/RecipesZone';
-import { InventoryZone } from '@/components/mixer/InventoryZone';
-import { SavedIdeasSection } from '@/components/mixer/SavedIdeasSection';
+
+const MixerZone = dynamic(
+  () => import('@/components/mixer/MixerZone').then((m) => ({ default: m.MixerZone })),
+  { ssr: false, loading: () => <div className="h-40 animate-pulse bg-muted/20 rounded-lg" /> }
+);
+const RecipesZone = dynamic(
+  () => import('@/components/mixer/RecipesZone').then((m) => ({ default: m.RecipesZone })),
+  { ssr: false }
+);
+const InventoryZone = dynamic(
+  () => import('@/components/mixer/InventoryZone').then((m) => ({ default: m.InventoryZone })),
+  { ssr: false }
+);
+const SavedIdeasSection = dynamic(
+  () => import('@/components/mixer/SavedIdeasSection').then((m) => ({ default: m.SavedIdeasSection })),
+  { ssr: false }
+);
 import type { IngredientType } from '@/lib/types/mixer';
 
 // ─── Dynamic imports ───────────────────────────────────────────────────────────
