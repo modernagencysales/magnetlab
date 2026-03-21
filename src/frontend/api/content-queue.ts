@@ -49,6 +49,7 @@ export interface QueuePost {
   edited_at: string | null;
   created_at: string;
   review_data: QueuePostReviewData | null;
+  image_storage_path: string | null;
 }
 
 export interface QueueTeam {
@@ -115,6 +116,26 @@ export async function submitBatch(
   return apiClient.post<SubmitResult>('/content-queue/submit', {
     team_id: teamId,
     submit_type: submitType,
+  });
+}
+
+// ─── Image API Functions ──────────────────────────────────────────────────
+
+export async function uploadQueuePostImage(
+  postId: string,
+  file: File
+): Promise<{ imageUrl: string; storagePath: string }> {
+  const formData = new FormData();
+  formData.append('image', file);
+  return apiClient.post<{ imageUrl: string; storagePath: string }>(
+    `/content-queue/posts/${postId}/upload-image`,
+    formData
+  );
+}
+
+export async function removeQueuePostImage(postId: string): Promise<void> {
+  return apiClient.patch<void>(`/content-queue/posts/${postId}`, {
+    image_storage_path: null,
   });
 }
 

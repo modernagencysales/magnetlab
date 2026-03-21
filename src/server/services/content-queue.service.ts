@@ -4,12 +4,27 @@
  * Never imports from Next.js HTTP layer (no NextRequest, NextResponse, cookies).
  */
 
+import crypto from 'crypto';
 import * as teamRepo from '@/server/repositories/team.repo';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { logError, logInfo } from '@/lib/utils/logger';
 import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 import * as queueRepo from '@/server/repositories/content-queue.repo';
 import type { ContentQueueUpdateInput } from '@/lib/validations/content-queue';
+
+// ─── Image Upload Constants ──────────────────────────────────────────────
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+  'image/gif',
+]);
+
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+const STORAGE_BUCKET = 'post-images';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -59,6 +74,7 @@ export interface QueueTeam {
     edited_at: string | null;
     created_at: string;
     review_data: QueuePostReviewData | null;
+    image_storage_path: string | null;
   }>;
   edited_count: number;
   total_count: number;
@@ -288,6 +304,7 @@ export async function getQueue(userId: string): Promise<QueueListResult> {
       edited_at: post.edited_at,
       created_at: post.created_at,
       review_data: (post.review_data as QueuePostReviewData | null) ?? null,
+      image_storage_path: post.image_storage_path ?? null,
     });
     team.total_count++;
     if (post.edited_at) team.edited_count++;
@@ -370,11 +387,12 @@ export async function updateQueuePost(
     throw Object.assign(new Error('Post not found or not accessible'), { statusCode: 403 });
   }
 
-  // Update content if provided (debounced saves — no edit capture here)
-  if (input.draft_content !== undefined) {
-    const updates: Record<string, unknown> = {};
-    if (input.draft_content !== undefined) updates.draft_content = input.draft_content;
+  // Update content and/or image path if provided
+  const updates: Record<string, unknown> = {};
+  if (input.draft_content !== undefined) updates.draft_content = input.draft_content;
+  if (input.image_storage_path !== undefined) updates.image_storage_path = input.image_storage_path;
 
+  if (Object.keys(updates).length > 0) {
     const { error } = await supabase.from('cp_pipeline_posts').update(updates).eq('id', postId);
     if (error) throw new Error(`content-queue.updateQueuePost: ${error.message}`);
   }
@@ -411,6 +429,79 @@ export async function updateQueuePost(
       }
     }
   }
+}
+
+/**
+ * Upload an image for a queue post. Validates team membership, file type/size,
+ * uploads to Supabase Storage with a safe filename, and updates the post's image path.
+ */
+export async function uploadQueuePostImage(
+  userId: string,
+  postId: string,
+  file: { buffer: Buffer; type: string; name: string }
+): Promise<{ imageUrl: string; storagePath: string }> {
+  // Validate file type
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    throw Object.assign(
+      new Error(`Invalid file type: ${file.type}. Allowed types: png, jpg, jpeg, webp, gif.`),
+      { statusCode: 400 }
+    );
+  }
+
+  // Validate file size
+  if (file.buffer.length > MAX_FILE_SIZE_BYTES) {
+    throw Object.assign(
+      new Error(
+        `File too large: ${(file.buffer.length / 1024 / 1024).toFixed(1)}MB. Maximum size is 10MB.`
+      ),
+      { statusCode: 400 }
+    );
+  }
+
+  // Team-scoped access validation
+  const userTeams = await teamRepo.getUserTeams(userId);
+  const teamIds = userTeams.map((e) => e.team.id);
+
+  const supabase = createSupabaseAdminClient();
+  const { data: profiles } = await supabase
+    .from('team_profiles')
+    .select('id, team_id')
+    .in('team_id', teamIds)
+    .eq('status', 'active');
+
+  const profileIds = (profiles ?? []).map((p) => p.id);
+
+  const post = await queueRepo.findPostByIdForProfiles(postId, profileIds);
+  if (!post) {
+    throw Object.assign(new Error('Post not found or not accessible'), { statusCode: 403 });
+  }
+
+  // Build safe storage path — never use the client-provided filename directly
+  const ext =
+    file.name
+      .split('.')
+      .pop()
+      ?.replace(/[^a-zA-Z0-9]/g, '') || 'png';
+  const storagePath = `${userId}/${postId}/${crypto.randomUUID()}.${ext}`;
+
+  // Upload to Supabase Storage
+  const { error: uploadError } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(storagePath, file.buffer, {
+      contentType: file.type,
+      upsert: true,
+    });
+
+  if (uploadError) {
+    throw new Error(`Failed to upload image: ${uploadError.message}`);
+  }
+
+  const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
+
+  // Update post's image path via repo
+  await queueRepo.updatePostImagePath(postId, profileIds, storagePath);
+
+  return { imageUrl: urlData.publicUrl, storagePath };
 }
 
 /**

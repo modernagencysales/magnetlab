@@ -7,11 +7,10 @@
  * Never fetches data; receives everything via props.
  */
 
-import { useState } from 'react';
-import Image from 'next/image';
-import { Eye, EyeOff, Globe, X } from 'lucide-react';
+import { Eye, EyeOff, Globe } from 'lucide-react';
 import { TipTapTextBlock } from '@/components/content/inline-editor/TipTapTextBlock';
 import { FeedPreview } from './FeedPreview';
+import { ImageDropZone } from './ImageDropZone';
 import type { QueuePost } from '@/frontend/api/content-queue';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -23,7 +22,9 @@ interface PostEditorProps {
   isPreviewMode: boolean;
   onTogglePreview: () => void;
   onContentChange: (content: string) => void;
-  imageUrls: string[] | null;
+  imageUrl: string | null;
+  onImageUploaded: (imageUrl: string, storagePath: string) => void;
+  onImageRemoved: () => void;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -47,12 +48,11 @@ export function PostEditor({
   isPreviewMode,
   onTogglePreview,
   onContentChange,
-  imageUrls,
+  imageUrl,
+  onImageUploaded,
+  onImageRemoved,
 }: PostEditorProps) {
   const initials = getInitials(authorName || 'U');
-  // imageUrlOverride lets the operator paste a URL for visual reference (not persisted)
-  const [imageUrlOverride, setImageUrlOverride] = useState<string>('');
-  const firstImage = imageUrlOverride || imageUrls?.[0] || null;
 
   // Feed preview mode
   if (isPreviewMode) {
@@ -72,7 +72,7 @@ export function PostEditor({
           content={post.draft_content ?? ''}
           authorName={authorName}
           authorHeadline={authorHeadline}
-          imageUrl={firstImage}
+          imageUrl={imageUrl}
           onClick={onTogglePreview}
         />
       </div>
@@ -130,42 +130,15 @@ export function PostEditor({
           />
         </div>
 
-        {/* Image URL input */}
+        {/* Image drop zone */}
         <div className="border-t border-border px-4 py-2">
-          <div className="flex items-center gap-2">
-            <input
-              type="url"
-              value={imageUrlOverride}
-              onChange={(e) => setImageUrlOverride(e.target.value)}
-              placeholder="Paste image URL for preview..."
-              className="flex-1 rounded border border-border bg-muted px-2 py-1 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-ring"
-            />
-            {imageUrlOverride && (
-              <button
-                type="button"
-                onClick={() => setImageUrlOverride('')}
-                className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
-                title="Remove image URL"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </div>
+          <ImageDropZone
+            postId={post.id}
+            existingImageUrl={imageUrl}
+            onImageUploaded={onImageUploaded}
+            onImageRemoved={onImageRemoved}
+          />
         </div>
-
-        {/* Image display */}
-        {firstImage && (
-          <div className="border-t border-border px-4 py-3">
-            <Image
-              src={firstImage}
-              alt="Post image"
-              width={540}
-              height={256}
-              className="max-h-64 w-full rounded object-cover"
-              unoptimized
-            />
-          </div>
-        )}
 
         {/* Engagement bar */}
         <div className="border-t border-border px-4 py-2">

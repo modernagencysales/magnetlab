@@ -14,10 +14,16 @@ export const ContentQueueUpdateSchema = z
     mark_edited: z.boolean().optional(),
     /** AI-generated original text, sent with mark_edited for one clean diff (style learning) */
     original_content: z.string().optional(),
+    /** Image storage path — set to null to remove, string to set */
+    image_storage_path: z.string().nullable().optional(),
   })
-  .refine((data) => data.draft_content !== undefined || data.mark_edited !== undefined, {
-    message: 'At least one field must be provided',
-  });
+  .refine(
+    (data) =>
+      data.draft_content !== undefined ||
+      data.mark_edited !== undefined ||
+      data.image_storage_path !== undefined,
+    { message: 'At least one field must be provided' }
+  );
 
 export type ContentQueueUpdateInput = z.infer<typeof ContentQueueUpdateSchema>;
 
