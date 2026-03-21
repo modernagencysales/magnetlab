@@ -45,10 +45,10 @@ const PLACEHOLDER_MESSAGES: Record<string, string> = {
 
 // ─── Data fetchers ────────────────────────────────────────────────────────────
 
-async function fetchItems(type: IngredientType, _teamProfileId?: string): Promise<DrawerItem[]> {
+async function fetchItems(type: IngredientType, teamProfileId?: string): Promise<DrawerItem[]> {
   switch (type) {
     case 'knowledge': {
-      const res = await getTopics({ limit: 50 });
+      const res = await getTopics({ limit: 50, team_id: teamProfileId });
       const topics = (res.topics ?? []) as Array<{
         id: string;
         slug: string;
