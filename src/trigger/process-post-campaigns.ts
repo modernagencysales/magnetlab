@@ -2,7 +2,7 @@
  * Process Post Campaigns Task
  * Scheduled every 5 minutes. Four phases:
  *   Phase 0 — Process Results: consume completed/failed queue actions, update campaign leads.
- *   Phase 1 — Detection: query signal_events for commenters, keyword match + AI intent fallback.
+ *   Phase 1 — Detection: poll Unipile API for comments (primary), signal_events fallback.
  *   Phase 2 — Enqueue React + Reply + Connect: enqueue actions instead of calling Unipile directly.
  *   Phase 3 — Enqueue DMs: enqueue DM actions for leads with status='connection_accepted'.
  * Detection runs regardless of operating hours. Action phases enqueue to the shared queue;
@@ -12,7 +12,7 @@
 import { schedules, logger } from '@trigger.dev/sdk/v3';
 import { createSupabaseAdminClient } from '@/lib/utils/supabase-server';
 import { getUnipileClient } from '@/lib/integrations/unipile';
-import { extractLinkedInUsername } from '@/lib/utils/linkedin-url';
+import { extractLinkedInUsername, normalizePostUrl } from '@/lib/utils/linkedin-url';
 import { logError } from '@/lib/utils/logger';
 import {
   listActiveCampaigns,
@@ -31,6 +31,7 @@ import {
 import { QUEUE_PRIORITY } from '@/lib/types/linkedin-action-queue';
 import type { QueuedAction } from '@/lib/types/linkedin-action-queue';
 import { classifyCommentIntent } from '@/lib/ai/post-campaign/intent-classifier';
+import type { PostCampaign } from '@/lib/types/post-campaigns';
 
 // ─── Phase 0: Process Completed Queue Actions ────────────────────────────────
 // Consumes completed/failed actions from the queue and updates campaign lead records.
@@ -179,11 +180,10 @@ async function processFailedAction(action: QueuedAction): Promise<void> {
 }
 
 // ─── Phase 1: Detect New Commenters ─────────────────────────────────────────
-// Runs regardless of operating hours — DB-only work (+ AI intent call for Tier 2).
+// Runs regardless of operating hours. Polls Unipile API directly for comments;
+// falls back to signal_events if the API call fails.
 
 async function detectCommenters(): Promise<number> {
-  const supabase = createSupabaseAdminClient();
-
   const { data: campaigns, error: campaignError } = await listActiveCampaigns();
   if (campaignError) {
     logger.error('process-post-campaigns/detect: failed to fetch active campaigns', {
@@ -201,127 +201,8 @@ async function detectCommenters(): Promise<number> {
 
   for (const campaign of campaigns) {
     try {
-      // Fetch comment events matching this campaign's post_url
-      const { data: events, error: eventsError } = await supabase
-        .from('signal_events')
-        .select(
-          'id, lead_id, source_url, engagement_type, comment_text, keyword_matched, comment_social_id'
-        )
-        .eq('source_url', campaign.post_url)
-        .eq('engagement_type', 'comment');
-
-      if (eventsError) {
-        logger.error('process-post-campaigns/detect: failed to fetch signal_events', {
-          campaignId: campaign.id,
-          error: eventsError.message,
-        });
-        continue;
-      }
-
-      if (!events || events.length === 0) {
-        continue;
-      }
-
-      // Fetch the signal_leads for these events to get linkedin_url, name, and provider_id
-      const leadIds = [...new Set(events.map((e) => e.lead_id).filter(Boolean))];
-      if (leadIds.length === 0) continue;
-
-      const { data: signalLeads, error: leadsError } = await supabase
-        .from('signal_leads')
-        .select('id, linkedin_url, first_name, last_name, provider_id')
-        .in('id', leadIds);
-
-      if (leadsError) {
-        logger.error('process-post-campaigns/detect: failed to fetch signal_leads', {
-          campaignId: campaign.id,
-          error: leadsError.message,
-        });
-        continue;
-      }
-
-      const leadMap = new Map((signalLeads ?? []).map((l) => [l.id, l]));
-
-      // Build CTA text for intent classification (extract last ~200 chars of post text as CTA context)
-      const ctaText = (campaign.keywords as string[]).join(', ');
-
-      for (const event of events) {
-        const signalLead = event.lead_id ? leadMap.get(event.lead_id) : null;
-        if (!signalLead?.linkedin_url) continue;
-
-        // Skip if already in this campaign
-        const { data: existing } = await findCampaignLeadByUrl(
-          campaign.id,
-          signalLead.linkedin_url
-        );
-        if (existing) continue;
-
-        // Tier 1: keyword substring match
-        const commentLower = (event.comment_text ?? '').toLowerCase();
-        const keywordMatch = (campaign.keywords as string[]).some((kw: string) =>
-          commentLower.includes(kw.toLowerCase())
-        );
-
-        let matchType: 'keyword' | 'intent' | null = null;
-
-        if (keywordMatch) {
-          matchType = 'keyword';
-        } else if (event.comment_text) {
-          // Tier 2: AI intent classification (only when keyword match fails)
-          try {
-            const intentResult = await classifyCommentIntent(ctaText, event.comment_text);
-            if (intentResult.isInterested) {
-              matchType = 'intent';
-              logger.info('process-post-campaigns/detect: intent match found', {
-                campaignId: campaign.id,
-                commentText: event.comment_text.slice(0, 100),
-              });
-            }
-          } catch (intentErr) {
-            // Intent classification failure is non-blocking — skip this comment
-            const msg = intentErr instanceof Error ? intentErr.message : 'Unknown error';
-            logger.warn('process-post-campaigns/detect: intent classification failed', {
-              campaignId: campaign.id,
-              error: msg,
-            });
-          }
-        }
-
-        // No match at either tier — skip
-        if (!matchType) continue;
-
-        const username = extractLinkedInUsername(signalLead.linkedin_url);
-        const name =
-          [signalLead.first_name, signalLead.last_name].filter(Boolean).join(' ') || null;
-
-        const { error: insertError } = await insertCampaignLead({
-          user_id: campaign.user_id,
-          campaign_id: campaign.id,
-          signal_lead_id: signalLead.id,
-          linkedin_url: signalLead.linkedin_url,
-          linkedin_username: username,
-          unipile_provider_id: signalLead.provider_id ?? null,
-          name,
-          comment_text: event.comment_text ?? null,
-          comment_social_id: event.comment_social_id ?? null,
-          match_type: matchType,
-          status: 'detected',
-        });
-
-        if (insertError) {
-          logger.warn('process-post-campaigns/detect: failed to insert campaign lead', {
-            campaignId: campaign.id,
-            linkedinUrl: signalLead.linkedin_url,
-            error: insertError.message,
-          });
-        } else {
-          totalInserted++;
-          logger.info('process-post-campaigns/detect: new lead inserted', {
-            campaignId: campaign.id,
-            linkedinUrl: signalLead.linkedin_url,
-            matchType,
-          });
-        }
-      }
+      const inserted = await detectCommentersForCampaign(campaign);
+      totalInserted += inserted;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       logError('process-post-campaigns/detect', err instanceof Error ? err : new Error(msg), {
@@ -331,6 +212,271 @@ async function detectCommenters(): Promise<number> {
   }
 
   return totalInserted;
+}
+
+/**
+ * Detect commenters for a single campaign.
+ * Primary: poll Unipile API for comments directly.
+ * Fallback: query signal_events if Unipile call fails.
+ */
+async function detectCommentersForCampaign(campaign: PostCampaign): Promise<number> {
+  // Try Unipile API first (self-contained — no dependency on Signal Engine)
+  const unipileResult = await detectFromUnipile(campaign);
+  if (unipileResult !== null) return unipileResult;
+
+  // Fallback: query signal_events (original behavior)
+  logger.warn('process-post-campaigns/detect: Unipile failed, falling back to signal_events', {
+    campaignId: campaign.id,
+  });
+  return detectFromSignalEvents(campaign);
+}
+
+/**
+ * Primary detection: poll Unipile API for post comments.
+ * Returns number of inserted leads, or null if the API call failed.
+ */
+async function detectFromUnipile(campaign: PostCampaign): Promise<number | null> {
+  // Extract post URN from the campaign's post_url
+  const postUrn = normalizePostUrl(campaign.post_url);
+  if (!postUrn) {
+    logger.warn('process-post-campaigns/detect: cannot extract post URN from URL', {
+      campaignId: campaign.id,
+      postUrl: campaign.post_url,
+    });
+    return null;
+  }
+
+  // Use poster's account to read comments (poster has visibility into their own post)
+  const accountId = campaign.poster_account_id ?? campaign.unipile_account_id;
+
+  const client = getUnipileClient();
+  const { data: commentsResponse, error: apiError } = await client.getPostComments(
+    postUrn,
+    accountId
+  );
+
+  if (apiError || !commentsResponse) {
+    logger.warn('process-post-campaigns/detect: Unipile comments API failed', {
+      campaignId: campaign.id,
+      postUrn,
+      error: apiError,
+    });
+    return null;
+  }
+
+  const comments = commentsResponse.items ?? [];
+  if (comments.length === 0) {
+    return 0;
+  }
+
+  logger.info('process-post-campaigns/detect: fetched comments from Unipile', {
+    campaignId: campaign.id,
+    commentCount: comments.length,
+  });
+
+  const ctaText = (campaign.keywords as string[]).join(', ');
+  let inserted = 0;
+
+  for (const comment of comments) {
+    const profileUrl = comment.author_details?.profile_url;
+    if (!profileUrl) continue;
+
+    // Skip if already in this campaign
+    const { data: existing } = await findCampaignLeadByUrl(campaign.id, profileUrl);
+    if (existing) continue;
+
+    // Tier 1: keyword substring match
+    const commentLower = (comment.text ?? '').toLowerCase();
+    const keywordMatch = (campaign.keywords as string[]).some((kw: string) =>
+      commentLower.includes(kw.toLowerCase())
+    );
+
+    let matchType: 'keyword' | 'intent' | null = null;
+
+    if (keywordMatch) {
+      matchType = 'keyword';
+    } else if (comment.text) {
+      // Tier 2: AI intent classification (only when keyword match fails)
+      try {
+        const intentResult = await classifyCommentIntent(ctaText, comment.text);
+        if (intentResult.isInterested) {
+          matchType = 'intent';
+          logger.info('process-post-campaigns/detect: intent match found', {
+            campaignId: campaign.id,
+            commentText: comment.text.slice(0, 100),
+          });
+        }
+      } catch (intentErr) {
+        const msg = intentErr instanceof Error ? intentErr.message : 'Unknown error';
+        logger.warn('process-post-campaigns/detect: intent classification failed', {
+          campaignId: campaign.id,
+          error: msg,
+        });
+      }
+    }
+
+    // No match at either tier — skip
+    if (!matchType) continue;
+
+    const username = extractLinkedInUsername(profileUrl);
+
+    const { error: insertError } = await insertCampaignLead({
+      user_id: campaign.user_id,
+      campaign_id: campaign.id,
+      signal_lead_id: null,
+      linkedin_url: profileUrl,
+      linkedin_username: username,
+      unipile_provider_id: comment.author_details?.id ?? null,
+      name: comment.author || null,
+      comment_text: comment.text ?? null,
+      comment_social_id: comment.id ?? null,
+      match_type: matchType,
+      status: 'detected',
+    });
+
+    if (insertError) {
+      logger.warn('process-post-campaigns/detect: failed to insert campaign lead', {
+        campaignId: campaign.id,
+        linkedinUrl: profileUrl,
+        error: insertError.message,
+      });
+    } else {
+      inserted++;
+      logger.info('process-post-campaigns/detect: new lead inserted (Unipile)', {
+        campaignId: campaign.id,
+        linkedinUrl: profileUrl,
+        matchType,
+      });
+    }
+  }
+
+  return inserted;
+}
+
+/**
+ * Fallback detection: query signal_events for comments matching the post URL.
+ * This is the original behavior — requires Signal Engine to have populated the table.
+ */
+async function detectFromSignalEvents(campaign: PostCampaign): Promise<number> {
+  const supabase = createSupabaseAdminClient();
+
+  // Fetch comment events matching this campaign's post_url
+  const { data: events, error: eventsError } = await supabase
+    .from('signal_events')
+    .select(
+      'id, lead_id, source_url, engagement_type, comment_text, keyword_matched, comment_social_id'
+    )
+    .eq('source_url', campaign.post_url)
+    .eq('engagement_type', 'comment');
+
+  if (eventsError) {
+    logger.error('process-post-campaigns/detect: failed to fetch signal_events', {
+      campaignId: campaign.id,
+      error: eventsError.message,
+    });
+    return 0;
+  }
+
+  if (!events || events.length === 0) {
+    return 0;
+  }
+
+  // Fetch the signal_leads for these events to get linkedin_url, name, and provider_id
+  const leadIds = [...new Set(events.map((e) => e.lead_id).filter(Boolean))];
+  if (leadIds.length === 0) return 0;
+
+  const { data: signalLeads, error: leadsError } = await supabase
+    .from('signal_leads')
+    .select('id, linkedin_url, first_name, last_name, provider_id')
+    .in('id', leadIds);
+
+  if (leadsError) {
+    logger.error('process-post-campaigns/detect: failed to fetch signal_leads', {
+      campaignId: campaign.id,
+      error: leadsError.message,
+    });
+    return 0;
+  }
+
+  const leadMap = new Map((signalLeads ?? []).map((l) => [l.id, l]));
+  const ctaText = (campaign.keywords as string[]).join(', ');
+  let inserted = 0;
+
+  for (const event of events) {
+    const signalLead = event.lead_id ? leadMap.get(event.lead_id) : null;
+    if (!signalLead?.linkedin_url) continue;
+
+    // Skip if already in this campaign
+    const { data: existing } = await findCampaignLeadByUrl(campaign.id, signalLead.linkedin_url);
+    if (existing) continue;
+
+    // Tier 1: keyword substring match
+    const commentLower = (event.comment_text ?? '').toLowerCase();
+    const keywordMatch = (campaign.keywords as string[]).some((kw: string) =>
+      commentLower.includes(kw.toLowerCase())
+    );
+
+    let matchType: 'keyword' | 'intent' | null = null;
+
+    if (keywordMatch) {
+      matchType = 'keyword';
+    } else if (event.comment_text) {
+      // Tier 2: AI intent classification (only when keyword match fails)
+      try {
+        const intentResult = await classifyCommentIntent(ctaText, event.comment_text);
+        if (intentResult.isInterested) {
+          matchType = 'intent';
+          logger.info('process-post-campaigns/detect: intent match found', {
+            campaignId: campaign.id,
+            commentText: event.comment_text.slice(0, 100),
+          });
+        }
+      } catch (intentErr) {
+        const msg = intentErr instanceof Error ? intentErr.message : 'Unknown error';
+        logger.warn('process-post-campaigns/detect: intent classification failed', {
+          campaignId: campaign.id,
+          error: msg,
+        });
+      }
+    }
+
+    // No match at either tier — skip
+    if (!matchType) continue;
+
+    const username = extractLinkedInUsername(signalLead.linkedin_url);
+    const name = [signalLead.first_name, signalLead.last_name].filter(Boolean).join(' ') || null;
+
+    const { error: insertError } = await insertCampaignLead({
+      user_id: campaign.user_id,
+      campaign_id: campaign.id,
+      signal_lead_id: signalLead.id,
+      linkedin_url: signalLead.linkedin_url,
+      linkedin_username: username,
+      unipile_provider_id: signalLead.provider_id ?? null,
+      name,
+      comment_text: event.comment_text ?? null,
+      comment_social_id: event.comment_social_id ?? null,
+      match_type: matchType,
+      status: 'detected',
+    });
+
+    if (insertError) {
+      logger.warn('process-post-campaigns/detect: failed to insert campaign lead', {
+        campaignId: campaign.id,
+        linkedinUrl: signalLead.linkedin_url,
+        error: insertError.message,
+      });
+    } else {
+      inserted++;
+      logger.info('process-post-campaigns/detect: new lead inserted (signal_events)', {
+        campaignId: campaign.id,
+        linkedinUrl: signalLead.linkedin_url,
+        matchType,
+      });
+    }
+  }
+
+  return inserted;
 }
 
 // ─── Phase 2: Enqueue React + Reply + Connect ───────────────────────────────
@@ -754,7 +900,7 @@ export const processPostCampaigns = schedules.task({
     const actionsProcessed = await processCompletedActions();
     logger.info('process-post-campaigns: phase 0 complete', { actionsProcessed });
 
-    // Phase 1: Detect new commenters from signal_events (DB-only, no operating hours gate)
+    // Phase 1: Detect new commenters — Unipile API primary, signal_events fallback
     const detected = await detectCommenters();
     logger.info('process-post-campaigns: detection phase complete', { detected });
 
@@ -779,6 +925,9 @@ export const _testExports = {
   processCompletedAction,
   processFailedAction,
   detectCommenters,
+  detectCommentersForCampaign,
+  detectFromUnipile,
+  detectFromSignalEvents,
   reactReplyConnect,
   sendDms,
   hasPostBeenLiked,

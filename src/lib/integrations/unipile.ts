@@ -144,6 +144,39 @@ export class UnipileClient extends BaseApiClient {
   }
 
   // ============================================
+  // POST COMMENTS (read)
+  // ============================================
+
+  /**
+   * Fetch comments on a LinkedIn post.
+   * @param postUrn - The post URN (e.g. urn:li:activity:123) — will be URL-encoded
+   * @param accountId - The Unipile account ID to read comments from
+   */
+  async getPostComments(
+    postUrn: string,
+    accountId: string
+  ): Promise<
+    ApiResponse<{
+      items: Array<{
+        id: string;
+        text: string;
+        author: string;
+        author_details: {
+          id: string;
+          profile_url: string;
+          headline?: string;
+        };
+        date: string;
+      }>;
+      cursor?: string;
+    }>
+  > {
+    return this.get(
+      `/posts/${encodeURIComponent(postUrn)}/comments?account_id=${encodeURIComponent(accountId)}`
+    );
+  }
+
+  // ============================================
   // INTERACTIONS (low-risk actions)
   // ============================================
 
