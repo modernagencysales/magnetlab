@@ -301,7 +301,7 @@ describe('Handler Routing — All 51 Tools', () => {
 
     it('magnetlab_publish_post passes id', async () => {
       await callTool(client, 'magnetlab_publish_post', { id: 'post-1' });
-      expect(client.publishPost).toHaveBeenCalledWith('post-1', undefined);
+      expect(client.publishPost).toHaveBeenCalledWith('post-1', undefined, undefined);
     });
   });
 
@@ -796,7 +796,7 @@ describe('Handler Routing — All 51 Tools', () => {
 
     it('magnetlab_publish_post passes team_id to client', async () => {
       await callTool(client, 'magnetlab_publish_post', { id: 'post-1', team_id: 'team-abc' });
-      expect(client.publishPost).toHaveBeenCalledWith('post-1', 'team-abc');
+      expect(client.publishPost).toHaveBeenCalledWith('post-1', undefined, 'team-abc');
     });
 
     it('magnetlab_get_email_sequence passes team_id to client', async () => {

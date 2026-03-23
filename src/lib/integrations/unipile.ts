@@ -144,6 +144,39 @@ export class UnipileClient extends BaseApiClient {
   }
 
   // ============================================
+  // POST COMMENTS (read)
+  // ============================================
+
+  /**
+   * Fetch comments on a LinkedIn post.
+   * @param postUrn - The post URN (e.g. urn:li:activity:123) — will be URL-encoded
+   * @param accountId - The Unipile account ID to read comments from
+   */
+  async getPostComments(
+    postUrn: string,
+    accountId: string
+  ): Promise<
+    ApiResponse<{
+      items: Array<{
+        id: string;
+        text: string;
+        author: string;
+        author_details: {
+          id: string;
+          profile_url: string;
+          headline?: string;
+        };
+        date: string;
+      }>;
+      cursor?: string;
+    }>
+  > {
+    return this.get(
+      `/posts/${encodeURIComponent(postUrn)}/comments?account_id=${encodeURIComponent(accountId)}`
+    );
+  }
+
+  // ============================================
   // INTERACTIONS (low-risk actions)
   // ============================================
 
@@ -194,6 +227,12 @@ export class UnipileClient extends BaseApiClient {
 
   async deleteAccount(accountId: string): Promise<ApiResponse<void>> {
     return this.delete(`/accounts/${accountId}`);
+  }
+
+  async listAccounts(): Promise<
+    ApiResponse<{ items: Array<{ id: string; name?: string; status?: string }> }>
+  > {
+    return this.get('/accounts');
   }
 
   // ─── Connection Management ───────────────────────────────────────────

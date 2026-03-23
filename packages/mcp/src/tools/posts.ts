@@ -1,4 +1,4 @@
-/** Content pipeline post tools (6). List, get, create, update, delete, publish. */
+/** Content pipeline post tools (8). List, get, create, update, delete, publish, upload_image_url, publish_to_linkedin. */
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
@@ -144,12 +144,61 @@ export const postTools: Tool[] = [
       type: 'object',
       properties: {
         id: { type: 'string', description: 'Pipeline post UUID' },
+        unipile_account_id: {
+          type: 'string',
+          description: 'Override: publish from this Unipile account instead of the default',
+        },
         team_id: {
           type: 'string',
           description: 'Team ID to scope this operation. Omit for primary team.',
         },
       },
       required: ['id'],
+    },
+  },
+  {
+    name: 'magnetlab_upload_post_image',
+    description:
+      'Upload an image to a pipeline post from an external URL. The image will be attached when the post is published.',
+    inputSchema: {
+      type: 'object' as const,
+      required: ['post_id', 'image_url'],
+      properties: {
+        post_id: { type: 'string', description: 'Pipeline post ID' },
+        image_url: { type: 'string', description: 'External image URL to download and store' },
+        team_id: { type: 'string', description: 'Team ID for scoping' },
+      },
+    },
+  },
+  {
+    name: 'magnetlab_publish_to_linkedin',
+    description:
+      'Publish a post directly to LinkedIn on a specific account. Creates a DB record and publishes in one call.',
+    inputSchema: {
+      type: 'object' as const,
+      required: ['unipile_account_id', 'text'],
+      properties: {
+        unipile_account_id: { type: 'string', description: 'Unipile account ID to post from' },
+        text: { type: 'string', description: 'Post body text' },
+        image_url: { type: 'string', description: 'External image URL to download and attach' },
+        title: { type: 'string', description: 'Internal label (not shown on LinkedIn)' },
+        team_id: { type: 'string', description: 'Team ID for scoping' },
+      },
+    },
+  },
+  {
+    name: 'magnetlab_list_linkedin_accounts',
+    description:
+      'List all connected LinkedIn accounts (via Unipile) for the current user. Returns account IDs, names, and connection status. Pass refresh=true to verify live status with Unipile API (slower).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        team_id: { type: 'string', description: 'Team ID for scoping' },
+        refresh: {
+          type: 'boolean',
+          description: 'If true, verify live status with Unipile API. Default: false.',
+        },
+      },
     },
   },
 ];

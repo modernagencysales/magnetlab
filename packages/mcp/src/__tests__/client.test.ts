@@ -617,7 +617,7 @@ describe('MagnetLabClient', () => {
     });
 
     it('publishPost appends team_id when provided', async () => {
-      await client.publishPost('post-1', 'team-abc');
+      await client.publishPost('post-1', undefined, 'team-abc');
       expect(lastCall().url).toContain('team_id=team-abc');
     });
 

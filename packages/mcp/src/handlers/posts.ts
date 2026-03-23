@@ -1,4 +1,4 @@
-/** Post handler. Dispatches 6 content pipeline post tools to MagnetLabClient methods. Never imports HTTP or DB directly. */
+/** Post handler. Dispatches 8 content pipeline post tools to MagnetLabClient methods. Never imports HTTP or DB directly. */
 
 import type { MagnetLabClient } from '../client.js';
 import type { ContentPillar, ContentType, PipelinePostStatus } from '../constants.js';
@@ -47,7 +47,33 @@ export async function handlePostTools(
       return client.deletePost(args.id as string, args.team_id as string | undefined);
 
     case 'magnetlab_publish_post':
-      return client.publishPost(args.id as string, args.team_id as string | undefined);
+      return client.publishPost(
+        args.id as string,
+        args.unipile_account_id as string | undefined,
+        args.team_id as string | undefined
+      );
+
+    case 'magnetlab_upload_post_image':
+      return client.uploadPostImageUrl(
+        args.post_id as string,
+        args.image_url as string,
+        args.team_id as string | undefined
+      );
+
+    case 'magnetlab_publish_to_linkedin':
+      return client.directPublish({
+        unipile_account_id: args.unipile_account_id as string,
+        text: args.text as string,
+        image_url: args.image_url as string | undefined,
+        title: args.title as string | undefined,
+        team_id: args.team_id as string | undefined,
+      });
+
+    case 'magnetlab_list_linkedin_accounts':
+      return client.listLinkedInAccounts(
+        args.team_id as string | undefined,
+        args.refresh as boolean | undefined
+      );
 
     default:
       throw new Error(`Unknown post tool: ${name}`);

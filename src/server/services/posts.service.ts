@@ -7,7 +7,10 @@
 import * as postsRepo from '@/server/repositories/posts.repo';
 import * as cpSlotsRepo from '@/server/repositories/cp-schedule-slots.repo';
 import { polishPost as aiPolishPost } from '@/lib/ai/content-pipeline/post-polish';
-import { getUserLinkedInPublisher } from '@/lib/integrations/linkedin-publisher';
+import {
+  getUserLinkedInPublisher,
+  getLinkedInPublisherForAccount,
+} from '@/lib/integrations/linkedin-publisher';
 import type { ImageFile } from '@/lib/integrations/linkedin-publisher';
 import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 import { requireTeamScope } from '@/lib/utils/team-context';
@@ -403,7 +406,11 @@ export async function polishPost(userId: string, postId: string): Promise<Polish
   };
 }
 
-export async function publishPost(userId: string, postId: string): Promise<PublishResult> {
+export async function publishPost(
+  userId: string,
+  postId: string,
+  unipileAccountId?: string
+): Promise<PublishResult> {
   const post = await postsRepo.findPostForPublish(userId, postId);
   if (!post) throw Object.assign(new Error('Post not found'), { statusCode: 404 });
 
@@ -412,7 +419,9 @@ export async function publishPost(userId: string, postId: string): Promise<Publi
     throw Object.assign(new Error('No content to publish'), { statusCode: 400 });
   }
 
-  const publisher = await getUserLinkedInPublisher(userId);
+  const publisher = unipileAccountId
+    ? getLinkedInPublisherForAccount(unipileAccountId)
+    : await getUserLinkedInPublisher(userId);
   if (!publisher) {
     throw Object.assign(
       new Error(
@@ -471,6 +480,187 @@ export async function publishPost(userId: string, postId: string): Promise<Publi
     linkedin_post_id: result.postId ?? null,
     provider: result.provider,
   };
+}
+
+// ─── Direct publish types ──────────────────────────────────────────────────
+
+export interface DirectPublishParams {
+  unipile_account_id: string;
+  text: string;
+  image_url?: string;
+  title?: string;
+}
+
+export interface DirectPublishResult {
+  post_id: string;
+  linkedin_post_id: string | null;
+  linkedin_url: string | null;
+}
+
+// ─── Image helpers (shared with upload-image-url route) ────────────────────
+
+const ALLOWED_DIRECT_IMAGE_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+  'image/gif',
+]);
+
+const DIRECT_IMAGE_MAX_BYTES = 10 * 1024 * 1024; // 10MB
+
+function directPublishExtension(mimeType: string): string {
+  const map: Record<string, string> = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+  };
+  return map[mimeType] ?? 'bin';
+}
+
+/**
+ * Create a post record, publish it directly to LinkedIn via Unipile, and update the record.
+ * Always creates a cp_pipeline_posts row (source: 'direct'). On failure, marks post as 'failed'.
+ */
+export async function directPublish(
+  userId: string,
+  params: DirectPublishParams
+): Promise<DirectPublishResult> {
+  const { createSupabaseAdminClient } = await import('@/lib/utils/supabase-server');
+  const supabase = createSupabaseAdminClient();
+
+  // ─── 1. Create the post record at 'publishing' status ─────────────────
+  const { data: postRow, error: insertError } = await supabase
+    .from('cp_pipeline_posts')
+    .insert({
+      user_id: userId,
+      final_content: params.text,
+      status: 'publishing',
+      source: 'direct',
+      agent_metadata: params.title ? { title: params.title } : null,
+    })
+    .select('id')
+    .single();
+
+  if (insertError || !postRow) {
+    throw Object.assign(new Error(`Failed to create post record: ${insertError?.message}`), {
+      statusCode: 500,
+    });
+  }
+
+  const postId = postRow.id;
+
+  try {
+    // ─── 2. Handle optional image ────────────────────────────────────────
+    let imageFile: ImageFile | undefined;
+    let imageStoragePath: string | undefined;
+
+    if (params.image_url) {
+      let fetchResponse: Response;
+      try {
+        fetchResponse = await fetch(params.image_url);
+      } catch (err) {
+        logError('cp/posts/direct-publish', err, {
+          postId,
+          step: 'image_fetch',
+          imageUrl: params.image_url,
+        });
+        throw Object.assign(new Error('Failed to fetch image from URL'), { statusCode: 400 });
+      }
+
+      if (!fetchResponse.ok) {
+        throw Object.assign(
+          new Error(`Could not download image: server responded with ${fetchResponse.status}`),
+          { statusCode: 400 }
+        );
+      }
+
+      const contentType = fetchResponse.headers.get('content-type') ?? '';
+      const mimeType = contentType.split(';')[0].trim().toLowerCase();
+
+      if (!ALLOWED_DIRECT_IMAGE_TYPES.has(mimeType)) {
+        throw Object.assign(
+          new Error(
+            `Invalid image type: ${mimeType || 'unknown'}. Allowed: png, jpg, jpeg, webp, gif`
+          ),
+          { statusCode: 400 }
+        );
+      }
+
+      const arrayBuffer = await fetchResponse.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      if (buffer.byteLength > DIRECT_IMAGE_MAX_BYTES) {
+        throw Object.assign(
+          new Error(`Image too large: ${(buffer.byteLength / 1024 / 1024).toFixed(1)}MB. Max 10MB`),
+          { statusCode: 400 }
+        );
+      }
+
+      // Build storage path
+      let rawFilename: string;
+      try {
+        const pathname = new URL(params.image_url).pathname;
+        const parts = pathname.split('/');
+        rawFilename = parts[parts.length - 1] || 'image';
+      } catch {
+        rawFilename = 'image';
+      }
+      const ext = directPublishExtension(mimeType);
+      const filename = rawFilename.includes('.') ? rawFilename : `${rawFilename}.${ext}`;
+      imageStoragePath = `${userId}/${postId}/${filename}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('post-images')
+        .upload(imageStoragePath, buffer, { contentType: mimeType, upsert: true });
+
+      if (uploadError) {
+        logError('cp/posts/direct-publish', uploadError, { postId, step: 'image_upload' });
+        throw Object.assign(new Error(`Failed to upload image: ${uploadError.message}`), {
+          statusCode: 500,
+        });
+      }
+
+      imageFile = { buffer, filename, mimeType };
+
+      // Update image_storage_path on the post record
+      await supabase
+        .from('cp_pipeline_posts')
+        .update({ image_storage_path: imageStoragePath })
+        .eq('id', postId)
+        .eq('user_id', userId);
+    }
+
+    // ─── 3. Publish to LinkedIn ──────────────────────────────────────────
+    const publisher = getLinkedInPublisherForAccount(params.unipile_account_id);
+    const result = await publisher.publishNow(params.text, imageFile);
+    const publishedAt = new Date().toISOString();
+
+    // ─── 4. Mark post as published ──────────────────────────────────────
+    await postsRepo.updatePost(userId, postId, {
+      status: 'published',
+      linkedin_post_id: result.postId ?? null,
+      publish_provider: result.provider,
+      published_at: publishedAt,
+    });
+
+    const linkedinPostId = result.postId ?? null;
+    const linkedinUrl = linkedinPostId
+      ? `https://www.linkedin.com/feed/update/urn:li:activity:${linkedinPostId}`
+      : null;
+
+    return { post_id: postId, linkedin_post_id: linkedinPostId, linkedin_url: linkedinUrl };
+  } catch (err) {
+    // ─── 5. Mark post as failed on any error ────────────────────────────
+    try {
+      await postsRepo.updatePost(userId, postId, { status: 'failed' });
+    } catch {
+      // Never let the failure update block the original error
+    }
+    throw err;
+  }
 }
 
 export async function retryPost(userId: string, postId: string): Promise<void> {

@@ -414,6 +414,98 @@ describe('Validation Schemas', () => {
       const result = validateToolArgs('magnetlab_publish_post', { id: 'post-1' });
       expect(result).toMatchObject({ id: 'post-1' });
     });
+
+    it('accepts unipile_account_id override', () => {
+      const result = validateToolArgs('magnetlab_publish_post', {
+        id: 'post-1',
+        unipile_account_id: 'acc_abc123',
+      });
+      expect(result).toMatchObject({ id: 'post-1', unipile_account_id: 'acc_abc123' });
+    });
+
+    it('accepts without unipile_account_id (optional)', () => {
+      const result = validateToolArgs('magnetlab_publish_post', { id: 'post-1' });
+      expect(result).not.toHaveProperty('unipile_account_id');
+    });
+  });
+
+  describe('magnetlab_list_linkedin_accounts', () => {
+    it('accepts empty args', () => {
+      const result = validateToolArgs('magnetlab_list_linkedin_accounts', {});
+      expect(result).toBeDefined();
+    });
+
+    it('accepts team_id', () => {
+      const result = validateToolArgs('magnetlab_list_linkedin_accounts', { team_id: 'team-1' });
+      expect(result).toMatchObject({ team_id: 'team-1' });
+    });
+
+    it('accepts refresh: true', () => {
+      const result = validateToolArgs('magnetlab_list_linkedin_accounts', { refresh: true });
+      expect(result).toMatchObject({ refresh: true });
+    });
+
+    it('accepts both team_id and refresh', () => {
+      const result = validateToolArgs('magnetlab_list_linkedin_accounts', {
+        team_id: 'team-42',
+        refresh: false,
+      });
+      expect(result).toMatchObject({ team_id: 'team-42', refresh: false });
+    });
+  });
+
+  describe('magnetlab_upload_post_image', () => {
+    it('accepts valid post_id and image_url', () => {
+      const result = validateToolArgs('magnetlab_upload_post_image', {
+        post_id: 'post-uuid-123',
+        image_url: 'https://example.com/image.png',
+      });
+      expect(result).toMatchObject({
+        post_id: 'post-uuid-123',
+        image_url: 'https://example.com/image.png',
+      });
+    });
+
+    it('accepts optional team_id', () => {
+      const result = validateToolArgs('magnetlab_upload_post_image', {
+        post_id: 'post-1',
+        image_url: 'https://example.com/photo.jpg',
+        team_id: 'team-abc',
+      });
+      expect(result).toMatchObject({ team_id: 'team-abc' });
+    });
+
+    it('rejects missing post_id', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_upload_post_image', {
+          image_url: 'https://example.com/image.png',
+        })
+      ).toThrow();
+    });
+
+    it('rejects empty post_id', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_upload_post_image', {
+          post_id: '',
+          image_url: 'https://example.com/image.png',
+        })
+      ).toThrow();
+    });
+
+    it('rejects missing image_url', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_upload_post_image', { post_id: 'post-1' })
+      ).toThrow();
+    });
+
+    it('rejects non-URL image_url', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_upload_post_image', {
+          post_id: 'post-1',
+          image_url: 'not-a-url',
+        })
+      ).toThrow();
+    });
   });
 
   // ── Email Sequence schemas (3) ─────────────────────────────────

@@ -466,9 +466,35 @@ export class MagnetLabClient {
     return this.request<{ success: boolean }>('DELETE', url);
   }
 
-  async publishPost(id: string, teamId?: string) {
+  async publishPost(id: string, unipileAccountId?: string, teamId?: string) {
     const url = this.appendTeamId(`/content-pipeline/posts/${id}/publish`, teamId);
-    return this.request<unknown>('POST', url, {});
+    return this.request<unknown>('POST', url, {
+      ...(unipileAccountId ? { unipile_account_id: unipileAccountId } : {}),
+    });
+  }
+
+  async uploadPostImageUrl(postId: string, imageUrl: string, teamId?: string) {
+    const url = this.appendTeamId(`/content-pipeline/posts/${postId}/upload-image-url`, teamId);
+    return this.request<unknown>('POST', url, { image_url: imageUrl });
+  }
+
+  async directPublish(params: {
+    unipile_account_id: string;
+    text: string;
+    image_url?: string;
+    title?: string;
+    team_id?: string;
+  }) {
+    const url = this.appendTeamId('/content-pipeline/posts/direct-publish', params.team_id);
+    return this.request<unknown>('POST', url, params);
+  }
+
+  async listLinkedInAccounts(teamId?: string, refresh?: boolean) {
+    const params = new URLSearchParams();
+    if (teamId) params.set('team_id', teamId);
+    if (refresh) params.set('refresh', 'true');
+    const qs = params.toString();
+    return this.request<unknown>('GET', `/content-pipeline/linkedin/accounts${qs ? `?${qs}` : ''}`);
   }
 
   /** Compound action: schedule a full content week with agent-authored posts. */
