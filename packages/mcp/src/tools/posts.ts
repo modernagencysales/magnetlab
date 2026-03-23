@@ -1,4 +1,4 @@
-/** Content pipeline post tools (7). List, get, create, update, delete, publish, upload_image_url. */
+/** Content pipeline post tools (8). List, get, create, update, delete, publish, upload_image_url, publish_to_linkedin. */
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
@@ -166,6 +166,22 @@ export const postTools: Tool[] = [
       properties: {
         post_id: { type: 'string', description: 'Pipeline post ID' },
         image_url: { type: 'string', description: 'External image URL to download and store' },
+        team_id: { type: 'string', description: 'Team ID for scoping' },
+      },
+    },
+  },
+  {
+    name: 'magnetlab_publish_to_linkedin',
+    description:
+      'Publish a post directly to LinkedIn on a specific account. Creates a DB record and publishes in one call.',
+    inputSchema: {
+      type: 'object' as const,
+      required: ['unipile_account_id', 'text'],
+      properties: {
+        unipile_account_id: { type: 'string', description: 'Unipile account ID to post from' },
+        text: { type: 'string', description: 'Post body text' },
+        image_url: { type: 'string', description: 'External image URL to download and attach' },
+        title: { type: 'string', description: 'Internal label (not shown on LinkedIn)' },
         team_id: { type: 'string', description: 'Team ID for scoping' },
       },
     },

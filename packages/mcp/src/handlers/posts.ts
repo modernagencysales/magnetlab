@@ -1,4 +1,4 @@
-/** Post handler. Dispatches 7 content pipeline post tools to MagnetLabClient methods. Never imports HTTP or DB directly. */
+/** Post handler. Dispatches 8 content pipeline post tools to MagnetLabClient methods. Never imports HTTP or DB directly. */
 
 import type { MagnetLabClient } from '../client.js';
 import type { ContentPillar, ContentType, PipelinePostStatus } from '../constants.js';
@@ -59,6 +59,15 @@ export async function handlePostTools(
         args.image_url as string,
         args.team_id as string | undefined
       );
+
+    case 'magnetlab_publish_to_linkedin':
+      return client.directPublish({
+        unipile_account_id: args.unipile_account_id as string,
+        text: args.text as string,
+        image_url: args.image_url as string | undefined,
+        title: args.title as string | undefined,
+        team_id: args.team_id as string | undefined,
+      });
 
     case 'magnetlab_list_linkedin_accounts':
       return client.listLinkedInAccounts(

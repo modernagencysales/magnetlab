@@ -478,6 +478,17 @@ export class MagnetLabClient {
     return this.request<unknown>('POST', url, { image_url: imageUrl });
   }
 
+  async directPublish(params: {
+    unipile_account_id: string;
+    text: string;
+    image_url?: string;
+    title?: string;
+    team_id?: string;
+  }) {
+    const url = this.appendTeamId('/content-pipeline/posts/direct-publish', params.team_id);
+    return this.request<unknown>('POST', url, params);
+  }
+
   async listLinkedInAccounts(teamId?: string, refresh?: boolean) {
     const params = new URLSearchParams();
     if (teamId) params.set('team_id', teamId);

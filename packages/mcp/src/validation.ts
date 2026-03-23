@@ -38,7 +38,7 @@ const uuidField = z.string().min(1);
 const paginationLimit = z.number().min(1).max(100).default(50).optional();
 const paginationOffset = z.number().min(0).default(0).optional();
 
-// ─── Tool Schemas (44 tools) ─────────────────────────────────────────────────
+// ─── Tool Schemas (65 tools) ─────────────────────────────────────────────────
 
 export const toolSchemas: Record<string, z.ZodType> = {
   // ── Lead Magnets (5) ──────────────────────────────────────────────────────
@@ -241,6 +241,14 @@ export const toolSchemas: Record<string, z.ZodType> = {
   magnetlab_upload_post_image: z.object({
     post_id: uuidField,
     image_url: z.string().url(),
+    team_id: teamIdField,
+  }),
+
+  magnetlab_publish_to_linkedin: z.object({
+    unipile_account_id: z.string().min(1),
+    text: z.string().min(1),
+    image_url: z.string().url().optional(),
+    title: z.string().optional(),
     team_id: teamIdField,
   }),
 
