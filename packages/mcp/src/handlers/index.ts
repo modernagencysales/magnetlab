@@ -59,13 +59,14 @@ const handlerMap: Record<string, Handler> = {
   magnetlab_ask_knowledge: handleKnowledgeTools,
   magnetlab_submit_transcript: handleKnowledgeTools,
 
-  // Posts (6)
+  // Posts (6) + LinkedIn accounts (1)
   magnetlab_list_posts: handlePostTools,
   magnetlab_get_post: handlePostTools,
   magnetlab_create_post: handlePostTools,
   magnetlab_update_post: handlePostTools,
   magnetlab_delete_post: handlePostTools,
   magnetlab_publish_post: handlePostTools,
+  magnetlab_list_linkedin_accounts: handlePostTools,
 
   // Email sequences (3)
   magnetlab_get_email_sequence: handleEmailTools,

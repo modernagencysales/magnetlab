@@ -49,6 +49,12 @@ export async function handlePostTools(
     case 'magnetlab_publish_post':
       return client.publishPost(args.id as string, args.team_id as string | undefined);
 
+    case 'magnetlab_list_linkedin_accounts':
+      return client.listLinkedInAccounts(
+        args.team_id as string | undefined,
+        args.refresh as boolean | undefined
+      );
+
     default:
       throw new Error(`Unknown post tool: ${name}`);
   }

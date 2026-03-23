@@ -139,7 +139,9 @@ export const toolSchemas: Record<string, z.ZodType> = {
     vsl_subline: z.string().nullable().optional(),
     cta_headline: z.string().nullable().optional(),
     cta_button_text: z.string().nullable().optional(),
-    thankyou_layout: z.enum(['survey_first', 'video_first', 'side_by_side'] as [string, ...string[]]).optional(),
+    thankyou_layout: z
+      .enum(['survey_first', 'video_first', 'side_by_side'] as [string, ...string[]])
+      .optional(),
     team_id: teamIdField,
   }),
 
@@ -233,6 +235,11 @@ export const toolSchemas: Record<string, z.ZodType> = {
   magnetlab_publish_post: z.object({
     id: uuidField,
     team_id: teamIdField,
+  }),
+
+  magnetlab_list_linkedin_accounts: z.object({
+    team_id: teamIdField,
+    refresh: z.boolean().optional(),
   }),
 
   // ── Email Sequences (3) ───────────────────────────────────────────────────

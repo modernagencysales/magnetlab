@@ -4,8 +4,8 @@ import { toolSchemas, validateToolArgs } from '../validation.js';
 describe('Validation Schemas', () => {
   const schemaNames = Object.keys(toolSchemas);
 
-  it('has exactly 62 schemas', () => {
-    expect(schemaNames.length).toBe(62);
+  it('has exactly 63 schemas', () => {
+    expect(schemaNames.length).toBe(63);
   });
 
   it('every schema name starts with magnetlab_', () => {
@@ -413,6 +413,31 @@ describe('Validation Schemas', () => {
     it('accepts valid id', () => {
       const result = validateToolArgs('magnetlab_publish_post', { id: 'post-1' });
       expect(result).toMatchObject({ id: 'post-1' });
+    });
+  });
+
+  describe('magnetlab_list_linkedin_accounts', () => {
+    it('accepts empty args', () => {
+      const result = validateToolArgs('magnetlab_list_linkedin_accounts', {});
+      expect(result).toBeDefined();
+    });
+
+    it('accepts team_id', () => {
+      const result = validateToolArgs('magnetlab_list_linkedin_accounts', { team_id: 'team-1' });
+      expect(result).toMatchObject({ team_id: 'team-1' });
+    });
+
+    it('accepts refresh: true', () => {
+      const result = validateToolArgs('magnetlab_list_linkedin_accounts', { refresh: true });
+      expect(result).toMatchObject({ refresh: true });
+    });
+
+    it('accepts both team_id and refresh', () => {
+      const result = validateToolArgs('magnetlab_list_linkedin_accounts', {
+        team_id: 'team-42',
+        refresh: false,
+      });
+      expect(result).toMatchObject({ team_id: 'team-42', refresh: false });
     });
   });
 

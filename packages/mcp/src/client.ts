@@ -471,6 +471,14 @@ export class MagnetLabClient {
     return this.request<unknown>('POST', url, {});
   }
 
+  async listLinkedInAccounts(teamId?: string, refresh?: boolean) {
+    const params = new URLSearchParams();
+    if (teamId) params.set('team_id', teamId);
+    if (refresh) params.set('refresh', 'true');
+    const qs = params.toString();
+    return this.request<unknown>('GET', `/content-pipeline/linkedin/accounts${qs ? `?${qs}` : ''}`);
+  }
+
   /** Compound action: schedule a full content week with agent-authored posts. */
   async scheduleContentWeek(
     data: {

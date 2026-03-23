@@ -152,4 +152,19 @@ export const postTools: Tool[] = [
       required: ['id'],
     },
   },
+  {
+    name: 'magnetlab_list_linkedin_accounts',
+    description:
+      'List all connected LinkedIn accounts (via Unipile) for the current user. Returns account IDs, names, and connection status. Pass refresh=true to verify live status with Unipile API (slower).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        team_id: { type: 'string', description: 'Team ID for scoping' },
+        refresh: {
+          type: 'boolean',
+          description: 'If true, verify live status with Unipile API. Default: false.',
+        },
+      },
+    },
+  },
 ];
