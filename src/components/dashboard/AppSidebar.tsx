@@ -19,6 +19,7 @@ import {
   ArrowLeftRight,
   Home,
   MessageSquare,
+  MessagesSquare,
   BookOpen,
   Mail,
   HelpCircle,
@@ -106,6 +107,7 @@ const distributeNav: NavItem[] = [
     icon: Megaphone,
     activePrefixes: ['/campaigns', '/post-campaigns'],
   },
+  { href: '/dm-coach', label: 'DM Coach', icon: MessagesSquare },
   { href: '/signals', label: 'Signals', icon: Radio },
   { href: '/leads', label: 'Leads', icon: Users },
 ];

@@ -26,6 +26,7 @@ interface ChatRequest {
     entityType?: string;
     entityId?: string;
     entityTitle?: string;
+    entityContent?: string;
   };
 }
 

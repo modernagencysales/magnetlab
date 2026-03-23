@@ -568,6 +568,115 @@ export const toolSchemas: Record<string, z.ZodType> = {
     post_id: uuidField,
     type: z.enum(['repost', 'cousin'] as [string, ...string[]]),
   }),
+
+  // ── DM Coach (7) ──────────────────────────────────────────────────────────
+
+  magnetlab_list_dm_contacts: z.object({
+    status: z
+      .enum(['active', 'paused', 'closed_won', 'closed_lost'] as [string, ...string[]])
+      .optional(),
+    goal: z
+      .enum([
+        'book_meeting',
+        'build_relationship',
+        'promote_content',
+        'explore_partnership',
+        'nurture_lead',
+        'close_deal',
+      ] as [string, ...string[]])
+      .optional(),
+    search: z.string().optional(),
+  }),
+
+  magnetlab_get_dm_contact: z.object({
+    contact_id: uuidField,
+  }),
+
+  magnetlab_create_dm_contact: z.object({
+    name: z.string().min(1, 'name is required'),
+    linkedin_url: z.string().optional(),
+    headline: z.string().optional(),
+    company: z.string().optional(),
+    location: z.string().optional(),
+    conversation_goal: z
+      .enum([
+        'book_meeting',
+        'build_relationship',
+        'promote_content',
+        'explore_partnership',
+        'nurture_lead',
+        'close_deal',
+      ] as [string, ...string[]])
+      .optional(),
+    notes: z.string().optional(),
+  }),
+
+  magnetlab_update_dm_contact: z.object({
+    contact_id: uuidField,
+    name: z.string().min(1).optional(),
+    headline: z.string().optional(),
+    company: z.string().optional(),
+    location: z.string().optional(),
+    conversation_goal: z
+      .enum([
+        'book_meeting',
+        'build_relationship',
+        'promote_content',
+        'explore_partnership',
+        'nurture_lead',
+        'close_deal',
+      ] as [string, ...string[]])
+      .optional(),
+    qualification_stage: z
+      .enum(['unknown', 'situation', 'pain', 'impact', 'vision', 'capability', 'commitment'] as [
+        string,
+        ...string[],
+      ])
+      .optional(),
+    status: z
+      .enum(['active', 'paused', 'closed_won', 'closed_lost'] as [string, ...string[]])
+      .optional(),
+    notes: z.string().optional(),
+  }),
+
+  magnetlab_delete_dm_contact: z.object({
+    contact_id: uuidField,
+  }),
+
+  magnetlab_add_dm_messages: z.object({
+    contact_id: uuidField,
+    messages: z
+      .array(
+        z.object({
+          role: z.enum(['them', 'me'] as [string, ...string[]]),
+          content: z.string().min(1, 'content is required'),
+          timestamp: z.string().optional(),
+        })
+      )
+      .min(1, 'at least one message is required'),
+  }),
+
+  magnetlab_dm_coach_suggest: z.object({
+    contact_id: uuidField,
+  }),
+
+  // ── Lead Magnet Post (3) ───────────────────────────────────────────────────
+
+  magnetlab_list_sender_accounts: z.object({}),
+
+  magnetlab_publish_linkedin_post: z.object({
+    team_profile_id: uuidField,
+    post_text: z.string().min(1, 'post_text is required'),
+  }),
+
+  magnetlab_launch_lead_magnet_post: z.object({
+    team_profile_id: uuidField,
+    post_text: z.string().min(1, 'post_text is required'),
+    funnel_page_id: z.string().optional(),
+    keywords: z.array(z.string()).optional(),
+    dm_template: z.string().optional(),
+    campaign_name: z.string().optional(),
+  }),
 };
 
 // ─── Validation Function ──────────────────────────────────────────────────────

@@ -7,9 +7,11 @@
  * Never fetches data; receives everything via props.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { QueueTeam, QueueTeamWritingStyle } from '@/frontend/api/content-queue';
+import { removeQueuePostImage } from '@/frontend/api/content-queue';
 import { PostList } from './PostList';
 import { PostEditor } from './PostEditor';
 import { ContextPanel } from './ContextPanel';
@@ -185,6 +187,47 @@ export function EditingView({
     setIsContextCollapsed((prev) => !prev);
   }, []);
 
+  const handleCopilotContentUpdated = useCallback(
+    (newContent: string) => {
+      if (currentPost) {
+        onContentChange(currentPost.id, newContent);
+      }
+    },
+    [currentPost, onContentChange]
+  );
+
+  // ─── Image handlers ────────────────────────────────────────────────
+
+  // Resolve image_storage_path to public URL
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const currentImageUrl = useMemo(() => {
+    const path = currentPost?.image_storage_path;
+    if (!path || !supabaseUrl) return null;
+    return `${supabaseUrl}/storage/v1/object/public/post-images/${path}`;
+  }, [currentPost?.image_storage_path, supabaseUrl]);
+
+  // Track locally uploaded images (before SWR refreshes)
+  const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
+
+  // Reset local override when switching posts
+  useEffect(() => {
+    setLocalImageUrl(null);
+  }, [currentPost?.id]);
+
+  const resolvedImageUrl = localImageUrl ?? currentImageUrl;
+
+  const handleImageUploaded = useCallback((imageUrl: string) => {
+    setLocalImageUrl(imageUrl);
+  }, []);
+
+  const handleImageRemoved = useCallback(() => {
+    if (!currentPost) return;
+    setLocalImageUrl(null);
+    removeQueuePostImage(currentPost.id).catch(() => {
+      toast.error('Failed to remove image');
+    });
+  }, [currentPost]);
+
   if (!currentPost) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -237,16 +280,23 @@ export function EditingView({
           isPreviewMode={isPreviewMode}
           onTogglePreview={handleTogglePreview}
           onContentChange={handleContentChange}
-          imageUrls={null}
+          imageUrl={resolvedImageUrl}
+          onImageUploaded={handleImageUploaded}
+          onImageRemoved={handleImageRemoved}
         />
       </div>
 
-      {/* Right column — context */}
+      {/* Right column — context + AI copilot */}
       <ContextPanel
         writingStyle={writingStyle}
         currentPost={currentPost}
         isCollapsed={isContextCollapsed}
         onToggleCollapse={handleToggleContext}
+        postId={currentPost.id}
+        postContent={currentPost.draft_content ?? ''}
+        teamName={team.team_name}
+        authorName={team.profile_name}
+        onContentUpdated={handleCopilotContentUpdated}
       />
     </div>
   );

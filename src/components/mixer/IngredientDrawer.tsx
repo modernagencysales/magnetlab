@@ -48,7 +48,7 @@ const PLACEHOLDER_MESSAGES: Record<string, string> = {
 async function fetchItems(type: IngredientType, teamProfileId?: string): Promise<DrawerItem[]> {
   switch (type) {
     case 'knowledge': {
-      const res = await getTopics({ limit: 50 });
+      const res = await getTopics({ limit: 50, team_id: teamProfileId });
       const topics = (res.topics ?? []) as Array<{
         id: string;
         slug: string;
@@ -80,22 +80,24 @@ async function fetchItems(type: IngredientType, teamProfileId?: string): Promise
     }
     case 'templates': {
       // Fetch both user's own templates and global ones
-      const [mine, global] = await Promise.all([
-        listTemplates('mine'),
-        listTemplates('global'),
-      ]);
-      const all = [...(mine as Array<{ id: string; name: string; description?: string }>), ...(global as Array<{ id: string; name: string; description?: string }>)];
+      const [mine, global] = await Promise.all([listTemplates('mine'), listTemplates('global')]);
+      const all = [
+        ...(mine as Array<{ id: string; name: string; description?: string }>),
+        ...(global as Array<{ id: string; name: string; description?: string }>),
+      ];
       // Deduplicate by id
       const seen = new Set<string>();
-      return all.filter((t) => {
-        if (seen.has(t.id)) return false;
-        seen.add(t.id);
-        return true;
-      }).map((t) => ({
-        id: t.id,
-        name: t.name,
-        description: t.description,
-      }));
+      return all
+        .filter((t) => {
+          if (seen.has(t.id)) return false;
+          seen.add(t.id);
+          return true;
+        })
+        .map((t) => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+        }));
     }
     case 'creatives': {
       const items = await getCreatives({ status: 'approved', limit: 50 });
@@ -120,7 +122,13 @@ async function fetchItems(type: IngredientType, teamProfileId?: string): Promise
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function IngredientDrawer({ type, open, onOpenChange, teamProfileId, onSelect }: IngredientDrawerProps) {
+export function IngredientDrawer({
+  type,
+  open,
+  onOpenChange,
+  teamProfileId,
+  onSelect,
+}: IngredientDrawerProps) {
   const [items, setItems] = useState<DrawerItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -138,7 +146,7 @@ export function IngredientDrawer({ type, open, onOpenChange, teamProfileId, onSe
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, [open, type, isPlaceholder]);
+  }, [open, type, isPlaceholder, teamProfileId]);
 
   const filtered = search.trim()
     ? items.filter(

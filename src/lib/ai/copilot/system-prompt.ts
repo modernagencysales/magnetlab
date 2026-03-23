@@ -14,6 +14,7 @@ interface PageContext {
   entityType?: string;
   entityId?: string;
   entityTitle?: string;
+  entityContent?: string;
 }
 
 interface EngagementStats {
@@ -243,7 +244,25 @@ export async function buildCopilotSystemPrompt(
     }
   }
 
-  // 7. Lead magnet creation guidance
+  // 7. Content queue inline editing context
+  if (effectivePageContext?.page === 'content-queue' && effectivePageContext.entityContent) {
+    sections.push(`\n## Content Queue — Inline Post Editing
+
+You are embedded in the content queue editor. The user is editing a LinkedIn post for a team member.
+
+### Current Post Content
+\`\`\`
+${effectivePageContext.entityContent}
+\`\`\`
+
+### Instructions
+- Use the \`update_queue_post_content\` tool to modify this post. Do NOT use \`update_post_content\`.
+- Make targeted changes — preserve the author's voice and style.
+- Explain what you changed and why in your response.
+- If the user asks for a full rewrite, confirm the direction before replacing everything.`);
+  }
+
+  // 8. Lead magnet creation guidance
   sections.push(`
 ## Lead Magnet Creation
 
