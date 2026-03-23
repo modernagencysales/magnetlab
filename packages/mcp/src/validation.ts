@@ -423,6 +423,9 @@ export const toolSchemas: Record<string, z.ZodType> = {
     auto_accept_connections: z.boolean().optional(),
     auto_like_comments: z.boolean().optional(),
     auto_connect_non_requesters: z.boolean().optional(),
+    sender_name: z.string().optional(),
+    connect_message_template: z.string().optional(),
+    lead_expiry_days: z.number().int().positive().optional(),
   }),
 
   magnetlab_auto_setup_post_campaign: z.object({
@@ -445,6 +448,9 @@ export const toolSchemas: Record<string, z.ZodType> = {
     auto_accept_connections: z.boolean().optional(),
     auto_like_comments: z.boolean().optional(),
     auto_connect_non_requesters: z.boolean().optional(),
+    sender_name: z.string().optional(),
+    connect_message_template: z.string().optional(),
+    lead_expiry_days: z.number().int().positive().optional(),
   }),
 
   magnetlab_activate_post_campaign: z.object({

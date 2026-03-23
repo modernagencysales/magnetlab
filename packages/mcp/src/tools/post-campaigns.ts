@@ -71,6 +71,18 @@ export const postCampaignTools: Tool[] = [
           description:
             'Auto-send connection requests to commenters not yet connected (default: false)',
         },
+        sender_name: {
+          type: 'string',
+          description: 'Display name when sending DMs',
+        },
+        connect_message_template: {
+          type: 'string',
+          description: 'Message sent with connection requests. Supports {{name}} placeholder.',
+        },
+        lead_expiry_days: {
+          type: 'number',
+          description: 'Days before leads expire (default: 30)',
+        },
       },
       required: ['name', 'post_url', 'keywords', 'unipile_account_id', 'dm_template'],
     },
@@ -130,6 +142,18 @@ export const postCampaignTools: Tool[] = [
         auto_connect_non_requesters: {
           type: 'boolean',
           description: 'Updated auto-connect setting',
+        },
+        sender_name: {
+          type: 'string',
+          description: 'Display name when sending DMs',
+        },
+        connect_message_template: {
+          type: 'string',
+          description: 'Message sent with connection requests. Supports {{name}} placeholder.',
+        },
+        lead_expiry_days: {
+          type: 'number',
+          description: 'Days before leads expire (default: 30)',
         },
       },
       required: ['campaign_id'],
