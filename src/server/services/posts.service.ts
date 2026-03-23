@@ -7,7 +7,10 @@
 import * as postsRepo from '@/server/repositories/posts.repo';
 import * as cpSlotsRepo from '@/server/repositories/cp-schedule-slots.repo';
 import { polishPost as aiPolishPost } from '@/lib/ai/content-pipeline/post-polish';
-import { getUserLinkedInPublisher } from '@/lib/integrations/linkedin-publisher';
+import {
+  getUserLinkedInPublisher,
+  getLinkedInPublisherForAccount,
+} from '@/lib/integrations/linkedin-publisher';
 import type { ImageFile } from '@/lib/integrations/linkedin-publisher';
 import { captureAndClassifyEdit } from '@/lib/services/edit-capture';
 import { requireTeamScope } from '@/lib/utils/team-context';
@@ -403,7 +406,11 @@ export async function polishPost(userId: string, postId: string): Promise<Polish
   };
 }
 
-export async function publishPost(userId: string, postId: string): Promise<PublishResult> {
+export async function publishPost(
+  userId: string,
+  postId: string,
+  unipileAccountId?: string
+): Promise<PublishResult> {
   const post = await postsRepo.findPostForPublish(userId, postId);
   if (!post) throw Object.assign(new Error('Post not found'), { statusCode: 404 });
 
@@ -412,7 +419,9 @@ export async function publishPost(userId: string, postId: string): Promise<Publi
     throw Object.assign(new Error('No content to publish'), { statusCode: 400 });
   }
 
-  const publisher = await getUserLinkedInPublisher(userId);
+  const publisher = unipileAccountId
+    ? getLinkedInPublisherForAccount(unipileAccountId)
+    : await getUserLinkedInPublisher(userId);
   if (!publisher) {
     throw Object.assign(
       new Error(

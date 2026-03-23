@@ -466,9 +466,11 @@ export class MagnetLabClient {
     return this.request<{ success: boolean }>('DELETE', url);
   }
 
-  async publishPost(id: string, teamId?: string) {
+  async publishPost(id: string, unipileAccountId?: string, teamId?: string) {
     const url = this.appendTeamId(`/content-pipeline/posts/${id}/publish`, teamId);
-    return this.request<unknown>('POST', url, {});
+    return this.request<unknown>('POST', url, {
+      ...(unipileAccountId ? { unipile_account_id: unipileAccountId } : {}),
+    });
   }
 
   async uploadPostImageUrl(postId: string, imageUrl: string, teamId?: string) {

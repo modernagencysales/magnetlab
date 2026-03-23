@@ -414,6 +414,19 @@ describe('Validation Schemas', () => {
       const result = validateToolArgs('magnetlab_publish_post', { id: 'post-1' });
       expect(result).toMatchObject({ id: 'post-1' });
     });
+
+    it('accepts unipile_account_id override', () => {
+      const result = validateToolArgs('magnetlab_publish_post', {
+        id: 'post-1',
+        unipile_account_id: 'acc_abc123',
+      });
+      expect(result).toMatchObject({ id: 'post-1', unipile_account_id: 'acc_abc123' });
+    });
+
+    it('accepts without unipile_account_id (optional)', () => {
+      const result = validateToolArgs('magnetlab_publish_post', { id: 'post-1' });
+      expect(result).not.toHaveProperty('unipile_account_id');
+    });
   });
 
   describe('magnetlab_list_linkedin_accounts', () => {

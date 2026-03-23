@@ -144,6 +144,10 @@ export const postTools: Tool[] = [
       type: 'object',
       properties: {
         id: { type: 'string', description: 'Pipeline post UUID' },
+        unipile_account_id: {
+          type: 'string',
+          description: 'Override: publish from this Unipile account instead of the default',
+        },
         team_id: {
           type: 'string',
           description: 'Team ID to scope this operation. Omit for primary team.',

@@ -78,11 +78,34 @@ export async function getUserLinkedInPublisher(userId: string): Promise<LinkedIn
  * Use when the caller already knows which account to publish from.
  * Does not look up user_integrations — uses the provided account ID directly.
  */
-export function getLinkedInPublisherForAccount(accountId: string) {
+export function getLinkedInPublisherForAccount(accountId: string): LinkedInPublisher {
   const client = getUnipileClient();
   return {
-    async publishNow(content: string, imageFile?: ImageFile) {
-      return client.createPost(accountId, content, imageFile);
+    provider: 'unipile',
+
+    async publishNow(content: string, imageFile?: ImageFile): Promise<PublishResult> {
+      const result = await client.createPost(accountId, content, imageFile);
+      if (result.error) {
+        throw new Error(`Unipile publish failed: ${result.error}`);
+      }
+      const postId = result.data?.social_id || result.data?.id || '';
+      return { postId, provider: 'unipile' };
+    },
+
+    async getPostStats(postId: string): Promise<EngagementStats | null> {
+      try {
+        const result = await client.getPost(postId, accountId);
+        if (result.error || !result.data) return null;
+        return {
+          views: result.data.views_count || 0,
+          likes: result.data.likes_count || 0,
+          comments: result.data.comments_count || 0,
+          shares: result.data.shares_count || 0,
+          captured_at: new Date().toISOString(),
+        };
+      } catch {
+        return null;
+      }
     },
   };
 }

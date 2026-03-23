@@ -234,6 +234,7 @@ export const toolSchemas: Record<string, z.ZodType> = {
 
   magnetlab_publish_post: z.object({
     id: uuidField,
+    unipile_account_id: z.string().optional(),
     team_id: teamIdField,
   }),
 

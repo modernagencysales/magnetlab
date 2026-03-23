@@ -47,7 +47,11 @@ export async function handlePostTools(
       return client.deletePost(args.id as string, args.team_id as string | undefined);
 
     case 'magnetlab_publish_post':
-      return client.publishPost(args.id as string, args.team_id as string | undefined);
+      return client.publishPost(
+        args.id as string,
+        args.unipile_account_id as string | undefined,
+        args.team_id as string | undefined
+      );
 
     case 'magnetlab_upload_post_image':
       return client.uploadPostImageUrl(
