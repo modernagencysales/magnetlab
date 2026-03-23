@@ -471,6 +471,11 @@ export class MagnetLabClient {
     return this.request<unknown>('POST', url, {});
   }
 
+  async uploadPostImageUrl(postId: string, imageUrl: string, teamId?: string) {
+    const url = this.appendTeamId(`/content-pipeline/posts/${postId}/upload-image-url`, teamId);
+    return this.request<unknown>('POST', url, { image_url: imageUrl });
+  }
+
   async listLinkedInAccounts(teamId?: string, refresh?: boolean) {
     const params = new URLSearchParams();
     if (teamId) params.set('team_id', teamId);

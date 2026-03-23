@@ -1,4 +1,4 @@
-/** Content pipeline post tools (6). List, get, create, update, delete, publish. */
+/** Content pipeline post tools (7). List, get, create, update, delete, publish, upload_image_url. */
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 
@@ -150,6 +150,20 @@ export const postTools: Tool[] = [
         },
       },
       required: ['id'],
+    },
+  },
+  {
+    name: 'magnetlab_upload_post_image',
+    description:
+      'Upload an image to a pipeline post from an external URL. The image will be attached when the post is published.',
+    inputSchema: {
+      type: 'object' as const,
+      required: ['post_id', 'image_url'],
+      properties: {
+        post_id: { type: 'string', description: 'Pipeline post ID' },
+        image_url: { type: 'string', description: 'External image URL to download and store' },
+        team_id: { type: 'string', description: 'Team ID for scoping' },
+      },
     },
   },
   {

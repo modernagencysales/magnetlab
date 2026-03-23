@@ -4,8 +4,8 @@ import { toolSchemas, validateToolArgs } from '../validation.js';
 describe('Validation Schemas', () => {
   const schemaNames = Object.keys(toolSchemas);
 
-  it('has exactly 63 schemas', () => {
-    expect(schemaNames.length).toBe(63);
+  it('has exactly 64 schemas', () => {
+    expect(schemaNames.length).toBe(64);
   });
 
   it('every schema name starts with magnetlab_', () => {
@@ -438,6 +438,60 @@ describe('Validation Schemas', () => {
         refresh: false,
       });
       expect(result).toMatchObject({ team_id: 'team-42', refresh: false });
+    });
+  });
+
+  describe('magnetlab_upload_post_image', () => {
+    it('accepts valid post_id and image_url', () => {
+      const result = validateToolArgs('magnetlab_upload_post_image', {
+        post_id: 'post-uuid-123',
+        image_url: 'https://example.com/image.png',
+      });
+      expect(result).toMatchObject({
+        post_id: 'post-uuid-123',
+        image_url: 'https://example.com/image.png',
+      });
+    });
+
+    it('accepts optional team_id', () => {
+      const result = validateToolArgs('magnetlab_upload_post_image', {
+        post_id: 'post-1',
+        image_url: 'https://example.com/photo.jpg',
+        team_id: 'team-abc',
+      });
+      expect(result).toMatchObject({ team_id: 'team-abc' });
+    });
+
+    it('rejects missing post_id', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_upload_post_image', {
+          image_url: 'https://example.com/image.png',
+        })
+      ).toThrow();
+    });
+
+    it('rejects empty post_id', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_upload_post_image', {
+          post_id: '',
+          image_url: 'https://example.com/image.png',
+        })
+      ).toThrow();
+    });
+
+    it('rejects missing image_url', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_upload_post_image', { post_id: 'post-1' })
+      ).toThrow();
+    });
+
+    it('rejects non-URL image_url', () => {
+      expect(() =>
+        validateToolArgs('magnetlab_upload_post_image', {
+          post_id: 'post-1',
+          image_url: 'not-a-url',
+        })
+      ).toThrow();
     });
   });
 
