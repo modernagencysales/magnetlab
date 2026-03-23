@@ -196,6 +196,12 @@ export class UnipileClient extends BaseApiClient {
     return this.delete(`/accounts/${accountId}`);
   }
 
+  async listAccounts(): Promise<
+    ApiResponse<{ items: Array<{ id: string; name?: string; status?: string }> }>
+  > {
+    return this.get('/accounts');
+  }
+
   // ─── Connection Management ───────────────────────────────────────────
 
   async listReceivedInvitations(accountId: string): Promise<ApiResponse<UnipileInvitation[]>> {
