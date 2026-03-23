@@ -72,3 +72,17 @@ export async function getUserLinkedInPublisher(userId: string): Promise<LinkedIn
 
   return null;
 }
+
+/**
+ * Create a LinkedIn publisher bound to a specific Unipile account ID.
+ * Use when the caller already knows which account to publish from.
+ * Does not look up user_integrations — uses the provided account ID directly.
+ */
+export function getLinkedInPublisherForAccount(accountId: string) {
+  const client = getUnipileClient();
+  return {
+    async publishNow(content: string, imageFile?: ImageFile) {
+      return client.createPost(accountId, content, imageFile);
+    },
+  };
+}

@@ -4,7 +4,10 @@
 
 /** LinkedInPublisher tests. Verifies publishNow passes imageFile to Unipile createPost. */
 
-import { getUserLinkedInPublisher } from '@/lib/integrations/linkedin-publisher';
+import {
+  getUserLinkedInPublisher,
+  getLinkedInPublisherForAccount,
+} from '@/lib/integrations/linkedin-publisher';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -131,5 +134,28 @@ describe('getUserLinkedInPublisher', () => {
       const publisher = await getUserLinkedInPublisher(userId);
       expect(publisher?.provider).toBe('unipile');
     });
+  });
+});
+
+// ─── getLinkedInPublisherForAccount ──────────────────────────────────────────
+
+describe('getLinkedInPublisherForAccount', () => {
+  beforeEach(() => {
+    mockCreatePost.mockReset();
+  });
+
+  it('should create publisher bound to specific account ID', async () => {
+    const publisher = getLinkedInPublisherForAccount('explicit-account-id');
+    mockCreatePost.mockResolvedValueOnce({ data: { id: 'post-1', social_id: null }, error: null });
+    await publisher.publishNow('Test post');
+    expect(mockCreatePost).toHaveBeenCalledWith('explicit-account-id', 'Test post', undefined);
+  });
+
+  it('should pass image through for explicit account', async () => {
+    const publisher = getLinkedInPublisherForAccount('explicit-account-id');
+    const imageFile = { buffer: Buffer.from('img'), filename: 'photo.jpg', mimeType: 'image/jpeg' };
+    mockCreatePost.mockResolvedValueOnce({ data: { id: 'post-2', social_id: null }, error: null });
+    await publisher.publishNow('With image', imageFile);
+    expect(mockCreatePost).toHaveBeenCalledWith('explicit-account-id', 'With image', imageFile);
   });
 });
