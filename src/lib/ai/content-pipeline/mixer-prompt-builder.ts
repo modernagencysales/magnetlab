@@ -271,8 +271,13 @@ export function buildMixerVoiceSection(
  * Builds the full mixer prompt from selected ingredients.
  * Each ingredient type contributes a labeled section.
  * baseStyleGuidelines (from getBaseStyleGuidelines()) is always appended.
+ * globalStyleRules (from getGlobalStyleRules()) is appended when provided.
  */
-export function buildMixerPrompt(input: MixerPromptInput, baseStyleGuidelines: string): string {
+export function buildMixerPrompt(
+  input: MixerPromptInput,
+  baseStyleGuidelines: string,
+  globalStyleRules?: string
+): string {
   const parts: string[] = [];
 
   // System section
@@ -323,6 +328,10 @@ export function buildMixerPrompt(input: MixerPromptInput, baseStyleGuidelines: s
 
   // Base style guidelines always last before output format
   parts.push(`\n## Base Style Guidelines\n${baseStyleGuidelines}`);
+
+  if (globalStyleRules) {
+    parts.push(`\n## Learned Style Rules\n${globalStyleRules}`);
+  }
 
   // Output format
   parts.push(buildOutputFormat(input.count, input.output));

@@ -1,6 +1,7 @@
 import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { buildVoicePromptSection } from './voice-prompt-builder';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
+import { getGlobalStyleRules } from '@/lib/services/style-rules';
 import type { TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
 export interface WriteEmailInput {
@@ -19,6 +20,7 @@ export interface EmailResult {
 export async function writeNewsletterEmail(input: WriteEmailInput): Promise<EmailResult> {
   const client = getAnthropicClient('email-writer');
   const voiceSection = buildVoicePromptSection(input.voiceProfile, 'email');
+  const globalRules = await getGlobalStyleRules();
 
   const template = await getPrompt('email-newsletter');
   const prompt = interpolatePrompt(template.user_prompt, {
@@ -29,6 +31,7 @@ export async function writeNewsletterEmail(input: WriteEmailInput): Promise<Emai
     author_section: input.authorName ? `AUTHOR: ${input.authorName}` : '',
     knowledge_context: input.knowledgeContext,
     voice_style_section: voiceSection,
+    global_style_rules: globalRules,
   });
 
   const response = await client.messages.create({
