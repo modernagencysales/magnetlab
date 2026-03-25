@@ -1,6 +1,7 @@
 import { getAnthropicClient } from './anthropic-client';
 import { buildVoicePromptSection } from './voice-prompt-builder';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
+import { getGlobalStyleRules } from '@/lib/services/style-rules';
 import type { TeamVoiceProfile } from '@/lib/types/content-pipeline';
 
 // ============================================
@@ -33,50 +34,50 @@ export interface PolishOptions {
 
 export const AI_PHRASES = [
   "Here's the thing",
-  "Let me explain",
-  "game-changer",
-  "game changer",
-  "At the end of the day",
-  "In this article",
-  "As a matter of fact",
+  'Let me explain',
+  'game-changer',
+  'game changer',
+  'At the end of the day',
+  'In this article',
+  'As a matter of fact',
   "It's important to note",
-  "In conclusion",
-  "Moving forward",
-  "That being said",
-  "Dive deep",
-  "deep dive",
-  "Unlock your potential",
-  "Level up",
-  "Take it to the next level",
-  "Leverage",
-  "synergy",
-  "paradigm shift",
-  "low-hanging fruit",
-  "value proposition",
-  "circle back",
-  "touch base",
-  "think outside the box",
-  "drill down",
-  "bandwidth",
-  "unpack this",
-  "double down",
-  "at scale",
-  "pivot",
-  "disrupt",
-  "ideate",
-  "align on",
-  "needle-moving",
-  "mission-critical",
-  "world-class",
-  "best-in-class",
-  "cutting-edge",
-  "state-of-the-art",
-  "next-generation",
-  "holistic approach",
-  "ecosystem",
-  "robust",
-  "seamless",
-  "comprehensive",
+  'In conclusion',
+  'Moving forward',
+  'That being said',
+  'Dive deep',
+  'deep dive',
+  'Unlock your potential',
+  'Level up',
+  'Take it to the next level',
+  'Leverage',
+  'synergy',
+  'paradigm shift',
+  'low-hanging fruit',
+  'value proposition',
+  'circle back',
+  'touch base',
+  'think outside the box',
+  'drill down',
+  'bandwidth',
+  'unpack this',
+  'double down',
+  'at scale',
+  'pivot',
+  'disrupt',
+  'ideate',
+  'align on',
+  'needle-moving',
+  'mission-critical',
+  'world-class',
+  'best-in-class',
+  'cutting-edge',
+  'state-of-the-art',
+  'next-generation',
+  'holistic approach',
+  'ecosystem',
+  'robust',
+  'seamless',
+  'comprehensive',
 ];
 
 export const AI_STRUCTURAL_PATTERNS = [
@@ -159,31 +160,32 @@ const HOOK_STRENGTH_FACTORS = {
   },
 };
 
-const HOOK_WEAKNESS_FACTORS: Record<string, { penalty: number; test: (text: string) => boolean }> = {
-  isGeneric: {
-    penalty: 2,
-    test: (text: string) =>
-      /^(Tips for|Thoughts on|Some thoughts|How to|Ways to|Things to|Ideas for)\b/i.test(text),
-  },
-  isVague: {
-    penalty: 1.5,
-    test: (text: string) =>
-      /\b(better|improve|great|good|important|essential|key|must)\b/i.test(text) &&
-      !/\d/.test(text),
-  },
-  isTooLong: {
-    penalty: 1,
-    test: (text: string) => text.length > 120,
-  },
-  hasAIPatterns: {
-    penalty: 2,
-    test: (text: string) => detectAIPatterns(text).length > 0,
-  },
-  lacksSpecificity: {
-    penalty: 1.5,
-    test: (text: string) => !/\d/.test(text) && !/\b(I|my|we)\b/i.test(text),
-  },
-};
+const HOOK_WEAKNESS_FACTORS: Record<string, { penalty: number; test: (text: string) => boolean }> =
+  {
+    isGeneric: {
+      penalty: 2,
+      test: (text: string) =>
+        /^(Tips for|Thoughts on|Some thoughts|How to|Ways to|Things to|Ideas for)\b/i.test(text),
+    },
+    isVague: {
+      penalty: 1.5,
+      test: (text: string) =>
+        /\b(better|improve|great|good|important|essential|key|must)\b/i.test(text) &&
+        !/\d/.test(text),
+    },
+    isTooLong: {
+      penalty: 1,
+      test: (text: string) => text.length > 120,
+    },
+    hasAIPatterns: {
+      penalty: 2,
+      test: (text: string) => detectAIPatterns(text).length > 0,
+    },
+    lacksSpecificity: {
+      penalty: 1.5,
+      test: (text: string) => !/\d/.test(text) && !/\b(I|my|we)\b/i.test(text),
+    },
+  };
 
 export function scoreHook(hook: string): HookScore {
   let score = 5;
@@ -264,7 +266,12 @@ export async function polishPost(
   content: string,
   options: PolishOptions = {}
 ): Promise<PolishResult> {
-  const { rewriteAIPatterns = true, strengthenHook = true, formatOnly = false, voiceProfile } = options;
+  const {
+    rewriteAIPatterns = true,
+    strengthenHook = true,
+    formatOnly = false,
+    voiceProfile,
+  } = options;
 
   let polished = formatPost(content);
   const aiPatternsFound = detectAIPatterns(content);
@@ -281,8 +288,16 @@ export async function polishPost(
     return { original: content, polished, aiPatternsFound, hookScore, changes };
   }
 
-  if ((rewriteAIPatterns && aiPatternsFound.length > 0) || (strengthenHook && hookScore.score < 6)) {
-    const { prompt, template } = await buildPolishPrompt(polished, aiPatternsFound, hookScore, voiceProfile);
+  if (
+    (rewriteAIPatterns && aiPatternsFound.length > 0) ||
+    (strengthenHook && hookScore.score < 6)
+  ) {
+    const { prompt, template } = await buildPolishPrompt(
+      polished,
+      aiPatternsFound,
+      hookScore,
+      voiceProfile
+    );
     const client = getAnthropicClient('post-polish');
 
     const response = await client.messages.create({
@@ -331,12 +346,14 @@ async function buildPolishPrompt(
   const styleInstruction = styleSection
     ? `\n${styleSection}\n\nPolish the post to match this author's writing style.\n`
     : '';
+  const globalRules = await getGlobalStyleRules();
 
   const template = await getPrompt('post-polish-rewrite');
   const prompt = interpolatePrompt(template.user_prompt, {
     issues_list: issues.join('\n'),
     voice_style_section: styleInstruction,
     post_content: content,
+    global_style_rules: globalRules,
   });
 
   return { prompt, template };

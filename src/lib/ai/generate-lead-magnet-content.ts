@@ -1,4 +1,5 @@
 import { createAnthropicClient } from '@/lib/ai/anthropic-client';
+import { getGlobalStyleRules } from '@/lib/services/style-rules';
 import type { ExtractedContent, LeadMagnetConcept } from '@/lib/types/lead-magnet';
 
 /**
@@ -65,11 +66,14 @@ CRITICAL: Reference specific insights, numbers, and examples from the knowledge 
 
 Return ONLY the JSON object, no markdown fences or extra text.`;
 
+  const globalRules = await getGlobalStyleRules();
+  const finalPrompt = globalRules ? `${prompt}\n\n## Learned Style Rules\n${globalRules}` : prompt;
+
   const client = createAnthropicClient('generate-lead-magnet-content', { timeout: 480_000 });
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 8000,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{ role: 'user', content: finalPrompt }],
   });
 
   const textBlock = response.content.find((block) => block.type === 'text');

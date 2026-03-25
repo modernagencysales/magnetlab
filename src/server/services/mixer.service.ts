@@ -9,6 +9,7 @@ import {
   type MixerPromptInput,
 } from '@/lib/ai/content-pipeline/mixer-prompt-builder';
 import { getBaseStyleGuidelines } from '@/lib/ai/content-pipeline/post-writer';
+import { getGlobalStyleRules } from '@/lib/services/style-rules';
 import type { MixerResult } from '@/lib/types/mixer';
 import type { MixInput } from '@/lib/validations/mixer';
 import type { TeamVoiceProfile, StyleProfile } from '@/lib/types/content-pipeline';
@@ -352,7 +353,8 @@ export async function mix(input: MixInput): Promise<MixerResult> {
 
   // ─── 4. Build prompt and call Claude ──────────────────────────────────────
 
-  const prompt = buildMixerPrompt(promptInput, getBaseStyleGuidelines());
+  const globalRules = await getGlobalStyleRules();
+  const prompt = buildMixerPrompt(promptInput, getBaseStyleGuidelines(), globalRules);
 
   let rawResponse: string;
   try {

@@ -2,6 +2,7 @@ import { getAnthropicClient, parseJsonResponse } from './anthropic-client';
 import { matchAndRerankTemplates, buildTemplateGuidance } from './template-matcher';
 import { buildVoicePromptSection } from './voice-prompt-builder';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
+import { getGlobalStyleRules } from '@/lib/services/style-rules';
 import type { StyleProfile, PostVariation, TeamVoiceProfile } from '@/lib/types/content-pipeline';
 import { logError } from '@/lib/utils/logger';
 
@@ -154,6 +155,7 @@ export async function writePost(
 
   const voiceSection = buildVoiceSection(input);
   const styleSection = buildVoicePromptSection(input.voiceProfile, 'linkedin');
+  const globalRules = await getGlobalStyleRules();
 
   const template = await getPrompt('post-writer-freeform');
   const prompt = interpolatePrompt(template.user_prompt, {
@@ -167,6 +169,7 @@ export async function writePost(
     idea_why_post_worthy: idea.why_post_worthy || '',
     idea_content_type: idea.content_type || '',
     knowledge_section: knowledgeSection,
+    global_style_rules: globalRules,
   });
 
   const client = getAnthropicClient('post-writer');

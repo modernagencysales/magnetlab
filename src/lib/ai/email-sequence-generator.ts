@@ -2,6 +2,7 @@
 // Generates 5-email welcome sequences for lead magnets
 
 import { createAnthropicClient } from '@/lib/ai/anthropic-client';
+import { getGlobalStyleRules } from '@/lib/services/style-rules';
 import type { Email, EmailGenerationContext } from '@/lib/types/email';
 
 // Lazy initialization to ensure env vars are loaded
@@ -168,7 +169,12 @@ Use the voice markers and terminology naturally — do not sanitize or genericiz
     );
   }
 
-  const prompt = `${EMAIL_SEQUENCE_SYSTEM_PROMPT}
+  const globalRules = await getGlobalStyleRules();
+  const systemPrompt = globalRules
+    ? `${EMAIL_SEQUENCE_SYSTEM_PROMPT}\n\n## Learned Style Rules\n${globalRules}`
+    : EMAIL_SEQUENCE_SYSTEM_PROMPT;
+
+  const prompt = `${systemPrompt}
 
 ## CONTEXT
 ${contextParts.join('\n\n')}

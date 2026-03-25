@@ -1,5 +1,6 @@
 import { getAnthropicClient } from './anthropic-client';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
+import { logError, logWarn } from '@/lib/utils/logger';
 
 export interface ClassifyInput {
   originalText: string;
@@ -37,17 +38,25 @@ export async function classifyEditPatterns(input: ClassifyInput): Promise<Classi
     const response = await client.messages.create({
       model: template.model,
       max_tokens: template.max_tokens,
-      messages: [{
-        role: 'user',
-        content: prompt,
-      }],
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
     });
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { patterns: [] };
+    if (!jsonMatch) {
+      logWarn('edit-classifier', 'No JSON found in response', {
+        responsePreview: text.substring(0, 200),
+      });
+      return { patterns: [] };
+    }
     return JSON.parse(jsonMatch[0]);
-  } catch {
+  } catch (err) {
+    logError('edit-classifier', err, { step: 'classifyEditPatterns' });
     return { patterns: [] };
   }
 }
