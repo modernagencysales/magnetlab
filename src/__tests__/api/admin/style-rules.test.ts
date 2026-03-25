@@ -252,12 +252,14 @@ describe('Admin Style Rules API', () => {
           rule_text: 'Always write in an active voice throughout.',
           pattern_name: 'tone',
           scope: 'team',
+          team_id: '550e8400-e29b-41d4-a716-446655440000',
         })
       );
 
       expect(res.status).toBe(201);
       expect(mockCreateRule).toHaveBeenCalledWith(
-        expect.objectContaining({ pattern_name: 'tone', scope: 'team' })
+        expect.objectContaining({ pattern_name: 'tone', scope: 'team' }),
+        'admin-1'
       );
     });
   });

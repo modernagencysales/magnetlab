@@ -22,13 +22,20 @@ export async function getRuleById(id: string) {
 
 // ─── Writes ────────────────────────────────────────────────────────────────
 
-export async function createRule(input: StyleRuleCreateInput) {
+export async function createRule(input: StyleRuleCreateInput, creatorId?: string) {
   const rule = await repo.insertRule({
     pattern_name: input.pattern_name,
     rule_text: input.rule_text,
     scope: input.scope,
     team_id: input.team_id ?? null,
+    status: input.status,
   });
+
+  // Auto-compile if created as approved
+  if (input.status === 'approved' && creatorId) {
+    await compileGlobalRules(creatorId);
+  }
+
   return rule;
 }
 

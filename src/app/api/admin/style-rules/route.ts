@@ -30,6 +30,6 @@ export async function POST(request: NextRequest) {
   const parsed = StyleRuleCreateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const rule = await service.createRule(parsed.data);
+  const rule = await service.createRule(parsed.data, session.user.id);
   return NextResponse.json({ rule }, { status: 201 });
 }

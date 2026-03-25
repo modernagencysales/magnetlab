@@ -34,6 +34,7 @@ export interface StyleRuleInsertInput {
   source_edit_ids?: string[];
   frequency?: number;
   confidence?: number;
+  status?: 'proposed' | 'approved';
 }
 
 // ─── Reads ─────────────────────────────────────────────────────────────────
@@ -105,6 +106,7 @@ export async function insertRule(input: StyleRuleInsertInput): Promise<StyleRule
       source_edit_ids: input.source_edit_ids ?? [],
       frequency: input.frequency ?? 1,
       confidence: input.confidence ?? 0,
+      ...(input.status ? { status: input.status } : {}),
     })
     .select(STYLE_RULE_COLUMNS)
     .single();

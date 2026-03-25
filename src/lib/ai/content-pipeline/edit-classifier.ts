@@ -1,5 +1,6 @@
 import { getAnthropicClient } from './anthropic-client';
 import { getPrompt, interpolatePrompt } from '@/lib/services/prompt-registry';
+import { logError, logWarn } from '@/lib/utils/logger';
 
 export interface ClassifyInput {
   originalText: string;
@@ -48,15 +49,14 @@ export async function classifyEditPatterns(input: ClassifyInput): Promise<Classi
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.warn('[edit-classifier] No JSON found in response:', text.substring(0, 200));
+      logWarn('edit-classifier', 'No JSON found in response', {
+        responsePreview: text.substring(0, 200),
+      });
       return { patterns: [] };
     }
     return JSON.parse(jsonMatch[0]);
   } catch (err) {
-    console.error(
-      '[edit-classifier] Classification failed:',
-      err instanceof Error ? err.message : err
-    );
+    logError('edit-classifier', err, { step: 'classifyEditPatterns' });
     return { patterns: [] };
   }
 }

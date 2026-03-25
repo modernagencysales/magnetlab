@@ -34,8 +34,8 @@ export default function StyleRulesClientWrapper({ initialRules }: StyleRulesClie
         const data = await res.json();
         setRules(data.rules ?? []);
       }
-    } catch {
-      // Silently fail — rules stay at previous state
+    } catch (err) {
+      console.error('[StyleRulesClientWrapper] Failed to refresh rules:', err);
     }
   }, []);
 
