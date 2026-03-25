@@ -54,7 +54,8 @@ describe('edit-capture', () => {
 
     it('returns true for a meaningful edit', () => {
       const original = 'Our product helps businesses grow their revenue through automation.';
-      const edited = 'Our platform empowers agencies to scale their client acquisition through AI-driven outreach.';
+      const edited =
+        'Our platform empowers agencies to scale their client acquisition through AI-driven outreach.';
       expect(isSignificantEdit(original, edited)).toBe(true);
     });
 
@@ -166,7 +167,8 @@ describe('edit-capture', () => {
       contentId: 'post-789',
       fieldName: 'body',
       originalText: 'Our product helps businesses grow.',
-      editedText: 'Our platform empowers agencies to scale through AI-driven outreach and automation.',
+      editedText:
+        'Our platform empowers agencies to scale through AI-driven outreach and automation.',
       editTags: ['tone_change'],
       ceoNote: 'Made it more specific to our ICP',
     };
@@ -258,7 +260,8 @@ describe('edit-capture', () => {
       contentId: 'post-789',
       fieldName: 'body',
       originalText: 'Our product helps businesses grow.',
-      editedText: 'Our platform empowers agencies to scale through AI-driven outreach and automation.',
+      editedText:
+        'Our platform empowers agencies to scale through AI-driven outreach and automation.',
     };
 
     it('inserts a record for a significant edit', async () => {
@@ -323,7 +326,8 @@ describe('edit-capture', () => {
       contentId: 'post-789',
       fieldName: 'body',
       originalText: 'Our product helps businesses grow.',
-      editedText: 'Our platform empowers agencies to scale through AI-driven outreach and automation.',
+      editedText:
+        'Our platform empowers agencies to scale through AI-driven outreach and automation.',
     };
 
     beforeEach(() => {
@@ -383,7 +387,7 @@ describe('edit-capture', () => {
       await captureAndClassifyEdit(mockSupabase2, significantInput);
 
       // Allow async fire-and-forget to settle
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(mockClassify).toHaveBeenCalledWith({
         originalText: significantInput.originalText,
@@ -393,16 +397,16 @@ describe('edit-capture', () => {
       });
     });
 
-    it('does not update DB when classification returns no patterns', async () => {
+    it('updates DB even when classification returns no patterns', async () => {
       mockClassify.mockResolvedValue({ patterns: [] });
 
       await captureAndClassifyEdit(mockSupabase2, significantInput);
 
       // Allow async fire-and-forget to settle
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
-      // from() is called once for the insert; should not be called again for update
-      expect(mockUpdate).not.toHaveBeenCalled();
+      // Should still write { patterns: [] } so we can distinguish from unclassified (null)
+      expect(mockUpdate).toHaveBeenCalledWith({ auto_classified_changes: { patterns: [] } });
     });
 
     it('does not throw if classification fails', async () => {
@@ -412,7 +416,7 @@ describe('edit-capture', () => {
       const id = await captureAndClassifyEdit(mockSupabase2, significantInput);
 
       // Allow async fire-and-forget to settle
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(id).toBe('edit-abc');
       consoleSpy.mockRestore();

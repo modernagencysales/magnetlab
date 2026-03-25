@@ -397,37 +397,11 @@ export async function updateQueuePost(
     if (error) throw new Error(`content-queue.updateQueuePost: ${error.message}`);
   }
 
-  // Mark edited — capture ONE diff: AI original → human final
-  // original_content is the AI-generated text stashed by the frontend when the post was first loaded
+  // Mark edited — but do NOT capture edit diffs here.
+  // Edit diffs are captured at batch submit time (approval) so we only learn from
+  // the final approved version, not intermediate edits by different editors.
   if (input.mark_edited) {
     await queueRepo.markPostEdited(postId);
-
-    // Capture edit for style learning — fire-and-forget, never blocks response
-    // One diff per post: AI-generated → human-edited (not incremental saves)
-    // editedText: use the just-saved content if provided, otherwise read current DB state
-    const editedText = input.draft_content ?? post.draft_content;
-    if (input.original_content && editedText) {
-      try {
-        const profileEntry = (profiles ?? []).find((p) => p.id === post.team_profile_id);
-        const resolvedTeamId = profileEntry?.team_id ?? '';
-
-        if (resolvedTeamId) {
-          captureAndClassifyEdit(supabase, {
-            teamId: resolvedTeamId,
-            profileId: post.team_profile_id,
-            contentType: 'post',
-            contentId: postId,
-            fieldName: 'draft_content',
-            originalText: input.original_content,
-            editedText,
-            captureAll: true,
-            source: 'content_queue',
-          }).catch((err) => logError('content-queue/edit-capture', err, { postId }));
-        }
-      } catch {
-        // Edit capture must never affect the save flow
-      }
-    }
   }
 }
 
@@ -600,6 +574,40 @@ export async function submitBatch(
 
     automationType = 'content_editing';
     resultPayload = { posts_edited: totalCount };
+
+    // ─── Edit capture at approval time ────────────────────────────────────
+    // Capture ONE diff per post: ai_original_content → current draft_content.
+    // This is the approved final version — intermediate edits by different editors are ignored.
+    // Fire-and-forget: never blocks the submit flow.
+    try {
+      const { data: editedPosts } = await supabase
+        .from('cp_pipeline_posts')
+        .select('id, draft_content, ai_original_content, team_profile_id')
+        .in('team_profile_id', profileIds)
+        .eq('status', 'draft')
+        .not('edited_at', 'is', null)
+        .not('ai_original_content', 'is', null);
+
+      for (const post of editedPosts ?? []) {
+        if (post.ai_original_content && post.draft_content) {
+          captureAndClassifyEdit(supabase, {
+            teamId: teamId,
+            profileId: post.team_profile_id,
+            contentType: 'post',
+            contentId: post.id,
+            fieldName: 'draft_content',
+            originalText: post.ai_original_content,
+            editedText: post.draft_content,
+            captureAll: true,
+            source: 'content_queue',
+            approvedBy: userId,
+          }).catch((err) => logError('content-queue/edit-capture', err, { postId: post.id }));
+        }
+      }
+    } catch (err) {
+      // Edit capture must never block the submit flow
+      logError('content-queue/edit-capture-batch', err, { teamId });
+    }
   }
 
   // Look up DFY engagement by team owner's user_id (magnetlab_user_id)

@@ -12,7 +12,7 @@ export const ContentQueueUpdateSchema = z
   .object({
     draft_content: z.string().min(1, 'draft_content cannot be empty').optional(),
     mark_edited: z.boolean().optional(),
-    /** AI-generated original text, sent with mark_edited for one clean diff (style learning) */
+    /** @deprecated Edit diffs are now captured at batch submit using ai_original_content column */
     original_content: z.string().optional(),
     /** Image storage path — set to null to remove, string to set */
     image_storage_path: z.string().nullable().optional(),

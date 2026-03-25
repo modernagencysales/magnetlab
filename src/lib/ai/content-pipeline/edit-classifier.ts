@@ -37,17 +37,26 @@ export async function classifyEditPatterns(input: ClassifyInput): Promise<Classi
     const response = await client.messages.create({
       model: template.model,
       max_tokens: template.max_tokens,
-      messages: [{
-        role: 'user',
-        content: prompt,
-      }],
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
     });
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { patterns: [] };
+    if (!jsonMatch) {
+      console.warn('[edit-classifier] No JSON found in response:', text.substring(0, 200));
+      return { patterns: [] };
+    }
     return JSON.parse(jsonMatch[0]);
-  } catch {
+  } catch (err) {
+    console.error(
+      '[edit-classifier] Classification failed:',
+      err instanceof Error ? err.message : err
+    );
     return { patterns: [] };
   }
 }

@@ -24,6 +24,8 @@ export interface EditRecordInput {
   source?: 'manual' | 'copilot' | 'content_queue';
   /** Skip the 5% significance threshold. Use for professional editor edits where every change is signal. */
   captureAll?: boolean;
+  /** User ID of the person who approved the final version. Only their judgment is the training signal. */
+  approvedBy?: string;
 }
 
 export interface EditRecord {
@@ -38,6 +40,7 @@ export interface EditRecord {
   edit_tags: string[];
   ceo_note: string | null;
   source?: string;
+  approved_by?: string;
 }
 
 const SIGNIFICANCE_THRESHOLD = 0.05;
@@ -118,6 +121,7 @@ export function buildEditRecord(input: EditRecordInput): EditRecord | null {
     edit_tags: input.editTags || [],
     ceo_note: input.ceoNote || null,
     ...(input.source ? { source: input.source } : {}),
+    ...(input.approvedBy ? { approved_by: input.approvedBy } : {}),
   };
 }
 
@@ -167,6 +171,7 @@ export async function captureAndClassifyEdit(
   }
 
   // Async classification (fire-and-forget)
+  // Always writes result to DB so we can distinguish "classified, no patterns" from "not yet classified"
   classifyEditPatterns({
     originalText: input.originalText,
     editedText: input.editedText,
@@ -174,16 +179,13 @@ export async function captureAndClassifyEdit(
     fieldName: input.fieldName,
   })
     .then((result) => {
-      if (result.patterns.length > 0) {
-        supabase
-          .from('cp_edit_history')
-          .update({ auto_classified_changes: result })
-          .eq('id', data.id)
-          .then(({ error: updateError }: { error: { message: string } | null }) => {
-            if (updateError)
-              console.error('[edit-capture] Classification save failed:', updateError);
-          });
-      }
+      supabase
+        .from('cp_edit_history')
+        .update({ auto_classified_changes: result })
+        .eq('id', data.id)
+        .then(({ error: updateError }: { error: { message: string } | null }) => {
+          if (updateError) console.error('[edit-capture] Classification save failed:', updateError);
+        });
     })
     .catch((err: unknown) => {
       console.error('[edit-capture] Classification failed:', err);

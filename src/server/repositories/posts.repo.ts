@@ -345,9 +345,11 @@ export interface AgentPostCreateInput {
 
 export async function createPost(userId: string, input: PostCreateInput): Promise<PipelinePost> {
   const supabase = createSupabaseAdminClient();
+  const draftContent = input.draft_content ?? null;
   const row = {
     user_id: userId,
-    draft_content: input.draft_content ?? null,
+    draft_content: draftContent,
+    ai_original_content: draftContent, // Immutable snapshot of AI-generated text for edit tracking
     final_content: input.final_content ?? null,
     dm_template: input.dm_template ?? null,
     cta_word: input.cta_word ?? null,
@@ -378,6 +380,7 @@ export async function createAgentPost(
   const row = {
     user_id: userId,
     draft_content: input.body,
+    ai_original_content: input.body, // Immutable snapshot for edit tracking
     final_content: null,
     status: 'draft' as PostStatus,
     source: 'agent',
