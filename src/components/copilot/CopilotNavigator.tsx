@@ -2,7 +2,15 @@
 
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from 'react';
 import { useRouter } from 'next/navigation';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -40,11 +48,10 @@ export function CopilotNavigatorProvider({ children }: { children: ReactNode }) 
     [router]
   );
 
-  const value: CopilotNavigatorContextValue = {
-    startConversation,
-    pageContext,
-    setPageContext,
-  };
+  const value = useMemo(
+    () => ({ startConversation, pageContext, setPageContext }),
+    [startConversation, pageContext, setPageContext]
+  );
 
   return (
     <CopilotNavigatorContext.Provider value={value}>{children}</CopilotNavigatorContext.Provider>
@@ -67,9 +74,12 @@ export function useCopilotNavigator(): CopilotNavigatorContextValue {
 export function useCopilotPageContext(context: PageContext) {
   const { setPageContext } = useCopilotNavigator();
 
+  // Use individual primitive fields rather than the `context` object itself — callers create a
+  // new inline object on every render so the object reference is always different, but the
+  // meaningful values are stable.  This prevents the effect from firing on every render.
   useEffect(() => {
     setPageContext(context);
     return () => setPageContext(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [context.page, context.entityType, context.entityId]);
+  }, [context.page, context.entityType, context.entityId, context.entityTitle, setPageContext]);
 }
